@@ -16,13 +16,17 @@ import unittest
 
 import numpy as np
 from pass_test import PassTest
+<<<<<<< HEAD
 
 import paddle
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
 class FCFusePassTest(PassTest):
+<<<<<<< HEAD
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -33,6 +37,21 @@ class FCFusePassTest(PassTest):
             )
             tmp_1 = paddle.static.nn.fc(x=tmp_0, size=32, num_flatten_dims=1)
             tmp_2 = paddle.nn.functional.softmax(tmp_1)
+=======
+
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data",
+                              shape=[32, 128],
+                              dtype="float32",
+                              lod_level=0)
+            tmp_0 = fluid.layers.fc(input=data,
+                                    size=128,
+                                    num_flatten_dims=1,
+                                    act="relu")
+            tmp_1 = fluid.layers.fc(input=tmp_0, size=32, num_flatten_dims=1)
+            tmp_2 = fluid.layers.softmax(input=tmp_1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.feeds = {"data": np.random.random((32, 128)).astype("float32")}
         self.fetch_list = [tmp_0, tmp_1, tmp_2]

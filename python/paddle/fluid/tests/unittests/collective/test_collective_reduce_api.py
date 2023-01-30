@@ -12,16 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_collective_api_base import TestDistBase
 
 import paddle
 
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_api_base import TestDistBase
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
 class TestCollectiveReduceAPI(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
@@ -38,6 +52,7 @@ class TestCollectiveReduceAPI(TestDistBase):
 
     def test_reduce_nccl_dygraph(self):
         dtypes_to_test = [
+<<<<<<< HEAD
             "float16",
             "float32",
             "float64",
@@ -46,10 +61,15 @@ class TestCollectiveReduceAPI(TestDistBase):
             "int8",
             "uint8",
             "bool",
+=======
+            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
+            "bool"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         if self._nccl_version >= 2100:
             dtypes_to_test.append("bfloat16")
         for dtype in dtypes_to_test:
+<<<<<<< HEAD
             self.check_with_place(
                 "collective_reduce_api_dygraph.py",
                 "reduce",
@@ -79,6 +99,26 @@ class TestCollectiveReduceAPI(TestDistBase):
                 static_mode="0",
                 dtype=dtype,
             )
+=======
+            self.check_with_place("collective_reduce_api_dygraph.py",
+                                  "reduce",
+                                  "nccl",
+                                  static_mode="0",
+                                  dtype=dtype)
+
+    def test_reduce_gloo_dygraph(self):
+        dtypes_to_test = [
+            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
+            "bool", "bfloat16"
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_reduce_api_dygraph.py",
+                                  "reduce",
+                                  "gloo",
+                                  "1",
+                                  static_mode="0",
+                                  dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

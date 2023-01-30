@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -21,6 +22,17 @@ from get_gpt_model import FakeDataset, generate_model
 import paddle
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
+=======
+import unittest
+import sys
+import random
+import numpy as np
+import paddle
+
+from paddle.distributed.fleet import auto
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from get_gpt_model import generate_model, create_data_holder, FakeDataset
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -44,6 +56,10 @@ def reset_prog():
 
 
 class TestShardingPass(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.rtol = 1e-6
         self.atol = 1e-8
@@ -78,9 +94,13 @@ class TestShardingPass(unittest.TestCase):
             rtol=self.rtol,
             atol=self.atol,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
+<<<<<<< HEAD
                 __class__, ref_losses, check_losses, ref_losses - check_losses
             ),
         )
+=======
+                __class__, ref_losses, check_losses, ref_losses - check_losses))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_sharding_pass(self):
         # dp2 training
@@ -90,25 +110,43 @@ class TestShardingPass(unittest.TestCase):
 
         # sharding2 stage1 training
         sharding1_engine = self.get_engine(True, 1)
+<<<<<<< HEAD
         history = sharding1_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
+=======
+        history = sharding1_engine.fit(self.dataset,
+                                       3,
+                                       batch_size=self.batch_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sharding1_losses = np.array(history.history["loss"])
         self.check_results(dp_losses, sharding1_losses)
 
         # sharding2 stage2 training
         sharding2_engine = self.get_engine(True, 2)
+<<<<<<< HEAD
         history = sharding2_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
+=======
+        history = sharding2_engine.fit(self.dataset,
+                                       3,
+                                       batch_size=self.batch_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sharding2_losses = np.array(history.history["loss"])
         self.check_results(dp_losses, sharding2_losses)
 
         # sharding2 stage3 training
         sharding3_engine = self.get_engine(True, 3)
+<<<<<<< HEAD
         history = sharding3_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
+=======
+        history = sharding3_engine.fit(self.dataset,
+                                       3,
+                                       batch_size=self.batch_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sharding3_losses = np.array(history.history["loss"])
         self.check_results(dp_losses, sharding3_losses)
 

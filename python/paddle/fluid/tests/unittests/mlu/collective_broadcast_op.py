@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import argparse
 import os
@@ -20,6 +25,10 @@ import signal
 import time
 import socket
 from contextlib import closing
+<<<<<<< HEAD
+=======
+from six import string_types
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import math
 import paddle
 import paddle.fluid as fluid
@@ -36,6 +45,10 @@ paddle.enable_static()
 
 
 class TestCollectiveBroadcast(TestCollectiveRunnerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 
@@ -43,16 +56,23 @@ class TestCollectiveBroadcast(TestCollectiveRunnerBase):
         ring_id = 0
         rootid = 1
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
             tindata.desc.set_need_check_feed(False)
             
+=======
+            tindata = layers.data(name="tindata",
+                                  shape=[10, 1000],
+                                  dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             toutdata = main_prog.current_block().create_var(
                 name="outofbroadcast",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
+<<<<<<< HEAD
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
@@ -67,6 +87,20 @@ class TestCollectiveBroadcast(TestCollectiveRunnerBase):
                 outputs={'Out': toutdata},
                 attrs={'ring_id': ring_id},
             )
+=======
+                stop_gradient=False)
+            main_prog.global_block().append_op(type="c_broadcast",
+                                               inputs={'X': tindata},
+                                               attrs={
+                                                   'ring_id': ring_id,
+                                                   'root': rootid
+                                               },
+                                               outputs={'Out': toutdata})
+            main_prog.global_block().append_op(type="c_sync_comm_stream",
+                                               inputs={'X': toutdata},
+                                               outputs={'Out': toutdata},
+                                               attrs={'ring_id': ring_id})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return toutdata
 
 

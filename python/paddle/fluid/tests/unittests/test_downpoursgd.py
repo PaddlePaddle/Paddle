@@ -13,6 +13,7 @@
 # limitations under the License.
 """Test cases for Downpour."""
 
+<<<<<<< HEAD
 import os
 import sys
 import unittest
@@ -26,6 +27,24 @@ from paddle.fluid.incubate.fleet.parameter_server.pslib.node import (
     DownpourServer,
     DownpourWorker,
 )
+=======
+from __future__ import print_function
+
+import paddle
+import paddle.fluid as fluid
+import os
+import signal
+import subprocess
+import time
+import unittest
+import sys
+from op_test import OpTest
+from paddle.fluid.trainer_desc import DistMultiTrainer
+from paddle.fluid.device_worker import DownpourSGD, DownpourSGDOPT
+from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker, DownpourServer
+from google.protobuf import text_format
+import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.trainer_factory import TrainerFactory
 
 cache_path = os.path.expanduser('~/.cache/paddle/dataset')
@@ -45,6 +64,7 @@ class TestListenAndServOp(unittest.TestCase):
             pass
         else:
             print(sys.platform)
+<<<<<<< HEAD
             if not os.path.exists(
                 '{}/{}'.format(cache_path, 'fleet_desc.prototxt')
             ):
@@ -61,6 +81,20 @@ class TestListenAndServOp(unittest.TestCase):
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            if not os.path.exists('{}/{}'.format(cache_path,
+                                                 'fleet_desc.prototxt')):
+                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
+                    cache_path)
+                os.system(cmd)
+            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x_emb = fluid.layers.embedding(input=x,
+                                           size=[1, 2],
+                                           is_distributed=True)
+            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -76,7 +110,11 @@ class TestListenAndServOp(unittest.TestCase):
             program_configs = {}
             program_configs[program_id] = {
                 "pull_sparse": [0],
+<<<<<<< HEAD
                 "push_sparse": [0],
+=======
+                "push_sparse": [0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             program_configs[program_id]["pull_dense"] = [1]
             program_configs[program_id]["push_dense"] = [1]
@@ -109,6 +147,7 @@ class TestListenAndServOp(unittest.TestCase):
             pass
         else:
             print(sys.platform)
+<<<<<<< HEAD
             if not os.path.exists(
                 '{}/{}'.format(cache_path, 'fleet_desc.prototxt')
             ):
@@ -125,6 +164,20 @@ class TestListenAndServOp(unittest.TestCase):
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            if not os.path.exists('{}/{}'.format(cache_path,
+                                                 'fleet_desc.prototxt')):
+                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
+                    cache_path)
+                os.system(cmd)
+            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x_emb = fluid.layers.embedding(input=x,
+                                           size=[1, 2],
+                                           is_distributed=True)
+            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -140,7 +193,11 @@ class TestListenAndServOp(unittest.TestCase):
             program_configs = {}
             program_configs[program_id] = {
                 "pull_sparse": [0],
+<<<<<<< HEAD
                 "push_sparse": [0],
+=======
+                "push_sparse": [0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             program_configs[program_id]["pull_dense"] = [1]
             program_configs[program_id]["push_dense"] = [1]
@@ -171,6 +228,7 @@ class TestListenAndServOp(unittest.TestCase):
             pass
         else:
             print(sys.platform)
+<<<<<<< HEAD
             if not os.path.exists(
                 '{}/{}'.format(cache_path, 'fleet_desc.prototxt')
             ):
@@ -187,6 +245,20 @@ class TestListenAndServOp(unittest.TestCase):
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            if not os.path.exists('{}/{}'.format(cache_path,
+                                                 'fleet_desc.prototxt')):
+                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
+                    cache_path)
+                os.system(cmd)
+            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x_emb = fluid.layers.embedding(input=x,
+                                           size=[1, 2],
+                                           is_distributed=True)
+            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -202,7 +274,11 @@ class TestListenAndServOp(unittest.TestCase):
             program_configs = {}
             program_configs[program_id] = {
                 "pull_sparse": [0],
+<<<<<<< HEAD
                 "push_sparse": [0],
+=======
+                "push_sparse": [0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             program_configs[program_id]["pull_dense"] = [1]
             program_configs[program_id]["push_dense"] = [1]
@@ -218,7 +294,10 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
+<<<<<<< HEAD
             opt_info["user_define_dump_filename"] = "./dump_filename/dump.txt"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             worker = DownpourWorker(None)
             worker.get_desc().CopyFrom(ps_param.trainer_param[0])
             opt_info["program_id_to_worker"] = {program_id: worker}

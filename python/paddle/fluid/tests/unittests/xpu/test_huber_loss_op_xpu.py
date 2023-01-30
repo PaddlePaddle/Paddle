@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -28,6 +29,22 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+
+import paddle
+import paddle.fluid as fluid
+
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -41,11 +58,19 @@ def huber_loss_forward(val, delta):
 
 
 class XPUTestHuberLossOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'huber_loss'
         self.use_dynamic_create_class = False
 
     class TestHuberLossOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.set_xpu()
             self.op_type = 'huber_loss'
@@ -58,11 +83,19 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
 
         def set_inputs(self):
             shape = self.set_shape()
+<<<<<<< HEAD
             x = np.random.uniform(0, 1.0, shape).astype(self.dtype)
             y = np.random.uniform(0, 1.0, shape).astype(self.dtype)
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(x),
                 'Y': OpTest.np_dtype_to_fluid_dtype(y),
+=======
+            x = np.random.uniform(0, 1., shape).astype(self.dtype)
+            y = np.random.uniform(0, 1., shape).astype(self.dtype)
+            self.inputs = {
+                'X': OpTest.np_dtype_to_fluid_dtype(x),
+                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def set_attrs(self):
@@ -72,9 +105,14 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
             delta = self.attrs['delta']
             shape = self.set_shape()
             residual = self.inputs['Y'] - self.inputs['X']
+<<<<<<< HEAD
             loss = np.vectorize(huber_loss_forward)(residual, delta).astype(
                 self.dtype
             )
+=======
+            loss = np.vectorize(huber_loss_forward)(residual,
+                                                    delta).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.outputs = {'Residual': residual, 'Out': loss.reshape(shape)}
 
         def set_shape(self):
@@ -93,6 +131,7 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
         def test_check_grad_ingore_x(self):
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place, ['Y'], 'Out', no_grad_set=set("residual")
             )
@@ -107,10 +146,32 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
             return 640
 
     class TestHuberLossOp2(TestHuberLossOp):
+=======
+            self.check_grad_with_place(self.place, ['Y'],
+                                       'Out',
+                                       no_grad_set=set("residual"))
+
+        def test_check_grad_ingore_y(self):
+            self.check_grad_with_place(self.place, ['X'],
+                                       'Out',
+                                       no_grad_set=set('residual'))
+
+    class TestHuberLossOp1(TestHuberLossOp):
+
+        def set_shape(self):
+            return (640)
+
+    class TestHuberLossOp2(TestHuberLossOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_shape(self):
             return (10, 10)
 
     class TestHuberLossOp3(TestHuberLossOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_shape(self):
             return (10, 10, 1)
 

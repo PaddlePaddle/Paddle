@@ -41,7 +41,10 @@ class MemcpyFunctor {
     XPU = 3,
     NPU = 4,
     NPU_PINNED = 5,
+<<<<<<< HEAD
     CUSTOM_DEVICE = 6,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   };
 
  public:
@@ -50,8 +53,13 @@ class MemcpyFunctor {
                 const int dst_place_type)
       : out_(out), dev_ctx_(dev_ctx), dst_place_type_(dst_place_type) {}
 
+<<<<<<< HEAD
   void operator()(const phi::DenseTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<phi::DenseTensor>();
+=======
+  void operator()(const framework::LoDTensor &lod_tensor) const {
+    auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (dst_place_type_ == DeviceType::CUDA_PINNED) {
       framework::TensorCopy(
@@ -69,11 +77,14 @@ class MemcpyFunctor {
       framework::TensorCopy(
           lod_tensor, platform::NPUPinnedPlace(), dev_ctx_, &out_tensor);
 #endif
+<<<<<<< HEAD
 #ifdef PADDLE_WTIH_CUSTOM_DEVICE
     } else if (dst_place_type_ == DeviceType::CUSTOM_DEVICE) {
       framework::TensorCopy(
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));

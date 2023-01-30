@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -28,6 +33,10 @@ paddle.enable_static()
 
 # unsqueeze
 class TestUnsqueezeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "unsqueeze"
@@ -59,6 +68,10 @@ class TestUnsqueezeOp(OpTest):
 
 
 class TestUnsqueezeOp1(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (3, 40)
         self.axes = (0, -2)
@@ -67,6 +80,10 @@ class TestUnsqueezeOp1(TestUnsqueezeOp):
 
 # No axes input.
 class TestUnsqueezeOp2(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = ()
@@ -75,6 +92,10 @@ class TestUnsqueezeOp2(TestUnsqueezeOp):
 
 # Just part of axes be squeezed.
 class TestUnsqueezeOp3(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (6, 5, 1, 4)
         self.axes = (1, -1)
@@ -83,6 +104,10 @@ class TestUnsqueezeOp3(TestUnsqueezeOp):
 
 # unsqueeze 2
 class TestUnsqueeze2Op(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "unsqueeze2"
@@ -93,7 +118,11 @@ class TestUnsqueeze2Op(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.x.reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.ori_shape).astype("float32"),
+=======
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_npu(self):
@@ -116,6 +145,10 @@ class TestUnsqueeze2Op(OpTest):
 
 # Correct: There is mins axis.
 class TestUnsqueeze2Op1(TestUnsqueeze2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (0, -2)
@@ -124,6 +157,10 @@ class TestUnsqueeze2Op1(TestUnsqueeze2Op):
 
 # Correct: No axes input.
 class TestUnsqueeze2Op2(TestUnsqueeze2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = ()
@@ -132,6 +169,10 @@ class TestUnsqueeze2Op2(TestUnsqueeze2Op):
 
 # Correct: Just part of axes be squeezed.
 class TestUnsqueeze2Op3(TestUnsqueeze2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (6, 5, 1, 4)
         self.axes = (1, -1)

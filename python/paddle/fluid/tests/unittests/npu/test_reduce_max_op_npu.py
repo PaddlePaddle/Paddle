@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
@@ -26,8 +31,12 @@ paddle.enable_static()
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestNPUReduceMaxOp(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -55,8 +64,12 @@ class TestNPUReduceMaxOp(OpTest):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpMultiAxises(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -74,8 +87,12 @@ class TestReduceMaxOpMultiAxises(TestNPUReduceMaxOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceAll(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -91,8 +108,12 @@ class TestReduceAll(TestNPUReduceMaxOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpWithOutDtype_bool(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -104,19 +125,31 @@ class TestReduceMaxOpWithOutDtype_bool(TestNPUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.BOOL),
         }
         self.outputs = {
             'Out': self.inputs['X']
             .max(axis=tuple(self.attrs['dim']))
             .astype(np.bool_)
+=======
+            'out_dtype': int(core.VarDesc.VarType.BOOL)
+        }
+        self.outputs = {
+            'Out':
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.bool_)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpWithOutDtype_int16(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -128,6 +161,7 @@ class TestReduceMaxOpWithOutDtype_int16(TestNPUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.INT16),
         }
 
@@ -135,13 +169,25 @@ class TestReduceMaxOpWithOutDtype_int16(TestNPUReduceMaxOp):
             'Out': self.inputs['X']
             .max(axis=tuple(self.attrs['dim']))
             .astype(np.int16)
+=======
+            'out_dtype': int(core.VarDesc.VarType.INT16)
+        }
+
+        self.outputs = {
+            'Out':
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.int16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpWithOutDtype_int32(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -153,19 +199,31 @@ class TestReduceMaxOpWithOutDtype_int32(TestNPUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.INT32),
         }
         self.outputs = {
             'Out': self.inputs['X']
             .max(axis=tuple(self.attrs['dim']))
             .astype(np.int32)
+=======
+            'out_dtype': int(core.VarDesc.VarType.INT32)
+        }
+        self.outputs = {
+            'Out':
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpWithOutDtype_int64(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -177,19 +235,31 @@ class TestReduceMaxOpWithOutDtype_int64(TestNPUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.INT64),
         }
         self.outputs = {
             'Out': self.inputs['X']
             .max(axis=tuple(self.attrs['dim']))
             .astype(np.int64)
+=======
+            'out_dtype': int(core.VarDesc.VarType.INT64)
+        }
+        self.outputs = {
+            'Out':
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.int64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpWithOutDtype_fp16(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -201,12 +271,21 @@ class TestReduceMaxOpWithOutDtype_fp16(TestNPUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.FP16),
         }
         self.outputs = {
             'Out': self.inputs['X']
             .max(axis=tuple(self.attrs['dim']))
             .astype(np.float16)
+=======
+            'out_dtype': int(core.VarDesc.VarType.FP16)
+        }
+        self.outputs = {
+            'Out':
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(
+                np.float16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -215,8 +294,12 @@ class TestReduceMaxOpWithOutDtype_fp16(TestNPUReduceMaxOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpWithOutDtype_fp32(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -228,19 +311,32 @@ class TestReduceMaxOpWithOutDtype_fp32(TestNPUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.outputs = {
             'Out': self.inputs['X']
             .max(axis=tuple(self.attrs['dim']))
             .astype(np.float32)
+=======
+            'out_dtype': int(core.VarDesc.VarType.FP32)
+        }
+        self.outputs = {
+            'Out':
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(
+                np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpWithOutDtype_fp64(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -252,19 +348,32 @@ class TestReduceMaxOpWithOutDtype_fp64(TestNPUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.FP64),
         }
         self.outputs = {
             'Out': self.inputs['X']
             .max(axis=tuple(self.attrs['dim']))
             .astype(np.float64)
+=======
+            'out_dtype': int(core.VarDesc.VarType.FP64)
+        }
+        self.outputs = {
+            'Out':
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(
+                np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpWithOutDtype_fp32_2(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -276,12 +385,21 @@ class TestReduceMaxOpWithOutDtype_fp32_2(TestNPUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.outputs = {
             'Out': self.inputs['X']
             .max(axis=tuple(self.attrs['dim']))
             .astype(np.float32)
+=======
+            'out_dtype': int(core.VarDesc.VarType.FP32)
+        }
+        self.outputs = {
+            'Out':
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(
+                np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_dtype(self):
@@ -290,8 +408,12 @@ class TestReduceMaxOpWithOutDtype_fp32_2(TestNPUReduceMaxOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
+<<<<<<< HEAD
     " its gradient check is not supported by unittest framework."
 )
+=======
+    " its gradient check is not supported by unittest framework.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TestReduceMaxOpInt64(TestNPUReduceMaxOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -303,12 +425,21 @@ class TestReduceMaxOpInt64(TestNPUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.INT64),
         }
         self.outputs = {
             'Out': self.inputs['X']
             .max(axis=tuple(self.attrs['dim']))
             .astype(np.float32)
+=======
+            'out_dtype': int(core.VarDesc.VarType.INT64)
+        }
+        self.outputs = {
+            'Out':
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(
+                np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_dtype(self):

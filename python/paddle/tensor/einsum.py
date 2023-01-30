@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import collections
 import itertools
 import re
@@ -29,6 +30,34 @@ from .linalg import matmul, transpose
 from .manipulation import reshape, squeeze, unsqueeze
 from .math import multiply
 from .math import sum as paddle_sum
+=======
+import itertools
+import numpy as np
+import re
+
+from .linalg import dot, matmul, transpose
+from .manipulation import squeeze, unsqueeze, reshape
+from .math import multiply
+from .math import sum as paddle_sum
+from ..fluid.framework import _in_legacy_dygraph
+from paddle import _C_ops, _legacy_C_ops
+from ..fluid.data_feeder import (
+    check_variable_and_dtype,
+    check_type,
+    check_dtype,
+)
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.framework import (
+    _non_static_mode,
+    in_dygraph_mode,
+    _in_legacy_dygraph,
+)
+import collections
+import string
+import opt_einsum
+
+from paddle.common_ops_import import dygraph_only
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -57,9 +86,17 @@ def parse_op_labels(labelstr, operand):
 
     assert (
         labelstr.replace('...', '', 1).find('.') == -1
+<<<<<<< HEAD
     ), "Invalid equation: `.` is found outside of an ellipsis."
 
     ndims = len(operand.shape)
+=======
+    ), f"Invalid equation: `.` is found outside of an ellipsis."
+
+    # Check shape. Note, in Paddle a tensor rank is always nonzero
+    ndims = len(operand.shape)
+    assert ndims > 0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     full_labelstr = labelstr.replace('...', '.' * (ndims - len(labelstr) + 3))
 
@@ -103,7 +140,11 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     if n_bcast_dims > 0:
         assert (
             '...' in rhs
+<<<<<<< HEAD
         ), "Invalid equation: missing ellipsis in output labels."
+=======
+        ), f"Invalid equation: missing ellipsis in output labels."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
@@ -120,7 +161,11 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     # Verify that output labels are not duplicate
     assert len(rhs) == len(
         rhs_set
+<<<<<<< HEAD
     ), "Invalid equation: duplicate output labels are found."
+=======
+    ), f"Invalid equation: duplicate output labels are found."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def build_view(in_labels, out_labels):
@@ -217,7 +262,11 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
         else:
             count[-1] += 1
 
+<<<<<<< HEAD
     if rhs is not None:
+=======
+    if rhs != None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         validate_rhs(rhs, labels, n_bcast_dims)
         g_labels_out = rhs.replace('...', '.' * n_bcast_dims)
     else:
@@ -305,7 +354,11 @@ def diagonalize(labels, operand):
     '''
     assert not has_duplicated_labels(
         labels
+<<<<<<< HEAD
     ), 'Duplicate labels are not supported.'
+=======
+    ), f'Duplicate labels are not supported.'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return labels, operand
 
@@ -427,7 +480,11 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
             plan.add_step(step)
             step = squeeze, [var2], var2, [-1, -2]
             plan.add_step(step)
+<<<<<<< HEAD
         elif j1 + j2 == 0 and -1 not in np.concatenate(
+=======
+        elif j1 + j2 == 0 and not -1 in np.concatenate(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             (op1_vshape[K], op2_vshape[K])
         ):
             assert all(op1_vshape[K] == op2_vshape[K])
@@ -724,7 +781,19 @@ def preprocess(equation, *operands):
 
     assert not (
         '...' in lhs and '...' not in rhs
+<<<<<<< HEAD
     ), 'Invalid equation: missing ellipsis in output labels.'
+=======
+    ), f'Invalid equation: missing ellipsis in output labels.'
+
+    assert not (
+        len(list(filter(has_duplicated_labels, lhs.split(',')))) > 0
+    ), f'Duplicate labels are not supported.'
+
+    assert not has_duplicated_labels(
+        rhs
+    ), f'Invalid equation: duplicate output labels are found.'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return lhs, rhs, labels
 
@@ -741,6 +810,7 @@ def parse_fake_shape(equation, operands, labels):
     list of shape
 
     """
+<<<<<<< HEAD
     origin_labels = map(lambda x: x.strip(), equation.split(','))
     shaped = collections.namedtuple('shaped', ['shape'])
 
@@ -749,17 +819,30 @@ def parse_fake_shape(equation, operands, labels):
         1. ori_label is the original labels, not aligned by '....'
         2. if the '...' is evalulated to empty list, there is no '.' in label
         """
+=======
+    shaped = collections.namedtuple('shaped', ['shape'])
+
+    def fake_shape(label, op):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert len(op.shape) == len(label), (
             "length of shape and length of label must be the same, but received %d != %d"
             % (len(op.shape), len(label))
         )
         fakes = [s for i, (l, s) in enumerate(zip(label, op.shape)) if l != '.']
         fakes = list(map(abs, fakes))  # make -1 -> 1
+<<<<<<< HEAD
         if '.' in ori_label:
             fakes.insert(ori_label.index('.'), 1)
         return shaped(fakes)
 
     out = list(map(fake_shape, origin_labels, labels, operands))
+=======
+        if '.' in label:
+            fakes.insert(label.index('.'), 1)
+        return shaped(fakes)
+
+    out = list(map(fake_shape, labels, operands))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return out
 
 
@@ -785,7 +868,11 @@ def gen_equation_for_opteinsum(lhs, rhs):
             if c not in used:
                 return c
         raise ValueError(
+<<<<<<< HEAD
             "You have used all `a` - `z`, there can't find a unused char for einsum optimization"
+=======
+            "You have used all `a` - `z`, there can't find a unused for einsum optimization"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
 
     cnt = collections.Counter(lhs)
@@ -832,6 +919,7 @@ def gen_einsum_op(equation, *operands):
     """
     EinsumOp Python Interface:
     """
+<<<<<<< HEAD
 
     if in_dygraph_mode():
         return _C_ops.einsum(operands, equation)[0]
@@ -861,6 +949,40 @@ def gen_einsum_op(equation, *operands):
             attrs=attrs,
         )
         return out
+=======
+    assert len(operands) <= 2, "Only support two operands in EinsumOp."
+    if in_dygraph_mode():
+        return _C_ops.einsum(operands, equation)[0]
+
+    if _in_legacy_dygraph():
+        # dygraph
+        return _legacy_C_ops.einsum(
+            operands, len(operands), len(operands), 'equation', equation
+        )[0]
+
+    for inp in operands:
+        check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
+    check_type(equation, 'equation', str, 'einsum')
+    helper = LayerHelper('einsum', **locals())
+    out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+    attrs = dict()
+    attrs['equation'] = equation
+    caches = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
+    xshape = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
+    helper.append_op(
+        type='einsum',
+        inputs={'Operands': operands},
+        outputs={'Out': out, "InnerCache": caches, "XShape": xshape},
+        attrs=attrs,
+    )
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def einsum(equation, *operands):
@@ -868,7 +990,11 @@ def einsum(equation, *operands):
 
     einsum(equation, *operands)
 
+<<<<<<< HEAD
     The current version of this API should be used in dynamic graph only mode.
+=======
+    The current version of this API should be used in dygraph only mode.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Einsum offers a tensor operation API which allows using the Einstein summation
     convention or Einstain notation. It takes as input one or multiple tensors and
@@ -901,6 +1027,7 @@ def einsum(equation, *operands):
           dimensions into broadcasting dimensions.
         - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled
           dimensions will be reduced and removed in the output.
+<<<<<<< HEAD
         - Output labels can be explicitly specified on the right hand side of `->` or omitted.
             In the latter case, the output labels will be inferred from the input labels.
                 - Inference of output labels
@@ -916,6 +1043,22 @@ def einsum(equation, *operands):
                         a free label.
                     - For any free label which is not present for the output, it's lowered to
                         a dummy label.
+=======
+        - Output labels can be explicitly specified on the right hand side of `->` or omitted. In the latter case, the output labels will be inferred from the input labels.
+            - Inference of output labels
+                - Broadcasting label `...`, if present, is put on the leftmost position.
+                - Free labels are reordered alphabetically and put after `...`.
+            - On explicit output labels
+                - If broadcasting is enabled, then `...` must be present.
+                - The output labels can be an empty, an indication to output as a scalar
+                  the sum over the original output.
+                - Non-input labels are invalid.
+                - Duplicate labels are invalid.
+                - For any dummy label which is present for the output, it's promoted to
+                  a free label.
+                - For any free label which is not present for the output, it's lowered to
+                  a dummy label.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         - Examples
             - '...ij, ...jk', where i and k are free labels, j is dummy. The output label

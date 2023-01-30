@@ -26,12 +26,40 @@ using OperatorBase = TaskNode::OperatorBase;
 
 TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
                    int64_t rank,
+<<<<<<< HEAD
                    int64_t task_id,
                    int64_t max_run_times)
     : program_(program),
       rank_(rank),
       task_id_(task_id),
       max_run_times_(max_run_times) {
+=======
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : program_(program),
+      rank_(rank),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+  // Should be serially invoked, not thread-safe
+  // NOTE: when instantiate TaskNode with program, won't init task node
+  // immediately, since the provided program may be updated later (with
+  // high probability) by adding_feed_fetch_ops or by RuntimeGraph.
+  // So, delay the init part to the Init() function.
+  static int64_t task_node_cnt = 0;
+  task_id_ = task_node_cnt++;
+}
+
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : program_(program),
+      rank_(rank),
+      task_id_(task_id),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // TODO(liyurui): Will be removed when execute program is supported.
   Init();
 }
@@ -39,6 +67,10 @@ TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
 TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)
     : program_(program), rank_(rank), task_id_(rank) {
   max_run_times_ = 1;
+<<<<<<< HEAD
+=======
+  max_slot_nums_ = 1;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   LOG(INFO)
       << "Constructing TaskNode for DistModelInf. The TaskNode's id is: "
       << rank
@@ -78,11 +110,21 @@ TaskNode::TaskNode(int32_t role,
                    const std::vector<framework::OpDesc*>& op_descs,
                    int64_t rank,
                    int64_t task_id,
+<<<<<<< HEAD
                    int64_t max_run_times)
     : role_(role),
       rank_(rank),
       task_id_(task_id),
       max_run_times_(max_run_times) {
+=======
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : role_(role),
+      rank_(rank),
+      task_id_(task_id),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (op_descs.empty()) {
     return;
   }
@@ -99,16 +141,27 @@ TaskNode::TaskNode(int32_t role,
                    const std::vector<framework::OperatorBase*>& ops,
                    int64_t rank,
                    int64_t task_id,
+<<<<<<< HEAD
                    int64_t max_run_times)
+=======
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     : ops_(ops),
       role_(role),
       rank_(rank),
       task_id_(task_id),
+<<<<<<< HEAD
       max_run_times_(max_run_times) {}
+=======
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 TaskNode::TaskNode(int32_t role,
                    int64_t rank,
                    int64_t task_id,
+<<<<<<< HEAD
                    int64_t max_run_times)
     : role_(role),
       rank_(rank),
@@ -128,6 +181,23 @@ bool TaskNode::AddDownstreamTask(int64_t task_id,
                                  DependType type) {
   const auto& ret = downstream_.emplace(task_id, buff_size);
   id_to_dep_type_.emplace(task_id, type);
+=======
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : role_(role),
+      rank_(rank),
+      task_id_(task_id),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {}
+
+bool TaskNode::AddUpstreamTask(int64_t task_id, int64_t buff_size) {
+  const auto& ret = upstream_.emplace(task_id, buff_size);
+  return ret.second;
+}
+
+bool TaskNode::AddDownstreamTask(int64_t task_id, int64_t buff_size) {
+  const auto& ret = downstream_.emplace(task_id, buff_size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return ret.second;
 }
 

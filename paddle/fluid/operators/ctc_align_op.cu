@@ -85,8 +85,13 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "CTCAlign operator CUDA kernel must use CUDAPlace "
                           "rather than CPUPlace."));
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* output = ctx.Output<phi::DenseTensor>("Output");
+=======
+    auto* input = ctx.Input<LoDTensor>("Input");
+    auto* output = ctx.Output<LoDTensor>("Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int blank = ctx.Attr<int>("blank");
     const int merge_repeated =
         static_cast<int>(ctx.Attr<bool>("merge_repeated"));
@@ -99,9 +104,15 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       auto input_dims = input->dims();
       T* output_data = output->mutable_data<T>({input_dims[0], input_dims[1]},
                                                ctx.GetPlace());
+<<<<<<< HEAD
       auto* input_length = ctx.Input<phi::DenseTensor>("InputLength");
       const T* input_length_data = input_length->data<T>();
       auto* output_length = ctx.Output<phi::DenseTensor>("OutputLength");
+=======
+      auto* input_length = ctx.Input<LoDTensor>("InputLength");
+      const T* input_length_data = input_length->data<T>();
+      auto* output_length = ctx.Output<LoDTensor>("OutputLength");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       T* output_length_data =
           output_length->mutable_data<T>({input_dims[0], 1}, ctx.GetPlace());
       PaddingMergeAndDelCudaKernel<T>

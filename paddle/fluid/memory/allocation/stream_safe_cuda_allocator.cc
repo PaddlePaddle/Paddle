@@ -16,10 +16,16 @@
 #include <thread>
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+=======
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 namespace paddle {
@@ -44,12 +50,18 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
     return;
   }
 
+<<<<<<< HEAD
   std::call_once(once_flag_,
                  [this] { phi::backends::gpu::SetDeviceId(place_.device); });
 
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+=======
+  std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
+#ifdef PADDLE_WITH_CUDA
+  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     graph_capturing_stream_set_.insert(stream);
     return;
   }
@@ -61,15 +73,22 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
 #ifdef PADDLE_WITH_CUDA
+<<<<<<< HEAD
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+=======
+  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return graph_capturing_stream_set_.empty() &&
            outstanding_event_map_.empty();
   }
 #endif
 
+<<<<<<< HEAD
   std::call_once(once_flag_,
                  [this] { phi::backends::gpu::SetDeviceId(place_.device); });
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   RecordGraphCapturingStreams();
 
   for (auto it = outstanding_event_map_.begin();
@@ -266,8 +285,11 @@ uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
   return underlying_allocator_->Release(place_);
 }
 
+<<<<<<< HEAD
 thread_local std::once_flag StreamSafeCUDAAllocation::once_flag_;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 std::map<platform::Place, std::vector<StreamSafeCUDAAllocator*>>
     StreamSafeCUDAAllocator::allocator_map_;
 SpinLock StreamSafeCUDAAllocator::allocator_map_lock_;

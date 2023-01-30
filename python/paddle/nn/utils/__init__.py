@@ -14,6 +14,7 @@
 
 from .spectral_norm_hook import spectral_norm
 from .weight_norm_hook import weight_norm, remove_weight_norm  # noqa: F401
+<<<<<<< HEAD
 from .transform_parameters import (
     parameters_to_vector,
     vector_to_parameters,
@@ -26,4 +27,11 @@ __all__ = [  # noqa
     'spectral_norm',
     'parameters_to_vector',
     'vector_to_parameters',
+=======
+from .transform_parameters import parameters_to_vector, vector_to_parameters, _stride_column  # noqa: F401
+
+__all__ = [  #noqa
+    'weight_norm', 'remove_weight_norm', 'spectral_norm',
+    'parameters_to_vector', 'vector_to_parameters'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

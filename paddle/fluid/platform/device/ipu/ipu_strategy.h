@@ -118,6 +118,7 @@ class IpuStrategy {
   // whether in dynamic mode
   bool is_dynamic = false;
 
+<<<<<<< HEAD
   // use popart executor as default. Enable model_runtime executor if set to
   // true
   bool enable_model_runtime_executor = false;
@@ -128,6 +129,8 @@ class IpuStrategy {
   // timeout setting for model_runtime
   double timeout_ms = 0.0;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   void AddBoolOption(const std::string &option, bool value);
   void AddUint64Option(const std::string &option, std::uint64_t value);

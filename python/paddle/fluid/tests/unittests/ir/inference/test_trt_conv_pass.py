@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -43,13 +44,45 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
                 use_cudnn=self.use_cudnn,
                 act=None,
             )
+=======
+import shutil
+import unittest
+import numpy as np
+from inference_pass_test import InferencePassTest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.core import PassVersionChecker
+from paddle.fluid.core import AnalysisConfig
+
+
+class TensorRTSubgraphPassConvTest(InferencePassTest):
+
+    def setUp(self):
+        self.set_params()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data",
+                              shape=[-1, 6, 64, 64],
+                              dtype="float32")
+            conv_out = fluid.layers.conv2d(input=data,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           groups=self.conv_groups,
+                                           padding=self.conv_padding,
+                                           bias_attr=False,
+                                           use_cudnn=self.use_cudnn,
+                                           act=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassConvTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
         )
+=======
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fetch_list = [conv_out]
 
     def set_params(self):
@@ -64,11 +97,19 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
+<<<<<<< HEAD
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
             )
 
 
 class TensorRTSubgraphPassConvValidPaddingTest(TensorRTSubgraphPassConvTest):
+=======
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTSubgraphPassConvValidPaddingTest(TensorRTSubgraphPassConvTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -78,6 +119,10 @@ class TensorRTSubgraphPassConvValidPaddingTest(TensorRTSubgraphPassConvTest):
 
 
 class TensorRTSubgraphPassConvSamePaddingTest(InferencePassTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -87,6 +132,10 @@ class TensorRTSubgraphPassConvSamePaddingTest(InferencePassTest):
 
 
 class TensorRTSubgraphPassDepthwiseConvTest(TensorRTSubgraphPassConvTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -96,6 +145,10 @@ class TensorRTSubgraphPassDepthwiseConvTest(TensorRTSubgraphPassConvTest):
 
 
 class TensorRTSubgraphPassDepthwiseConv2Test(TensorRTSubgraphPassConvTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 12
         self.conv_filter_size = 6
@@ -105,6 +158,7 @@ class TensorRTSubgraphPassDepthwiseConv2Test(TensorRTSubgraphPassConvTest):
 
 
 class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
+<<<<<<< HEAD
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -112,6 +166,16 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             conv_out = paddle.static.nn.conv2d_transpose(
+=======
+
+    def setUp(self):
+        self.set_params()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data",
+                              shape=[-1, 6, 64, 64],
+                              dtype="float32")
+            conv_out = fluid.layers.conv2d_transpose(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 input=data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,
@@ -119,17 +183,26 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
                 padding=self.conv_padding,
                 bias_attr=False,
                 use_cudnn=self.use_cudnn,
+<<<<<<< HEAD
                 act=None,
             )
+=======
+                act=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
+<<<<<<< HEAD
         self.trt_parameters = (
             TensorRTSubgraphPassConvTransposeTest.TensorRTParam(
                 1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
             )
         )
+=======
+        self.trt_parameters = TensorRTSubgraphPassConvTransposeTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fetch_list = [conv_out]
 
     def set_params(self):
@@ -144,6 +217,7 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
+<<<<<<< HEAD
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
             )
 
@@ -151,6 +225,14 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
 class TensorRTSubgraphPassConvTransposeValidPaddingTest(
     TensorRTSubgraphPassConvTransposeTest
 ):
+=======
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTSubgraphPassConvTransposeValidPaddingTest(
+        TensorRTSubgraphPassConvTransposeTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -160,8 +242,13 @@ class TensorRTSubgraphPassConvTransposeValidPaddingTest(
 
 
 class TensorRTSubgraphPassConvTransposeSamePaddingTest(
+<<<<<<< HEAD
     TensorRTSubgraphPassConvTransposeTest
 ):
+=======
+        TensorRTSubgraphPassConvTransposeTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -171,8 +258,13 @@ class TensorRTSubgraphPassConvTransposeSamePaddingTest(
 
 
 class TensorRTSubgraphPassConvTransposeMultiGroupTest(
+<<<<<<< HEAD
     TensorRTSubgraphPassConvTransposeTest
 ):
+=======
+        TensorRTSubgraphPassConvTransposeTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -182,8 +274,13 @@ class TensorRTSubgraphPassConvTransposeMultiGroupTest(
 
 
 class TensorRTSubgraphPassConvTranspose2Test(
+<<<<<<< HEAD
     TensorRTSubgraphPassConvTransposeTest
 ):
+=======
+        TensorRTSubgraphPassConvTransposeTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 12
         self.conv_filter_size = 4
@@ -193,8 +290,13 @@ class TensorRTSubgraphPassConvTranspose2Test(
 
 
 class TensorRTSubgraphPassDepthwiseConvTransposeTest(
+<<<<<<< HEAD
     TensorRTSubgraphPassConvTransposeTest
 ):
+=======
+        TensorRTSubgraphPassConvTransposeTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 4
@@ -204,6 +306,7 @@ class TensorRTSubgraphPassDepthwiseConvTransposeTest(
 
 
 class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
+<<<<<<< HEAD
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -221,10 +324,29 @@ class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
                 stride=self.stride,
                 act=None,
             )
+=======
+
+    def setUp(self):
+        self.set_params()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data",
+                              shape=[-1, 6, -1, -1],
+                              dtype="float32")
+            conv_out = fluid.layers.conv2d(input=data,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           groups=self.conv_groups,
+                                           padding=self.conv_padding,
+                                           bias_attr=False,
+                                           use_cudnn=self.use_cudnn,
+                                           stride=self.stride,
+                                           act=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.feeds = {
             "data": np.random.random([32, 6, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
+<<<<<<< HEAD
         self.trt_parameters = (
             DynamicShapeTensorRTSubgraphPassConvTest.TensorRTParam(
                 1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
@@ -250,6 +372,24 @@ class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
                 False,
             )
         )
+=======
+        self.trt_parameters = DynamicShapeTensorRTSubgraphPassConvTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = DynamicShapeTensorRTSubgraphPassConvTest.DynamicShapeParam(
+            {
+                "conv2d_0.tmp_0": [1, 6, 8, 8],
+                "data": [1, 6, 8, 8],
+                "depthwise_conv2d_0.tmp_0": [1, 6, 8, 8]
+            }, {
+                "conv2d_0.tmp_0": [32, 6, 64, 64],
+                "data": [32, 6, 64, 64],
+                "depthwise_conv2d_0.tmp_0": [32, 6, 64, 64]
+            }, {
+                "conv2d_0.tmp_0": [16, 6, 16, 16],
+                "data": [16, 6, 16, 16],
+                "depthwise_conv2d_0.tmp_0": [16, 6, 16, 16]
+            }, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fetch_list = [conv_out]
 
     def set_params(self):
@@ -265,6 +405,7 @@ class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
+<<<<<<< HEAD
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
             )
 
@@ -272,6 +413,14 @@ class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
 class DynamicShapeTensorRTSubgraphPassDepthwiseConvTransposeTest(
     DynamicShapeTensorRTSubgraphPassConvTest
 ):
+=======
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class DynamicShapeTensorRTSubgraphPassDepthwiseConvTransposeTest(
+        DynamicShapeTensorRTSubgraphPassConvTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -27,7 +32,11 @@ paddle.enable_static()
 
 
 class TestRandpermOp(OpTest):
+<<<<<<< HEAD
     """Test randperm op."""
+=======
+    """ Test randperm op."""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.set_npu()
@@ -57,32 +66,57 @@ class TestRandpermOp(OpTest):
 
     def verify_output(self, outs):
         out_np = np.array(outs[0])
+<<<<<<< HEAD
         self.assertTrue(
             check_randperm_out(self.n, out_np), msg=error_msg(out_np)
         )
 
 
 class TestRandpermOpN(TestRandpermOp):
+=======
+        self.assertTrue(check_randperm_out(self.n, out_np),
+                        msg=error_msg(out_np))
+
+
+class TestRandpermOpN(TestRandpermOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.n = 10000
 
 
 class TestRandpermOpInt32(TestRandpermOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.dtype = "int32"
 
 
 class TestRandpermOpFloat32(TestRandpermOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.dtype = "float32"
 
 
 class TestRandpermOpFloat64(TestRandpermOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.dtype = "float64"
 
 
 class TestRandpermOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
             self.assertRaises(ValueError, paddle.randperm, -3)
@@ -90,6 +124,10 @@ class TestRandpermOpError(unittest.TestCase):
 
 
 class TestRandpermAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_out(self):
         n = 10
         place = paddle.NPUPlace(0)
@@ -107,15 +145,24 @@ class TestRandpermAPI(unittest.TestCase):
 
 
 class TestRandpermImperative(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_out(self):
         paddle.disable_static(paddle.NPUPlace(0))
         n = 10
         for dtype in ['int32', np.int64, 'float32', 'float64']:
             data_p = paddle.randperm(n, dtype)
             data_np = data_p.numpy()
+<<<<<<< HEAD
             self.assertTrue(
                 check_randperm_out(n, data_np), msg=error_msg(data_np)
             )
+=======
+            self.assertTrue(check_randperm_out(n, data_np),
+                            msg=error_msg(data_np))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
 
 

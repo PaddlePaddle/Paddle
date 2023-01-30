@@ -17,6 +17,11 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class YoloBoxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -129,10 +134,17 @@ class YoloBoxOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -190,19 +202,34 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.5);
     AddComment(R"DOC(
          This operator generates YOLO detection boxes from output of YOLOv3 network.
+<<<<<<< HEAD
 
          The output of previous network is in shape [N, C, H, W], while H and W
          should be the same, H and W specify the grid size, each grid point predict
+=======
+         
+         The output of previous network is in shape [N, C, H, W], while H and W
+         should be the same, H and W specify the grid size, each grid point predict 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
          given number boxes, this given number, which following will be represented as S,
          is specified by the number of anchors. In the second dimension(the channel
          dimension), C should be equal to S * (5 + class_num) if :attr:`iou_aware` is false,
          otherwise C should be equal to S * (6 + class_num). class_num is the object
+<<<<<<< HEAD
          category number of source dataset(such as 80 in coco dataset), so the
          second(channel) dimension, apart from 4 box location coordinates x, y, w, h,
          also includes confidence score of the box and class one-hot key of each anchor
          box.
 
          Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box
+=======
+         category number of source dataset(such as 80 in coco dataset), so the 
+         second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
+         also includes confidence score of the box and class one-hot key of each anchor 
+         box.
+
+         Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
          predictions should be as follows:
 
          $$
@@ -223,9 +250,15 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
 
          The logistic regression value of the 5th channel of each anchor prediction boxes
          represents the confidence score of each prediction box, and the logistic
+<<<<<<< HEAD
          regression value of the last :attr:`class_num` channels of each anchor prediction
          boxes represents the classifcation scores. Boxes with confidence scores less than
          :attr:`conf_thresh` should be ignored, and box final scores is the product of
+=======
+         regression value of the last :attr:`class_num` channels of each anchor prediction 
+         boxes represents the classifcation scores. Boxes with confidence scores less than
+         :attr:`conf_thresh` should be ignored, and box final scores is the product of 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
          confidence scores and classification scores.
 
          $$
@@ -237,7 +270,11 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
          .. math::
 
             score_{conf} = \begin{case}
+<<<<<<< HEAD
                              obj, \text{if } iou_aware == false \\
+=======
+                             obj, \text{if } iou_aware == flase \\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                              obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
                            \end{case}
 

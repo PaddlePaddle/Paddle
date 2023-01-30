@@ -25,7 +25,12 @@ inline std::vector<int64_t> CalculateReducedDims(
     bool keep_dim) {
   if (keep_dim) return vectorize(output->dims());
 
+<<<<<<< HEAD
   if (reduce_all) return std::vector<int64_t>(input->dims().size(), 1);
+=======
+  if (reduce_all && reduce_dims.size() > 0)
+    return std::vector<int64_t>(input->dims().size(), 1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<int64_t> output_dims(vectorize(input->dims()));
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
@@ -46,7 +51,10 @@ void ReduceKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out,
                   dnnl::algorithm reduction_type) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto x_tz = vectorize(x.dims());
   auto out_tz =
@@ -117,7 +125,10 @@ void ReduceGradKernel(const Context& dev_ctx,
                       dnnl::algorithm reduction_type,
                       float scale_x,
                       float scale_y) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto out_grad_tz = CalculateReducedDims(
       x_grad, &out_grad, dims.GetData(), reduce_all, keep_dim);

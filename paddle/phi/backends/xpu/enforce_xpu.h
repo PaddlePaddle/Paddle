@@ -14,8 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/enforce.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "xpu/bkcl.h"
 #endif

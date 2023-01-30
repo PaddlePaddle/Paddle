@@ -13,6 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 SEED = 2020
@@ -40,7 +47,11 @@ def get_data_iter(batch_size, mode='train', cache_num=20):
         mask = np.zeros((bs), dtype='int32')
 
         for i, ele in enumerate(data):
+<<<<<<< HEAD
             ids[i, : len(ele)] = ele
+=======
+            ids[i, :len(ele)] = ele
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if not source:
                 mask[i] = len(ele) - 1
             else:
@@ -61,7 +72,11 @@ def get_data_iter(batch_size, mode='train', cache_num=20):
                 new_cache = sorted(b_src, key=lambda k: len(k[0]))
 
             for i in range(cache_num):
+<<<<<<< HEAD
                 batch_data = new_cache[i * batch_size : (i + 1) * batch_size]
+=======
+                batch_data = new_cache[i * batch_size:(i + 1) * batch_size]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 src_cache = [w[0] for w in batch_data]
                 tar_cache = [w[1] for w in batch_data]
                 src_ids, src_mask = to_pad_np(src_cache, source=True)
@@ -83,7 +98,11 @@ def get_data_iter(batch_size, mode='train', cache_num=20):
 
         for i in range(cache_num):
             batch_end = min(len(new_cache), (i + 1) * batch_size)
+<<<<<<< HEAD
             batch_data = new_cache[i * batch_size : batch_end]
+=======
+            batch_data = new_cache[i * batch_size:batch_end]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             src_cache = [w[0] for w in batch_data]
             tar_cache = [w[1] for w in batch_data]
             src_ids, src_mask = to_pad_np(src_cache, source=True)
@@ -91,7 +110,11 @@ def get_data_iter(batch_size, mode='train', cache_num=20):
             yield (src_ids, src_mask, tar_ids, tar_mask)
 
 
+<<<<<<< HEAD
 class Seq2SeqModelHyperParams:
+=======
+class Seq2SeqModelHyperParams(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # Whether use attention model
     attention = False
 

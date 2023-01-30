@@ -18,11 +18,20 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+/**
+ *@brief the gelu functor
+ */
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 struct GeluFunctor {
   inline __host__ __device__ T operator()(const T x) const {
@@ -34,6 +43,7 @@ struct GeluFunctor {
   }
 };
 
+<<<<<<< HEAD
 template <typename T>
 struct FastGeluFunctor {
   inline __device__ T operator()(const T x) const {
@@ -41,6 +51,8 @@ struct FastGeluFunctor {
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /**
  *@brief the gelu grad functor
  */
@@ -86,6 +98,10 @@ __global__ void FusedDropoutActBias(
     MaskType *mask,
     const float quant_last_in_scale = 1.0,
     const float *dequant_out_scale_data = nullptr,
+<<<<<<< HEAD
+=======
+    const int quant_out_scale_offset = 0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const float quant_next_in_scale = 1.0,
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
@@ -126,6 +142,10 @@ __global__ void FusedDropoutActBias(
                                                  act,
                                                  quant_last_in_scale,
                                                  dequant_out_scale_data,
+<<<<<<< HEAD
+=======
+                                                 quant_out_scale_offset,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                  quant_next_in_scale,
                                                  quant_round_type,
                                                  quant_max_bound,
@@ -134,6 +154,7 @@ __global__ void FusedDropoutActBias(
   }
 }
 
+<<<<<<< HEAD
 template <typename T,
           int VecSize,
           typename Functor,
@@ -202,6 +223,8 @@ __global__ void FusedActBias(Functor act,
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /**
  * @brief dst = dropout(activation(src + bias));
  */
@@ -225,6 +248,10 @@ void LaunchDropoutActBias(Functor act_functor,
                           const phi::GPUContext &ctx,
                           const float quant_last_in_scale = 1.0,
                           const float *dequant_out_scale_data = nullptr,
+<<<<<<< HEAD
+=======
+                          const int quant_out_scale_offset = 0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           const float quant_next_in_scale = 1.0,
                           const int quant_round_type = 1,
                           const float quant_max_bound = 127.0,
@@ -240,6 +267,7 @@ void LaunchDropoutActBias(Functor act_functor,
   const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
   const auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
   if (cols % VecSize == 0) {
+<<<<<<< HEAD
     if (is_test) {
       const int32_t elem_cnt = rows * cols;
       const int32_t pack_num = elem_cnt / VecSize;
@@ -277,6 +305,26 @@ void LaunchDropoutActBias(Functor act_functor,
               dequant_out_scale_data,
               quant_next_in_scale);
     }
+=======
+    FusedDropoutActBias<T, MaskType, VecSize, Functor, InType, OutType>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            act_functor,
+            seed,
+            rows,
+            cols,
+            increment,
+            dropout_prob,
+            is_upscale_in_train,
+            is_test,
+            src,
+            bias,
+            dst,
+            mask_data,
+            quant_last_in_scale,
+            dequant_out_scale_data,
+            quant_out_scale_offset,
+            quant_next_in_scale);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     FusedDropoutActBias<T, MaskType, 1, Functor, InType, OutType>
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
@@ -294,6 +342,10 @@ void LaunchDropoutActBias(Functor act_functor,
             mask_data,
             quant_last_in_scale,
             dequant_out_scale_data,
+<<<<<<< HEAD
+=======
+            quant_out_scale_offset,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             quant_next_in_scale);
   }
 }

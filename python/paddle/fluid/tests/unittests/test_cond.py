@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -25,6 +26,22 @@ import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
+=======
+from __future__ import print_function
+
+import numpy as np
+import os
+import unittest
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.framework as framework
+from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Program, program_guard
+from simple_nets import simple_fc_net_with_inputs, batchnorm_fc_with_inputs
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.seed(123)
 
@@ -53,8 +70,13 @@ class TestCondInputOutput(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+<<<<<<< HEAD
             pred = paddle.less_than(y, x)
             out = paddle.static.nn.cond(pred, true_func, false_func)
+=======
+            pred = layers.less_than(y, x)
+            out = layers.cond(pred, true_func, false_func)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # out is one tensor
 
         place = (
@@ -68,6 +90,7 @@ class TestCondInputOutput(unittest.TestCase):
             np.asarray(ret), np.full((3, 2), -1, np.int32), rtol=1e-05
         )
 
+<<<<<<< HEAD
     def test_return_0d_tensor(self):
         """
         pseudocode:
@@ -205,6 +228,8 @@ class TestCondInputOutput(unittest.TestCase):
         )
         self.assertEqual(a.grad.shape, [])
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_return_var_tuple(self):
         """
         pseudocode:
@@ -231,7 +256,11 @@ class TestCondInputOutput(unittest.TestCase):
         startup_program = Program()
         with program_guard(main_program, startup_program):
             pred = layers.fill_constant(shape=[1], dtype='bool', value=True)
+<<<<<<< HEAD
             out = paddle.static.nn.cond(pred, true_func, false_func)
+=======
+            out = layers.cond(pred, true_func, false_func)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # out is a tuple containing 2 tensors
 
         place = (
@@ -275,7 +304,11 @@ class TestCondInputOutput(unittest.TestCase):
             a = layers.fill_constant(shape=[3, 2, 1], dtype='int32', value=7)
             i = fluid.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
+<<<<<<< HEAD
             a = paddle.static.nn.cond(
+=======
+            a = layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 pred, lambda: true_func(a, i), lambda: false_func(a, i)
             )
         place = (
@@ -320,9 +353,15 @@ class TestCondInputOutput(unittest.TestCase):
         with program_guard(main_program, startup_program):
             i = fluid.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
+<<<<<<< HEAD
             out1 = paddle.static.nn.cond(pred, true_func, false_func)
             out2 = paddle.static.nn.cond(pred, None, false_func)
             out3 = paddle.static.nn.cond(pred, true_func, None)
+=======
+            out1 = layers.cond(pred, true_func, false_func)
+            out2 = layers.cond(pred, None, false_func)
+            out3 = layers.cond(pred, true_func, None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         place = (
             fluid.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -360,6 +399,7 @@ class TestCondInputOutput(unittest.TestCase):
             i = fluid.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             with self.assertRaises(TypeError):
+<<<<<<< HEAD
                 out = paddle.static.nn.cond(pred, i, func_return_one_tensor)
 
             with self.assertRaises(TypeError):
@@ -369,6 +409,15 @@ class TestCondInputOutput(unittest.TestCase):
 
             with self.assertRaises(Exception) as e:
                 out = paddle.static.nn.cond(
+=======
+                out = layers.cond(pred, i, func_return_one_tensor)
+
+            with self.assertRaises(TypeError):
+                out = layers.cond(pred, func_return_one_tensor, np.asarray([3]))
+
+            with self.assertRaises(Exception) as e:
+                out = layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     pred, func_return_none, func_return_one_tensor
                 )
             self.assertTrue(
@@ -377,7 +426,11 @@ class TestCondInputOutput(unittest.TestCase):
             )
 
             with self.assertRaises(Exception) as e:
+<<<<<<< HEAD
                 out = paddle.static.nn.cond(
+=======
+                out = layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     pred, func_return_two_tensors, func_return_none
                 )
             self.assertTrue(
@@ -386,7 +439,11 @@ class TestCondInputOutput(unittest.TestCase):
             )
 
             with self.assertRaises(Exception) as e:
+<<<<<<< HEAD
                 out = paddle.static.nn.cond(
+=======
+                out = layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     pred, func_return_one_tensor, func_return_two_tensors
                 )
             self.assertTrue(
@@ -407,7 +464,11 @@ class TestCondInputOutput(unittest.TestCase):
                 shape=[1], dtype='float32', value=1.25
             )
             b.stop_gradient = False
+<<<<<<< HEAD
             out = paddle.static.nn.cond(a - b < -1.0, lambda: a, lambda: b)
+=======
+            out = layers.cond(a - b < -1.0, lambda: a, lambda: b)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         append_backward(out)
 
         place = (
@@ -447,6 +508,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         paddle.enable_static()
 
         def less_than_branch(i, a):
+<<<<<<< HEAD
             return paddle.static.nn.cond(
                 i >= 3.0,
                 lambda: paddle.add(a, a),
@@ -458,6 +520,19 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 i < 8.0,
                 lambda: paddle.multiply(a, a),
                 lambda: paddle.divide(a, a),
+=======
+            return layers.cond(
+                i >= 3.0,
+                lambda: layers.elementwise_add(a, a),
+                lambda: layers.elementwise_sub(a, a),
+            )
+
+        def greater_equal_branch(i, a):
+            return layers.cond(
+                i < 8.0,
+                lambda: layers.elementwise_mul(a, a),
+                lambda: layers.elementwise_div(a, a),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
         main_program = Program()
@@ -465,7 +540,11 @@ class TestCondNestedControlFlow(unittest.TestCase):
         with program_guard(main_program, startup_program):
             i = fluid.data(name="i", shape=[1], dtype='float32')
             a = 2.0 * i
+<<<<<<< HEAD
             out = paddle.static.nn.cond(
+=======
+            out = layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 i < 5.0,
                 lambda: less_than_branch(i, a),
                 lambda: greater_equal_branch(i, a),
@@ -495,6 +574,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
 
+<<<<<<< HEAD
     def test_cond_inside_cond_0d_tensor(self):
         """
         pseudocode:
@@ -561,6 +641,8 @@ class TestCondNestedControlFlow(unittest.TestCase):
         )
         self.assertEqual(ret[1].shape, ())
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_cond_op_in_condition(self):
         paddle.enable_static()
         main_program = fluid.Program()
@@ -575,6 +657,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 shape=[1], dtype='float32', value=1.24
             )
             b.stop_gradient = False
+<<<<<<< HEAD
             out = paddle.static.nn.cond(
                 a < b,
                 lambda: paddle.static.nn.cond(
@@ -586,6 +669,19 @@ class TestCondNestedControlFlow(unittest.TestCase):
                     a == b,
                     lambda: paddle.subtract(a, b),
                     lambda: paddle.pow(a, b),
+=======
+            out = fluid.layers.cond(
+                a < b,
+                lambda: fluid.layers.cond(
+                    a - b < -1.0,
+                    lambda: fluid.layers.elementwise_add(a, b),
+                    lambda: fluid.layers.elementwise_mul(a, b),
+                ),
+                lambda: fluid.layers.cond(
+                    a == b,
+                    lambda: fluid.layers.elementwise_sub(a, b),
+                    lambda: fluid.layers.elementwise_pow(a, b),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ),
             )
             append_backward(out)
@@ -755,7 +851,11 @@ class TestCondBackward(unittest.TestCase):
 
         def cond_func(i, img, label):
             predicate = (i % 2) == 0
+<<<<<<< HEAD
             return paddle.static.nn.cond(
+=======
+            return layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 predicate,
                 lambda: simple_fc_net_with_inputs(img, label, class_num=10),
                 lambda: batchnorm_fc_with_inputs(img, label, class_num=10),
@@ -779,19 +879,31 @@ class TestCondBackward(unittest.TestCase):
         paddle.enable_static()
 
         def branch(i, img, label):
+<<<<<<< HEAD
             return paddle.static.nn.cond(
+=======
+            return layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 (i % 2) == 0,
                 lambda: simple_fc_net_with_inputs(img, label, class_num=10),
                 lambda: batchnorm_fc_with_inputs(img, label, class_num=10),
             )
 
         def cond_func_simple_net_at_true(i, img, label):
+<<<<<<< HEAD
             return paddle.static.nn.cond(
+=======
+            return layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 i < 5, lambda: branch(i, img, label), lambda: paddle.mean(img)
             )
 
         def cond_func_simple_net_at_false(i, img, label):
+<<<<<<< HEAD
             return paddle.static.nn.cond(
+=======
+            return layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 i < 5, lambda: paddle.mean(img), lambda: branch(i, img, label)
             )
 
@@ -831,14 +943,22 @@ class TestCondBackward(unittest.TestCase):
                 predicate = (i % 2) == 0
             else:
                 predicate = (i % 2) != 0
+<<<<<<< HEAD
             return paddle.static.nn.cond(
+=======
+            return layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 predicate,
                 lambda: simple_fc_net_with_inputs(img, label, class_num=10),
                 lambda: batchnorm_fc_with_inputs(img, label, class_num=10),
             )
 
         def cond_func(i, img, label):
+<<<<<<< HEAD
             return paddle.static.nn.cond(
+=======
+            return layers.cond(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 i < 5,
                 lambda: branch(i, img, label, True),
                 lambda: branch(i, img, label, False),
@@ -870,6 +990,7 @@ class TestCondWithError(unittest.TestCase):
                 return pred
 
             with self.assertRaises(TypeError):
+<<<<<<< HEAD
                 paddle.static.nn.cond(None, func, func)
 
             with self.assertRaises(TypeError):
@@ -880,6 +1001,18 @@ class TestCondWithError(unittest.TestCase):
 
             with self.assertRaises(TypeError):
                 paddle.static.nn.cond(pred, func, func, set())
+=======
+                layers.cond(None, func, func)
+
+            with self.assertRaises(TypeError):
+                layers.cond(pred, func, set())
+
+            with self.assertRaises(TypeError):
+                layers.cond(pred, set(), func)
+
+            with self.assertRaises(TypeError):
+                layers.cond(pred, func, func, set())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestCondWithDict(unittest.TestCase):

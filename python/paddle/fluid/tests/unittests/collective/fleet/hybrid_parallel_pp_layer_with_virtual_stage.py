@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import paddle
 import paddle.nn as nn
@@ -29,6 +30,22 @@ from paddle.fluid.dygraph.layers import Layer
 class ReshapeHelp(Layer):
     def __init__(self, shape):
         super().__init__()
+=======
+import numpy as np
+import os
+import paddle
+from paddle.distributed import fleet
+import paddle.nn as nn
+from paddle.fluid.dygraph.layers import Layer
+from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer, PipelineParallelWithInterleave
+import paddle.nn.functional as F
+
+
+class ReshapeHelp(Layer):
+
+    def __init__(self, shape):
+        super(ReshapeHelp, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.shape = shape
 
     def forward(self, x):
@@ -36,6 +53,10 @@ class ReshapeHelp(Layer):
 
 
 class MLPForVirtualStageLayerTest(PipelineLayer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, num_classes=10, **kwargs):
         self.num_classes = num_classes
         decs = [
@@ -48,17 +69,32 @@ class MLPForVirtualStageLayerTest(PipelineLayer):
             LayerDesc(nn.Linear, 2, self.num_classes),
             LayerDesc(nn.Linear, self.num_classes, 2),
         ]
+<<<<<<< HEAD
         super().__init__(layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
 
 class TestPipeLayerAPI(unittest.TestCase):
+=======
+        super(MLPForVirtualStageLayerTest,
+              self).__init__(layers=decs,
+                             loss_fn=nn.CrossEntropyLoss(),
+                             **kwargs)
+
+
+class TestPipeLayerAPI(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.pipeline_parallel_size = 2
         strategy.hybrid_configs = {
             "dp_degree": 1,
             "mp_degree": 1,
+<<<<<<< HEAD
             "pp_degree": self.pipeline_parallel_size,
+=======
+            "pp_degree": self.pipeline_parallel_size
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         fleet.init(is_collective=True, strategy=strategy)
         self.rank = fleet.worker_index()
@@ -73,9 +109,14 @@ class TestPipeLayerAPI(unittest.TestCase):
             recompute_ctx={
                 "mp_group": self.hcg.get_model_parallel_group(),
                 "offload": False,
+<<<<<<< HEAD
                 "partition": False,
             },
         )
+=======
+                "partition": False
+            })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert len(pipe_model.parameters()) > 0
         model_chunks = pipe_model.get_model_chunks()
         assert model_chunks is not None
@@ -84,14 +125,22 @@ class TestPipeLayerAPI(unittest.TestCase):
         optimizer = paddle.optimizer.SGD(parameters=pipe_model.parameters())
 
         try:
+<<<<<<< HEAD
             model_chunks[0](paddle.to_tensor([1.0, 2.0]))
+=======
+            model_chunks[0](paddle.to_tensor([1., 2.]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             raise NotImplementedError
         except PermissionError:
             pass
 
         # fake call for the forward function of virtual pipeline layer
         for i in range(len(model_chunks)):
+<<<<<<< HEAD
             out = pipe_model(paddle.to_tensor([1.0, 2.0]), chunk_id=i)
+=======
+            out = pipe_model(paddle.to_tensor([1., 2.]), chunk_id=i)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             assert list(out.shape) == [2]
             out = F.relu(out)
             loss = paddle.mean(out)

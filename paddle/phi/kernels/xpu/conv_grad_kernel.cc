@@ -28,9 +28,18 @@ void ConvGradKernel(const Context& dev_ctx,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings_t,
                     const std::string& padding_algorithm,
+<<<<<<< HEAD
                     const std::vector<int>& dilations_t,
                     int groups,
                     const std::string& data_format,
+=======
+                    int groups,
+                    const std::vector<int>& dilations_t,
+                    const std::string& data_format,
+                    bool use_addto,
+                    int workspace_size_MB,
+                    bool exhaustive_search,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     DenseTensor* input_grad,
                     DenseTensor* filter_grad) {
   using XPUT = typename XPUTypeTrait<T>::Type;
@@ -148,10 +157,21 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                              const DenseTensor& out_grad,
                              const std::vector<int>& strides,
                              const std::vector<int>& paddings,
+<<<<<<< HEAD
                              const std::string& padding_algorithm,
                              int groups,
                              const std::vector<int>& dilations,
                              const std::string& data_format,
+=======
+                             const std::string& paddding_algorithm,
+                             int groups,
+                             const std::vector<int>& dilations,
+                             const std::string& data_format,
+                             bool use_addto,
+                             int workspace_size_MB,
+                             bool exhaustive_search,
+                             bool fuse_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                              DenseTensor* input_grad,
                              DenseTensor* filter_grad) {
   ConvGradKernel<T, Context>(dev_ctx,
@@ -160,14 +180,25 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                              out_grad,
                              strides,
                              paddings,
+<<<<<<< HEAD
                              padding_algorithm,
                              dilations,
                              groups,
                              data_format,
+=======
+                             paddding_algorithm,
+                             groups,
+                             dilations,
+                             data_format,
+                             use_addto,
+                             workspace_size_MB,
+                             exhaustive_search,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                              input_grad,
                              filter_grad);
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void Conv3DGradKernel(const Context& dev_ctx,
                       const DenseTensor& input,
@@ -289,6 +320,8 @@ void Conv3DGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
   }
 }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi
 
 PD_REGISTER_KERNEL(conv2d_grad,
@@ -303,9 +336,12 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    ALL_LAYOUT,
                    phi::DepthwiseConvGradKernel,
                    float) {}
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(conv3d_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::Conv3DGradKernel,
                    float,
                    phi::dtype::float16) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

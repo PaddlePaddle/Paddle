@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import hypothesis.strategies as st
@@ -24,12 +25,36 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
         x_var
           |
        squeeze2
+=======
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume, reproduce_failure
+import hypothesis.strategies as st
+
+
+class TestSqueeze2MatmulFusePass(PassAutoScanTest):
+    """
+        x_var  
+          |          
+       squeeze2 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           \
     squeeze2_out_var    y_var
              \           /
                  matmul      bias_var
                     \          /
+<<<<<<< HEAD
                    elementwise_add
+=======
+                   elementwise_add  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def sample_predictor_configs(self, program_config):
@@ -44,10 +69,16 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of squeeze2
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=8), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # axes of squeeze2 == [2, 3]
         x_shape += [1, 1]
         axes = [2, 3]
@@ -59,10 +90,16 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
 
         # 3. Generate legal shape of input:Y of matmul
         y_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=8), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         y_shape[0] = x_shape[1]
 
         # 4. Generate legal attr:axis of elementwise_add
@@ -95,11 +132,25 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
                 "X": ["squeeze2_x"],
             },
             axes=axes,
+<<<<<<< HEAD
             outputs={"Out": ["squeeze2_out"], "XShape": ["xshape"]},
         )
         matmul_op = OpConfig(
             "matmul",
             inputs={"X": ["squeeze2_out"], "Y": ["matmul_y"]},
+=======
+            outputs={
+                "Out": ["squeeze2_out"],
+                "XShape": ["xshape"]
+            },
+        )
+        matmul_op = OpConfig(
+            "matmul",
+            inputs={
+                "X": ["squeeze2_out"],
+                "Y": ["matmul_y"]
+            },
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             outputs={"Out": ["matmul_out"]},
             alpha=alpha,
             transpose_X=transpose_X,
@@ -114,7 +165,14 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
 
         add_op = OpConfig(
             "elementwise_add",
+<<<<<<< HEAD
             inputs={"X": ["matmul_out"], "Y": ["bias"]},
+=======
+            inputs={
+                "X": ["matmul_out"],
+                "Y": ["bias"]
+            },
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             outputs={"Out": ["add_out"]},
             axis=axis,
         )
@@ -147,12 +205,19 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=50,
             max_duration=1000,
             passes=["gpu_cpu_squeeze2_matmul_fuse_pass"],
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=50,
+                            max_duration=1000,
+                            passes=["gpu_cpu_squeeze2_matmul_fuse_pass"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

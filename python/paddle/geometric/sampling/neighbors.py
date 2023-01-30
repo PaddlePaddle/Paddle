@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
+=======
+import paddle
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -95,7 +103,11 @@ def sample_neighbors(
     if return_eids:
         if eids is None:
             raise ValueError(
+<<<<<<< HEAD
                 "`eids` should not be None if `return_eids` is True."
+=======
+                f"`eids` should not be None if `return_eids` is True."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     use_perm_buffer = True if perm_buffer is not None else False

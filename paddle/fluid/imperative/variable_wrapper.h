@@ -103,9 +103,15 @@ class VariableWrapper {
   bool IsEmpty() const {
     bool is_empty = true;
     if (var_.IsInitialized()) {
+<<<<<<< HEAD
       const phi::DenseTensor* tensor = nullptr;
       if (var_.IsType<phi::DenseTensor>()) {
         tensor = &(var_.Get<phi::DenseTensor>());
+=======
+      const framework::Tensor* tensor = nullptr;
+      if (var_.IsType<framework::LoDTensor>()) {
+        tensor = &(var_.Get<framework::LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       } else if (var_.IsType<phi::SelectedRows>()) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
@@ -150,10 +156,17 @@ class VariableWrapper {
   }
 
   framework::proto::VarType::Type DataType() const {
+<<<<<<< HEAD
     const phi::DenseTensor* tensor = nullptr;
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<phi::DenseTensor>());
+=======
+    const framework::Tensor* tensor = nullptr;
+    if (var_.IsInitialized()) {
+      if (type_ == framework::proto::VarType::LOD_TENSOR) {
+        tensor = &(var_.Get<framework::LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else if (type_ == framework::proto::VarType::VOCAB) {
@@ -187,17 +200,32 @@ class VariableWrapper {
     return fwd_data_type_;
   }
 
+<<<<<<< HEAD
   phi::DataLayout DataLayout() { return layout_; }
 
   void SetDataLayout(const phi::DataLayout layout) { layout_ = layout; }
 
   const platform::Place Place() const {
     const phi::DenseTensor* tensor = nullptr;
+=======
+  paddle::experimental::DataLayout DataLayout() { return layout_; }
+
+  void SetDataLayout(const paddle::experimental::DataLayout layout) {
+    layout_ = layout;
+  }
+
+  const platform::Place Place() const {
+    const framework::Tensor* tensor = nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto place =
         platform::CPUPlace();  // Default place for var not initialized.
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
+<<<<<<< HEAD
         tensor = &(var_.Get<phi::DenseTensor>());
+=======
+        tensor = &(var_.Get<framework::LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
@@ -234,6 +262,7 @@ class VariableWrapper {
     }
   }
 
+<<<<<<< HEAD
   bool hasCacheKey(const phi::KernelKey& key) {
     return var_cache.find(key) != var_cache.end();
   }
@@ -243,6 +272,18 @@ class VariableWrapper {
   }
 
   void setCacheValue(const phi::KernelKey& key,
+=======
+  bool hasCacheKey(const paddle::framework::OpKernelType& key) {
+    return var_cache.find(key) != var_cache.end();
+  }
+
+  std::shared_ptr<VariableWrapper> getCacheValue(
+      const paddle::framework::OpKernelType& key) {
+    return var_cache[key];
+  }
+
+  void setCacheValue(const paddle::framework::OpKernelType& key,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      std::shared_ptr<VariableWrapper> val) {
     var_cache[key] = val;
     return;
@@ -322,7 +363,12 @@ class VariableWrapper {
 
   // Used for cache the dtype promotioned variableWrapper in real and complex
   // compute of Paddle Quantum
+<<<<<<< HEAD
   std::map<phi::KernelKey, std::shared_ptr<VariableWrapper>> var_cache;
+=======
+  std::map<paddle::framework::OpKernelType, std::shared_ptr<VariableWrapper>>
+      var_cache;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // add this property for users may set stop_gradient themselves and this
   // should override the frameworks setting (-1) unset, (1) true, (0) false
   int overrided_stop_gradient_{-1};
@@ -364,7 +410,12 @@ class VariableWrapper {
   std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
 
   // DataLayout for layoutAutotune
+<<<<<<< HEAD
   phi::DataLayout layout_{phi::DataLayout::UNDEFINED};
+=======
+  paddle::experimental::DataLayout layout_{
+      paddle::experimental::DataLayout::UNDEFINED};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace imperative

@@ -17,6 +17,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 class OneHotNPUKernel : public framework::OpKernel<T> {
@@ -24,12 +28,21 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     int depth = ctx.Attr<int>("depth");
 
     if (ctx.HasInput("depth_tensor")) {
       auto* depth_tensor = ctx.Input<phi::DenseTensor>("depth_tensor");
+=======
+    auto* in = ctx.Input<LoDTensor>("X");
+    auto* out = ctx.Output<LoDTensor>("Out");
+    int depth = ctx.Attr<int>("depth");
+
+    if (ctx.HasInput("depth_tensor")) {
+      auto* depth_tensor = ctx.Input<Tensor>("depth_tensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       std::vector<int32_t> depth_data;
       framework::TensorToVector(*depth_tensor, dev_ctx, &depth_data);
       depth = depth_data[0];
@@ -53,7 +66,11 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
           .AddOutput(*out);
       runner.Run(dev_ctx.stream());
     } else {
+<<<<<<< HEAD
       phi::DenseTensor transformed_in;
+=======
+      Tensor transformed_in;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       transformed_in.mutable_data<int32_t>(in->dims(), dev_ctx.GetPlace());
       const auto& cast_runner = NpuOpRunner(
           "Cast", {*in}, {transformed_in}, {{"dst_type", ACL_INT32}});

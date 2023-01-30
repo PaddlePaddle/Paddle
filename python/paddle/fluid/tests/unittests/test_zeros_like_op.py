@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,17 +21,42 @@ import paddle
 import paddle.fluid as fluid
 from paddle import _C_ops, zeros_like
 from paddle.fluid import Program, core, program_guard
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from paddle import zeros_like
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid import core, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestZerosLikeAPIError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = paddle.fluid.data('x', [3, 4])
             self.assertRaises(TypeError, zeros_like, x, 'int8')
 
+<<<<<<< HEAD
 
 class TestZerosLikeAPI(unittest.TestCase):
+=======
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_errors()
+
+
+class TestZerosLikeAPI(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api(self):
         shape = [3, 4]
         startup_program = Program()
@@ -42,6 +68,7 @@ class TestZerosLikeAPI(unittest.TestCase):
             out3 = zeros_like(x, 'float64')
             out4 = zeros_like(x, 'int32')
             out5 = zeros_like(x, 'int64')
+<<<<<<< HEAD
         place = (
             fluid.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -68,19 +95,50 @@ class TestZerosLikeImpeartive(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        place = (fluid.CUDAPlace(0)
+                 if core.is_compiled_with_cuda() else fluid.CPUPlace())
+        exe = fluid.Executor(place)
+        outs = exe.run(train_program,
+                       feed={'X': np.ones(shape).astype('float32')},
+                       fetch_list=[out1, out2, out3, out4, out5])
+        for (i, dtype) in enumerate(
+            [np.float32, np.bool_, np.float64, np.int32, np.int64]):
+            self.assertEqual(outs[i].dtype, dtype)
+            self.assertEqual((outs[i] == np.zeros(shape, dtype)).all(), True)
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_api()
+
+
+class TestZerosLikeImpeartive(unittest.TestCase):
+
+    def test_out(self):
+        shape = [3, 4]
+        place = (fluid.CUDAPlace(0)
+                 if core.is_compiled_with_cuda() else fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.disable_static(place)
         x = paddle.to_tensor(np.ones(shape))
         for dtype in [np.bool_, np.float32, np.float64, np.int32, np.int64]:
             out = zeros_like(x, dtype)
+<<<<<<< HEAD
             self.assertEqual(
                 (out.numpy() == np.zeros(shape, dtype)).all(), True
             )
         out = paddle.zeros_like(x)
+=======
+            self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(),
+                             True)
+        out = paddle.tensor.zeros_like(x)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(), True)
         out = paddle.tensor.creation.zeros_like(x)
         self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(), True)
         paddle.enable_static()
 
+<<<<<<< HEAD
 
 class TestZerosAPI(unittest.TestCase):
     def test_api(self):
@@ -90,16 +148,38 @@ class TestZerosAPI(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_out()
+
+
+class TestZerosAPI(unittest.TestCase):
+
+    def test_api(self):
+        shape = [3, 4]
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.disable_static(place)
 
         for dtype in [np.float32, np.float64, np.int32, np.int64]:
             out = _C_ops.zeros(shape, convert_np_dtype_to_dtype_(dtype), place)
+<<<<<<< HEAD
             self.assertEqual(
                 (out.numpy() == np.zeros(shape, dtype)).all(), True
             )
+=======
+            self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(),
+                             True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         paddle.enable_static()
 
 
+<<<<<<< HEAD
 if __name__ == '__main__':
+=======
+if (__name__ == '__main__'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     unittest.main()

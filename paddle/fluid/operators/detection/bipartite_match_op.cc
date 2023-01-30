@@ -18,6 +18,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -50,9 +56,15 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         OperatorWithKernel::IndicateVarDataType(ctx, "DistMat"),
         platform::CPUPlace());
   }
@@ -69,7 +81,11 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
   // The match_indices must be initialized to -1 at first.
   // The match_dist must be initialized to 0 at first.
+<<<<<<< HEAD
   void BipartiteMatch(const phi::DenseTensor& dist,
+=======
+  void BipartiteMatch(const Tensor& dist,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       int* match_indices,
                       T* match_dist) const {
     PADDLE_ENFORCE_EQ(
@@ -154,7 +170,11 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     }
   }
 
+<<<<<<< HEAD
   void ArgMaxMatch(const phi::DenseTensor& dist,
+=======
+  void ArgMaxMatch(const Tensor& dist,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    int* match_indices,
                    T* match_dist,
                    T overlap_threshold) const {
@@ -193,10 +213,16 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* dist_mat = context.Input<phi::DenseTensor>("DistMat");
     auto* match_indices =
         context.Output<phi::DenseTensor>("ColToRowMatchIndices");
     auto* match_dist = context.Output<phi::DenseTensor>("ColToRowMatchDist");
+=======
+    auto* dist_mat = context.Input<LoDTensor>("DistMat");
+    auto* match_indices = context.Output<Tensor>("ColToRowMatchIndices");
+    auto* match_dist = context.Output<Tensor>("ColToRowMatchDist");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto& dev_ctx = context.device_context<phi::CPUContext>();
 
@@ -232,7 +258,11 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
       auto lod = dist_mat->lod().back();
       for (size_t i = 0; i < lod.size() - 1; ++i) {
         if (lod[i + 1] > lod[i]) {
+<<<<<<< HEAD
           phi::DenseTensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
+=======
+          Tensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           BipartiteMatch(one_ins, indices + i * col, dist + i * col);
           if (type == "per_prediction") {
             ArgMaxMatch(one_ins, indices + i * col, dist + i * col, threshold);
@@ -248,8 +278,12 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "DistMat",
+<<<<<<< HEAD
         "(phi::DenseTensor or Tensor) this input is a 2-D phi::DenseTensor "
         "with shape "
+=======
+        "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "[K, M]. It is pair-wise distance matrix between the entities "
         "represented by each row and each column. For example, assumed one "
         "entity is A with shape [K], another entity is B with shape [M]. The "
@@ -300,8 +334,13 @@ row entity to the column entity and the matched indices are not duplicated
 in each row of ColToRowMatchIndices. If the column entity is not matched
 any row entity, set -1 in ColToRowMatchIndices.
 
+<<<<<<< HEAD
 Please note that the input DistMat can be phi::DenseTensor (with LoD) or Tensor.
 If phi::DenseTensor with LoD, the height of ColToRowMatchIndices is batch size.
+=======
+Please note that the input DistMat can be LoDTensor (with LoD) or Tensor.
+If LoDTensor with LoD, the height of ColToRowMatchIndices is batch size.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 If Tensor, the height of ColToRowMatchIndices is 1.
 
 )DOC");

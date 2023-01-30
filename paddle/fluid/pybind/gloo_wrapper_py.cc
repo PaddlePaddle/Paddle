@@ -31,6 +31,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 void BindGlooWrapper(py::module* m) {
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_GPU_GRAPH)
   py::class_<framework::GlooWrapper, std::shared_ptr<framework::GlooWrapper>>(
       *m, "Gloo")
@@ -39,6 +40,10 @@ void BindGlooWrapper(py::module* m) {
   py::class_<framework::GlooWrapper>(*m, "Gloo")
       .def(py::init())
 #endif
+=======
+  py::class_<framework::GlooWrapper>(*m, "Gloo")
+      .def(py::init())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def("init", &framework::GlooWrapper::Init)
       .def("rank", &framework::GlooWrapper::Rank)
       .def("size", &framework::GlooWrapper::Size)

@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 
+=======
+import paddle
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 
 print("compile with xpu:", fluid.core.is_compiled_with_xpu())

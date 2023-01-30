@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import itertools
 import os
 import shutil
@@ -22,6 +23,19 @@ import unittest
 
 
 class CommunicationTestDistBase(unittest.TestCase):
+=======
+import unittest
+import sys
+import tempfile
+import itertools
+import subprocess
+import os
+import shutil
+
+
+class CommunicationTestDistBase(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self, save_log_dir=None, num_of_devices=2, timeout=120):
         self._python_interp = sys.executable
         self._save_log_dir = save_log_dir
@@ -40,6 +54,7 @@ class CommunicationTestDistBase(unittest.TestCase):
         start_command_list = start_command.strip().split()
 
         try:
+<<<<<<< HEAD
             self._launcher = subprocess.run(
                 start_command_list,
                 env=runtime_envs,
@@ -58,6 +73,20 @@ class CommunicationTestDistBase(unittest.TestCase):
                     err.cmd, err.returncode
                 )
             )
+=======
+            self._launcher = subprocess.run(start_command_list,
+                                            env=runtime_envs,
+                                            timeout=self._timeout,
+                                            check=True)
+        except subprocess.TimeoutExpired as err:
+            raise TimeoutError(
+                "Timeout while running command {}, try to set a longer period, {} is not enough."
+                .format(err.cmd, err.timeout))
+        except subprocess.CalledProcessError as err:
+            raise RuntimeError(
+                "Error occurs when running this test case. The return code of command {} is {}"
+                .format(err.cmd, err.returncode))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def tearDown(self):
         if self._save_log_dir:
@@ -68,8 +97,12 @@ class CommunicationTestDistBase(unittest.TestCase):
                 shutil.copytree(self._log_dir.name, dir_name)
             else:
                 raise RuntimeError(
+<<<<<<< HEAD
                     "Directory {} exists, failed to save log.".format(dir_name)
                 )
+=======
+                    "Directory {} exists, failed to save log.".format(dir_name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def gen_product_envs_list(default_envs, changeable_envs):

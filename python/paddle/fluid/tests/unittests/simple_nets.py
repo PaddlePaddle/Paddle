@@ -12,15 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+=======
+import paddle
+import paddle.fluid as fluid
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def simple_fc_net_with_inputs(img, label, class_num=10):
     hidden = img
     for _ in range(2):
+<<<<<<< HEAD
         hidden = paddle.static.nn.fc(
             hidden,
             size=100,
@@ -35,19 +42,35 @@ def simple_fc_net_with_inputs(img, label, class_num=10):
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
+=======
+        hidden = fluid.layers.fc(
+            hidden,
+            size=100,
+            act='relu',
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=1.0)))
+    prediction = fluid.layers.fc(hidden, size=class_num, act='softmax')
+    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     loss = paddle.mean(loss)
     return loss
 
 
 def simple_fc_net(use_feed=None):
+<<<<<<< HEAD
     img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
+=======
+    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return simple_fc_net_with_inputs(img, label, class_num=10)
 
 
 def batchnorm_fc_with_inputs(img, label, class_num=10):
     hidden = img
     for _ in range(2):
+<<<<<<< HEAD
         hidden = paddle.static.nn.fc(
             hidden,
             size=200,
@@ -65,11 +88,25 @@ def batchnorm_fc_with_inputs(img, label, class_num=10):
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
+=======
+        hidden = fluid.layers.fc(
+            hidden,
+            size=200,
+            act='relu',
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=1.0)))
+
+        hidden = fluid.layers.batch_norm(input=hidden)
+
+    prediction = fluid.layers.fc(hidden, size=class_num, act='softmax')
+    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     loss = paddle.mean(loss)
     return loss
 
 
 def fc_with_batchnorm(use_feed=None):
+<<<<<<< HEAD
     img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     return batchnorm_fc_with_inputs(img, label, class_num=10)
@@ -84,11 +121,26 @@ def bow_net(
     hid_dim2=96,
     class_dim=2,
 ):
+=======
+    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    return batchnorm_fc_with_inputs(img, label, class_num=10)
+
+
+def bow_net(use_feed,
+            dict_dim,
+            is_sparse=False,
+            emb_dim=128,
+            hid_dim=128,
+            hid_dim2=96,
+            class_dim=2):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     BOW net
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
+<<<<<<< HEAD
     data = paddle.static.data(
         name="words", shape=[-1, 1], dtype="int64", lod_level=1
     )
@@ -106,6 +158,22 @@ def bow_net(
     cost = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
+=======
+    data = fluid.layers.data(name="words",
+                             shape=[1],
+                             dtype="int64",
+                             lod_level=1)
+    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    emb = fluid.layers.embedding(input=data,
+                                 is_sparse=is_sparse,
+                                 size=[dict_dim, emb_dim])
+    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+    bow_tanh = fluid.layers.tanh(bow)
+    fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
+    fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
+    prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
+    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     avg_cost = paddle.mean(x=cost)
 
     return avg_cost
@@ -116,9 +184,15 @@ def init_data(batch_size=32, img_shape=[784], label_range=9):
     assert isinstance(img_shape, list)
     input_shape = [batch_size] + img_shape
     img = np.random.random(size=input_shape).astype(np.float32)
+<<<<<<< HEAD
     label = (
         np.array([np.random.randint(0, label_range) for _ in range(batch_size)])
         .reshape((-1, 1))
         .astype("int64")
     )
+=======
+    label = np.array(
+        [np.random.randint(0, label_range) for _ in range(batch_size)]).reshape(
+            (-1, 1)).astype("int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return img, label

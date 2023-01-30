@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import shutil
 import tempfile
 import unittest
@@ -23,18 +24,54 @@ from paddle.vision.datasets import MNIST
 
 
 class MnistDataset(MNIST):
+=======
+import sys
+import unittest
+import time
+import random
+import tempfile
+import shutil
+import numpy as np
+
+import paddle
+from paddle import Model
+from paddle.static import InputSpec
+from paddle.vision.models import LeNet
+from paddle.hapi.callbacks import config_callbacks
+import paddle.vision.transforms as T
+from paddle.vision.datasets import MNIST
+from paddle.metric import Accuracy
+from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+
+
+class MnistDataset(MNIST):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __len__(self):
         return 512
 
 
 class TestCallbacks(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
 
     def tearDown(self):
         shutil.rmtree(self.save_dir)
 
+<<<<<<< HEAD
     def test_visualdl_callback(self):
+=======
+    def func_visualdl_callback(self):
+        # visualdl not support python2
+        if sys.version_info < (3, ):
+            return
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
 
@@ -46,6 +83,7 @@ class TestCallbacks(unittest.TestCase):
         model = paddle.Model(net, inputs, labels)
 
         optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
+<<<<<<< HEAD
         model.prepare(
             optimizer=optim,
             loss=paddle.nn.CrossEntropyLoss(),
@@ -56,6 +94,22 @@ class TestCallbacks(unittest.TestCase):
         model.fit(
             train_dataset, eval_dataset, batch_size=64, callbacks=callback
         )
+=======
+        model.prepare(optimizer=optim,
+                      loss=paddle.nn.CrossEntropyLoss(),
+                      metrics=paddle.metric.Accuracy())
+
+        callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
+        model.fit(train_dataset,
+                  eval_dataset,
+                  batch_size=64,
+                  callbacks=callback)
+
+    def test_visualdl_callback(self):
+        with _test_eager_guard():
+            self.func_visualdl_callback()
+        self.func_visualdl_callback()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

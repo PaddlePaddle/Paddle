@@ -12,9 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+import math
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from op_test import OpTest
 
 
@@ -61,6 +70,10 @@ def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
 
 
 class TestBoxDecoderAndAssignOpWithLoD(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         self.check_output()
 
@@ -74,8 +87,12 @@ class TestBoxDecoderAndAssignOpWithLoD(OpTest):
         box_score = np.random.random((20, num_classes)).astype('float32')
         box_clip = 4.135
         output_box, output_assign_box = box_decoder_and_assign(
+<<<<<<< HEAD
             target_box, prior_box_var, prior_box, box_score, box_clip
         )
+=======
+            target_box, prior_box_var, prior_box, box_score, box_clip)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'PriorBox': (prior_box, lod),
@@ -86,7 +103,11 @@ class TestBoxDecoderAndAssignOpWithLoD(OpTest):
         self.attrs = {'box_clip': box_clip}
         self.outputs = {
             'DecodeBox': output_box,
+<<<<<<< HEAD
             'OutputAssignBox': output_assign_box,
+=======
+            'OutputAssignBox': output_assign_box
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 

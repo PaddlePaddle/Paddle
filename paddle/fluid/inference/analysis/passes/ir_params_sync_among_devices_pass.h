@@ -37,6 +37,7 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
  private:
 #ifdef PADDLE_WITH_ASCEND_CL
   void CopyParamsToNpu(Argument *argument);
+<<<<<<< HEAD
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -46,6 +47,11 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   void CopyParamsToCustomDevice(Argument *argument);
 #endif
+=======
+#else
+  void CopyParamsToGpu(Argument *argument);
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace analysis

@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -21,14 +22,34 @@ from test_collective_multi_nodes import TestDistBase
 
 
 class TestDYgraphDPMode(TestDistBase):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_multi_nodes import TestDistBase
+
+import os
+
+
+class TestDYgraphDPMode(TestDistBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._trainers = 16
         self._init_env()
 
     def test_col_parallel_linear(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dygraph_hybrid_dp.py", backend="nccl", need_envs=os.environ
         )
+=======
+        self.check_with_place("dygraph_hybrid_dp.py",
+                              backend="nccl",
+                              need_envs=os.environ)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

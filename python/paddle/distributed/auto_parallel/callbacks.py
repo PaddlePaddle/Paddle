@@ -16,6 +16,7 @@ import os
 import time
 
 import paddle
+<<<<<<< HEAD
 from paddle.hapi.callbacks import (
     Callback,
     CallbackList,
@@ -41,6 +42,24 @@ def config_callbacks(
     acc_step=1,
     mode='train',
 ):
+=======
+from paddle.hapi.callbacks import ProgBarLogger, ModelCheckpoint, LRScheduler, CallbackList, Callback
+from .interface import CollectionNames, get_collection
+
+
+def config_callbacks(callbacks=None,
+                     engine=None,
+                     batch_size=None,
+                     epochs=None,
+                     steps=None,
+                     log_freq=2,
+                     verbose=2,
+                     save_freq=1,
+                     save_dir=None,
+                     metrics=None,
+                     acc_step=1,
+                     mode='train'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cbks = callbacks or []
     cbks = cbks if isinstance(cbks, (list, tuple)) else [cbks]
 
@@ -83,8 +102,14 @@ def config_callbacks(
 
 
 class ProgBarLoggerAuto(ProgBarLogger):
+<<<<<<< HEAD
     def __init__(self, log_freq=1, verbose=2):
         super().__init__(log_freq, verbose)
+=======
+
+    def __init__(self, log_freq=1, verbose=2):
+        super(ProgBarLoggerAuto, self).__init__(log_freq, verbose)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _is_print(self):
         return True
@@ -118,6 +143,7 @@ class ProgBarLoggerAuto(ProgBarLogger):
             cnt = timer['count'] if timer['count'] > 0 else 1.0
             samples = timer['samples'] if timer['samples'] > 0 else 1.0
             values.append(
+<<<<<<< HEAD
                 ('avg_reader_cost', "%.5f sec" % (timer['data_time'] / cnt))
             )
             values.append(
@@ -134,6 +160,18 @@ class ProgBarLoggerAuto(ProgBarLogger):
             timer['samples'] = 0
             timer['data_time'] = 0.0
             timer['batch_time'] = 0.0
+=======
+                ('avg_reader_cost', "%.5f sec" % (timer['data_time'] / cnt)))
+            values.append(
+                ('avg_batch_cost', "%.5f sec" % (timer['batch_time'] / cnt)))
+            values.append(
+                ('ips', "%.5f samples/sec" %
+                 (samples / (timer['data_time'] + timer['batch_time']))))
+            timer['count'] = 0
+            timer['samples'] = 0
+            timer['data_time'] = 0.
+            timer['batch_time'] = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         progbar.update(steps, values)
 
@@ -144,8 +182,12 @@ class ProgBarLoggerAuto(ProgBarLogger):
         self.evaled_samples += samples
 
         self._eval_timer['batch_time'] += (
+<<<<<<< HEAD
             time.time() - self._eval_timer['batch_data_end_time']
         )
+=======
+            time.time() - self._eval_timer['batch_data_end_time'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._eval_timer['count'] += 1
         samples = self.params['batch_size']
         self._eval_timer['samples'] += samples
@@ -158,8 +200,14 @@ class ProgBarLoggerAuto(ProgBarLogger):
 
 
 class LRSchedulerAuto(LRScheduler):
+<<<<<<< HEAD
     def __init__(self, by_step=True, by_epoch=False):
         super().__init__(by_step, by_epoch)
+=======
+
+    def __init__(self, by_step=True, by_epoch=False):
+        super(LRSchedulerAuto, self).__init__(by_step, by_epoch)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def on_epoch_begin(self, epoch=None, logs=None):
         self.acc_step = self.params["acc_step"]
@@ -170,6 +218,7 @@ class LRSchedulerAuto(LRScheduler):
         self.train_step += 1
 
         if self.by_step and self.train_step % self.acc_step == 0:
+<<<<<<< HEAD
             if (
                 self.model._optimizer
                 and hasattr(self.model._optimizer, '_learning_rate')
@@ -178,10 +227,20 @@ class LRSchedulerAuto(LRScheduler):
                     paddle.optimizer.lr.LRScheduler,
                 )
             ):
+=======
+            if self.model._optimizer and \
+                hasattr(self.model._optimizer, '_learning_rate') and \
+                isinstance(self.model._optimizer._learning_rate,
+                           paddle.optimizer.lr.LRScheduler):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.model._optimizer._learning_rate.step()
 
 
 class History(Callback):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.history = {}
 
@@ -198,6 +257,10 @@ class History(Callback):
 
 
 class Profiler(Callback):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, *args, **kwargs):
         self.prof = paddle.profiler.Profiler(*args, **kwargs)
 
@@ -213,11 +276,16 @@ class Profiler(Callback):
     def on_train_batch_end(self, step, logs=None):
         self.train_step += 1
         self.prof.step(num_samples=self.batch_size)
+<<<<<<< HEAD
         print(
             "step {}:{}".format(
                 self.train_step, self.prof.step_info(unit='samples')
             )
         )
+=======
+        print("step {}:{}".format(self.train_step,
+                                  self.prof.step_info(unit='samples')))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def on_train_end(self, logs=None):
         self.prof.stop()
@@ -225,8 +293,14 @@ class Profiler(Callback):
 
 
 class ModelCheckpointAuto(ModelCheckpoint):
+<<<<<<< HEAD
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+=======
+
+    def __init__(self, *args, **kwargs):
+        super(ModelCheckpointAuto, self).__init__(*args, **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _is_save(self):
         return self.model and self.save_dir

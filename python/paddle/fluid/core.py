@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import site
 import sys
 import os
 import warnings
 import platform
+<<<<<<< HEAD
 import logging
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 has_paddle_dy_lib = False
 
@@ -45,6 +53,11 @@ try:
             os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
+<<<<<<< HEAD
+=======
+    from .. import compat as cpt
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
@@ -52,7 +65,11 @@ except ImportError as e:
         if you encounters \"DLL load failed\" errors. If you have python
         installed in other directory, replace \"%s\" with your own
         directory. The original error is: \n %s"""
+<<<<<<< HEAD
             % (executable_path, executable_path, str(e))
+=======
+            % (executable_path, executable_path, cpt.get_exception_message(e))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
     else:
         raise ImportError(
@@ -60,7 +77,11 @@ except ImportError as e:
         if you encounters \"libmkldnn.so not found\" errors. If you have python
         installed in other directory, replace \"/usr/local/lib\" with your own
         directory. The original error is: \n"""
+<<<<<<< HEAD
             + str(e)
+=======
+            + cpt.get_exception_message(e)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
 except Exception as e:
     raise e
@@ -70,6 +91,11 @@ def avx_supported():
     """
     Whether current system(Linux, MacOS, Windows) is supported with AVX.
     """
+<<<<<<< HEAD
+=======
+    from .. import compat as cpt
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sysstr = platform.system().lower()
     has_avx = False
     if sysstr == 'linux':
@@ -80,7 +106,11 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from /proc/cpuinfo.\n'
+<<<<<<< HEAD
                 'The original error is: %s\n' % str(e)
+=======
+                'The original error is: %s\n' % cpt.get_exception_message(e)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
         return has_avx
     elif sysstr == 'darwin':
@@ -91,7 +121,11 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.features.\n'
+<<<<<<< HEAD
                 'The original error is: %s\n' % str(e)
+=======
+                'The original error is: %s\n' % cpt.get_exception_message(e)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
         if not has_avx:
             import subprocess
@@ -175,7 +209,11 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Failed getting the AVX flag on Windows.\n'
+<<<<<<< HEAD
                 'The original error is: %s\n' % str(e)
+=======
+                'The original error is: %s\n' % cpt.get_exception_message(e)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
         return (retval & (1 << avx_bit)) > 0
     else:
@@ -301,12 +339,16 @@ try:
     from .libpaddle import _promote_types_if_complex_exists
     from .libpaddle import _set_cached_executor_build_strategy
     from .libpaddle import _device_synchronize
+<<<<<<< HEAD
     from .libpaddle import _xpu_device_synchronize
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     from .libpaddle import _get_current_stream
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
     from .libpaddle import _get_phi_kernel_name
 
+<<<<<<< HEAD
     # prim controller flags
     from .libpaddle import __set_bwd_prim_enabled
     from .libpaddle import _is_bwd_prim_enabled
@@ -314,6 +356,8 @@ try:
     from .libpaddle import _is_fwd_prim_enabled
     from .libpaddle import __set_all_prim_enabled
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if sys.platform != 'win32':
         from .libpaddle import _set_process_pids
         from .libpaddle import _erase_process_pids
@@ -323,7 +367,10 @@ try:
         from .libpaddle import _array_to_share_memory_tensor
         from .libpaddle import _cleanup_mmap_fds
         from .libpaddle import _remove_tensor_list_mmap_fds
+<<<<<<< HEAD
         from .libpaddle import _set_max_memory_map_allocation_pool_size
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 except Exception as e:
     if has_paddle_dy_lib:
         sys.stderr.write(
@@ -378,6 +425,7 @@ def set_paddle_lib_path():
 
 
 set_paddle_lib_path()
+<<<<<<< HEAD
 
 # We have 3 FLAGS to judge whether prim is enabled
 # FLAGS_prim_forward: Open or close forward prim strategy
@@ -474,3 +522,5 @@ def check_and_set_prim_all_enabled():
         __sync_prim_forward_status()
     else:
         __sync_stat_with_flag("FLAGS_prim_all")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

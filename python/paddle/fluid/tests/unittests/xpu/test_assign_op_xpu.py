@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 
 sys.path.append("..")
@@ -19,6 +20,21 @@ import unittest
 
 import paddle
 
+=======
+from __future__ import print_function
+import sys
+
+sys.path.append("..")
+import op_test
+import numpy as np
+import unittest
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.backward import append_backward
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 '''
 class TestAssignOp(op_test.OpTest):
     def setUp(self):
@@ -47,11 +63,19 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             x.stop_gradient = False
             y = fluid.layers.fill_constant(
                 shape=[100, 10], dtype='float32', value=1)
+<<<<<<< HEAD
             z = paddle.add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = paddle.tensor.array_write(x=z, i=i)
             array = fluid.layers.assign(init_array)
             sums = paddle.tensor.array_read(array=init_array, i=i)
+=======
+            z = fluid.layers.elementwise_add(x=x, y=y)
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            init_array = fluid.layers.array_write(x=z, i=i)
+            array = fluid.layers.assign(init_array)
+            sums = fluid.layers.array_read(array=init_array, i=i)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             mean = paddle.mean(sums)
             append_backward(mean)
 

@@ -18,6 +18,10 @@ limitations under the License. */
 
 using CPUPlace = paddle::platform::CPUPlace;
 using LoD = paddle::framework::LoD;
+<<<<<<< HEAD
+=======
+using LoDTensor = paddle::framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 
 template <typename T>
@@ -58,7 +62,11 @@ void GenerateExample(const std::vector<size_t>& level_0,
   lod.push_back(level_1);
 
   // Ids
+<<<<<<< HEAD
   phi::DenseTensor tensor_id;
+=======
+  LoDTensor tensor_id;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_id.set_lod(lod);
   tensor_id.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
@@ -68,7 +76,11 @@ void GenerateExample(const std::vector<size_t>& level_0,
   }
 
   // Scores
+<<<<<<< HEAD
   phi::DenseTensor tensor_score;
+=======
+  LoDTensor tensor_score;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_score.set_lod(lod);
   tensor_score.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
@@ -123,8 +135,13 @@ void BeamSearchDecodeTestFrame() {
 
   BeamSearchDecoder<T> helper(2, 1);  // beam_size = 2, end_id = 1
 
+<<<<<<< HEAD
   phi::DenseTensor id_tensor;
   phi::DenseTensor score_tensor;
+=======
+  LoDTensor id_tensor;
+  LoDTensor score_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   helper.Backtrace(ids, scores, &id_tensor, &score_tensor);
 
   LoD lod = id_tensor.lod();

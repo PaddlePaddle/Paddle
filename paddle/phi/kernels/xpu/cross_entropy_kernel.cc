@@ -89,6 +89,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                             static_cast<XPUType>(max_val));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
 
+<<<<<<< HEAD
   if (use_softmax) {
     r = xpu::softmax<XPUType>(
         dev_ctx.x_context(), clip_logits_data, softmax_data, logits_dims, axis);
@@ -98,6 +99,12 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
         dev_ctx.x_context(), clip_logits_data, softmax_data, softmax->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   }
+=======
+  r = xpu::softmax<XPUType>(
+      dev_ctx.x_context(), clip_logits_data, softmax_data, logits_dims, axis);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // cross_entropy
   if (axis != rank - 1) {
     XPUType* trans_softmax = RAII_GUARD.alloc_l3_or_gm<XPUType>(n * d);
@@ -137,11 +144,19 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     int* labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
 
+<<<<<<< HEAD
     r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
                                     labels.data<int64_t>(),
                                     labels_int_ptr_l3,
                                     labels.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+=======
+    r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
+                                       labels.data<int64_t>(),
+                                       labels_int_ptr_l3,
+                                       labels.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     r = xpu::hard_cross_entropy<XPUType, int32_t>(
         dev_ctx.x_context(),

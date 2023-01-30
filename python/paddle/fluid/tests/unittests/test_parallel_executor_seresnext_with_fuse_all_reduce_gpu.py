@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 
 fluid.core._set_fuse_parameter_group_size(3)
 fluid.core._set_fuse_parameter_memory_size(131072)
 
 import unittest
+<<<<<<< HEAD
 from functools import partial
 
 import seresnext_net
@@ -36,6 +41,24 @@ class TestResnetWithFuseAllReduceGPU(TestResnetBase):
         self._compare_result_with_origin_model(
             check_func, use_device=DeviceType.CUDA, delta2=1e-2
         )
+=======
+import seresnext_net
+from seresnext_test_base import TestResnetBase, DeviceType
+from functools import partial
+
+
+class TestResnetWithFuseAllReduceGPU(TestResnetBase):
+
+    def test_seresnext_with_fused_all_reduce(self):
+        # NOTE(zcd): In order to make the program faster,
+        # this unit test remove drop_out and batch_norm.
+        check_func = partial(self.check_network_convergence,
+                             optimizer=seresnext_net.optimizer,
+                             fuse_all_reduce_ops=True)
+        self._compare_result_with_origin_model(check_func,
+                                               use_device=DeviceType.CUDA,
+                                               delta2=1e-2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -62,6 +62,7 @@ class LoDResetOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -75,6 +76,22 @@ class LoDResetOp : public framework::OperatorWithKernel {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           tensor.layout(),
                           expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -104,20 +121,34 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(Tensor, phi::DenseTensor) Input variable of LoDResetOp which "
              "could be a Tensor or phi::DenseTensor, where the data of output "
              "variable inherits from.");
     AddInput("Y",
              "(phi::DenseTensor, optional) If provided and Y is "
              "phi::DenseTensor, "
+=======
+             "(Tensor, LoDTensor) Input variable of LoDResetOp which "
+             "could be a Tensor or LoDTensor, where the data of output "
+             "variable inherits from.");
+    AddInput("Y",
+             "(Tensor, LoDTensor, optional) If provided and Y is LoDTensor, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "lod of Input(Y) would be considered as the target lod first, "
              "otherwise data of Input(Y) would be considered as the "
              "target lod.")
         .AsDispensable();
+<<<<<<< HEAD
     AddOutput(
         "Out",
         "(phi::DenseTensor) Output variable of LoDResetOp which should be a "
         "phi::DenseTensor.");
+=======
+    AddOutput("Out",
+              "(LoDTensor) Output variable of LoDResetOp which should be a "
+              "LoDTensor.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<std::vector<int>>("target_lod",
                               "The target level 0 LoD from Attr().")
         .SetDefault(std::vector<int>{});
@@ -125,7 +156,11 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(LoDReset operator
 
 Set LoD of `X` to a new one specified by `Y` or attribute `target_lod`. When `Y`
+<<<<<<< HEAD
 provided and `Y` is a phi::DenseTensor, `Y.lod` would be considered as target LoD
+=======
+provided and `Y` is a LoDTensor, `Y.lod` would be considered as target LoD
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 first, otherwise `Y.data` would be considered as target LoD. If `Y` is not
 provided, target LoD should be specified by attribute `target_lod`.
 If target LoD is specified by `Y.data` or `target_lod`, only one level LoD
@@ -133,7 +168,11 @@ is supported.
 
 Example 1:
 
+<<<<<<< HEAD
 Given a 1-level phi::DenseTensor input(X):
+=======
+Given a 1-level LoDTensor input(X):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     X.lod =  [[ 0,     2,                   5      6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -147,7 +186,11 @@ then we get a 1-level LoDTensor:
 
 Example 2:
 
+<<<<<<< HEAD
 Given a 1-level phi::DenseTensor input(X):
+=======
+Given a 1-level LoDTensor input(X):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     X.lod =  [[ 0,     2,                   5      6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -163,7 +206,11 @@ then we get a 1-level LoDTensor:
 
 Example 3:
 
+<<<<<<< HEAD
 Given a 1-level phi::DenseTensor input(X):
+=======
+Given a 1-level LoDTensor input(X):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     X.lod =  [[ 0,      2,                   5     6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -201,11 +248,19 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

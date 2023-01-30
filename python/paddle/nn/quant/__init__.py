@@ -21,8 +21,12 @@ from .functional_layers import reshape  # noqa: F401
 from .functional_layers import transpose  # noqa: F401
 from .functional_layers import concat  # noqa: F401
 from .functional_layers import flatten  # noqa: F401
+<<<<<<< HEAD
 from .functional_layers import matmul  # noqa: F401
 from .quant_layers import QuantStub  # noqa: F401
 from . import qat
+=======
+from .quant_layers import QuantStub  # noqa: F401
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []

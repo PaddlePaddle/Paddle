@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -26,18 +27,42 @@ from xpu.get_test_cover_info import (
     get_xpu_op_support_types,
 )
 
+=======
+from __future__ import print_function
+
+import numpy as np
+import unittest
+import sys
+
+sys.path.append("..")
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+<<<<<<< HEAD
+=======
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
 class XPUTestWhereIndexOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'where_index'
 
     class TestWhereIndexOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.init_config()
             self.init_data()
@@ -58,6 +83,10 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
             self.__class__.no_need_check_grad = True
 
     class TestAllFalse(TestWhereIndexOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.inputs = {
                 'Condition': np.array([False, False, False]).astype(self.dtype),
@@ -65,15 +94,24 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.array([], dtype='int64')}
 
     class TestRank2(TestWhereIndexOp):
+<<<<<<< HEAD
         def init_data(self):
             self.inputs = {
                 'Condition': np.array([[True, False], [False, True]]).astype(
                     self.dtype
                 ),
+=======
+
+        def init_data(self):
+            self.inputs = {
+                'Condition':
+                np.array([[True, False], [False, True]]).astype(self.dtype),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.array([[0, 0], [1, 1]], dtype='int64')}
 
     class TestRank3(TestWhereIndexOp):
+<<<<<<< HEAD
         def init_data(self):
             self.inputs = {
                 'Condition': np.array(
@@ -90,6 +128,22 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
                     [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
                     dtype='int64',
                 )
+=======
+
+        def init_data(self):
+            self.inputs = {
+                'Condition':
+                np.array([[[True, False], [False, True]],
+                          [[False, True], [True, False]],
+                          [[False, False], [False, True]]]).astype(self.dtype),
+            }
+
+            self.outputs = {
+                'Out':
+                np.array(
+                    [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
+                    dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
 
@@ -99,10 +153,18 @@ for stype in support_types:
 
 
 class TestWhereOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
         with program_guard(Program(), Program()):
             cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
             result = paddle.nonzero(cond)
+=======
+
+    def test_api(self):
+        with program_guard(Program(), Program()):
+            cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
+            result = fluid.layers.where(cond)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = fluid.Executor(paddle.XPUPlace(0))
             exe.run(fluid.default_startup_program())
@@ -111,11 +173,21 @@ class TestWhereOpError(unittest.TestCase):
 
 
 class TestWhereRaiseError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         def test_type():
             paddle.nonzero([10])
 
         self.assertRaises(AttributeError, test_type)
+=======
+
+    def test_errors(self):
+
+        def test_type():
+            fluid.layers.where([10])
+
+        self.assertRaises(TypeError, test_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

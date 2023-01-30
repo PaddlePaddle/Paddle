@@ -24,14 +24,24 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
+=======
+using DataLayout = framework::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename place, typename T>
 struct LRNFunctor {
   void operator()(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out,
                   phi::DenseTensor* mid,
+=======
+                  const framework::Tensor& input,
+                  framework::Tensor* out,
+                  framework::Tensor* mid,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int N,
                   int C,
                   int H,
@@ -46,28 +56,50 @@ struct LRNFunctor {
 template <typename DeviceContext, typename T>
 class LRNKernel : public framework::OpKernel<T> {
  public:
+<<<<<<< HEAD
+=======
+  using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // f(x) = x * ( k + alpha * SUM((x)^2) )^(-beta)
   // x represents inputs
   // f(x) represents outputs
   void Compute(const framework::ExecutionContext& ctx) const override {
     // input
+<<<<<<< HEAD
     const phi::DenseTensor& x = *ctx.Input<phi::DenseTensor>("X");
     auto x_dims = x.dims();
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const phi::DataLayout data_layout =
         phi::StringToDataLayout(data_layout_str);
+=======
+    const Tensor& x = *ctx.Input<Tensor>("X");
+    auto x_dims = x.dims();
+
+    const std::string data_layout_str = ctx.Attr<std::string>("data_format");
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // NCHW
     int N = x_dims[0];
     int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
     int H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
     int W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
 
+<<<<<<< HEAD
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     // MidOut save the intermediate result for backward
     phi::DenseTensor* mid = ctx.Output<phi::DenseTensor>("MidOut");
+=======
+    Tensor* out = ctx.Output<Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+
+    // MidOut save the intermediate result for backward
+    Tensor* mid = ctx.Output<Tensor>("MidOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     mid->mutable_data<T>(ctx.GetPlace());
 
     int n = ctx.Attr<int>("n");
@@ -102,11 +134,19 @@ class LRNKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 struct LRNGradFunctor {
   void operator()(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor& x,
                   const phi::DenseTensor& out,
                   const phi::DenseTensor& mid,
                   phi::DenseTensor* x_g,
                   const phi::DenseTensor& out_g,
+=======
+                  const framework::Tensor& x,
+                  const framework::Tensor& out,
+                  const framework::Tensor& mid,
+                  framework::Tensor* x_g,
+                  const framework::Tensor& out_g,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int N,
                   int C,
                   int H,
@@ -139,6 +179,7 @@ struct LRNGradFunctor {
 template <typename DeviceContext, typename T>
 class LRNGradKernel : public framework::OpKernel<T> {
  public:
+<<<<<<< HEAD
   void Compute(const framework::ExecutionContext& ctx) const override {
     const phi::DenseTensor& x = *ctx.Input<phi::DenseTensor>("X");
     const phi::DenseTensor& out = *ctx.Input<phi::DenseTensor>("Out");
@@ -150,6 +191,19 @@ class LRNGradKernel : public framework::OpKernel<T> {
         phi::StringToDataLayout(data_layout_str);
 
     auto x_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+  using Tensor = framework::Tensor;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const Tensor& x = *ctx.Input<Tensor>("X");
+    const Tensor& out = *ctx.Input<Tensor>("Out");
+    const Tensor& out_g = *ctx.Input<Tensor>(framework::GradVarName("Out"));
+    const Tensor& mid = *ctx.Input<Tensor>("MidOut");
+    const std::string data_layout_str = ctx.Attr<std::string>("data_format");
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
+
+    auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_g->mutable_data<T>(ctx.GetPlace());
 
     auto x_dims = x.dims();

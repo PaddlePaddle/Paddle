@@ -32,7 +32,11 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     if (Y_v) {
       // Y is weight
+<<<<<<< HEAD
       auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
+=======
+      auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
       auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
 
@@ -74,12 +78,17 @@ class ElementwiseTensorOpConverter : public OpConverter {
     nvinfer1::Dims dims_y = Y->getDimensions();
     auto output_name = op_desc.Output("Out")[0];
 
+<<<<<<< HEAD
     int axis = -1;
     // axis here is relative to explicit batch
     if (op_type_ != "logical_or" && op_type_ != "logical_xor" &&
         op_type_ != "logical_and") {
       axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     }
+=======
+    // axis here is relative to explicit batch
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int real_x_rank = dims_x.nbDims;
     int real_y_rank = dims_y.nbDims;
     if (!engine_->with_dynamic_shape()) {
@@ -143,6 +152,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
       X = tmp;
     }
 
+<<<<<<< HEAD
     if (op_type_ == "less_equal") {
       auto* less_layer =
           TRT_ENGINE_ADD_LAYER(engine_,
@@ -177,6 +187,19 @@ class ElementwiseTensorOpConverter : public OpConverter {
           engine_, ElementWise, *X, *reshape_y_tensor, op_pair->second);
       RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     }
+=======
+    auto op_pair = ops.find(op_type_);
+    PADDLE_ENFORCE_NE(op_pair,
+                      ops.end(),
+                      platform::errors::InvalidArgument(
+                          "Elementwise op's type(%s) is not supported. Please "
+                          "check if the op_type is correct.",
+                          op_type_));
+
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, ElementWise, *X, *reshape_y_tensor, op_pair->second);
+    RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
  protected:
@@ -194,12 +217,15 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"min", nvinfer1::ElementWiseOperation::kMIN},
         {"pow", nvinfer1::ElementWiseOperation::kPOW},
         {"max", nvinfer1::ElementWiseOperation::kMAX},
+<<<<<<< HEAD
         {"floordiv", nvinfer1::ElementWiseOperation::kFLOOR_DIV},
         {"less_than", nvinfer1::ElementWiseOperation::kLESS},
         {"greater_than", nvinfer1::ElementWiseOperation::kGREATER},
         {"logical_or", nvinfer1::ElementWiseOperation::kOR},
         {"logical_xor", nvinfer1::ElementWiseOperation::kXOR},
         {"logical_and", nvinfer1::ElementWiseOperation::kAND},
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -236,6 +262,7 @@ class ElementwiseTensorPowOpConverter : public ElementwiseTensorOpConverter {
  public:
   ElementwiseTensorPowOpConverter() { op_type_ = "pow"; }
 };
+<<<<<<< HEAD
 class ElementwiseTensorFloorDivOpConverter
     : public ElementwiseTensorOpConverter {
  public:
@@ -271,6 +298,9 @@ class ElementwiseTensorLessEqualOpConverter
  public:
   ElementwiseTensorLessEqualOpConverter() { op_type_ = "less_equal"; }
 };
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -289,8 +319,11 @@ REGISTER_TRT_OP_CONVERTER(elementwise_min_weight,
                           ElementwiseTensorMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
                           ElementwiseTensorPowOpConverter);
+<<<<<<< HEAD
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_weight,
                           ElementwiseTensorFloorDivOpConverter);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor,
                           ElementwiseTensorAddOpConverter);
@@ -306,6 +339,7 @@ REGISTER_TRT_OP_CONVERTER(elementwise_min_tensor,
                           ElementwiseTensorMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_pow_tensor,
                           ElementwiseTensorPowOpConverter);
+<<<<<<< HEAD
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_tensor,
                           ElementwiseTensorFloorDivOpConverter);
 REGISTER_TRT_OP_CONVERTER(less_than, ElementwiseTensorLessThanOpConverter);
@@ -315,3 +349,5 @@ REGISTER_TRT_OP_CONVERTER(logical_or, ElementwiseTensorLogicalOrOpConverter);
 REGISTER_TRT_OP_CONVERTER(logical_xor, ElementwiseTensorLogicalXorOpConverter);
 REGISTER_TRT_OP_CONVERTER(logical_and, ElementwiseTensorLogicalAndOpConverter);
 REGISTER_TRT_OP_CONVERTER(less_equal, ElementwiseTensorLessEqualOpConverter);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

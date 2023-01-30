@@ -19,7 +19,11 @@ limitations under the License. */
 
 // Note(chenweihang): In order to be compatible with the original custom
 // operator Tensor interface, only available to external users, the file
+<<<<<<< HEAD
 // cannot be included in paddle
+=======
+// cannot be includeed in paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 using Tensor = experimental::Tensor;
@@ -28,7 +32,10 @@ using experimental::abs;
 using experimental::acos;
 using experimental::acosh;
 using experimental::add;
+<<<<<<< HEAD
 using experimental::addmm;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::allclose;
 using experimental::argsort;
 using experimental::asin;
@@ -56,7 +63,10 @@ using experimental::dot;
 using experimental::elu;
 using experimental::empty;
 using experimental::empty_like;
+<<<<<<< HEAD
 using experimental::equal;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::equal_all;
 using experimental::erf;
 using experimental::erfinv;
@@ -67,13 +77,17 @@ using experimental::flatten;
 using experimental::flip;
 using experimental::floor;
 using experimental::floor_divide;
+<<<<<<< HEAD
 using experimental::fmax;
 using experimental::fmin;
 using experimental::frame;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::full;
 using experimental::gather;
 using experimental::gather_nd;
 using experimental::gelu;
+<<<<<<< HEAD
 using experimental::greater_equal;
 using experimental::greater_than;
 using experimental::gumbel_softmax;
@@ -81,6 +95,11 @@ using experimental::hardswish;
 using experimental::hardtanh;
 using experimental::imag;
 using experimental::increment;
+=======
+using experimental::gumbel_softmax;
+using experimental::imag;
+using experimental::increment_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::index_sample;
 using experimental::is_empty;
 using experimental::isclose;
@@ -91,8 +110,11 @@ using experimental::kron;
 using experimental::kthvalue;
 using experimental::label_smooth;
 using experimental::lerp;
+<<<<<<< HEAD
 using experimental::less_equal;
 using experimental::less_than;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::lgamma;
 using experimental::log;
 using experimental::log10;
@@ -104,7 +126,10 @@ using experimental::matmul;
 using experimental::matrix_power;
 using experimental::maximum;
 using experimental::maxout;
+<<<<<<< HEAD
 using experimental::meshgrid;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::minimum;
 using experimental::mode;
 using experimental::multi_dot;
@@ -112,6 +137,7 @@ using experimental::multinomial;
 using experimental::multiply;
 using experimental::mv;
 using experimental::nll_loss;
+<<<<<<< HEAD
 using experimental::not_equal;
 using experimental::npu_identity;
 using experimental::one_hot;
@@ -120,12 +146,21 @@ using experimental::overlap_add;
 using experimental::pixel_shuffle;
 using experimental::poisson;
 using experimental::put_along_axis;
+=======
+using experimental::one_hot;
+using experimental::ones;
+using experimental::pixel_shuffle;
+using experimental::poisson;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::qr;
 using experimental::real;
 using experimental::reciprocal;
 using experimental::relu;
+<<<<<<< HEAD
 using experimental::relu6;
 using experimental::remainder;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::reshape;
 using experimental::roll;
 using experimental::round;
@@ -133,9 +168,12 @@ using experimental::rsqrt;
 using experimental::scatter;
 using experimental::scatter_nd_add;
 using experimental::selu;
+<<<<<<< HEAD
 using experimental::send_u_recv;
 using experimental::send_ue_recv;
 using experimental::send_uv;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::sign;
 using experimental::silu;
 using experimental::sin;
@@ -146,13 +184,19 @@ using experimental::square;
 using experimental::stack;
 using experimental::strided_slice;
 using experimental::subtract;
+<<<<<<< HEAD
 using experimental::swish;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::tanh;
 using experimental::thresholded_relu;
 using experimental::tile;
 using experimental::trace;
 using experimental::triangular_solve;
+<<<<<<< HEAD
 using experimental::tril;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using experimental::unbind;
 using experimental::unique;
 using experimental::unsqueeze;

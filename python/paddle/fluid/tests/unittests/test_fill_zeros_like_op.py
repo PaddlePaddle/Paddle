@@ -12,13 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from op_test import OpTest
 
 
 class TestFillZerosLikeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "fill_zeros_like"
         self.dtype = np.float32
@@ -34,6 +44,10 @@ class TestFillZerosLikeOp(OpTest):
 
 
 class TestFillZerosLikeOpFp16(TestFillZerosLikeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 

@@ -18,26 +18,47 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class StackNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto x = ctx.MultiInput<phi::DenseTensor>("X");
     auto* y = ctx.Output<phi::DenseTensor>("Y");
+=======
+    auto x = ctx.MultiInput<Tensor>("X");
+    auto* y = ctx.Output<Tensor>("Y");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += (x[0]->dims().size() + 1);
     int num = static_cast<int>(x.size());
 
+<<<<<<< HEAD
     PADDLE_ENFORCE_GT(num,
                       0,
                       platform::errors::InvalidArgument(
                           "number of input phi::DenseTensor <= 0"));
+=======
+    PADDLE_ENFORCE_GT(
+        num,
+        0,
+        platform::errors::InvalidArgument("number of input Tensor <= 0"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> x_list;
+=======
+    std::vector<paddle::framework::Tensor> x_list;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (int i = 0; i < num; i++) {
       x_list.push_back(*x[i]);
     }
@@ -53,22 +74,38 @@ template <typename T>
 class StackGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     auto dx = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto dx = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += dy->dims().size();
     int num = dy->dims()[axis];
 
+<<<<<<< HEAD
     PADDLE_ENFORCE_GT(num,
                       0,
                       platform::errors::InvalidArgument(
                           "number of input phi::DenseTensor <= 0"));
+=======
+    PADDLE_ENFORCE_GT(
+        num,
+        0,
+        platform::errors::InvalidArgument("number of input Tensor <= 0"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> dx_list;
+=======
+    std::vector<paddle::framework::Tensor> dx_list;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (int i = 0; i < num; i++) {
       dx[i]->mutable_data<T>(ctx.GetPlace());
       dx_list.push_back(*dx[i]);

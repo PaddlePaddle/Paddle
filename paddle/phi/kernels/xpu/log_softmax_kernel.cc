@@ -17,7 +17,10 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -30,22 +33,38 @@ void LogSoftmaxKernel(const Context& dev_ctx,
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
 
+<<<<<<< HEAD
   // For 0D Tensor
   if (rank == 0) {
     phi::funcs::set_constant(dev_ctx, out, 0.0);
     return;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (x.numel() != 0) {
     auto x_shape = phi::vectorize<int>(x.dims());
     dev_ctx.template Alloc<T>(out);
     if (axis < 0) axis += rank;
+<<<<<<< HEAD
     int r =
         xpu::log_softmax<XPUType>(dev_ctx.x_context(),
+=======
+    int r = xpu::softmax<XPUType>(dev_ctx.x_context(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                   reinterpret_cast<const XPUType*>(x.data<T>()),
                                   reinterpret_cast<XPUType*>(out->data<T>()),
                                   x_shape,
                                   axis);
+<<<<<<< HEAD
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_softmax");
+=======
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
+    r = xpu::log<XPUType>(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUType*>(out->data<T>()),
+                          reinterpret_cast<XPUType*>(out->data<T>()),
+                          out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "log");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

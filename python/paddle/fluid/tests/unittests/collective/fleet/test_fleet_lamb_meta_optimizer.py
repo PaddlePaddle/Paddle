@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -19,20 +20,37 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle import fluid
+=======
+import unittest
+import paddle
+from paddle import fluid
+import os
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestFleetLambMetaOptimizer(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
             "PADDLE_TRAINER_ENDPOINTS"
         ] = "127.0.0.1:36001,127.0.0.1:36002"
+=======
+
+    def setUp(self):
+        os.environ["PADDLE_TRAINER_ID"] = "1"
+        os.environ[
+            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
             with fluid.unique_name.guard():
+<<<<<<< HEAD
                 input_x = paddle.static.data(
                     name="x", shape=[-1, 32], dtype='float32'
                 )
@@ -53,6 +71,24 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
                     reduction='none',
                     use_softmax=False,
                 )
+=======
+                input_x = paddle.fluid.layers.data(name="x",
+                                                   shape=[32],
+                                                   dtype='float32')
+                input_y = paddle.fluid.layers.data(name="y",
+                                                   shape=[1],
+                                                   dtype='int64')
+
+                fc_1 = paddle.fluid.layers.fc(input=input_x,
+                                              size=64,
+                                              act='tanh')
+                fc_2 = paddle.fluid.layers.fc(input=fc_1, size=256, act='tanh')
+                prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                    size=2,
+                                                    act='softmax')
+                cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                         label=input_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 avg_cost = paddle.mean(x=cost)
 
                 strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -83,9 +119,14 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
+<<<<<<< HEAD
         optimizer = paddle.fluid.optimizer.Momentum(
             learning_rate=0.1, momentum=0.9
         )
+=======
+        optimizer = paddle.fluid.optimizer.Momentum(learning_rate=0.1,
+                                                    momentum=0.9)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -107,8 +148,12 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         ops_without_wd = [
+<<<<<<< HEAD
             op
             for op in avg_cost.block.ops
+=======
+            op for op in avg_cost.block.ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if op.type == 'lamb' and op.attr('op_role_var')[0].endswith('.b_0')
         ]
         for op in ops_without_wd:
@@ -117,6 +162,7 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
     def test_lamb_apply_with_amp(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
+<<<<<<< HEAD
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
@@ -126,6 +172,18 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         cost = paddle.nn.functional.cross_entropy(
             input=prediction, label=input_y, reduction='none', use_softmax=False
         )
+=======
+        input_x = paddle.fluid.layers.data(name="x",
+                                           shape=[32],
+                                           dtype='float32')
+        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+
+        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+        cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                 label=input_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()

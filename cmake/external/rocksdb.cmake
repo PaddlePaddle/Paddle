@@ -14,6 +14,7 @@
 
 include(ExternalProject)
 
+<<<<<<< HEAD
 # find_package(jemalloc REQUIRED)
 
 set(JEMALLOC_INCLUDE_DIR ${THIRD_PARTY_PATH}/install/jemalloc/include)
@@ -21,6 +22,8 @@ set(JEMALLOC_LIBRARIES
     ${THIRD_PARTY_PATH}/install/jemalloc/lib/libjemalloc_pic.a)
 message(STATUS "rocksdb jemalloc:" ${JEMALLOC_LIBRARIES})
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 set(ROCKSDB_PREFIX_DIR ${THIRD_PARTY_PATH}/rocksdb)
 set(ROCKSDB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/rocksdb)
 set(ROCKSDB_INCLUDE_DIR
@@ -29,6 +32,7 @@ set(ROCKSDB_INCLUDE_DIR
 set(ROCKSDB_LIBRARIES
     "${ROCKSDB_INSTALL_DIR}/lib/librocksdb.a"
     CACHE FILEPATH "rocksdb library." FORCE)
+<<<<<<< HEAD
 set(ROCKSDB_COMMON_FLAGS
     "-g -pipe -O2 -W -Wall -Wno-unused-parameter -fPIC -fno-builtin-memcmp -fno-omit-frame-pointer"
 )
@@ -45,18 +49,29 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(CMAKE_CXX_LINK_EXECUTABLE
     "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz")
+=======
+set(ROCKSDB_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+include_directories(${ROCKSDB_INCLUDE_DIR})
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ExternalProject_Add(
   extern_rocksdb
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${ROCKSDB_PREFIX_DIR}
+<<<<<<< HEAD
   GIT_REPOSITORY "https://github.com/Thunderbrook/rocksdb"
   GIT_TAG 6.19.fb
+=======
+  GIT_REPOSITORY "https://github.com/facebook/rocksdb"
+  GIT_TAG v6.10.1
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
              -DWITH_BZ2=OFF
              -DPORTABLE=1
              -DWITH_GFLAGS=OFF
+<<<<<<< HEAD
              -DWITH_TESTS=OFF
              -DWITH_JEMALLOC=ON
              -DWITH_BENCHMARK_TOOLS=OFF
@@ -64,18 +79,31 @@ ExternalProject_Add(
              -DJeMalloc_INCLUDE_DIRS=${JEMALLOC_INCLUDE_DIR}
              -DCMAKE_CXX_FLAGS=${ROCKSDB_CMAKE_CXX_FLAGS}
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+=======
+             -DCMAKE_CXX_FLAGS=${ROCKSDB_CMAKE_CXX_FLAGS}
+             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+  #    BUILD_BYPRODUCTS ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   INSTALL_COMMAND
     mkdir -p ${ROCKSDB_INSTALL_DIR}/lib/ && cp
     ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
     && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include
     ${ROCKSDB_INSTALL_DIR}/
   BUILD_IN_SOURCE 1
+<<<<<<< HEAD
   BUILD_BYPRODUCTS ${ROCKSDB_LIBRARIES})
 
 add_library(rocksdb STATIC IMPORTED GLOBAL)
 
 add_dependencies(extern_rocksdb snappy)
 add_dependencies(extern_rocksdb extern_jemalloc)
+=======
+  BYPRODUCTS ${ROCKSDB_LIBRARIES})
+
+add_dependencies(extern_rocksdb snappy)
+
+add_library(rocksdb STATIC IMPORTED GLOBAL)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 set_property(TARGET rocksdb PROPERTY IMPORTED_LOCATION ${ROCKSDB_LIBRARIES})
 add_dependencies(rocksdb extern_rocksdb)
 

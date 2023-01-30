@@ -36,6 +36,11 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class SetValue : public framework::OperatorWithKernel {
  public:
   SetValue(const std::string &type,
@@ -45,6 +50,7 @@ class SetValue : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
@@ -63,6 +69,24 @@ class SetValue : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StepsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -70,6 +94,7 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     // Input
+<<<<<<< HEAD
     AddInput("Input", "(phi::DenseTensor) Input tensor of set_value operator.");
     AddInput("ValueTensor",
              "(phi::DenseTensor) Value tensor of set_value operator.")
@@ -77,21 +102,36 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("StartsTensorList",
              "(vector<phi::DenseTensor<int32>>, optional) If provided, "
              "set_value will "
+=======
+    AddInput("Input", "(Tensor) Input tensor of set_value operator.");
+    AddInput("ValueTensor", "(Tensor) Value tensor of set_value operator.")
+        .AsDispensable();
+    AddInput("StartsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "use this. The shape of the tensor in vector must be [1]."
              "It has higher priority compare with attr(starts).")
         .AsDuplicable()
         .AsDispensable();
     AddInput("EndsTensorList",
+<<<<<<< HEAD
              "(vector<phi::DenseTensor<int32>>, optional) If provided, "
              "set_value will "
+=======
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "use this. The shape of the tensor in vector must BE [1]."
              "It has higher priority compare with attr(ends).")
         .AsDuplicable()
         .AsDispensable();
 
     AddInput("StepsTensorList",
+<<<<<<< HEAD
              "(vector<phi::DenseTensor<int32>>, optional) If provided, "
              "set_value will "
+=======
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "use this. The shape of the tensor in vector must BE [1]."
              "It has higher priority compare with attr(steps).")
         .AsDuplicable()
@@ -99,9 +139,14 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
 
     // Output
     AddOutput("Out",
+<<<<<<< HEAD
               "(phi::DenseTensor) Output tensor of set_value operator. The "
               "output is the "
               "same phi::DenseTensor as input");
+=======
+              "(Tensor) Output tensor of set_value operator. The output is the "
+              "same Tensor as input");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // Attr
     AddAttr<int>("dtype", "data type of input.")
@@ -147,7 +192,11 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
         .SetDefault({});
     AddComment(R"DOC(SetValue operator.
+<<<<<<< HEAD
 Assignment to a phi::DenseTensor in static graph mode.
+=======
+Assignment to a Tensor in static mode.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
   }
 };
@@ -216,6 +265,7 @@ class SetValueGrad : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto in_tensor = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -235,6 +285,25 @@ class SetValueGrad : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto in_tensor = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   in_tensor->place());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StepsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

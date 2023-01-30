@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import paddle
@@ -22,10 +26,15 @@ paddle.enable_static()
 
 
 class TestCollectiveAllgatherAPI(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_allgather_cncl_fp16(self):
+<<<<<<< HEAD
         self.check_with_place(
             "collective_allgather_api.py", "allgather", "float16"
         )
@@ -39,6 +48,18 @@ class TestCollectiveAllgatherAPI(TestDistBase):
         self.check_with_place(
             "collective_allgather_api.py", "allgather", "int32"
         )
+=======
+        self.check_with_place("collective_allgather_api.py", "allgather",
+                              "float16")
+
+    def test_allgather_cncl_fp32(self):
+        self.check_with_place("collective_allgather_api.py", "allgather",
+                              "float32")
+
+    def test_allgather_cncl_int32(self):
+        self.check_with_place("collective_allgather_api.py", "allgather",
+                              "int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

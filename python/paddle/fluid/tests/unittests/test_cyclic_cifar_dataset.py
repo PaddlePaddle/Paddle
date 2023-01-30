@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
 
 
 class TestCifar10(unittest.TestCase):
+=======
+import paddle
+import unittest
+
+
+class TestCifar10(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         reader = paddle.dataset.cifar.train10(cycle=False)
         sample_num = 0
@@ -28,11 +37,19 @@ class TestCifar10(unittest.TestCase):
         read_num = 0
         for data in cyclic_reader():
             read_num += 1
+<<<<<<< HEAD
             self.assertEqual(len(data), 2)
             if read_num == sample_num * 2:
                 break
 
         self.assertEqual(read_num, sample_num * 2)
+=======
+            self.assertEquals(len(data), 2)
+            if read_num == sample_num * 2:
+                break
+
+        self.assertEquals(read_num, sample_num * 2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

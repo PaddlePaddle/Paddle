@@ -14,12 +14,21 @@
 
 #include "paddle/fluid/operators/bilateral_slice_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
+=======
+using framework::Tensor;
+using DataLayout = framework::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 __device__ T DiffAbs(T x) {
@@ -130,10 +139,17 @@ template <typename T>
 class BilateralSliceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* grid = ctx.Input<phi::DenseTensor>("Grid");
     auto* guide = ctx.Input<phi::DenseTensor>("Guide");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* grid = ctx.Input<Tensor>("Grid");
+    auto* guide = ctx.Input<Tensor>("Guide");
+    auto* output = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto* output_data = output->mutable_data<T>(ctx.GetPlace());
     auto* grid_data = grid->data<T>();
@@ -446,6 +462,7 @@ template <typename T>
 class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* guide = ctx.Input<phi::DenseTensor>("Guide");
     auto* grid = ctx.Input<phi::DenseTensor>("Grid");
@@ -457,6 +474,15 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Guide"));
     auto* output_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* guide = ctx.Input<Tensor>("Guide");
+    auto* grid = ctx.Input<Tensor>("Grid");
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* grid_grad = ctx.Output<Tensor>(framework::GradVarName("Grid"));
+    auto* guide_grad = ctx.Output<Tensor>(framework::GradVarName("Guide"));
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const T* input_data = input->data<T>();
     const T* guide_data = guide->data<T>();

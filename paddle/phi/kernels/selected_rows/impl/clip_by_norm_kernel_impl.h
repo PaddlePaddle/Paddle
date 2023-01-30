@@ -14,11 +14,18 @@
 
 #pragma once
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/kernels/clip_by_norm_kernel.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/selected_rows/clip_by_norm_kernel.h"
 
 namespace phi {
@@ -30,7 +37,11 @@ void ClipByNormKernel(const Context& dev_ctx,
                       float max_norm,
                       SelectedRows* out) {
   phi::SelectedRows merged_input;
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+=======
+  paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   merge_func(dev_ctx, x, &merged_input);
   auto input = &(merged_input.value());
   out->set_rows(merged_input.rows());

@@ -14,6 +14,7 @@
 
 # TODO: define statistical functions of a tensor
 
+<<<<<<< HEAD
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import in_dygraph_mode
@@ -23,6 +24,23 @@ from ..framework import LayerHelper, core
 from ..static import Variable
 from .math import _get_reduce_axis_with_tensor
 from .search import where
+=======
+import numpy as np
+from ..static import Variable
+from ..framework import LayerHelper
+from ..framework import core
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from .search import where
+from ..fluid.data_feeder import (
+    convert_dtype,
+    check_variable_and_dtype,
+    check_type,
+    check_dtype,
+)
+from ..fluid.layers import utils
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -79,6 +97,7 @@ def mean(x, axis=None, keepdim=False, name=None):
             out4 = paddle.mean(x, axis=[0, 2])
             # [ 8.5 12.5 16.5]
     """
+<<<<<<< HEAD
     if in_dygraph_mode():
         return _C_ops.mean(x, axis, keepdim)
     else:
@@ -112,6 +131,59 @@ def mean(x, axis=None, keepdim=False, name=None):
             attrs=attrs,
         )
         return out
+=======
+
+    if isinstance(axis, Variable):
+        reduce_all = True if axis.shape[0] == len(x.shape) else False
+    else:
+        if isinstance(axis, int):
+            axis = [axis]
+        reduce_all = (
+            True
+            if axis is None or len(axis) == 0 or len(axis) == len(x.shape)
+            else False
+        )
+        if axis is None or len(axis) == 0:
+            axis = [0]
+
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = list(range(len(x.shape)))
+        return _C_ops.mean(x, axis, keepdim)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.reduce_mean(
+            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+        )
+
+    check_variable_and_dtype(
+        x,
+        'x/input',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'mean/reduce_mean',
+    )
+    check_type(
+        axis, 'axis/dim', (int, list, tuple, Variable), 'mean/reduce_mean'
+    )
+    if isinstance(axis, (list, tuple)):
+        for item in axis:
+            check_type(
+                item,
+                'elements of axis/dim',
+                (int, Variable),
+                'mean/reduce_mean',
+            )
+
+    helper = LayerHelper('mean', **locals())
+
+    if not isinstance(axis, Variable) and utils._contain_var(axis):
+        axis = utils._convert_to_tensor_list(axis)
+    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='reduce_mean', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
+    )
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def var(x, axis=None, unbiased=True, keepdim=False, name=None):
@@ -144,7 +216,11 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
+<<<<<<< HEAD
     if not in_dygraph_mode():
+=======
+    if not paddle.in_dynamic_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
 
     u = mean(x, axis, True, name)
@@ -156,9 +232,14 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     )
     n = n.astype(dtype)
     if unbiased:
+<<<<<<< HEAD
         one_const = paddle.ones([], x.dtype)
         n = where(n > one_const, n - 1.0, one_const)
     n.stop_gradient = True
+=======
+        one_const = paddle.ones([1], x.dtype)
+        n = where(n > one_const, n - 1.0, one_const)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out /= n
     return out
 
@@ -204,6 +285,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
             out1 = paddle.std(x)
             # [1.63299316]
+<<<<<<< HEAD
             out2 = paddle.std(x, unbiased=False)
             # [1.49071205]
             out3 = paddle.std(x, axis=1)
@@ -211,6 +293,12 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 
     """
     if not in_dygraph_mode():
+=======
+            out2 = paddle.std(x, axis=1)
+            # [1.       2.081666]
+    """
+    if not paddle.in_dynamic_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
 
     out = var(**locals())
@@ -219,7 +307,11 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 
 def numel(x, name=None):
     """
+<<<<<<< HEAD
     Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static graph mode
+=======
+    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static mode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     or a scalar value in imperative mode.
 
     Args:
@@ -241,6 +333,7 @@ def numel(x, name=None):
 
     """
     if in_dygraph_mode():
+<<<<<<< HEAD
         return _C_ops.numel(x)
     else:
         if not isinstance(x, Variable):
@@ -251,6 +344,20 @@ def numel(x, name=None):
         )
         helper.append_op(type='size', inputs={'Input': x}, outputs={'Out': out})
         return out
+=======
+        return _C_ops.size(x)
+    elif _in_legacy_dygraph():
+        return _legacy_C_ops.size(x)
+
+    if not isinstance(x, Variable):
+        raise TypeError("x must be a Tensor in numel")
+    helper = LayerHelper('numel', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.INT64
+    )
+    helper.append_op(type='size', inputs={'Input': x}, outputs={'Out': out})
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def nanmedian(x, axis=None, keepdim=True, name=None):
@@ -328,11 +435,16 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     if len(axis) != len(set(axis)):
         raise ValueError("Axis has duplicated elements.")
 
+<<<<<<< HEAD
     if in_dygraph_mode():
+=======
+    if _in_legacy_dygraph():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         median_index, out = _legacy_C_ops.nanmedian(
             x, 'axis', axis, 'keepdim', keepdim
         )
         return out
+<<<<<<< HEAD
     else:
         check_variable_and_dtype(
             x,
@@ -352,6 +464,24 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             attrs=attrs,
         )
         return out
+=======
+
+    check_variable_and_dtype(
+        x, 'X', ['int32', 'int64', 'float16', 'float32', 'float64'], 'nanmedian'
+    )
+
+    helper = LayerHelper('nanmedian', **locals())
+    attrs = {'axis': axis, 'keepdim': keepdim}
+    out = helper.create_variable_for_type_inference(x.dtype)
+    medians = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='nanmedian',
+        inputs={'X': x},
+        outputs={'Out': out, 'MedianIndex': medians},
+        attrs=attrs,
+    )
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def median(x, axis=None, keepdim=False, name=None):
@@ -405,10 +535,13 @@ def median(x, axis=None, keepdim=False, name=None):
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
+<<<<<<< HEAD
 
     if len(x.shape) == 0:
         return x.clone()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     is_flatten = axis is None
     dims = len(x.shape)
     if is_flatten:
@@ -501,6 +634,11 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         out_shape = [1] * dims
     else:
         if isinstance(axis, list):
+<<<<<<< HEAD
+=======
+            if len(axis) <= 0:
+                raise ValueError("axis should not be empty")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             axis_src, axis_dst = [], []
             for axis_single in axis:
                 if not isinstance(axis_single, int) or not (
@@ -513,6 +651,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
                     axis_single = axis_single + dims
                 axis_src.append(axis_single)
                 out_shape[axis_single] = 1
+<<<<<<< HEAD
 
             axis_dst = list(range(-len(axis), 0))
             x = paddle.moveaxis(x, axis_src, axis_dst)
@@ -522,6 +661,12 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
             else:
                 x = paddle.flatten(x, axis_dst[0], axis_dst[-1])
                 axis = axis_dst[0]
+=======
+            axis_dst = list(range(-len(axis), 0))
+            x = paddle.moveaxis(x, axis_src, axis_dst)
+            x = paddle.flatten(x, axis_dst[0], axis_dst[-1])
+            axis = axis_dst[0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
                 raise ValueError(
@@ -541,7 +686,11 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for q_num in q:
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
+<<<<<<< HEAD
         if in_dygraph_mode():
+=======
+        if paddle.in_dynamic_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))

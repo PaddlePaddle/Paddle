@@ -32,7 +32,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
 #include "paddle/fluid/imperative/type_defs.h"
+<<<<<<< HEAD
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -47,7 +50,10 @@ enum OpInfoFillType {
   kInplaceOpInference = 5,
   kNoNeedBufferVarsInference = 6,
   kGradOpBaseMaker = 7,
+<<<<<<< HEAD
   kGradCompOpDescMaker = 8,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   kUnknown = -1
 };
 
@@ -63,7 +69,10 @@ using OpRegistryClasses = std::tuple<                                // NOLINT
     TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,       // NOLINT
     TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                 // NOLINT
     TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,     // NOLINT
+<<<<<<< HEAD
     TypePair<prim::GradCompositeOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TypePair<VarTypeInference, kVarTypeInference>,                   // NOLINT
     TypePair<InferShapeBase, kShapeInference>,                       // NOLINT
     TypePair<InplaceOpInference, kInplaceOpInference>,               // NOLINT
@@ -256,6 +265,7 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
 };
 
 template <typename T>
+<<<<<<< HEAD
 struct OpInfoFiller<T, kGradCompOpDescMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(
@@ -280,6 +290,8 @@ struct OpInfoFiller<T, kGradCompOpDescMaker> {
 };
 
 template <typename T>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct OpInfoFiller<T, kGradOpBaseMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(

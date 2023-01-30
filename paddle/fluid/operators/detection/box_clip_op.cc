@@ -66,15 +66,25 @@ class BoxClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
+<<<<<<< HEAD
              "(phi::DenseTensor) "
              "Input is a phi::DenseTensor with shape [..., 4] holds 4 points"
+=======
+             "(LoDTensor) "
+             "Input is a LoDTensor with shape [..., 4] holds 4 points"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "in last dimension in format [xmin, ymin, xmax, ymax]");
     AddInput("ImInfo",
              "(Tensor) Information for image reshape is in shape (N, 3), "
              "in format (height, width, im_scale)");
     AddOutput("Output",
+<<<<<<< HEAD
               "(phi::DenseTensor) "
               "Output is a phi::DenseTensor with the same shape as Input"
+=======
+              "(LoDTensor) "
+              "Output is a LoDTensor with the same shape as Input"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "and it is the result after clip");
     AddComment(R"DOC(
 This operator clips input boxes to original input images.
@@ -82,14 +92,22 @@ This operator clips input boxes to original input images.
 For each input box, The formula is given as follows:
 
        $$xmin = \max(\min(xmin, im_w - 1), 0)$$
+<<<<<<< HEAD
        $$ymin = \max(\min(ymin, im_h - 1), 0)$$
+=======
+       $$ymin = \max(\min(ymin, im_h - 1), 0)$$     
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
        $$xmax = \max(\min(xmax, im_w - 1), 0)$$
        $$ymax = \max(\min(ymax, im_h - 1), 0)$$
 
 where im_w and im_h are computed from ImInfo, the formula is given as follows:
 
        $$im_w = \round(width / im_scale)$$
+<<<<<<< HEAD
        $$im_h = \round(height / im_scale)$$
+=======
+       $$im_h = \round(height / im_scale)$$ 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
   }
 };

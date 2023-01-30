@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -28,6 +29,25 @@ def ref_selu(
     scale=1.0507009873554804934193349852946,
     alpha=1.6732632423543772848170429916717,
 ):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import six
+import paddle.fluid.core as core
+from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+import paddle.nn as nn
+import paddle.nn.functional as F
+from paddle.fluid import compiler, Program, program_guard
+
+
+def ref_selu(x,
+             scale=1.0507009873554804934193349852946,
+             alpha=1.6732632423543772848170429916717):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out = np.copy(x)
     out_flat = out.flatten()
     for i in range(out_flat.size):
@@ -39,6 +59,10 @@ def ref_selu(
 
 
 class SeluTest(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "selu"
         self.python_api = paddle.nn.functional.selu
@@ -88,11 +112,16 @@ class TestSeluAPI(unittest.TestCase):
         # Since zero point in selu is not differentiable, avoid randomize
         # zero.
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
+<<<<<<< HEAD
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -120,7 +149,11 @@ class TestSeluAPI(unittest.TestCase):
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+<<<<<<< HEAD
             out = F.selu(x, self.scale, self.alpha)
+=======
+            out = fluid.layers.selu(x, self.scale, self.alpha)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_selu(self.x_np, self.scale, self.alpha)
@@ -131,6 +164,7 @@ class TestSeluAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.selu, 1)
             # The input dtype must be float16, float32, float64.
+<<<<<<< HEAD
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
@@ -139,13 +173,29 @@ class TestSeluAPI(unittest.TestCase):
             x_fp32 = paddle.fluid.data(
                 name='x_fp32', shape=[12, 10], dtype='float32'
             )
+=======
+            x_int32 = paddle.fluid.data(name='x_int32',
+                                        shape=[12, 10],
+                                        dtype='int32')
+            self.assertRaises(TypeError, F.selu, x_int32)
+            # The scale must be greater than 1.0
+            x_fp32 = paddle.fluid.data(name='x_fp32',
+                                       shape=[12, 10],
+                                       dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(ValueError, F.selu, x_fp32, -1.0)
             # The alpha must be no less than 0
             self.assertRaises(ValueError, F.selu, x_fp32, 1.6, -1.0)
             # support the input dtype is float16
+<<<<<<< HEAD
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
             )
+=======
+            x_fp16 = paddle.fluid.data(name='x_fp16',
+                                       shape=[12, 10],
+                                       dtype='float16')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             F.selu(x_fp16)
 
 

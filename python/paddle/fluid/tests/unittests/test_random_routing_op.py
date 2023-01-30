@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,21 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.distributed.models.moe import utils
+=======
+from __future__ import print_function
+
+import op_test
+import numpy as np
+import unittest
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.backward import append_backward
+from paddle.distributed.models.moe import utils
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def random_routing(topk_idx, topk_value, prob, topk=2):
@@ -33,16 +49,24 @@ def random_routing(topk_idx, topk_value, prob, topk=2):
         raise RuntimeError("only topk=2 is supported now")
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNumberCountAPIFp32(unittest.TestCase):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestNumberCountAPIFp32(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.dtype = "float32"
         self.init()
 
     def init(self):
         self.upper_range = 8
+<<<<<<< HEAD
         self.x = np.random.randint(-1, self.upper_range, size=(200, 2)).astype(
             'int64'
         )
@@ -54,6 +78,17 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         self.place = paddle.CUDAPlace(0)
 
     def test_api_dygraph(self):
+=======
+        self.x = np.random.randint(-1, self.upper_range,
+                                   size=(200, 2)).astype('int64')
+        self.prob = np.random.random((self.x.shape[0], )).astype(self.dtype)
+        self.topk_value = np.random.random(self.x.shape).astype(self.dtype)
+        self.out = random_routing(self.x, self.topk_value,
+                                  self.prob).astype(self.dtype)
+        self.place = paddle.CUDAPlace(0)
+
+    def func_api_dygraph(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         value = paddle.to_tensor(self.topk_value)
@@ -61,11 +96,24 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         out = utils._random_routing(x, value, prob)
         assert np.allclose(out.numpy(), self.out)
 
+<<<<<<< HEAD
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNumberCountAPIFp16(TestNumberCountAPIFp32):
+=======
+    def test_api_dygraph(self):
+        with _test_eager_guard():
+            self.func_api_dygraph()
+        self.func_api_dygraph()
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestNumberCountAPIFp16(TestNumberCountAPIFp32):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.dtype = "float16"
         self.init()

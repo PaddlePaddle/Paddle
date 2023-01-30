@@ -16,6 +16,10 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
+<<<<<<< HEAD
+=======
+#include <unordered_map>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #include "glog/logging.h"
 #include "paddle/phi/api/ext/exception.h"
@@ -53,8 +57,12 @@ std::string Place::DebugString() const {
   std::ostringstream os;
   os << "Place(";
   if (alloc_type_ == AllocationType::CUSTOM) {
+<<<<<<< HEAD
     os << phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
         device_type_id_);
+=======
+    os << GetGlobalDeviceType(device_type_id_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     os << AllocationTypeStr(alloc_type_);
   }
@@ -85,6 +93,7 @@ Place GetPinnedPlace(const Place &place) {
   }
 }
 
+<<<<<<< HEAD
 CustomRegisteredDeviceMap &CustomRegisteredDeviceMap::Instance() {
   static CustomRegisteredDeviceMap g_custom_registered_device_map;
   return g_custom_registered_device_map;
@@ -108,6 +117,27 @@ std::string CustomRegisteredDeviceMap::GetGlobalDeviceType(
       registered_device_type_.end())
     return "";
   return registered_device_type_[device_type_id];
+=======
+static std::unordered_map<std::string, size_t> global_registered_device_type_id;
+static std::unordered_map<size_t, std::string> global_registered_device_type;
+
+size_t GetOrRegisterGlobalDeviceTypeId(const std::string &device_type) {
+  if (device_type.empty()) return 0;
+  if (global_registered_device_type_id.find(device_type) ==
+      global_registered_device_type_id.end()) {
+    size_t device_type_id = global_registered_device_type_id.size() + 1;
+    global_registered_device_type_id[device_type] = device_type_id;
+    global_registered_device_type[device_type_id] = device_type;
+  }
+  return global_registered_device_type_id[device_type];
+}
+
+std::string GetGlobalDeviceType(size_t device_type_id) {
+  if (global_registered_device_type.find(device_type_id) ==
+      global_registered_device_type.end())
+    return "";
+  return global_registered_device_type[device_type_id];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 constexpr static int kAllocationTypeBitLength = 8;
@@ -147,9 +177,13 @@ static int8_t GetCorrectDeviceIdByPlaceType(
 Place::Place(paddle::PlaceType type)
     : device(detail::GetCorrectDeviceIdByPlaceType(type)),
       alloc_type_(static_cast<AllocationType>(type)),
+<<<<<<< HEAD
       device_type_id_(
           CustomRegisteredDeviceMap::Instance().GetOrRegisterGlobalDeviceTypeId(
               "")) {
+=======
+      device_type_id_(GetOrRegisterGlobalDeviceTypeId("")) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   LOG_FIRST_N(WARNING, 1)
       << "The `paddle::PlaceType::kCPU/kGPU` is deprecated since version "
          "2.3, and will be removed in version 2.4! Please use "

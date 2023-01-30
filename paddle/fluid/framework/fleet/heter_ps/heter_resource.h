@@ -97,6 +97,7 @@ using DevPlace = platform::XPUPlace;
 using AnyDeviceGuard = platform::XPUDeviceGuard;
 #endif
 
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_CUDA)
 class GpuRDMAChecker {
  public:
@@ -125,6 +126,8 @@ class GpuRDMAChecker {
 };
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class HeterPsResource {
  public:
   explicit HeterPsResource(const std::vector<int>& dev_ids);
@@ -142,17 +145,23 @@ class HeterPsResource {
   ppStream local_stream(int dev_num, int stream_num);
   ppStream remote_stream(int dev_num, int stream_num);
   ppStream comm_stream(int dev_num, int stream_num);
+<<<<<<< HEAD
   // node
   bool multi_node(void) { return multi_node_; }
   void set_multi_node(bool multi_node) { multi_node_ = multi_node; }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<std::shared_ptr<DevResource>> resources_;
   std::vector<int> dev_ids_;
   std::map<int, int> devid_2_index_;
   int multi_mf_dim_{0};
   int max_mf_dim_{0};
+<<<<<<< HEAD
   // multi node
   bool multi_node_ = false;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // end namespace framework

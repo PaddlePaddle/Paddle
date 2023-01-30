@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 
 import numpy as np
 
 import paddle
 from paddle.framework import core
+=======
+import numpy as np
+import copy
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # Use to store the previous and current process mesh
 _g_previous_process_mesh = None
@@ -42,6 +48,7 @@ def reset_current_process_mesh():
     _g_current_process_mesh = _g_previous_process_mesh
 
 
+<<<<<<< HEAD
 class ProcessMesh(core.ProcessMesh):
     """
     The `ProcessMesh` object describes the Cartesian topology of the used processes.
@@ -52,14 +59,33 @@ class ProcessMesh(core.ProcessMesh):
         dim_names (list, optional): the i-th element of this list gives the name of the
             i-th dimension of the mesh.
 
+=======
+class ProcessMesh(object):
+    """
+    The `Processmesh` object describes the topology of the used processes. 
+
+    Args:
+        mesh (list|numpy.array): an n-dimensional array describes the toplogy
+            of the processes.
+        dim_names (list, optional): the i-th element of this list gives the name of the
+            i-th dimension of the mesh.
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
         .. code-block:: python
 
             import paddle
+<<<<<<< HEAD
 
             mesh = auto.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
             assert mesh.shape == [2, 3]
             assert mesh.process_ids == [2, 4, 5, 0, 1, 3]
+=======
+            
+            mesh = auto.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+            assert mesh.shape == [2, 3]
+            assert mesh.processe_ids == [2, 4, 5, 0, 1, 3]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
 
@@ -71,6 +97,7 @@ class ProcessMesh(core.ProcessMesh):
             assert process_ids is not None
             mesh = np.array(process_ids).reshape(shape)
 
+<<<<<<< HEAD
         if not isinstance(mesh, list) and not isinstance(mesh, np.ndarray):
             raise ValueError(
                 'The mesh must be an instance of list or np.ndarray.'
@@ -81,10 +108,20 @@ class ProcessMesh(core.ProcessMesh):
         if dim_names is not None and not isinstance(dim_names, list):
             raise ValueError('The dim_names must be an instance of list.')
 
+=======
+        if not isinstance(mesh, list) and \
+           not isinstance(mesh, np.ndarray):
+            raise ValueError(
+                'The mesh must be an instance of list or np.ndarray.')
+        if isinstance(mesh, list):
+            mesh = np.array(mesh)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._mesh = mesh
         self._shape = list(self._mesh.shape)
         self._process_ids = self._mesh.flatten().tolist()
 
+<<<<<<< HEAD
         assert all(
             isinstance(p, int) for p in self._process_ids
         ), "All elements of the mesh must be integer"
@@ -100,10 +137,24 @@ class ProcessMesh(core.ProcessMesh):
             assert len(dim_names) == len(
                 self._shape
             ), "The length of dims_names must be same as the shape of the mesh."
+=======
+        assert all(isinstance(p, int) for p in self._process_ids), \
+            ("All elements of the mesh must be integer")
+        assert min(
+            self._process_ids) >= 0, ('All elements of the mesh must be >= 0.')
+        unique_process_ids = set(self._process_ids)
+        assert len(unique_process_ids) == len(
+            self._process_ids), ('All elements of the mesh must be unique.')
+
+        if dim_names is not None:
+            assert len(dim_names) == len(self._shape), \
+                ("The length of dims_names must be same as the shape of the mesh.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self._dim_names = copy.deepcopy(dim_names)
         else:
             self._dim_names = ["d" + str(i) for i in range(len(self._shape))]
         unique_dim_names = set(self._dim_names)
+<<<<<<< HEAD
         assert len(unique_dim_names) == len(
             self._dim_names
         ), 'All dim_names {} must be unique.'.format(dim_names)
@@ -116,13 +167,53 @@ class ProcessMesh(core.ProcessMesh):
         # Store all process meshes
         from .dist_context import get_default_distributed_context
 
+=======
+        assert len(unique_dim_names) == len(self._dim_names), (
+            'All dim_names {} must be unique.'.format(dim_names))
+
+        # Store all process meshes
+        from .dist_context import get_default_distributed_context
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         default_dist_cxt = get_default_distributed_context()
         default_dist_cxt.add_process_mesh(self)
         # Add new processes to process group 0
         from .process_group import get_process_group
+<<<<<<< HEAD
 
         pg0 = get_process_group(0)
         pg0.add_ranks(self.process_ids)
+=======
+        pg0 = get_process_group(0)
+        pg0.add_ranks(self.processes)
+
+    @property
+    def shape(self):
+        """
+        Get the shape of this ProcessMesh.
+        """
+        return self._shape
+
+    @property
+    def process_ids(self):
+        """
+        Get the process ids belonging to this ProcessMesh.
+        """
+        return self._process_ids
+
+    @property
+    def dim_names(self):
+        """
+        Get the dimension names of this ProcessMesh.
+        """
+        return self._dim_names
+
+    @property
+    def ndim(self):
+        """
+        Get the number of dimension of this ProcessMesh.
+        """
+        return len(self._shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def mesh(self):
@@ -131,6 +222,17 @@ class ProcessMesh(core.ProcessMesh):
         """
         return self._mesh
 
+<<<<<<< HEAD
+=======
+    @property
+    def topology(self):
+        return self._shape
+
+    @property
+    def processes(self):
+        return self._process_ids
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __getitem__(self, index):
         if isinstance(index, tuple):
             new_dim_names = []
@@ -157,31 +259,51 @@ class ProcessMesh(core.ProcessMesh):
 
     def __enter__(self):
         set_current_process_mesh(self)
+<<<<<<< HEAD
         default_prog = paddle.static.default_main_program()
+=======
+        default_prog = paddle.fluid.default_main_program()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         cur_block = default_prog.current_block()
         self._old_var_names = list(cur_block.vars.keys())
         self._old_op_size = len(cur_block.ops)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
+<<<<<<< HEAD
         from .dist_op import DistributedOperator
         from .dist_tensor import DistributedTensor
 
         default_prog = paddle.static.default_main_program()
+=======
+        from .dist_tensor import DistributedTensor
+        from .dist_op import DistributedOperator
+        default_prog = paddle.fluid.default_main_program()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         cur_block = default_prog.current_block()
         new_var_names = list(cur_block.vars.keys())
         new_op_size = len(cur_block.ops)
         from .dist_context import get_default_distributed_context
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         default_dist_ctx = get_default_distributed_context()
         for name in new_var_names:
             if name not in self._old_var_names:
                 tensor = cur_block.vars[name]
                 dist_tensor = default_dist_ctx.get_dist_tensor_for_program(
+<<<<<<< HEAD
                     tensor
                 )
                 if dist_tensor is None:
                     dist_tensor = DistributedTensor(cur_block.vars[name])
                     dist_tensor.dist_attr.process_mesh = self
+=======
+                    tensor)
+                if dist_tensor is None:
+                    dist_tensor = DistributedTensor(cur_block.vars[name],
+                                                    {"process_mesh": self})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     dist_tensor.dist_attr.mark_annotated("process_mesh")
                     default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
                 else:
@@ -193,8 +315,12 @@ class ProcessMesh(core.ProcessMesh):
             op = cur_block.ops[idx]
             dist_op = default_dist_ctx.get_dist_op_for_program(op)
             if dist_op is None:
+<<<<<<< HEAD
                 dist_op = DistributedOperator(op)
                 dist_op.dist_attr.process_mesh = self
+=======
+                dist_op = DistributedOperator(op, {"process_mesh": self})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 dist_op.dist_attr.mark_annotated("process_mesh")
                 default_dist_ctx.add_dist_op_for_program(dist_op)
             else:
@@ -203,6 +329,7 @@ class ProcessMesh(core.ProcessMesh):
                     dist_op.dist_attr.mark_annotated("process_mesh")
         reset_current_process_mesh()
 
+<<<<<<< HEAD
     def __deepcopy__(self, memo):
         if id(self) in memo:
             return memo[id(self)]
@@ -212,6 +339,10 @@ class ProcessMesh(core.ProcessMesh):
 
     def __eq__(self, other):
         if not isinstance(other, (ProcessMesh, core.ProcessMesh)):
+=======
+    def __eq__(self, other):
+        if not isinstance(other, ProcessMesh):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
         if self.shape != other.shape or self.process_ids != other.process_ids:
             return False
@@ -222,6 +353,7 @@ class ProcessMesh(core.ProcessMesh):
 
     def __str__(self):
         str = "shape {}, process_ids {}, dim_nams {}".format(
+<<<<<<< HEAD
             self.shape, self.process_ids, self.dim_names
         )
         return str
@@ -273,3 +405,7 @@ def merge_process_meshes(process_meshes):
     if len(merged_process_ids) != 0:
         merged_process_mesh = ProcessMesh(list(merged_process_ids))
     return merged_process_mesh
+=======
+            self.shape, self.process_ids, self.dim_names)
+        return str
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

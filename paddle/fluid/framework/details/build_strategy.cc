@@ -56,7 +56,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
 
 #ifdef PADDLE_WITH_CINN
+<<<<<<< HEAD
     if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
+=======
+    if (FLAGS_use_cinn) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // Note: This pass is used to enable cinn.
       AppendPass("build_cinn_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
@@ -187,10 +191,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
 #endif
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUDA
     AppendPassWithCheck(strategy_.fused_attention_, "fused_attention_pass");
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
     AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
                         "fuse_gemm_epilogue_pass");
@@ -523,9 +530,12 @@ USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
 USE_PASS(delete_dropout_op_x_pass);
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_attention_pass);
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_CINN
 USE_PASS(build_cinn_pass);
 #endif

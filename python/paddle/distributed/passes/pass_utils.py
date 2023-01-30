@@ -86,11 +86,19 @@ def prune_program(program, start_op_idx, end_op_idx):
 
 def split_program(program, op_indices):
     """
+<<<<<<< HEAD
     Split the program by op_indices.
 
     For examples, a program has 100 ops, and op_indices = [25, 60].
     Then the program is splitted into 3 parts, containing 25, 35 and 40
     ops respectively.
+=======
+    Split the program by op_indices. 
+
+    For examples, a program has 100 ops, and op_indices = [25, 60].
+    Then the program is splitted into 3 parts, containing 25, 35 and 40
+    ops respectively.  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     The return values are a tuple with 3 elements: the splitted program
     list, the input var names of each splitted program, and the output
@@ -108,9 +116,14 @@ def split_program(program, op_indices):
         op_indices.append(op_num)
 
     for idx in range(len(op_indices) - 1):
+<<<<<<< HEAD
         assert (
             op_indices[idx] < op_indices[idx + 1]
         ), "op_indices must be strictly sorted"
+=======
+        assert op_indices[idx] < op_indices[
+            idx + 1], "op_indices must be strictly sorted"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     splitted_programs = []
     for idx in range(len(op_indices) - 1):

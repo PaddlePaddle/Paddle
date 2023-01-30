@@ -29,9 +29,15 @@ namespace operators {
 inline std::vector<int> get_expand_shape(
     const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("Shape")) {
+<<<<<<< HEAD
     auto* shape_tensor = ctx.Input<phi::DenseTensor>("Shape");
     auto* shape_data = shape_tensor->data<int>();
     phi::DenseTensor cpu_shape_tensor;
+=======
+    auto* shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
+    auto* shape_data = shape_tensor->data<int>();
+    framework::Tensor cpu_shape_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (platform::is_gpu_place(shape_tensor->place())) {
       paddle::framework::TensorCopySync(
           *shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
@@ -64,34 +70,54 @@ inline std::vector<int> get_expand_shape(
   }
 
   auto list_expand_shapes_tensor =
+<<<<<<< HEAD
       ctx.MultiInput<phi::DenseTensor>("expand_shapes_tensor");
+=======
+      ctx.MultiInput<framework::Tensor>("expand_shapes_tensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (list_expand_shapes_tensor.size() > 0) {
     // get tensor from
     std::vector<int> vec_epxand_shape;
     for (size_t i = 0; i < list_expand_shapes_tensor.size(); ++i) {
       auto tensor = list_expand_shapes_tensor[i];
       if (platform::is_gpu_place(tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_shape.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_ASCEND_CL
       else if (platform::is_npu_place(tensor->place())) {  // NOLINT
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_shape.push_back(*temp.data<int32_t>());
       }
 #endif
 #ifdef PADDLE_WITH_XPU
       else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_shape.push_back(*temp.data<int32_t>());
       }
 #endif
 #ifdef PADDLE_WITH_MLU
       else if (platform::is_mlu_place(tensor->place())) {  // NOLINT
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_shape.push_back(*temp.data<int32_t>());
       }

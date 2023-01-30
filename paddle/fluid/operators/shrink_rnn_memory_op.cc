@@ -43,7 +43,11 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     PADDLE_ENFORCE_NOT_NULL(x_var,
                             platform::errors::NotFound(
                                 "Input(X) of ShrinkRNNMemoryOp is not found."));
+<<<<<<< HEAD
     auto &x_tensor = x_var->Get<phi::DenseTensor>();
+=======
+    auto &x_tensor = x_var->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     size_t offset = this->GetOffset(scope, place);
     auto *rank_table_var = scope.FindVar(Input("RankTable"));
     PADDLE_ENFORCE_NOT_NULL(
@@ -66,7 +70,11 @@ class ShrinkRNNMemoryOp : public ArrayOp {
         out_var,
         platform::errors::NotFound(
             "Output(Out) of ShrinkRNNMemoryOp is not found."));
+<<<<<<< HEAD
     auto &out_tensor = *out_var->GetMutable<phi::DenseTensor>();
+=======
+    auto &out_tensor = *out_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     size_t height = dst_num_rows;
 
@@ -92,6 +100,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("X", "(phi::DenseTensor) The RNN step memory to be shrank.");
     AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
     AddInput(
@@ -99,6 +108,14 @@ class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "(phi::DenseTensor) The step index. The RNN step memory 'X' will be "
         "shrank to match the size of the input of the index'th step.");
     AddOutput("Out", "(phi::DenseTensor) The shrank RNN step memory.");
+=======
+    AddInput("X", "(LoDTensor) The RNN step memory to be shrank.");
+    AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
+    AddInput("I",
+             "(LoDTensor) The step index. The RNN step memory 'X' will be "
+             "shrank to match the size of the input of the index'th step.");
+    AddOutput("Out", "(LoDTensor) The shrank RNN step memory.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddComment(R"DOC(
 This operator is used to shrink output batch of memory defined in dynamic RNN.
 
@@ -153,8 +170,13 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
         x_var,
         platform::errors::NotFound(
             "Input(x) of ShrinkRNNMemoryGradOp is not found."));
+<<<<<<< HEAD
     auto &x_tensor = x_var->Get<phi::DenseTensor>();
     auto &dx_tensor = *dx_var->GetMutable<phi::DenseTensor>();
+=======
+    auto &x_tensor = x_var->Get<framework::LoDTensor>();
+    auto &dx_tensor = *dx_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dx_tensor.Resize(x_tensor.dims());
     dx_tensor.mutable_data(x_tensor.place(), x_tensor.dtype());
 
@@ -165,7 +187,11 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     if (dout_var == nullptr) {  // dx_tensor fill zero
       phi::funcs::set_constant(dev_ctx, &dx_tensor, 0.0f);
     } else {
+<<<<<<< HEAD
       auto &dout_tensor = dout_var->Get<phi::DenseTensor>();
+=======
+      auto &dout_tensor = dout_var->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto height = dout_tensor.dims()[0];
       auto slice = dx_tensor.Slice(0, static_cast<int>(height));
       framework::TensorCopy(dout_tensor, dout_tensor.place(), dev_ctx, &slice);

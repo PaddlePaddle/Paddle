@@ -24,10 +24,13 @@ if((NOT WITH_GPU)
        "test_auto_parallel_data_parallel_optimization_pass")
 endif()
 
+<<<<<<< HEAD
 if(NOT ((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6)))
   list(REMOVE_ITEM TEST_OPS test_dist_fuse_gemm_epilogue_pass)
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
   list(APPEND DIST_TEST_OPS ${TEST_OP})

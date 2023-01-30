@@ -24,6 +24,7 @@ class GatherNdOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+<<<<<<< HEAD
     framework::OpDesc op_desc(op, nullptr);
     auto input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto index = engine_->GetITensor(op_desc.Input("Index")[0]);
@@ -42,6 +43,15 @@ class GatherNdOpConverter : public OpConverter {
 
     // Declare inputs
     std::vector<nvinfer1::ITensor*> inputs;
+=======
+    VLOG(4) << "convert a paddle gather_nd op to tensorrt gather_nd plugin";
+    framework::OpDesc op_desc(op, nullptr);
+
+    // Declare inputs
+    std::vector<nvinfer1::ITensor*> inputs;
+    auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
+    auto* index = engine_->GetITensor(op_desc.Input("Index")[0]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     inputs.emplace_back(input);
     inputs.emplace_back(index);
 
@@ -52,6 +62,10 @@ class GatherNdOpConverter : public OpConverter {
     layer = engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
 
     std::string layer_name = "gather_nd (Output: ";
+<<<<<<< HEAD
+=======
+    auto output_name = op_desc.Output("Out")[0];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
     layer_name += output_name;
@@ -59,7 +73,10 @@ class GatherNdOpConverter : public OpConverter {
       engine_->DeclareOutput(output_name);
     }
     layer->setName((layer_name + ")").c_str());
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

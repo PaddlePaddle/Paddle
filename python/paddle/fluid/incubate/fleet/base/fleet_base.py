@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import abc
 
 import paddle.fluid as fluid
@@ -21,16 +26,24 @@ from paddle.optimizer import SGD as SGD_v2
 
 from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
+<<<<<<< HEAD
 from paddle.static.amp.decorator import (
     OptimizerWithMixedPrecision,
 )
+=======
+from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from . import mode
 
 __all__ = ['Fleet', 'DistributedOptimizer']
 __all__ += mode.__all__
 
 
+<<<<<<< HEAD
 class Fleet(metaclass=abc.ABCMeta):
+=======
+class Fleet(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Fleet is the base class, transpiler and pslib are implementation of Fleet.
 
@@ -40,6 +53,10 @@ class Fleet(metaclass=abc.ABCMeta):
     Returns:
         None
     """
+<<<<<<< HEAD
+=======
+    __metaclass__ = abc.ABCMeta
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __init__(self, mode):
         self._is_initialized = False
@@ -180,7 +197,11 @@ class Fleet(metaclass=abc.ABCMeta):
         trainer_files = [[]] * trainers
         begin = 0
         for i in range(trainers):
+<<<<<<< HEAD
             trainer_files[i] = files[begin : begin + blocks[i]]
+=======
+            trainer_files[i] = files[begin:begin + blocks[i]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             begin += blocks[i]
 
         return trainer_files[trainer_id]
@@ -200,6 +221,7 @@ class Fleet(metaclass=abc.ABCMeta):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
+<<<<<<< HEAD
             from paddle.fluid.incubate.fleet.base.role_maker import (
                 RoleMakerBase as RoleMakerBaseIncubate,
             )
@@ -208,6 +230,12 @@ class Fleet(metaclass=abc.ABCMeta):
                 raise TypeError(
                     "role_maker must be an instance of RoleMakerBase"
                 )
+=======
+            from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase as RoleMakerBaseIncubate
+            if role_maker and not isinstance(role_maker, RoleMakerBaseIncubate):
+                raise TypeError(
+                    "role_maker must be an instance of RoleMakerBase")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
@@ -250,6 +278,7 @@ class Fleet(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
+<<<<<<< HEAD
     def save_inference_model(
         self,
         executor,
@@ -259,6 +288,15 @@ class Fleet(metaclass=abc.ABCMeta):
         main_program=None,
         export_for_deployment=True,
     ):
+=======
+    def save_inference_model(self,
+                             executor,
+                             dirname,
+                             feeded_var_names,
+                             target_vars,
+                             main_program=None,
+                             export_for_deployment=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         pass
 
     @abc.abstractmethod
@@ -266,7 +304,11 @@ class Fleet(metaclass=abc.ABCMeta):
         pass
 
 
+<<<<<<< HEAD
 class DistributedOptimizer(metaclass=abc.ABCMeta):
+=======
+class DistributedOptimizer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
     A user should pass a paddle.fluid.optimizer to DistributedOptimizer
@@ -284,6 +326,7 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
         None
 
     """
+<<<<<<< HEAD
 
     def __init__(self, optimizer, strategy=None):
         if (
@@ -291,12 +334,21 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
             and not isinstance(optimizer, OptimizerWithMixedPrecision)
             and not isinstance(optimizer, SGD_v2.__base__)
         ):
+=======
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, optimizer, strategy=None):
+        if not isinstance(optimizer, SGD.__bases__) \
+                and not isinstance(optimizer, OptimizerWithMixedPrecision) \
+                and not isinstance(optimizer, SGD_v2.__base__):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer
         self._strategy = strategy
 
     @abc.abstractmethod
+<<<<<<< HEAD
     def backward(
         self,
         loss,
@@ -305,6 +357,14 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
         no_grad_set=None,
         callbacks=None,
     ):
+=======
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         First part of `minimize`, do auto-diff to append backward ops for
         the current program.
@@ -351,6 +411,7 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
+<<<<<<< HEAD
     def minimize(
         self,
         losses,
@@ -359,6 +420,14 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
         parameter_list=None,
         no_grad_set=None,
     ):
+=======
+    def minimize(self,
+                 losses,
+                 scopes=None,
+                 startup_programs=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         Add operations to minimize `loss` by updating `parameter_list`.
 

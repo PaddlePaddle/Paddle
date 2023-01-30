@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import itertools
 import os
 import shutil
@@ -27,6 +28,24 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTInstanceNormTest(InferencePassTest):
+=======
+from __future__ import print_function
+
+import os
+import shutil
+import unittest
+import itertools
+import numpy as np
+from inference_pass_test import InferencePassTest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.core import PassVersionChecker
+from paddle.fluid.core import AnalysisConfig
+
+
+class TRTInstanceNormTest(InferencePassTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.bs = 4
         self.channel = 4
@@ -38,14 +57,23 @@ class TRTInstanceNormTest(InferencePassTest):
 
     def build(self):
         self.trt_parameters = InferencePassTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, self.bs, 2, self.precision, self.serialize, False
         )
+=======
+            1 << 30, self.bs, 2, self.precision, self.serialize, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         with fluid.program_guard(self.main_program, self.startup_program):
             shape = [-1, self.channel, self.height, self.width]
             data = fluid.data(name='in', shape=shape, dtype='float32')
+<<<<<<< HEAD
             instance_norm_out = nn.instance_norm(data)
             out = nn.batch_norm(instance_norm_out, is_test=True)
+=======
+            instance_norm_out = fluid.layers.instance_norm(data)
+            out = fluid.layers.batch_norm(instance_norm_out, is_test=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         shape[0] = self.bs
         self.feeds = {
@@ -63,8 +91,12 @@ class TRTInstanceNormTest(InferencePassTest):
                 atol = 2e-2
             self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
+<<<<<<< HEAD
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
             )
+=======
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def run_test(self, remove_cache=False):
         self.build()
@@ -72,6 +104,7 @@ class TRTInstanceNormTest(InferencePassTest):
 
     def run_all_tests(self):
         precision_opt = [
+<<<<<<< HEAD
             AnalysisConfig.Precision.Float32,
             AnalysisConfig.Precision.Half,
         ]
@@ -80,6 +113,14 @@ class TRTInstanceNormTest(InferencePassTest):
         for precision, serialize in itertools.product(
             precision_opt, serialize_opt
         ):
+=======
+            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+        ]
+        serialize_opt = [False, True]
+
+        for precision, serialize in itertools.product(precision_opt,
+                                                      serialize_opt):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.precision = precision
             self.serialize = serialize
             self.run_test()

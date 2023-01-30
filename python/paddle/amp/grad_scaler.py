@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import warnings
 from collections import defaultdict
 from enum import Enum
@@ -29,12 +30,20 @@ class OptimizerState(Enum):
     INIT = 0
     UNSCALED = 1
     STEPPED = 2
+=======
+from paddle.fluid.dygraph.amp import AmpScaler
+from paddle.fluid.dygraph.amp import OptimizerState
+from collections import defaultdict
+
+__all__ = []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _refresh_optimizer_state():
     return {"state": OptimizerState.INIT}
 
 
+<<<<<<< HEAD
 class AmpScaler:
     """
     AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
@@ -591,6 +600,11 @@ class AmpScaler:
 class GradScaler(AmpScaler):
     """
     GradScaler is used for Auto-Mixed-Precision training in dynamic graph mode.
+=======
+class GradScaler(AmpScaler):
+    """
+    GradScaler is used for Auto-Mixed-Precision training in dynamic graph mode. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     It controls the scaling of loss, helps avoiding numerical overflow.
     The object of this class has nineteen methods `scale()`, `unscale_()`, `minimize()`, `step()`, `update()` and `get`/`set` api of parameters.
 
@@ -601,12 +615,17 @@ class GradScaler(AmpScaler):
     `update` is used to update the loss_scaling.
 
 
+<<<<<<< HEAD
     Commonly, it is used together with `paddle.amp.auto_cast` to achieve Auto-Mixed-Precision in
+=======
+    Commonly, it is used together with `paddle.amp.auto_cast` to achieve Auto-Mixed-Precision in 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dynamic graph mode.
 
     Args:
         enable(bool, optional): Enable loss scaling or not. Default is True.
         init_loss_scaling (float, optional): The initial loss scaling factor. Default is 2**15.
+<<<<<<< HEAD
         incr_ratio(float, optional): The multiplier to use when increasing the loss
                         scaling. Default is 2.0.
         decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing
@@ -614,6 +633,15 @@ class GradScaler(AmpScaler):
         incr_every_n_steps(int, optional): Increases loss scaling every n consecutive
                                 steps with finite gradients. Default is 1000.
         decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
+=======
+        incr_ratio(float, optional): The multiplier to use when increasing the loss 
+                        scaling. Default is 2.0.
+        decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing 
+                        the loss scaling. Default is 0.5.
+        incr_every_n_steps(int, optional): Increases loss scaling every n consecutive 
+                                steps with finite gradients. Default is 1000.
+        decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                     accumulated steps with nan or inf gradients. Default is 2.
         use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
     Returns:
@@ -622,7 +650,11 @@ class GradScaler(AmpScaler):
     Examples:
 
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
 
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
@@ -633,6 +665,7 @@ class GradScaler(AmpScaler):
             with paddle.amp.auto_cast():
                 conv = model(data)
                 loss = paddle.mean(conv)
+<<<<<<< HEAD
 
             scaled = scaler.scale(loss)  # scale the loss
             scaled.backward()            # do backward
@@ -663,17 +696,50 @@ class GradScaler(AmpScaler):
     def scale(self, var):
         """
         Multiplies a Tensor by the scale factor and returns scaled outputs.
+=======
+                
+            scaled = scaler.scale(loss)  # scale the loss 
+            scaled.backward()            # do backward
+            scaler.minimize(optimizer, scaled)  # update parameters     
+            optimizer.clear_grad()
+    """
+
+    def __init__(self,
+                 enable=True,
+                 init_loss_scaling=2.**15,
+                 incr_ratio=2.0,
+                 decr_ratio=0.5,
+                 incr_every_n_steps=1000,
+                 decr_every_n_nan_or_inf=2,
+                 use_dynamic_loss_scaling=True):
+        super(GradScaler,
+              self).__init__(enable, init_loss_scaling, incr_ratio, decr_ratio,
+                             incr_every_n_steps, decr_every_n_nan_or_inf,
+                             use_dynamic_loss_scaling)
+
+    def scale(self, var):
+        """
+        Multiplies a Tensor by the scale factor and returns scaled outputs.  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
 
         Args:
             var (Tensor):  The tensor to scale.
         Returns:
             The scaled tensor or original tensor.
+<<<<<<< HEAD
 
         Examples:
 
             .. code-block:: python
 
+=======
+        
+        Examples:
+
+            .. code-block:: python
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 import paddle
 
                 model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
@@ -685,17 +751,30 @@ class GradScaler(AmpScaler):
                     conv = model(data)
                     loss = paddle.mean(conv)
 
+<<<<<<< HEAD
                 scaled = scaler.scale(loss)  # scale the loss
                 scaled.backward()            # do backward
                 scaler.minimize(optimizer, scaled)  # update parameters
                 optimizer.clear_grad()
         """
         return super().scale(var)
+=======
+                scaled = scaler.scale(loss)  # scale the loss 
+                scaled.backward()            # do backward
+                scaler.minimize(optimizer, scaled)  # update parameters  
+                optimizer.clear_grad()
+        """
+        return super(GradScaler, self).scale(var)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def minimize(self, optimizer, *args, **kwargs):
         """
         This function is similar as `optimizer.minimize()`, which performs parameters updating.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
         Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
@@ -721,17 +800,30 @@ class GradScaler(AmpScaler):
                     conv = model(data)
                     loss = paddle.mean(conv)
 
+<<<<<<< HEAD
                 scaled = scaler.scale(loss)  # scale the loss
                 scaled.backward()            # do backward
                 scaler.minimize(optimizer, scaled)  # update parameters
                 optimizer.clear_grad()
         """
         return super().minimize(optimizer, *args, **kwargs)
+=======
+                scaled = scaler.scale(loss)  # scale the loss 
+                scaled.backward()            # do backward
+                scaler.minimize(optimizer, scaled)  # update parameters  
+                optimizer.clear_grad()
+        """
+        return super(GradScaler, self).minimize(optimizer, *args, **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def step(self, optimizer):
         """
         This function is similar as `optimizer.step()`, which performs parameters updating.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
         Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
@@ -741,7 +833,11 @@ class GradScaler(AmpScaler):
         Examples:
 
             .. code-block:: python
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # required: gpu
                 import paddle
 
@@ -752,7 +848,11 @@ class GradScaler(AmpScaler):
                 with paddle.amp.auto_cast():
                     conv = model(data)
                     loss = paddle.mean(conv)
+<<<<<<< HEAD
                 scaled = scaler.scale(loss)  # scale the loss
+=======
+                scaled = scaler.scale(loss)  # scale the loss 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 scaled.backward()            # do backward
                 scaler.step(optimizer)       # update parameters
                 scaler.update()              # update the loss scaling ratio
@@ -764,16 +864,28 @@ class GradScaler(AmpScaler):
         optimizer_state = self._optimizer_states[id(optimizer)]
         if optimizer_state["state"] is OptimizerState.STEPPED:
             raise RuntimeError(
+<<<<<<< HEAD
                 "step() has already been called since the last update()."
             )
+=======
+                "step() has already been called since the last update().")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         #  unscale the grad
         if optimizer_state["state"] is OptimizerState.INIT:
             self._unscale(optimizer)
 
+<<<<<<< HEAD
         optimizer._set_auxiliary_var('found_inf', self._found_inf)
         optimizer.step()
         self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
+=======
+        if self._found_inf:
+            self._cache_founf_inf = True
+        else:
+            optimizer.step()
+            self._cache_founf_inf = False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         optimizer_state["state"] = OptimizerState.STEPPED
 
@@ -783,11 +895,19 @@ class GradScaler(AmpScaler):
     def update(self):
         """
         Updates the loss_scaling.
+<<<<<<< HEAD
 
         Examples:
 
             .. code-block:: python
 
+=======
+        
+        Examples:
+
+            .. code-block:: python
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # required: gpu
                 import paddle
 
@@ -798,11 +918,19 @@ class GradScaler(AmpScaler):
                 with paddle.amp.auto_cast():
                     conv = model(data)
                     loss = paddle.mean(conv)
+<<<<<<< HEAD
                 scaled = scaler.scale(loss)     # scale the loss
                 scaled.backward()               # do backward
                 scaler.step(optimizer)          # update parameters
                 scaler.update()                 # update the loss scaling ratio
                 optimizer.clear_grad()
+=======
+                scaled = scaler.scale(loss)     # scale the loss 
+                scaled.backward()               # do backward
+                scaler.step(optimizer)          # update parameters
+                scaler.update()                 # update the loss scaling ratio
+                optimizer.clear_grad() 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         if not self._enable:
             return
@@ -813,7 +941,11 @@ class GradScaler(AmpScaler):
 
     def unscale_(self, optimizer):
         """
+<<<<<<< HEAD
         Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).
+=======
+        Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
 
         Args:
@@ -821,7 +953,11 @@ class GradScaler(AmpScaler):
 
         Returns:
             The unscaled parameters or original parameters.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
 
             .. code-block:: python
@@ -836,6 +972,7 @@ class GradScaler(AmpScaler):
                 with paddle.amp.auto_cast():
                     conv = model(data)
                     loss = paddle.mean(conv)
+<<<<<<< HEAD
                 scaled = scaler.scale(loss)  # scale the loss
                 scaled.backward()            # do backward
                 scaler.unscale_(optimizer)    # unscale the parameter
@@ -844,6 +981,16 @@ class GradScaler(AmpScaler):
                 optimizer.clear_grad()
         """
         return super()._unscale(optimizer)
+=======
+                scaled = scaler.scale(loss)  # scale the loss 
+                scaled.backward()            # do backward
+                scaler.unscale_(optimizer)    # unscale the parameter
+                scaler.step(optimizer)
+                scaler.update()  
+                optimizer.clear_grad() 
+        """
+        return super(GradScaler, self)._unscale(optimizer)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def is_enable(self):
         """
@@ -851,7 +998,11 @@ class GradScaler(AmpScaler):
 
         Returns:
             bool: enable loss scaling return True else return False.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -867,7 +1018,11 @@ class GradScaler(AmpScaler):
                 enable = scaler.is_enable()
                 print(enable) # True
         """
+<<<<<<< HEAD
         return super().is_enable()
+=======
+        return super(GradScaler, self).is_enable()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def is_use_dynamic_loss_scaling(self):
         """
@@ -875,11 +1030,19 @@ class GradScaler(AmpScaler):
 
         Returns:
             bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamicly return true.
+<<<<<<< HEAD
 
         Examples:
             .. code-block:: python
 
                 # required: gpu,xpu
+=======
+        
+        Examples:
+            .. code-block:: python
+
+                # required: gpu,xpu         
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -891,7 +1054,11 @@ class GradScaler(AmpScaler):
                 use_dynamic_loss_scaling = scaler.is_use_dynamic_loss_scaling()
                 print(use_dynamic_loss_scaling) # True
         """
+<<<<<<< HEAD
         return super().is_use_dynamic_loss_scaling()
+=======
+        return super(GradScaler, self).is_use_dynamic_loss_scaling()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_init_loss_scaling(self):
         """
@@ -899,7 +1066,11 @@ class GradScaler(AmpScaler):
 
         Reurns:
             float:  the initial loss scaling factor.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -915,7 +1086,11 @@ class GradScaler(AmpScaler):
                 init_loss_scaling = scaler.get_init_loss_scaling()
                 print(init_loss_scaling) # 1024
         """
+<<<<<<< HEAD
         return super().get_init_loss_scaling()
+=======
+        return super(GradScaler, self).get_init_loss_scaling()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_init_loss_scaling(self, new_init_loss_scaling):
         """
@@ -923,10 +1098,17 @@ class GradScaler(AmpScaler):
 
         Args:
             new_init_loss_scaling(float):  The new_init_loss_scaling used to update initial loss scaling factor.
+<<<<<<< HEAD
 
         Examples:
             .. code-block:: python
 
+=======
+        
+        Examples:
+            .. code-block:: python
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
@@ -941,7 +1123,11 @@ class GradScaler(AmpScaler):
                 scaler.set_init_loss_scaling(new_init_loss_scaling)
                 print(scaler.get_init_loss_scaling()) # 1000
         """
+<<<<<<< HEAD
         super().set_init_loss_scaling(new_init_loss_scaling)
+=======
+        super(GradScaler, self).set_init_loss_scaling(new_init_loss_scaling)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_incr_ratio(self):
         """
@@ -949,7 +1135,11 @@ class GradScaler(AmpScaler):
 
         Reurns:
             float:  the multiplier to use when increasing the loss scaling.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -965,7 +1155,11 @@ class GradScaler(AmpScaler):
                 incr_ratio = scaler.get_incr_ratio()
                 print(incr_ratio) # 2.0
         """
+<<<<<<< HEAD
         return super().get_incr_ratio()
+=======
+        return super(GradScaler, self).get_incr_ratio()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_incr_ratio(self, new_incr_ratio):
         """
@@ -973,7 +1167,11 @@ class GradScaler(AmpScaler):
 
         Args:
             new_incr_ratio(float):  The new_incr_ratio used to update the multiplier to use when increasing the loss scaling.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -991,7 +1189,11 @@ class GradScaler(AmpScaler):
                 scaler.set_incr_ratio(new_incr_ratio)
                 print(scaler.get_incr_ratio()) # 3.0
         """
+<<<<<<< HEAD
         super().set_incr_ratio(new_incr_ratio)
+=======
+        super(GradScaler, self).set_incr_ratio(new_incr_ratio)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_decr_ratio(self):
         """
@@ -999,7 +1201,11 @@ class GradScaler(AmpScaler):
 
         Reurns:
             float:  the less-than-one-multiplier to use when decreasing the loss scaling.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -1015,7 +1221,11 @@ class GradScaler(AmpScaler):
                 decr_ratio = scaler.get_decr_ratio()
                 print(decr_ratio) # 0.5
         """
+<<<<<<< HEAD
         return super().get_decr_ratio()
+=======
+        return super(GradScaler, self).get_decr_ratio()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_decr_ratio(self, new_decr_ratio):
         """
@@ -1023,7 +1233,11 @@ class GradScaler(AmpScaler):
 
         Args:
             new_decr_ratio(float):  The new_decr_ratio used to update the less-than-one-multiplier to use when decreasing the loss scaling.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -1041,7 +1255,11 @@ class GradScaler(AmpScaler):
                 scaler.set_decr_ratio(new_decr_ratio)
                 print(scaler.get_decr_ratio()) # 0.1
         """
+<<<<<<< HEAD
         super().set_decr_ratio(new_decr_ratio)
+=======
+        super(GradScaler, self).set_decr_ratio(new_decr_ratio)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_incr_every_n_steps(self):
         """
@@ -1049,7 +1267,11 @@ class GradScaler(AmpScaler):
 
         Reurns:
             int:  the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -1065,7 +1287,11 @@ class GradScaler(AmpScaler):
                 incr_every_n_steps = scaler.get_incr_every_n_steps()
                 print(incr_every_n_steps) # 1000
         """
+<<<<<<< HEAD
         return super().get_incr_every_n_steps()
+=======
+        return super(GradScaler, self).get_incr_every_n_steps()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_incr_every_n_steps(self, new_incr_every_n_steps):
         """
@@ -1073,7 +1299,11 @@ class GradScaler(AmpScaler):
 
         Args:
             new_incr_every_n_steps(int):  The new_incr_every_n_steps used to update the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -1091,7 +1321,11 @@ class GradScaler(AmpScaler):
                 scaler.set_incr_every_n_steps(new_incr_every_n_steps)
                 print(scaler.get_incr_every_n_steps()) # 2000
         """
+<<<<<<< HEAD
         super().set_incr_every_n_steps(new_incr_every_n_steps)
+=======
+        super(GradScaler, self).set_incr_every_n_steps(new_incr_every_n_steps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_decr_every_n_nan_or_inf(self):
         """
@@ -1099,7 +1333,11 @@ class GradScaler(AmpScaler):
 
         Reurns:
             int:  the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -1115,7 +1353,11 @@ class GradScaler(AmpScaler):
                 decr_every_n_nan_or_inf = scaler.get_decr_every_n_nan_or_inf()
                 print(decr_every_n_nan_or_inf) # 2
         """
+<<<<<<< HEAD
         return super().get_decr_every_n_nan_or_inf()
+=======
+        return super(GradScaler, self).get_decr_every_n_nan_or_inf()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_decr_every_n_nan_or_inf(self, new_decr_every_n_nan_or_inf):
         """
@@ -1123,7 +1365,11 @@ class GradScaler(AmpScaler):
 
         Args:
             new_decr_every_n_nan_or_inf(int):  The new_decr_every_n_nan_or_inf used to update the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -1141,7 +1387,12 @@ class GradScaler(AmpScaler):
                 scaler.set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
                 print(scaler.get_decr_every_n_nan_or_inf()) # 3
         """
+<<<<<<< HEAD
         super().set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
+=======
+        super(GradScaler,
+              self).set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def state_dict(self):
         """
@@ -1158,7 +1409,11 @@ class GradScaler(AmpScaler):
             decr_count(int): The number of recent consecutive skipped steps.
             use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
 
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
 
             .. code-block:: python
@@ -1175,15 +1430,26 @@ class GradScaler(AmpScaler):
                                                use_dynamic_loss_scaling=True)
                 scaler_state = scaler.state_dict()
         """
+<<<<<<< HEAD
         return super().state_dict()
+=======
+        return super(GradScaler, self).state_dict()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def load_state_dict(self, state_dict):
         """
         Loads the scaler state.
+<<<<<<< HEAD
 
         Args:
            state_dict(dict): scaler state.  Should be an object returned from a call to `GradScaler.state_dict()`.
 
+=======
+        
+        Args:
+           state_dict(dict): scaler state.  Should be an object returned from a call to `GradScaler.state_dict()`.
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
 
             .. code-block:: python
@@ -1201,4 +1467,8 @@ class GradScaler(AmpScaler):
                 scaler_state = scaler.state_dict()
                 scaler.load_state_dict(scaler_state)
         """
+<<<<<<< HEAD
         super().load_state_dict(state_dict)
+=======
+        super(GradScaler, self).load_state_dict(state_dict)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

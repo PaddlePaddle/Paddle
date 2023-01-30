@@ -97,8 +97,13 @@ void TileGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_GE(dims,
                       1,
                       errors::InvalidArgument(
+<<<<<<< HEAD
                           "The rank of the input 'Out@GRAD' for tile_grad op "
                           "must be greater than or equal to 1, but "
+=======
+                          "Th rank of the input 'Out@GRAD' for tile_grad op "
+                          " must be greater than or equal to 1, but "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           "the value received is %d.",
                           dims));
     PADDLE_ENFORCE_LE(dims,

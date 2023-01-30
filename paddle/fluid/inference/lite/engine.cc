@@ -65,9 +65,12 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
   lite_cxx_config.set_xpu_multi_encoder_method(cfg.precision,
                                                cfg.adaptive_seqlen);
   lite_cxx_config.set_xpu_dev_per_thread(cfg.device_id);
+<<<<<<< HEAD
   if (cfg.enable_multi_stream) {
     lite_cxx_config.enable_xpu_multi_stream();
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 #ifdef LITE_SUBGRAPH_WITH_NPU
@@ -89,6 +92,7 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
         cfg.nnadapter_model_cache_buffer[i]);
   }
 #endif
+<<<<<<< HEAD
 
   if (cfg.use_opencl) {
     lite_cxx_config.set_opencl_binary_path_name(cfg.opencl_bin_path,
@@ -97,6 +101,8 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
     lite_cxx_config.set_opencl_precision(cfg.opencl_precision_type);
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // create predictor
   std::shared_ptr<paddle::lite_api::PaddlePredictor> p =
       paddle::lite_api::CreatePaddlePredictor(lite_cxx_config);

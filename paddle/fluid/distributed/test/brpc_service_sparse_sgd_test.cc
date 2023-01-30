@@ -49,9 +49,15 @@ namespace distributed = paddle::distributed;
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
+<<<<<<< HEAD
   x_var->GetMutable<phi::DenseTensor>();
   auto x_g_var = scope->Var("x@GRAD");
   x_g_var->GetMutable<phi::DenseTensor>();
+=======
+  x_var->GetMutable<framework::LoDTensor>();
+  auto x_g_var = scope->Var("x@GRAD");
+  x_g_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
@@ -59,14 +65,22 @@ void InitTensorsOnClient(framework::Scope* scope,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 
+<<<<<<< HEAD
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
+=======
+  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto g_size = rows_numel +
                 30;  // hard code here: key_num * (fea_dim + 3), show/clk/slot
+<<<<<<< HEAD
   auto x_g_var = scope->Var("x@GRAD")->GetMutable<phi::DenseTensor>();
+=======
+  auto x_g_var = scope->Var("x@GRAD")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* x_g_ptr =
       x_g_var->mutable_data<float>(framework::DDim({1, g_size}), *place);
   for (int64_t i = 0; i < g_size; ++i) x_g_ptr[i] = 1.0;
@@ -162,7 +176,11 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
+<<<<<<< HEAD
 std::string ip_ = "127.0.0.1";  // NOLINT
+=======
+std::string ip_ = "127.0.0.1";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 uint32_t port_ = 4209;
 
 std::vector<std::string> host_sign_list_;
@@ -216,7 +234,11 @@ void RunBrpcPushSparse() {
       std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
   framework::Variable* var = client_scope.FindVar("x");
+<<<<<<< HEAD
   phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   RunClient(dense_regions);
   std::vector<uint64_t> fea_keys(10);
@@ -254,7 +276,11 @@ void RunBrpcPushSparse() {
       });
 
   framework::Variable* g_var = client_scope.FindVar("x@GRAD");
+<<<<<<< HEAD
   phi::DenseTensor* g_tensor = g_var->GetMutable<phi::DenseTensor>();
+=======
+  framework::LoDTensor* g_tensor = g_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   LOG(INFO) << "Run push_sparse_grad";
   std::vector<float*> push_g_vec;

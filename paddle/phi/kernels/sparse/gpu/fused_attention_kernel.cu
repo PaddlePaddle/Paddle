@@ -72,7 +72,11 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
       out_values[row_first + idx] = -std::numeric_limits<T>::infinity();
     }
   }
+<<<<<<< HEAD
   T row_max_val = phi::funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
+=======
+  T row_max_val = phi::funcs::warpReduceMax<T>(max_val, 0xFFFFFFFF);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   T exp_sum = 0;
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
@@ -81,7 +85,11 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
     exp_sum += exp;
     out_values[row_first + idx] = exp;
   }
+<<<<<<< HEAD
   T row_exp_sum = phi::funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
+=======
+  T row_exp_sum = phi::funcs::warpReduceSum<T>(exp_sum, 0xFFFFFFFF);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     out_values[row_first + idx] = out_values[row_first + idx] / row_exp_sum;
@@ -99,7 +107,11 @@ void FusedAttentionCsrKernel(
     const paddle::optional<DenseTensor>& attn_mask,
     DenseTensor* out,
     SparseCsrTensor* softmax) {
+<<<<<<< HEAD
 #if CUDA_VERSION >= 11080
+=======
+#if CUDA_VERSION >= 11070
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /* Check Shape */
   auto q_dim = query.dims();
   auto q_rank = q_dim.size();
@@ -217,7 +229,11 @@ void FusedAttentionCsrKernel(
   PADDLE_THROW(
       phi::errors::Unimplemented("forward of 'sparse.nn.functional.attention' "
                                  "use 'cusparseCsrSetStridedBatch', which is "
+<<<<<<< HEAD
                                  "completed supported from CUDA 11.8"));
+=======
+                                 "completed supported from CUDA 11.7"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 

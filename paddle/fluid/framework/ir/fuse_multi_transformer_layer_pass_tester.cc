@@ -98,7 +98,10 @@ TEST(FuseMultiTransformerLayerPass, encoder_fp) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
   graph->Set(kFusedMultiTransformerEncoderFusionCount, new int(num_layers));
+<<<<<<< HEAD
   graph->Set("enable_int8", new bool(false));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto pass = PassRegistry::Instance().Get("fuse_multi_transformer_layer_pass");
   if (pass.get() == nullptr)

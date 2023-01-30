@@ -29,7 +29,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 phi::KernelKey InstanceNormOp::GetExpectedKernelType(
+=======
+framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const framework::ExecutionContext &ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
@@ -40,6 +44,7 @@ phi::KernelKey InstanceNormOp::GetExpectedKernelType(
     in_param_type = framework::proto::VarType::FP64;
   }
   if (ctx.HasInput("Scale")) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(in_param_type,
                       framework::TransToProtoVarType(
                           ctx.Input<phi::DenseTensor>("Scale")->dtype()),
@@ -55,6 +60,23 @@ phi::KernelKey InstanceNormOp::GetExpectedKernelType(
   }
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
+=======
+    PADDLE_ENFORCE_EQ(
+        in_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
+        platform::errors::InvalidArgument(
+            "Scale input should be of float type"));
+  }
+  if (ctx.HasInput("Bias")) {
+    PADDLE_ENFORCE_EQ(
+        in_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
+        platform::errors::InvalidArgument(
+            "Bias input should be of float type"));
+  }
+
+  return framework::OpKernelType(input_data_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void InstanceNormOpMaker::Make() {
@@ -98,46 +120,79 @@ NCHW `[batch, in_channels, in_height, in_width]`
 )DOC");
 }
 
+<<<<<<< HEAD
 phi::KernelKey InstanceNormGradOp::GetExpectedKernelType(
+=======
+framework::OpKernelType InstanceNormGradOp::GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
     PADDLE_THROW(
         platform::errors::NotFound("cannot find gradient variable of Y"));
   }
+<<<<<<< HEAD
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
   } else if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
+=======
+  const Tensor *t = nullptr;
+  if (var->IsType<Tensor>()) {
+    t = &var->Get<Tensor>();
+  } else if (var->IsType<LoDTensor>()) {
+    t = &var->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   if (t == nullptr) {
     PADDLE_THROW(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
+<<<<<<< HEAD
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                         ctx.GetPlace());
 }
 
 phi::KernelKey InstanceNormDoubleGradOp::GetExpectedKernelType(
+=======
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+}
+
+framework::OpKernelType InstanceNormDoubleGradOp::GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar("DY");
   if (var == nullptr) {
     PADDLE_THROW(
         platform::errors::NotFound("cannot find gradient variable of Y"));
   }
+<<<<<<< HEAD
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
   } else if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
+=======
+  const Tensor *t = nullptr;
+  if (var->IsType<Tensor>()) {
+    t = &var->Get<Tensor>();
+  } else if (var->IsType<LoDTensor>()) {
+    t = &var->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   if (t == nullptr) {
     PADDLE_THROW(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
+<<<<<<< HEAD
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                         ctx.GetPlace());
+=======
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 DECLARE_INPLACE_OP_INFERER(InstanceNormDoubleGradOpInplaceInferer,

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -25,17 +26,37 @@ import paddle.inference as paddle_infer
 
 class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import List, Dict, Any
+import unittest
+
+
+class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
+
+    def sample_program_configs(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def generate_input(attrs: List[Dict[str, Any]], batch, shape):
             gen_shape = shape.copy()
             gen_shape.insert(0, batch)
             return np.random.uniform(0, 1, gen_shape).astype("float32")
 
         input_shape = [[255, 19, 19], [255, 38, 38], [255, 76, 76]]
+<<<<<<< HEAD
         anchors = [
             [116, 90, 156, 198, 373, 326],
             [30, 61, 62, 45, 59, 119],
             [10, 13, 16, 30, 33, 23],
         ]
+=======
+        anchors = [[116, 90, 156, 198, 373, 326], [30, 61, 62, 45, 59, 119],
+                   [10, 13, 16, 30, 33, 23]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         class_num = 80
         for batch in [1, 4]:
             for i in range(len(anchors)):
@@ -43,6 +64,7 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
                     "anchors": anchors[i],
                     "class_num": class_num,
                 }
+<<<<<<< HEAD
                 ops_config = [
                     {
                         "op_type": "yolo_box_head",
@@ -55,11 +77,24 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
                         "op_attrs": attrs_dict,
                     }
                 ]
+=======
+                ops_config = [{
+                    "op_type": "yolo_box_head",
+                    "op_inputs": {
+                        "X": ["yolo_box_head_input"],
+                    },
+                    "op_outputs": {
+                        "Out": ["yolo_box_head_output"],
+                    },
+                    "op_attrs": attrs_dict
+                }]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ops = self.generate_op_config(ops_config)
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={},
                     inputs={
+<<<<<<< HEAD
                         "yolo_box_head_input": TensorConfig(
                             data_gen=partial(
                                 generate_input,
@@ -71,12 +106,23 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
                     },
                     outputs=["yolo_box_head_output"],
                 )
+=======
+                        "yolo_box_head_input":
+                        TensorConfig(data_gen=partial(
+                            generate_input, attrs_dict, batch, input_shape[i]))
+                    },
+                    outputs=["yolo_box_head_output"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # for static_shape
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), [1, 2], 1e-5

@@ -17,6 +17,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class DpsgdOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -35,6 +39,7 @@ class DpsgdOp : public framework::OperatorWithKernel {
         true,
         platform::errors::NotFound(
             "Input(LearningRate) of DpsgdOp should not be null."));
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
                       framework::proto::VarType::LOD_TENSOR,
                       platform::errors::InvalidArgument(
@@ -47,6 +52,20 @@ class DpsgdOp : public framework::OperatorWithKernel {
                           "The input var's type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx->GetInputsVarType("Grad").front()));
+=======
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Param").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->GetInputsVarType("Param").front()));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Grad").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->GetInputsVarType("Grad").front()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"),
                       true,
@@ -72,10 +91,17 @@ class DpsgdOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("ParamOut", param_dims);
   }
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -115,7 +141,11 @@ class DpsgdOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Dpsgd Optimizer.
 
+<<<<<<< HEAD
 We implement the Dpsgd optimizer according to CCS16 paper -
+=======
+We implement the Dpsgd optimizer according to CCS16 paper - 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 Deep Learning with Differential Privacy.
 
 Dpsgd updates:

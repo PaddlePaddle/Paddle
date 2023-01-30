@@ -17,6 +17,7 @@ from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
+<<<<<<< HEAD
 from paddle.distribution.gumbel import Gumbel
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.independent import Independent
@@ -45,6 +46,22 @@ __all__ = [  # noqa
     'Laplace',
     'LogNormal',
     'Gumbel',
+=======
+from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.independent import Independent
+from paddle.distribution.kl import kl_divergence, register_kl
+from paddle.distribution.multinomial import Multinomial
+from paddle.distribution.normal import Normal
+from paddle.distribution.transform import *  # noqa: F403
+from paddle.distribution.transformed_distribution import \
+    TransformedDistribution
+from paddle.distribution.uniform import Uniform
+
+__all__ = [  # noqa
+    'Beta', 'Categorical', 'Dirichlet', 'Distribution', 'ExponentialFamily',
+    'Multinomial', 'Normal', 'Uniform', 'kl_divergence', 'register_kl',
+    'Independent', 'TransformedDistribution'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]
 
 __all__.extend(transform.__all__)

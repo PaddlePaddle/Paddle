@@ -20,7 +20,11 @@
 #include <thread>
 #include <unordered_map>
 
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_DISTRIBUTE)
+=======
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "brpc/channel.h"
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/fleet_executor/message_service.h"
@@ -63,7 +67,11 @@ class MessageBus final {
 
   const std::string& GetAddr(int64_t rank) const;
 
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_DISTRIBUTE)
+=======
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // send the message inter rank (dst is different rank with src)
   bool SendInterRank(int64_t dst_rank,
                      const InterceptorMessage& interceptor_message);
@@ -79,7 +87,11 @@ class MessageBus final {
   // the ip needs to be listened
   std::string addr_;
 
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_DISTRIBUTE)
+=======
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   MessageServiceImpl message_service_;
   // brpc server
   brpc::Server server_;

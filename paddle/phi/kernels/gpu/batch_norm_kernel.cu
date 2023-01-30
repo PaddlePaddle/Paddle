@@ -20,6 +20,7 @@
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -32,6 +33,21 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+=======
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/operators/layout_utils.h"
+#include "paddle/fluid/operators/norm_utils.cu.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -44,7 +60,11 @@ DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 namespace phi {
 
 template <typename T>
+<<<<<<< HEAD
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+=======
+using CudnnDataType = paddle::platform::CudnnDataType<T>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -71,6 +91,7 @@ static __global__ void BNForwardInference(const T *x,
   }
 }
 
+<<<<<<< HEAD
 template <typename T>
 static __global__ void InverseVariance(const BatchNormParamType<T> *variance,
                                        const double epsilon,
@@ -105,6 +126,8 @@ static __global__ void BN1DForwardInference(
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, int BlockDim, phi::DataLayout layout>
 static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
     const T *x,
@@ -566,6 +589,7 @@ static __global__ void BNForwardTraining2DWriteRes(
 template <typename T, typename Context>
 void BatchNormKernel(const Context &ctx,
                      const DenseTensor &x,
+<<<<<<< HEAD
                      const DenseTensor &mean,
                      const DenseTensor &variance,
                      const DenseTensor &scale,
@@ -576,6 +600,19 @@ void BatchNormKernel(const Context &ctx,
                      const std::string &data_layout_str,
                      bool use_global_stats,
                      bool trainable_statistics,
+=======
+                     const DenseTensor &scale,
+                     const DenseTensor &bias,
+                     const DenseTensor &mean,
+                     const DenseTensor &variance,
+                     float momentum,
+                     float epsilon_f,
+                     const std::string &data_layout_str,
+                     bool is_test,
+                     bool use_global_stats,
+                     bool trainable_statistics,
+                     bool fuse_with_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      DenseTensor *y,
                      DenseTensor *mean_out,
                      DenseTensor *variance_out,
@@ -584,7 +621,12 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *reserve_space) {
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
+<<<<<<< HEAD
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.
@@ -602,7 +644,11 @@ void BatchNormKernel(const Context &ctx,
   int N, C, H, W, D;
   phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
+<<<<<<< HEAD
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+=======
+  auto dtype = paddle::platform::CudnnDataType<T>::type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #ifdef PADDLE_WITH_HIP
   auto compute_format =
@@ -722,6 +768,12 @@ void BatchNormKernel(const Context &ctx,
 
   auto handle = ctx.cudnn_handle();
 
+<<<<<<< HEAD
+=======
+  const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
+  const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Now, depending on whether we are running test or not, we have two paths.
   // It is training mode when it's not reference AND not using pre-trained
   // model.
@@ -825,8 +877,13 @@ void BatchNormKernel(const Context &ctx,
 //         epsilon));
 #else
     const bool use_native_kernel =
+<<<<<<< HEAD
         (x_dims.size() == 2 ||
          (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_EVAL));
+=======
+        ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
+         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (use_native_kernel) {
       const int block_size = 256;
       const int grid_size = (N * C * H * W * D + block_size - 1) / block_size;
@@ -844,6 +901,7 @@ void BatchNormKernel(const Context &ctx,
                 epsilon,
                 transformed_y.template data<T>());
       } else {
+<<<<<<< HEAD
         if (x_dims.size() == 2) {
           DenseTensor inv_var = phi::Empty<BatchNormParamType<T>>(ctx, {C});
           auto *inv_var_ptr = inv_var.data<BatchNormParamType<T>>();
@@ -881,6 +939,20 @@ void BatchNormKernel(const Context &ctx,
                   epsilon,
                   transformed_y.template data<T>());
         }
+=======
+        BNForwardInference<T, DataLayout::kNHWC>
+            <<<grid_size, block_size, 0, ctx.stream()>>>(
+                transformed_x.template data<T>(),
+                est_mean->template data<BatchNormParamType<T>>(),
+                est_var->template data<BatchNormParamType<T>>(),
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                C,
+                N,
+                H * W * D,
+                epsilon,
+                transformed_y.template data<T>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1002,7 +1074,11 @@ void BatchNormKernel(const Context &ctx,
       // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
+<<<<<<< HEAD
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
+=======
+           (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (use_native_kernel) {
         dim3 block;
         dim3 grid;
@@ -1158,7 +1234,11 @@ void BatchNormKernel(const Context &ctx,
         // Create reserve space and workspace for batch norm.
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
+<<<<<<< HEAD
         // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
+=======
+        // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (reserve_space == nullptr) {
           reserve_space = &reserve_space_tensor;
         }

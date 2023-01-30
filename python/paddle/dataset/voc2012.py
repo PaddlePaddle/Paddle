@@ -19,6 +19,7 @@ to training/test sets has been maintained. The total number of images
 with segmentation has been increased from 7,062 to 9,993.
 """
 
+<<<<<<< HEAD
 import io
 import tarfile
 
@@ -27,6 +28,16 @@ from PIL import Image
 
 import paddle.utils.deprecated as deprecated
 from paddle.dataset.common import download
+=======
+from __future__ import print_function
+
+import tarfile
+import io
+import numpy as np
+from paddle.dataset.common import download
+import paddle.utils.deprecated as deprecated
+from PIL import Image
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -70,8 +81,12 @@ def reader_creator(filename, sub_name):
     since="2.0.0",
     update_to="paddle.vision.datasets.VOC2012",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def train():
     """
     Create a train dataset reader containing 2913 images in HWC order.
@@ -83,8 +98,12 @@ def train():
     since="2.0.0",
     update_to="paddle.vision.datasets.VOC2012",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def test():
     """
     Create a test dataset reader containing 1464 images in HWC order.
@@ -96,8 +115,12 @@ def test():
     since="2.0.0",
     update_to="paddle.vision.datasets.VOC2012",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def val():
     """
     Create a val dataset reader containing 1449 images in HWC order.

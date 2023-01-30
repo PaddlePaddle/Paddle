@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy
@@ -19,6 +20,17 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.jit.api import to_static
+=======
+from __future__ import print_function
+
+import numpy
+import unittest
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.jit import declarative
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @paddle.jit.to_static
@@ -27,14 +39,24 @@ def dyfunc_assert_variable(x):
     assert x_v
 
 
+<<<<<<< HEAD
 @to_static
+=======
+@declarative
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def dyfunc_assert_non_variable(x=True):
     assert x
 
 
 class TestAssertVariable(unittest.TestCase):
+<<<<<<< HEAD
     def _run(self, func, x, with_exception, to_static):
         paddle.jit.enable_to_static(to_static)
+=======
+
+    def _run(self, func, x, with_exception, to_static):
+        ProgramTranslator().enable(to_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if with_exception:
             with self.assertRaises(BaseException):
                 with fluid.dygraph.guard():
@@ -48,6 +70,7 @@ class TestAssertVariable(unittest.TestCase):
         self._run(func, x, with_exception, False)
 
     def test_non_variable(self):
+<<<<<<< HEAD
         self._run_dy_static(
             dyfunc_assert_non_variable, x=False, with_exception=True
         )
@@ -70,6 +93,30 @@ class TestAssertVariable(unittest.TestCase):
         self._run_dy_static(
             dyfunc_assert_variable, x=numpy.array([1]), with_exception=False
         )
+=======
+        self._run_dy_static(dyfunc_assert_non_variable,
+                            x=False,
+                            with_exception=True)
+        self._run_dy_static(dyfunc_assert_non_variable,
+                            x=True,
+                            with_exception=False)
+
+    def test_bool_variable(self):
+        self._run_dy_static(dyfunc_assert_variable,
+                            x=numpy.array([False]),
+                            with_exception=True)
+        self._run_dy_static(dyfunc_assert_variable,
+                            x=numpy.array([True]),
+                            with_exception=False)
+
+    def test_int_variable(self):
+        self._run_dy_static(dyfunc_assert_variable,
+                            x=numpy.array([0]),
+                            with_exception=True)
+        self._run_dy_static(dyfunc_assert_variable,
+                            x=numpy.array([1]),
+                            with_exception=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

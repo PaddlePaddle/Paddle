@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
 
+=======
+from __future__ import print_function
+import os
+import tempfile
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 import paddle
@@ -23,6 +30,10 @@ from paddle.static import InputSpec
 
 SEED = 2020
 np.random.seed(SEED)
+<<<<<<< HEAD
+=======
+prog_trans = paddle.jit.ProgramTranslator()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @paddle.jit.to_static
@@ -97,8 +108,14 @@ def test_set_value(x):
 
 
 class LayerWithSetValue(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self, input_dim, hidden):
         super().__init__()
+=======
+
+    def __init__(self, input_dim, hidden):
+        super(LayerWithSetValue, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear = paddle.nn.Linear(input_dim, hidden)
 
     @paddle.jit.to_static
@@ -109,6 +126,7 @@ class LayerWithSetValue(paddle.nn.Layer):
 
 
 class TestSliceWithoutControlFlow(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.init_input()
         self.place = (
@@ -116,6 +134,13 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.init_input()
+        self.place = paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.init_dygraph_func()
         paddle.disable_static()
 
@@ -129,7 +154,11 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
+<<<<<<< HEAD
         paddle.jit.enable_to_static(to_static)
+=======
+        prog_trans.enable(to_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         res = self.dygraph_func(self.input)
         return res.numpy()
 
@@ -143,21 +172,37 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
 
 
 class TestSliceInIf(TestSliceWithoutControlFlow):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_if
 
 
 class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_while_loop
 
 
 class TestSliceInForLoop(TestSliceWithoutControlFlow):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_for_loop
 
 
 class TestSetValue(TestSliceWithoutControlFlow):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input(self):
         self.input = np.full([3, 4, 5], 5).astype('float32')
 
@@ -166,22 +211,40 @@ class TestSetValue(TestSliceWithoutControlFlow):
 
 
 class TestSetValueWithLayerAndSave(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = os.path.join(
             self.temp_dir.name, "layer_use_set_value"
         )
+=======
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       "layer_use_set_value")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
     def test_set_value_with_save(self):
+<<<<<<< HEAD
         paddle.jit.enable_to_static(True)
         model = LayerWithSetValue(input_dim=10, hidden=1)
         x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
         paddle.jit.save(
             layer=model, path=self.model_path, input_spec=[x], output_spec=None
         )
+=======
+        prog_trans.enable(True)
+        model = LayerWithSetValue(input_dim=10, hidden=1)
+        x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
+        paddle.jit.save(layer=model,
+                        path=self.model_path,
+                        input_spec=[x],
+                        output_spec=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestSliceSupplementSpecialCase(unittest.TestCase):
@@ -214,6 +277,7 @@ class TestSliceSupplementSpecialCase(unittest.TestCase):
             return inps[::2], inps[::-2]
 
         origin_result = func(inps)
+<<<<<<< HEAD
         sfunc = paddle.jit.to_static(
             func, input_spec=[InputSpec(shape=[None, 4, 4])]
         )
@@ -228,6 +292,20 @@ class TestSliceSupplementSpecialCase(unittest.TestCase):
 
 
 class TestPaddleStridedSlice(unittest.TestCase):
+=======
+        sfunc = paddle.jit.to_static(func,
+                                     input_spec=[InputSpec(shape=[None, 4, 4])])
+        static_result = sfunc(inps)
+
+        np.testing.assert_array_equal(origin_result[0].numpy(),
+                                      static_result[0].numpy())
+        np.testing.assert_array_equal(origin_result[1].numpy(),
+                                      static_result[1].numpy())
+
+
+class TestPaddleStridedSlice(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_compare_paddle_strided_slice_with_numpy(self):
         paddle.disable_static()
         array = np.arange(5)
@@ -236,6 +314,7 @@ class TestPaddleStridedSlice(unittest.TestCase):
         s1 = 3
         e1 = 1
         stride1 = -2
+<<<<<<< HEAD
         sl = paddle.strided_slice(
             pt,
             axes=[
@@ -251,6 +330,21 @@ class TestPaddleStridedSlice(unittest.TestCase):
                 stride1,
             ],
         )
+=======
+        sl = paddle.strided_slice(pt,
+                                  axes=[
+                                      0,
+                                  ],
+                                  starts=[
+                                      s1,
+                                  ],
+                                  ends=[
+                                      e1,
+                                  ],
+                                  strides=[
+                                      stride1,
+                                  ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertTrue(array[s1:e1:stride1], sl)
 
@@ -259,6 +353,7 @@ class TestPaddleStridedSlice(unittest.TestCase):
         s2 = [8, -1]
         e2 = [1, -5]
         stride2 = [-2, -3]
+<<<<<<< HEAD
         sl = paddle.strided_slice(
             pt, axes=[0, 1], starts=s2, ends=e2, strides=stride2
         )
@@ -267,12 +362,23 @@ class TestPaddleStridedSlice(unittest.TestCase):
             sl.numpy(),
             array[s2[0] : e2[0] : stride2[0], s2[1] : e2[1] : stride2[1]],
         )
+=======
+        sl = paddle.strided_slice(pt,
+                                  axes=[0, 1],
+                                  starts=s2,
+                                  ends=e2,
+                                  strides=stride2)
+
+        np.testing.assert_array_equal(
+            sl.numpy(), array[s2[0]:e2[0]:stride2[0], s2[1]:e2[1]:stride2[1]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         array = np.arange(6 * 7 * 8).reshape((6, 7, 8))
         pt = paddle.to_tensor(array)
         s2 = [7, -1]
         e2 = [2, -5]
         stride2 = [-2, -3]
+<<<<<<< HEAD
         sl = paddle.strided_slice(
             pt, axes=[0, 2], starts=s2, ends=e2, strides=stride2
         )
@@ -280,6 +386,15 @@ class TestPaddleStridedSlice(unittest.TestCase):
         array_slice = array[
             s2[0] : e2[0] : stride2[0], ::, s2[1] : e2[1] : stride2[1]
         ]
+=======
+        sl = paddle.strided_slice(pt,
+                                  axes=[0, 2],
+                                  starts=s2,
+                                  ends=e2,
+                                  strides=stride2)
+
+        array_slice = array[s2[0]:e2[0]:stride2[0], ::, s2[1]:e2[1]:stride2[1]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(sl.numpy(), array_slice)
 
 
@@ -289,6 +404,10 @@ def slice_zero_shape_tensor(x):
 
 
 class TestSliceZeroShapeTensor(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_slice(self):
         paddle.disable_static()
         x = paddle.ones([0, 0, 0, 0])

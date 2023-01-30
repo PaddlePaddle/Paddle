@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
@@ -20,11 +21,22 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+=======
+import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestMatrixPowerOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -46,12 +58,23 @@ class TestMatrixPowerOp(OpTest):
         self.check_output()
 
     def test_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-7
         )
 
 
 class TestMatrixPowerOpN1(TestMatrixPowerOp):
+=======
+        self.check_grad(["X"],
+                        "Out",
+                        numeric_grad_delta=1e-5,
+                        max_relative_error=1e-7)
+
+
+class TestMatrixPowerOpN1(TestMatrixPowerOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -59,6 +82,10 @@ class TestMatrixPowerOpN1(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpN2(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -66,6 +93,10 @@ class TestMatrixPowerOpN2(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpN3(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -73,6 +104,10 @@ class TestMatrixPowerOpN3(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpN4(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -80,6 +115,10 @@ class TestMatrixPowerOpN4(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpN5(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -87,6 +126,10 @@ class TestMatrixPowerOpN5(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpN6(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -94,6 +137,10 @@ class TestMatrixPowerOpN6(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpN10(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -101,18 +148,33 @@ class TestMatrixPowerOpN10(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpNMinus(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
         self.n = -1
 
     def test_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6
         )
 
 
 class TestMatrixPowerOpNMinus2(TestMatrixPowerOpNMinus):
+=======
+        self.check_grad(["X"],
+                        "Out",
+                        numeric_grad_delta=1e-5,
+                        max_relative_error=1e-6)
+
+
+class TestMatrixPowerOpNMinus2(TestMatrixPowerOpNMinus):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -120,6 +182,10 @@ class TestMatrixPowerOpNMinus2(TestMatrixPowerOpNMinus):
 
 
 class TestMatrixPowerOpNMinus3(TestMatrixPowerOpNMinus):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -127,6 +193,10 @@ class TestMatrixPowerOpNMinus3(TestMatrixPowerOpNMinus):
 
 
 class TestMatrixPowerOpNMinus4(TestMatrixPowerOpNMinus):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -134,6 +204,10 @@ class TestMatrixPowerOpNMinus4(TestMatrixPowerOpNMinus):
 
 
 class TestMatrixPowerOpNMinus5(TestMatrixPowerOpNMinus):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -141,6 +215,10 @@ class TestMatrixPowerOpNMinus5(TestMatrixPowerOpNMinus):
 
 
 class TestMatrixPowerOpNMinus6(TestMatrixPowerOpNMinus):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -148,18 +226,33 @@ class TestMatrixPowerOpNMinus6(TestMatrixPowerOpNMinus):
 
 
 class TestMatrixPowerOpNMinus10(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
         self.n = -10
 
     def test_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6
         )
 
 
 class TestMatrixPowerOpBatched1(TestMatrixPowerOp):
+=======
+        self.check_grad(["X"],
+                        "Out",
+                        numeric_grad_delta=1e-5,
+                        max_relative_error=1e-6)
+
+
+class TestMatrixPowerOpBatched1(TestMatrixPowerOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float64"
@@ -167,6 +260,10 @@ class TestMatrixPowerOpBatched1(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpBatched2(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [2, 6, 4, 4]
         self.dtype = "float64"
@@ -174,6 +271,10 @@ class TestMatrixPowerOpBatched2(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpBatched3(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [2, 6, 4, 4]
         self.dtype = "float64"
@@ -181,6 +282,10 @@ class TestMatrixPowerOpBatched3(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpBatchedLong(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [1, 2, 3, 4, 4, 3, 3]
         self.dtype = "float64"
@@ -188,6 +293,10 @@ class TestMatrixPowerOpBatchedLong(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpLarge1(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float64"
@@ -195,6 +304,10 @@ class TestMatrixPowerOpLarge1(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpLarge2(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -202,6 +315,10 @@ class TestMatrixPowerOpLarge2(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpFP32(TestMatrixPowerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
@@ -212,6 +329,10 @@ class TestMatrixPowerOpFP32(TestMatrixPowerOp):
 
 
 class TestMatrixPowerOpBatchedFP32(TestMatrixPowerOpFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [2, 8, 4, 4]
         self.dtype = "float32"
@@ -219,6 +340,10 @@ class TestMatrixPowerOpBatchedFP32(TestMatrixPowerOpFP32):
 
 
 class TestMatrixPowerOpLarge1FP32(TestMatrixPowerOpFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float32"
@@ -226,6 +351,10 @@ class TestMatrixPowerOpLarge1FP32(TestMatrixPowerOpFP32):
 
 
 class TestMatrixPowerOpLarge2FP32(TestMatrixPowerOpFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
@@ -233,6 +362,10 @@ class TestMatrixPowerOpLarge2FP32(TestMatrixPowerOpFP32):
 
 
 class TestMatrixPowerOpFP32Minus(TestMatrixPowerOpFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
@@ -240,6 +373,10 @@ class TestMatrixPowerOpFP32Minus(TestMatrixPowerOpFP32):
 
 
 class TestMatrixPowerAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -254,6 +391,7 @@ class TestMatrixPowerAPI(unittest.TestCase):
             result_np = np.linalg.matrix_power(input_np, -2)
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             fetches = exe.run(
                 fluid.default_main_program(),
                 feed={"input_x": input_np},
@@ -262,6 +400,14 @@ class TestMatrixPowerAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 fetches[0], np.linalg.matrix_power(input_np, -2), rtol=1e-05
             )
+=======
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input_x": input_np},
+                              fetch_list=[result])
+            np.testing.assert_allclose(fetches[0],
+                                       np.linalg.matrix_power(input_np, -2),
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static(self):
         for place in self.places:
@@ -273,6 +419,7 @@ class TestMatrixPowerAPI(unittest.TestCase):
                 input_np = np.random.random([4, 4]).astype("float64")
                 input = paddle.to_tensor(input_np)
                 result = paddle.linalg.matrix_power(input, -2)
+<<<<<<< HEAD
                 np.testing.assert_allclose(
                     result.numpy(),
                     np.linalg.matrix_power(input_np, -2),
@@ -281,6 +428,15 @@ class TestMatrixPowerAPI(unittest.TestCase):
 
 
 class TestMatrixPowerAPIError(unittest.TestCase):
+=======
+                np.testing.assert_allclose(result.numpy(),
+                                           np.linalg.matrix_power(input_np, -2),
+                                           rtol=1e-05)
+
+
+class TestMatrixPowerAPIError(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
@@ -289,9 +445,15 @@ class TestMatrixPowerAPIError(unittest.TestCase):
 
         # n must be int
         for n in [2.0, '2', -2.0]:
+<<<<<<< HEAD
             input = fluid.data(
                 name="input_float32", shape=[4, 4], dtype='float32'
             )
+=======
+            input = fluid.data(name="input_float32",
+                               shape=[4, 4],
+                               dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(TypeError, paddle.linalg.matrix_power, input, n)
 
         # The data type of input must be float32 or float64.
@@ -314,6 +476,10 @@ class TestMatrixPowerAPIError(unittest.TestCase):
 
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -328,6 +494,7 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
 
             exe = fluid.Executor(place)
             try:
+<<<<<<< HEAD
                 fetches = exe.run(
                     fluid.default_main_program(),
                     feed={"input": input_np},
@@ -337,6 +504,17 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
                 print("The mat is singular")
             except ValueError as ex:
                 print("The mat is singular")
+=======
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={"input": input_np},
+                                  fetch_list=[result])
+            except RuntimeError as ex:
+                print("The mat is singular")
+                pass
+            except ValueError as ex:
+                print("The mat is singular")
+                pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static(self):
         paddle.enable_static()
@@ -353,8 +531,15 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
                     result = paddle.linalg.matrix_power(input, -2)
                 except RuntimeError as ex:
                     print("The mat is singular")
+<<<<<<< HEAD
                 except ValueError as ex:
                     print("The mat is singular")
+=======
+                    pass
+                except ValueError as ex:
+                    print("The mat is singular")
+                    pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

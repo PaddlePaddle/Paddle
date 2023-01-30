@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -31,6 +32,19 @@ from paddle.nn.initializer import (
 
 
 class TestInitializerBase(unittest.TestCase):
+=======
+import paddle
+import unittest
+import numpy as np
+from paddle import LazyGuard
+from paddle.nn import Linear, Layer
+from paddle.nn.initializer import *
+from paddle.fluid import unique_name
+
+
+class TestInitializerBase(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_initializer()
         self.set_param_attr()
@@ -42,6 +56,7 @@ class TestInitializerBase(unittest.TestCase):
         self.b_initializer = Constant(0.3)
 
     def set_param_attr(self):
+<<<<<<< HEAD
         self.weight_attr = paddle.ParamAttr(
             name="weight", initializer=self.w_initializer
         )
@@ -49,6 +64,13 @@ class TestInitializerBase(unittest.TestCase):
         self.bias_attr = paddle.ParamAttr(
             name="bias", initializer=self.b_initializer
         )
+=======
+        self.weight_attr = paddle.ParamAttr(name="weight",
+                                            initializer=self.w_initializer)
+
+        self.bias_attr = paddle.ParamAttr(name="bias",
+                                          initializer=self.b_initializer)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_init_ops(self):
         self.init_ops = ['fill_constant', 'fill_constant']
@@ -58,26 +80,47 @@ class TestInitializerBase(unittest.TestCase):
 
     def test_wrapper(self):
         with LazyGuard():
+<<<<<<< HEAD
             fc = Linear(
                 10, 10, weight_attr=self.weight_attr, bias_attr=self.bias_attr
             )
+=======
+            fc = Linear(10,
+                        10,
+                        weight_attr=self.weight_attr,
+                        bias_attr=self.bias_attr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         program = fc._startup_program()
         print(program)
         self.check_program(program)
 
     def check_program(self, program):
         self.assertEqual(program.block(0).var("weight").shape, (10, 10))
+<<<<<<< HEAD
         self.assertEqual(program.block(0).var("bias").shape, (10,))
+=======
+        self.assertEqual(program.block(0).var("bias").shape, (10, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ops = [op.type for op in program.block(0).ops]
         self.assertEqual(ops, self.init_ops)
 
 
 class TestDygraphLazy(TestInitializerBase):
+<<<<<<< HEAD
     def test_wrapper(self):
         with LazyGuard():
             fc = Linear(
                 10, 10, weight_attr=self.weight_attr, bias_attr=self.bias_attr
             )
+=======
+
+    def test_wrapper(self):
+        with LazyGuard():
+            fc = Linear(10,
+                        10,
+                        weight_attr=self.weight_attr,
+                        bias_attr=self.bias_attr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.check_data(fc)
 
@@ -93,6 +136,7 @@ class TestDygraphLazy(TestInitializerBase):
         out = model(x)
         self.assertEqual(out.shape, [2, 10])
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             model.weight.numpy(), np.ones([10, 10], dtype=np.float32) * 0.6
         )
@@ -104,6 +148,18 @@ class TestDygraphLazy(TestInitializerBase):
 class NestModel(Layer):
     def __init__(self, base_model):
         super().__init__()
+=======
+        np.testing.assert_allclose(model.weight.numpy(),
+                                   np.ones([10, 10], dtype=np.float32) * 0.6)
+        np.testing.assert_allclose(model.bias.numpy(),
+                                   np.ones([10], dtype=np.float32) * 0.3)
+
+
+class NestModel(Layer):
+
+    def __init__(self, base_model):
+        super(NestModel, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.base_model = base_model
         self.fc = Linear(10, 10)
 
@@ -114,11 +170,21 @@ class NestModel(Layer):
 
 
 class TestNestModelLazy(TestInitializerBase):
+<<<<<<< HEAD
     def test_wrapper(self):
         with LazyGuard():
             base_model = Linear(
                 10, 10, weight_attr=self.weight_attr, bias_attr=self.bias_attr
             )
+=======
+
+    def test_wrapper(self):
+        with LazyGuard():
+            base_model = Linear(10,
+                                10,
+                                weight_attr=self.weight_attr,
+                                bias_attr=self.bias_attr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             nest_model = NestModel(base_model)
 
         self.check_data(nest_model)
@@ -136,6 +202,7 @@ class TestNestModelLazy(TestInitializerBase):
         out = model(x)
         self.assertEqual(out.shape, [2, 10])
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             model.base_model.weight.numpy(),
             np.ones([10, 10], dtype=np.float32) * 0.6,
@@ -143,12 +210,22 @@ class TestNestModelLazy(TestInitializerBase):
         np.testing.assert_allclose(
             model.base_model.bias.numpy(), np.ones([10], dtype=np.float32) * 0.3
         )
+=======
+        np.testing.assert_allclose(model.base_model.weight.numpy(),
+                                   np.ones([10, 10], dtype=np.float32) * 0.6)
+        np.testing.assert_allclose(model.base_model.bias.numpy(),
+                                   np.ones([10], dtype=np.float32) * 0.3)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_program(self, model):
         # verify nest_model startup_program
         whole_program = model._startup_program()
         self.assertEqual(whole_program.block(0).var("weight").shape, (10, 10))
+<<<<<<< HEAD
         self.assertEqual(whole_program.block(0).var("bias").shape, (10,))
+=======
+        self.assertEqual(whole_program.block(0).var("bias").shape, (10, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ops = [op.type for op in whole_program.block(0).ops]
         init_ops = self.init_ops + ['uniform_random', 'fill_constant']
         self.assertEqual(ops, init_ops)
@@ -156,12 +233,20 @@ class TestNestModelLazy(TestInitializerBase):
         # verify base_model startup_program
         sub_program = model.base_model._startup_program()
         self.assertEqual(sub_program.block(0).var("weight").shape, (10, 10))
+<<<<<<< HEAD
         self.assertEqual(sub_program.block(0).var("bias").shape, (10,))
+=======
+        self.assertEqual(sub_program.block(0).var("bias").shape, (10, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ops = [op.type for op in sub_program.block(0).ops]
         self.assertEqual(ops, self.init_ops)
 
 
 class TestUniform(TestInitializerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_initializer(self):
         self.w_initializer = Uniform()
         self.b_initializer = Uniform()
@@ -171,6 +256,10 @@ class TestUniform(TestInitializerBase):
 
 
 class TestNormal(TestInitializerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_initializer(self):
         self.w_initializer = Normal()
         self.b_initializer = Normal()
@@ -180,24 +269,40 @@ class TestNormal(TestInitializerBase):
 
 
 class TestTruncatedNormal(TestInitializerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_initializer(self):
         self.w_initializer = TruncatedNormal()
         self.b_initializer = TruncatedNormal()
 
     def set_init_ops(self):
         self.init_ops = [
+<<<<<<< HEAD
             'truncated_gaussian_random',
             'truncated_gaussian_random',
+=======
+            'truncated_gaussian_random', 'truncated_gaussian_random'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
 
 class TestXavierNormal(TestNormal):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_initializer(self):
         self.w_initializer = XavierNormal()
         self.b_initializer = XavierNormal()
 
 
 class TestXavierUniform(TestUniform):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_initializer(self):
         self.w_initializer = XavierUniform()
         self.b_initializer = XavierUniform()

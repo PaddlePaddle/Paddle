@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -25,12 +26,28 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTNearestInterpTest(InferencePassTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from inference_pass_test import InferencePassTest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.core import PassVersionChecker
+from paddle.fluid.core import AnalysisConfig
+
+
+class TRTNearestInterpTest(InferencePassTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_params()
 
         with fluid.program_guard(self.main_program, self.startup_program):
             if self.data_layout == 'NCHW':
                 shape = [
+<<<<<<< HEAD
                     -1,
                     self.channels,
                     self.origin_shape[0],
@@ -60,6 +77,29 @@ class TRTNearestInterpTest(InferencePassTest):
                 self.origin_shape[0],
                 self.origin_shape[1],
                 self.channels,
+=======
+                    -1, self.channels, self.origin_shape[0],
+                    self.origin_shape[1]
+                ]
+            else:
+                shape = [
+                    -1, self.origin_shape[0], self.origin_shape[1],
+                    self.channels
+                ]
+            data = fluid.data(name='data', shape=shape, dtype='float32')
+            resize_out = self.append_nearest_interp(data)
+            out = fluid.layers.batch_norm(resize_out, is_test=True)
+
+        if self.data_layout == 'NCHW':
+            shape = [
+                self.bs, self.channels, self.origin_shape[0],
+                self.origin_shape[1]
+            ]
+        else:
+            shape = [
+                self.bs, self.origin_shape[0], self.origin_shape[1],
+                self.channels
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
 
         self.feeds = {
@@ -67,8 +107,12 @@ class TRTNearestInterpTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTNearestInterpTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False
         )
+=======
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fetch_list = [out]
 
     def set_params(self):
@@ -82,6 +126,7 @@ class TRTNearestInterpTest(InferencePassTest):
         self.data_layout = 'NCHW'
 
     def append_nearest_interp(self, data):
+<<<<<<< HEAD
         if self.scale > 0.0:
             return paddle.nn.functional.interpolate(
                 data,
@@ -93,17 +138,36 @@ class TRTNearestInterpTest(InferencePassTest):
             size=self.resize_shape,
             data_format=self.data_layout,
         )
+=======
+        if self.scale > 0.:
+            return fluid.layers.resize_nearest(data,
+                                               scale=self.scale,
+                                               align_corners=self.align_corners,
+                                               data_format=self.data_layout)
+        return fluid.layers.resize_nearest(data,
+                                           out_shape=self.resize_shape,
+                                           align_corners=self.align_corners,
+                                           data_format=self.data_layout)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
+<<<<<<< HEAD
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
             )
 
 
 class TRTNearestInterpTest1(TRTNearestInterpTest):
+=======
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TRTNearestInterpTest1(TRTNearestInterpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -115,9 +179,16 @@ class TRTNearestInterpTest1(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest2(TRTNearestInterpTest):
+<<<<<<< HEAD
     def set_params(self):
         self.bs = 4
         self.scale = 2.0
+=======
+
+    def set_params(self):
+        self.bs = 4
+        self.scale = 2.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
         self.resize_shape = (32, 32)  # HW
@@ -126,6 +197,10 @@ class TRTNearestInterpTest2(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest3(TRTNearestInterpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.bs = 4
         self.scale = 0
@@ -137,6 +212,10 @@ class TRTNearestInterpTest3(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest4(TRTNearestInterpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -148,6 +227,10 @@ class TRTNearestInterpTest4(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest5(TRTNearestInterpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -159,9 +242,16 @@ class TRTNearestInterpTest5(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest6(TRTNearestInterpTest):
+<<<<<<< HEAD
     def set_params(self):
         self.bs = 4
         self.scale = 2.0
+=======
+
+    def set_params(self):
+        self.bs = 4
+        self.scale = 2.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
         self.resize_shape = (32, 32)  # HW
@@ -170,6 +260,10 @@ class TRTNearestInterpTest6(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest7(TRTNearestInterpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -181,6 +275,10 @@ class TRTNearestInterpTest7(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest8(TRTNearestInterpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -192,6 +290,10 @@ class TRTNearestInterpTest8(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest9(TRTNearestInterpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_params(self):
         self.bs = 4
         self.scale = -1

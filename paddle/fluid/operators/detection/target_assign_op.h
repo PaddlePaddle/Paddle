@@ -96,11 +96,19 @@ template <typename DeviceContext, typename T, typename WT>
 class TargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* match_indices = ctx.Input<phi::DenseTensor>("MatchIndices");
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* out_wt = ctx.Output<phi::DenseTensor>("OutWeight");
+=======
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* match_indices = ctx.Input<framework::Tensor>("MatchIndices");
+
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out_wt = ctx.Output<framework::Tensor>("OutWeight");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ(x->lod().size(),
                       1UL,
@@ -145,7 +153,11 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     platform::ForRange<DeviceContext> for_range(device_ctx, n * m);
     for_range(functor);
 
+<<<<<<< HEAD
     auto* neg_indices = ctx.Input<phi::DenseTensor>("NegIndices");
+=======
+    auto* neg_indices = ctx.Input<framework::LoDTensor>("NegIndices");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (neg_indices) {
       PADDLE_ENFORCE_EQ(
           neg_indices->lod().size(),

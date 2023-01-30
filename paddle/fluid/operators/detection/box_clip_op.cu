@@ -15,14 +15,23 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/box_clip_op.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using LoDTenso = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+using LoDTenso = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 static constexpr int ImInfoSize = 3;
 
@@ -48,9 +57,15 @@ template <typename DeviceContext, typename T>
 class GPUBoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *input = context.Input<phi::DenseTensor>("Input");
     auto *im_info = context.Input<phi::DenseTensor>("ImInfo");
     auto *output = context.Output<phi::DenseTensor>("Output");
+=======
+    auto *input = context.Input<LoDTensor>("Input");
+    auto *im_info = context.Input<Tensor>("ImInfo");
+    auto *output = context.Output<LoDTensor>("Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int64_t num = input->dims()[0];
     const int64_t bbox_width = input->numel() / num;
     auto lod = input->lod();

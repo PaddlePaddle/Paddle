@@ -30,5 +30,12 @@ runner:
   thread_num: 8
   micro_num: 8  # micro batch num for each thread
   pipeline: True
+<<<<<<< HEAD
 
   model_path: "../ps_dnn_model.py"
+=======
+  
+  model_path: "../ps_dnn_model.py"
+
+  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

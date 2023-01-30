@@ -21,6 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
@@ -31,6 +35,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
 
 phi::KernelKey ConvTransposeOp::GetExpectedKernelType(
@@ -43,10 +48,47 @@ phi::KernelKey ConvTransposeOp::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
     const phi::KernelKey& expected_kernel_type) const {
+=======
+using DataLayout = framework::DataLayout;
+
+framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+  bool use_cudnn =
+      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
+  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+    if (use_cudnn) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+  }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
+  }
+#endif
+
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
+}
+
+framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
+    const std::string& var_name,
+    const framework::Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
+<<<<<<< HEAD
       (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
@@ -62,6 +104,26 @@ phi::KernelKey ConvTransposeOp::GetKernelTypeForVar(
 #endif
   return phi::KernelKey(
       tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    auto dl = framework::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_,
+          tensor.place(),
+          framework::StringToDataLayout(data_format));
+    }
+  }
+#endif
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void Conv2DTransposeOpMaker::Make() {
@@ -252,10 +314,37 @@ Example:
 )DOC");
 }
 
+<<<<<<< HEAD
 phi::KernelKey ConvTransposeOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
   return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn =
+      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
+  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  }
+#endif
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T>
@@ -319,10 +408,37 @@ class ConvTransposeDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+<<<<<<< HEAD
 phi::KernelKey ConvTransposeOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
   return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn =
+      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
+  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  }
+#endif
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace operators

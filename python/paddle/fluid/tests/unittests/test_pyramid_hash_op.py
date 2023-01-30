@@ -13,13 +13,21 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
+=======
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api(self):
         num_voc = 128
         embed_dim = 64
@@ -53,6 +61,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
+<<<<<<< HEAD
             np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod, place
         )
 
@@ -61,6 +70,16 @@ class TestPyramidHashOpApi(unittest.TestCase):
         ret = exe.run(
             feed={'x': x_tensor}, fetch_list=[hash_embd], return_numpy=False
         )
+=======
+            np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod,
+            place)
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(feed={'x': x_tensor},
+                      fetch_list=[hash_embd],
+                      return_numpy=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

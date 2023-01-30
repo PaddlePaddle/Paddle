@@ -1,5 +1,11 @@
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto
               simple_threadpool)
+<<<<<<< HEAD
+=======
+if(WITH_GPU)
+  proto_library(external_error_proto SRCS external_error.proto)
+endif()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
@@ -32,6 +38,13 @@ if(WITH_PYTHON)
 endif()
 
 cc_library(
+<<<<<<< HEAD
+=======
+  flags
+  SRCS flags.cc
+  DEPS gflags)
+cc_library(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   denormal
   SRCS denormal.cc
   DEPS)
@@ -54,12 +67,29 @@ cc_library(monitor SRCS monitor.cc)
 cc_test(
   enforce_test
   SRCS enforce_test.cc
+<<<<<<< HEAD
   DEPS enforce)
 
 cc_test(
   cpu_info_test
   SRCS cpu_info_test.cc
   DEPS phi_backends)
+=======
+  DEPS stringpiece enforce)
+
+set(CPU_INFO_DEPS gflags glog enforce)
+if(WITH_XBYAK)
+  list(APPEND CPU_INFO_DEPS xbyak)
+endif()
+cc_library(
+  cpu_info
+  SRCS cpu_info.cc
+  DEPS ${CPU_INFO_DEPS})
+cc_test(
+  cpu_info_test
+  SRCS cpu_info_test.cc
+  DEPS cpu_info)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 cc_library(
   os_info
   SRCS os_info.cc
@@ -73,7 +103,11 @@ if(WITH_GPU)
   nv_library(
     cuda_graph_with_memory_pool
     SRCS cuda_graph_with_memory_pool.cc
+<<<<<<< HEAD
     DEPS device_context allocator phi_backends)
+=======
+    DEPS device_context allocator cuda_graph)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 else()
   cc_library(
     cuda_graph_with_memory_pool
@@ -166,6 +200,14 @@ if(WITH_GLOO)
     DEPS framework_proto gloo_wrapper enforce)
 endif()
 
+<<<<<<< HEAD
+=======
+cc_library(
+  cudnn_workspace_helper
+  SRCS cudnn_workspace_helper.cc
+  DEPS)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # separate init from device_context to avoid cycle dependencies
 cc_library(
   init
@@ -185,7 +227,13 @@ cc_library(
        place
        phi_place
        eigen3
+<<<<<<< HEAD
        cpu_helper
+=======
+       stringpiece
+       cpu_helper
+       cpu_info
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
        framework_proto
        ${IPU_CTX_DEPS}
        ${GPU_CTX_DEPS}
@@ -229,10 +277,13 @@ if(WITH_MLU)
   target_link_libraries(device_context mlu_resource_pool)
 endif()
 
+<<<<<<< HEAD
 if(WITH_CUSTOM_DEVICE)
   target_link_libraries(device_context custom_device_resource_pool)
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 cc_test(
   init_test
   SRCS init_test.cc
@@ -266,6 +317,7 @@ if(WITH_GPU)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
+<<<<<<< HEAD
   if(WITH_CUSTOM_DEVICE)
     nv_test(
       device_event_test
@@ -277,6 +329,13 @@ if(WITH_GPU)
       SRCS device_event_test.cc
       DEPS device_event_gpu)
   endif()
+=======
+  nv_test(
+    device_event_test
+    SRCS device_event_test.cc
+    DEPS device_event_gpu)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -299,6 +358,7 @@ if(WITH_ROCM)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
+<<<<<<< HEAD
   if(WITH_CUSTOM_DEVICE)
     hip_test(
       device_event_test
@@ -310,6 +370,13 @@ if(WITH_ROCM)
       SRCS device_event_test.cc
       DEPS device_event_gpu)
   endif()
+=======
+  hip_test(
+    device_event_test
+    SRCS device_event_test.cc
+    DEPS device_event_gpu)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   hip_test(
     device_context_test
     SRCS device_context_test.cu
@@ -360,6 +427,13 @@ if(WITH_GPU)
          stats
          op_proto_maker
          shape_inference)
+<<<<<<< HEAD
+=======
+  nv_library(
+    device_memory_aligment
+    SRCS device_memory_aligment.cc
+    DEPS cpu_info gpu_info place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 elseif(WITH_ROCM)
   hip_library(
     profiler
@@ -372,6 +446,13 @@ elseif(WITH_ROCM)
          stats
          op_proto_maker
          shape_inference)
+<<<<<<< HEAD
+=======
+  hip_library(
+    device_memory_aligment
+    SRCS device_memory_aligment.cc
+    DEPS cpu_info gpu_info place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 else()
   cc_library(
     profiler
@@ -383,6 +464,13 @@ else()
          stats
          op_proto_maker
          shape_inference)
+<<<<<<< HEAD
+=======
+  cc_library(
+    device_memory_aligment
+    SRCS device_memory_aligment.cc
+    DEPS cpu_info place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 cc_test(
@@ -452,6 +540,7 @@ if(NOT APPLE AND NOT WIN32)
       DEPS device_code lod_tensor)
   endif()
 endif()
+<<<<<<< HEAD
 
 if(WITH_CUSTOM_DEVICE)
   cc_library(
@@ -462,3 +551,5 @@ if(WITH_CUSTOM_DEVICE)
       ${DEVICE_EVENT_LIBS} device_event_custom_device
       CACHE INTERNAL "device event libs")
 endif()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

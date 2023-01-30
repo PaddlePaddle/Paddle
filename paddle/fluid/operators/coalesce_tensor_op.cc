@@ -19,7 +19,11 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/device_memory_aligment.h"
+=======
+#include "paddle/fluid/platform/device_memory_aligment.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
@@ -37,7 +41,11 @@ namespace operators {
 template <typename DeviceContext>
 struct FillConstantVisitor {
   FillConstantVisitor(const DeviceContext &dev_ctx,
+<<<<<<< HEAD
                       phi::DenseTensor *tensor,
+=======
+                      framework::LoDTensor *tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       const float value,
                       framework::proto::VarType::Type dtype,
                       const framework::ExecutionContext &context)
@@ -61,7 +69,11 @@ struct FillConstantVisitor {
                  * = nullptr) const {
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(dev_ctx_.GetPlace())) {
+<<<<<<< HEAD
       phi::DenseTensor tensor_tmp(framework::TransToPhiDataType(dtype_));
+=======
+      Tensor tensor_tmp(framework::TransToPhiDataType(dtype_));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
 
@@ -92,7 +104,11 @@ struct FillConstantVisitor {
   }
 
   const DeviceContext &dev_ctx_;
+<<<<<<< HEAD
   phi::DenseTensor *tensor_;
+=======
+  framework::LoDTensor *tensor_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float value_;
   framework::proto::VarType::Type dtype_;
   const framework::ExecutionContext &context_;
@@ -104,8 +120,13 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto in_var_names = context.InputNames("Input");
     auto out_var_names = context.OutputNames("Output");
+<<<<<<< HEAD
     const auto &in_tensors = context.MultiInput<phi::DenseTensor>("Input");
     auto out_tensors = context.MultiOutput<phi::DenseTensor>("Output");
+=======
+    const auto &in_tensors = context.MultiInput<framework::LoDTensor>("Input");
+    auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_GT(in_var_names.size(),
                       static_cast<size_t>(0),
@@ -120,7 +141,11 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                           in_var_names.size(),
                           out_var_names.size()));
 
+<<<<<<< HEAD
     // Input & Output check: only support phi::DenseTensor
+=======
+    // Input & Output check: only support LoDTensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool has_not_init_in_vars = false;
     for (size_t i = 0; i < in_tensors.size(); ++i) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -227,7 +252,11 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                        align_size);
 
     // Alloc the continuous space
+<<<<<<< HEAD
     auto fused_tensor = context.Output<phi::DenseTensor>("FusedOutput");
+=======
+    auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     void *fused_tensor_ptr =
         fused_tensor->Resize(phi::make_ddim({static_cast<int64_t>(numel)}))
             .mutable_data(context.GetPlace(),
@@ -250,9 +279,15 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
         framework::TensorCopy(
             *in_tensors[i], context.GetPlace(), dev_ctx, &sub_tensor);
 
+<<<<<<< HEAD
         offset += use_align ? phi::Alignment(len * size_of_dtype,
                                              context.GetPlace(),
                                              align_size) /
+=======
+        offset += use_align ? platform::Alignment(len * size_of_dtype,
+                                                  context.GetPlace(),
+                                                  align_size) /
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                   size_of_dtype
                             : len;
       }
@@ -274,9 +309,15 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           framework::TensorCopy(
               *out_tensors[i], context.GetPlace(), dev_ctx, &sub_tensor);
         }
+<<<<<<< HEAD
         offset += use_align ? phi::Alignment(len * size_of_dtype,
                                              context.GetPlace(),
                                              align_size) /
+=======
+        offset += use_align ? platform::Alignment(len * size_of_dtype,
+                                                  context.GetPlace(),
+                                                  align_size) /
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                   size_of_dtype
                             : len;
       }
@@ -296,7 +337,11 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
               static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
       len = use_align
+<<<<<<< HEAD
                 ? phi::Alignment(
+=======
+                ? platform::Alignment(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       len * size_of_dtype, context.GetPlace(), align_size) /
                       size_of_dtype
                 : len;
@@ -317,7 +362,11 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
 
  private:
   void GetMemSizeAndDtype(
+<<<<<<< HEAD
       const std::vector<const phi::DenseTensor *> &lod_tensors,
+=======
+      const std::vector<const framework::LoDTensor *> &lod_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const std::vector<std::string> var_names,
       size_t *numel,
       const size_t &size_of_dtype,
@@ -342,12 +391,21 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           0,
           platform::errors::InvalidArgument(
               "The number of tensor `%s`'s elements is 0.", var_names[i]));
+<<<<<<< HEAD
       auto len = use_align
                      ? phi::Alignment(static_cast<size_t>(size) * size_of_dtype,
                                       place,
                                       align_size) /
                            size_of_dtype
                      : static_cast<size_t>(size);
+=======
+      auto len = use_align ? platform::Alignment(
+                                 static_cast<size_t>(size) * size_of_dtype,
+                                 place,
+                                 align_size) /
+                                 size_of_dtype
+                           : static_cast<size_t>(size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const void *ptr =
           lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
       VLOG(4) << size << " " << len;
@@ -405,6 +463,7 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &context) const override {
     auto dtype = static_cast<framework::proto::VarType::Type>(
@@ -419,6 +478,22 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           tensor.layout(),
                           expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &context) const override {
+    auto dtype = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
+    return framework::OpKernelType(dtype, context.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -426,17 +501,29 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
+<<<<<<< HEAD
              "(vector<phi::DenseTensor>) The input tensors of"
              " coalesce_tensor operator.")
         .AsDuplicable();
     AddOutput("Output",
               "(vector<phi::DenseTensor>) The output "
+=======
+             "(vector<LoDTensor>) The input tensors of"
+             " coalesce_tensor operator.")
+        .AsDuplicable();
+    AddOutput("Output",
+              "(vector<LoDTensor>) The output "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "tensors of coalesce_tensor operator. And the address "
               "of output tensors are continuous, they are sliced from the "
               "tensor of FusedOutput.")
         .AsDuplicable();
     AddOutput("FusedOutput",
+<<<<<<< HEAD
               "(phi::DenseTensor) The output tensor "
+=======
+              "(LoDTensor) The output tensor "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "of coalesce_tensor operator. And the tensors of"
               " Output is sliced from the tensor of FusedOutput.");
     AddAttr<int>("dtype", "The output data type.");

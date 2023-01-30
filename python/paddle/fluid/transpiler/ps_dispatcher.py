@@ -12,8 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 
 class PSDispatcher:
+=======
+from __future__ import print_function
+
+
+class PSDispatcher(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     PSDispatcher is the base class for dispatching vars
     into different pserver instance.
@@ -46,7 +53,11 @@ class PSDispatcher:
 
 class HashName(PSDispatcher):
     """
+<<<<<<< HEAD
         :api_attr: Static Graph
+=======
+	:api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Hash variable names to several endpoints using python
     "hash()" function.
@@ -66,7 +77,11 @@ class HashName(PSDispatcher):
     """
 
     def __init__(self, pserver_endpoints):
+<<<<<<< HEAD
         super().__init__(pserver_endpoints)
+=======
+        super(self.__class__, self).__init__(pserver_endpoints)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _hash_block(self, block_str, total):
         return hash(block_str) % total
@@ -88,7 +103,11 @@ class HashName(PSDispatcher):
 
 class RoundRobin(PSDispatcher):
     """
+<<<<<<< HEAD
         :api_attr: Static Graph
+=======
+	:api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Distribute variables to several endpoints using
     RondRobin<https://en.wikipedia.org/wiki/Round-robin_scheduling> method.
@@ -108,7 +127,11 @@ class RoundRobin(PSDispatcher):
     """
 
     def __init__(self, pserver_endpoints):
+<<<<<<< HEAD
         super().__init__(pserver_endpoints)
+=======
+        super(RoundRobin, self).__init__(pserver_endpoints)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def dispatch(self, varlist):
         """

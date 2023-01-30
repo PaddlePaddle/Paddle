@@ -53,12 +53,16 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
 fi
 # remove line ended with .exe to get correct deleted_ut list
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | sed '/\.exe$/d' | grep 'test' > $PADDLE_ROOT/br-ut
+<<<<<<< HEAD
 #UNITTEST_DEV.spec is used for checking changes of unnitests between pr and paddle_develop in the later step
 spec_path_dev=${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' > ${spec_path_dev}
 cd $PADDLE_ROOT/build
 spec_path_pr=${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' > ${spec_path_pr}
+=======
+cd $PADDLE_ROOT/build
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | sed '/\.exe$/d' | grep 'test' > $PADDLE_ROOT/pr-ut
 cd $PADDLE_ROOT
 grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut

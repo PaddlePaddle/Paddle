@@ -12,16 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_collective_base import TestDistBase
 
 import paddle
 
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_base import TestDistBase
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
 class TestSendRecvOp(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
@@ -29,6 +43,7 @@ class TestSendRecvOp(TestDistBase):
         self.check_with_place("collective_sendrecv_op.py", "sendrecv")
 
     def test_sendrecv_dynamic_shape(self):
+<<<<<<< HEAD
         self.check_with_place(
             "collective_sendrecv_op_dynamic_shape.py", "sendrecv_dynamic_shape"
         )
@@ -37,6 +52,14 @@ class TestSendRecvOp(TestDistBase):
         self.check_with_place(
             "collective_sendrecv_op_array.py", "sendrecv_array"
         )
+=======
+        self.check_with_place("collective_sendrecv_op_dynamic_shape.py",
+                              "sendrecv_dynamic_shape")
+
+    def test_sendrecv_array(self):
+        self.check_with_place("collective_sendrecv_op_array.py",
+                              "sendrecv_array")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

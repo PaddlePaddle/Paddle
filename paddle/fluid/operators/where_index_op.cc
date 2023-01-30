@@ -25,10 +25,17 @@ class WhereIndexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Condition");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Condition");
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -48,7 +55,11 @@ class WhereIndexOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(where_index,
                             WhereIndexInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::NonZeroInferMeta));
+=======
+                            PD_INFER_META(phi::WhereIndexInferMeta));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 REGISTER_OPERATOR(
     where_index,
     ops::WhereIndexOp,

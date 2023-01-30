@@ -25,8 +25,13 @@ template <typename DeviceContext, typename T>
 class SequenceEraseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* in = ctx.Input<framework::LoDTensor>("X");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(
@@ -35,12 +40,20 @@ class SequenceEraseKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("Input(X) Tensor of SequenceEraseOp "
                                           "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(lod[lod.size() - 1].back(),
+<<<<<<< HEAD
                       static_cast<size_t>(in->numel()),
+=======
+                      (size_t)in->numel(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       platform::errors::InvalidArgument(
                           "The actual input size %d mismatches with the LoD "
                           "information size %d.",
                           lod[lod.size() - 1].back(),
+<<<<<<< HEAD
                           in->numel()));
+=======
+                          (size_t)in->numel()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto tokens = ctx.Attr<std::vector<int>>("tokens");
     auto in_len = in->numel();
     auto in_dat = in->data<T>();

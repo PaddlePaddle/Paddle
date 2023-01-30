@@ -58,14 +58,22 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
     MkDirRecursively(DirName(filename).c_str());
 
+<<<<<<< HEAD
     if (input_var->IsType<phi::DenseTensor>()) {
+=======
+    if (input_var->IsType<framework::LoDTensor>()) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       SaveLodTensor(ctx, place, input_var, filename);
     } else if (input_var->IsType<phi::SelectedRows>()) {
       SaveSelectedRows(ctx, place, input_var, filename);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
+<<<<<<< HEAD
           "Save operator only supports saving phi::DenseTensor and "
           "SelectedRows "
+=======
+          "Save operator only supports saving LoDTensor and SelectedRows "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           "variable, %s has wrong type",
           iname));
     }
@@ -75,7 +83,11 @@ class SaveOpKernel : public framework::OpKernel<T> {
                      const platform::Place &place,
                      const framework::Variable *var,
                      const std::string &filename) const {
+<<<<<<< HEAD
     auto &tensor = var->Get<phi::DenseTensor>();
+=======
+    auto &tensor = var->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -90,6 +102,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
                           "Cannot open %s to save variables.", filename));
 
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
+<<<<<<< HEAD
     auto in_dtype = tensor.dtype();
     auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
 
@@ -99,6 +112,15 @@ class SaveOpKernel : public framework::OpKernel<T> {
       auto out_kernel_type =
           phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
       phi::DenseTensor out;
+=======
+    auto in_dtype = framework::TransToProtoVarType(tensor.dtype());
+    auto out_dtype = save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+
+    if (in_dtype != out_dtype) {
+      auto in_kernel_type = framework::OpKernelType(in_dtype, place);
+      auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+      framework::LoDTensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
       out.set_lod(tensor.lod());

@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from .group_sharded import (
     group_sharded_parallel,
     save_group_sharded_model,
 )  # noqa: F401
+=======
+from .group_sharded import group_sharded_parallel, save_group_sharded_model  # noqa: F401
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = ['group_sharded_parallel', 'save_group_sharded_model']

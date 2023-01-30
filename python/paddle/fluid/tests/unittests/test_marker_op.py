@@ -12,20 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
+<<<<<<< HEAD
 
 from op_test import OpTest
 
+=======
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class TestMarkerOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "marker"
         self.inputs = {}
         self.attrs = {
             'marker_role': 'forward',
             'marker_pos': 'B',
+<<<<<<< HEAD
             'op_role': OpRole.Forward,
+=======
+            'op_role': OpRole.Forward
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {}
 

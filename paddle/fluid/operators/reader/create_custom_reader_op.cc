@@ -32,7 +32,11 @@ class CustomReader : public framework::DecoratedReader {
         source_var_names_(source_var_names),
         sink_var_names_(sink_var_names) {}
 
+<<<<<<< HEAD
   void ReadNextImpl(std::vector<phi::DenseTensor>* out) override;
+=======
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   const framework::ProgramDesc program_;
@@ -180,7 +184,11 @@ void CustomReader::ReadNextImpl(paddle::framework::LoDTensorArray* out) {
   // 1. Copy LoDTensors from underlying reader's output to source variables.
   for (size_t i = 0; i < source_var_names_.size(); ++i) {
     framework::Variable* var = exe_scope->Var(source_var_names_[i]);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tensor->ShareDataWith(underlying_outs[i]);
     tensor->set_lod(underlying_outs[i].lod());
   }
@@ -194,7 +202,11 @@ void CustomReader::ReadNextImpl(paddle::framework::LoDTensorArray* out) {
         var,
         platform::errors::NotFound("The variable %s is not in current scope.",
                                    sink_var_names_[i]));
+<<<<<<< HEAD
     const auto& tensor = var->Get<phi::DenseTensor>();
+=======
+    const auto& tensor = var->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }
   scope_.DeleteScope(exe_scope);

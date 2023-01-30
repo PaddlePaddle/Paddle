@@ -106,6 +106,7 @@ class BeamSearchFunctor {
    * that means no candidates is provided, and the task will stop running.
    */
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor* pre_ids,
                   const phi::DenseTensor* pre_scores,
                   const phi::DenseTensor* ids,
@@ -113,6 +114,15 @@ class BeamSearchFunctor {
                   phi::DenseTensor* selected_ids,
                   phi::DenseTensor* selected_scores,
                   phi::DenseTensor* parent_idx,
+=======
+                  const framework::LoDTensor* pre_ids,
+                  const framework::LoDTensor* pre_scores,
+                  const framework::LoDTensor* ids,
+                  const framework::LoDTensor* scores,
+                  framework::LoDTensor* selected_ids,
+                  framework::LoDTensor* selected_scores,
+                  framework::Tensor* parent_idx,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   size_t level,
                   size_t beam_size,
                   int end_id,

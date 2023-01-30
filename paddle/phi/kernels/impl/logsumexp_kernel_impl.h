@@ -16,14 +16,21 @@
 #include <type_traits>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+=======
+#include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/logsumexp_kernel.h"
 
 namespace phi {
 
+<<<<<<< HEAD
 #define HANDLE_DIM(NDIM, RDIM)                                         \
   if (ndim == NDIM && rdim == RDIM) {                                  \
     funcs::ReduceFunctor<Context, T, NDIM, RDIM, LogsumexpFunctor<T>>( \
@@ -35,6 +42,17 @@ struct LogsumexpFunctor {
   template <typename Context, typename X, typename Y, typename Dim>
   void operator()(const Context& place, X* x, Y* y, const Dim& dim) {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+=======
+#define HANDLE_DIM(NDIM, RDIM)                               \
+  if (ndim == NDIM && rdim == RDIM) {                        \
+    ReduceFunctor<Context, T, NDIM, RDIM, LogsumexpFunctor>( \
+        dev_ctx, x, out, axis, keepdim);                     \
+  }
+
+struct LogsumexpFunctor {
+  template <typename Context, typename X, typename Y, typename Dim>
+  void operator()(const Context& place, X* x, Y* y, const Dim& dim) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto x_dim = x->dimensions();
     auto t_dim = x_dim;
     for (int i = 0; i < static_cast<int>(dim.size()); i++) {
@@ -49,6 +67,7 @@ struct LogsumexpFunctor {
       r_dim[dim[i]] = x_dim[dim[i]];
     }
 
+<<<<<<< HEAD
     auto x_mt = (*x).template cast<MT>();
     auto y_dim = y->dimensions();
     auto x_max = x_mt.maximum(dim).eval();
@@ -57,6 +76,14 @@ struct LogsumexpFunctor {
          (x_mt - x_max.reshape(t_dim).broadcast(r_dim)).exp().sum(dim).log())
             .reshape(y_dim)
             .template cast<T>();
+=======
+    auto y_dim = y->dimensions();
+    auto x_max = x->maximum(dim);
+    y->device(place) =
+        (x_max +
+         (*x - x_max.reshape(t_dim).broadcast(r_dim)).exp().sum(dim).log())
+            .reshape(y_dim);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -69,7 +96,13 @@ void LogsumexpKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, axis, reduce_all);
+=======
+  const auto& input_dim_size = x.dims().size();
+  // The dims has full dim, set the reduce_all is True
+  reduce_all |= (static_cast<const int>(axis.size()) == input_dim_size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
@@ -77,6 +110,7 @@ void LogsumexpKernel(const Context& dev_ctx,
     auto output = phi::EigenScalar<T>::From(*out);
     auto& place = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
+<<<<<<< HEAD
     LogsumexpFunctor<T>()(place, &input, &output, reduce_dim);
   } else {
     int ndim = x.dims().size();
@@ -87,6 +121,12 @@ void LogsumexpKernel(const Context& dev_ctx,
           "data less than 4."));
     }
 
+=======
+    LogsumexpFunctor()(place, &input, &output, reduce_dim);
+  } else {
+    int ndim = input_dim_size;
+    int rdim = axis.size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // comments for accelerating compiling temporarily.
     // HANDLE_DIM(6, 5);
     // HANDLE_DIM(6, 4);

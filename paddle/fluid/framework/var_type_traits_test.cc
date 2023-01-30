@@ -26,6 +26,10 @@
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #endif
 #ifdef PADDLE_WITH_HIP
@@ -33,12 +37,19 @@
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"   // NOLINT
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"  // NOLINT
 #endif
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/conv_cudnn_op_cache.h"  // NOLINT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/operators/miopen_rnn_cache.h"
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
+<<<<<<< HEAD
 #include "paddle/fluid/framework/raw_tensor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -91,7 +102,11 @@ bool CheckVarId(int proto_id) {
 }
 
 TEST(var_type_traits, check_proto_type_id) {
+<<<<<<< HEAD
   ASSERT_TRUE(CheckVarId<phi::DenseTensor>(proto::VarType::LOD_TENSOR));
+=======
+  ASSERT_TRUE(CheckVarId<LoDTensor>(proto::VarType::LOD_TENSOR));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ASSERT_TRUE(CheckVarId<phi::SelectedRows>(proto::VarType::SELECTED_ROWS));
   ASSERT_TRUE(CheckVarId<std::vector<Scope *>>(proto::VarType::STEP_SCOPES));
   ASSERT_TRUE(CheckVarId<LoDRankTable>(proto::VarType::LOD_RANK_TABLE));

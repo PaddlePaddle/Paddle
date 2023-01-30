@@ -13,11 +13,20 @@
 # limitations under the License.
 
 import numpy as np
+<<<<<<< HEAD
 
 import paddle
 
 
 class TestNewGroupAPI:
+=======
+import os
+import paddle
+
+
+class TestNewGroupAPI(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         paddle.distributed.init_parallel_env()
         d1 = np.array([1, 2, 3])
@@ -32,9 +41,16 @@ class TestNewGroupAPI:
 
         tmp = np.array([0, 0, 0])
         result = paddle.to_tensor(tmp)
+<<<<<<< HEAD
         paddle.distributed.scatter(
             result, [self.tensor2, self.tensor1], src=0, group=gp, sync_op=True
         )
+=======
+        paddle.distributed.scatter(result, [self.tensor2, self.tensor1],
+                                   src=0,
+                                   group=gp,
+                                   sync_op=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if gp.rank == 0:
             assert np.array_equal(result, self.tensor2)
         elif gp.rank == 1:
@@ -47,9 +63,14 @@ class TestNewGroupAPI:
 
         paddle.distributed.reduce(result, dst=0, group=gp, sync_op=True)
         if gp.rank == 0:
+<<<<<<< HEAD
             assert np.array_equal(
                 result, paddle.add(self.tensor1, self.tensor1)
             )
+=======
+            assert np.array_equal(result, paddle.add(self.tensor1,
+                                                     self.tensor1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif gp.rank == 1:
             assert np.array_equal(result, self.tensor1)
         print("test reduce api ok")
@@ -57,8 +78,12 @@ class TestNewGroupAPI:
         paddle.distributed.all_reduce(result, sync_op=True)
         assert np.array_equal(
             result,
+<<<<<<< HEAD
             paddle.add(paddle.add(self.tensor1, self.tensor1), self.tensor1),
         )
+=======
+            paddle.add(paddle.add(self.tensor1, self.tensor1), self.tensor1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print("test all_reduce api ok")
 
         paddle.distributed.wait(result, gp, use_calc_stream=True)
@@ -66,9 +91,16 @@ class TestNewGroupAPI:
         print("test wait api ok")
 
         result = []
+<<<<<<< HEAD
         paddle.distributed.all_gather(
             result, self.tensor1, group=gp, sync_op=True
         )
+=======
+        paddle.distributed.all_gather(result,
+                                      self.tensor1,
+                                      group=gp,
+                                      sync_op=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert np.array_equal(result[0], self.tensor1)
         assert np.array_equal(result[1], self.tensor1)
         print("test all_gather api ok")

@@ -62,6 +62,7 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
     int end_id = context.Attr<int>("end_id");
 
     // prepare output
+<<<<<<< HEAD
     phi::DenseTensor* sentenceIds = nullptr;
     phi::DenseTensor* sentenceScores = nullptr;
 
@@ -72,11 +73,26 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
 
     if (platform::is_xpu_place(ids->at(0).place())) {
       sentenceIds = new phi::DenseTensor();
+=======
+    LoDTensor* sentenceIds = nullptr;
+    LoDTensor* sentenceScores = nullptr;
+
+    LoDTensor* sentenceIds_temp = context.Output<LoDTensor>("SentenceIds");
+    LoDTensor* sentenceScores_temp =
+        context.Output<LoDTensor>("SentenceScores");
+
+    if (platform::is_xpu_place(ids->at(0).place())) {
+      sentenceIds = new LoDTensor();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       sentenceIds->set_lod(sentenceIds_temp->lod());
     }
 
     if (platform::is_xpu_place(ids->at(0).place())) {
+<<<<<<< HEAD
       sentenceScores = new phi::DenseTensor();
+=======
+      sentenceScores = new LoDTensor();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       sentenceScores->set_lod(sentenceScores_temp->lod());
     }
 

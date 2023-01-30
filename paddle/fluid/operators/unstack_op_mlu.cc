@@ -22,8 +22,13 @@ template <typename T>
 class UnStackMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.MultiOutput<phi::DenseTensor>("Y");
+=======
+    auto *x = ctx.Input<Tensor>("X");
+    auto out = ctx.MultiOutput<Tensor>("Y");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += x->dims().size();
     int num = x->dims()[axis];
@@ -56,8 +61,13 @@ template <typename T>
 class UnStackGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto x = ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Y"));
     auto *y = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto x = ctx.MultiInput<Tensor>(framework::GradVarName("Y"));
+    auto *y = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += (x[0]->dims().size() + 1);
     int num = static_cast<int>(x.size());

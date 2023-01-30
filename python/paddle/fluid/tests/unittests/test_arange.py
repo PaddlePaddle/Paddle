@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,12 +24,27 @@ from paddle.static import Program, program_guard
 
 
 class TestArangeOp(OpTest):
+=======
+from __future__ import print_function
+
+import paddle
+from paddle.fluid import core
+from paddle.static import program_guard, Program
+import unittest
+import numpy as np
+from op_test import OpTest
+
+
+class TestArangeOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "range"
         self.init_config()
         self.inputs = {
             'Start': np.array([self.case[0]]).astype(self.dtype),
             'End': np.array([self.case[1]]).astype(self.dtype),
+<<<<<<< HEAD
             'Step': np.array([self.case[2]]).astype(self.dtype),
         }
 
@@ -36,6 +52,15 @@ class TestArangeOp(OpTest):
             'Out': np.arange(self.case[0], self.case[1], self.case[2]).astype(
                 self.dtype
             )
+=======
+            'Step': np.array([self.case[2]]).astype(self.dtype)
+        }
+
+        self.outputs = {
+            'Out':
+            np.arange(self.case[0], self.case[1],
+                      self.case[2]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_config(self):
@@ -47,29 +72,46 @@ class TestArangeOp(OpTest):
 
 
 class TestFloatArangeOp(TestArangeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = np.float32
         self.case = (0, 5, 1)
 
 
 class TestInt32ArangeOp(TestArangeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = np.int32
         self.case = (0, 5, 2)
 
 
 class TestFloat64ArangeOp(TestArangeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = np.float64
         self.case = (10, 1, -2)
 
 
 class TestInt64ArangeOp(TestArangeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = np.int64
         self.case = (-1, -10, -2)
 
 
+<<<<<<< HEAD
 class TestZeroSizeArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.int32
@@ -77,21 +119,34 @@ class TestZeroSizeArangeOp(TestArangeOp):
 
 
 class TestArangeOpError(unittest.TestCase):
+=======
+class TestArangeOpError(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
             self.assertRaises(TypeError, paddle.arange, 10, dtype='int8')
 
 
 class TestArangeAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_out(self):
         with program_guard(Program(), Program()):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
+<<<<<<< HEAD
             place = (
                 paddle.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
                 else paddle.CPUPlace()
             )
+=======
+            place = paddle.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = paddle.static.Executor(place)
             out = exe.run(fetch_list=[x1])
 
@@ -100,12 +155,19 @@ class TestArangeAPI(unittest.TestCase):
 
 
 class TestArangeImperative(unittest.TestCase):
+<<<<<<< HEAD
     def test_out(self):
         place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def test_out(self):
+        place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.disable_static(place)
         x1 = paddle.arange(0, 5, 1)
         x2 = paddle.tensor.arange(5)

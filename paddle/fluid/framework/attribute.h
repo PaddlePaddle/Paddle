@@ -37,8 +37,11 @@ paddle::any GetAttrValue(const Attribute& attr);
 
 Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 
+<<<<<<< HEAD
 Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 struct ExtractAttribute {
   explicit ExtractAttribute(const std::string& attr_name)

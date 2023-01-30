@@ -28,6 +28,7 @@ template <typename DeviceContext,
           bool kNoNeedBufferX = false>
 class ReduceSumGradKernel : public framework::OpKernel<T> {
  public:
+<<<<<<< HEAD
   void ComputeFromInput(const phi::DenseTensor* input2,
                         const framework::ExecutionContext& context) const {
     auto dims = context.Attr<std::vector<int>>("dim");
@@ -35,6 +36,14 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
 
     auto* output =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+  void ComputeFromInput(const Tensor* input2,
+                        const framework::ExecutionContext& context) const {
+    auto dims = context.Attr<std::vector<int>>("dim");
+    auto* input0 = context.Input<Tensor>("X");
+
+    auto* output = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     output->mutable_data<T>(context.GetPlace());
     const auto* input2_d = input2->data<T>();
     auto* output_d = output->data<T>();
@@ -80,6 +89,7 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
       int in_dtype = context.Attr<int>("out_dtype");
 
       if (in_dtype >= 0) {
+<<<<<<< HEAD
         phi::DenseTensor tmp_tensor;
         auto* pre_input =
             context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -87,12 +97,26 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
                                              phi::DataLayout::ALL_LAYOUT,
                                              pre_input->dtype());
         auto out_kernel_type = phi::KernelKey(in_dtype, context.GetPlace());
+=======
+        Tensor tmp_tensor;
+        auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
+        auto in_kernel_type = framework::OpKernelType(
+            framework::TransToProtoVarType(pre_input->dtype()),
+            context.GetPlace());
+        auto out_kernel_type = framework::OpKernelType(
+            static_cast<framework::proto::VarType::Type>(in_dtype),
+            context.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::TransDataType(
             in_kernel_type, out_kernel_type, *pre_input, &tmp_tensor);
         ComputeFromInput(&tmp_tensor, context);
       } else {
+<<<<<<< HEAD
         auto* input2 =
             context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+        auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ComputeFromInput(input2, context);
       }
       return;

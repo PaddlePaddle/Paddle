@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from paddle.fluid import core
+=======
+from __future__ import print_function
+import unittest
+from paddle.fluid import core
+from paddle import compat as cpt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestGetAllRegisteredOpKernels(unittest.TestCase):
@@ -39,15 +46,24 @@ class TestGetAllRegisteredOpKernels(unittest.TestCase):
 
 
 class TestGetAllOpNames(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_get_all_op_names(self):
         all_op_names = core.get_all_op_names()
         all_op_with_phi_kernels = core.get_all_op_names("phi")
         all_op_with_fluid_kernels = core.get_all_op_names("fluid")
 
         self.assertTrue(
+<<<<<<< HEAD
             len(all_op_names)
             > len(set(all_op_with_phi_kernels) | set(all_op_with_fluid_kernels))
         )
+=======
+            len(all_op_names) > len(
+                set(all_op_with_phi_kernels) | set(all_op_with_fluid_kernels)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue("scale" in all_op_with_phi_kernels)
         self.assertTrue("scale" in all_op_with_phi_kernels)
 

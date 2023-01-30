@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 
 import paddle
@@ -24,13 +29,22 @@ device = "gpu" if core.is_compiled_with_cuda() else "cpu"
 
 
 class TestCostModel(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_profiler_measure_empty_program(self):
         cost_model = core.CostModel()
         empty_program = paddle.static.Program()
         startup_program = paddle.static.Program()
+<<<<<<< HEAD
         cost_data = cost_model.profile_measure(
             empty_program, startup_program, device, ["time"]
         )
+=======
+        cost_data = cost_model.profile_measure(empty_program, startup_program,
+                                               device, ["time"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(cost_data.get_whole_time_ms(), 0)
 
     def test_profiler_measure_program(self):
@@ -42,16 +56,26 @@ class TestCostModel(unittest.TestCase):
             hidden = paddle.static.nn.fc(data, 10)
             loss = paddle.mean(hidden)
         cost_model = core.CostModel()
+<<<<<<< HEAD
         cost_data = cost_model.profile_measure(
             main_program, startup_program, device, ["time"]
         )
+=======
+        cost_data = cost_model.profile_measure(main_program, startup_program,
+                                               device, ["time"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         fc_op_time = cost_data.get_op_time_ms(0)
         mean_op_time = cost_data.get_op_time_ms(1)
         self.assertGreater(fc_op_time, 0)
         self.assertGreater(mean_op_time, 0)
+<<<<<<< HEAD
         self.assertGreaterEqual(
             cost_data.get_whole_time_ms(), fc_op_time + mean_op_time
         )
+=======
+        self.assertGreaterEqual(cost_data.get_whole_time_ms(),
+                                fc_op_time + mean_op_time)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static_op_benchmark_cost_model(self):
         op_name = "abs"
@@ -72,18 +96,28 @@ class TestCostModel(unittest.TestCase):
         print("conv2d_op_time:", conv2d_op_time)
         print("conv2d_op_config:", conv2d_op_config)
 
+<<<<<<< HEAD
         conv2d_backward_op_cost = cost_model.get_static_op_time(
             "conv2d", forward=False
         )
+=======
+        conv2d_backward_op_cost = cost_model.get_static_op_time("conv2d",
+                                                                forward=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         conv2d_backward_op_time = conv2d_backward_op_cost["op_time"]
         conv2d_backward_op_config = conv2d_backward_op_cost["config"]
         self.assertGreater(float(conv2d_backward_op_time), 0)
         print("conv2d_backward_op_time:", conv2d_backward_op_time)
         print("conv2d_backward_op_config:", conv2d_backward_op_config)
 
+<<<<<<< HEAD
         conv2d_fp16_op_cost = cost_model.get_static_op_time(
             "conv2d", dtype="float16"
         )
+=======
+        conv2d_fp16_op_cost = cost_model.get_static_op_time("conv2d",
+                                                            dtype="float16")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         conv2d_fp16_op_time = conv2d_fp16_op_cost["op_time"]
         conv2d_fp16_op_config = conv2d_fp16_op_cost["config"]
         self.assertGreater(float(conv2d_fp16_op_time), 0)

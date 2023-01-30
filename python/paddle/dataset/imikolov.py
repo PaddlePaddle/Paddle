@@ -19,6 +19,7 @@ http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
 into paddle reader creators.
 """
 
+<<<<<<< HEAD
 import collections
 import tarfile
 
@@ -28,11 +29,28 @@ import paddle.utils.deprecated as deprecated
 __all__ = []
 
 # URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+=======
+from __future__ import print_function
+
+import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
+import collections
+import tarfile
+import six
+
+__all__ = []
+
+#URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
 
+<<<<<<< HEAD
 class DataType:
+=======
+class DataType(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     NGRAM = 1
     SEQ = 2
 
@@ -58,10 +76,16 @@ def build_dict(min_word_freq=50):
     train_filename = './simple-examples/data/ptb.train.txt'
     test_filename = './simple-examples/data/ptb.valid.txt'
     with tarfile.open(
+<<<<<<< HEAD
         paddle.dataset.common.download(
             paddle.dataset.imikolov.URL, 'imikolov', paddle.dataset.imikolov.MD5
         )
     ) as tf:
+=======
+            paddle.dataset.common.download(paddle.dataset.imikolov.URL,
+                                           'imikolov',
+                                           paddle.dataset.imikolov.MD5)) as tf:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         trainf = tf.extractfile(train_filename)
         testf = tf.extractfile(test_filename)
         word_freq = word_count(testf, word_count(trainf))
@@ -69,17 +93,28 @@ def build_dict(min_word_freq=50):
             # remove <unk> for now, since we will set it as last index
             del word_freq['<unk>']
 
+<<<<<<< HEAD
         word_freq = [x for x in word_freq.items() if x[1] > min_word_freq]
 
         word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
         words, _ = list(zip(*word_freq_sorted))
         word_idx = dict(list(zip(words, range(len(words)))))
+=======
+        word_freq = [
+            x for x in six.iteritems(word_freq) if x[1] > min_word_freq
+        ]
+
+        word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
+        words, _ = list(zip(*word_freq_sorted))
+        word_idx = dict(list(zip(words, six.moves.range(len(words)))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         word_idx['<unk>'] = len(words)
 
     return word_idx
 
 
 def reader_creator(filename, word_idx, n, data_type):
+<<<<<<< HEAD
     def reader():
         with tarfile.open(
             paddle.dataset.common.download(
@@ -88,6 +123,14 @@ def reader_creator(filename, word_idx, n, data_type):
                 paddle.dataset.imikolov.MD5,
             )
         ) as tf:
+=======
+
+    def reader():
+        with tarfile.open(
+                paddle.dataset.common.download(
+                    paddle.dataset.imikolov.URL, 'imikolov',
+                    paddle.dataset.imikolov.MD5)) as tf:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             f = tf.extractfile(filename)
 
             UNK = word_idx['<unk>']
@@ -97,15 +140,24 @@ def reader_creator(filename, word_idx, n, data_type):
                     l = ['<s>'] + l.strip().split() + ['<e>']
                     if len(l) >= n:
                         l = [word_idx.get(w, UNK) for w in l]
+<<<<<<< HEAD
                         for i in range(n, len(l) + 1):
                             yield tuple(l[i - n : i])
+=======
+                        for i in six.moves.range(n, len(l) + 1):
+                            yield tuple(l[i - n:i])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 elif DataType.SEQ == data_type:
                     l = l.strip().split()
                     l = [word_idx.get(w, UNK) for w in l]
                     src_seq = [word_idx['<s>']] + l
                     trg_seq = l + [word_idx['<e>']]
+<<<<<<< HEAD
                     if n > 0 and len(src_seq) > n:
                         continue
+=======
+                    if n > 0 and len(src_seq) > n: continue
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     yield src_seq, trg_seq
                 else:
                     assert False, 'Unknow data type'
@@ -117,8 +169,12 @@ def reader_creator(filename, word_idx, n, data_type):
     since="2.0.0",
     update_to="paddle.text.datasets.Imikolov",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def train(word_idx, n, data_type=DataType.NGRAM):
     """
     imikolov training set creator.
@@ -135,17 +191,26 @@ def train(word_idx, n, data_type=DataType.NGRAM):
     :return: Training reader creator
     :rtype: callable
     """
+<<<<<<< HEAD
     return reader_creator(
         './simple-examples/data/ptb.train.txt', word_idx, n, data_type
     )
+=======
+    return reader_creator('./simple-examples/data/ptb.train.txt', word_idx, n,
+                          data_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imikolov",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def test(word_idx, n, data_type=DataType.NGRAM):
     """
     imikolov test set creator.
@@ -162,16 +227,25 @@ def test(word_idx, n, data_type=DataType.NGRAM):
     :return: Test reader creator
     :rtype: callable
     """
+<<<<<<< HEAD
     return reader_creator(
         './simple-examples/data/ptb.valid.txt', word_idx, n, data_type
     )
+=======
+    return reader_creator('./simple-examples/data/ptb.valid.txt', word_idx, n,
+                          data_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imikolov",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def fetch():
     paddle.dataset.common.download(URL, "imikolov", MD5)

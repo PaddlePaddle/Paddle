@@ -54,6 +54,7 @@ class MemcpyOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
@@ -67,6 +68,22 @@ class MemcpyOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -99,9 +116,15 @@ class MemcpyKernel {
 class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("X", "(phi::DenseTensor) The input variable ");
     AddOutput("Out",
               "(phi::DenseTensor) The type of output "
+=======
+    AddInput("X", "(LoDTensor) The input variable ");
+    AddOutput("Out",
+              "(LoDTensor) The type of output "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "is the same as input X.");
     AddAttr<int>("dst_place_type",
                  "Determine the dst place of tensor copy. "
@@ -112,6 +135,7 @@ class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                  "1: dst is on CUDAPlace. "
                  "2: dst is on CUDAPinnedPlace. "
                  "3: dst is on XPUPlace. "
+<<<<<<< HEAD
                  "4: dst is on NPUPlace. "
                  "5: dst is on NPUPinnerPlace. "
                  "6: dst is on CustomDevicePlace");
@@ -122,6 +146,16 @@ class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     You would have to update it if you want other more capacities.
 
 Out = X,  when type in [phi::DenseTensor]
+=======
+                 "4: dst is on NPUPlace. ");
+    AddComment(R"DOC(
+    Memcpy Operator.
+    By now, it ONLY supports the memcopy between CUDAPinnedPlace <-> CUDAPlace or 
+    NPUPlace <-> CPUPlace, and used as an internal op by Recompute-Offload.
+    You would have to update it if you want other more capacities.
+
+Out = X,  when type in [LoDTensor]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 raise error if the type is not listed above.
 )DOC");
   }

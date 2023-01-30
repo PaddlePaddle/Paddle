@@ -30,10 +30,14 @@ void GatherNdKernel(const Context &ctx,
   if (x.numel() == 0) return;
 
   if (index.numel() == 0) {
+<<<<<<< HEAD
     out->Resize(x.dims());
     ctx.template Alloc<T>(out);
     int r = xpu::copy(ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+=======
+    phi::Copy(ctx, x, phi::XPUPlace(), true, out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
 
@@ -72,7 +76,16 @@ void GatherNdKernel(const Context &ctx,
                                      x_vec,
                                      index_shape);
   }
+<<<<<<< HEAD
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather_nd");
+=======
+  PADDLE_ENFORCE_EQ(
+      ret,
+      XPU_SUCCESS,
+      phi::errors::External("XPU gather_nd kernel return wrong value[%d %s]",
+                            ret,
+                            XPUAPIErrorMsg[ret]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

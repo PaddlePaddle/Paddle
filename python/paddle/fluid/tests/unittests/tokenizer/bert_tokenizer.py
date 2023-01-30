@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unicodedata
 
@@ -27,6 +28,20 @@ from tokenizer_utils import (
 
 
 class BasicTokenizer:
+=======
+import copy
+import io
+import json
+import os
+import six
+import unicodedata
+
+from tokenizer_utils import PretrainedTokenizer
+from tokenizer_utils import convert_to_unicode, whitespace_tokenize, _is_whitespace, _is_control, _is_punctuation
+
+
+class BasicTokenizer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Runs basic tokenization (punctuation splitting, lower casing, etc.).
     Args:
@@ -45,7 +60,11 @@ class BasicTokenizer:
         Tokenizes a piece of text using basic tokenizer.
         Args:
             text (str): A piece of text.
+<<<<<<< HEAD
         Returns:
+=======
+        Returns: 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             list(str): A list of tokens.
         Examples:
             .. code-block::
@@ -135,6 +154,7 @@ class BasicTokenizer:
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
+<<<<<<< HEAD
         if (
             (cp >= 0x4E00 and cp <= 0x9FFF)
             or (cp >= 0x3400 and cp <= 0x4DBF)  #
@@ -145,6 +165,16 @@ class BasicTokenizer:
             or (cp >= 0xF900 and cp <= 0xFAFF)
             or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
         ):  #
+=======
+        if ((cp >= 0x4E00 and cp <= 0x9FFF) or  #
+            (cp >= 0x3400 and cp <= 0x4DBF) or  #
+            (cp >= 0x20000 and cp <= 0x2A6DF) or  #
+            (cp >= 0x2A700 and cp <= 0x2B73F) or  #
+            (cp >= 0x2B740 and cp <= 0x2B81F) or  #
+            (cp >= 0x2B820 and cp <= 0x2CEAF) or
+            (cp >= 0xF900 and cp <= 0xFAFF) or  #
+            (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return True
 
         return False
@@ -156,7 +186,11 @@ class BasicTokenizer:
         output = []
         for char in text:
             cp = ord(char)
+<<<<<<< HEAD
             if cp == 0 or cp == 0xFFFD or _is_control(char):
+=======
+            if cp == 0 or cp == 0xfffd or _is_control(char):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 continue
             if _is_whitespace(char):
                 output.append(" ")
@@ -165,7 +199,11 @@ class BasicTokenizer:
         return "".join(output)
 
 
+<<<<<<< HEAD
 class WordpieceTokenizer:
+=======
+class WordpieceTokenizer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Runs WordPiece tokenization.
     Args:
@@ -281,6 +319,7 @@ class BertTokenizer(PretrainedTokenizer):
             {'input_ids': [101, 2002, 2001, 1037, 13997, 11510, 102], 'token_type_ids': [0, 0, 0, 0, 0, 0, 0]}
             '''
     """
+<<<<<<< HEAD
 
     resource_files_names = {"vocab_file": "vocab.txt"}  # for save_pretrained
     pretrained_resource_files_map = {
@@ -325,11 +364,91 @@ class BertTokenizer(PretrainedTokenizer):
         cls_token="[CLS]",
         mask_token="[MASK]",
     ):
+=======
+    resource_files_names = {"vocab_file": "vocab.txt"}  # for save_pretrained
+    pretrained_resource_files_map = {
+        "vocab_file": {
+            "bert-base-uncased":
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-uncased-vocab.txt",
+            "bert-large-uncased":
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-large-uncased-vocab.txt",
+            "bert-base-cased":
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-cased-vocab.txt",
+            "bert-large-cased":
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-large-cased-vocab.txt",
+            "bert-base-multilingual-uncased":
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-multilingual-uncased-vocab.txt",
+            "bert-base-multilingual-cased":
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-multilingual-cased-vocab.txt",
+            "bert-base-chinese":
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-chinese-vocab.txt",
+            "bert-wwm-chinese":
+            "http://paddlenlp.bj.bcebos.com/models/transformers/bert/bert-wwm-chinese-vocab.txt",
+            "bert-wwm-ext-chinese":
+            "http://paddlenlp.bj.bcebos.com/models/transformers/bert/bert-wwm-ext-chinese-vocab.txt",
+            "macbert-large-chinese":
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-chinese-vocab.txt",
+            "macbert-base-chinese":
+            "https://paddle-hapi.bj.bcebos.com/models/bert/bert-base-chinese-vocab.txt",
+            "simbert-base-chinese":
+            "https://paddlenlp.bj.bcebos.com/models/transformers/simbert/vocab.txt",
+        }
+    }
+    pretrained_init_configuration = {
+        "bert-base-uncased": {
+            "do_lower_case": True
+        },
+        "bert-large-uncased": {
+            "do_lower_case": True
+        },
+        "bert-base-cased": {
+            "do_lower_case": False
+        },
+        "bert-large-cased": {
+            "do_lower_case": False
+        },
+        "bert-base-multilingual-uncased": {
+            "do_lower_case": True
+        },
+        "bert-base-multilingual-cased": {
+            "do_lower_case": False
+        },
+        "bert-base-chinese": {
+            "do_lower_case": False
+        },
+        "bert-wwm-chinese": {
+            "do_lower_case": False
+        },
+        "bert-wwm-ext-chinese": {
+            "do_lower_case": False
+        },
+        "macbert-large-chinese": {
+            "do_lower_case": False
+        },
+        "macbert-base-chinese": {
+            "do_lower_case": False
+        },
+        "simbert-base-chinese": {
+            "do_lower_case": True
+        },
+    }
+    padding_side = 'right'
+
+    def __init__(self,
+                 vocab_file,
+                 do_lower_case=True,
+                 unk_token="[UNK]",
+                 sep_token="[SEP]",
+                 pad_token="[PAD]",
+                 cls_token="[CLS]",
+                 mask_token="[MASK]"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if not os.path.isfile(vocab_file):
             raise ValueError(
                 "Can't find a vocabulary file at path '{}'. To load the "
                 "vocabulary from a pretrained model please use "
+<<<<<<< HEAD
                 "`tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
                     vocab_file
                 )
@@ -340,12 +459,25 @@ class BertTokenizer(PretrainedTokenizer):
         self.wordpiece_tokenizer = WordpieceTokenizer(
             vocab=self.vocab, unk_token=unk_token
         )
+=======
+                "`tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`"
+                .format(vocab_file))
+        self.vocab = self.load_vocabulary(vocab_file, unk_token=unk_token)
+        self.do_lower_case = do_lower_case
+        self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
+        self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab,
+                                                      unk_token=unk_token)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.special_tokens_map = {
             'unk_token': unk_token,
             'sep_token': sep_token,
             'pad_token': pad_token,
             'cls_token': cls_token,
+<<<<<<< HEAD
             'mask_token': mask_token,
+=======
+            'mask_token': mask_token
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     @property
@@ -363,7 +495,11 @@ class BertTokenizer(PretrainedTokenizer):
         End-to-end tokenization for BERT models.
         Args:
             text (str): The text to be tokenized.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Returns:
             list: A list of string representing converted tokens.
         """
@@ -378,7 +514,11 @@ class BertTokenizer(PretrainedTokenizer):
         Converts a string to a list of tokens.
         Args:
             text (str): The text to be tokenized.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Returns:
             List(str): A list of string representing converted tokens.
         Examples:
@@ -386,7 +526,11 @@ class BertTokenizer(PretrainedTokenizer):
                 from paddlenlp.transformers import BertTokenizer
                 berttokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
                 tokens = berttokenizer.tokenize('He was a puppeteer')
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 '''
                 ['he', 'was', 'a', 'puppet', '##eer']
                 '''
@@ -408,15 +552,24 @@ class BertTokenizer(PretrainedTokenizer):
         token_ids_1 = []
         return len(
             self.build_inputs_with_special_tokens(
+<<<<<<< HEAD
                 token_ids_0, token_ids_1 if pair else None
             )
         )
+=======
+                token_ids_0, token_ids_1 if pair else None))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def build_inputs_with_special_tokens(self, token_ids_0, token_ids_1=None):
         """
         Build model inputs from a sequence or a pair of sequence for sequence classification tasks by concatenating and
+<<<<<<< HEAD
         adding special tokens.
 
+=======
+        adding special tokens. 
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         A BERT sequence has the following format:
         - single sequence:      ``[CLS] X [SEP]``
         - pair of sequences:        ``[CLS] A [SEP] B [SEP]``
@@ -434,11 +587,19 @@ class BertTokenizer(PretrainedTokenizer):
         _sep = [self.sep_token_id]
         return _cls + token_ids_0 + _sep + token_ids_1 + _sep
 
+<<<<<<< HEAD
     def create_token_type_ids_from_sequences(
         self, token_ids_0, token_ids_1=None
     ):
         """
         Create a mask from the two sequences passed to be used in a sequence-pair classification task.
+=======
+    def create_token_type_ids_from_sequences(self,
+                                             token_ids_0,
+                                             token_ids_1=None):
+        """
+        Create a mask from the two sequences passed to be used in a sequence-pair classification task. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         A BERT sequence pair mask has the following format:
         ::
             0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1
@@ -456,6 +617,7 @@ class BertTokenizer(PretrainedTokenizer):
         _cls = [self.cls_token_id]
         if token_ids_1 is None:
             return len(_cls + token_ids_0 + _sep) * [0]
+<<<<<<< HEAD
         return len(_cls + token_ids_0 + _sep) * [0] + len(
             token_ids_1 + _sep
         ) * [1]
@@ -463,6 +625,15 @@ class BertTokenizer(PretrainedTokenizer):
     def get_special_tokens_mask(
         self, token_ids_0, token_ids_1=None, already_has_special_tokens=False
     ):
+=======
+        return len(_cls + token_ids_0 + _sep) * [0] + len(token_ids_1 +
+                                                          _sep) * [1]
+
+    def get_special_tokens_mask(self,
+                                token_ids_0,
+                                token_ids_1=None,
+                                already_has_special_tokens=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         Retrieves sequence ids from a token list that has no special tokens added. This method is called when adding
         special tokens using the tokenizer ``encode`` methods.
@@ -471,7 +642,11 @@ class BertTokenizer(PretrainedTokenizer):
                 A list of `inputs_ids` for the first sequence.
             token_ids_1 (List[int], optinal):
                 Optional second list of IDs for sequence pairs. Defaults to None.
+<<<<<<< HEAD
             already_has_special_tokens (bool, optional): Whether or not the token list is already
+=======
+            already_has_special_tokens (bool, optional): Whether or not the token list is already 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 formatted with special tokens for the model. Defaults to None.
         Returns:
             List[int]: The list of integers either be 0 or 1: 1 for a special token, 0 for a sequence token.
@@ -486,6 +661,7 @@ class BertTokenizer(PretrainedTokenizer):
             return list(
                 map(
                     lambda x: 1
+<<<<<<< HEAD
                     if x in [self.sep_token_id, self.cls_token_id]
                     else 0,
                     token_ids_0,
@@ -500,4 +676,12 @@ class BertTokenizer(PretrainedTokenizer):
                 + ([0] * len(token_ids_1))
                 + [1]
             )
+=======
+                    if x in [self.sep_token_id, self.cls_token_id] else 0,
+                    token_ids_0))
+
+        if token_ids_1 is not None:
+            return [1] + ([0] * len(token_ids_0)) + [1] + (
+                [0] * len(token_ids_1)) + [1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return [1] + ([0] * len(token_ids_0)) + [1]

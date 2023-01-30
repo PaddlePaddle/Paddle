@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -25,11 +26,31 @@ from op_test import OpTest
 
 import paddle.fluid.dygraph as dg
 import paddle.static as static
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid.core as core
+import sys
+
+sys.path.append("..")
+from op_test import OpTest
+from paddle.fluid import Program, program_guard
+import paddle.fluid.dygraph as dg
+import paddle.static as static
+from numpy.random import random as rand
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestConjOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "conj"
         self.python_api = paddle.tensor.conj
@@ -41,24 +62,35 @@ class TestConjOp(OpTest):
         self.dtype = np.complex64
 
     def init_input_output(self):
+<<<<<<< HEAD
         x = (
             np.random.random((12, 14)) + 1j * np.random.random((12, 14))
         ).astype(self.dtype)
+=======
+        x = (np.random.random((12, 14)) + 1j * np.random.random(
+            (12, 14))).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = np.conj(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
     def init_grad_input_output(self):
+<<<<<<< HEAD
         self.grad_out = (np.ones((12, 14)) + 1j * np.ones((12, 14))).astype(
             self.dtype
         )
+=======
+        self.grad_out = (np.ones((12, 14)) + 1j * np.ones(
+            (12, 14))).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.grad_in = np.conj(self.grad_out)
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'],
             'Out',
@@ -69,6 +101,17 @@ class TestConjOp(OpTest):
 
 
 class TestComplexConjOp(unittest.TestCase):
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_in],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
+
+
+class TestComplexConjOp(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -77,9 +120,15 @@ class TestComplexConjOp(unittest.TestCase):
 
     def test_conj_api(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
                 [2, 20, 2, 3]
             ).astype(dtype)
+=======
+            input = rand([
+                2, 20, 2, 3
+            ]).astype(dtype) + 1j * rand([2, 20, 2, 3]).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for place in self._places:
                 with dg.guard(place):
                     var_x = paddle.to_tensor(input)
@@ -89,9 +138,15 @@ class TestComplexConjOp(unittest.TestCase):
 
     def test_conj_operator(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
                 [2, 20, 2, 3]
             ).astype(dtype)
+=======
+            input = rand([
+                2, 20, 2, 3
+            ]).astype(dtype) + 1j * rand([2, 20, 2, 3]).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for place in self._places:
                 with dg.guard(place):
                     var_x = paddle.to_tensor(input)
@@ -100,22 +155,37 @@ class TestComplexConjOp(unittest.TestCase):
                     np.testing.assert_array_equal(result, target)
 
     def test_conj_static_mode(self):
+<<<<<<< HEAD
         def init_input_output(dtype):
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
                 [2, 20, 2, 3]
             ).astype(dtype)
+=======
+
+        def init_input_output(dtype):
+            input = rand([
+                2, 20, 2, 3
+            ]).astype(dtype) + 1j * rand([2, 20, 2, 3]).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return {'x': input}, np.conj(input)
 
         for dtype in self._dtypes:
             input_dict, np_res = init_input_output(dtype)
             for place in self._places:
                 with static.program_guard(static.Program()):
+<<<<<<< HEAD
                     x_dtype = (
                         np.complex64 if dtype == "float32" else np.complex128
                     )
                     x = static.data(
                         name="x", shape=[2, 20, 2, 3], dtype=x_dtype
                     )
+=======
+                    x_dtype = np.complex64 if dtype == "float32" else np.complex128
+                    x = static.data(name="x",
+                                    shape=[2, 20, 2, 3],
+                                    dtype=x_dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     out = paddle.conj(x)
 
                     exe = static.Executor(place)

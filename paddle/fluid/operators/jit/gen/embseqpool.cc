@@ -18,7 +18,11 @@
 
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/jit/registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -123,7 +127,11 @@ void EmbSeqPoolJitCode::genCode() {
 class EmbSeqPoolCreator : public JitCodeCreator<emb_seq_pool_attr_t> {
  public:
   bool CanBeUsed(const emb_seq_pool_attr_t& attr) const override {
+<<<<<<< HEAD
     return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) &&
+=======
+    return platform::MayIUse(platform::avx) &&
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            attr.table_width % YMM_FLOAT_BLOCK == 0;
   }
   size_t CodeSize(const emb_seq_pool_attr_t& attr) const override {

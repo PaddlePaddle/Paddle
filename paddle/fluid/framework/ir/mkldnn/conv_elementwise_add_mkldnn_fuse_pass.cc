@@ -16,7 +16,11 @@
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -60,6 +64,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .AddAttr("data_format")
       .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
       .End();
+<<<<<<< HEAD
   AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -97,6 +102,8 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .AddAttr("data_format")
       .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
       .End();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
@@ -116,13 +123,20 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
 GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
     const std::string& name_scope,
     const GraphWithStats& graph_with_stats,
+<<<<<<< HEAD
     const std::string& conv_type,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool as_x) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
 
   patterns::Conv conv_pattern{pattern, name_scope};
+<<<<<<< HEAD
   auto conv_output = conv_pattern(conv_type);
+=======
+  auto conv_output = conv_pattern();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   patterns::ResidualElementwise elementwise_pattern{pattern, name_scope, as_x};
   elementwise_pattern(
@@ -165,10 +179,13 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
       return;
     }
 
+<<<<<<< HEAD
     if (conv_op->Op()->Type() == "conv2d") {
       conv_op->Op()->SetType("fused_conv2d");
     }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     conv_op->Op()->SetInput("ResidualData", {residual_data->Name()});
     conv_op->Op()->SetOutput("Output", {elementwise_out->Name()});
     conv_op->Op()->SetAttr("fuse_residual_connection", true);
@@ -182,8 +199,12 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
   };
 
   gpd(graph_with_stats.first, handler);
+<<<<<<< HEAD
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       (found_conv_count > 0)) {
+=======
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::stringstream msg_ss;
     std::string fusionMode = as_x ? "x" : "y";
     msg_ss << "---    Fused " << found_conv_count << " conv (as " << fusionMode
@@ -197,16 +218,27 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
 
 GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
     const std::string& name_scope,
+<<<<<<< HEAD
     const GraphWithStats& graph_with_stats,
     const std::string& conv_type) const {
+=======
+    const GraphWithStats& graph_with_stats) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
 
   patterns::Conv conv_x_pattern{pattern, name_scope};
+<<<<<<< HEAD
   auto conv_x_output = conv_x_pattern(conv_type);
 
   patterns::Conv conv_y_pattern{pattern, name_scope};
   auto conv_y_output = conv_y_pattern(conv_type);
+=======
+  auto conv_x_output = conv_x_pattern();
+
+  patterns::Conv conv_y_pattern{pattern, name_scope};
+  auto conv_y_output = conv_y_pattern();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   patterns::Elementwise elementwise_pattern{pattern, name_scope};
   elementwise_pattern(conv_x_output, conv_y_output, "elementwise_add");
@@ -258,9 +290,12 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
 
     if (HasFusedActivation(residual_conv_op)) return;
 
+<<<<<<< HEAD
     if (residual_conv_op->Op()->Type() == "conv2d") {
       residual_conv_op->Op()->SetType("fused_conv2d");
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     residual_conv_op->Op()->SetInput("ResidualData", {projection_node->Name()});
     residual_conv_op->Op()->SetOutput("Output", {elementwise_out->Name()});
 
@@ -275,8 +310,12 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
   };
 
   gpd(graph_with_stats.first, handler);
+<<<<<<< HEAD
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       (found_projection_conv_count > 0)) {
+=======
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::stringstream msg_ss;
     msg_ss << "---    Fused " << found_projection_conv_count
            << " projection conv (as y) + elementwise_add patterns";
@@ -289,6 +328,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
 
 void ResidualConnectionMKLDNNFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
+<<<<<<< HEAD
 
   auto graph_with_stats =
       FuseProjectionConv(name_scope_, std::make_pair(graph, 0), "fused_conv2d");
@@ -301,6 +341,12 @@ void ResidualConnectionMKLDNNFusePass::ApplyImpl(ir::Graph* graph) const {
       FuseProjectionConv(name_scope_, graph_with_stats, "conv2d");
   graph_with_stats = FuseConv(name_scope_, graph_with_stats, "conv2d", true);
   graph_with_stats = FuseConv(name_scope_, graph_with_stats, "conv2d", false);
+=======
+  auto graph_with_stats =
+      FuseProjectionConv(name_scope_, std::make_pair(graph, 0));
+  graph_with_stats = FuseConv(name_scope_, graph_with_stats, true);
+  graph_with_stats = FuseConv(name_scope_, graph_with_stats, false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   AddStatis(graph_with_stats.second);
 }

@@ -26,6 +26,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class FusedBatchNormActOp : public framework::OperatorWithKernel {
  public:
@@ -33,8 +37,18 @@ class FusedBatchNormActOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class FusedBatchNormActGradOp : public framework::OperatorWithKernel {
@@ -43,7 +57,11 @@ class FusedBatchNormActGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override;
 };
 

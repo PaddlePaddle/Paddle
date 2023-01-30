@@ -24,8 +24,13 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
+<<<<<<< HEAD
     const Tensor *in_x = ctx.Input<phi::DenseTensor>("X");
     Tensor *out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    const Tensor *in_x = ctx.Input<Tensor>("X");
+    Tensor *out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(ctx.GetPlace());
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
@@ -171,12 +176,19 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
+<<<<<<< HEAD
     const Tensor *in_x = ctx.Input<phi::DenseTensor>("X");
     const Tensor *out = ctx.Input<phi::DenseTensor>("Out");
     const Tensor *out_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     Tensor *in_x_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    const Tensor *in_x = ctx.Input<Tensor>("X");
+    const Tensor *out = ctx.Input<Tensor>("Out");
+    const Tensor *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    Tensor *in_x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in_x_grad->mutable_data<T>(ctx.GetPlace());
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");

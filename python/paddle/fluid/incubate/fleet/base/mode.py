@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 __all__ = ['Mode']
 
 
@@ -19,7 +24,10 @@ class Mode:
     """
     There are various mode for fleet, each of them is designed for different model.
     """
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TRANSPILER = 1
     PSLIB = 2
     COLLECTIVE = 3

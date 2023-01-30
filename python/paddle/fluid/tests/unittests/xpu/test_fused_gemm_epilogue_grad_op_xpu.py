@@ -13,11 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test_xpu import XPUOpTest
@@ -29,6 +34,13 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid.core as core
+=======
+import numpy as np
+import paddle
+import paddle.fluid.core as core
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_outputs(DOut, X, Y):
@@ -40,11 +52,19 @@ def get_outputs(DOut, X, Y):
 
 
 class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'fused_gemm_epilogue_grad'
         self.use_dynamic_create_class = False
 
     class TestFuseGemmEpilogueGradOpDXYBias1(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             paddle.enable_static()
             self.op_type = "fused_gemm_epilogue_grad"
@@ -57,14 +77,23 @@ class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
             self.inputs = {
                 'DOut': np.random.random((8, 128)).astype(self.dtype) - 0.5,
                 'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
+<<<<<<< HEAD
                 'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
+=======
+                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.attrs = {"activation": 'none'}
 
+<<<<<<< HEAD
             DX, DY, DBias = get_outputs(
                 self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
             )
+=======
+            DX, DY, DBias = get_outputs(self.inputs['DOut'], self.inputs['X'],
+                                        self.inputs['Y'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.outputs = {'DX': DX, 'DY': DY, 'DBias': DBias}
 
         def test_check_output(self):
@@ -74,48 +103,87 @@ class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
             self.check_output_with_place(core.XPUPlace(0), atol=self.atol)
 
     class TestFuseGemmEpilogueGradOpDXYBias2(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.inputs = {
                 'DOut': np.random.random((8, 128)).astype(self.dtype) - 0.5,
                 'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
+<<<<<<< HEAD
                 'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
+=======
+                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.attrs = {"activation": 'none'}
 
+<<<<<<< HEAD
             _, DY, DBias = get_outputs(
                 self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
             )
             self.outputs = {'DY': DY, 'DBias': DBias}
 
     class TestFuseGemmEpilogueGradOpDXYBias3(XPUOpTest):
+=======
+            _, DY, DBias = get_outputs(self.inputs['DOut'], self.inputs['X'],
+                                       self.inputs['Y'])
+            self.outputs = {'DY': DY, 'DBias': DBias}
+
+    class TestFuseGemmEpilogueGradOpDXYBias3(XPUOpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.inputs = {
                 'DOut': np.random.random((8, 128)).astype(self.dtype) - 0.5,
                 'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
+<<<<<<< HEAD
                 'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
+=======
+                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.attrs = {"activation": 'none'}
 
+<<<<<<< HEAD
             _, DY, _ = get_outputs(
                 self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
             )
             self.outputs = {'DY': DY}
 
     class TestFuseGemmEpilogueGradOpDXYBias4(XPUOpTest):
+=======
+            _, DY, _ = get_outputs(self.inputs['DOut'], self.inputs['X'],
+                                   self.inputs['Y'])
+            self.outputs = {'DY': DY}
+
+    class TestFuseGemmEpilogueGradOpDXYBias4(XPUOpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.inputs = {
                 'DOut': np.random.random((8, 128)).astype(self.dtype) - 0.5,
                 'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
+<<<<<<< HEAD
                 'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
+=======
+                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.attrs = {"activation": 'none'}
 
+<<<<<<< HEAD
             DX, DY, _ = get_outputs(
                 self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
             )
+=======
+            DX, DY, _ = get_outputs(self.inputs['DOut'], self.inputs['X'],
+                                    self.inputs['Y'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.outputs = {'DX': DX, 'DY': DY}
 
 

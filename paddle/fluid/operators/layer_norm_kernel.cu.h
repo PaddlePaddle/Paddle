@@ -25,14 +25,23 @@ namespace cub = hipcub;
 #include <iostream>
 
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -54,7 +63,11 @@ static __forceinline__ __device__ U WarpReduceSum(U val) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+<<<<<<< HEAD
     val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
+=======
+    val += paddle::platform::CudaShuffleDownSync(mask, val, offset);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   return val;
 }
@@ -378,8 +391,12 @@ __global__ void LayerNormForward(
   var_val = BlockReduceSum<U>(var_val, shared_var);
 
   if (threadIdx.x == 0) {
+<<<<<<< HEAD
     auto scale = static_cast<U>(static_cast<float>(1.) /
                                 static_cast<float>(feature_size));
+=======
+    auto scale = static_cast<float>(1.) / static_cast<float>(feature_size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto tmp = mean_val * scale;
     mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
     var_share = static_cast<U>(var_val * scale - mean_share * mean_share);
@@ -501,8 +518,12 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
 }
 
 #ifdef PADDLE_WITH_CUDA
+<<<<<<< HEAD
 template <bool IsFusedDropoutResidualLn,
           bool NeedDDropoutSrcPtr,
+=======
+template <bool isFusedDropoutResidualLn,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           typename T,
           typename U,
           typename ScaleT = U,
@@ -532,10 +553,13 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
     const MaskType *mask_ptr = nullptr,
     T factor = static_cast<T>(0),
     T *d_dropout_src_ptr = nullptr) {
+<<<<<<< HEAD
   static_assert(
       !IsFusedDropoutResidualLn || NeedDDropoutSrcPtr,
       "When IsFusedDropoutResidualLn = true, NeedDDropoutSrcPtr must be true.");
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   using Vec = phi::AlignedVector<T, VecSize>;
   using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
   using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
@@ -590,7 +614,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
       phi::Load<T, VecSize>(dout_ptr + row * ELTS_PER_ROW + col * VecSize,
                             &dout[it]);
       phi::Load<T, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize, &x[it]);
+<<<<<<< HEAD
       if (IsFusedDropoutResidualLn) {
+=======
+      if (isFusedDropoutResidualLn) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         phi::Load<MaskType, VecSize>(
             mask_ptr + row * ELTS_PER_ROW + col * VecSize, &mask_vec[it]);
       }
@@ -676,7 +704,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
         U dx_tmp = var_cur_row * (dy_tmp - sum_loss2 * y_tmp - sum_loss1);
         // Note: reuse x and dout vec register to store dx and d_dropout_src.
         x[it][jt] = static_cast<T>(dx_tmp);
+<<<<<<< HEAD
         if (IsFusedDropoutResidualLn) {
+=======
+        if (isFusedDropoutResidualLn) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           dout[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor;
         }
       }
@@ -688,12 +720,18 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
     for (int it = 0; it < LDGS; it++) {
       phi::Store<T, VecSize>(x[it],
                              dx_ptr + row * ELTS_PER_ROW + col * VecSize);
+<<<<<<< HEAD
       if (IsFusedDropoutResidualLn) {
         phi::Store<T, VecSize>(
             dout[it], d_dropout_src_ptr + row * ELTS_PER_ROW + col * VecSize);
       } else if (NeedDDropoutSrcPtr) {
         phi::Store<T, VecSize>(
             x[it], d_dropout_src_ptr + row * ELTS_PER_ROW + col * VecSize);
+=======
+      if (isFusedDropoutResidualLn) {
+        phi::Store<T, VecSize>(
+            dout[it], d_dropout_src_ptr + row * ELTS_PER_ROW + col * VecSize);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
       col += THREADS_PER_ROW;
     }
@@ -945,12 +983,20 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     const int gridx = 2 * dev_ctx.GetSMCount();
 
     // get temp space for dscale and dbias.
+<<<<<<< HEAD
     phi::DenseTensor dscale_temp;
+=======
+    framework::Tensor dscale_temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dscale_temp.Resize({gridx, cols});
     dscale_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dscale_temp_ptr = dscale_temp.data<U>();
 
+<<<<<<< HEAD
     phi::DenseTensor dbias_temp;
+=======
+    framework::Tensor dbias_temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dbias_temp.Resize({gridx, cols});
     dbias_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dbias_temp_ptr = dbias_temp.data<U>();
@@ -963,7 +1009,10 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
       }
 #define LAUNCH_MASK_FUSED_LN_BWD_FAST_KERNEL(vec_size, ele_per_row) \
   fused_ln_bwd_fast_kernel<true,                                    \
+<<<<<<< HEAD
                            true,                                    \
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            T,                                       \
                            U,                                       \
                            ScaleT,                                  \
@@ -1002,10 +1051,15 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 #undef LAUNCH_MASK_FUSED_LN_BWD_FAST_KERNEL
 
     } else {
+<<<<<<< HEAD
 #define LAUNCH_FUSED_LN_BWD_FAST_KERNEL_BASE(                  \
     vec_size, ele_per_row, need_d_dropout_src_ptr)             \
   fused_ln_bwd_fast_kernel<false,                              \
                            need_d_dropout_src_ptr,             \
+=======
+#define LAUNCH_FUSED_LN_BWD_FAST_KERNEL(vec_size, ele_per_row) \
+  fused_ln_bwd_fast_kernel<false,                              \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            T,                                  \
                            U,                                  \
                            ScaleT,                             \
@@ -1024,6 +1078,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
                                               dout_ptr,        \
                                               dscale_temp_ptr, \
                                               dbias_temp_ptr,  \
+<<<<<<< HEAD
                                               dx_ptr,          \
                                               nullptr,         \
                                               factor,          \
@@ -1037,6 +1092,9 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
       LAUNCH_FUSED_LN_BWD_FAST_KERNEL_BASE(vec_size, ele_per_row, false); \
     }                                                                     \
   } while (0)
+=======
+                                              dx_ptr);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       if (cols == 1024) {
         LAUNCH_FUSED_LN_BWD_FAST_KERNEL(VecSize, 1024);

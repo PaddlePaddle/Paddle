@@ -48,7 +48,11 @@ int main(int argc, char **argv) {
   for (const auto &op_kernel_pair : kernel_factory.kernels()) {
     std::string op_name = op_kernel_pair.first;
     const paddle::flat_hash_map<std::string, std::string> &kernel_name_map =
+<<<<<<< HEAD
         phi::OpUtilsMap::Instance().fluid_op_to_phi_kernel();
+=======
+        phi::OpUtilsMap::Instance().base_kernel_name_map();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (auto &it : kernel_name_map) {
       if (it.second == op_name) {
         op_name = it.first;

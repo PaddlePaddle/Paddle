@@ -130,10 +130,17 @@ void ChromeTracingLogger::LogMemTraceEventNode(
   output_file_stream_ << string_format(
       std::string(
           R"JSON(
+<<<<<<< HEAD
   {
     "name": "[memory]", "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld,
     "ph": "i", "cat": "%s",
+=======
+  { 
+    "name": "[memory]", "pid": %lld, "tid": "%lld(C++)",
+    "ts": %lld, 
+    "ph": "i", "cat": "%s", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "args": {
       "place": "%s",
       "addr": "%llu",
@@ -196,10 +203,17 @@ void ChromeTracingLogger::LogHostTraceEventNode(
       output_file_stream_ << string_format(
           std::string(
               R"JSON(
+<<<<<<< HEAD
   {
     "name": "%s[%s]", "pid": %lld, "tid": "%lld(Python)",
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s",
+=======
+  { 
+    "name": "%s[%s]", "pid": %lld, "tid": "%lld(Python)",
+    "ts": %lld, "dur": %.3f,
+    "ph": "X", "cat": "%s", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "cname": "thread_state_runnable",
     "args": {
       "start_time": "%.3f us",
@@ -223,10 +237,17 @@ void ChromeTracingLogger::LogHostTraceEventNode(
       output_file_stream_ << string_format(
           std::string(
               R"JSON(
+<<<<<<< HEAD
   {
     "name": "%s[%s]", "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s",
+=======
+  { 
+    "name": "%s[%s]", "pid": %lld, "tid": "%lld(C++)",
+    "ts": %lld, "dur": %.3f,
+    "ph": "X", "cat": "%s", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "cname": "thread_state_runnable",
     "args": {
       "start_time": "%.3f us",
@@ -263,10 +284,17 @@ void ChromeTracingLogger::LogHostTraceEventNode(
       output_file_stream_ << string_format(
           std::string(
               R"JSON(
+<<<<<<< HEAD
   {
     "name": "%s[%s]", "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s",
+=======
+  { 
+    "name": "%s[%s]", "pid": %lld, "tid": "%lld(C++)",
+    "ts": %lld, "dur": %.3f,
+    "ph": "X", "cat": "%s", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "cname": "thread_state_runnable",
     "args": {
       "start_time": "%.3f us",
@@ -304,10 +332,17 @@ void ChromeTracingLogger::LogRuntimeTraceEventNode(
   output_file_stream_ << string_format(
       std::string(
           R"JSON(
+<<<<<<< HEAD
   {
     "name": "%s[%s]", "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s",
+=======
+  { 
+    "name": "%s[%s]", "pid": %lld, "tid": "%lld(C++)",
+    "ts": %lld, "dur": %.3f,
+    "ph": "X", "cat": "%s", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "cname": "thread_state_running",
     "args": {
       "correlation id": %d,
@@ -331,9 +366,15 @@ void ChromeTracingLogger::LogRuntimeTraceEventNode(
   output_file_stream_ << string_format(
       std::string(
           R"JSON(
+<<<<<<< HEAD
   {
     "name": "launch", "id": %d, "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld,
+=======
+  { 
+    "name": "launch", "id": %d, "pid": %lld, "tid": "%lld(C++)",
+    "ts": %lld, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "ph": "s", "cat": "async"
   },
   )JSON"),
@@ -365,9 +406,15 @@ void ChromeTracingLogger::LogDeviceTraceEventNode(
   if (nsToUs(device_node.Duration()) == 0) {
     output_file_stream_ << string_format(std::string(
                                              R"JSON(
+<<<<<<< HEAD
   {
     "name": "launch", "id": %d, "pid": %lld, "tid": %lld,
     "ts": %lld,
+=======
+  { 
+    "name": "launch", "id": %d, "pid": %lld, "tid": %lld,
+    "ts": %lld, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "ph": "f", "cat": "async"
   },
   )JSON"),
@@ -381,9 +428,15 @@ void ChromeTracingLogger::LogDeviceTraceEventNode(
     output_file_stream_ << string_format(
         std::string(
             R"JSON(
+<<<<<<< HEAD
   {
     "name": "launch", "id": %d, "pid": %lld, "tid": %lld,
     "ts": %lld,
+=======
+  { 
+    "name": "launch", "id": %d, "pid": %lld, "tid": %lld,
+    "ts": %lld, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "ph": "f", "cat": "async", "bp": "e"
   },
   )JSON"),
@@ -410,10 +463,17 @@ void ChromeTracingLogger::HandleTypeKernel(
   output_file_stream_ << string_format(
       std::string(
           R"JSON(
+<<<<<<< HEAD
   {
     "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s",
+=======
+  { 
+    "name": "%s[%s]", "pid": %lld, "tid": %lld,
+    "ts": %lld, "dur": %.3f,
+    "ph": "X", "cat": "%s", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "cname": "cq_build_failed",
     "args": {
       "start_time": "%.3f us",
@@ -476,7 +536,11 @@ void ChromeTracingLogger::HandleTypeMemcpy(
   {
     "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
+<<<<<<< HEAD
     "ph": "X", "cat": "%s",
+=======
+    "ph": "X", "cat": "%s", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "cname": "cq_build_failed",
     "args": {
       "start_time": "%.3f us",
@@ -517,7 +581,11 @@ void ChromeTracingLogger::HandleTypeMemset(
   {
     "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
+<<<<<<< HEAD
     "ph": "X", "cat": "%s",
+=======
+    "ph": "X", "cat": "%s", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "cname": "cq_build_failed",
     "args": {
       "start_time": "%.3f us",
@@ -548,7 +616,11 @@ void ChromeTracingLogger::HandleTypeMemset(
 void ChromeTracingLogger::StartLog() {
   output_file_stream_ << std::string(
       R"JSON(
+<<<<<<< HEAD
   {
+=======
+  { 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "displayTimeUnit": "ms",)JSON");
 }
 
@@ -717,34 +789,51 @@ void ChromeTracingLogger::RefineDisplayName(
             R"JSON(
   {
     "name": "process_name", "pid": %lld, "tid": "%lld(Python)",
+<<<<<<< HEAD
     "ph": "M",
+=======
+    "ph": "M", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "args": {
       "name": "Process %lld (CPU)"
     }
   },
   {
     "name": "process_name", "pid": %lld, "tid": "%lld(C++)",
+<<<<<<< HEAD
     "ph": "M",
+=======
+    "ph": "M", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "args": {
       "name": "Process %lld (CPU)"
     }
   },
    {
     "name": "thread_name", "pid": %lld, "tid": "%lld(Python)",
+<<<<<<< HEAD
     "ph": "M",
+=======
+    "ph": "M", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "args": {
       "name": "thread %lld:%s(Python)"
     }
   },
   {
     "name": "thread_name", "pid": %lld, "tid": "%lld(C++)",
+<<<<<<< HEAD
     "ph": "M",
+=======
+    "ph": "M", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "args": {
       "name": "thread %lld:%s(C++)"
     }
   },
   {
     "name": "process_sort_index", "pid": %lld, "tid": %lld,
+<<<<<<< HEAD
     "ph": "M",
     "args": {
       "sort_index": %lld
@@ -753,13 +842,27 @@ void ChromeTracingLogger::RefineDisplayName(
   {
     "name": "thread_sort_index", "pid": %lld, "tid": "%lld(Python)",
     "ph": "M",
+=======
+    "ph": "M", 
+    "args": {
+      "sort_index": %lld
+    }
+  },  
+  {
+    "name": "thread_sort_index", "pid": %lld, "tid": "%lld(Python)",
+    "ph": "M", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "args": {
       "sort_index": %lld
     }
   },
   {
     "name": "thread_sort_index", "pid": %lld, "tid": "%lld(C++)",
+<<<<<<< HEAD
     "ph": "M",
+=======
+    "ph": "M", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "args": {
       "sort_index": %lld
     }
@@ -803,20 +906,29 @@ void ChromeTracingLogger::RefineDisplayName(
                                              R"JSON(
   {
     "name": "process_name", "pid": %lld, "tid": %lld,
+<<<<<<< HEAD
     "ph": "M",
+=======
+    "ph": "M", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "args": {
       "name": "Deivce %lld (%s)"
     }
   },
    {
     "name": "thread_name", "pid": %lld, "tid": %lld,
+<<<<<<< HEAD
     "ph": "M",
+=======
+    "ph": "M", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "args": {
       "name": "stream %lld"
     }
   },
   {
     "name": "process_sort_index", "pid": %lld, "tid": %lld,
+<<<<<<< HEAD
     "ph": "M",
     "args": {
       "sort_index": %lld
@@ -829,6 +941,20 @@ void ChromeTracingLogger::RefineDisplayName(
       "sort_index": %lld
     }
   },
+=======
+    "ph": "M", 
+    "args": {
+      "sort_index": %lld
+    }
+  },  
+  {
+    "name": "thread_sort_index", "pid": %lld, "tid": %lld,
+    "ph": "M", 
+    "args": {
+      "sort_index": %lld
+    }
+  },  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   )JSON"),
                                          (*it).first,
                                          (*it).second,

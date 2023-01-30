@@ -19,9 +19,13 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
+<<<<<<< HEAD
 #include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace operators {
 
@@ -31,6 +35,7 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X / Y"; }
 
   void AddInputX() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
@@ -42,6 +47,17 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
         "Y",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
         "should be int32, int64, float32, float64.");
+=======
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   std::string GetOpFuntionality() const override {
@@ -67,6 +83,7 @@ class ElementwiseDivGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+<<<<<<< HEAD
 class ElementwiseDivGradCompositeOpMaker
     : public prim::GradCompositeOpMakerBase {
   using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
@@ -92,6 +109,8 @@ class ElementwiseDivGradCompositeOpMaker
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class ElementwiseDivDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -123,7 +142,10 @@ REGISTER_OPERATOR(elementwise_div,
                   ops::ElementwiseOp,
                   ops::ElementwiseDivOpMaker,
                   ops::ElementwiseOpInferVarType,
+<<<<<<< HEAD
                   ops::ElementwiseDivGradCompositeOpMaker,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>);
 

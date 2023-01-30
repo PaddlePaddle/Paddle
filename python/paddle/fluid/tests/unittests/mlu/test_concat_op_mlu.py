@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -26,6 +31,10 @@ SEED = 2021
 
 
 class TestConcatOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "concat"
@@ -42,9 +51,14 @@ class TestConcatOp(OpTest):
             self.actual_axis = self.axis
 
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.concatenate(
                 (self.x0, self.x1, self.x2), axis=self.actual_axis
             )
+=======
+            'Out':
+            np.concatenate((self.x0, self.x1, self.x2), axis=self.actual_axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_mlu(self):
@@ -69,6 +83,10 @@ class TestConcatOp(OpTest):
 
 
 class TestConcatOp2(TestConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
@@ -77,9 +95,15 @@ class TestConcatOp2(TestConcatOp):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="The function 'check_grad' for large inputs is too slow."
 )
 class TestConcatOp3(TestConcatOp):
+=======
+    reason="The function 'check_grad' for large inputs is too slow.")
+class TestConcatOp3(TestConcatOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_data(self):
         self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)
         self.x1 = np.random.random((1, 128, 170, 256)).astype(self.dtype)
@@ -91,9 +115,17 @@ class TestConcatOp3(TestConcatOp):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
 )
 class TestConcatOp4(TestConcatOp):
+=======
+    reason=
+    "This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
+)
+class TestConcatOp4(TestConcatOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
@@ -105,6 +137,10 @@ class TestConcatOp4(TestConcatOp):
 
 
 class TestConcatOp5(TestConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_data(self):
         self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
@@ -112,9 +148,17 @@ class TestConcatOp5(TestConcatOp):
         self.axis = -3
 
 
+<<<<<<< HEAD
 # ----------------Concat Fp16----------------
 def create_test_fp16(parent):
     class TestConcatFp16(parent):
+=======
+#----------------Concat Fp16----------------
+def create_test_fp16(parent):
+
+    class TestConcatFp16(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -130,9 +174,17 @@ create_test_fp16(TestConcatOp4)
 create_test_fp16(TestConcatOp5)
 
 
+<<<<<<< HEAD
 # ----------------Concat Int64----------------
 def create_test_int64(parent):
     class TestConcatInt64(parent):
+=======
+#----------------Concat Int64----------------
+def create_test_int64(parent):
+
+    class TestConcatInt64(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_dtype(self):
             self.dtype = np.int64
 
@@ -151,9 +203,17 @@ create_test_int64(TestConcatOp4)
 create_test_int64(TestConcatOp5)
 
 
+<<<<<<< HEAD
 # ----------------Concat Int32----------------
 def create_test_int32(parent):
     class TestConcatInt32(parent):
+=======
+#----------------Concat Int32----------------
+def create_test_int32(parent):
+
+    class TestConcatInt32(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_dtype(self):
             self.dtype = np.int32
 
@@ -172,9 +232,17 @@ create_test_int32(TestConcatOp4)
 create_test_int32(TestConcatOp5)
 
 
+<<<<<<< HEAD
 # ----------------Concat AxisTensor----------------
 def create_test_AxisTensor(parent):
     class TestConcatAxisTensor(parent):
+=======
+#----------------Concat AxisTensor----------------
+def create_test_AxisTensor(parent):
+
+    class TestConcatAxisTensor(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "concat"
             self.init_dtype()
@@ -182,22 +250,36 @@ def create_test_AxisTensor(parent):
 
             self.inputs = {
                 'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)],
+<<<<<<< HEAD
                 'AxisTensor': np.array([self.axis]).astype("int32"),
+=======
+                'AxisTensor': np.array([self.axis]).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.attrs = {}
 
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
+<<<<<<< HEAD
                 self.actual_axis = (
                     self.actual_axis if self.actual_axis > 0 else 0
                 )
+=======
+                self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 self.actual_axis = self.axis
 
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.concatenate(
                     (self.x0, self.x1, self.x2), axis=self.actual_axis
                 )
+=======
+                'Out':
+                np.concatenate((self.x0, self.x1, self.x2),
+                               axis=self.actual_axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.place = paddle.device.MLUPlace(0)

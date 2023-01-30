@@ -100,8 +100,13 @@ class BertTokenizer {
              bool pad_to_max_seq_len = false) const;
   void BatchEncode(
       vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
+<<<<<<< HEAD
       const framework::Strings& batch_text,
       const framework::Strings& batch_text_pair = framework::Strings(),
+=======
+      const vector<string>& batch_text,
+      const vector<string>& batch_text_pair = vector<string>(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       bool is_split_into_words = false,
       const size_t max_seq_len = 0,
       bool pad_to_max_seq_len = false) const;
@@ -129,8 +134,13 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
     auto* text = ctx.Input<framework::Strings>("Text");
     auto* vocab = ctx.Input<framework::Vocab>("Vocab");
 
+<<<<<<< HEAD
     auto* input_ids = ctx.Output<phi::DenseTensor>("InputIds");
     auto* seg_ids = ctx.Output<phi::DenseTensor>("SegmentIds");
+=======
+    auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
+    auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto do_lower_case = static_cast<bool>(ctx.Attr<bool>("do_lower_case"));
     auto is_split_into_words =
@@ -162,7 +172,11 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
     } else {
       tokenizer.BatchEncode(&batch_encode_inputs,
                             *text,
+<<<<<<< HEAD
                             framework::Strings(),
+=======
+                            vector<string>(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             is_split_into_words,
                             max_seq_len,
                             pad_to_max_seq_len);

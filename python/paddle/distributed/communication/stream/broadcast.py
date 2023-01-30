@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle.fluid.data_feeder as data_feeder
 import paddle.framework as framework
 from paddle.distributed.communication.group import (
@@ -30,12 +31,25 @@ def _broadcast_in_dygraph(
         )
 
     task = group.process_group.broadcast(tensor, src_rank_in_group, sync_op)
+=======
+import paddle.fluid.framework as framework
+from paddle.distributed import collective
+
+
+def _broadcast_in_dygraph(tensor, src, group, sync_op, use_calc_stream):
+    group = collective._get_default_group() if group is None else group
+    if use_calc_stream:
+        return group.process_group.broadcast_on_calc_stream(tensor, src)
+
+    task = group.process_group.broadcast(tensor, src, sync_op)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if sync_op:
         task.wait()
 
     return task
 
 
+<<<<<<< HEAD
 def _broadcast_in_static_mode(
     tensor, src_rank_in_group, group, sync_op, use_calc_stream
 ):
@@ -73,13 +87,20 @@ def _broadcast_in_static_mode(
 
 
 def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
+=======
+def broadcast(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     Broadcast a tensor to all devices.
 
     Args:
         tensor (Tensor): The tensor to broadcast. Support float16, float32, float64, int32, int64, int8, uint8 or bool as its data type.
+<<<<<<< HEAD
         src (int, optional): Rank of the source device.
+=======
+        src (int, optional): Rank of the source device. If none is given, use `0` as default.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
@@ -109,6 +130,7 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
             out = data.numpy()
             # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
+<<<<<<< HEAD
     if _warn_cur_rank_not_in_group(group):
         return
 
@@ -131,3 +153,21 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
         return _broadcast_in_static_mode(
             tensor, src, group, sync_op, use_calc_stream
         )
+=======
+    if group is not None and not group.is_member():
+        raise RuntimeError(
+            "The group should not be None and all ranks which invoke this operation should be the member of this group."
+        )
+
+    if not sync_op and use_calc_stream:
+        raise RuntimeError(
+            "use_calc_stream can only be True in sync op behavior.")
+
+    if framework.in_dygraph_mode():
+        return _broadcast_in_dygraph(tensor, src, group, sync_op,
+                                     use_calc_stream)
+
+    raise RuntimeError(
+        "paddle.distributed.stream.broadcast is only supported in dygraph mode now."
+    )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

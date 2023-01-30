@@ -40,7 +40,11 @@ typedef std::function<void(void*)> HeterRpcCallbackFunc;
 
 class OnHeterRpcDone : public google::protobuf::Closure {
  public:
+<<<<<<< HEAD
   explicit OnHeterRpcDone(HeterRpcCallbackFunc func) : handler_(func) {}
+=======
+  OnHeterRpcDone(HeterRpcCallbackFunc func) : handler_(func) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual ~OnHeterRpcDone() {}
   void Run() {
     std::unique_ptr<OnHeterRpcDone> self_guard(this);
@@ -75,12 +79,20 @@ class HeterWrapper {
   void CallRemoteXpu(std::shared_ptr<HeterTask> task,
                      HeterCpuWorker* worker,
                      int mpi_rank,
+<<<<<<< HEAD
                      const std::vector<std::string>& send_vars);
+=======
+                     std::vector<std::string>& send_vars);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void CallRemoteXpuSync(std::shared_ptr<HeterTask> task,
                          HeterCpuWorker* worker,
                          int mpi_rank,
+<<<<<<< HEAD
                          const std::vector<std::string>& send_vars);
+=======
+                         std::vector<std::string>& send_vars);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void StopXpuService(int num);
 

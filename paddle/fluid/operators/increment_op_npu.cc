@@ -22,8 +22,13 @@ template <typename T>
 class IncrementalNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* x_tensor = context.Input<phi::DenseTensor>("X");
     auto* out_tensor = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* x_tensor = context.Input<framework::Tensor>("X");
+    auto* out_tensor = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float step = context.Attr<float>("step");
     out_tensor->mutable_data<T>(context.GetPlace());
 

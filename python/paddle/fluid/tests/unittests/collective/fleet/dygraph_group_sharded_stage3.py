@@ -17,6 +17,7 @@
 import os
 import shutil
 import tempfile
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -34,6 +35,23 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import 
     GroupShardedScaler,
 )
 from paddle.nn import Linear
+=======
+import numpy as np
+import argparse
+import ast
+import time
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import Linear
+from paddle.distributed import fleet
+from paddle.fluid.dygraph import nn
+from paddle.fluid.framework import _test_eager_guard
+
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import GroupShardedStage3
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import GroupShardedScaler
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 epoch = 10
 paddle.seed(2022)
@@ -43,9 +61,16 @@ momentum_rate = 0.9
 l2_decay = 1e-4
 
 
+<<<<<<< HEAD
 class MLP(paddle.nn.Layer):
     def __init__(self, linear_size=1024, param_attr=None, bias_attr=None):
         super().__init__()
+=======
+class MLP(fluid.Layer):
+
+    def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
+        super(MLP, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
@@ -58,6 +83,7 @@ class MLP(paddle.nn.Layer):
         return y
 
 
+<<<<<<< HEAD
 class Encoder(paddle.nn.Layer):
     def __init__(self, encoder):
         super(Encoder, self).__init__()
@@ -114,11 +140,23 @@ class RandomDataset(paddle.io.Dataset):
 
     def __len__(self):
         return self.num_samples
+=======
+def reader_decorator(linear_size=1000):
+
+    def __reader__():
+        for _ in range(100):
+            img = np.random.rand(linear_size).astype('float32')
+            label = np.ones(1).astype('int64')
+            yield img, label
+
+    return __reader__
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     optimizer = paddle.optimizer.Momentum(
+<<<<<<< HEAD
         parameters=[{"params": list(model.parameters())}]
         if opt_group
         else list(model.parameters()),
@@ -127,10 +165,20 @@ def optimizer_setting(model, use_pure_fp16, opt_group=False):
         grad_clip=clip,
         multi_precision=use_pure_fp16,
     )
+=======
+        parameters=[{
+            "params": list(model.parameters())
+        }] if opt_group else list(model.parameters()),
+        learning_rate=0.001,
+        weight_decay=0.00001,
+        grad_clip=clip,
+        multi_precision=use_pure_fp16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return optimizer
 
 
+<<<<<<< HEAD
 def train_mlp(
     model,
     sharding_stage,
@@ -149,17 +197,40 @@ def train_mlp(
         optimizer = optimizer_setting(
             model=model, use_pure_fp16=use_pure_fp16, opt_group=opt_group
         )
+=======
+def train_mlp(model,
+              sharding_stage,
+              use_pure_fp16=False,
+              accumulate_grad=False,
+              batch_size=100,
+              opt_group=False,
+              sync_comm=False,
+              test_minimize=False,
+              save_model=False):
+    group = paddle.distributed.new_group([0, 1])
+    if opt_group:
+        optimizer = optimizer_setting(model=model,
+                                      use_pure_fp16=use_pure_fp16,
+                                      opt_group=opt_group)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
     if use_pure_fp16:
+<<<<<<< HEAD
         model = paddle.amp.decorate(
             models=model, level='O2', save_dtype='float32'
         )
+=======
+        model = paddle.amp.decorate(models=model,
+                                    level='O2',
+                                    save_dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
         scaler = GroupShardedScaler(scaler)
     if sharding_stage == 2:
         optimizer = GroupShardedOptimizerStage2(
+<<<<<<< HEAD
             params=optimizer._parameter_list, optim=optimizer, group=group
         )
         model = GroupShardedStage2(
@@ -174,6 +245,19 @@ def train_mlp(
             segment_size=2**15,
             exclude_layer=exclude_test,
         )
+=======
+            params=optimizer._parameter_list, optim=optimizer, group=group)
+        model = GroupShardedStage2(model,
+                                   optimizer,
+                                   group=group,
+                                   buffer_max_size=2**21)
+    elif sharding_stage == 3:
+        model = GroupShardedStage3(model,
+                                   optimizer=optimizer,
+                                   group=group,
+                                   sync_comm=sync_comm,
+                                   segment_size=2**15)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # check optimizer.minimize() error
     if test_minimize:
@@ -181,6 +265,7 @@ def train_mlp(
             optimizer.minimize()
         except:
             print(
+<<<<<<< HEAD
                 "====== Find sharding_stage3_optimizer.minimize() error ======"
             )
         return
@@ -194,6 +279,21 @@ def train_mlp(
         drop_last=True,
         num_workers=0,
     )
+=======
+                "====== Find sharding_stage3_optimizer.minimize() error ======")
+        return
+
+    train_reader = paddle.batch(reader_decorator(),
+                                batch_size=batch_size,
+                                drop_last=True)
+
+    train_loader = paddle.io.DataLoader.from_generator(capacity=32,
+                                                       use_double_buffer=True,
+                                                       iterable=True,
+                                                       return_list=True,
+                                                       use_multiprocess=True)
+    train_loader.set_sample_list_generator(train_reader)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for eop in range(epoch):
         model.train()
@@ -201,11 +301,18 @@ def train_mlp(
             img, label = data
             label.stop_gradient = True
             img.stop_gradient = True
+<<<<<<< HEAD
             with paddle.amp.auto_cast(use_pure_fp16, level='O2'):
                 out = model(img)
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label
                 )
+=======
+            with paddle.amp.auto_cast(True, level='O2'):
+                out = model(img)
+                loss = paddle.nn.functional.cross_entropy(input=out,
+                                                          label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
 
             if batch_size == 20:
@@ -240,6 +347,7 @@ def train_mlp(
 
 def test_stage2_stage3():
     paddle.distributed.init_parallel_env()
+<<<<<<< HEAD
     mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8, mlp9, mlp10 = (
         MLP(),
         MLP(),
@@ -253,6 +361,10 @@ def test_stage2_stage3():
         MLP(),
         MLP(),
     )
+=======
+    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8, mlp9, mlp10 = MLP(
+    ), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     state_dict = mlp.state_dict()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
@@ -266,6 +378,7 @@ def test_stage2_stage3():
     mlp10.set_state_dict(state_dict)
 
     # fp32
+<<<<<<< HEAD
     stage2_params = train_mlp(
         mlp1, sharding_stage=2, use_pure_fp16=False, opt_group=False
     )
@@ -395,11 +508,76 @@ def test_stage2_stage3():
             rtol=1e-6,
             atol=1e-4,
         )
+=======
+    stage2_params = train_mlp(mlp1,
+                              sharding_stage=2,
+                              use_pure_fp16=False,
+                              opt_group=False)
+    stage3_params = train_mlp(mlp2,
+                              sharding_stage=3,
+                              use_pure_fp16=False,
+                              opt_group=False)
+
+    for i in range(len(stage2_params)):
+        np.testing.assert_allclose(stage2_params[i].numpy(),
+                                   stage3_params[i].numpy(),
+                                   rtol=1e-6,
+                                   atol=1e-6)
+
+    # fp32 accumulate grad
+    stage3_params = train_mlp(mlp3,
+                              sharding_stage=3,
+                              use_pure_fp16=False,
+                              accumulate_grad=True,
+                              opt_group=True)
+    stage3_params_add = train_mlp(mlp4,
+                                  sharding_stage=3,
+                                  use_pure_fp16=False,
+                                  accumulate_grad=True,
+                                  batch_size=20,
+                                  opt_group=True)
+    for i in range(len(stage3_params)):
+        np.testing.assert_allclose(stage3_params[i].numpy(),
+                                   stage3_params_add[i].numpy(),
+                                   rtol=1e-6,
+                                   atol=1e-4)
+
+    # fp16
+    stage2_params = train_mlp(mlp5,
+                              sharding_stage=2,
+                              use_pure_fp16=True,
+                              opt_group=False)
+    stage3_params = train_mlp(mlp6,
+                              sharding_stage=3,
+                              use_pure_fp16=True,
+                              opt_group=False)
+    for i in range(len(stage2_params)):
+        np.testing.assert_allclose(stage2_params[i].numpy(),
+                                   stage3_params[i].numpy(),
+                                   rtol=1e-4,
+                                   atol=1e-3)
+
+    # fp16 sync_comm
+    stage3_params = train_mlp(mlp7,
+                              sharding_stage=3,
+                              use_pure_fp16=True,
+                              opt_group=False)
+    stage3_params_re = train_mlp(mlp8,
+                                 sharding_stage=3,
+                                 use_pure_fp16=True,
+                                 opt_group=False,
+                                 sync_comm=True)
+    for i in range(len(stage3_params)):
+        np.testing.assert_allclose(stage3_params[i].numpy(),
+                                   stage3_params_re[i].numpy(),
+                                   rtol=1e-6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # save/load model
     output_dir = tempfile.mkdtemp()
     model_file = os.path.join(output_dir, "model.pdmodel")
     optimizer_file = os.path.join(output_dir, "model.pdopt")
+<<<<<<< HEAD
     model_stage3, optimizer_stage3 = train_mlp(
         mlp9,
         sharding_stage=3,
@@ -407,6 +585,13 @@ def test_stage2_stage3():
         opt_group=False,
         save_model=True,
     )
+=======
+    model_stage3, optimizer_stage3 = train_mlp(mlp9,
+                                               sharding_stage=3,
+                                               use_pure_fp16=False,
+                                               opt_group=False,
+                                               save_model=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle.save(model_stage3.state_dict(), model_file)
     paddle.save(optimizer_stage3.state_dict(), optimizer_file)
     m_state_dict = paddle.load(model_file)
@@ -416,6 +601,7 @@ def test_stage2_stage3():
     shutil.rmtree(output_dir)
 
     # check optimizer.minimize() error
+<<<<<<< HEAD
     train_mlp(
         mlp10,
         sharding_stage=3,
@@ -427,3 +613,15 @@ def test_stage2_stage3():
 
 if __name__ == '__main__':
     test_stage2_stage3()
+=======
+    train_mlp(mlp10,
+              sharding_stage=3,
+              use_pure_fp16=False,
+              opt_group=False,
+              test_minimize=True)
+
+
+if __name__ == '__main__':
+    with _test_eager_guard():
+        test_stage2_stage3()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -18,6 +18,7 @@ This module will download dataset from http://yann.lecun.com/exdb/mnist/ and
 parse training set and test set into paddle reader creators.
 """
 
+<<<<<<< HEAD
 import gzip
 import struct
 
@@ -25,6 +26,16 @@ import numpy
 
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
+=======
+from __future__ import print_function
+
+import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
+import gzip
+import numpy
+import struct
+from six.moves import range
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -40,6 +51,10 @@ TRAIN_LABEL_MD5 = 'd53e105ee54ea40749a09fcbcd1e9432'
 
 
 def reader_creator(image_filename, label_filename, buffer_size):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def reader():
         with gzip.GzipFile(image_filename, 'rb') as image_file:
             img_buf = image_file.read()
@@ -54,16 +69,24 @@ def reader_creator(image_filename, label_filename, buffer_size):
                 # image file : 16B
                 magic_byte_img = '>IIII'
                 magic_img, image_num, rows, cols = struct.unpack_from(
+<<<<<<< HEAD
                     magic_byte_img, img_buf, offset_img
                 )
+=======
+                    magic_byte_img, img_buf, offset_img)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 offset_img += struct.calcsize(magic_byte_img)
 
                 offset_lab = 0
                 # label file : 8B
                 magic_byte_lab = '>II'
                 magic_lab, label_num = struct.unpack_from(
+<<<<<<< HEAD
                     magic_byte_lab, lab_buf, offset_lab
                 )
+=======
+                    magic_byte_lab, lab_buf, offset_lab)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 offset_lab += struct.calcsize(magic_byte_lab)
 
                 while True:
@@ -75,12 +98,20 @@ def reader_creator(image_filename, label_filename, buffer_size):
                     step_label += buffer_size
 
                     fmt_images = '>' + str(buffer_size * rows * cols) + 'B'
+<<<<<<< HEAD
                     images_temp = struct.unpack_from(
                         fmt_images, img_buf, offset_img
                     )
                     images = numpy.reshape(
                         images_temp, (buffer_size, rows * cols)
                     ).astype('float32')
+=======
+                    images_temp = struct.unpack_from(fmt_images, img_buf,
+                                                     offset_img)
+                    images = numpy.reshape(
+                        images_temp,
+                        (buffer_size, rows * cols)).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     offset_img += struct.calcsize(fmt_images)
 
                     images = images / 255.0
@@ -97,8 +128,12 @@ def reader_creator(image_filename, label_filename, buffer_size):
     since="2.0.0",
     update_to="paddle.vision.datasets.MNIST",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def train():
     """
     MNIST training set creator.
@@ -110,6 +145,7 @@ def train():
     :rtype: callable
     """
     return reader_creator(
+<<<<<<< HEAD
         paddle.dataset.common.download(
             TRAIN_IMAGE_URL, 'mnist', TRAIN_IMAGE_MD5
         ),
@@ -118,14 +154,24 @@ def train():
         ),
         100,
     )
+=======
+        paddle.dataset.common.download(TRAIN_IMAGE_URL, 'mnist',
+                                       TRAIN_IMAGE_MD5),
+        paddle.dataset.common.download(TRAIN_LABEL_URL, 'mnist',
+                                       TRAIN_LABEL_MD5), 100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.MNIST",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def test():
     """
     MNIST test set creator.
@@ -139,16 +185,24 @@ def test():
     return reader_creator(
         paddle.dataset.common.download(TEST_IMAGE_URL, 'mnist', TEST_IMAGE_MD5),
         paddle.dataset.common.download(TEST_LABEL_URL, 'mnist', TEST_LABEL_MD5),
+<<<<<<< HEAD
         100,
     )
+=======
+        100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.MNIST",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def fetch():
     paddle.dataset.common.download(TRAIN_IMAGE_URL, 'mnist', TRAIN_IMAGE_MD5)
     paddle.dataset.common.download(TRAIN_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)

@@ -26,8 +26,13 @@ namespace operators {
 namespace math {
 
 template <typename T>
+<<<<<<< HEAD
 void CopyValidData(phi::DenseTensor* dst_tensor,
                    const phi::DenseTensor* src_tensor,
+=======
+void CopyValidData(framework::Tensor* dst_tensor,
+                   const framework::Tensor* src_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    const framework::Vector<size_t>& seq_offsets,
                    int pad_seq_len,
                    int step_width,
@@ -99,9 +104,15 @@ template <typename T>
 class PaddingLoDTensorFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& seq_tensor,
                   phi::DenseTensor* pad_tensor,
                   const phi::DenseTensor& pad_value,
+=======
+                  const framework::LoDTensor& seq_tensor,
+                  framework::LoDTensor* pad_tensor,
+                  const framework::LoDTensor& pad_value,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -159,8 +170,13 @@ template <typename T>
 class UnpaddingLoDTensorFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& pad_tensor,
                   phi::DenseTensor* seq_tensor,
+=======
+                  const framework::LoDTensor& pad_tensor,
+                  framework::LoDTensor* seq_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -196,8 +212,13 @@ template <typename T>
 class UnpaddingLoDTensorFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& pad_tensor,
                   phi::DenseTensor* seq_tensor,
+=======
+                  const framework::LoDTensor& pad_tensor,
+                  framework::LoDTensor* seq_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,

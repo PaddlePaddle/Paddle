@@ -21,7 +21,11 @@ namespace framework {
 namespace ir {
 
 template <typename T>
+<<<<<<< HEAD
 void FillConstData(phi::DenseTensor* out_t, T value) {
+=======
+void FillConstData(LoDTensor* out_t, T value) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto output_data = out_t->mutable_data<T>(platform::CPUPlace());
   for (int i = 0; i < out_t->numel(); i++) {
     output_data[i] = value;
@@ -75,8 +79,13 @@ void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
     auto fill_constant_out_desc = fill_constant_out_node->Var();
     fill_constant_out_desc->SetShape(shape);
     fill_constant_out_desc->SetPersistable(true);
+<<<<<<< HEAD
     auto* fill_constant_out_tensor = scope->Var(fill_constant_out_desc->Name())
                                          ->GetMutable<phi::DenseTensor>();
+=======
+    auto* fill_constant_out_tensor =
+        scope->Var(fill_constant_out_desc->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto dtype =
         framework::TransToPhiDataType(fill_constant_out_desc->GetDataType());
     fill_constant_out_tensor->Resize(phi::make_ddim(shape));

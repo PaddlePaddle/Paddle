@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -26,6 +31,10 @@ SEED = 2022
 
 
 class TestReshape2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "reshape2"
@@ -36,7 +45,11 @@ class TestReshape2(OpTest):
         self.attrs = {"shape": self.new_shape}
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
+<<<<<<< HEAD
             'XShape': np.random.random(self.ori_shape).astype("float32"),
+=======
+            'XShape': np.random.random(self.ori_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_mlu(self):
@@ -55,6 +68,10 @@ class TestReshape2(OpTest):
 
 
 class TestReshape2_case2(TestReshape2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (2, 100)
         self.new_shape = (-1, 10)
@@ -62,6 +79,10 @@ class TestReshape2_case2(TestReshape2):
 
 
 class TestReshape2_case3(TestReshape2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (100, 5, 6)
         self.new_shape = (-1, 0, 3)

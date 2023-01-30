@@ -27,8 +27,11 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -41,7 +44,11 @@ __device__ void BlockReverse(
   int tx = threadIdx.x;
 
   int offset = tx;
+<<<<<<< HEAD
   T src_data = static_cast<T>(0);
+=======
+  T src_data = 0;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int src_offset = BLOCK_SIZE - offset - 1;
   if (src_offset < valid_item) {
     src_data = idata[src_base + src_offset];
@@ -162,6 +169,7 @@ __global__ void BlockScanKernel(T* d_out,
                                 int scan_size,
                                 bool exclusive,
                                 Op op) {
+<<<<<<< HEAD
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
@@ -174,6 +182,16 @@ __global__ void BlockScanKernel(T* d_out,
                           cub::BLOCK_STORE_TRANSPOSE>
       BlockStoreT;
   typedef cub::BlockScan<MT, BLOCK_THREADS> BlockScanT;
+=======
+  // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
+  typedef cub::
+      BlockLoad<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
+          BlockLoadT;
+  typedef cub::
+      BlockStore<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_STORE_TRANSPOSE>
+          BlockStoreT;
+  typedef cub::BlockScan<T, BLOCK_THREADS> BlockScanT;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Allocate type-safe, repurposable shared memory for collectives
   __shared__ union {
     typename BlockLoadT::TempStorage load;
@@ -182,7 +200,12 @@ __global__ void BlockScanKernel(T* d_out,
   } temp_storage;
 
   int bx = blockIdx.x;
+<<<<<<< HEAD
   BlockPrefixCallbackOp<MT, Op> prefix_op(Identity<MT, Op>::value, op);
+=======
+
+  BlockPrefixCallbackOp<T, Op> prefix_op(Identity<T, Op>::value, op);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Obtain this block's segment of consecutive keys (blocked across threads)
   int item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
@@ -197,7 +220,11 @@ __global__ void BlockScanKernel(T* d_out,
 
     int offset = block_offset + bx * scan_size;
 
+<<<<<<< HEAD
     MT thread_keys[ITEMS_PER_THREAD];
+=======
+    T thread_keys[ITEMS_PER_THREAD];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     BlockLoadT(temp_storage.load)
         .Load(d_in + offset, thread_keys, valid_item, 0);
 
@@ -216,6 +243,7 @@ __global__ void BlockScanKernel(T* d_out,
   }
 }
 
+<<<<<<< HEAD
 template <typename Context, typename T>
 typename std::enable_if<!std::is_same<T, phi::dtype::float16>::value>::type
 ThrustCumsumKernel(const Context& dev_ctx,
@@ -261,6 +289,8 @@ ThrustCumsumKernel(const Context& dev_ctx,
                    bool reverse,
                    bool exclusive) {}
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, typename Context, typename Op>
 void ScanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
@@ -270,6 +300,7 @@ void ScanKernel(const Context& dev_ctx,
                 bool reverse,
                 Op op,
                 DenseTensor* out) {
+<<<<<<< HEAD
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   // For 0D Tensor
@@ -280,6 +311,8 @@ void ScanKernel(const Context& dev_ctx,
     return;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto out_dims = out->dims();
   auto size = x.numel();
 
@@ -296,14 +329,46 @@ void ScanKernel(const Context& dev_ctx,
     axis += out_dims.size();
   }
 
+<<<<<<< HEAD
+=======
+  T* out_data = dev_ctx.template Alloc<T>(out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const T* in_data = x.data<T>();
 
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the ‘axis’ dimension.
+<<<<<<< HEAD
   if (!std::is_same<T, phi::dtype::float16>::value &&
       std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
     ThrustCumsumKernel<Context, T>(
         dev_ctx, in_data, out_data, size, reverse, exclusive);
+=======
+  if (std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
+#ifdef __HIPCC__
+    const auto& policy = thrust::hip::par.on(dev_ctx.stream());
+#else
+    const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
+#endif
+    if (reverse) {
+      thrust::reverse_iterator<thrust::device_ptr<const T>> reversed_in(
+          thrust::device_pointer_cast(in_data) + size);
+      thrust::reverse_iterator<thrust::device_ptr<T>> reversed_out(
+          thrust::device_pointer_cast(out_data) + size);
+      if (exclusive) {
+        thrust::exclusive_scan(
+            policy, reversed_in, reversed_in + size, reversed_out);
+      } else {
+        thrust::inclusive_scan(
+            policy, reversed_in, reversed_in + size, reversed_out);
+      }
+    } else {
+      if (exclusive) {
+        thrust::exclusive_scan(policy, in_data, in_data + size, out_data);
+      } else {
+        thrust::inclusive_scan(policy, in_data, in_data + size, out_data);
+      }
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
 
@@ -343,6 +408,10 @@ void ScanKernel(const Context& dev_ctx,
   int outer_size = height / scan_size;
   int inner_size = width;
   // Consider the size of shared memory, here block size is 128
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   dim3 scan_grid(outer_size, inner_size);
   dim3 reverse_grid = scan_grid;
   if (reverse) {
@@ -417,7 +486,10 @@ void LogcumsumexpKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_HIP
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_KERNEL(cumsum,
                    GPU,
                    ALL_LAYOUT,
@@ -430,6 +502,7 @@ PD_REGISTER_KERNEL(cumsum,
 
 PD_REGISTER_KERNEL(
     logcumsumexp, GPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}
+<<<<<<< HEAD
 #else
 PD_REGISTER_KERNEL(cumsum,
                    GPU,
@@ -450,3 +523,5 @@ PD_REGISTER_KERNEL(logcumsumexp,
                    double,
                    phi::dtype::float16) {}
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

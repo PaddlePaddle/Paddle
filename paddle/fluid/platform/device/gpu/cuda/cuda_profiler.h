@@ -23,15 +23,22 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+<<<<<<< HEAD
 void CudaProfilerInit(const std::string& output_file,
                       const std::string& output_mode,
                       const std::string& config_file);
+=======
+void CudaProfilerInit(std::string output_file,
+                      std::string output_mode,
+                      std::string config_file);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 void CudaProfilerStart();
 
 void CudaProfilerStop();
 
 #ifndef _WIN32
+<<<<<<< HEAD
 enum class NvtxRangeColor : uint32_t {
   Black = 0x00000000,
   Red = 0x00ff0000,
@@ -43,6 +50,9 @@ enum class NvtxRangeColor : uint32_t {
 
 void CudaNvtxRangePush(const std::string& name,
                        const NvtxRangeColor color = NvtxRangeColor::Green);
+=======
+void CudaNvtxRangePush(std::string name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 void CudaNvtxRangePop();
 #endif

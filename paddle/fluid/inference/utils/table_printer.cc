@@ -14,7 +14,11 @@
 
 #include "paddle/fluid/inference/utils/table_printer.h"
 
+<<<<<<< HEAD
 #ifdef _WIN32
+=======
+#ifdef WIN32
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // suppress the min and max definitions in Windef.h.
 #define NOMINMAX
 #include <Windows.h>
@@ -58,7 +62,11 @@ std::string TablePrinter::PrintTable() {
 
 TablePrinter::TablePrinter(const std::vector<std::string>& header) {
   size_t terminal_witdh = 500;
+<<<<<<< HEAD
 #ifdef _WIN32
+=======
+#ifdef WIN32
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   int ret = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
   if (ret && (csbi.dwSize.X != 0)) {

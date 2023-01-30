@@ -13,9 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include <paddle/fluid/string/pretty_log.h>
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {

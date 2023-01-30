@@ -19,7 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/infermeta/backward.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
@@ -30,10 +33,18 @@ class RNNOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -115,11 +126,42 @@ class RNNGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "RNN");
+    OP_INOUT_CHECK(ctx->HasInputs("PreState"), "Input", "PreState", "RNN");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "RNN");
+    // OP_INOUT_CHECK(ctx->HasInputs("State"), "Input", "State", "RNN");
+
+    auto SetOutGradDim = [&ctx](const std::string& name) {
+      auto g_name = framework::GradVarName(name);
+      if (ctx->HasOutput(g_name)) {
+        ctx->SetOutputDim(g_name, ctx->GetInputDim(name));
+      }
+    };
+
+    SetOutGradDim("Input");
+    if (ctx->HasOutputs(framework::GradVarName("WeightList"))) {
+      ctx->SetOutputsDim(framework::GradVarName("WeightList"),
+                         ctx->GetInputsDim("WeightList"));
+    }
+    if (ctx->HasOutputs(framework::GradVarName("PreState"))) {
+      ctx->SetOutputsDim(framework::GradVarName("PreState"),
+                         ctx->GetInputsDim("PreState"));
+    }
+  }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -169,9 +211,12 @@ namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(rnn,
                             RnnInferShapeFunctor,
                             PD_INFER_META(phi::RnnInferMeta));
+<<<<<<< HEAD
 DECLARE_INFER_SHAPE_FUNCTOR(rnn_grad,
                             RnnGradInferShapeFunctor,
                             PD_INFER_META(phi::RnnGradInferMeta));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 REGISTER_OPERATOR(rnn,
                   ops::RNNOp,
@@ -179,4 +224,8 @@ REGISTER_OPERATOR(rnn,
                   ops::RNNGradOpMaker<paddle::framework::OpDesc>,
                   ops::RNNGradOpMaker<paddle::imperative::OpBase>,
                   RnnInferShapeFunctor);
+<<<<<<< HEAD
 REGISTER_OPERATOR(rnn_grad, ops::RNNGradOp, RnnGradInferShapeFunctor);
+=======
+REGISTER_OPERATOR(rnn_grad, ops::RNNGradOp);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -21,12 +21,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class SplitNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
+=======
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int num = ctx.Attr<int>("num");
     std::vector<int> sections = ctx.Attr<std::vector<int>>("sections");
     int axis = ctx.Attr<int>("axis");
@@ -42,7 +52,11 @@ class SplitNPUKernel : public framework::OpKernel<T> {
           "The SectionsTensorList is not supported on NPU now."));
     }
 
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> outputs;
+=======
+    std::vector<Tensor> outputs;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (size_t j = 0; j < outs.size(); ++j) {
       outs[j]->mutable_data<T>(ctx.GetPlace());
       outputs.push_back(*outs[j]);

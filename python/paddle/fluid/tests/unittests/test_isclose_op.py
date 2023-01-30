@@ -13,16 +13,27 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
 
+=======
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
 class TestIscloseOp(OpTest):
+<<<<<<< HEAD
     def set_args(self):
         self.input = np.array([10000.0, 1e-07]).astype("float32")
+=======
+
+    def set_args(self):
+        self.input = np.array([10000., 1e-07]).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.other = np.array([10000.1, 1e-08]).astype("float32")
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
@@ -37,6 +48,7 @@ class TestIscloseOp(OpTest):
             'Input': self.input,
             'Other': self.other,
             "Rtol": self.rtol,
+<<<<<<< HEAD
             "Atol": self.atol,
         }
         self.attrs = {'equal_nan': self.equal_nan}
@@ -52,6 +64,20 @@ class TestIscloseOp(OpTest):
                     )
                 ]
             )
+=======
+            "Atol": self.atol
+        }
+        self.attrs = {'equal_nan': self.equal_nan}
+        self.outputs = {
+            'Out':
+            np.array([
+                np.isclose(self.inputs['Input'],
+                           self.inputs['Other'],
+                           rtol=self.rtol,
+                           atol=self.atol,
+                           equal_nan=self.equal_nan)
+            ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -59,7 +85,13 @@ class TestIscloseOp(OpTest):
 
 
 class TestIscloseOpException(TestIscloseOp):
+<<<<<<< HEAD
     def test_check_output(self):
+=======
+
+    def test_check_output(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_rtol_num():
             self.inputs['Rtol'] = np.array([1e-05, 1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([1e-08]).astype("float64")
@@ -90,8 +122,14 @@ class TestIscloseOpException(TestIscloseOp):
 
 
 class TestIscloseOpSmallNum(TestIscloseOp):
+<<<<<<< HEAD
     def set_args(self):
         self.input = np.array([10000.0, 1e-08]).astype("float32")
+=======
+
+    def set_args(self):
+        self.input = np.array([10000., 1e-08]).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.other = np.array([10000.1, 1e-09]).astype("float32")
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
@@ -99,6 +137,10 @@ class TestIscloseOpSmallNum(TestIscloseOp):
 
 
 class TestIscloseOpNanFalse(TestIscloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
@@ -108,6 +150,10 @@ class TestIscloseOpNanFalse(TestIscloseOp):
 
 
 class TestIscloseOpNanTrue(TestIscloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
@@ -117,6 +163,10 @@ class TestIscloseOpNanTrue(TestIscloseOp):
 
 
 class TestIscloseStatic(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api_case(self):
         paddle.enable_static()
         x_data = np.random.rand(10, 10)
@@ -125,23 +175,41 @@ class TestIscloseStatic(unittest.TestCase):
         if paddle.fluid.core.is_compiled_with_cuda():
             places.append(paddle.fluid.CUDAPlace(0))
         for place in places:
+<<<<<<< HEAD
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
+=======
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.isclose(x, y)
                 exe = paddle.fluid.Executor(place)
+<<<<<<< HEAD
                 fetches = exe.run(
                     paddle.fluid.default_main_program(),
                     feed={"x": x_data, "y": y_data},
                     fetch_list=[result],
                 )
+=======
+                fetches = exe.run(paddle.fluid.default_main_program(),
+                                  feed={
+                                      "x": x_data,
+                                      "y": y_data
+                                  },
+                                  fetch_list=[result])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 expected_out = np.isclose(x_data, y_data)
                 self.assertTrue((fetches[0] == expected_out).all(), True)
 
 
 class TestIscloseDygraph(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api_case(self):
         places = [paddle.CPUPlace()]
         if paddle.fluid.core.is_compiled_with_cuda():
@@ -159,13 +227,22 @@ class TestIscloseDygraph(unittest.TestCase):
 
 
 class TestIscloseError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_input_dtype(self):
         paddle.enable_static()
 
         def test_x_dtype():
+<<<<<<< HEAD
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
+=======
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.isclose(x, y)
@@ -173,9 +250,14 @@ class TestIscloseError(unittest.TestCase):
         self.assertRaises(TypeError, test_x_dtype)
 
         def test_y_dtype():
+<<<<<<< HEAD
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
+=======
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='int32')
                 result = paddle.isclose(x, y)
@@ -204,6 +286,10 @@ class TestIscloseError(unittest.TestCase):
 
 
 class TestIscloseOpFloat32(TestIscloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array([10.1]).astype("float32")
         self.other = np.array([10]).astype("float32")
@@ -213,6 +299,10 @@ class TestIscloseOpFloat32(TestIscloseOp):
 
 
 class TestIscloseOpFloat64(TestIscloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array([10.1]).astype("float64")
         self.other = np.array([10]).astype("float64")
@@ -225,6 +315,10 @@ class TestIscloseOpFloat64(TestIscloseOp):
 
 
 class TestIscloseOpLargeDimInput(TestIscloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array(np.zeros([2048, 1024])).astype("float64")
         self.other = np.array(np.zeros([2048, 1024])).astype("float64")

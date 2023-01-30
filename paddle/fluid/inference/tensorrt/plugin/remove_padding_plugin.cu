@@ -19,9 +19,15 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+<<<<<<< HEAD
 __global__ void RemovePaddingKernel(const half* input0,
                                     const int32_t* input1,
                                     half* output) {
+=======
+__global__ void RemovePaddingKernel(const float* input0,
+                                    const int32_t* input1,
+                                    float* output) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int word_id = blockIdx.x * gridDim.y + blockIdx.y;
   int32_t seqence_length = input1[blockIdx.x + 1] - input1[blockIdx.x];
   if (blockIdx.y < seqence_length) {
@@ -73,7 +79,11 @@ bool RemovePaddingPlugin::supportsFormatCombination(
     return inOut[pos].type == nvinfer1::DataType::kINT32 &&
            inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
   } else {
+<<<<<<< HEAD
     return inOut[pos].type == nvinfer1::DataType::kHALF &&
+=======
+    return inOut[pos].type == nvinfer1::DataType::kFLOAT &&
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
   }
   // return (inOut[pos].type == nvinfer1::DataType::kFLOAT && inOut[pos].format
@@ -105,6 +115,7 @@ int RemovePaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                  void* const* outputs,
                                  void* workspace,
                                  cudaStream_t stream) TRT_NOEXCEPT {
+<<<<<<< HEAD
   const half* input0 = static_cast<const half*>(inputs[0]);
   const int32_t* input1 =
       static_cast<const int32_t*>(inputs[1]);  // pos_id_tensor
@@ -136,12 +147,46 @@ int RemovePaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     } else {
       num_threads = 1;
     }
+=======
+  const auto input_desc = inputDesc[0];
+  const float* input0 = static_cast<const float*>(inputs[0]);
+  const int32_t* input1 =
+      static_cast<const int32_t*>(inputs[1]);  // pos_id_tensor
+  float* output = static_cast<float*>(outputs[0]);
+  const auto input0_desc = inputDesc[0];
+  int32_t num_threads;
+  if (input0_desc.dims.d[2] % 512 == 0) {
+    num_threads = 512;
+  } else if (input0_desc.dims.d[2] % 256 == 0) {
+    num_threads = 256;
+  } else if (input0_desc.dims.d[2] % 128 == 0) {
+    num_threads = 128;
+  } else if (input0_desc.dims.d[2] % 64 == 0) {
+    num_threads = 64;
+  } else if (input0_desc.dims.d[2] % 32 == 0) {
+    num_threads = 32;
+  } else if (input0_desc.dims.d[2] % 16 == 0) {
+    num_threads = 16;
+  } else if (input0_desc.dims.d[2] % 8 == 0) {
+    num_threads = 8;
+  } else if (input0_desc.dims.d[2] % 4 == 0) {
+    num_threads = 4;
+  } else if (input0_desc.dims.d[2] % 2 == 0) {
+    num_threads = 2;
+  } else {
+    num_threads = 1;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   const dim3 num_blocks(
       input0_desc.dims.d[0],
       input0_desc.dims.d[1],
+<<<<<<< HEAD
       vector_length /
           num_threads);  //  batchs, max sequnce length, input0.dims.d[2]/***
+=======
+      input0_desc.dims.d[2] /
+          num_threads);  //  batchs, max sequnce length, input.dims.d[2]/256
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   RemovePaddingKernel<<<num_blocks, num_threads, 0, stream>>>(
       input0, input1, output);

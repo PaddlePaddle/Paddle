@@ -25,10 +25,17 @@ template <typename DeviceContext, typename T>
 class RankLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
+<<<<<<< HEAD
     auto* out_t = ctx.Output<phi::DenseTensor>("Out");
     auto* label_t = ctx.Input<phi::DenseTensor>("Label");
     auto* left_t = ctx.Input<phi::DenseTensor>("Left");
     auto* right_t = ctx.Input<phi::DenseTensor>("Right");
+=======
+    auto* out_t = ctx.Output<framework::Tensor>("Out");
+    auto* label_t = ctx.Input<framework::Tensor>("Label");
+    auto* left_t = ctx.Input<framework::Tensor>("Left");
+    auto* right_t = ctx.Input<framework::Tensor>("Right");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out_t->mutable_data<T>(ctx.GetPlace());
 
     auto out = framework::EigenVector<T>::Flatten(*out_t);
@@ -47,6 +54,7 @@ class RankLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_left_t =
+<<<<<<< HEAD
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Left"));
     auto* d_right_t =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Right"));
@@ -55,6 +63,16 @@ class RankLossGradKernel : public framework::OpKernel<T> {
     auto* label_t = ctx.Input<phi::DenseTensor>("Label");
     auto* left_t = ctx.Input<phi::DenseTensor>("Left");
     auto* right_t = ctx.Input<phi::DenseTensor>("Right");
+=======
+        ctx.Output<framework::Tensor>(framework::GradVarName("Left"));
+    auto* d_right_t =
+        ctx.Output<framework::Tensor>(framework::GradVarName("Right"));
+
+    auto* d_out_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* label_t = ctx.Input<framework::Tensor>("Label");
+    auto* left_t = ctx.Input<framework::Tensor>("Left");
+    auto* right_t = ctx.Input<framework::Tensor>("Right");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
     auto d_out = framework::EigenVector<T>::Flatten(*d_out_t);

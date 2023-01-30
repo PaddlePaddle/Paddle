@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,16 +24,38 @@ from paddle import fluid
 
 
 class LinearTestCase(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid.core as core
+from op_test import OpTest
+import paddle
+from paddle import fluid, nn
+import paddle.fluid.dygraph as dg
+import paddle.nn.functional as F
+import paddle.fluid.initializer as I
+
+
+class LinearTestCase(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.dtype = 'float32'
         self.input = np.ones((3, 1, 2)).astype(self.dtype)
         self.weight = np.ones((2, 2)).astype(self.dtype)
         self.bias = np.ones((2)).astype(self.dtype)
+<<<<<<< HEAD
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        self.place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def functional(self, place):
         paddle.disable_static(place)
@@ -50,18 +73,30 @@ class LinearTestCase(unittest.TestCase):
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
+<<<<<<< HEAD
             initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0),
         )
+=======
+            initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         bias_attr = fluid.ParamAttr(
             name="linear_bias",
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
+<<<<<<< HEAD
             initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0),
         )
         linear = paddle.nn.Linear(
             2, 2, weight_attr=weight_attr, bias_attr=bias_attr
         )
+=======
+            initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
+        linear = paddle.nn.Linear(2,
+                                  2,
+                                  weight_attr=weight_attr,
+                                  bias_attr=bias_attr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         y = linear(input)
         return y.numpy()
 
@@ -80,6 +115,7 @@ class LinearTestCase(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
         paddle.seed(100)
+<<<<<<< HEAD
         linear = paddle.nn.Linear(
             2, 3, weight_attr=paddle.nn.initializer.Normal(0, 1.0)
         )
@@ -95,6 +131,20 @@ class LinearTestCase(unittest.TestCase):
             [0.73261100, 0.43836895, 0.07908206],
             [0.85075015, -1.04724526, 0.64371765],
         ]
+=======
+        linear = paddle.nn.Linear(2,
+                                  3,
+                                  weight_attr=paddle.nn.initializer.Normal(
+                                      0, 1.))
+        paddle.nn.utils._stride_column(linear.weight)
+        expect = [[1.4349908, -0.8099171, -2.64788],
+                  [-1.4981681, -1.1784115, -0.023253186]]
+        np.testing.assert_allclose(linear.weight.numpy(), expect, rtol=1e-05)
+
+        linear = paddle.nn.Linear(2, 3)
+        expect = [[0.73261100, 0.43836895, 0.07908206],
+                  [0.85075015, -1.04724526, 0.64371765]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(linear.weight.numpy(), expect, rtol=1e-05)
 
 

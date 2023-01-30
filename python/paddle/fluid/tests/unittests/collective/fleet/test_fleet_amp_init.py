@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,6 +22,15 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
 import paddle.nn.functional as F
+=======
+import paddle
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
+import unittest
+import paddle.nn.functional as F
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -28,22 +38,36 @@ paddle.enable_static()
 def gen_data():
     return {
         "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
         "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+=======
+        "y": np.random.randint(2, size=(128, 1)).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
 
 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim, activation='tanh')
     fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
+<<<<<<< HEAD
     prediction = paddle.static.nn.fc(
         x=[fc_2], size=label_dim, activation='softmax'
     )
+=======
+    prediction = paddle.static.nn.fc(x=[fc_2],
+                                     size=label_dim,
+                                     activation='softmax')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cost = F.cross_entropy(input=prediction, label=input_y)
     avg_cost = paddle.mean(x=cost)
     return avg_cost
 
 
 class TestFleetAMPInit(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_fleet_amp_init(self):
         if not fluid.core.is_compiled_with_cuda():
             return
@@ -55,20 +79,33 @@ class TestFleetAMPInit(unittest.TestCase):
         fleet.init(role)
 
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             input_x = paddle.static.data(
                 name="x", shape=[None, 32], dtype='float32'
             )
             input_y = paddle.static.data(
                 name="y", shape=[None, 1], dtype='int64'
             )
+=======
+            input_x = paddle.static.data(name="x",
+                                         shape=[None, 32],
+                                         dtype='float32')
+            input_y = paddle.static.data(name="y",
+                                         shape=[None, 1],
+                                         dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             cost = mlp(input_x, input_y)
             optimizer = paddle.optimizer.Momentum(
                 learning_rate=0.001,
                 momentum=0.9,
                 weight_decay=fluid.regularizer.L2Decay(1e-4),
+<<<<<<< HEAD
                 multi_precision=True,
             )
+=======
+                multi_precision=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             optimizer = paddle.static.amp.decorate(optimizer)
             optimizer = fleet.distributed_optimizer(optimizer)
@@ -84,9 +121,15 @@ class TestFleetAMPInit(unittest.TestCase):
 
         step = 1
         for i in range(step):
+<<<<<<< HEAD
             cost_val = exe.run(
                 program=main_program, feed=gen_data(), fetch_list=[cost.name]
             )
+=======
+            cost_val = exe.run(program=main_program,
+                               feed=gen_data(),
+                               fetch_list=[cost.name])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_fleet_amp_meta_optimizer_init(self):
         if not fluid.core.is_compiled_with_cuda():
@@ -99,20 +142,33 @@ class TestFleetAMPInit(unittest.TestCase):
         fleet.init(role)
 
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             input_x = paddle.static.data(
                 name="x", shape=[None, 32], dtype='float32'
             )
             input_y = paddle.static.data(
                 name="y", shape=[None, 1], dtype='int64'
             )
+=======
+            input_x = paddle.static.data(name="x",
+                                         shape=[None, 32],
+                                         dtype='float32')
+            input_y = paddle.static.data(name="y",
+                                         shape=[None, 1],
+                                         dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             cost = mlp(input_x, input_y)
             optimizer = paddle.optimizer.Momentum(
                 learning_rate=0.001,
                 momentum=0.9,
                 weight_decay=fluid.regularizer.L2Decay(1e-4),
+<<<<<<< HEAD
                 multi_precision=True,
             )
+=======
+                multi_precision=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.amp = True
@@ -134,9 +190,15 @@ class TestFleetAMPInit(unittest.TestCase):
 
         step = 3
         for i in range(step):
+<<<<<<< HEAD
             cost_val = exe.run(
                 program=main_program, feed=gen_data(), fetch_list=[cost.name]
             )
+=======
+            cost_val = exe.run(program=main_program,
+                               feed=gen_data(),
+                               fetch_list=[cost.name])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             print(cost_val)
 
 

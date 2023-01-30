@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 import os
 import re
+=======
+import re
+import os
+import argparse
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # port range (21200, 23000) is reserved for dist-ops
 
@@ -44,10 +50,16 @@ def _process_envs(envs):
     processed_envs = []
 
     for p in envs_parts:
+<<<<<<< HEAD
         assert (
             " " not in p
             and re.compile("^[a-zA-Z_][0-9a-zA-Z_]*=").search(p) is not None
         ), f"""The environment option format is wrong. The env variable name can only contains'a-z', 'A-Z', '0-9' and '_',
+=======
+        assert " " not in p and \
+            re.compile("^[a-zA-Z_][0-9a-zA-Z_]*=").search(p) is not None, \
+            f"""The environment option format is wrong. The env variable name can only contains'a-z', 'A-Z', '0-9' and '_',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 and the var can not contain space in either env names or values.
 However the var's format is '{p}'."""
 
@@ -96,6 +108,7 @@ def _proccess_archs(arch):
     arch = arch.upper().strip()
     if len(arch) > 0:
         for a in arch.split(";"):
+<<<<<<< HEAD
             assert a in [
                 "GPU",
                 "ROCM",
@@ -103,6 +116,10 @@ def _proccess_archs(arch):
                 "ASCEND_CL",
                 "XPU",
             ], f"""Supported arhc options are "GPU", "ROCM", "ASCEND" and "ASCEND_CL", "XPU", but the options is {a}"""
+=======
+            assert a in ["GPU", "ROCM", "ASCEND", "ASCEND_CL", "XPU"], \
+                f"""Supported arhc options are "GPU", "ROCM", "ASCEND" and "ASCEND_CL", "XPU", but the options is {a}"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             archs += "WITH_" + a.upper() + " OR "
         arch = "(" + archs[:-4] + ")"
     else:
@@ -127,9 +144,13 @@ def _process_os(os_):
         os_ = os_.upper()
         for p in os_.split(';'):
             assert p in [
+<<<<<<< HEAD
                 "WIN32",
                 "APPLE",
                 "LINUX",
+=======
+                "WIN32", "APPLE", "LINUX"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ], f"""Supported os options are 'WIN32', 'APPLE' and 'LINUX', but the options is {p}"""
         os_ = os_.replace(";", " OR ")
         os_ = "(" + os_ + ")"
@@ -141,11 +162,16 @@ def _process_os(os_):
 # check whether run_serial is 0, 1 or empty
 def _process_run_serial(run_serial):
     rs = run_serial.strip()
+<<<<<<< HEAD
     assert rs in [
         "1",
         "0",
         "",
     ], f"""the value of run_serial must be one of 0, 1 or empty. But this value is {rs}"""
+=======
+    assert rs in ["1", "0", ""], \
+        f"""the value of run_serial must be one of 0, 1 or empty. But this value is {rs}"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if rs == "":
         return ""
     return rs
@@ -154,7 +180,11 @@ def _process_run_serial(run_serial):
 def _file_with_extension(prefix, suffixes):
     """
     Desc:
+<<<<<<< HEAD
         check whether test file exists.
+=======
+        check whether test file exists. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     for ext in suffixes:
         if os.path.isfile(prefix + ext):
@@ -168,6 +198,7 @@ def _process_name(name, curdir):
         check whether name is with a legal format and check whther the test file exists.
     """
     name = name.strip()
+<<<<<<< HEAD
     assert re.compile("^test_[0-9a-zA-Z_]+").search(name), (
         """If line is not the header of table, the test name must begin with "test_" """
         """and the following substring must include at least one char of "0-9", "a-z", "A-Z" or "_"."""
@@ -177,6 +208,15 @@ def _process_name(name, curdir):
     assert _file_with_extension(
         filepath_prefix, suffix
     ), f""" Please ensure the test file with the prefix '{filepath_prefix}' and one of the suffix {suffix} exists, because you specified a unittest named '{name}'"""
+=======
+    assert re.compile("^test_[0-9a-zA-Z_]+").search(name), \
+        f"""If line is not the header of table, the test name must begin with "test_" """ \
+        f"""and the following substring must include at least one char of "0-9", "a-z", "A-Z" or "_"."""
+    filepath_prefix = os.path.join(curdir, name)
+    suffix = [".py", ".sh"]
+    assert _file_with_extension(filepath_prefix, suffix), \
+        f""" Please ensure the test file with the prefix '{filepath_prefix}' and one of the suffix {suffix} exists, because you specified a unittest named '{name}'"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return name
 
@@ -195,6 +235,7 @@ def _norm_dirs(dirs):
 def _process_run_type(run_type):
     rt = run_type.strip()
     # completely match one of the strings: 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'
+<<<<<<< HEAD
     assert re.compile(
         "^(NIGHTLY|EXCLUSIVE|CINN|DIST|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$"
     ).search(rt), (
@@ -205,6 +246,16 @@ def _process_run_type(run_type):
 
 
 class DistUTPortManager:
+=======
+    assert re.compile("^(NIGHTLY|EXCLUSIVE|CINN|DIST|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$").search(rt), \
+        f""" run_type must be one of 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'""" \
+        f"""but the run_type is {rt}"""
+    return rt
+
+
+class DistUTPortManager():
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, ignore_dirs=[]):
         self.dist_ut_port = 21200
         self.assigned_ports = dict()
@@ -227,6 +278,7 @@ class DistUTPortManager:
         '''
         if test_name not in self.assigned_ports:
             self.assigned_ports[test_name] = port
+<<<<<<< HEAD
         self.dist_ut_port = max(
             self.dist_ut_port, self.assigned_ports[test_name]
         )
@@ -238,6 +290,15 @@ class DistUTPortManager:
             and int(port_num) > 0
             or port_num.strip() == ""
         ), f"""port_num must be foramt as a positive integer or empty, but this port_num is '{port_num}'"""
+=======
+        self.dist_ut_port = max(self.dist_ut_port,
+                                self.assigned_ports[test_name])
+        return self.assigned_ports[test_name]
+
+    def process_dist_port_num(self, port_num):
+        assert re.compile("^[0-9]+$").search(port_num) and int(port_num) > 0 or port_num.strip()=="", \
+            f"""port_num must be foramt as a positive integer or empty, but this port_num is '{port_num}'"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         port_num = port_num.strip()
         if len(port_num) == 0:
             return 0
@@ -261,7 +322,11 @@ class DistUTPortManager:
                 if matched is None:
                     continue
                 p = matched.span()
+<<<<<<< HEAD
                 port = int(line[p[0] : p[1]].split("=")[-1])
+=======
+                port = int(line[p[0]:p[1]].split("=")[-1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 # find the test name which the port belongs to
                 for k in range(idx, 0, -1):
@@ -271,9 +336,14 @@ class DistUTPortManager:
 
                 # matcg right tets name format, the name must start with 'test_' follwed bu at least one cahr of
                 # '0-9'. 'a-z'. 'A-Z' or '_'
+<<<<<<< HEAD
                 assert re.compile("^test_[0-9a-zA-Z_]+").search(
                     name
                 ), f'''we found a test for initial the latest dist_port but the test name '{name}' seems to be wrong
+=======
+                assert re.compile("^test_[0-9a-zA-Z_]+").search(name), \
+                    f'''we found a test for initial the latest dist_port but the test name '{name}' seems to be wrong
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     at line {k-1}, in file {cmake_file_name}
                     '''
                 self.gset_port(name, port)
@@ -322,6 +392,7 @@ class DistUTPortManager:
             #    if such a drectory exists
 
             # step 1
+<<<<<<< HEAD
             if (
                 len(self.last_test_name) > 0
                 and len(self.last_test_cmake_file) > 0
@@ -351,11 +422,30 @@ class DistUTPortManager:
                 assert (
                     found
                 ), f"no such test named '{self.last_test_name}' in file '{self.last_test_cmake_file}'"
+=======
+            if len(self.last_test_name) > 0 and len(
+                    self.last_test_cmake_file) > 0:
+                with open(
+                        self.last_test_cmake_file.replace(
+                            "CMakeLists.txt", "testslist.csv")) as csv_file:
+                    found = False
+                    for line in csv_file.readlines():
+                        name, _, _, _, _, launcher, num_port, _, _, _ = line.strip(
+                        ).split(",")
+                        if name == self.last_test_name:
+                            found = True
+                            break
+                assert found, f"no such test named '{self.last_test_name}' in file '{self.last_test_cmake_file}'"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if launcher[-2:] == ".sh":
                     self.process_dist_port_num(num_port)
 
             # step 2
+<<<<<<< HEAD
             err_msg = """==================[No Old CMakeLists.txt Error]==================================
+=======
+            err_msg = f"""==================[No Old CMakeLists.txt Error]==================================
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Following directories has no CmakeLists.txt files:
     """
             for c in self.no_cmake_dirs:
@@ -365,14 +455,23 @@ class DistUTPortManager:
         If the directories are newly created or there is no CMakeLists.txt before, or ignore this error, you
         must specify the directories using the args option --ignore-cmake-dirs/-i.
         If you want to keep the dist ports of old tests unchanged, please ensure the old
+<<<<<<< HEAD
         verson CMakeLists.txt file existing before using the gen_ut_cmakelists tool to
+=======
+        verson CMakeLists.txt file existing before using the gen_ut_cmakelists tool to 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         generate new CmakeLists.txt files.
     ====================================================================================
     """
             assert len(self.no_cmake_dirs) == 0, err_msg
 
 
+<<<<<<< HEAD
 class CMakeGenerator:
+=======
+class CMakeGenerator():
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, current_dirs, ignore_dirs):
         self.processed_dirs = set()
         self.port_manager = DistUTPortManager(ignore_dirs)
@@ -428,6 +527,7 @@ class CMakeGenerator:
                 endif()"
         """
 
+<<<<<<< HEAD
         (
             name,
             os_,
@@ -440,6 +540,10 @@ class CMakeGenerator:
             envs,
             conditions,
         ) = line.strip().split(",")
+=======
+        name, os_, archs, timeout, run_type, launcher, num_port, run_serial, envs, conditions = line.strip(
+        ).split(",")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # name == "name" means the line being parsed is the header of the table
         # we should skip this line and return empty here.
@@ -452,6 +556,10 @@ class CMakeGenerator:
         archs = _proccess_archs(archs)
         os_ = _process_os(os_)
         run_serial = _process_run_serial(run_serial)
+<<<<<<< HEAD
+=======
+        run_type = _process_run_type(run_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         cmd = ""
 
@@ -459,7 +567,10 @@ class CMakeGenerator:
             cmd += f"if ({c})\n"
 
         if launcher[-3:] == ".sh":
+<<<<<<< HEAD
             run_type = _process_run_type(run_type)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dist_ut_port = self.port_manager.process_dist_port_num(num_port)
             dist_ut_port = self.port_manager.gset_port(name, dist_ut_port)
             cmd += f'''if({archs} AND {os_})
@@ -475,12 +586,15 @@ class CMakeGenerator:
     '''
             run_type_str = ""
         else:
+<<<<<<< HEAD
             try:
                 run_type = _process_run_type(run_type)
             except Exception as e:
                 assert (
                     run_type.strip() == ""
                 ), f"{e}\nIf use test_runner.py, the run_type can be ''"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             cmd += f'''if({archs} AND {os_})
         py_test_modules(
         {name}
@@ -490,6 +604,7 @@ class CMakeGenerator:
         "{envs}")%s
     endif()
     '''
+<<<<<<< HEAD
             run_type_str = (
                 "" if len(run_type) == 0 else f' LABELS "RUN_TYPE={run_type}"'
             )
@@ -504,13 +619,26 @@ class CMakeGenerator:
             or len(run_serial_str) > 0
             or len(run_type_str) > 0
         ):
+=======
+            run_type_str = "" if len(
+                run_type) == 0 else f' LABELS "RUN_TYPE={run_type}"'
+        time_out_str = f' TIMEOUT "{timeout}"' if len(
+            timeout.strip()) > 0 else ''
+        run_serial_str = f' RUN_SERIAL {run_serial}' if len(
+            run_serial) > 0 else ''
+        if len(time_out_str) > 0 or len(run_serial_str) > 0:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             set_properties = f'''
         set_tests_properties({name} PROPERTIES{time_out_str}{run_serial_str}{run_type_str})'''
         else:
             set_properties = ""
         cmd = cmd % set_properties
         for _ in conditions:
+<<<<<<< HEAD
             cmd += "endif()\n"
+=======
+            cmd += f"endif()\n"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return cmd
 
     def _gen_cmakelists(self, current_work_dir, depth=0):
@@ -529,6 +657,7 @@ class CMakeGenerator:
             if not os.path.isdir(c_path):
                 continue
             self.processed_dirs.add(c_path)
+<<<<<<< HEAD
             if os.path.isfile(
                 os.path.join(current_work_dir, c, "testslist.csv")
             ) or os.path.isfile(
@@ -537,13 +666,23 @@ class CMakeGenerator:
                 self._gen_cmakelists(
                     os.path.join(current_work_dir, c), depth + 1
                 )
+=======
+            if os.path.isfile(os.path.join(current_work_dir, c, "testslist.csv")) \
+                or os.path.isfile(os.path.join(current_work_dir, c, "CMakeLists.txt")):
+                self._gen_cmakelists(os.path.join(current_work_dir, c),
+                                     depth + 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 sub_dirs.append(c)
 
         if not os.path.isfile(os.path.join(current_work_dir, "testslist.csv")):
             return
         cmds = """# This file is generated by ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py.
     # Please don't modify this file manually.
+<<<<<<< HEAD
     # If you need to change unittests in this file, please modify testslist.csv in the current directory
+=======
+    # If you need to change unittests in this file, please modify testslist.csv in the current directory 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # and then run the command `python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py -f ${CURRENT_DIRECTORY}/testslist.csv`
     set(LOCAL_ALL_ARCH ON)
     set(LOCAL_ALL_PLAT ON)\n"""
@@ -568,6 +707,7 @@ class CMakeGenerator:
         char_seq = "".join(char_seq)
 
         if char_seq != "".join(cmds.split()):
+<<<<<<< HEAD
             assert (
                 f"{current_work_dir}/CMakeLists.txt"
                 not in self.modified_or_created_files
@@ -575,6 +715,12 @@ class CMakeGenerator:
             self.modified_or_created_files.append(
                 f"{current_work_dir}/CMakeLists.txt"
             )
+=======
+            assert f"{current_work_dir}/CMakeLists.txt" not in self.modified_or_created_files, \
+                f"the file {current_work_dir}/CMakeLists.txt are modified twice, which may cause some error"
+            self.modified_or_created_files.append(
+                f"{current_work_dir}/CMakeLists.txt")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             with open(f"{current_work_dir}/CMakeLists.txt", "w") as cmake_file:
                 print(cmds, end="", file=cmake_file)
 
@@ -588,7 +734,12 @@ if __name__ == "__main__":
         required=False,
         default=[],
         nargs="+",
+<<<<<<< HEAD
         help="Input a list of files named testslist.csv and output files named CmakeLists.txt in the same directories as the csv files respectly",
+=======
+        help=
+        "Input a list of files named testslist.csv and output files named CmakeLists.txt in the same directories as the csv files respectly"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     )
     parser.add_argument(
         "--dirpaths",
@@ -597,7 +748,12 @@ if __name__ == "__main__":
         required=False,
         default=[],
         nargs="+",
+<<<<<<< HEAD
         help="Input a list of dir paths including files named testslist.csv and output CmakeLists.txt in these directories respectly",
+=======
+        help=
+        "Input a list of dir paths including files named testslist.csv and output CmakeLists.txt in these directories respectly"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     )
     parser.add_argument(
         "--ignore-cmake-dirs",
@@ -606,6 +762,7 @@ if __name__ == "__main__":
         required=False,
         default=[],
         nargs='*',
+<<<<<<< HEAD
         help="To keep dist ports the same with old version cmake, old cmakelists.txt files are needed to parse dist_ports. If a directories are newly created and there is no cmakelists.txt file, the directory path must be specified by this option. The dirs are not recursive.",
     )
     args = parser.parse_args()
@@ -619,6 +776,20 @@ if __name__ == "__main__":
             assert (
                 os.path.basename(p) == "testslist.csv"
             ), "you must input file named testslist.csv"
+=======
+        help=
+        "To keep dist ports the same with old version cmake, old cmakelists.txt files are needed to parse dist_ports. If a directories are newly created and there is no cmakelists.txt file, the directory path must be specified by this option. The dirs are not recursive."
+    )
+    args = parser.parse_args()
+
+    assert not (len(args.files) == 0 and len(args.dirpaths)
+                == 0), "You must provide at leate one file or dirpath"
+    current_work_dirs = []
+    if len(args.files) >= 1:
+        for p in args.files:
+            assert os.path.basename(
+                p) == "testslist.csv", "you must input file named testslist.csv"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         current_work_dirs = current_work_dirs + [
             os.path.dirname(file) for file in args.files
         ]

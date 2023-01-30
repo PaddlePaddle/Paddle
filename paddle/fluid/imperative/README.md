@@ -136,7 +136,10 @@ TODO
 # Examples
 
 ```python
+<<<<<<< HEAD
 import paddle
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class MyLayer(fluid.imperative.Layer):
     def __init__(self):
         super(MyLayer, self).__init__()
@@ -144,7 +147,11 @@ class MyLayer(fluid.imperative.Layer):
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
         x = fluid.layers.elementwise_mul(x, x)
+<<<<<<< HEAD
         x = paddle.sum(x)
+=======
+        x = fluid.layers.reduce_sum(x)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return [x]
 
 
@@ -185,7 +192,11 @@ class MLP(fluid.Layer):
     def forward(self, inputs):
         x = self._linear1(inputs)
         x = self._linear2(x)
+<<<<<<< HEAD
         x = paddle.sum(x)
+=======
+        x = fluid.layers.reduce_sum(x)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return x
 
 

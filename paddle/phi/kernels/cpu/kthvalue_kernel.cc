@@ -82,6 +82,7 @@ void KthvalueKernel(const Context& dev_ctx,
                     DenseTensor* indices) {
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
+<<<<<<< HEAD
 
   T* output_data = dev_ctx.template Alloc<T>(output);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
@@ -98,6 +99,10 @@ void KthvalueKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, indices, 0);
     return;
   }
+=======
+  T* output_data = dev_ctx.template Alloc<T>(output);
+  int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto out_dims = output->dims();
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =

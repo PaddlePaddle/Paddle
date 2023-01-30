@@ -641,6 +641,7 @@ struct Layers {
     return out;
   }
 
+<<<<<<< HEAD
   VarDesc* dequantize_linear(VarDesc* x,
                              VarDesc* scale,
                              VarDesc* zero_point,
@@ -658,6 +659,8 @@ struct Layers {
     return out;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void backward(std::vector<VarDesc*> targets) {
     // This function is designed to simulate the structure of training program,
     //  but is constructed differently as the actual program.

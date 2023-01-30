@@ -59,7 +59,10 @@ struct EigenSlice<Eigen::GpuDevice, T, Rank> {
   template struct FUNCTOR<Eigen::GpuDevice, TYPE, 5>; \
   template struct FUNCTOR<Eigen::GpuDevice, TYPE, 6>
 INSTANTIATION(EigenSlice, bool);
+<<<<<<< HEAD
 INSTANTIATION(EigenSlice, uint8_t);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 INSTANTIATION(EigenSlice, int);
 INSTANTIATION(EigenSlice, int64_t);
 INSTANTIATION(EigenSlice, float);

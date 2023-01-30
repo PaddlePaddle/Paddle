@@ -23,6 +23,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -37,7 +41,11 @@ template <typename DeviceContext, typename T>
 class ExpandAsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
+=======
+    auto rank = context.Input<Tensor>("X")->dims().size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     switch (rank) {
       case 1:
         ExpandAs<1>(context);
@@ -68,10 +76,17 @@ class ExpandAsKernel : public framework::OpKernel<T> {
  protected:
   template <int Rank>
   void ExpandAs(const framework::ExecutionContext& context) const {
+<<<<<<< HEAD
     auto* in0 = context.Input<phi::DenseTensor>("X");
     auto in_dims = in0->dims();
     auto* target_tensor = context.Input<phi::DenseTensor>("target_tensor");
     auto* out0 = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* in0 = context.Input<Tensor>("X");
+    auto in_dims = in0->dims();
+    auto* target_tensor = context.Input<Tensor>("target_tensor");
+    auto* out0 = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     int bcast_dims_remainder = 0;
     auto x_dims = in0->dims();
@@ -112,8 +127,13 @@ template <typename DeviceContext, typename T>
 class ExpandAsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* in0 = context.Input<phi::DenseTensor>("X");
     auto* target_tensor = context.Input<phi::DenseTensor>("target_tensor");
+=======
+    auto* in0 = context.Input<Tensor>("X");
+    auto* target_tensor = context.Input<Tensor>("target_tensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto x_dims = in0->dims();
     auto y_dims = target_tensor->dims();
     std::vector<int> bcast_dims;
@@ -137,10 +157,15 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
     }
     // no need reduce, just copy
     if (just_copy) {
+<<<<<<< HEAD
       auto* in0 =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto* out0 =
           context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+      auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       out0->mutable_data<T>(context.GetPlace());
       framework::TensorCopy(
           *in0, context.GetPlace(), context.device_context(), out0);
@@ -195,8 +220,13 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
                         const std::vector<int>& reduce_dims_vec) const {
     size_t reshape_size = reshape_dims_vec.size();
     size_t reduce_size = reduce_dims_vec.size();
+<<<<<<< HEAD
     auto* in0 = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
     Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;

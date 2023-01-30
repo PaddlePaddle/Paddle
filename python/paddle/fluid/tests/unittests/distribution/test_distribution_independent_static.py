@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 import unittest
 
 import config
@@ -18,6 +19,17 @@ import numpy as np
 import parameterize as param
 
 import paddle
+=======
+import numbers
+import unittest
+
+import numpy as np
+import paddle
+import scipy.stats
+
+import config
+import parameterize as param
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.seed(2022)
 paddle.enable_static()
@@ -26,6 +38,7 @@ paddle.enable_static()
 @param.place(config.DEVICES)
 @param.param_cls(
     (param.TEST_CASE_NAME, 'base', 'reinterpreted_batch_rank', 'alpha', 'beta'),
+<<<<<<< HEAD
     [
         (
             'base_beta',
@@ -37,6 +50,12 @@ paddle.enable_static()
     ],
 )
 class TestIndependent(unittest.TestCase):
+=======
+    [('base_beta', paddle.distribution.Beta, 1, np.random.rand(
+        1, 2), np.random.rand(1, 2))])
+class TestIndependent(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         value = np.random.rand(1)
         self.dtype = value.dtype
@@ -44,6 +63,7 @@ class TestIndependent(unittest.TestCase):
         sp = paddle.static.Program()
         mp = paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
+<<<<<<< HEAD
             alpha = paddle.static.data(
                 'alpha', self.alpha.shape, self.alpha.dtype
             )
@@ -52,6 +72,14 @@ class TestIndependent(unittest.TestCase):
             t = paddle.distribution.Independent(
                 self.base, self.reinterpreted_batch_rank
             )
+=======
+            alpha = paddle.static.data('alpha', self.alpha.shape,
+                                       self.alpha.dtype)
+            beta = paddle.static.data('beta', self.beta.shape, self.beta.dtype)
+            self.base = self.base(alpha, beta)
+            t = paddle.distribution.Independent(self.base,
+                                                self.reinterpreted_batch_rank)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             mean = t.mean
             variance = t.variance
             entropy = t.entropy()
@@ -64,6 +92,7 @@ class TestIndependent(unittest.TestCase):
             base_log_prob = self.base.log_prob(static_value)
 
         fetch_list = [
+<<<<<<< HEAD
             mean,
             variance,
             entropy,
@@ -114,11 +143,48 @@ class TestIndependent(unittest.TestCase):
             rtol=config.RTOL.get(str(self.dtype)),
             atol=config.ATOL.get(str(self.dtype)),
         )
+=======
+            mean, variance, entropy, log_prob, base_mean, base_variance,
+            base_entropy, base_log_prob
+        ]
+        exe.run(sp)
+        [
+            self.mean, self.variance, self.entropy, self.log_prob,
+            self.base_mean, self.base_variance, self.base_entropy,
+            self.base_log_prob
+        ] = exe.run(mp,
+                    feed={
+                        'value': value,
+                        'alpha': self.alpha,
+                        'beta': self.beta
+                    },
+                    fetch_list=fetch_list)
+
+    def test_mean(self):
+        np.testing.assert_allclose(self.mean,
+                                   self.base_mean,
+                                   rtol=config.RTOL.get(str(self.dtype)),
+                                   atol=config.ATOL.get(str(self.dtype)))
+
+    def test_variance(self):
+        np.testing.assert_allclose(self.variance,
+                                   self.base_variance,
+                                   rtol=config.RTOL.get(str(self.dtype)),
+                                   atol=config.ATOL.get(str(self.dtype)))
+
+    def test_entropy(self):
+        np.testing.assert_allclose(self._np_sum_rightmost(
+            self.base_entropy, self.reinterpreted_batch_rank),
+                                   self.entropy,
+                                   rtol=config.RTOL.get(str(self.dtype)),
+                                   atol=config.ATOL.get(str(self.dtype)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _np_sum_rightmost(self, value, n):
         return np.sum(value, tuple(range(-n, 0))) if n > 0 else value
 
     def test_log_prob(self):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._np_sum_rightmost(
                 self.base_log_prob, self.reinterpreted_batch_rank
@@ -127,6 +193,13 @@ class TestIndependent(unittest.TestCase):
             rtol=config.RTOL.get(str(self.dtype)),
             atol=config.ATOL.get(str(self.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._np_sum_rightmost(
+            self.base_log_prob, self.reinterpreted_batch_rank),
+                                   self.log_prob,
+                                   rtol=config.RTOL.get(str(self.dtype)),
+                                   atol=config.ATOL.get(str(self.dtype)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

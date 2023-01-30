@@ -22,8 +22,13 @@ template <typename T>
 class NPUReduceMeanOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     output->mutable_data<T>(ctx.GetPlace());
 
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -56,11 +61,17 @@ template <typename T>
 class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* input_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     input_grad->mutable_data<T>(ctx.GetPlace());
 
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -81,7 +92,11 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
       reduce_numel *= input_dims[d];
     }
 
+<<<<<<< HEAD
     phi::DenseTensor tensor_value(input_grad->dtype());
+=======
+    Tensor tensor_value(input_grad->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tensor_value.mutable_data<T>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<T>(
         &tensor_value, static_cast<T>(1.0f / static_cast<T>(reduce_numel)));
@@ -96,8 +111,13 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
         .AddOutput(*input_grad)
         .Run(stream);
 
+<<<<<<< HEAD
     phi::DenseTensor transformed_input_grad, transformed_out_grad;
     phi::DenseTensor tmp_output_grad;
+=======
+    Tensor transformed_input_grad, transformed_out_grad;
+    Tensor tmp_output_grad;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto tmp_output_dims = input_dims;
     for (auto d : reduce_dims) {
       tmp_output_dims[d] = 1;

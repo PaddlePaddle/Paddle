@@ -47,8 +47,14 @@ using LoD = std::vector<std::vector<size_t>>;
 ///
 struct DenseTensorMeta {
   using DataType = paddle::experimental::DataType;
+<<<<<<< HEAD
 
   DenseTensorMeta();
+=======
+  using DataLayout = paddle::experimental::DataLayout;
+
+  DenseTensorMeta() = default;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   DenseTensorMeta(DataType dtype, const DDim& dims);
   DenseTensorMeta(DataType dtype,
                   const DDim& dims,
@@ -65,9 +71,12 @@ struct DenseTensorMeta {
   bool valid() const noexcept;
 
   bool is_scalar{false};
+<<<<<<< HEAD
   /// \brief Determine whether using gpudnn speed-up library in the new dygraph.
   /// It maybe also support MKLDNN library in the near future.
   bool use_gpudnn{true};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   DDim dims;
   DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};
@@ -76,10 +85,16 @@ struct DenseTensorMeta {
 };
 
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
+<<<<<<< HEAD
   return (lhs.is_scalar == rhs.is_scalar) && lhs.use_gpudnn == rhs.use_gpudnn &&
          (lhs.dims == rhs.dims) && (lhs.dtype == rhs.dtype) &&
          (lhs.layout == rhs.layout) && (lhs.lod == rhs.lod) &&
          (lhs.offset == rhs.offset);
+=======
+  return (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
+         (lhs.dtype == rhs.dtype) && (lhs.layout == rhs.layout) &&
+         (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 struct StringTensorMeta {
@@ -103,6 +118,11 @@ inline bool operator==(const StringTensorMeta& lhs,
 }
 
 struct SparseTensorMeta {
+<<<<<<< HEAD
+=======
+  using DataLayout = paddle::experimental::DataLayout;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   SparseTensorMeta() = default;
   explicit SparseTensorMeta(const DDim& dims);
   explicit SparseTensorMeta(const DDim& dims, const DataLayout& layout);

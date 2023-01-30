@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+<<<<<<< HEAD
 import functools
 import operator
 import os
@@ -21,11 +22,24 @@ import paddle
 
 from .cluster import DeviceType
 from .graph import Graph
+=======
+import os
+import operator
+import functools
+import json
+import paddle
+from collections import deque
+from .graph import Node
+from .graph import Edge
+from .graph import Graph
+from .cluster import DeviceType
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .process_group import get_process_group
 
 
 def is_collective_comm_op(op):
     comm_list = [
+<<<<<<< HEAD
         "c_allreduce_sum",
         "c_allreduce_min",
         "c_allreduce_max",
@@ -36,6 +50,11 @@ def is_collective_comm_op(op):
         "c_reduce_prod",
         "c_broadcast",
         "c_allgather",
+=======
+        "c_allreduce_sum", "c_allreduce_min", "c_allreduce_max",
+        "c_allreduce_prod", "c_reduce_sum", "c_reduce_min", "c_reduce_max",
+        "c_reduce_prod", "c_broadcast", "c_allgather"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ]
     if op.type in comm_list:
         return True
@@ -136,8 +155,12 @@ def analyze_comm_requirements_from_op(op, rank, g_process_group_map):
             if comm_volume is not None:
                 comm_requirements_to_ranks[tgt_rank] = {}
                 comm_requirements_to_ranks[tgt_rank][
+<<<<<<< HEAD
                     "comm_volume"
                 ] = comm_volume
+=======
+                    "comm_volume"] = comm_volume
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif is_p2p_comm_op(op):
         tgt_rank = op.attr("peer")
         comm_volume = get_comm_volume(op, rank, tgt_rank)
@@ -159,6 +182,7 @@ def analyze_requirements_for_program(src_info, rank):
     for block in program.blocks:
         for op in block.ops:
             cur_comm_requirements_to_ranks = analyze_comm_requirements_from_op(
+<<<<<<< HEAD
                 op, rank, g_process_group_map
             )
             for tgt_rank, link_info in cur_comm_requirements_to_ranks.items():
@@ -171,12 +195,24 @@ def analyze_requirements_for_program(src_info, rank):
                     comm_requirements_to_ranks[tgt_rank][
                         "comm_volume"
                     ] = link_info["comm_volume"]
+=======
+                op, rank, g_process_group_map)
+            for tgt_rank, link_info in cur_comm_requirements_to_ranks.items():
+                if tgt_rank in comm_requirements_to_ranks:
+                    comm_requirements_to_ranks[tgt_rank][
+                        "comm_volume"] += link_info["comm_volume"]
+                else:
+                    comm_requirements_to_ranks[tgt_rank] = {}
+                    comm_requirements_to_ranks[tgt_rank][
+                        "comm_volume"] = link_info["comm_volume"]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return resource_requirements, comm_requirements_to_ranks
 
 
 def build_process_graph(distributed_program):
     graph = Graph()
     for src_rank, src_info in distributed_program.items():
+<<<<<<< HEAD
         (
             resource_requirements,
             comm_requirements_to_ranks,
@@ -186,6 +222,15 @@ def build_process_graph(distributed_program):
             graph.add_edge(
                 src_rank, tgt_rank, comm_requirements=comm_requirements
             )
+=======
+        resource_requirements, comm_requirements_to_ranks = analyze_requirements_for_program(
+            src_info, src_rank)
+        graph.add_node(src_rank, resource_requirements=resource_requirements)
+        for tgt_rank, comm_requirements in comm_requirements_to_ranks.items():
+            graph.add_edge(src_rank,
+                           tgt_rank,
+                           comm_requirements=comm_requirements)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return graph
 
 
@@ -200,17 +245,27 @@ def build_cluster_graph(cluster):
     for machine in cluster.machines.values():
         for device in machine.devices.values():
             graph.add_node(device.global_id, device=device)
+<<<<<<< HEAD
             if (
                 cuda_visible_devices
                 and device.local_id not in cuda_visible_devices
             ):
+=======
+            if cuda_visible_devices and device.local_id not in cuda_visible_devices:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 graph.nodes[device.global_id]["occupied"] = True
             else:
                 graph.nodes[device.global_id]["occupied"] = False
         for link in machine.links.values():
+<<<<<<< HEAD
             graph.add_edge(
                 link.source.global_id, link.target.global_id, link=link
             )
+=======
+            graph.add_edge(link.source.global_id,
+                           link.target.global_id,
+                           link=link)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return graph
 
 
@@ -240,8 +295,12 @@ def mapping(distributed_program, cluster):
 
     queue = deque()
     root_rank_node = select_unvisited_rank_node(
+<<<<<<< HEAD
         list(process_graph.nodes.values())
     )
+=======
+        list(process_graph.nodes.values()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     while root_rank_node is not None:
         queue.append(root_rank_node)
         while queue:
@@ -251,14 +310,20 @@ def mapping(distributed_program, cluster):
             device_type = cur_rank_node["resource_requirements"]["device_type"]
             cur_device_node = None
             for device_node in cluster_graph.nodes.values():
+<<<<<<< HEAD
                 if (device_node["device"].type == device_type) and (
                     not device_node["occupied"]
                 ):
+=======
+                if (device_node["device"].type
+                        == device_type) and (not device_node["occupied"]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     device_node["occupied"] = True
                     cur_rank_node["visited"] = True
                     cur_rank_node["device"] = device_node["device"]
                     cur_device_node = device_node
                     break
+<<<<<<< HEAD
             assert (
                 cur_device_node
             ), "Cannot find a device to satisfy the requirement."
@@ -271,18 +336,31 @@ def mapping(distributed_program, cluster):
                     nbr_rank_edge.src_id == cur_rank_node.id
                     and nbr_rank_edge.tgt_id == nbr_rank_node_id
                 )
+=======
+            assert cur_device_node, "Cannot find a device to satisfy the requirement."
+
+            nbr_rank_edges = []
+            for nbr_rank_node_id, nbr_rank_edge in process_graph.adjs[
+                    cur_rank_node.id].items():
+                assert nbr_rank_edge.src_id == cur_rank_node.id and nbr_rank_edge.tgt_id == nbr_rank_node_id
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 queue.append(process_graph.nodes[nbr_rank_node_id])
                 nbr_rank_edges.append(nbr_rank_edge)
             nbr_rank_edges.sort(key=sort_by_comm_volume)
 
             nbr_device_edges = []
             for nbr_device_edge in cluster_graph.adjs[
+<<<<<<< HEAD
                 cur_device_node.id
             ].values():
+=======
+                    cur_device_node.id].values():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 nbr_device_edges.append(nbr_device_edge)
             nbr_device_edges.sort(key=sort_by_comm_bandwidth)
 
             for nbr_rank_edge in nbr_rank_edges:
+<<<<<<< HEAD
                 src_rank_node = process_graph.nodes[nbr_rank_edge.src_id][
                     "visited"
                 ]
@@ -299,13 +377,31 @@ def mapping(distributed_program, cluster):
                     if (nbr_device_node["device"].type == device_type) and (
                         not nbr_device_node["occupied"]
                     ):
+=======
+                src_rank_node = process_graph.nodes[
+                    nbr_rank_edge.src_id]["visited"]
+                if src_rank_node:
+                    continue
+                device_type = src_rank_node["resource_requirements"][
+                    "device_type"]
+                nbr_rank_node = process_graph.nodes[nbr_rank_edge.tgt_id]
+                for nbr_device_edge in nbr_device_edges:
+                    nbr_device_node = cluster_graph.nodes[
+                        nbr_device_edge.tgt_id]
+                    if (nbr_device_node["device"].type == device_type) and (
+                            not nbr_device_node["occupied"]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         nbr_device_node["occupied"] = True
                         nbr_rank_node["visited"] = True
                         nbr_rank_node["device"] = nbr_device_node["device"]
                         break
         root_rank_node = select_unvisited_rank_node(
+<<<<<<< HEAD
             list(process_graph.nodes.values())
         )
+=======
+            list(process_graph.nodes.values()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     rank_mapping = {}
     for rank, rank_node in process_graph.nodes.items():

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from nets import mlp
 from utils import gen_data
 
@@ -24,6 +25,16 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
 
 input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
 input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+=======
+import paddle.fluid as fluid
+from utils import gen_data
+from nets import mlp
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.base import role_maker
+
+input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 input_y = fluid.layers.cast(input_y, dtype="float32")
 
 with fluid.device_guard("gpu"):
@@ -47,6 +58,7 @@ elif fleet.is_worker():
     exe.run(fleet.startup_program)
     step = 1001
     for i in range(step):
+<<<<<<< HEAD
         cost_val = exe.run(
             program=fleet.main_program, feed=gen_data(), fetch_list=[cost.name]
         )
@@ -54,3 +66,10 @@ elif fleet.is_worker():
             "worker_index: %d, step%d cost = %f"
             % (fleet.worker_index(), i, cost_val[0])
         )
+=======
+        cost_val = exe.run(program=fleet.main_program,
+                           feed=gen_data(),
+                           fetch_list=[cost.name])
+        print("worker_index: %d, step%d cost = %f" %
+              (fleet.worker_index(), i, cost_val[0]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

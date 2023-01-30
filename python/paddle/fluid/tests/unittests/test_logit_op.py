@@ -13,16 +13,24 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
 
 import paddle
+=======
+import numpy as np
+from op_test import OpTest
+import paddle
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.seed(10)
 
 
 def logit(x, eps):
+<<<<<<< HEAD
     x_min = np.minimum(x, 1.0 - eps)
     x_max = np.maximum(x_min, eps)
     return np.log(x_max / (1.0 - x_max))
@@ -35,11 +43,27 @@ def logit_grad(x, eps=1e-8):
     x_1 = 1.0 - x
     _x = np.select([tmp_x == -1.0], [np.reciprocal(x * x_1)], default=0.0)
     dout = np.full_like(x, fill_value=1.0 / _x.size)
+=======
+    x_min = np.minimum(x, 1. - eps)
+    x_max = np.maximum(x_min, eps)
+    return np.log(x_max / (1. - x_max))
+
+
+def logit_grad(x, eps=1e-8):
+    tmp_x = np.select([x < eps, x > (1. - eps)], [x * 0., x * 0.], default=-1.0)
+    x_1 = 1. - x
+    _x = np.select([tmp_x == -1.0], [np.reciprocal(x * x_1)], default=0.0)
+    dout = np.full_like(x, fill_value=1. / _x.size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dx = dout * _x
     return dx
 
 
 class TestLogitOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'logit'
         self.python_api = paddle.logit
@@ -47,7 +71,11 @@ class TestLogitOp(OpTest):
         self.shape = [120]
         self.eps = 1e-8
         self.set_attrs()
+<<<<<<< HEAD
         x = np.random.uniform(-1.0, 1.0, self.shape).astype(self.dtype)
+=======
+        x = np.random.uniform(-1., 1., self.shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = logit(x, self.eps)
         self.x_grad = logit_grad(x, self.eps)
         self.inputs = {'X': x}
@@ -61,22 +89,37 @@ class TestLogitOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
         )
 
 
 class TestLogitShape(TestLogitOp):
+=======
+        self.check_grad(['X'], ['Out'],
+                        user_defined_grads=[self.x_grad],
+                        check_eager=True)
+
+
+class TestLogitShape(TestLogitOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.shape = [2, 60]
 
 
 class TestLogitEps(TestLogitOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.eps = 1e-8
 
 
 class TestLogitAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x_shape = [120]
         self.x = np.random.uniform(0.0, 1.0, self.x_shape).astype(np.float32)
@@ -85,6 +128,15 @@ class TestLogitAPI(unittest.TestCase):
             if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.x_shape = [120]
+        self.x = np.random.uniform(0., 1., self.x_shape).astype(np.float32)
+        self.place = paddle.CUDAPlace(0) \
+            if paddle.fluid.core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_api(self, eps=1e-8):
         ref_out = logit(self.x, eps)
@@ -116,6 +168,14 @@ class TestLogitAPI(unittest.TestCase):
             x = paddle.fluid.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, paddle.logit, x, dtype='int32')
 
+<<<<<<< HEAD
+=======
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_check_api()
+            self.test_errors()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == "__main__":
     unittest.main()

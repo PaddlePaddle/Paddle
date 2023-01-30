@@ -207,7 +207,11 @@ inline ::phi::DataType PhiDataType(framework_proto::VarType::Type type) {
 }
 
 inline void TensorFromStream(std::istream &is,
+<<<<<<< HEAD
                              ::Tensor *tensor,
+=======
+                             ::phi::DenseTensor *tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                              const ::phi::CPUContext &ctx) {
   uint32_t version;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
@@ -237,7 +241,11 @@ inline void TensorFromStream(std::istream &is,
 }
 
 void DeserializeFromStream(std::istream &is,
+<<<<<<< HEAD
                            ::Tensor *tensor,
+=======
+                           ::phi::DenseTensor *tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            const ::phi::CPUContext &dev_ctx) {
   {
     // the 1st field, unit32_t version for LoDTensor

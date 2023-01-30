@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.framework import in_dygraph_mode
@@ -22,6 +23,27 @@ from .layer_function_generator import (
     generate_inplace_fn,
     generate_layer_fn,
 )
+=======
+from __future__ import print_function
+import os
+from .layer_function_generator import (
+    generate_layer_fn,
+    generate_activation_fn,
+    generate_inplace_fn,
+    add_sample_code,
+)
+from ..framework import core
+from ..framework import convert_np_dtype_to_dtype_
+from ..static import Variable
+from ..fluid.data_feeder import (
+    convert_dtype,
+    check_variable_and_dtype,
+    check_type,
+    check_dtype,
+)
+from ..fluid.framework import in_dygraph_mode
+from .. import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -29,6 +51,10 @@ __deprecated_func_name__ = {
 }
 
 __activations_noattr__ = [
+<<<<<<< HEAD
+=======
+    'sigmoid',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'silu',
     'logsigmoid',
     'tanh_shrink',
@@ -37,7 +63,33 @@ __activations_noattr__ = [
     'tanh',
 ]
 
+<<<<<<< HEAD
 __unary_func__ = ['abs']
+=======
+__unary_func__ = [
+    'exp',
+    'expm1',
+    'atan',
+    'sqrt',
+    'rsqrt',
+    'abs',
+    'ceil',
+    'floor',
+    'cos',
+    'tan',
+    'acos',
+    'sin',
+    'sinh',
+    'asin',
+    'cosh',
+    'round',
+    'reciprocal',
+    'square',
+    'acosh',
+    'asinh',
+    'atanh',
+]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __inplace_unary_func__ = [
     'exp_',
@@ -52,7 +104,11 @@ __inplace_unary_func__ = [
 __all__ = []
 
 # It is a hot fix in some unittest using:
+<<<<<<< HEAD
 #   paddle.scale(x=x, scale=10.0, out=out_var)
+=======
+#   fluid.layers.scale(x=x, scale=10.0, out=out_var)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
 
@@ -80,16 +136,47 @@ for _OP in set(__inplace_unary_func__):
     globals()[_OP] = _func
 
 add_sample_code(
+<<<<<<< HEAD
+=======
+    globals()["sigmoid"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = F.sigmoid(x)
+        print(out)
+        # [0.40131234 0.450166   0.52497919 0.57444252]
+
+""",
+)
+
+add_sample_code(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     globals()["silu"],
     r"""
 Examples:
     .. code-block:: python
+<<<<<<< HEAD
         import paddle
         import paddle.nn.functional as F
+=======
+
+        import paddle
+        import paddle.nn.functional as F
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
         out = F.silu(x)
         print(out)
         # [ 0.7310586 1.7615942 2.8577224, 3.9280552 ]
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 """,
 )
 
@@ -98,17 +185,32 @@ add_sample_code(
     r"""
 Examples:
     .. code-block:: python
+<<<<<<< HEAD
         import paddle
         import paddle.nn.functional as F
+=======
+
+        import paddle
+        import paddle.nn.functional as F
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = F.log_sigmoid(x)
         print(out)
         # [-0.91301525 -0.79813887 -0.64439666 -0.55435524]
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 """,
 )
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["tanh"],
+=======
+    globals()["exp"],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     r"""
 Examples:
     .. code-block:: python
@@ -116,32 +218,54 @@ Examples:
         import paddle
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+<<<<<<< HEAD
         out = paddle.tanh(x)
         print(out)
         # [-0.37994896 -0.19737532  0.09966799  0.29131261]
+=======
+        out = paddle.exp(x)
+        print(out)
+        # [0.67032005 0.81873075 1.10517092 1.34985881]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 """,
 )
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["tanh_shrink"],
+=======
+    globals()["expm1"],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     r"""
 Examples:
     .. code-block:: python
 
         import paddle
+<<<<<<< HEAD
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = F.tanhshrink(x)
         print(out)
         # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+=======
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.expm1(x)
+        print(out)
+        # [-0.32967997, -0.18126924,  0.10517092,  0.34985882]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 """,
 )
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["abs"],
+=======
+    globals()["tanh"],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     r"""
 Examples:
     .. code-block:: python
@@ -149,32 +273,54 @@ Examples:
         import paddle
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+<<<<<<< HEAD
         out = paddle.abs(x)
         print(out)
         # [0.4 0.2 0.1 0.3]
+=======
+        out = paddle.tanh(x)
+        print(out)
+        # [-0.37994896 -0.19737532  0.09966799  0.29131261]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 """,
 )
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["softplus"],
+=======
+    globals()["atan"],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     r"""
 Examples:
     .. code-block:: python
 
         import paddle
+<<<<<<< HEAD
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = F.softplus(x)
         print(out)
         # [0.513015, 0.598139, 0.744397, 0.854355]
+=======
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.atan(x)
+        print(out)
+        # [-0.38050638 -0.19739556  0.09966865  0.29145679]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 """,
 )
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["softsign"],
+=======
+    globals()["tanh_shrink"],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     r"""
 Examples:
     .. code-block:: python
@@ -183,13 +329,20 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+<<<<<<< HEAD
         out = F.softsign(x)
         print(out)
         # [-0.285714, -0.166667, 0.0909091, 0.230769]
+=======
+        out = F.tanhshrink(x) 
+        print(out)
+        # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 """,
 )
 
+<<<<<<< HEAD
 
 def acos(x, name=None):
     """
@@ -1011,6 +1164,329 @@ def tan(x, name=None):
         helper.append_op(type='tan', inputs={"X": x}, outputs={"Out": out})
         return out
 
+=======
+add_sample_code(
+    globals()["sqrt"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+        out = paddle.sqrt(x)
+        print(out)
+        # [0.31622777 0.4472136  0.54772256 0.63245553]
+
+""",
+)
+
+add_sample_code(
+    globals()["rsqrt"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+        out = paddle.rsqrt(x)
+        print(out)
+        # [3.16227766 2.23606798 1.82574186 1.58113883]
+
+""",
+)
+
+add_sample_code(
+    globals()["abs"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.abs(x)
+        print(out)
+        # [0.4 0.2 0.1 0.3]
+
+""",
+)
+
+add_sample_code(
+    globals()["ceil"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.ceil(x)
+        print(out)
+        # [-0. -0.  1.  1.]
+
+""",
+)
+
+add_sample_code(
+    globals()["floor"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.floor(x)
+        print(out)
+        # [-1. -1.  0.  0.]
+
+""",
+)
+
+add_sample_code(
+    globals()["cos"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.cos(x)
+        print(out)
+        # [0.92106099 0.98006658 0.99500417 0.95533649]
+
+""",
+)
+
+add_sample_code(
+    globals()["tan"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.tan(x)
+        print(out)
+        # [-0.42279324, -0.20271005, 0.10033467, 0.30933627]
+
+""",
+)
+
+add_sample_code(
+    globals()["acos"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.acos(x)
+        print(out)
+        # [1.98231317 1.77215425 1.47062891 1.26610367]
+
+""",
+)
+
+add_sample_code(
+    globals()["sin"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.sin(x)
+        print(out)
+        # [-0.38941834 -0.19866933  0.09983342  0.29552021]
+
+""",
+)
+
+add_sample_code(
+    globals()["asin"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.asin(x)
+        print(out)
+        # [-0.41151685 -0.20135792  0.10016742  0.30469265]
+
+""",
+)
+
+add_sample_code(
+    globals()["cosh"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.cosh(x)
+        print(out)
+        # [1.08107237 1.02006676 1.00500417 1.04533851]
+
+""",
+)
+
+add_sample_code(
+    globals()["sinh"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.sinh(x)
+        print(out)
+        # [-0.41075233 -0.201336    0.10016675  0.30452029]
+
+""",
+)
+
+add_sample_code(
+    globals()["asinh"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.asinh(x)
+        print(out)
+        # [-0.39003533, -0.19869010,  0.09983408,  0.29567307]
+
+""",
+)
+
+add_sample_code(
+    globals()["acosh"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1., 3., 4., 5.])
+        out = paddle.acosh(x)
+        print(out)
+        # [0.        , 1.76274729, 2.06343699, 2.29243159]
+
+""",
+)
+
+add_sample_code(
+    globals()["atanh"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.atanh(x)
+        print(out)
+        # [-0.42364895, -0.20273256,  0.10033535,  0.30951962]
+
+""",
+)
+
+add_sample_code(
+    globals()["round"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
+        out = paddle.round(x)
+        print(out)
+        # [-1. -0.  1.  2.]
+
+""",
+)
+
+add_sample_code(
+    globals()["reciprocal"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.reciprocal(x)
+        print(out)
+        # [-2.5        -5.         10.          3.33333333]
+
+""",
+)
+
+add_sample_code(
+    globals()["square"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.square(x)
+        print(out)
+        # [0.16 0.04 0.01 0.09]
+
+""",
+)
+
+add_sample_code(
+    globals()["softplus"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = F.softplus(x) 
+        print(out)
+        # [0.513015, 0.598139, 0.744397, 0.854355]
+
+""",
+)
+
+add_sample_code(
+    globals()["softsign"],
+    r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = F.softsign(x) 
+        print(out)
+        # [-0.285714, -0.166667, 0.0909091, 0.230769]
+
+""",
+)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 _erf_ = generate_layer_fn('erf')
 
@@ -1045,11 +1521,19 @@ Returns:
     Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
+<<<<<<< HEAD
 
     .. code-block:: python
 
         import paddle
 
+=======
+    
+    .. code-block:: python
+    
+        import paddle
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.erf(x)
         print(out)

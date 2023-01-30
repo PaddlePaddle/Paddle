@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,6 +22,18 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
 from paddle.jit.api import to_static
+=======
+from __future__ import print_function
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.layers.utils import flatten
+from paddle.fluid.dygraph import declarative, ProgramTranslator
+
+from test_fetch_feed import Linear
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 SEED = 2020
 
@@ -54,6 +67,10 @@ def fake_data(shape):
 
 
 class TestWithNestedInput(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x = None
         self.y = None
@@ -61,6 +78,7 @@ class TestWithNestedInput(unittest.TestCase):
     def fake_input(self):
         self.x = fake_data([10, 16])
         self.y = [
+<<<<<<< HEAD
             fake_data([10, 16]),
             "preprocess_cmd",
             64,
@@ -69,6 +87,17 @@ class TestWithNestedInput(unittest.TestCase):
                 'c': fake_data([10, 10]),
                 'd': {'da': 12, 'dc': fake_data([10, 10])},
             },
+=======
+            fake_data([10, 16]), "preprocess_cmd", 64, {
+                'z': [fake_data([10, 12]),
+                      fake_data([10, 12])],
+                'c': fake_data([10, 10]),
+                'd': {
+                    'da': 12,
+                    'dc': fake_data([10, 10])
+                }
+            }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
     def _run(self, to_static):
@@ -77,7 +106,11 @@ class TestWithNestedInput(unittest.TestCase):
                 self.fake_input()
 
             if to_static:
+<<<<<<< HEAD
                 out = paddle.jit.to_static(nested_input)(self.x, self.y)
+=======
+                out = declarative(nested_input)(self.x, self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 out = nested_input(self.x, self.y)
 
@@ -90,6 +123,10 @@ class TestWithNestedInput(unittest.TestCase):
 
 
 class TestWithNestedOutput(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x = None
         self.y = None
@@ -101,7 +138,11 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.y = fake_data([10, 16])
 
             if to_static:
+<<<<<<< HEAD
                 out = paddle.jit.to_static(nested_output)(self.x, self.y)
+=======
+                out = declarative(nested_output)(self.x, self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 out = nested_output(self.x, self.y)
 
@@ -117,18 +158,32 @@ class TestWithNestedOutput(unittest.TestCase):
         self.assertTrue(len(dygraph_res) == len(static_res))
 
         for dy_var, st_var in zip(dygraph_res, static_res):
+<<<<<<< HEAD
             if isinstance(
                 dy_var, (fluid.core.VarBase, fluid.core.eager.Tensor)
             ):
                 np.testing.assert_allclose(
                     dy_var.numpy(), st_var.numpy(), rtol=1e-05
                 )
+=======
+            if isinstance(dy_var,
+                          (fluid.core.VarBase, fluid.core.eager.Tensor)):
+                np.testing.assert_allclose(dy_var.numpy(),
+                                           st_var.numpy(),
+                                           rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 self.assertTrue(dy_var, st_var)
 
 
 class TestWithTrainAndEval(unittest.TestCase):
+<<<<<<< HEAD
     def test_switch_eval_and_train(self):
+=======
+
+    def test_switch_eval_and_train(self):
+        program_translator = ProgramTranslator()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         with fluid.dygraph.guard():
             linear_net = Linear()
@@ -138,27 +193,46 @@ class TestWithTrainAndEval(unittest.TestCase):
 
             _, train_partial_layer = linear_net.forward.program_cache.last()[-1]
             # check default mode is for training
+<<<<<<< HEAD
             self.assertEqual(
                 train_partial_layer.program, train_partial_layer._train_program
             )
+=======
+            self.assertEqual(train_partial_layer.program,
+                             train_partial_layer._train_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # switch to run test program after `eval()`
             linear_net.eval()
             linear_net(x)
             _, eval_partial_layer = linear_net.forward.program_cache.last()[-1]
+<<<<<<< HEAD
             self.assertEqual(
                 eval_partial_layer.program, eval_partial_layer._infer_program
             )
+=======
+            self.assertEqual(eval_partial_layer.program,
+                             eval_partial_layer._infer_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # switch back into training
             linear_net.train()
             linear_net(x)
+<<<<<<< HEAD
             self.assertEqual(
                 train_partial_layer.program, train_partial_layer._train_program
             )
 
 
 class TestWithNoGrad(unittest.TestCase):
+=======
+            self.assertEqual(train_partial_layer.program,
+                             train_partial_layer._train_program)
+
+
+class TestWithNoGrad(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_with_no_grad(self):
         with fluid.dygraph.guard():
             linear_net = Linear()
@@ -169,6 +243,7 @@ class TestWithNoGrad(unittest.TestCase):
                 linear_net.train()
                 linear_net(x)
                 _, partial_layer = linear_net.forward.program_cache.last()[-1]
+<<<<<<< HEAD
                 self.assertEqual(
                     partial_layer.program, partial_layer._train_program
                 )
@@ -187,10 +262,33 @@ class GPT2LMHeadModel(fluid.dygraph.Layer):
     def forward(self, x):
         x = paddle.reshape(x, shape=[-1, 6])
         x1, x2, x3 = paddle.split(x=x, axis=1, num_or_sections=3)
+=======
+                self.assertEqual(partial_layer.program,
+                                 partial_layer._train_program)
+
+
+class GPT2LMHeadModel(fluid.dygraph.Layer):
+
+    def __init__(self):
+        super(GPT2LMHeadModel, self).__init__()
+        self.embedding0 = paddle.nn.Embedding(20, 16)
+        self.embedding1 = paddle.nn.Embedding(20, 32)
+        self.lm_head_weight = paddle.to_tensor(
+            np.random.rand(2, 3).astype('float32'))
+
+    @declarative
+    def forward(self, x):
+        x = fluid.layers.reshape(x, shape=[-1, 6])
+        x1, x2, x3 = fluid.layers.split(input=x, dim=1, num_or_sections=3)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return x1
 
 
 class TestPruneUnusedParamInProgram(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
 

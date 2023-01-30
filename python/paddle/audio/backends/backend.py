@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+<<<<<<< HEAD
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
@@ -29,6 +30,19 @@ class AudioInfo:
         bits_per_sample: int,
         encoding: str,
     ):
+=======
+import paddle
+
+from pathlib import Path
+from typing import Optional, Tuple, Union
+
+
+class AudioInfo:
+    """ Audio info, return type of backend info function """
+
+    def __init__(self, sample_rate: int, num_samples: int, num_channels: int,
+                 bits_per_sample: int, encoding: str):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.sample_rate = sample_rate
         self.num_samples = num_samples
         self.num_channels = num_channels
@@ -67,6 +81,7 @@ def info(filepath: str) -> AudioInfo:
     raise NotImplementedError("please set audio backend")
 
 
+<<<<<<< HEAD
 def load(
     filepath: Union[str, Path],
     frame_offset: int = 0,
@@ -74,6 +89,13 @@ def load(
     normalize: bool = True,
     channels_first: bool = True,
 ) -> Tuple[paddle.Tensor, int]:
+=======
+def load(filepath: Union[str, Path],
+         frame_offset: int = 0,
+         num_frames: int = -1,
+         normalize: bool = True,
+         channels_first: bool = True) -> Tuple[paddle.Tensor, int]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Load audio data from file.Load the audio content start form frame_offset, and get num_frames.
 
     Args:

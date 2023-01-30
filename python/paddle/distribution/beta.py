@@ -21,11 +21,19 @@ class Beta(exponential_family.ExponentialFamily):
     r"""
     Beta distribution parameterized by alpha and beta.
 
+<<<<<<< HEAD
     In probability theory and statistics, the beta distribution is a family of
     continuous probability distributions defined on the interval [0, 1]
     parameterized by two positive shape parameters, denoted by alpha and beta,
     that appear as exponents of the random variable and control the shape of
     the distribution. The generalization to multiple variables is called a
+=======
+    In probability theory and statistics, the beta distribution is a family of 
+    continuous probability distributions defined on the interval [0, 1] 
+    parameterized by two positive shape parameters, denoted by alpha and beta, 
+    that appear as exponents of the random variable and control the shape of 
+    the distribution. The generalization to multiple variables is called a 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Dirichlet distribution.
 
     The probability density function (pdf) is
@@ -38,6 +46,7 @@ class Beta(exponential_family.ExponentialFamily):
 
     .. math::
 
+<<<<<<< HEAD
         B(\alpha, \beta) = \int_{0}^{1} t^{\alpha - 1} (1-t)^{\beta - 1}\mathrm{d}t
 
 
@@ -50,6 +59,20 @@ class Beta(exponential_family.ExponentialFamily):
             The value of beta must be positive(>0). When the parameter is tensor,
             it represent multiple independent distribution with
             a batch_shape(refer to ``Distribution`` ).
+=======
+        B(\alpha, \beta) = \int_{0}^{1} t^{\alpha - 1} (1-t)^{\beta - 1}\mathrm{d}t 
+
+
+    Args:
+        alpha (float|Tensor): Alpha parameter. It supports broadcast semantics. 
+            The value of alpha must be positive. When the parameter is a tensor, 
+            it represents multiple independent distribution with 
+            a batch_shape(refer to ``Distribution`` ).
+        beta (float|Tensor): Beta parameter. It supports broadcast semantics. 
+            The value of beta must be positive(>0). When the parameter is tensor, 
+            it represent multiple independent distribution with 
+            a batch_shape(refer to ``Distribution`` ). 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
@@ -92,6 +115,7 @@ class Beta(exponential_family.ExponentialFamily):
         self.alpha, self.beta = paddle.broadcast_tensors([alpha, beta])
 
         self._dirichlet = dirichlet.Dirichlet(
+<<<<<<< HEAD
             paddle.stack([self.alpha, self.beta], -1)
         )
 
@@ -100,11 +124,26 @@ class Beta(exponential_family.ExponentialFamily):
     @property
     def mean(self):
         """Mean of beta distribution."""
+=======
+            paddle.stack([self.alpha, self.beta], -1))
+
+        super(Beta, self).__init__(self._dirichlet._batch_shape)
+
+    @property
+    def mean(self):
+        """Mean of beta distribution.
+        """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return self.alpha / (self.alpha + self.beta)
 
     @property
     def variance(self):
+<<<<<<< HEAD
         """Variance of beat distribution"""
+=======
+        """Variance of beat distribution
+        """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sum = self.alpha + self.beta
         return self.alpha * self.beta / (sum.pow(2) * (sum + 1))
 
@@ -113,7 +152,11 @@ class Beta(exponential_family.ExponentialFamily):
 
         Args:
             value (Tensor): Value to be evaluated.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Returns:
             Tensor: Probability.
         """
@@ -124,7 +167,11 @@ class Beta(exponential_family.ExponentialFamily):
 
         Args:
             value (Tensor): Value to be evaluated
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Returns:
             Tensor: Log probability.
         """

@@ -11,16 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 import itertools
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 
 import librosa
 import numpy as np
+<<<<<<< HEAD
 from parameterized import parameterized
 from scipy import signal
 
 import paddle
 import paddle.audio
+=======
+import os
+import paddle
+
+import paddle.audio
+from scipy import signal
+import itertools
+from parameterized import parameterized
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def parameterize(*params):

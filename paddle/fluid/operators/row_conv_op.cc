@@ -23,6 +23,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -82,7 +88,11 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "the input(X) is a LodTensor or tensor, LodTensor(X) supports "
              "variable time-length input sequences. The underlying tensor "
+<<<<<<< HEAD
              "in this phi::DenseTensor is a matrix with shape (T x N), where T "
+=======
+             "in this LoDTensor is a matrix with shape (T x N), where T "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "is the total time steps in this mini-batch and N is the input "
              "data dimension. the shape of Tensor input(X) has shape "
              "(B x T x N), B is batch size;");
@@ -97,6 +107,7 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 :strong:`Row-convolution operator`
 
+<<<<<<< HEAD
 The row convolution is called lookahead convolution.  This operator was
 introduced in the following paper for DeepSpeech2:
 http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
@@ -111,6 +122,22 @@ unidirectional recurrent neural networks. The row convolution operator is
 different from the 1D sequence convolution, and is computed as follows:
 
 Given an input sequence $X$ of length $t$ and input dimension $D$,
+=======
+The row convolution is called lookahead convolution.  This operator was 
+introduced in the following paper for DeepSpeech2:
+http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf 
+
+The main motivation is that a bidirectional RNN, useful in DeepSpeech 
+like speech models, learns representation for a sequence by performing a 
+forward and a backward pass through the entire sequence. However, unlike 
+unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
+and low-latency setting. The lookahead convolution incorporates information 
+from future subsequences in a computationally efficient manner to improve 
+unidirectional recurrent neural networks. The row convolution operator is 
+different from the 1D sequence convolution, and is computed as follows:
+
+Given an input sequence $X$ of length $t$ and input dimension $D$, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 and a filter ($W$) of size $context \times D$,
 the output sequence is convolved as:
 
@@ -140,9 +167,15 @@ template <typename T>
 class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *x = context.Input<phi::DenseTensor>("X");
     auto *filter = context.Input<phi::DenseTensor>("Filter");
     auto *out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto *x = context.Input<LoDTensor>("X");
+    auto *filter = context.Input<Tensor>("Filter");
+    auto *out = context.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     out->mutable_data<T>(context.GetPlace());
 
@@ -181,12 +214,20 @@ class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
         current_timesteps = end - start;
       }
       // int current_timesteps = end - start;
+<<<<<<< HEAD
       phi::DenseTensor cur_input_sequence =
+=======
+      Tensor cur_input_sequence =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           x->Slice(start, end);  // Current input sequence
       cur_input_sequence =
           cur_input_sequence.Resize({current_timesteps, input_dim});
 
+<<<<<<< HEAD
       phi::DenseTensor cur_output_sequence =
+=======
+      Tensor cur_output_sequence =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           out->Slice(start, end);  // Current output sequence
       cur_output_sequence =
           cur_output_sequence.Resize({current_timesteps, input_dim});
@@ -215,6 +256,7 @@ template <typename T>
 class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *x = context.Input<phi::DenseTensor>("X");
     auto *filter = context.Input<phi::DenseTensor>("Filter");
     auto *d_out =
@@ -222,6 +264,13 @@ class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
     auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *d_filter =
         context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+=======
+    auto *x = context.Input<LoDTensor>("X");
+    auto *filter = context.Input<Tensor>("Filter");
+    auto *d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto *dx = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *d_filter = context.Output<Tensor>(framework::GradVarName("Filter"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto &x_lod = x->lod();
     bool is_tensor = x_lod.empty();
@@ -263,10 +312,16 @@ class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
         } else {
           current_timesteps = end - start;
         }
+<<<<<<< HEAD
         phi::DenseTensor cur_input =
             x->Slice(start, end);  // Current input sequence
         cur_input = cur_input.Resize({current_timesteps, input_dim});
         phi::DenseTensor cur_doutput =
+=======
+        Tensor cur_input = x->Slice(start, end);  // Current input sequence
+        cur_input = cur_input.Resize({current_timesteps, input_dim});
+        Tensor cur_doutput =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             d_out->Slice(start, end);  // Current output grad sequence
         cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
         auto cur_ip = EigenMatrix<T>::From(cur_input);
@@ -298,10 +353,17 @@ class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
           current_timesteps = end - start;
         }
 
+<<<<<<< HEAD
         phi::DenseTensor cur_doutput =
             d_out->Slice(start, end);  // Current output grad sequence
         cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
         phi::DenseTensor cur_dinput =
+=======
+        Tensor cur_doutput =
+            d_out->Slice(start, end);  // Current output grad sequence
+        cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
+        Tensor cur_dinput =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dx->Slice(start, end);  // Current input grad sequence
         cur_dinput = cur_dinput.Resize({current_timesteps, input_dim});
 

@@ -76,13 +76,21 @@ void ScaleCsrKernel(const Context& dev_ctx,
                     SparseCsrTensor* out);
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void DivScalarCooKernel(const Context& dev_ctx,
+=======
+void DivCooScalarKernel(const Context& dev_ctx,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         const SparseCooTensor& x,
                         float scalar,
                         SparseCooTensor* out);
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void DivScalarCsrKernel(const Context& dev_ctx,
+=======
+void DivCsrScalarKernel(const Context& dev_ctx,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         const SparseCsrTensor& x,
                         float scalar,
                         SparseCsrTensor* out);

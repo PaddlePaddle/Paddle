@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,19 @@ from op_test import OpTest
 
 
 class TestRankLossOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+
+
+class TestRankLossOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "rank_loss"
         shape = (100, 1)
@@ -32,7 +46,11 @@ class TestRankLossOp(OpTest):
         self.inputs = {
             'Label': label.reshape(label_shape),
             'Left': left.reshape(left_shape),
+<<<<<<< HEAD
             'Right': right.reshape(right_shape),
+=======
+            'Right': right.reshape(right_shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': loss.reshape(label_shape)}
 
@@ -54,34 +72,84 @@ class TestRankLossOp(OpTest):
 
 
 class TestRankLossOp1(TestRankLossOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         batch_size = 100
         return (batch_size), (batch_size, 1), (batch_size, 1)
 
 
 class TestRankLossOp2(TestRankLossOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         batch_size = 100
         return (batch_size, 1), (batch_size), (batch_size, 1)
 
 
 class TestRankLossOp3(TestRankLossOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         batch_size = 100
         return (batch_size, 1), (batch_size, 1), (batch_size)
 
 
 class TestRankLossOp4(TestRankLossOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         batch_size = 100
         return (batch_size), (batch_size), (batch_size, 1)
 
 
 class TestRankLossOp5(TestRankLossOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         batch_size = 100
         return (batch_size), (batch_size), (batch_size)
 
 
+<<<<<<< HEAD
+=======
+class TestRankLossOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            label = fluid.data(name="label", shape=[16, 1], dtype="float32")
+            left = fluid.data(name="left", shape=[16, 1], dtype="float32")
+            right = fluid.data(name="right", shape=[16, 1], dtype="float32")
+
+            def test_label_Variable():
+                label_data = np.random.rand(16, 1).astype("float32")
+                out = fluid.layers.rank_loss(label_data, left, right)
+
+            self.assertRaises(TypeError, test_label_Variable)
+
+            def test_left_Variable():
+                left_data = np.random.rand(16, 1).astype("float32")
+                out = fluid.layers.rank_loss(label, left_data, right)
+
+            self.assertRaises(TypeError, test_left_Variable)
+
+            def test_right_Variable():
+                right_data = np.random.rand(16, 1).astype("float32")
+                out = fluid.layers.rank_loss(label, left, right_data)
+
+            self.assertRaises(TypeError, test_right_Variable)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     unittest.main()

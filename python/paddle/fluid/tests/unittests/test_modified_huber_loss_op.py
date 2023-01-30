@@ -12,14 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from op_test import OpTest
 
 
 def modified_huber_loss_forward(val):
     if val < -1:
+<<<<<<< HEAD
         return -4.0 * val
     elif val < 1:
         return (1.0 - val) * (1.0 - val)
@@ -28,10 +35,22 @@ def modified_huber_loss_forward(val):
 
 
 class TestModifiedHuberLossOp(OpTest):
+=======
+        return -4. * val
+    elif val < 1:
+        return (1. - val) * (1. - val)
+    else:
+        return 0.
+
+
+class TestModifiedHuberLossOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'modified_huber_loss'
         samples_num = 100
 
+<<<<<<< HEAD
         x_np = np.random.uniform(-2.0, 2.0, (samples_num, 1)).astype('float32')
         y_np = (
             np.random.choice([0, 1], samples_num)
@@ -43,6 +62,16 @@ class TestModifiedHuberLossOp(OpTest):
         for pos, val in np.ndenumerate(product_res):
             while abs(val - 1.0) < 0.05:
                 x_np[pos] = np.random.uniform(-2.0, 2.0)
+=======
+        x_np = np.random.uniform(-2., 2., (samples_num, 1)).astype('float32')
+        y_np = np.random.choice([0, 1], samples_num).reshape(
+            (samples_num, 1)).astype('float32')
+        product_res = x_np * (2. * y_np - 1.)
+        # keep away from the junction of piecewise function
+        for pos, val in np.ndenumerate(product_res):
+            while abs(val - 1.) < 0.05:
+                x_np[pos] = np.random.uniform(-2., 2.)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 y_np[pos] = np.random.choice([0, 1])
                 product_res[pos] = x_np[pos] * (2 * y_np[pos] - 1)
                 val = product_res[pos]
@@ -52,7 +81,11 @@ class TestModifiedHuberLossOp(OpTest):
 
         self.outputs = {
             'IntermediateVal': product_res.astype('float32'),
+<<<<<<< HEAD
             'Out': loss.reshape((samples_num, 1)).astype('float32'),
+=======
+            'Out': loss.reshape((samples_num, 1)).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 
 import paddle
+<<<<<<< HEAD
 import paddle.framework as framework
 
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
@@ -24,6 +25,23 @@ from ..utils.log_util import logger
 from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
 from .pp_utils import p2p_communication as p2p
+=======
+import paddle.fluid as fluid
+from .meta_parallel_base import MetaParallelBase
+from .parallel_layers.pp_layers import PipelineLayer
+
+from ..utils.hybrid_parallel_util import broadcast_mp_parameters
+from ..utils.hybrid_parallel_util import broadcast_dp_parameters
+from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
+from ..utils.log_util import logger
+from ..meta_optimizers.dygraph_optimizer import (
+    HybridParallelOptimizer,
+    HybridParallelGradScaler,
+)
+import paddle.fluid.framework as framework
+from .pp_utils import p2p_communication as p2p
+import paddle.fluid.core as core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -34,7 +52,11 @@ class PipelineParallel(MetaParallelBase):
             raise TypeError(
                 "The Layer should be a derived class of PipelineLayer."
             )
+<<<<<<< HEAD
         super().__init__(layers, hcg, strategy)
+=======
+        super(PipelineParallel, self).__init__(layers, hcg, strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
         self.use_sharding_parallel = (
@@ -206,7 +228,11 @@ class PipelineParallel(MetaParallelBase):
         ), 'optimizer should be HybridParallelOptimizer subclass.'
 
         assert (
+<<<<<<< HEAD
             framework._dygraph_tracer()._has_grad
+=======
+            fluid.framework._dygraph_tracer()._has_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ), 'Please enable the generation of gradients.'
 
         if self.is_pipeline_first_stage(
@@ -306,7 +332,11 @@ class PipelineParallel(MetaParallelBase):
                 labels = self._load_micro_batch(self.micro_batch_id)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
+<<<<<<< HEAD
                     output_tensor, (paddle.Tensor, framework.core.eager.Tensor)
+=======
+                    output_tensor, (paddle.Tensor, core.eager.Tensor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
                 with paddle.amp.auto_cast(enable=False):
@@ -462,7 +492,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
     # pipeline parallel with interleave scheduler
 
     def __init__(self, layers, hcg, strategy):
+<<<<<<< HEAD
         super().__init__(layers=layers, hcg=hcg, strategy=strategy)
+=======
+        super(PipelineParallelWithInterleave, self).__init__(
+            layers=layers, hcg=hcg, strategy=strategy
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert layers.get_num_virtual_stages() > 1
         assert (
             framework.in_dygraph_mode()

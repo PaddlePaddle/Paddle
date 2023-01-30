@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,15 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid.core as core
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class ApiFMaxTest(unittest.TestCase):
@@ -46,13 +56,19 @@ class ApiFMaxTest(unittest.TestCase):
     def test_static_api(self):
         """test_static_api"""
         paddle.enable_static()
+<<<<<<< HEAD
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
             result_fmax = paddle.fmax(data_x, data_y)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             (res,) = exe.run(
                 feed={"x": self.input_x, "y": self.input_y},
                 fetch_list=[result_fmax],
@@ -62,10 +78,22 @@ class ApiFMaxTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "y": self.input_y
+            },
+                           fetch_list=[result_fmax])
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
+
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_z = paddle.static.data("z", shape=[15], dtype="float32")
             result_fmax = paddle.fmax(data_x, data_z)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             (res,) = exe.run(
                 feed={"x": self.input_x, "z": self.input_z},
                 fetch_list=[result_fmax],
@@ -75,10 +103,22 @@ class ApiFMaxTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "z": self.input_z
+            },
+                           fetch_list=[result_fmax])
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
+
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_a = paddle.static.data("a", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_fmax = paddle.fmax(data_a, data_c)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             (res,) = exe.run(
                 feed={"a": self.input_a, "c": self.input_c},
                 fetch_list=[result_fmax],
@@ -88,14 +128,33 @@ class ApiFMaxTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+            res, = exe.run(feed={
+                "a": self.input_a,
+                "c": self.input_c
+            },
+                           fetch_list=[result_fmax])
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
+
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_b = paddle.static.data("b", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_fmax = paddle.fmax(data_b, data_c)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             (res,) = exe.run(
                 feed={"b": self.input_b, "c": self.input_c},
                 fetch_list=[result_fmax],
             )
+=======
+            res, = exe.run(feed={
+                "b": self.input_b,
+                "c": self.input_c
+            },
+                           fetch_list=[result_fmax])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
     def test_dynamic_api(self):
@@ -153,6 +212,7 @@ class TestElementwiseFmaxOp(OpTest):
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
+<<<<<<< HEAD
         self.check_grad(
             ['Y'],
             'Out',
@@ -170,6 +230,21 @@ class TestElementwiseFmaxOp(OpTest):
             no_grad_set=set('Y'),
             check_eager=True,
         )
+=======
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set("X"),
+                        check_eager=True)
+
+    def test_check_grad_ingore_y(self):
+        """test_check_grad_ingore_y"""
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set('Y'),
+                        check_eager=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestElementwiseFmax2Op(OpTest):
@@ -200,6 +275,7 @@ class TestElementwiseFmax2Op(OpTest):
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
+<<<<<<< HEAD
         self.check_grad(
             ['Y'],
             'Out',
@@ -217,6 +293,21 @@ class TestElementwiseFmax2Op(OpTest):
             no_grad_set=set('Y'),
             check_eager=True,
         )
+=======
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set("X"),
+                        check_eager=True)
+
+    def test_check_grad_ingore_y(self):
+        """test_check_grad_ingore_y"""
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set('Y'),
+                        check_eager=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestElementwiseFmax3Op(OpTest):

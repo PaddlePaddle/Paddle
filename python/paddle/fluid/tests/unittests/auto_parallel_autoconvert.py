@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import random
 import unittest
@@ -37,6 +38,28 @@ from paddle.distributed.auto_parallel.utils import (
 )
 from paddle.distributed.fleet import auto
 from paddle.fluid.initializer import NumpyArrayInitializer
+=======
+from __future__ import print_function
+
+import unittest
+import random
+import numpy as np
+import os
+import shutil
+
+import paddle
+import paddle.nn as nn
+import paddle.utils as utils
+import paddle.static as static
+import paddle.nn.functional as F
+from paddle.distributed.fleet import auto
+
+from paddle.distributed import fleet
+from paddle.fluid.initializer import NumpyArrayInitializer
+from paddle.distributed.auto_parallel.utils import save_distributed_checkpoint, load_distributed_checkpoint, load_checkpoint_into_program
+from paddle.distributed.auto_parallel.utils import get_dist_attr, merge_and_slice_parameter, load_parameter_into_program
+from paddle.distributed.auto_parallel.dist_context import set_default_distributed_context
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -46,10 +69,19 @@ PP_MESH_1 = None
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 hidden_size=64,
+                 intermediate_size=4 * 64,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         d_model = hidden_size
         dim_feedforward = intermediate_size
         np.random.seed(2021)
@@ -58,12 +90,23 @@ class MLPLayer(nn.Layer):
         weight_attr0 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr0))
         weight_attr1 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr1))
         bias_attr = None
+<<<<<<< HEAD
         self.linear0 = nn.Linear(
             d_model, dim_feedforward, weight_attr0, bias_attr=bias_attr
         )
         self.linear1 = nn.Linear(
             dim_feedforward, d_model, weight_attr1, bias_attr=bias_attr
         )
+=======
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr0,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr1,
+                                 bias_attr=bias_attr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
@@ -71,6 +114,7 @@ class MLPLayer(nn.Layer):
             auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, None])
             auto.shard_tensor(self.linear1.weight, PP_MESH_1, [None, None])
         elif _global_parallel_strategy == "mp":
+<<<<<<< HEAD
             auto.shard_tensor(
                 self.linear0.weight, _global_process_mesh, [None, "x"]
             )
@@ -84,6 +128,17 @@ class MLPLayer(nn.Layer):
             auto.shard_tensor(
                 self.linear1.weight, _global_process_mesh, [None, None]
             )
+=======
+            auto.shard_tensor(self.linear0.weight, _global_process_mesh,
+                              [None, "x"])
+            auto.shard_tensor(self.linear1.weight, _global_process_mesh,
+                              ["x", None])
+        elif _global_parallel_strategy == "dp":
+            auto.shard_tensor(self.linear0.weight, _global_process_mesh,
+                              [None, None])
+            auto.shard_tensor(self.linear1.weight, _global_process_mesh,
+                              [None, None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -93,6 +148,7 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_forward(train_program, start_program):
+<<<<<<< HEAD
     with static.program_guard(
         train_program, start_program
     ), utils.unique_name.guard():
@@ -104,6 +160,18 @@ def mlp_forward(train_program, start_program):
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32'
         )
+=======
+    with static.program_guard(train_program,start_program), \
+        utils.unique_name.guard():
+        batch_size = 4
+        hidden_size = 64
+        input = static.data(name="input",
+                            shape=[batch_size, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, 1],
+                            dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if _global_parallel_strategy == "pp":
             auto.shard_tensor(input, PP_MESH_0, [None, None])
@@ -113,11 +181,17 @@ def mlp_forward(train_program, start_program):
         elif _global_parallel_strategy == "mp":
             auto.shard_tensor(input, _global_process_mesh, [None, None])
 
+<<<<<<< HEAD
         mlp = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
             initializer_range=0.02,
         )
+=======
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       initializer_range=0.02)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
         loss = paddle.mean(error_cost)
@@ -130,6 +204,7 @@ def get_distributed_program():
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
+<<<<<<< HEAD
     loss, train_program, startup_program = mlp_forward(
         train_program, startup_program
     )
@@ -138,17 +213,30 @@ def get_distributed_program():
     _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
         loss, startup_program
     )
+=======
+    loss, train_program, startup_program = mlp_forward(train_program,
+                                                       startup_program)
+    optimizer = paddle.fluid.optimizer.SGDOptimizer(learning_rate=0.01)
+    optimizer = fleet.distributed_optimizer(optimizer)
+    _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
+        loss, startup_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return dist_main_prog, dist_startup_prog, loss
 
 
 class TestMLPAutoConvert(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.seed(2021)
         random.seed(2021)
         np.random.seed(2021)
 
     def tearDown(self):
+<<<<<<< HEAD
         os.remove(
             "./model_state_rank{}.pdmodel".format(
                 str(paddle.distributed.get_rank())
@@ -159,6 +247,12 @@ class TestMLPAutoConvert(unittest.TestCase):
                 str(paddle.distributed.get_rank())
             )
         )
+=======
+        os.remove("./model_state_rank{}.pdmodel".format(
+            str(paddle.distributed.get_rank())))
+        os.remove("./dist_attr_rank{}.pdattr".format(
+            str(paddle.distributed.get_rank())))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_mlp_mp2pp(self):
         set_default_distributed_context(None)
@@ -177,6 +271,7 @@ class TestMLPAutoConvert(unittest.TestCase):
 
         for step in range(20):
             if step == 10:
+<<<<<<< HEAD
                 save_distributed_checkpoint(
                     dist_main_prog, ".", dist_attr_path="."
                 )
@@ -189,6 +284,18 @@ class TestMLPAutoConvert(unittest.TestCase):
                 },
                 fetch_list=[loss],
             )
+=======
+                save_distributed_checkpoint(dist_main_prog,
+                                            ".",
+                                            dist_attr_path=".")
+
+            res = exe.run(dist_main_prog,
+                          feed={
+                              "input": input[step * 4:(step + 1) * 4, :],
+                              "label": label[step * 4:(step + 1) * 4, :]
+                          },
+                          fetch_list=[loss])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         last_res = res[0]
 
         set_default_distributed_context(None)
@@ -199,16 +306,22 @@ class TestMLPAutoConvert(unittest.TestCase):
         global PP_MESH_1
         PP_MESH_1 = auto.ProcessMesh(mesh=[1], dim_names=["pp1"])
 
+<<<<<<< HEAD
         (
             dist_main_prog_load,
             dist_start_prog_load,
             loss_load,
         ) = get_distributed_program()
+=======
+        dist_main_prog_load, dist_start_prog_load, loss_load = get_distributed_program(
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         place = paddle.set_device("gpu")
         exe = paddle.static.Executor(place)
         exe.run(dist_start_prog_load)
 
         ckpt_path = [
+<<<<<<< HEAD
             "./model_state_rank0.pdmodel",
             "./model_state_rank1.pdmodel",
         ]
@@ -237,17 +350,45 @@ class TestMLPAutoConvert(unittest.TestCase):
                     },
                     fetch_list=[loss_load],
                 )
+=======
+            "./model_state_rank0.pdmodel", "./model_state_rank1.pdmodel"
+        ]
+        dist_attr_path = [
+            "./dist_attr_rank0.pdattr", "./dist_attr_rank1.pdattr"
+        ]
+        load_checkpoint_into_program(ckpt_path, dist_attr_path,
+                                     dist_main_prog_load)
+        for step in range(10, 20):
+            if paddle.distributed.get_rank() in [0]:
+                res = exe.run(dist_main_prog_load,
+                              feed={
+                                  "input": input[step * 4:(step + 1) * 4, :],
+                                  "label": label[step * 4:(step + 1) * 4, :]
+                              })
+            else:
+                res = exe.run(dist_main_prog_load,
+                              feed={
+                                  "input": input[step * 4:(step + 1) * 4, :],
+                                  "label": label[step * 4:(step + 1) * 4, :]
+                              },
+                              fetch_list=[loss_load])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if paddle.distributed.get_rank() in [1]:
             self.assertEqual(last_res, res[0])
 
 
 class TestMLPAutoConvert2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.seed(2021)
         random.seed(2021)
         np.random.seed(2021)
 
     def tearDown(self):
+<<<<<<< HEAD
         os.remove(
             "./model_state_rank{}.pdmodel".format(
                 str(paddle.distributed.get_rank())
@@ -258,6 +399,12 @@ class TestMLPAutoConvert2(unittest.TestCase):
                 str(paddle.distributed.get_rank())
             )
         )
+=======
+        os.remove("./model_state_rank{}.pdmodel".format(
+            str(paddle.distributed.get_rank())))
+        os.remove("./dist_attr_rank{}.pdattr".format(
+            str(paddle.distributed.get_rank())))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_mlp_pp2mp(self):
         set_default_distributed_context(None)
@@ -282,6 +429,7 @@ class TestMLPAutoConvert2(unittest.TestCase):
                 save_distributed_checkpoint(dist_main_prog, ".", ".", add_info)
 
             if paddle.distributed.get_rank() in [0]:
+<<<<<<< HEAD
                 res = exe.run(
                     dist_main_prog,
                     feed={
@@ -298,6 +446,20 @@ class TestMLPAutoConvert2(unittest.TestCase):
                     },
                     fetch_list=[loss],
                 )
+=======
+                res = exe.run(dist_main_prog,
+                              feed={
+                                  "input": input[step * 4:(step + 1) * 4, :],
+                                  "label": label[step * 4:(step + 1) * 4, :]
+                              })
+            else:
+                res = exe.run(dist_main_prog,
+                              feed={
+                                  "input": input[step * 4:(step + 1) * 4, :],
+                                  "label": label[step * 4:(step + 1) * 4, :]
+                              },
+                              fetch_list=[loss])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if paddle.distributed.get_rank() in [1]:
             last_res = res[0]
 
@@ -305,15 +467,21 @@ class TestMLPAutoConvert2(unittest.TestCase):
         _global_parallel_strategy = "mp"
         _global_process_mesh = auto.ProcessMesh([0, 1], dim_names=["x"])
 
+<<<<<<< HEAD
         (
             dist_main_prog_load,
             dist_start_prog_load,
             loss_load,
         ) = get_distributed_program()
+=======
+        dist_main_prog_load, dist_start_prog_load, loss_load = get_distributed_program(
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         place = paddle.set_device("gpu")
         exe = paddle.static.Executor(place)
         exe.run(dist_start_prog_load)
         ckpt_path = [
+<<<<<<< HEAD
             "./model_state_rank0.pdmodel",
             "./model_state_rank1.pdmodel",
         ]
@@ -324,12 +492,22 @@ class TestMLPAutoConvert2(unittest.TestCase):
         param_dict, pre_dist_attr, add_info = load_distributed_checkpoint(
             ckpt_path, dist_attr_path
         )
+=======
+            "./model_state_rank0.pdmodel", "./model_state_rank1.pdmodel"
+        ]
+        dist_attr_path = [
+            "./dist_attr_rank0.pdattr", "./dist_attr_rank1.pdattr"
+        ]
+        param_dict, pre_dist_attr, add_info = load_distributed_checkpoint(
+            ckpt_path, dist_attr_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         batch = add_info["batch"]
         batch_size = add_info["batch_size"]
         start_index = batch * batch_size
         input = input[start_index:, :]
         label = label[start_index:, :]
         cur_dist_attr = get_dist_attr(dist_main_prog_load)
+<<<<<<< HEAD
         sliced_param_dict = merge_and_slice_parameter(
             param_dict, pre_dist_attr, cur_dist_attr
         )
@@ -343,11 +521,27 @@ class TestMLPAutoConvert2(unittest.TestCase):
                 },
                 fetch_list=[loss_load],
             )
+=======
+        sliced_param_dict = merge_and_slice_parameter(param_dict, pre_dist_attr,
+                                                      cur_dist_attr)
+        load_parameter_into_program(sliced_param_dict, dist_main_prog_load)
+        for step in range(10):
+            res = exe.run(dist_main_prog_load,
+                          feed={
+                              "input": input[step * 4:(step + 1) * 4, :],
+                              "label": label[step * 4:(step + 1) * 4, :]
+                          },
+                          fetch_list=[loss_load])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if paddle.distributed.get_rank() in [1]:
             self.assertEqual(last_res, res[0])
 
 
 class TestMLPAutoConvertInvalid(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.seed(2021)
         random.seed(2021)
@@ -361,6 +555,7 @@ class TestMLPAutoConvertInvalid(unittest.TestCase):
         _global_process_mesh = auto.ProcessMesh([0, 1], dim_names=["x"])
         dist_main_prog, _, _ = get_distributed_program()
         with self.assertRaises(TypeError):
+<<<<<<< HEAD
             save_distributed_checkpoint(
                 dist_main_prog, [""], [""], addition_info=[0]
             )
@@ -387,6 +582,26 @@ class TestMLPAutoConvertInvalid(unittest.TestCase):
                 {"0": "./model_state_rank.pdmodel"},
                 {"1": "./dist_attr_rank.pdattr"},
             )
+=======
+            save_distributed_checkpoint(dist_main_prog, [""], [""],
+                                        addition_info=[0])
+        with self.assertRaises(ValueError):
+            save_distributed_checkpoint(dist_main_prog, [""], [""],
+                                        addition_info={"step": 0})
+        with self.assertRaises(ValueError):
+            save_distributed_checkpoint(dist_main_prog, [""], [""],
+                                        addition_info={"batch": 0.0})
+        with self.assertRaises(ValueError):
+            load_checkpoint_into_program(["./model_state_rank.pdmodel"],
+                                         ["./dist_attr_rank.pdattr"],
+                                         dist_main_prog)
+        with self.assertRaises(ValueError):
+            load_distributed_checkpoint(["./model_state_rank.pdmodel"],
+                                        ["./dist_attr_rank.pdattr"])
+        with self.assertRaises(TypeError):
+            load_distributed_checkpoint({"0": "./model_state_rank.pdmodel"},
+                                        {"1": "./dist_attr_rank.pdattr"})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

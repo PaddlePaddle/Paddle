@@ -23,14 +23,22 @@ namespace paddle {
 namespace framework {
 
 TEST(LoD, PrintLoDTensor) {
+<<<<<<< HEAD
   phi::DenseTensor tensor1;
+=======
+  LoDTensor tensor1;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor1.Resize({2});
   tensor1.mutable_data<float>(platform::CPUPlace());
   tensor1.data<float>()[0] = 0.2;
   tensor1.data<float>()[1] = 0.5;
   LOG(INFO) << tensor1;
 
+<<<<<<< HEAD
   phi::DenseTensor tensor2;
+=======
+  LoDTensor tensor2;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor2.Resize({2});
   tensor2.mutable_data<int64_t>(platform::CPUPlace());
   tensor2.data<int64_t>()[0] = 1;
@@ -51,7 +59,11 @@ TEST(LoD, data) {
 
 TEST(LoD, ExpandLoD) {
   LoD lod{{0, 2}};
+<<<<<<< HEAD
   phi::DenseTensor tensor;
+=======
+  LoDTensor tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor.set_lod(lod);
   tensor.Resize({2, 1});
   tensor.mutable_data<float>(platform::CPUPlace());
@@ -132,7 +144,11 @@ TEST(LoD, SplitLoDTensor) {
   lod.push_back(std::vector<size_t>({0, 1, 6, 8, 13, 15, 20}));
 
   platform::CPUPlace place;
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor;
+=======
+  LoDTensor lod_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   lod_tensor.Resize({20, 1});
   float* dst_ptr = lod_tensor.mutable_data<float>(place);
   for (int i = 0; i < lod_tensor.numel(); ++i) {
@@ -159,7 +175,11 @@ TEST(LoD, SplitLoDTensorWithZeroBatchSize) {
   lod.push_back(std::vector<size_t>({0}));
 
   platform::CPUPlace place;
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor;
+=======
+  LoDTensor lod_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   lod_tensor.Resize({0, 5});
   lod_tensor.mutable_data<float>(place);
   lod_tensor.set_lod(lod);
@@ -181,7 +201,11 @@ TEST(LoD, MergeLoDTensor) {
 
   platform::CPUPlace place;
 
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor0;
+=======
+  LoDTensor lod_tensor0;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   LoD lod0;
   lod0.push_back(std::vector<size_t>({0, 2, 4}));
   lod0.push_back(std::vector<size_t>({0, 1, 6, 8, 13}));
@@ -193,7 +217,11 @@ TEST(LoD, MergeLoDTensor) {
     dst_ptr[i] = i;
   }
 
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor1;
+=======
+  LoDTensor lod_tensor1;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   LoD lod1;
   lod1.push_back(std::vector<size_t>({0, 1, 2}));
   lod1.push_back(std::vector<size_t>({0, 2, 7}));
@@ -204,7 +232,11 @@ TEST(LoD, MergeLoDTensor) {
     dst_ptr[i] = i;
   }
 
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor2;
+=======
+  LoDTensor lod_tensor2;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   LoD lod2;
   lod2.push_back(std::vector<size_t>({0}));
   lod2.push_back(std::vector<size_t>({0}));
@@ -212,10 +244,16 @@ TEST(LoD, MergeLoDTensor) {
   lod_tensor2.Resize({0});
   dst_ptr = lod_tensor2.mutable_data<float>(place);
 
+<<<<<<< HEAD
   std::vector<const phi::DenseTensor*> lods{
       &lod_tensor0, &lod_tensor1, &lod_tensor2};
 
   phi::DenseTensor lod_tensor;
+=======
+  std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1, &lod_tensor2};
+
+  LoDTensor lod_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   MergeLoDTensor(&lod_tensor, lods, place);
   EXPECT_EQ(lod_tensor.lod(), lod);
 }

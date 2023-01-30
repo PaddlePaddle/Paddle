@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import os
 import sys
@@ -26,6 +27,22 @@ from paddle.fluid import compiler
 
 
 class ParallelExecutorTestingDuringTraining(unittest.TestCase):
+=======
+from __future__ import print_function
+from simple_nets import simple_fc_net
+import paddle.fluid as fluid
+from paddle.fluid import compiler
+import paddle.fluid.core as core
+import numpy as np
+import unittest
+import os
+import sys
+import math
+
+
+class ParallelExecutorTestingDuringTraining(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def check_network_convergence(self, use_cuda, build_strategy=None):
         os.environ['CPU_NUM'] = str(4)
         main = fluid.Program()
@@ -47,6 +64,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             feed_dict = {'image': image, 'label': label}
 
             train_cp = compiler.CompiledProgram(main).with_data_parallel(
+<<<<<<< HEAD
                 loss_name=loss.name, build_strategy=build_strategy
             )
             test_cp = compiler.CompiledProgram(test_program).with_data_parallel(
@@ -63,6 +81,22 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 (train_loss,) = exe.run(
                     train_cp, feed=feed_dict, fetch_list=[loss.name]
                 )
+=======
+                loss_name=loss.name, build_strategy=build_strategy)
+            test_cp = compiler.CompiledProgram(test_program).with_data_parallel(
+                loss_name=loss.name,
+                build_strategy=build_strategy,
+                share_vars_from=train_cp)
+
+            for i in range(5):
+                exe.run(train_cp, feed=feed_dict, fetch_list=[loss.name])
+                test_loss, = exe.run(test_cp,
+                                     feed=feed_dict,
+                                     fetch_list=[loss.name])
+                train_loss, = exe.run(train_cp,
+                                      feed=feed_dict,
+                                      fetch_list=[loss.name])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 avg_test_loss_val = np.array(test_loss).mean()
                 if math.isnan(float(avg_test_loss_val)):
@@ -72,6 +106,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 if math.isnan(float(avg_train_loss_val)):
                     sys.exit("got NaN loss, training failed.")
 
+<<<<<<< HEAD
                 np.testing.assert_allclose(
                     train_loss, test_loss, rtol=1e-05, atol=0.01
                 )
@@ -107,6 +142,34 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy
         )
+=======
+                np.testing.assert_allclose(train_loss,
+                                           test_loss,
+                                           rtol=1e-05,
+                                           atol=0.01)
+
+    def test_parallel_testing(self):
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+        if core.is_compiled_with_cuda():
+            self.check_network_convergence(use_cuda=True,
+                                           build_strategy=build_strategy)
+        self.check_network_convergence(use_cuda=False,
+                                       build_strategy=build_strategy)
+
+    def test_parallel_testing_with_new_strategy_gpu(self):
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        if core.is_compiled_with_cuda():
+            self.check_network_convergence(use_cuda=True,
+                                           build_strategy=build_strategy)
+
+    def test_parallel_testing_with_new_strategy_cpu(self):
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        self.check_network_convergence(use_cuda=False,
+                                       build_strategy=build_strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import paddle
+import paddle.static as static
+from paddle.distributed import fleet
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 import numpy as np
 
+<<<<<<< HEAD
 import paddle
 import paddle.static as static
 from paddle.distributed import fleet
@@ -74,6 +81,59 @@ def get_gpt_model(
         model = GPTForPretraining(
             gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02
         )
+=======
+from paddle.distributed.fleet import auto
+from auto_parallel_relaunch_model import mlp_pretrain_forward
+from auto_parallel_relaunch_model import batch_generator_creator
+
+sys.path.append("..")
+import auto_parallel_gpt_model as modeling
+from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
+
+
+def get_gpt_model(train_program, start_program, place, batch_size, sequence_len,
+                  vocab_size):
+    modeling.init_global()
+    with static.program_guard(train_program, start_program):
+        tokens = paddle.static.data(name="tokens",
+                                    shape=[batch_size, sequence_len],
+                                    dtype='int64')
+        position_ids = paddle.static.data(name="position_ids",
+                                          shape=[batch_size, sequence_len],
+                                          dtype='int64')
+        attention_mask = paddle.static.data(
+            name="attention_mask",
+            shape=[batch_size, 1, sequence_len, sequence_len],
+            dtype='float32')
+        labels = paddle.static.data(name="labels",
+                                    shape=[batch_size, sequence_len],
+                                    dtype='int64')
+        loss_mask = paddle.static.data(name="loss_mask",
+                                       shape=[batch_size, sequence_len],
+                                       dtype='float32')
+        data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
+
+        gpt = GPTModel(vocab_size=1000,
+                       hidden_size=64,
+                       num_hidden_layers=2,
+                       num_attention_heads=8,
+                       intermediate_size=256,
+                       hidden_act="gelu",
+                       hidden_dropout_prob=0.0,
+                       attention_probs_dropout_prob=0.0,
+                       max_position_embeddings=1024,
+                       type_vocab_size=1,
+                       initializer_range=0.02,
+                       pad_token_id=0,
+                       eos_token_id=7,
+                       bos_token_id=0,
+                       eol_token_id=3)
+
+        model = GPTForPretraining(gpt,
+                                  vocab_size=1000,
+                                  hidden_size=64,
+                                  initializer_range=0.02)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         preds = model(tokens, position_ids, attention_mask)
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
@@ -110,6 +170,7 @@ def train():
     sequence_len = 512
     vocab_size = 1000
     train_program, start_program, loss, gen_data = get_gpt_model(
+<<<<<<< HEAD
         train_program,
         start_program,
         place,
@@ -132,6 +193,19 @@ def train():
         distributed_startup_program,
         distributed_main_program,
     ) = optimizer.minimize(loss, start_program)
+=======
+        train_program, start_program, place, batch_size, sequence_len,
+        vocab_size)
+
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                     beta1=0.9,
+                                                     beta2=0.999,
+                                                     epsilon=1e-08,
+                                                     grad_clip=None)
+    optimizer = fleet.distributed_optimizer(optimizer)
+    _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
+        loss, start_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     places = static.cuda_places()
     exe = paddle.static.Executor(places[0])
@@ -140,6 +214,7 @@ def train():
     for step in range(10):
         tokens, position_ids, attention_mask, labels, loss_mask = gen_data()
         if loss.name in distributed_main_program.global_block().vars:
+<<<<<<< HEAD
             (loss_print,) = exe.run(
                 distributed_main_program,
                 feed={
@@ -163,6 +238,27 @@ def train():
                     "loss_mask": loss_mask,
                 },
             )
+=======
+            loss_print, = exe.run(distributed_main_program,
+                                  feed={
+                                      "tokens": tokens,
+                                      "position_ids": position_ids,
+                                      "attention_mask": attention_mask,
+                                      "labels": labels,
+                                      "loss_mask": loss_mask
+                                  },
+                                  fetch_list=[loss])
+            print("step: %s, loss: %f" % (step, loss_print[0]))
+        else:
+            exe.run(distributed_main_program,
+                    feed={
+                        "tokens": tokens,
+                        "position_ids": position_ids,
+                        "attention_mask": attention_mask,
+                        "labels": labels,
+                        "loss_mask": loss_mask
+                    })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             print("step: %s, loss: %s" % (step, "None"))
 
 

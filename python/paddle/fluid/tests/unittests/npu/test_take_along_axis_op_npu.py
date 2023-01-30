@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -27,6 +32,10 @@ paddle.enable_static()
 
 @unittest.skip(reason="Skip unsupported ut, need paddle surpport cann 5.0.4+")
 class TestTakeAlongAxisOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.init_data()
@@ -58,14 +67,23 @@ class TestTakeAlongAxisOp(OpTest):
         self.x_type = "float64"
         self.x_shape = (5, 5, 5)
         self.index_type = "int32"
+<<<<<<< HEAD
         self.index = np.array([[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(
             self.index_type
         )
+=======
+        self.index = np.array([[[1]], [[1]], [[2]], [[4]],
+                               [[3]]]).astype(self.index_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.axis = 2
         self.axis_type = "int64"
 
 
 class TestCase1(TestTakeAlongAxisOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_type = "float64"
         self.x_shape = (5, 5, 5)
@@ -77,6 +95,10 @@ class TestCase1(TestTakeAlongAxisOp):
 
 @unittest.skip(reason="Skip unsupported ut, need paddle surpport cann 5.0.4+")
 class TestTakeAlongAxisAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         np.random.seed(0)
         self.shape = [3, 3]
@@ -93,12 +115,22 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             index = paddle.fluid.data('Index', self.index_shape, "int64")
             out = paddle.take_along_axis(x, index, self.axis)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             res = exe.run(
                 feed={'X': self.x_np, 'Index': self.index_np}, fetch_list=[out]
             )
         out_ref = np.array(
             np.take_along_axis(self.x_np, self.index_np, self.axis)
         )
+=======
+            res = exe.run(feed={
+                'X': self.x_np,
+                'Index': self.index_np
+            },
+                          fetch_list=[out])
+        out_ref = np.array(
+            np.take_along_axis(self.x_np, self.index_np, self.axis))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for out in res:
             np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
@@ -108,21 +140,34 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         self.index = paddle.to_tensor(self.index_np)
         out = paddle.take_along_axis(x_tensor, self.index, self.axis)
         out_ref = np.array(
+<<<<<<< HEAD
             np.take_along_axis(self.x_np, self.index_np, self.axis)
         )
+=======
+            np.take_along_axis(self.x_np, self.index_np, self.axis))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
 
 @unittest.skip(reason="Skip unsupported ut, need paddle surpport cann 5.0.4+")
 class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         np.random.seed(0)
         self.shape = [2, 2]
         self.index_shape = [4, 2]
+<<<<<<< HEAD
         self.index_np = np.array([[0, 0], [1, 0], [0, 0], [1, 0]]).astype(
             'int64'
         )
+=======
+        self.index_np = np.array([[0, 0], [1, 0], [0, 0], [1,
+                                                           0]]).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.x_np = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.NPUPlace(0)
         self.axis = 0

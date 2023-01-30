@@ -16,12 +16,16 @@
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/scale_kernel.h"
+=======
+#include "paddle/phi/kernels/funcs/activation_functor.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -177,8 +181,13 @@ void TanhTripleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dout,
                           const DenseTensor& ddx,
+<<<<<<< HEAD
                           const paddle::optional<DenseTensor>& d_dout_new,
                           const paddle::optional<DenseTensor>& d_ddout,
+=======
+                          const DenseTensor& d_dout_new,
+                          const DenseTensor& d_ddout,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           DenseTensor* d_out_new,
                           DenseTensor* d_dout,
                           DenseTensor* d_ddx) {
@@ -199,8 +208,13 @@ void TanhTripleGradKernel(const Context& dev_ctx,
           &out,
           &ddx,
           &dout,
+<<<<<<< HEAD
           d_ddout.get_ptr(),
           d_dout_new.get_ptr(),  // input
+=======
+          &d_ddout,
+          &d_dout_new,  // input
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           d_dout,
           d_out_new,
           d_ddx);  // output
@@ -340,6 +354,7 @@ void PowGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void PowDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& dout,
@@ -512,6 +527,8 @@ void PowTripleGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void SqrtDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dx,
@@ -594,6 +611,7 @@ void SquareDoubleGradKernel(const Context& dev_ctx,
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void SinDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
@@ -690,4 +708,6 @@ void CosTripleGradKernel(const Context& dev_ctx,
           d_ddx);  // output
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

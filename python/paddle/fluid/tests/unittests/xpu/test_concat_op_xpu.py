@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import skip_check_grad_ci
@@ -27,16 +33,34 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+import numpy as np
+
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard, core
+import paddle
+from op_test import OpTest, skip_check_grad_ci
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestConcatOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'concat'
         self.use_dynamic_create_class = False
 
     class TestConcatOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.set_xpu()
             self.op_type = "concat"
@@ -50,16 +74,26 @@ class XPUTestConcatOp(XPUOpTestWrapper):
             self.attrs = {'axis': self.axis}
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
+<<<<<<< HEAD
                 self.actual_axis = (
                     self.actual_axis if self.actual_axis > 0 else 0
                 )
+=======
+                self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 self.actual_axis = self.axis
 
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.concatenate(
                     (self.x0, self.x1, self.x2), axis=self.actual_axis
                 )
+=======
+                'Out':
+                np.concatenate((self.x0, self.x1, self.x2),
+                               axis=self.actual_axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def set_inputs(self):
@@ -88,10 +122,18 @@ class XPUTestConcatOp(XPUOpTestWrapper):
                 self.check_grad_with_place(place, ['x2'], 'Out')
 
     class TestConcatOpAxis0XPU(TestConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_axis(self):
             self.axis = 0
 
     class TestConcatOpAxis1XPU(TestConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_inputs(self):
             self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
             self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
@@ -101,29 +143,55 @@ class XPUTestConcatOp(XPUOpTestWrapper):
             self.axis = 1
 
     class TestConcatOpAxis2XPU(TestConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_axis(self):
             self.axis = 2
 
     class TestConcatOpAxis3XPU(TestConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_axis(self):
             self.axis = 3
 
     class TestConcatOpAxisNeg1XPU(TestConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_axis(self):
             self.axis = -1
 
     class TestConcatOpAxisNeg2XPU(TestConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_axis(self):
             self.axis = -2
 
     class TestConcatOpAxisNeg3XPU(TestConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_axis(self):
             self.axis = -3
 
     @skip_check_grad_ci(
+<<<<<<< HEAD
         reason="The function 'check_grad' for large inputs is too slow."
     )
     class TestConcatOp3(TestConcatOp):
+=======
+        reason="The function 'check_grad' for large inputs is too slow.")
+    class TestConcatOp3(TestConcatOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_inputs(self):
             self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)
             self.x1 = np.random.random((1, 128, 170, 256)).astype(self.dtype)
@@ -134,9 +202,17 @@ class XPUTestConcatOp(XPUOpTestWrapper):
             pass
 
     @skip_check_grad_ci(
+<<<<<<< HEAD
         reason="This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
     )
     class TestConcatOp4(TestConcatOp):
+=======
+        reason=
+        "This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
+    )
+    class TestConcatOp4(TestConcatOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_inputs(self):
             self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
             self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)

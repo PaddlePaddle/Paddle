@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.fluid.framework import _non_static_mode, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
+=======
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import _non_static_mode, default_main_program
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.fluid import core, dygraph_utils
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -482,8 +490,11 @@ def fused_multi_head_attention(
     mode='upscale_in_train',
     ring_id=-1,
     add_residual=True,
+<<<<<<< HEAD
     num_heads=-1,
     transpose_qkv_wb=False,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     name=None,
 ):
     r"""
@@ -526,7 +537,11 @@ def fused_multi_head_attention(
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
             `[batch\_size, sequence\_len, embed\_dim]`.
+<<<<<<< HEAD
         qkv_weight (Tensor): The qkv weight tensor. If `transpose_qkv_wb` is False, the shape is `[3, num_head, dim_head, dim_embed]`. Otherwise, the shape is `[dim_embed, 3 * dim_embed]`.
+=======
+        qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
         pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture
                                         (False). Default False.
@@ -536,7 +551,11 @@ def fused_multi_head_attention(
         ln_bias (Tensor, optional): The bias tensor of layernorm. Default None.
         pre_ln_epsilon (float, optional): Small float value added to denominator of the pre layer_norm
             to avoid dividing by zero. Default is 1e-5.
+<<<<<<< HEAD
         qkv_bias (Tensor, optional): The bias of qkv computation. If `transpose_qkv_wb` is False, the shape is `[3, num_head, dim_head]`. Otherwise, the shape is `[3 * dim_embed]`.
+=======
+        qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
         cache_kv (Tensor, optional): For generation model, cache structure. The shape is `[2, bsz, num_head, seq_len, head_dim]`. Default None.
@@ -569,9 +588,13 @@ def fused_multi_head_attention(
                                   - inference: out = input * (1.0 - p)
         ring_id (int, optional): For distributed forward in mp, only support NCCL and forward. Default is -1, means not using mp
         add_residual (bool, optional): Whether add residual at the end. Default is True.
+<<<<<<< HEAD
         num_heads (int, optional): If enable transpose_qkv_wb, should provide the num_heads. Default is -1, means not transpose qkv wb.
         transpose_qkv_wb (bool, optional): Whether transpose the qkv_weight and qkv_bias in the op. Only support GPU for now. Default is false, means not transpose qkv wb.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+=======
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         Tensor: The output Tensor, the data type and shape is same as `x`.
@@ -621,6 +644,7 @@ def fused_multi_head_attention(
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
+<<<<<<< HEAD
         if not transpose_qkv_wb:
             assert (
                 len(qkv_weight.shape) == 4
@@ -663,6 +687,23 @@ def fused_multi_head_attention(
                     "When enable transpose_qkv_wb, the 1st dim of qkv_bias and 2nd dim of "
                     "qkv_weight should be the same, i.e., embed_dim."
                 )
+=======
+        assert (
+            len(qkv_weight.shape) == 4
+        ), "The dims of the shape of qkv_weight should be 4."
+        assert (
+            qkv_weight.shape[0] == 3
+        ), "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
+        assert (
+            qkv_weight.shape[3] == x.shape[2]
+        ), "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
+        if ring_id == -1:
+            # under mp, the num head will be split, this equation will not hold
+            assert (
+                qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[3]
+            ), "embed_dim must be divisible by num_heads."
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         (
             _,
             _,
@@ -696,10 +737,13 @@ def fused_multi_head_attention(
             linear_bias,
             ln_scale,
             ln_bias,
+<<<<<<< HEAD
             'num_heads',
             num_heads,
             'transpose_qkv_wb',
             transpose_qkv_wb,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             'pre_layer_norm',
             pre_layer_norm,
             'epsilon',
@@ -789,8 +833,11 @@ def fused_multi_head_attention(
             'dropout_implementation': mode,
             'add_residual': add_residual,
             'ring_id': ring_id,
+<<<<<<< HEAD
             'num_heads': num_heads,
             'transpose_qkv_wb': transpose_qkv_wb,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         # set outputs
@@ -881,12 +928,18 @@ def fused_multi_transformer(
     pre_layer_norm=True,
     epsilon=1e-05,
     cache_kvs=None,
+<<<<<<< HEAD
     pre_caches=None,
     rotary_embs=None,
     time_step=None,
     attn_mask=None,
     dropout_rate=0.0,
     rotary_emb_dims=0,
+=======
+    time_step=None,
+    attn_mask=None,
+    dropout_rate=0.0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     activation="gelu",
     training=False,
     mode='upscale_in_train',
@@ -950,15 +1003,21 @@ def fused_multi_transformer(
         pre_layer_norm (bool, optional): whether it is pre_layer_norm(True) or post_layer_norm(False). Default True.
         epsilon (float, optional): Small float value added to denominator of the layer_norm to avoid dividing by zero. Default is 1e-5.
         cache_kvs (list(Tensor)|tuple(Tensor), optional): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
+<<<<<<< HEAD
         pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
         rotary_embs (Tensor optional): The RoPE embs for rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         time_step (Tensor, optional): The time step tensor for the generation model. Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV. The shape is `[1]`, must be in CPUPlace. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
             some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
             with shape `[batch_size, 1, sequence_length, sequence_length]`. Default None.
         dropout_rate (float, optional): The dropout probability of setting units to zero. Default 0.0.
+<<<<<<< HEAD
         rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation, and it is 0 when rotary_embs is None,
             1 when rotary_embs is not None and pos_extra_ids is None, 2 when rotary_embs and pos_extra_ids are both not None. Default 0.
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         activation (str, optional): The activation. Default "gelu".
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default False.
         mode (str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
@@ -1047,8 +1106,11 @@ def fused_multi_transformer(
             qkv_weights,
             qkv_biases,
             cache_kvs,
+<<<<<<< HEAD
             pre_caches,
             rotary_embs,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             time_step,
             attn_mask,
             linear_weights,
@@ -1066,8 +1128,11 @@ def fused_multi_transformer(
             epsilon,
             'dropout_rate',
             dropout_rate,
+<<<<<<< HEAD
             'rotary_emb_dims',
             rotary_emb_dims,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             'is_test',
             not training,
             'dropout_implementation',
@@ -1106,10 +1171,13 @@ def fused_multi_transformer(
             inputs['CacheKV'] = cache_kvs
             if time_step is not None:
                 inputs['TimeStep'] = time_step
+<<<<<<< HEAD
         if pre_caches is not None:
             inputs['PreCaches'] = pre_caches
         if rotary_emb_dims > 0:
             inputs['RotaryPosEmb'] = rotary_embs
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = linear_weights
         if linear_biases is not None:
@@ -1129,7 +1197,10 @@ def fused_multi_transformer(
             'pre_layer_norm': pre_layer_norm,
             'epsilon': epsilon,
             'dropout_rate': dropout_rate,
+<<<<<<< HEAD
             'rotary_emb_dims': rotary_emb_dims,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             'is_test': not training,
             'dropout_implementation': mode,
             'act_method': activation,

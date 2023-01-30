@@ -18,15 +18,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class ElementwiseModNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
 
     auto x_dims = x->dims();
@@ -41,7 +52,11 @@ class ElementwiseModNPUKernel : public framework::OpKernel<T> {
       direct_compute = x_dims == phi::slice_ddim(y_dims, axis, y_dims.size());
     }
 
+<<<<<<< HEAD
     phi::DenseTensor transformed_x, transformed_y;
+=======
+    Tensor transformed_x, transformed_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (direct_compute) {
       transformed_x.ShareDataWith(*x);
       transformed_y.ShareDataWith(*y);

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
@@ -22,6 +23,22 @@ import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
 
+=======
+from __future__ import print_function
+
+import numpy as np
+import unittest
+import os
+import tempfile
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.static import InputSpec
+
+program_translator = ProgramTranslator()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # 0. for in range var.numpy()[0]
 @paddle.jit.to_static
@@ -288,8 +305,14 @@ def for_tuple_as_enumerate_value(x_array):
 
 # 20. test for function in a class
 class ForwardContainsForLayer(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(ForwardContainsForLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.high = 5
         self.low = 3
 
@@ -323,8 +346,13 @@ def for_original_tuple():
 
 # 23. for zip error
 @paddle.jit.to_static(
+<<<<<<< HEAD
     input_spec=[InputSpec(shape=[None, 10]), InputSpec(shape=[None, 10])]
 )
+=======
+    input_spec=[InputSpec(shape=[None, 10]),
+                InputSpec(shape=[None, 10])])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def for_zip_error(x, y):
     for i, j in zip(x, y):
         a = i + j
@@ -333,8 +361,13 @@ def for_zip_error(x, y):
 
 # 24. for zip
 @paddle.jit.to_static(
+<<<<<<< HEAD
     input_spec=[InputSpec(shape=[2, 10]), InputSpec(shape=[2, 10])]
 )
+=======
+    input_spec=[InputSpec(shape=[2, 10]),
+                InputSpec(shape=[2, 10])])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def for_zip(x, y):
     for i, j in zip(x, y):
         a = i + j
@@ -342,12 +375,19 @@ def for_zip(x, y):
 
 
 class TestTransformBase(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.set_input()
         self.set_test_func()
 
@@ -356,11 +396,18 @@ class TestTransformBase(unittest.TestCase):
 
     def set_test_func(self):
         raise NotImplementedError(
+<<<<<<< HEAD
             "For Enumerate test should implement set_test_func"
         )
 
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
+=======
+            "For Enumerate test should implement set_test_func")
+
+    def _run(self, to_static):
+        program_translator.enable(to_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with fluid.dygraph.guard():
             return self.dygraph_func(self.input)
 
@@ -372,6 +419,7 @@ class TestTransformBase(unittest.TestCase):
 
 
 class TestTransform(TestTransformBase):
+<<<<<<< HEAD
     def transformed_result_compare(self):
         dy_outs = self.get_dygraph_output()
         if not isinstance(dy_outs, (tuple, list)):
@@ -381,19 +429,40 @@ class TestTransform(TestTransformBase):
         st_outs = self.get_static_output()
         if not isinstance(st_outs, (tuple, list)):
             st_outs = (st_outs,)
+=======
+
+    def transformed_result_compare(self):
+        dy_outs = self.get_dygraph_output()
+        if not isinstance(dy_outs, (tuple, list)):
+            dy_outs = (dy_outs, )
+
+        st_outs = self.get_static_output()
+        if not isinstance(st_outs, (tuple, list)):
+            st_outs = (st_outs, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for x, y in zip(dy_outs, st_outs):
             np.testing.assert_allclose(x.numpy(), y.numpy(), rtol=1e-05)
 
 
 class TestTransformForOriginalList(TestTransform):
+<<<<<<< HEAD
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
+=======
+
+    def _run(self, to_static):
+        program_translator.enable(to_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with fluid.dygraph.guard():
             return self.dygraph_func()
 
 
 class TestTransformError(TestTransformBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def transformed_error(self, etype):
         with self.assertRaises(etype):
             dy_out = self.get_dygraph_output()
@@ -401,6 +470,10 @@ class TestTransformError(TestTransformBase):
 
 
 class TestForInRange(TestTransform):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_input(self):
         self.input = np.array([5])
 
@@ -412,6 +485,10 @@ class TestForInRange(TestTransform):
 
 
 class TestForIterList(TestTransform):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_iter_list
 
@@ -420,16 +497,28 @@ class TestForIterList(TestTransform):
 
 
 class TestForEnumerateSimple(TestForIterList):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_list
 
 
 class TestForInRangeWithBreak(TestForInRange):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_in_range_with_break
 
 
 class TestForIterVarNumpy(TestTransform):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_input(self):
         self.input = np.array([1, 2, 3, 4, 5])
 
@@ -441,86 +530,154 @@ class TestForIterVarNumpy(TestTransform):
 
 
 class TestForEnumerateVarNumpy(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy
 
 
 class TestForEnumerateVarNumpyWithStart(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy_with_start
 
 
 class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy_with_break
 
 
 class TestForEnumerateVarNumpyWithContinue(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy_with_continue
 
 
 class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy_with_start_break
 
 
 class TestForEnumerateVarNumpyWithStartAndContinue(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy_with_start_continue
 
 
 class TestForIterVar(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_iter_var
 
 
 class TestForIterVarIdx(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_iter_var_idx
 
 
 class TestForEnumerateVar(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var
 
 
 class TestForEnumerateVarWithNestedRange(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_with_nested_range
 
 
 class TestForIterVarList(TestForInRange):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_iter_var_list
 
 
 class TestForEnumerateVarList(TestForInRange):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_list
 
 
 class TestForTupleAsIterVar(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_tuple_as_iter_var
 
 
 class TestForTupleAsEnumerateIter(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_tuple_as_enumerate_iter
 
 
 class TestForTupleAsEnumerateValue(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_tuple_as_enumerate_value
 
 
 class TestForwardContainsForLayer(TestForIterVarNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = ForwardContainsForLayer()
 
 
 class TestForOriginalList(TestTransformForOriginalList):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_original_list
 
@@ -529,6 +686,10 @@ class TestForOriginalList(TestTransformForOriginalList):
 
 
 class TestForOriginalTuple(TestTransformForOriginalList):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_func(self):
         self.dygraph_func = for_original_tuple
 
@@ -537,6 +698,10 @@ class TestForOriginalTuple(TestTransformForOriginalList):
 
 
 class TestForZip(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 

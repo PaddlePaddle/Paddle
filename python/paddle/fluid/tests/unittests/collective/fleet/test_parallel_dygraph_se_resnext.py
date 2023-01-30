@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -20,11 +21,27 @@ from spawn_runner_base import TestDistSpawnRunner
 from test_dist_base import TestDistBase
 
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import os
+import sys
+import unittest
+
+import paddle.fluid as fluid
+from test_dist_base import TestDistBase
+from spawn_runner_base import TestDistSpawnRunner
+from parallel_dygraph_se_resnext import TestSeResNeXt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphSeResNeXt(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -32,6 +49,7 @@ class TestParallelDygraphSeResNeXt(TestDistBase):
 
     def test_se_resnext(self):
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place(
                 "parallel_dygraph_se_resnext.py",
                 delta=0.01,
@@ -46,6 +64,20 @@ class TestParallelDygraphSeResNeXtSpawn(TestDistSpawnRunner):
             self.check_dist_result_with_spawn(
                 test_class=TestSeResNeXt, delta=0.01
             )
+=======
+            self.check_with_place("parallel_dygraph_se_resnext.py",
+                                  delta=0.01,
+                                  check_error_log=True,
+                                  log_name=flag_name)
+
+
+class TestParallelDygraphSeResNeXtSpawn(TestDistSpawnRunner):
+
+    def test_se_resnext_with_spawn(self):
+        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+            self.check_dist_result_with_spawn(test_class=TestSeResNeXt,
+                                              delta=0.01)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

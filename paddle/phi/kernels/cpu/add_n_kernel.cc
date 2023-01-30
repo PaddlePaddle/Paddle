@@ -53,7 +53,11 @@ void AddNKernel(const Context& dev_ctx,
     }
   }
 
+<<<<<<< HEAD
   phi::funcs::SelectedRowsAddToTensor<Context, T> functor;
+=======
+  paddle::operators::math::SelectedRowsAddToTensor<Context, T> functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // If in_place, just skip the first tensor
   for (size_t i = start; i < in_num; i++) {
     if (DenseTensor::classof(x[i])) {

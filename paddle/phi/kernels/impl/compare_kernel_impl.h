@@ -36,6 +36,7 @@ inline void CompareAllKernelImpl(const Context& ctx,
                                  const DenseTensor& y,
                                  DenseTensor* out);
 
+<<<<<<< HEAD
 #define DEFINE_COMPARE_KERNEL(name, functor, inverse_functor)      \
   template <typename T, typename Context>                          \
   void name##RawKernel(const Context& ctx,                         \
@@ -68,6 +69,35 @@ DEFINE_COMPARE_KERNEL(GreaterEqual,
                       funcs::LessEqualFunctor)
 DEFINE_COMPARE_KERNEL(Equal, funcs::EqualFunctor, funcs::EqualFunctor)
 DEFINE_COMPARE_KERNEL(NotEqual, funcs::NotEqualFunctor, funcs::NotEqualFunctor)
+=======
+#define DEFINE_COMPARE_KERNEL(compare_kernel, functor, inverse_functor) \
+  template <typename T, typename Context>                               \
+  void compare_kernel(const Context& ctx,                               \
+                      const DenseTensor& x,                             \
+                      const DenseTensor& y,                             \
+                      int axis,                                         \
+                      DenseTensor* out) {                               \
+    CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>(      \
+        ctx, x, y, axis, out);                                          \
+  }
+
+DEFINE_COMPARE_KERNEL(LessThanKernel,
+                      funcs::LessThanFunctor,
+                      funcs::GreaterThanFunctor)
+DEFINE_COMPARE_KERNEL(LessEqualKernel,
+                      funcs::LessEqualFunctor,
+                      funcs::GreaterEqualFunctor)
+DEFINE_COMPARE_KERNEL(GreaterThanKernel,
+                      funcs::GreaterThanFunctor,
+                      funcs::LessThanFunctor)
+DEFINE_COMPARE_KERNEL(GreaterEqualKernel,
+                      funcs::GreaterEqualFunctor,
+                      funcs::LessEqualFunctor)
+DEFINE_COMPARE_KERNEL(EqualKernel, funcs::EqualFunctor, funcs::EqualFunctor)
+DEFINE_COMPARE_KERNEL(NotEqualKernel,
+                      funcs::NotEqualFunctor,
+                      funcs::NotEqualFunctor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #undef DEFINE_COMPARE_KERNEL
 
 #define DEFINE_COMPARE_ALL_KERNEL(compare_all_kernel, functor)    \

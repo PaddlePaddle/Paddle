@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import datetime
 import importlib
 import json
@@ -41,6 +42,33 @@ from .profiler_statistic import (
 )
 from .timer import benchmark
 from .utils import RecordEvent, wrap_optimizers
+=======
+import os
+import socket
+import datetime
+from enum import Enum
+from typing import Any, Callable, Iterable, Optional, Union
+from warnings import warn
+import importlib
+import json
+
+import paddle
+from paddle.fluid.core import (
+    _Profiler,
+    _ProfilerResult,
+    ProfilerOptions,
+    TracerEventType,
+    enable_memory_recorder,
+    enable_input_shape_recorder,
+    disable_memory_recorder,
+    disable_input_shape_recorder,
+)
+
+from .utils import RecordEvent, wrap_optimizers
+from .profiler_statistic import StatisticData, _build_table, SortedKeys
+from paddle.profiler import utils
+from .timer import benchmark
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class SummaryView(Enum):
@@ -120,7 +148,11 @@ def make_scheduler(
     ready: int,
     record: int,
     repeat: int = 0,
+<<<<<<< HEAD
     skip_first: int = 0,
+=======
+    skip_first: int = 0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ) -> Callable:
     r"""
     Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
@@ -356,8 +388,11 @@ class Profiler:
             be timed and profiled. Default: False.
         record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
         profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
+<<<<<<< HEAD
         custom_device_types (list, optional): If targets contain profiler.ProfilerTarget.CUSTOM_DEVICE, custom_device_types select the custom device type for profiling. The default value represents all custom devices will be selected.
         with_flops (bool, optional): If it is True, the flops of the op will be calculated. Default: False.
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
         1. profiling range [2, 5).
@@ -427,7 +462,11 @@ class Profiler:
 
                 class SimpleNet(paddle.nn.Layer):
                     def __init__(self):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(SimpleNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self.fc = paddle.nn.Linear(100, 10)
 
                     def forward(self, image, label=None):
@@ -475,11 +514,18 @@ class Profiler:
         scheduler: Union[Callable[[int], ProfilerState], tuple, None] = None,
         on_trace_ready: Optional[Callable[..., Any]] = None,
         record_shapes: Optional[bool] = False,
+<<<<<<< HEAD
         profile_memory: Optional[bool] = False,
         timer_only: Optional[bool] = False,
         emit_nvtx: Optional[bool] = False,
         custom_device_types: Optional[list] = [],
         with_flops: Optional[bool] = False,
+=======
+        profile_memory=False,
+        timer_only: Optional[bool] = False,
+        emit_nvtx: Optional[bool] = False,
+        custom_device_types: Optional[list] = []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ):
         supported_targets = _get_supported_targets()
         if targets:
@@ -530,7 +576,11 @@ class Profiler:
         else:
             self.scheduler = _default_state_scheduler
 
+<<<<<<< HEAD
         if on_trace_ready is None:
+=======
+        if on_trace_ready == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.on_trace_ready = export_chrome_tracing('./profiler_log/')
         else:
             self.on_trace_ready = on_trace_ready
@@ -542,7 +592,10 @@ class Profiler:
         self.timer_only = timer_only
         self.record_shapes = record_shapes
         self.profile_memory = profile_memory
+<<<<<<< HEAD
         self.with_flops = with_flops
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.emit_nvtx = emit_nvtx
 
     def __enter__(self):
@@ -580,8 +633,13 @@ class Profiler:
             utils._is_profiler_used = True
         if self.timer_only:
             return
+<<<<<<< HEAD
         if self.record_shapes or self.with_flops:
             enable_op_info_recorder()
+=======
+        if self.record_shapes:
+            enable_input_shape_recorder()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if self.profile_memory:
             enable_memory_recorder()
         # CLOSED -> self.current_state
@@ -623,8 +681,13 @@ class Profiler:
         benchmark().end()
         if self.timer_only:
             return
+<<<<<<< HEAD
         if self.record_shapes or self.with_flops:
             disable_op_info_recorder()
+=======
+        if self.record_shapes:
+            disable_input_shape_recorder()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if self.profile_memory:
             disable_memory_recorder()
         # self.current_state -> CLOSED
@@ -889,6 +952,7 @@ class Profiler:
                 )
             )
 
+<<<<<<< HEAD
         if self.with_flops:
             self._print_flops()
 
@@ -901,6 +965,8 @@ class Profiler:
         print(gen_layer_flops(self.profiler_result.get_data(), repeat))
         print("- Flops Profiler End -".center(100, "-"))
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 def get_profiler(config_path):
     try:

@@ -12,14 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from op_test import OpTest
 
 
 class TestDecayedAdagradOp1(OpTest):
+<<<<<<< HEAD
     '''Test DecayedAdagrad operator with explicit attributes'''
+=======
+    ''' Test DecayedAdagrad operator with explicit attributes
+    '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "decayed_adagrad"
@@ -35,7 +46,11 @@ class TestDecayedAdagradOp1(OpTest):
             'Param': param,
             'Grad': grad,
             'Moment': moment,
+<<<<<<< HEAD
             'LearningRate': np.array([lr]).astype("float32"),
+=======
+            'LearningRate': np.array([lr]).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {'decay': decay, 'epsilon': epsilon}
@@ -50,7 +65,12 @@ class TestDecayedAdagradOp1(OpTest):
 
 
 class TestDecayedAdagradOp2(OpTest):
+<<<<<<< HEAD
     '''Test DecayedAdagrad operator with default attributes'''
+=======
+    ''' Test DecayedAdagrad operator with default attributes
+    '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "decayed_adagrad"
@@ -66,7 +86,11 @@ class TestDecayedAdagradOp2(OpTest):
             'Param': param,
             'Grad': grad,
             'Moment': moment,
+<<<<<<< HEAD
             'LearningRate': np.array([lr]).astype("float32"),
+=======
+            'LearningRate': np.array([lr]).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {'decay': decay, 'epsilon': epsilon}
@@ -82,6 +106,9 @@ class TestDecayedAdagradOp2(OpTest):
 
 if __name__ == "__main__":
     import paddle
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle.enable_static()
     unittest.main()

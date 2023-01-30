@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
 import paddle
 import paddle.nn.functional as F
@@ -23,6 +24,16 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+=======
+import paddle
+import paddle.static
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+import paddle.nn.functional as F
+
+
+class TestBase(IPUOpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -35,11 +46,19 @@ class TestBase(IPUOpTest):
         label = np.arange(3).reshape([3, 1])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
+<<<<<<< HEAD
             "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "label": label.astype(np.int32),
+=======
+            "label": label.astype(np.int64)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_feed_attr(self):
@@ -53,6 +72,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
@@ -64,6 +84,19 @@ class TestBase(IPUOpTest):
             label = paddle.static.data(
                 name=self.feed_list[1], shape=self.feed_shape[1], dtype='int64'
             )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="float32")
+        if on_ipu:
+            label = paddle.static.data(name=self.feed_list[1],
+                                       shape=self.feed_shape[1],
+                                       dtype='int32')
+        else:
+            label = paddle.static.data(name=self.feed_list[1],
+                                       shape=self.feed_shape[1],
+                                       dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = F.softmax_with_cross_entropy(x, label, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -81,6 +114,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             'soft_label': False,
@@ -89,34 +126,62 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[30, 70])
         label = np.arange(30).reshape([30, 1])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
+<<<<<<< HEAD
             "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "label": label.astype(np.int32),
+=======
+            "label": label.astype(np.int64)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestCase3(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[3, 5, 7])
         label = np.random.randint(0, 7, [3, 5, 1], dtype='int64')
         self.feed_fp32 = {
             "x": x.astype(np.float32),
+<<<<<<< HEAD
             "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "label": label.astype(np.int32),
+=======
+            "label": label.astype(np.int64)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestCase4(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             'soft_label': False,
@@ -126,6 +191,7 @@ class TestCase4(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
@@ -137,6 +203,19 @@ class TestCase4(TestBase):
             label = paddle.static.data(
                 name=self.feed_list[1], shape=self.feed_shape[1], dtype='int64'
             )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="float32")
+        if on_ipu:
+            label = paddle.static.data(name=self.feed_list[1],
+                                       shape=self.feed_shape[1],
+                                       dtype='int32')
+        else:
+            label = paddle.static.data(name=self.feed_list[1],
+                                       shape=self.feed_shape[1],
+                                       dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss, softmax = F.softmax_with_cross_entropy(x, label, **self.attrs)
         self.fetch_list = [loss.name, softmax.name]
 
@@ -154,6 +233,10 @@ class TestCase4(TestBase):
 
 
 class TestCase5(TestCase4):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             'soft_label': False,
@@ -167,15 +250,27 @@ class TestCase5(TestCase4):
         label = np.random.randint(0, 5, [3, 1, 7, 11], dtype='int64')
         self.feed_fp32 = {
             "x": x.astype(np.float32),
+<<<<<<< HEAD
             "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "label": label.astype(np.int32),
+=======
+            "label": label.astype(np.int64)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestCase6(TestCase4):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             'soft_label': False,
@@ -189,11 +284,19 @@ class TestCase6(TestCase4):
         label = np.random.randint(0, 7, [3, 5, 1, 9, 11], dtype='int64')
         self.feed_fp32 = {
             "x": x.astype(np.float32),
+<<<<<<< HEAD
             "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "label": label.astype(np.int32),
+=======
+            "label": label.astype(np.int64)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 

@@ -12,9 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _legacy_C_ops
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
+=======
+from __future__ import print_function
+
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid import core
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def softmax_mask_fuse(x, mask, name=None):
@@ -28,7 +37,11 @@ def softmax_mask_fuse(x, mask, name=None):
     .. math::
         out = softmax(x + mask)
 
+<<<<<<< HEAD
     Note:
+=======
+    **Note**:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         This API only supports GPU.
 
     Args:
@@ -60,9 +73,18 @@ def softmax_mask_fuse(x, mask, name=None):
         return out
     helper = LayerHelper('fused_softmax_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='fused_softmax_mask',
         inputs={'X': [x], 'Mask': [mask]},
         outputs={'Out': [out]},
     )
+=======
+    helper.append_op(type='fused_softmax_mask',
+                     inputs={
+                         'X': [x],
+                         'Mask': [mask]
+                     },
+                     outputs={'Out': [out]})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return out

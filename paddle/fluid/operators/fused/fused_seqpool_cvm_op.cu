@@ -424,15 +424,24 @@ template <typename T>
 class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
+=======
+    auto inputs = ctx.MultiInput<LoDTensor>("X");
+    auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     const auto slot_size = inputs.size();
     std::vector<const float *> input_data(slot_size);
     std::vector<const size_t *> lods_data(slot_size);
     std::vector<T *> output_data(slot_size);
 
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> seqpool_outputs(slot_size);
+=======
+    std::vector<LoDTensor> seqpool_outputs(slot_size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<T *> seqpool_output_data(slot_size);
 
     auto padding_value = ctx.Attr<float>("pad_value");
@@ -509,11 +518,17 @@ template <typename T>
 class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto out_grads =
         ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
     auto in_grads =
         ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
     auto *cvm = ctx.Input<phi::DenseTensor>("CVM");
+=======
+    auto out_grads = ctx.MultiInput<LoDTensor>(framework::GradVarName("Out"));
+    auto in_grads = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
+    auto *cvm = ctx.Input<LoDTensor>("CVM");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     std::string pooltype = ctx.Attr<std::string>("pooltype");
     auto use_cvm = ctx.Attr<bool>("use_cvm");

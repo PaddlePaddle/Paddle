@@ -18,7 +18,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -199,7 +203,15 @@ class DeQuantizer final : public Quanter {
   bool IsNotPermittedName(const std::string& output_name) const override {
     std::unordered_map<std::string, std::vector<std::string>> block_list{
         {"layer_norm",
+<<<<<<< HEAD
          {"Mean", "Variance"}}};  // not used in inference in oneDNN
+=======
+         {"Mean", "Variance"}},        // not used in inference in MKLDNN
+        {"fc", {"ResidualData"}},      // artifical output, already dequantized
+        {"matmul", {"ResidualData"}},  // artifical output, already dequantized
+        {"matmul_v2",
+         {"ResidualData"}}};  // artifical output, already dequantized
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     std::vector<std::string> blocked_outputs{"XShape"};  // blocklist for any op
     auto op_name = op->Name();

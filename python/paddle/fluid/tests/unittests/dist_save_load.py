@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import pickle
 import sys
@@ -27,6 +28,39 @@ from paddle.fluid import core, io
 
 class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
     def _load_persistable_vars(self, executor, dirname, program):
+=======
+from __future__ import print_function
+
+import os
+import sys
+import signal
+import subprocess
+import argparse
+import time
+import math
+import random
+from multiprocessing import Process
+from functools import reduce
+
+import numpy as np
+import pickle
+import unittest
+import six
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid import io
+
+from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
+from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
+
+
+class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
+
+    def _load_persistable_vars(self, executor, dirname, program):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def _is_checkpoint_var(var):
             """
             the checkpoint will not save or load all the variables.
@@ -34,11 +68,17 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
             : param var(Variable)
             """
+<<<<<<< HEAD
             if (
                 var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
                 or var.desc.type() == core.VarDesc.VarType.FETCH_LIST
                 or var.desc.type() == core.VarDesc.VarType.RAW
             ):
+=======
+            if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                    var.desc.type() == core.VarDesc.VarType.RAW:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return False
             # @GRAD are named for gradient variables, checkpoint will not save it.
             if "@GRAD" in var.name:
@@ -56,6 +96,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
             return var.persistable
 
+<<<<<<< HEAD
         io.load_vars(
             executor,
             dirname=dirname,
@@ -63,10 +104,18 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
             predicate=_is_checkpoint_var,
             filename=None,
         )
+=======
+        io.load_vars(executor,
+                     dirname=dirname,
+                     main_program=program,
+                     predicate=_is_checkpoint_var,
+                     filename=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def run_pserver(self, args):
         self.get_model(batch_size=2)
         # NOTE: pserver should not call memory optimize
+<<<<<<< HEAD
         t = self.get_transpiler(
             args.trainer_id,
             fluid.default_main_program(),
@@ -80,6 +129,14 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         startup_prog = t.get_startup_program(
             args.current_endpoint, pserver_prog
         )
+=======
+        t = self.get_transpiler(args.trainer_id, fluid.default_main_program(),
+                                args.endpoints, args.trainers, args.sync_mode,
+                                False, args.current_endpoint)
+        pserver_prog = t.get_pserver_program(args.current_endpoint)
+        startup_prog = t.get_startup_program(args.current_endpoint,
+                                             pserver_prog)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         need_load = bool(int(os.getenv("LOAD", "0")))
         model_dir = os.getenv("MODEL_DIR", "")
@@ -94,6 +151,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         exe.run(pserver_prog)
 
     def run_trainer(self, args):
+<<<<<<< HEAD
         (
             test_program,
             avg_cost,
@@ -111,6 +169,16 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                 args.trainers,
                 args.sync_mode,
             )
+=======
+        test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+            self.get_model(batch_size=2)
+
+        if args.update_method == "pserver":
+            t = self.get_transpiler(args.trainer_id,
+                                    fluid.default_main_program(),
+                                    args.endpoints, args.trainers,
+                                    args.sync_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             trainer_prog = t.get_trainer_program()
         else:
@@ -130,6 +198,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         build_stra = fluid.BuildStrategy()
 
         if args.use_reduce:
+<<<<<<< HEAD
             build_stra.reduce_strategy = (
                 fluid.BuildStrategy.ReduceStrategy.Reduce
             )
@@ -148,6 +217,19 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         feed_var_list = [
             var
             for var in trainer_prog.global_block().vars.values()
+=======
+            build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        else:
+            build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+
+        exe = fluid.ParallelExecutor(args.use_cuda,
+                                     loss_name=avg_cost.name,
+                                     exec_strategy=strategy,
+                                     build_strategy=build_stra)
+
+        feed_var_list = [
+            var for var in trainer_prog.global_block().vars.values()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if var.is_data
         ]
 
@@ -171,6 +253,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         if save_mode == "LOCAL":
             if need_save:
+<<<<<<< HEAD
                 for _ in range(RUN_STEP):
                     (loss,) = exe.run(
                         fetch_list=[avg_cost.name], feed=feeder.feed(get_data())
@@ -183,12 +266,23 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
             var = np.array(
                 fluid.global_scope().find_var('__fc_b__').get_tensor()
             )
+=======
+                for _ in six.moves.xrange(RUN_STEP):
+                    loss, = exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(get_data()))
+                if need_save and model_dir:
+                    io.save_persistables(startup_exe, model_dir, trainer_prog)
+
+            var = np.array(
+                fluid.global_scope().find_var('__fc_b__').get_tensor())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sys.stdout.buffer.write(pickle.dumps(np.ravel(var).tolist()))
 
         elif save_mode == "DIST":
             skip_steps = int(os.getenv("SKIP_STEPS"))
             loss = None
             if need_save:
+<<<<<<< HEAD
                 for idx in range(8):
                     (loss,) = exe.run(
                         fetch_list=[avg_cost.name], feed=feeder.feed(get_data())
@@ -210,6 +304,21 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                     (loss,) = exe.run(
                         fetch_list=[avg_cost.name], feed=feeder.feed(data)
                     )
+=======
+                for idx in six.moves.xrange(8):
+                    loss, = exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(get_data()))
+                    if need_save and model_dir and idx == skip_steps and args.trainer_id == 0:
+                        io.save_persistables(startup_exe, model_dir,
+                                             trainer_prog)
+            else:
+                for idx in six.moves.xrange(8):
+                    data = get_data()
+                    if idx <= skip_steps:
+                        continue
+                    loss, = exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(data))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sys.stdout.buffer.write(pickle.dumps(loss.tolist()))
         else:
             raise Exception("save_mode must be LOCAL or DIST")

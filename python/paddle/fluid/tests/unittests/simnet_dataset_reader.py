@@ -12,8 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 
+=======
+from __future__ import print_function
+
+import os
+import logging
+import tarfile
+
+import random
+
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.distributed.fleet as fleet
 
 logging.basicConfig()
@@ -22,5 +34,9 @@ logger.setLevel(logging.INFO)
 
 
 class DatasetSimnetReader(fleet.MultiSlotDataGenerator):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def generate_sample(self, line):
         pass

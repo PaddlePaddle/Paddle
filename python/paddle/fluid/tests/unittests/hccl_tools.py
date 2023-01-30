@@ -29,11 +29,20 @@
 # limitations under the License.
 # ============================================================================
 """generate hccl config file script"""
+<<<<<<< HEAD
 import json
 import os
 import socket
 import sys
 from argparse import ArgumentParser
+=======
+import os
+import sys
+import json
+import socket
+from argparse import ArgumentParser
+from typing import Dict, Any
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def parse_args():
@@ -48,20 +57,32 @@ def parse_args():
     Examples:
         >>> parse_args()
     """
+<<<<<<< HEAD
     parser = ArgumentParser(
         description="mindspore distributed training launch "
         "helper utilty that will generate hccl"
         " config file"
     )
+=======
+    parser = ArgumentParser(description="mindspore distributed training launch "
+                            "helper utilty that will generate hccl"
+                            " config file")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     parser.add_argument(
         "--device_num",
         type=str,
         default="[0,8)",
+<<<<<<< HEAD
         help="The number of the Ascend accelerators used. please note that the Ascend accelerators"
+=======
+        help=
+        "The number of the Ascend accelerators used. please note that the Ascend accelerators"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "used must be continuous, such [0,4) means to use four chips "
         "0,1,2,3; [0,1) means to use chip 0; The first four chips are"
         "a group, and the last four chips are a group. In addition to"
         "the [0,8) chips are allowed, other cross-group such as [3,6)"
+<<<<<<< HEAD
         "are prohibited.",
     )
     parser.add_argument(
@@ -70,6 +91,13 @@ def parse_args():
         default="0,1,2,3,4,5,6,7",
         help="will use the visible devices sequentially",
     )
+=======
+        "are prohibited.")
+    parser.add_argument("--visible_devices",
+                        type=str,
+                        default="0,1,2,3,4,5,6,7",
+                        help="will use the visible devices sequentially")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     parser.add_argument("--server_ip", type=str, default="", help="server ip")
     args = parser.parse_args()
     return args
@@ -112,6 +140,7 @@ def main():
     first_num = int(args.device_num[1])
     last_num = int(args.device_num[3])
     if first_num < 0 or last_num > 8:
+<<<<<<< HEAD
         raise ValueError(
             "device num {} must be in range [0,8] !".format(args.device_num)
         )
@@ -121,16 +150,29 @@ def main():
                 first_num, args.device_num, last_num
             )
         )
+=======
+        raise ValueError("device num {} must be in range [0,8] !".format(
+            args.device_num))
+    if first_num > last_num:
+        raise ValueError(
+            "First num {} of device num {} must less than last num {} !".format(
+                first_num, args.device_num, last_num))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if first_num < 4:
         if last_num > 4:
             if first_num == 0 and last_num == 8:
                 pass
             else:
                 raise ValueError(
+<<<<<<< HEAD
                     "device num {} must be in the same group of [0,4] or [4,8] !".format(
                         args.device_num
                     )
                 )
+=======
+                    "device num {} must be in the same group of [0,4] or [4,8] !"
+                    .format(args.device_num))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     device_num_list = list(range(first_num, last_num))
     print("device_num_list:", device_num_list)
@@ -155,6 +197,7 @@ def main():
         device = {
             'device_id': device_id,
             'device_ip': device_ip,
+<<<<<<< HEAD
             'rank_id': str(rank_id),
         }
         print(
@@ -171,16 +214,35 @@ def main():
             'host_nic_ip': 'reserve',
         }
     )
+=======
+            'rank_id': str(rank_id)
+        }
+        print('rank_id:{}, device_id:{}, device_ip:{}'.format(
+            rank_id, device_id, device_ip))
+        rank_id += 1
+        device_list.append(device)
+    hccn_table['server_list'].append({
+        'server_id': server_id,
+        'device': device_list,
+        'host_nic_ip': 'reserve'
+    })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     hccn_table['status'] = 'completed'
 
     # save hccn_table to file
     table_path = os.getcwd()
     table_fn = os.path.join(
         table_path,
+<<<<<<< HEAD
         'hccl_{}p_{}_{}.json'.format(
             len(device_num_list), "".join(map(str, device_num_list)), server_id
         ),
     )
+=======
+        'hccl_{}p_{}_{}.json'.format(len(device_num_list),
+                                     "".join(map(str,
+                                                 device_num_list)), server_id))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     with open(table_fn, 'w') as table_fp:
         json.dump(hccn_table, table_fp, indent=4)
     sys.stdout.flush()

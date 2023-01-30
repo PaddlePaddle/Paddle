@@ -16,8 +16,15 @@ import paddle
 import numbers
 import numpy as np
 
+<<<<<<< HEAD
 from collections.abc import Sequence, Mapping
 
+=======
+try:
+    from collections.abc import Sequence, Mapping
+except:
+    from collections import Sequence, Mapping
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 FIELD_PREFIX = "_paddle_field_"
 
@@ -34,16 +41,22 @@ def _flatten_batch(batch):
     def _flatten(batch, flat_batch, structure, field_idx):
         if isinstance(batch, Sequence):
             for field in batch:
+<<<<<<< HEAD
                 if isinstance(
                     field,
                     (np.ndarray, paddle.Tensor, paddle.fluid.core.eager.Tensor),
                 ):
+=======
+                if isinstance(field, (np.ndarray, paddle.Tensor,
+                                      paddle.fluid.core.eager.Tensor)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     structure.append('{}{}'.format(FIELD_PREFIX, field_idx))
                     flat_batch.append(field)
                     field_idx += 1
                 elif isinstance(field, (str, bytes, numbers.Number)):
                     structure.append(field)
                 elif isinstance(field, Sequence):
+<<<<<<< HEAD
                     field_struct, field_idx = _flatten(
                         field, flat_batch, [], field_idx
                     )
@@ -52,21 +65,35 @@ def _flatten_batch(batch):
                     field_struct, field_idx = _flatten(
                         field, flat_batch, {}, field_idx
                     )
+=======
+                    field_struct, field_idx = _flatten(field, flat_batch, [],
+                                                       field_idx)
+                    structure.append(field_struct)
+                elif isinstance(field, Mapping):
+                    field_struct, field_idx = _flatten(field, flat_batch, {},
+                                                       field_idx)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     structure.append(field_struct)
                 else:
                     structure.append(field)
         elif isinstance(batch, Mapping):
             for k, field in batch.items():
+<<<<<<< HEAD
                 if isinstance(
                     field,
                     (np.ndarray, paddle.Tensor, paddle.fluid.core.eager.Tensor),
                 ):
+=======
+                if isinstance(field, (np.ndarray, paddle.Tensor,
+                                      paddle.fluid.core.eager.Tensor)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     structure[k] = '{}{}'.format(FIELD_PREFIX, field_idx)
                     flat_batch.append(field)
                     field_idx += 1
                 elif isinstance(field, (str, bytes, numbers.Number)):
                     structure[k] = field
                 elif isinstance(field, Sequence):
+<<<<<<< HEAD
                     field_struct, field_idx = _flatten(
                         field, flat_batch, [], field_idx
                     )
@@ -75,6 +102,14 @@ def _flatten_batch(batch):
                     field_struct, field_idx = _flatten(
                         field, flat_batch, {}, field_idx
                     )
+=======
+                    field_struct, field_idx = _flatten(field, flat_batch, [],
+                                                       field_idx)
+                    structure[k] = field_struct
+                elif isinstance(field, Mapping):
+                    field_struct, field_idx = _flatten(field, flat_batch, {},
+                                                       field_idx)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     structure[k] = field_struct
                 else:
                     structure[k] = field
@@ -106,9 +141,14 @@ def _restore_batch(flat_batch, structure):
                 if isinstance(field, str) and field.startswith(FIELD_PREFIX):
                     cur_field_idx = int(field.replace(FIELD_PREFIX, ''))
                     field_idx = max(field_idx, cur_field_idx)
+<<<<<<< HEAD
                     assert (
                         flat_batch[cur_field_idx] is not None
                     ), "flat_batch[{}] parsed repeatly"
+=======
+                    assert flat_batch[cur_field_idx] is not None, \
+                                "flat_batch[{}] parsed repeatly"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     structure[i] = flat_batch[cur_field_idx]
                     flat_batch[cur_field_idx] = None
                 elif isinstance(field, (str, bytes, numbers.Number)):
@@ -120,9 +160,14 @@ def _restore_batch(flat_batch, structure):
                 if isinstance(field, str) and field.startswith(FIELD_PREFIX):
                     cur_field_idx = int(field.replace(FIELD_PREFIX, ''))
                     field_idx = max(field_idx, cur_field_idx)
+<<<<<<< HEAD
                     assert (
                         flat_batch[cur_field_idx] is not None
                     ), "flat_batch[{}] parsed repeatly"
+=======
+                    assert flat_batch[cur_field_idx] is not None, \
+                                "flat_batch[{}] parsed repeatly"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     structure[k] = flat_batch[cur_field_idx]
                     flat_batch[cur_field_idx] = None
                 elif isinstance(field, (str, bytes, numbers.Number)):
@@ -134,7 +179,12 @@ def _restore_batch(flat_batch, structure):
 
         return field_idx
 
+<<<<<<< HEAD
     assert isinstance(flat_batch, Sequence), "flat_batch is not a list or tuple"
+=======
+    assert isinstance(flat_batch, Sequence), \
+            "flat_batch is not a list or tuple"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # no np.array in dataset, no output tensor from blocking queue
     # simply return structure
@@ -143,9 +193,14 @@ def _restore_batch(flat_batch, structure):
 
     # sample only contains single fields
     if isinstance(structure, (str, bytes)):
+<<<<<<< HEAD
         assert structure == '{}{}'.format(
             FIELD_PREFIX, 0
         ), "invalid structure: {}".format(structure)
+=======
+        assert structure == '{}{}'.format(FIELD_PREFIX, 0), \
+                "invalid structure: {}".format(structure)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return flat_batch[0]
     field_idx = _restore(structure, 0)
     assert field_idx + 1 == len(flat_batch), "Tensor parse incomplete"

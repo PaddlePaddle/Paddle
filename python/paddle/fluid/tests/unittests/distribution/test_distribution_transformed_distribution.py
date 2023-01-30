@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 import unittest
 
 import config
@@ -36,6 +37,28 @@ class TestIndependent(unittest.TestCase):
         self._t = paddle.distribution.TransformedDistribution(
             self.base, self.transforms
         )
+=======
+import numbers
+import unittest
+
+import numpy as np
+import paddle
+import scipy.stats
+
+import config
+import parameterize as param
+
+
+@param.place(config.DEVICES)
+@param.param_cls((param.TEST_CASE_NAME, 'base', 'transforms'),
+                 [('base_normal', paddle.distribution.Normal(
+                     0., 1.), [paddle.distribution.ExpTransform()])])
+class TestIndependent(unittest.TestCase):
+
+    def setUp(self):
+        self._t = paddle.distribution.TransformedDistribution(
+            self.base, self.transforms)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _np_sum_rightmost(self, value, n):
         return np.sum(value, tuple(range(-n, 0))) if n > 0 else value
@@ -46,8 +69,12 @@ class TestIndependent(unittest.TestCase):
             self.simple_log_prob(value, self.base, self.transforms),
             self._t.log_prob(value),
             rtol=config.RTOL.get(str(value.numpy().dtype)),
+<<<<<<< HEAD
             atol=config.ATOL.get(str(value.numpy().dtype)),
         )
+=======
+            atol=config.ATOL.get(str(value.numpy().dtype)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def simple_log_prob(self, value, base, transforms):
         log_prob = 0.0
@@ -67,6 +94,7 @@ class TestIndependent(unittest.TestCase):
         self.assertEqual(tuple(data.shape), expected_shape)
         self.assertEqual(data.dtype, self.base.loc.dtype)
 
+<<<<<<< HEAD
     def test_rsample(self):
         shape = [5, 10, 8]
         expected_shape = (5, 10, 8, 1)
@@ -74,6 +102,8 @@ class TestIndependent(unittest.TestCase):
         self.assertEqual(tuple(data.shape), expected_shape)
         self.assertEqual(data.dtype, self.base.loc.dtype)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

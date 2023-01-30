@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tempfile
 
@@ -21,6 +22,28 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.distributed.fleet import auto
+=======
+import unittest
+import time
+import tempfile
+import copy
+import os
+import numpy as np
+import subprocess
+import paddle
+import paddle.nn as nn
+import paddle.fluid as fluid
+import paddle.static as static
+import paddle.nn.functional as F
+import paddle.utils as utils
+from paddle.fluid import layers
+from paddle.io import Dataset, IterableDataset, DataLoader
+from paddle.static import InputSpec
+
+from paddle.distributed.fleet import auto
+from paddle.optimizer.lr import CosineAnnealingDecay
+from paddle.fluid.dataloader.collate import default_collate_fn
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
@@ -37,6 +60,10 @@ paddle.seed(44)
 
 
 class MyDataset(paddle.io.IterableDataset):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, num_samples):
         self.num_samples = num_samples
 
@@ -48,11 +75,16 @@ class MyDataset(paddle.io.IterableDataset):
 
 
 class MyDataset1(paddle.io.Dataset):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, num_samples):
         self.num_samples = num_samples
         self.data = []
         for i in range(self.num_samples):
             input1 = np.random.uniform(size=image_size).astype("float32")
+<<<<<<< HEAD
             label1 = np.array(
                 np.random.randint(0, class_num - 1, dtype="int64")
             )
@@ -60,6 +92,13 @@ class MyDataset1(paddle.io.Dataset):
             label2 = np.array(
                 np.random.randint(0, class_num - 1, dtype="int64")
             )
+=======
+            label1 = np.array(np.random.randint(0, class_num - 1,
+                                                dtype="int64"))
+            input2 = np.random.uniform(size=image_size).astype("float32")
+            label2 = np.array(np.random.randint(0, class_num - 1,
+                                                dtype="int64"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             input = np.stack((input1, input2))
             label = np.stack((label1, label2))
             self.data.append((input, label))
@@ -72,6 +111,7 @@ class MyDataset1(paddle.io.Dataset):
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -93,6 +133,29 @@ class MLPLayer(nn.Layer):
         self.linear1 = nn.Linear(
             dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
+        bias_attr = None
+
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear2 = nn.Linear(d_model, 1, weight_attr, bias_attr=bias_attr)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
@@ -109,6 +172,7 @@ class MLPLayer(nn.Layer):
 
 
 def train(fetch):
+<<<<<<< HEAD
     mlp = MLPLayer(
         hidden_size=hidden_size,
         intermediate_size=4 * hidden_size,
@@ -123,15 +187,35 @@ def train(fetch):
         epsilon=1e-08,
         grad_clip=None,
     )
+=======
+    mlp = MLPLayer(hidden_size=hidden_size,
+                   intermediate_size=4 * hidden_size,
+                   dropout_ratio=0.1,
+                   initializer_range=0.02)
+    loss = paddle.nn.CrossEntropyLoss()
+    optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                      beta1=0.9,
+                                      beta2=0.999,
+                                      epsilon=1e-08,
+                                      grad_clip=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     dist_strategy = auto.Strategy()
     dist_strategy.auto_mode = "semi"
     dist_strategy.split_data = True
 
     # init engine
+<<<<<<< HEAD
     engine = auto.Engine(
         mlp, loss, optimizer, paddle.metric.Accuracy(), strategy=dist_strategy
     )
+=======
+    engine = auto.Engine(mlp,
+                         loss,
+                         optimizer,
+                         paddle.metric.Accuracy(),
+                         strategy=dist_strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)

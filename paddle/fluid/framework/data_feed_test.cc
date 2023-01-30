@@ -161,14 +161,23 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
       std::unique_ptr<paddle::framework::Scope> scope(
           new paddle::framework::Scope());
       const auto& multi_slot_desc = data_feed_desc.multi_slot_desc();
+<<<<<<< HEAD
       std::map<std::string, const phi::DenseTensor*> lodtensor_targets;
+=======
+      std::map<std::string, const paddle::framework::LoDTensor*>
+          lodtensor_targets;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
         const auto& slot = multi_slot_desc.slots(i);
         if (slot.is_used()) {
           const auto& name = slot.name();
           readers[idx]->AddFeedVar(scope->Var(name), name);
           lodtensor_targets[name] =
+<<<<<<< HEAD
               &scope->FindVar(name)->Get<phi::DenseTensor>();
+=======
+              &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
       }
       readers[idx]->Start();
@@ -179,7 +188,12 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
           if (!slot.is_used()) {
             continue;
           }
+<<<<<<< HEAD
           const phi::DenseTensor* tens = lodtensor_targets[slot.name()];
+=======
+          const paddle::framework::LoDTensor* tens =
+              lodtensor_targets[slot.name()];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           if (slot.is_dense()) {  // dense branch
             if (slot.type() == "uint64") {
               const int64_t* data = tens->data<int64_t>();

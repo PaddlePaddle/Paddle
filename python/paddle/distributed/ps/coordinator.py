@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import abc
 import logging
 import os
@@ -24,12 +25,28 @@ from paddle.distributed import fleet
 from paddle.distributed.communicator import FLCommunicator
 from paddle.distributed.fleet.proto import the_one_ps_pb2
 from paddle.distributed.ps.utils.public import is_distributed_env
+=======
+import paddle
+from paddle.fluid.communicator import FLCommunicator
+from paddle.distributed.fleet.proto import the_one_ps_pb2
+from google.protobuf import text_format
+from paddle.distributed.ps.utils.public import is_distributed_env
+from paddle.distributed import fleet
+import time
+import abc
+import os
+import logging
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter(
+<<<<<<< HEAD
     fmt='%(asctime)s %(levelname)-2s [%(filename)s:%(lineno)d] %(message)s'
 )
+=======
+    fmt='%(asctime)s %(levelname)-2s [%(filename)s:%(lineno)d] %(message)s')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
@@ -49,6 +66,10 @@ class FLStrategy:
 
 
 class ClientSelectorBase(abc.ABC):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, fl_clients_info_mp):
         self.fl_clients_info_mp = fl_clients_info_mp
         self.clients_info = {}
@@ -60,6 +81,7 @@ class ClientSelectorBase(abc.ABC):
 
         for client_id, info in self.fl_clients_info_mp.items():
             self.fl_client_info_desc = the_one_ps_pb2.FLClientInfo()
+<<<<<<< HEAD
             text_format.Parse(
                 bytes(info, encoding="utf8"), self.fl_client_info_desc
             )
@@ -73,6 +95,19 @@ class ClientSelectorBase(abc.ABC):
             self.clients_info[client_id][
                 ClientInfoAttr.BANDWIDTH
             ] = self.fl_client_info_desc.bandwidth
+=======
+            text_format.Parse(bytes(info, encoding="utf8"),
+                              self.fl_client_info_desc)
+            self.clients_info[client_id] = {}
+            self.clients_info[client_id][
+                ClientInfoAttr.
+                DEVICE_TYPE] = self.fl_client_info_desc.device_type
+            self.clients_info[client_id][
+                ClientInfoAttr.
+                COMPUTE_CAPACITY] = self.fl_client_info_desc.compute_capacity
+            self.clients_info[client_id][
+                ClientInfoAttr.BANDWIDTH] = self.fl_client_info_desc.bandwidth
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @abc.abstractmethod
     def select(self):
@@ -80,6 +115,10 @@ class ClientSelectorBase(abc.ABC):
 
 
 class ClientSelector(ClientSelectorBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, fl_clients_info_mp):
         super().__init__(fl_clients_info_mp)
         self.__fl_strategy = {}
@@ -87,11 +126,16 @@ class ClientSelector(ClientSelectorBase):
     def select(self):
         self.parse_from_string()
         for client_id in self.clients_info:
+<<<<<<< HEAD
             logger.info(
                 "fl-ps > client {} info : {}".format(
                     client_id, self.clients_info[client_id]
                 )
             )
+=======
+            logger.info("fl-ps > client {} info : {}".format(
+                client_id, self.clients_info[client_id]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # ......... to implement ...... #
             fl_strategy_desc = the_one_ps_pb2.FLStrategy()
             fl_strategy_desc.iteration_num = 99
@@ -103,6 +147,10 @@ class ClientSelector(ClientSelectorBase):
 
 
 class FLClientBase(abc.ABC):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         pass
 
@@ -118,9 +166,14 @@ class FLClientBase(abc.ABC):
         self.startup_program = paddle.static.default_startup_program()
         self._client_ptr = fleet.get_fl_client()
         self._coordinators = self.role_maker._get_coordinator_endpoints()
+<<<<<<< HEAD
         logger.info(
             "fl-ps > coordinator enpoints: {}".format(self._coordinators)
         )
+=======
+        logger.info("fl-ps > coordinator enpoints: {}".format(
+            self._coordinators))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.strategy_handlers = dict()
         self.exe = None
         self.use_cuda = int(self.config.get("runner.use_gpu"))
@@ -135,11 +188,16 @@ class FLClientBase(abc.ABC):
     def set_train_dataset_info(self, train_dataset, train_file_list):
         self.train_dataset = train_dataset
         self.train_file_list = train_file_list
+<<<<<<< HEAD
         logger.info(
             "fl-ps > {}, data_feed_desc:\n {}".format(
                 type(self.train_dataset), self.train_dataset._desc()
             )
         )
+=======
+        logger.info("fl-ps > {}, data_feed_desc:\n {}".format(
+            type(self.train_dataset), self.train_dataset._desc()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_test_dataset_info(self, test_dataset, test_file_list):
         self.test_dataset = test_dataset
@@ -170,8 +228,12 @@ class FLClientBase(abc.ABC):
         if self.config.get("runner.need_dump"):
             self.debug = True
             dump_fields_path = "{}/epoch_{}".format(
+<<<<<<< HEAD
                 self.config.get("runner.dump_fields_path"), self.epoch_idx
             )
+=======
+                self.config.get("runner.dump_fields_path"), self.epoch_idx)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dump_fields = self.config.get("runner.dump_fields", [])
             dump_param = self.config.get("runner.dump_param", [])
             persist_vars_list = self.main_program.all_parameters()
@@ -180,6 +242,7 @@ class FLClientBase(abc.ABC):
                 for param in persist_vars_list
             ]
             logger.info(
+<<<<<<< HEAD
                 "fl-ps > persist_vars_list: {}".format(persist_vars_name)
             )
 
@@ -187,6 +250,13 @@ class FLClientBase(abc.ABC):
                 self.main_program._fleet_opt[
                     'dump_fields_path'
                 ] = dump_fields_path
+=======
+                "fl-ps > persist_vars_list: {}".format(persist_vars_name))
+
+            if dump_fields_path is not None:
+                self.main_program._fleet_opt[
+                    'dump_fields_path'] = dump_fields_path
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if dump_fields is not None:
                 self.main_program._fleet_opt["dump_fields"] = dump_fields
             if dump_param is not None:
@@ -198,21 +268,35 @@ class FLClientBase(abc.ABC):
 
 
 class FLClient(FLClientBase):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(FLClient, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __build_fl_client_info_desc(self, state_info):
         # ......... to implement ...... #
         state_info = {
             ClientInfoAttr.DEVICE_TYPE: "Andorid",
             ClientInfoAttr.COMPUTE_CAPACITY: 10,
+<<<<<<< HEAD
             ClientInfoAttr.BANDWIDTH: 100,
+=======
+            ClientInfoAttr.BANDWIDTH: 100
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         client_info = the_one_ps_pb2.FLClientInfo()
         client_info.device_type = state_info[ClientInfoAttr.DEVICE_TYPE]
         client_info.compute_capacity = state_info[
+<<<<<<< HEAD
             ClientInfoAttr.COMPUTE_CAPACITY
         ]
+=======
+            ClientInfoAttr.COMPUTE_CAPACITY]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         client_info.bandwidth = state_info[ClientInfoAttr.BANDWIDTH]
         str_msg = text_format.MessageToString(client_info)
         return str_msg
@@ -236,7 +320,11 @@ class FLClient(FLClientBase):
             state_info = {
                 "client id": self.worker_index,
                 "auc": 0.9,
+<<<<<<< HEAD
                 "epoch": self.epoch_idx,
+=======
+                "epoch": self.epoch_idx
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.push_fl_client_info_sync(state_info)
             strategy_dict = self.pull_fl_strategy()
@@ -254,6 +342,7 @@ class FLClient(FLClientBase):
 
     def pull_fl_strategy(self):
         strategy_dict = {}
+<<<<<<< HEAD
         fl_strategy_str = (
             self._client_ptr.pull_fl_strategy()
         )  # block: wait for coordinator's strategy arrived
@@ -266,6 +355,15 @@ class FLClient(FLClientBase):
         text_format.Parse(
             bytes(fl_strategy_str, encoding="utf8"), fl_strategy_desc
         )
+=======
+        fl_strategy_str = self._client_ptr.pull_fl_strategy(
+        )  # block: wait for coordinator's strategy arrived
+        logger.info("fl-ps > fl client recved fl_strategy(str):\n{}".format(
+            fl_strategy_str))
+        fl_strategy_desc = the_one_ps_pb2.FLStrategy()
+        text_format.Parse(bytes(fl_strategy_str, encoding="utf8"),
+                          fl_strategy_desc)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         strategy_dict["next_state"] = fl_strategy_desc.next_state
         return strategy_dict
 
@@ -279,9 +377,14 @@ class FLClient(FLClientBase):
         self.register_handlers('train', self.callback_train)
         self.register_handlers('infer', self.callback_infer)
         self.register_handlers('finish', self.callback_finish)
+<<<<<<< HEAD
         self.register_handlers(
             'initialize_model_params', self.callback_initialize_model_params
         )
+=======
+        self.register_handlers('initialize_model_params',
+                               self.callback_initialize_model_params)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.register_handlers('init_worker', self.callback_init_worker)
         self.register_handlers('save_model', self.callback_save_model)
 
@@ -289,7 +392,11 @@ class FLClient(FLClientBase):
         fleet.init_worker()
 
     def callback_initialize_model_params(self):
+<<<<<<< HEAD
         if self.exe is None or self.main_program is None:
+=======
+        if self.exe == None or self.main_program == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             raise AssertionError("exe or main_program not set")
         self.exe.run(self.startup_program)
 
@@ -300,6 +407,7 @@ class FLClient(FLClientBase):
             "Epoch {} Var {}".format(self.epoch_idx, var_name)
             for var_name in self.metrics
         ]
+<<<<<<< HEAD
         self.exe.train_from_dataset(
             program=self.main_program,
             dataset=self.train_dataset,
@@ -308,6 +416,14 @@ class FLClient(FLClientBase):
             print_period=self.print_step,
             debug=self.debug,
         )
+=======
+        self.exe.train_from_dataset(program=self.main_program,
+                                    dataset=self.train_dataset,
+                                    fetch_list=self.fetch_vars,
+                                    fetch_info=fetch_info,
+                                    print_period=self.print_step,
+                                    debug=self.debug)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.epoch_idx += 1
         epoch_time = time.time() - epoch_start_time
         epoch_speed = self.train_example_nums / epoch_time
@@ -319,6 +435,7 @@ class FLClient(FLClientBase):
             "Epoch {} Var {}".format(self.epoch_idx, var_name)
             for var_name in self.metrics
         ]
+<<<<<<< HEAD
         self.exe.infer_from_dataset(
             program=self.main_program,
             dataset=self.test_dataset,
@@ -327,6 +444,14 @@ class FLClient(FLClientBase):
             print_period=self.print_step,
             debug=self.debug,
         )
+=======
+        self.exe.infer_from_dataset(program=self.main_program,
+                                    dataset=self.test_dataset,
+                                    fetch_list=self.fetch_vars,
+                                    fetch_info=fetch_info,
+                                    print_period=self.print_step,
+                                    debug=self.debug)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def callback_save_model(self):
         model_dir = "{}/{}".format(self.save_model_path, self.epoch_idx)
@@ -340,6 +465,7 @@ class FLClient(FLClientBase):
         fleet.stop_worker()
 
     def print_program(self):
+<<<<<<< HEAD
         with open(
             "./{}_worker_main_program.prototxt".format(self.worker_index), 'w+'
         ) as f:
@@ -348,6 +474,14 @@ class FLClient(FLClientBase):
             "./{}_worker_startup_program.prototxt".format(self.worker_index),
             'w+',
         ) as f:
+=======
+        with open("./{}_worker_main_program.prototxt".format(self.worker_index),
+                  'w+') as f:
+            f.write(str(self.main_program))
+        with open(
+                "./{}_worker_startup_program.prototxt".format(
+                    self.worker_index), 'w+') as f:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             f.write(str(self.startup_program))
 
     def print_train_statical_info(self):
@@ -355,7 +489,12 @@ class FLClient(FLClientBase):
             f.write(str(self.train_statical_info))
 
 
+<<<<<<< HEAD
 class Coordinator:
+=======
+class Coordinator(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, ps_hosts):
         self._communicator = FLCommunicator(ps_hosts)
         self._client_selector = None
@@ -367,8 +506,12 @@ class Coordinator:
         logger.info("fl-ps > running make_fl_strategy(loop) in coordinator\n")
         while True:
             # 1. get all fl clients reported info
+<<<<<<< HEAD
             str_map = (
                 self._communicator.query_fl_clients_info()
+=======
+            str_map = self._communicator.query_fl_clients_info(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )  # block: wait for all fl clients info reported
             # 2. generate fl strategy
             self._client_selector = ClientSelector(str_map)

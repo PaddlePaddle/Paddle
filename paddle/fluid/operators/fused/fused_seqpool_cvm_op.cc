@@ -93,9 +93,15 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto inputs = ctx.MultiInput<LoDTensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto* input : inputs) {
@@ -109,10 +115,17 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
                       1,
                       platform::errors::InvalidArgument(
                           "All Inputs of fused_seqpool_cvm OP are Empty!"));
+<<<<<<< HEAD
     return phi::KernelKey(input_data_type, ctx.GetPlace());
     // return phi::KernelKey(framework::proto::VarType::FP32,
     //                                ctx.device_context());
     // return phi::KernelKey(
+=======
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    // return framework::OpKernelType(framework::proto::VarType::FP32,
+    //                                ctx.device_context());
+    // return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //   OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
@@ -121,7 +134,11 @@ class FusedSeqpoolCVMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(vector<phi::DenseTensor>) The input tensors of"
+=======
+             "(vector<LoDTensor>) The input tensors of"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              " operator.")
         .AsDuplicable();
     AddInput("CVM",
@@ -210,11 +227,19 @@ class FusedSeqpoolCVMGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

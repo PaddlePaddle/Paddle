@@ -27,9 +27,18 @@ void ConvKernel(const Context& dev_ctx,
                 const std::vector<int>& strides,
                 const std::vector<int>& paddings_t,
                 const std::string& padding_algorithm,
+<<<<<<< HEAD
                 const std::vector<int>& dilations_t,
                 int groups,
                 const std::string& data_format,
+=======
+                int groups,
+                const std::vector<int>& dilations_t,
+                const std::string& data_format,
+                bool use_addto,
+                int workspace_size_MB,
+                bool exhaustive_search,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 DenseTensor* out) {
   using XPUT = typename XPUTypeTrait<T>::Type;
   std::vector<int> paddings = paddings_t;
@@ -114,16 +123,28 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          const DenseTensor& filter,
                          const std::vector<int>& strides,
                          const std::vector<int>& paddings,
+<<<<<<< HEAD
                          const std::string& padding_algorithm,
                          int groups,
                          const std::vector<int>& dilations,
                          const std::string& data_format,
+=======
+                         const std::string& paddding_algorithm,
+                         int groups,
+                         const std::vector<int>& dilations,
+                         const std::string& data_format,
+                         bool use_addto,
+                         int workspace_size_MB,
+                         bool exhaustive_search,
+                         bool fuse_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          DenseTensor* out) {
   ConvKernel<T, Context>(dev_ctx,
                          input,
                          filter,
                          strides,
                          paddings,
+<<<<<<< HEAD
                          padding_algorithm,
                          dilations,
                          groups,
@@ -216,11 +237,26 @@ void Conv3DKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
 }
 
+=======
+                         paddding_algorithm,
+                         groups,
+                         dilations,
+                         data_format,
+                         use_addto,
+                         workspace_size_MB,
+                         exhaustive_search,
+                         out);
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     conv2d, XPU, ALL_LAYOUT, phi::ConvKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     depthwise_conv2d, XPU, ALL_LAYOUT, phi::DepthwiseConvKernel, float) {}
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(
     conv3d, XPU, ALL_LAYOUT, phi::Conv3DKernel, float, phi::dtype::float16) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

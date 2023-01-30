@@ -23,9 +23,15 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/function_traits.h"
+=======
+#include "paddle/fluid/platform/function_traits.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 #define HOSTDEVICE __host__ __device__
@@ -326,6 +332,7 @@ void CommonElementwiseBroadcastForward(const CPUContext &dev_ctx,
       phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
+<<<<<<< HEAD
   PADDLE_ENFORCE_LE(
       axis,
       max_dim,
@@ -333,6 +340,14 @@ void CommonElementwiseBroadcastForward(const CPUContext &dev_ctx,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
+=======
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
+                    phi::errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim,
+                        axis));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<int> x_dims_array(max_dim);
   std::vector<int> y_dims_array(max_dim);
   std::vector<int> out_dims_array(max_dim);
@@ -395,6 +410,7 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
       errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
+<<<<<<< HEAD
   PADDLE_ENFORCE_LE(
       axis,
       max_dim,
@@ -402,6 +418,14 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
+=======
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
+                    errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim,
+                        axis));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
@@ -474,7 +498,11 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
   } else {
     auto meta = phi::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
     *ddx_safe = phi::Empty(dev_ctx, std::move(meta));
+<<<<<<< HEAD
     dev_ctx.template Alloc<T>(ddx_safe);
+=======
+    ddx_safe->mutable_data(dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
   }
@@ -563,7 +591,11 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
 #ifdef PADDLE_WITH_XPU_KP
   int vec_size = 256;
 #else
+<<<<<<< HEAD
   using Traits = phi::funcs::FunctionTraits<Functor>;
+=======
+  using Traits = paddle::platform::FunctionTraits<Functor>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   using ArgsT = typename Traits::ArgsTuple;
   const int Arity = Traits::arity;
   int vec_size = 4;
@@ -736,7 +768,11 @@ __device__ void VectorizedElementwiseKernelImpl(
     int num,
     int read_lens,
     Functor func) {
+<<<<<<< HEAD
   using Traits = phi::funcs::FunctionTraits<Functor>;
+=======
+  using Traits = paddle::platform::FunctionTraits<Functor>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   using ArgsT = typename Traits::ArgsTuple;
   ArgsT args[VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
@@ -831,7 +867,11 @@ void ElementwiseKernel(const KPDevice &ctx,
                        const std::vector<const DenseTensor *> &ins,
                        std::vector<DenseTensor *> *outs,
                        Functor func) {
+<<<<<<< HEAD
   using Traits = phi::funcs::FunctionTraits<Functor>;
+=======
+  using Traits = paddle::platform::FunctionTraits<Functor>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,

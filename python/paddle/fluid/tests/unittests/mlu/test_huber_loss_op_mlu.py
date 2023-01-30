@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -37,6 +42,10 @@ class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
         self.set_mlu()
+<<<<<<< HEAD
+=======
+        self.python_api = paddle.fluid.layers.huber_loss
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.python_out_sig = ["Out"]
         self.delta = 1.0
         self.init_input()
@@ -102,5 +111,33 @@ def TestHuberLossOp3(TestHuberLossOp):
         return (6, 6, 1)
 
 
+<<<<<<< HEAD
 if __name__ == '__main__':
     unittest.main()
+=======
+class TestHuberLossOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input and label must be Variable
+            xw = np.random.random((6, 6)).astype("float32")
+            xr = fluid.data(name='xr', shape=[None, 6], dtype="float32")
+            lw = np.random.random((6, 6)).astype("float32")
+            lr = fluid.data(name='lr', shape=[None, 6], dtype="float32")
+            delta = 1.0
+            self.assertRaises(TypeError, fluid.layers.huber_loss, xr, lw, delta)
+            self.assertRaises(TypeError, fluid.layers.huber_loss, xw, lr, delta)
+
+            # the dtype of input and label must be float32 or float64
+            xw2 = fluid.data(name='xw2', shape=[None, 6], dtype="int32")
+            lw2 = fluid.data(name='lw2', shape=[None, 6], dtype="int32")
+            self.assertRaises(
+                TypeError, fluid.layers.huber_loss, xw2, lr, delta
+            )
+            self.assertRaises(
+                TypeError, fluid.layers.huber_loss, xr, lw2, delta
+            )
+
+
+if __name__ == '__main__':
+    unittest.main()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

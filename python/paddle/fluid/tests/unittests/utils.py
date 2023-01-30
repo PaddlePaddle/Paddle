@@ -11,11 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _dygraph_guard
+=======
+
+from paddle.fluid.framework import _dygraph_guard
+import paddle.fluid as fluid
+from paddle.fluid.framework import Variable
+import paddle.fluid.dygraph.jit as jit
+from paddle.fluid.dygraph.jit import extract_vars
+import numpy as np
+import os
+import time
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 
@@ -84,6 +96,10 @@ def _is_equal_program(prog1, prog2):
 
 
 def load_dygraph_vars_to_scope(model_path, scope, place):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def load_dict_to_scope(scope, dictionary):
         if scope is None:
             scope = fluid.global_scope()
@@ -94,8 +110,12 @@ def load_dygraph_vars_to_scope(model_path, scope, place):
             dst_t.set(np.array(src_t), place)
             dst_t.set_lod(src_t.lod())
 
+<<<<<<< HEAD
     param_dict = paddle.load(model_path + '.pdparams')
     opti_dict = paddle.load(model_path + '.pdopt')
+=======
+    param_dict, opti_dict = fluid.load_dygraph(model_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if param_dict:
         load_dict_to_scope(scope, param_dict)
 
@@ -103,7 +123,12 @@ def load_dygraph_vars_to_scope(model_path, scope, place):
         load_dict_to_scope(scope, opti_dict)
 
 
+<<<<<<< HEAD
 class DyGraphProgramDescTracerTestHelper:
+=======
+class DyGraphProgramDescTracerTestHelper(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, unittest_obj):
         self.unittest_obj = unittest_obj
 

@@ -41,6 +41,11 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class ReshapeOp : public framework::OperatorWithKernel {
  public:
   ReshapeOp(const std::string &type,
@@ -59,6 +64,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReshapeOp should not be null."));
 
+<<<<<<< HEAD
     if (ctx->IsRuntime()) {
       auto *x_var =
           PADDLE_GET(framework::Variable *, ctx->GetInputVarPtrs("X")[0]);
@@ -70,6 +76,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
       }
     }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (ctx->HasInputs("ShapeTensor")) {
       // top prority shape
       auto ShapeTensor = ctx->Inputs("ShapeTensor");
@@ -125,6 +133,14 @@ class ReshapeOp : public framework::OperatorWithKernel {
       return;
     }
 
+<<<<<<< HEAD
+=======
+    PADDLE_ENFORCE_EQ(!shape.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The parameter 'shape' in ReshapeOp must be set. "
+                          "But received 'shape' is empty."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = ValidateShape(shape, x_dims);
     ctx->SetOutputDim("Out", out_dims);
@@ -257,6 +273,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
@@ -275,6 +292,25 @@ class ReshapeOp : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "ShapeTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -372,17 +408,27 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(input_data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 class ReshapeKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
+<<<<<<< HEAD
     auto *out = ctx.Output<phi::DenseTensor>("Out");
     auto *in = ctx.Input<phi::DenseTensor>("X");
 
@@ -390,6 +436,16 @@ class ReshapeKernel {
         ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
     auto *shape_tensor =
         ctx.HasInput("Shape") ? ctx.Input<phi::DenseTensor>("Shape") : nullptr;
+=======
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *in = ctx.Input<framework::LoDTensor>("X");
+
+    auto list_new_shape_tensor =
+        ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    auto *shape_tensor = ctx.HasInput("Shape")
+                             ? ctx.Input<framework::LoDTensor>("Shape")
+                             : nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     phi::IntArray pt_scalar_shape;
     if (list_new_shape_tensor.size() > 0) {
       // have shape tensor
@@ -397,7 +453,11 @@ class ReshapeKernel {
       for (auto &tensor : list_new_shape_tensor) {
         if (platform::is_gpu_place(tensor->place()) ||
             platform::is_xpu_place(tensor->place())) {
+<<<<<<< HEAD
           phi::DenseTensor temp;
+=======
+          framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           paddle::framework::TensorCopySync(
               *tensor, platform::CPUPlace(), &temp);
           pt_vec_shape.push_back(std::move(temp));
@@ -410,7 +470,11 @@ class ReshapeKernel {
       phi::DenseTensor pt_shape;
       if (platform::is_gpu_place(shape_tensor->place()) ||
           platform::is_xpu_place(shape_tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(
             *shape_tensor, platform::CPUPlace(), &temp);
         pt_shape = std::move(temp);
@@ -424,27 +488,48 @@ class ReshapeKernel {
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
+<<<<<<< HEAD
       phi::ReshapeInferKernel(static_cast<const phi::CPUContext &>(dev_ctx),
                               *in,
                               pt_scalar_shape,
                               out);
+=======
+      phi::ReshapeKernel(static_cast<const phi::CPUContext &>(dev_ctx),
+                         *in,
+                         pt_scalar_shape,
+                         out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
+<<<<<<< HEAD
       phi::ReshapeInferKernel(static_cast<const phi::GPUContext &>(dev_ctx),
                               *in,
                               pt_scalar_shape,
                               out);
+=======
+      phi::ReshapeKernel(static_cast<const phi::GPUContext &>(dev_ctx),
+                         *in,
+                         pt_scalar_shape,
+                         out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+<<<<<<< HEAD
       phi::ReshapeInferKernel(static_cast<const phi::XPUContext &>(dev_ctx),
                               *in,
                               pt_scalar_shape,
                               out);
+=======
+      phi::ReshapeKernel(static_cast<const phi::XPUContext &>(dev_ctx),
+                         *in,
+                         pt_scalar_shape,
+                         out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 #endif
   }
@@ -453,8 +538,13 @@ class ReshapeKernel {
 class ReshapeGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
+<<<<<<< HEAD
     auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
@@ -482,9 +572,15 @@ class ReshapeGradKernel {
 class ReshapeDoubleGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
+<<<<<<< HEAD
     auto *dd_x = ctx.Input<phi::DenseTensor>("DDX");
     auto *d_out = ctx.Input<phi::DenseTensor>("DOut");
     auto *dd_out = ctx.Output<phi::DenseTensor>("DDOut");
+=======
+    auto *dd_x = ctx.Input<framework::Tensor>("DDX");
+    auto *d_out = ctx.Input<framework::Tensor>("DOut");
+    auto *dd_out = ctx.Output<framework::Tensor>("DDOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
@@ -522,6 +618,7 @@ class Reshape2Op : public ReshapeOp {
              const framework::AttributeMap &attrs)
       : ReshapeOp(type, inputs, outputs, attrs) {}
   void InferShape(framework::InferShapeContext *ctx) const override {
+<<<<<<< HEAD
     if (ctx->HasOutput("XShape")) {
       const auto &x_dims = ctx->GetInputDim("X");
       std::vector<int64_t> xshape_dims(x_dims.size() + 1);
@@ -532,6 +629,21 @@ class Reshape2Op : public ReshapeOp {
       ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
       ctx->ShareLoD("X", /*->*/ "XShape");
     }
+=======
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Output(XShape) of ReshapeOp should not be null."));
+    const auto &x_dims = ctx->GetInputDim("X");
+    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < x_dims.size(); ++i) {
+      xshape_dims[i + 1] = x_dims[i];
+    }
+    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
+    ctx->ShareLoD("X", /*->*/ "XShape");
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ReshapeOp::InferShape(ctx);
   }
 };
@@ -614,6 +726,7 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
@@ -632,6 +745,25 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "ShapeTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -644,6 +776,7 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
@@ -661,6 +794,24 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
+        ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "ShapeTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

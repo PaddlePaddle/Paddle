@@ -13,12 +13,17 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 
+=======
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.fleet.launch_utils import get_cluster, logger
 
 __all__ = []
 
 
+<<<<<<< HEAD
 def get_cloud_cluster(
     args_node_ips, device_mode, devices_per_proc, args_port=6170
 ):
@@ -26,6 +31,16 @@ def get_cloud_cluster(
     args_node_ips:string, device_mode:DeviceMode(Int), device_per_proc:list, args_port: int
     """
     # you can automatically get ip info while using paddlecloud multi nodes mode.
+=======
+def get_cloud_cluster(args_node_ips,
+                      device_mode,
+                      devices_per_proc,
+                      args_port=6170):
+    """
+    args_node_ips:string, device_mode:DeviceMode(Int), device_per_proc:list, args_port: int
+    """
+    #you can automatically get ip info while using paddlecloud multi nodes mode.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     node_ips = os.getenv("PADDLE_TRAINERS")
     assert node_ips is not None, "PADDLE_TRAINERS should not be None"
 
@@ -47,10 +62,14 @@ def get_cloud_cluster(
             "Please NOTE: When using paddlecloud, cluster_node_ips is \
 automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).\
 Your input cluster_node_ips: {} doesn't equals to IPs: {} from \
+<<<<<<< HEAD
 paddlecloud environment.".format(
                 args_node_ips, node_ips
             )
         )
+=======
+paddlecloud environment.".format(args_node_ips, node_ips))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # DISTRIBUTED_TRAINER_ENDPOINTS: new environment since paddlecloud 1.8.4
     # e.g: DISTRIBUTED_TRAINER_ENDPOINTS="ip1:port1,ip1:port2,ip1:port3,ip1:port4,ip2:port5,ip2:port6,ip2:port7,ip2:port8"
@@ -61,6 +80,7 @@ paddlecloud environment.".format(
             try:
                 paddle_port = int(os.getenv("PADDLE_PORT", ""))
 
+<<<<<<< HEAD
                 if (
                     paddle_ports_num >= len(devices_per_proc)
                     and paddle_port != args_port
@@ -68,10 +88,20 @@ paddlecloud environment.".format(
                     logger.warning(
                         "Use Cloud specified port:{}.".format(paddle_port)
                     )
+=======
+                if paddle_ports_num >= len(
+                        devices_per_proc) and paddle_port != args_port:
+                    logger.warning(
+                        "Use Cloud specified port:{}.".format(paddle_port))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     started_port = paddle_port
 
             except Exception as e:
                 print(e)
+<<<<<<< HEAD
+=======
+                pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if started_port is None:
             started_port = 6170
@@ -87,6 +117,7 @@ paddlecloud environment.".format(
         assert num_nodes * paddle_ports_num == len(trainer_endpoints_ori)
         for i in range(num_nodes):
             trainer_endpoints.append(
+<<<<<<< HEAD
                 trainer_endpoints_ori[
                     i * paddle_ports_num : (i + 1) * paddle_ports_num
                 ]
@@ -102,6 +133,17 @@ paddlecloud environment.".format(
     cluster, pod = get_cluster(
         node_ips, node_ip, trainer_endpoints, device_mode, devices_per_proc
     )
+=======
+                trainer_endpoints_ori[i * paddle_ports_num:(i + 1) *
+                                      paddle_ports_num])
+
+    logger.debug("parsed from args: node_ips:{} \
+        node_ip:{} node_rank:{} trainer_endpoints:{}".format(
+        node_ips, node_ip, node_rank, trainer_endpoints))
+
+    cluster, pod = get_cluster(node_ips, node_ip, trainer_endpoints,
+                               device_mode, devices_per_proc)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return cluster, cluster.pods[node_rank]
 
 
@@ -110,12 +152,16 @@ def use_paddlecloud():
     node_ip = os.getenv("POD_IP")
     node_rank = os.getenv("PADDLE_TRAINER_ID")
     paddle_ports_num = os.getenv("TRAINER_PORTS_NUM")
+<<<<<<< HEAD
     if (
         node_ips is None
         or node_ip is None
         or node_rank is None
         or paddle_ports_num is None
     ):
+=======
+    if node_ips is None or node_ip is None or node_rank is None or paddle_ports_num is None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return False
     else:
         return True

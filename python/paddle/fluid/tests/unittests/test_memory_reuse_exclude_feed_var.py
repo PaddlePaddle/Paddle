@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,16 +23,33 @@ import paddle.nn.functional as F
 
 
 class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
+=======
+import paddle.fluid as fluid
+import numpy as np
+import unittest
+
+
+class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.image_shape = [28, 28]
         self.iteration = 10
 
     def main_impl(self, place):
+<<<<<<< HEAD
         image = paddle.static.data(
             name='image', shape=[-1] + self.image_shape, dtype='float32'
         )
         relu_image = F.relu(image)
         loss = paddle.mean(relu_image)
+=======
+        image = fluid.layers.data(name='image',
+                                  shape=self.image_shape,
+                                  dtype='float32')
+        relu_image = fluid.layers.relu(image)
+        loss = fluid.layers.reduce_mean(relu_image)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = True
@@ -41,6 +59,7 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         compiled_prog = fluid.CompiledProgram(
+<<<<<<< HEAD
             fluid.default_main_program()
         ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
 
@@ -48,6 +67,14 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         np_image = np.random.uniform(
             low=-10, high=10, size=self.image_shape
         ).astype('float32')
+=======
+            fluid.default_main_program()).with_data_parallel(
+                loss_name=loss.name, build_strategy=build_strategy)
+
+        image_tensor = fluid.LoDTensor()
+        np_image = np.random.uniform(low=-10, high=10,
+                                     size=self.image_shape).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         image_tensor.set(np_image, place)
 
         feed_dict = [{image.name: image_tensor}]

@@ -40,22 +40,40 @@ namespace framework {
 namespace details {
 
 // TODO(zjl): support SelectedRows
+<<<<<<< HEAD
 static inline const phi::DenseTensor &GetTensorFromVar(const Variable *var) {
   if (var->IsType<phi::DenseTensor>()) {
     return var->Get<phi::DenseTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Variable must be type of phi::DenseTensor, but received %s.",
+=======
+static inline const Tensor &GetTensorFromVar(const Variable *var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable must be type of LoDTensor, but received %s.",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::ToTypeName(var->Type())));
   }
 }
 
+<<<<<<< HEAD
 static inline phi::DenseTensor *GetMutableTensorFromVar(Variable *var) {
   if (var->IsType<phi::DenseTensor>()) {
     return var->GetMutable<phi::DenseTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Variable must be type of phi::DenseTensor, but received %s.",
+=======
+static inline Tensor *GetMutableTensorFromVar(Variable *var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->GetMutable<LoDTensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable must be type of LoDTensor, but received %s.",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::ToTypeName(var->Type())));
   }
 }

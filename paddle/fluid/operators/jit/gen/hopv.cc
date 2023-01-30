@@ -15,7 +15,11 @@
 #include "paddle/fluid/operators/jit/gen/hopv.h"
 
 #include "paddle/fluid/operators/jit/registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -78,7 +82,11 @@ void HOPVJitCode::genCode() {
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
     bool CanBeUsed(const int& attr) const override {                         \
+<<<<<<< HEAD
       return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);           \
+=======
+      return platform::MayIUse(platform::avx);                               \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }                                                                        \
     size_t CodeSize(const int& d) const override {                           \
       return 96 + d / YMM_FLOAT_BLOCK * 4 * 8;                               \

@@ -18,6 +18,11 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class GridSamplerMLUKernel : public framework::OpKernel<T> {
  public:
@@ -28,9 +33,15 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
         platform::errors::Unavailable("This kernel only runs on MLU."));
 
     // input and output data
+<<<<<<< HEAD
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("X");
     const phi::DenseTensor* grid = ctx.Input<phi::DenseTensor>("Grid");
     phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
+=======
+    const Tensor* input = ctx.Input<Tensor>("X");
+    const Tensor* grid = ctx.Input<Tensor>("Grid");
+    Tensor* output = ctx.Output<Tensor>("Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int n = input->dims()[0];
     int c = input->dims()[1];
@@ -45,7 +56,12 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
     const std::string mode = ctx.Attr<std::string>("mode");
     const std::string padding_mode = ctx.Attr<std::string>("padding_mode");
     bool align_corners = ctx.Attr<bool>("align_corners");
+<<<<<<< HEAD
     const std::string data_format = phi::DataLayoutToString(input->layout());
+=======
+    const std::string data_format =
+        paddle::framework::DataLayoutToString(input->layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ(
         mode == "bilinear",
@@ -58,13 +74,21 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
         platform::errors::Unavailable(
             "Only support zeros padding_mode in mlu grid_sample kernel."));
 
+<<<<<<< HEAD
     phi::DenseTensor trans_input(input->dtype());
+=======
+    Tensor trans_input(input->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // transpose input from NCHW to NHWC
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     TransposeFromMLUTensor<T>(
         ctx, perm_to_nhwc, input, &trans_input, true /*need_reshape_or_alloc*/);
 
+<<<<<<< HEAD
     phi::DenseTensor tmp_output(output->dtype());
+=======
+    Tensor tmp_output(output->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp_output.mutable_data<T>({n, out_h, out_w, c}, ctx.GetPlace());
 
     MLUCnnlGridSampleDesc grid_sample_desc(mode, padding_mode, align_corners);

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 from op_test_ipu import IPUOpTest
 
 import paddle
@@ -22,6 +23,15 @@ import paddle.static
 
 
 class TestBase(IPUOpTest):
+=======
+import paddle
+import paddle.static
+from op_test_ipu import IPUOpTest
+
+
+class TestBase(IPUOpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -52,9 +62,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = paddle.static.nn.conv2d_transpose(x, **self.attrs)
         self.fetch_list = [x.name]
 
@@ -70,6 +86,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['stride'] = 2
@@ -77,6 +97,10 @@ class TestCase1(TestBase):
 
 @unittest.skip("Only support dilation=1")
 class TestCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['stride'] = 2
@@ -84,18 +108,30 @@ class TestCase2(TestBase):
 
 
 class TestCase3(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = 2
 
 
 class TestCase4(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = "SAME"
 
 
 class TestCase5(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['stride'] = 2
@@ -103,12 +139,20 @@ class TestCase5(TestBase):
 
 
 class TestCase6(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = "VALID"
 
 
 class TestCase7(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = "VALID"
@@ -116,6 +160,10 @@ class TestCase7(TestBase):
 
 
 class TestCase8(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['filter_size'] = 4
@@ -141,6 +189,10 @@ class TestCase10(TestBase):
 
 
 class TestCase11(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['groups'] = 3
@@ -148,16 +200,28 @@ class TestCase11(TestBase):
 
 # depthwise_conv2d_transpose Op
 class TestCase12(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_feed(self):
         data = np.random.uniform(size=[1, 3, 10, 10])
         weight = np.random.uniform(size=[3, 1, 3, 3])
         self.feed_fp32 = {
             'in_0': data.astype(np.float32),
+<<<<<<< HEAD
             'in_1': weight.astype(np.float32),
         }
         self.feed_fp16 = {
             'in_0': data.astype(np.float16),
             'in_1': weight.astype(np.float16),
+=======
+            'in_1': weight.astype(np.float32)
+        }
+        self.feed_fp16 = {
+            'in_0': data.astype(np.float16),
+            'in_1': weight.astype(np.float16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
@@ -168,12 +232,21 @@ class TestCase12(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         weight = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        weight = paddle.static.data(name=self.feed_list[1],
+                                    shape=self.feed_shape[1],
+                                    dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = paddle.nn.functional.conv2d_transpose(x, weight, **self.attrs)
         self.fetch_list = [x.name]
 

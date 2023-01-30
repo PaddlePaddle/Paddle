@@ -20,13 +20,24 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class KLDivLossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* target = ctx.Input<phi::DenseTensor>("Target");
     auto* loss = ctx.Output<phi::DenseTensor>("Loss");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* target = ctx.Input<Tensor>("Target");
+    auto* loss = ctx.Output<Tensor>("Loss");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto reduction = ctx.Attr<std::string>("reduction");
     loss->mutable_data<T>(ctx.GetPlace());
 
@@ -101,18 +112,28 @@ template <typename T>
 class KLDivLossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* target = ctx.Input<phi::DenseTensor>("Target");
     auto* loss_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
     auto* input_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* target = ctx.Input<Tensor>("Target");
+    auto* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto reduction = ctx.Attr<std::string>("reduction");
     input_grad->mutable_data<T>(ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
     auto stream = dev_ctx.stream();
 
+<<<<<<< HEAD
     phi::DenseTensor loss_grad_transformed;
+=======
+    Tensor loss_grad_transformed;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if ("none" == reduction) {
       loss_grad_transformed.ShareDataWith(*loss_grad);
     } else {

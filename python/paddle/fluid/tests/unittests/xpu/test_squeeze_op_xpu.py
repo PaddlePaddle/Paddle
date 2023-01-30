@@ -12,33 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
+=======
+from __future__ import print_function
+import unittest
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append("..")
 
 import numpy as np
+<<<<<<< HEAD
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+<<<<<<< HEAD
+=======
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestSqueezeOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = "squeeze"
         self.use_dynamic_create_class = False
 
     # Correct: General.
     class TestSqueezeOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "squeeze"
             self.__class__.op_type = "squeeze"
@@ -77,6 +100,10 @@ class XPUTestSqueezeOp(XPUOpTestWrapper):
 
     # Correct: There is mins axis.
     class TestSqueezeOp1(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (1, 3, 1, 40)
             self.axes = (0, -2)
@@ -84,6 +111,10 @@ class XPUTestSqueezeOp(XPUOpTestWrapper):
 
     # Correct: No axes input.
     class TestSqueezeOp2(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (1, 20, 1, 5)
             self.axes = ()
@@ -91,6 +122,10 @@ class XPUTestSqueezeOp(XPUOpTestWrapper):
 
     # Correct: Just part of axes be squeezed.
     class TestSqueezeOp3(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (6, 1, 5, 1, 4, 1)
             self.axes = (1, -1)
@@ -98,6 +133,10 @@ class XPUTestSqueezeOp(XPUOpTestWrapper):
 
     # Correct: The demension of axis is not of size 1 remains unchanged.
     class TestSqueezeOp4(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (6, 1, 5, 1, 4, 1)
             self.axes = (1, 2)
@@ -105,13 +144,22 @@ class XPUTestSqueezeOp(XPUOpTestWrapper):
 
 
 class TestSqueezeOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], paddle.XPUPlace(0)
             )
+=======
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         paddle.XPUPlace(0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(TypeError, paddle.squeeze, x1)
             # The input axes of squeeze must be list.
             x2 = paddle.static.data(name='x2', shape=[4], dtype="int32")

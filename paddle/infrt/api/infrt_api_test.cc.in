@@ -40,7 +40,11 @@ TEST(InfRtPredictor, predictor) {
   std::unique_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
 
   ::infrt::backends::CpuPhiAllocator cpu_allocator;
+<<<<<<< HEAD
   ::Tensor* input = predictor->GetInput(0);
+=======
+  ::phi::DenseTensor* input = predictor->GetInput(0);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   input->Resize({16, 784});
   input->AllocateFrom(&cpu_allocator, ::phi::DataType::FLOAT32);
   auto* input_data = reinterpret_cast<float*>(input->data());
@@ -68,7 +72,11 @@ TEST(InfRtPredictor, cpu_predictor) {
   std::unique_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
 
   ::infrt::backends::CpuPhiAllocator cpu_allocator;
+<<<<<<< HEAD
   ::Tensor* input = predictor->GetInput(0);
+=======
+  ::phi::DenseTensor* input = predictor->GetInput(0);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   input->Resize({2, 3, 256, 256});
   input->AllocateFrom(&cpu_allocator, ::phi::DataType::FLOAT32);
   auto* input_data = reinterpret_cast<float*>(input->data());
@@ -121,7 +129,11 @@ TEST(InfRtPredictor, trt_predictor) {
   std::unique_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
 
   ::infrt::backends::CpuPhiAllocator cpu_allocator;
+<<<<<<< HEAD
   ::Tensor* input = predictor->GetInput(0);
+=======
+  ::phi::DenseTensor* input = predictor->GetInput(0);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   input->Resize({2, 3, 256, 256});
   input->AllocateFrom(&cpu_allocator, ::phi::DataType::FLOAT32);
   auto* input_data = reinterpret_cast<float*>(input->data());
@@ -166,7 +178,11 @@ TEST(InfRtPredictor, gpu_predictor) {
   ::infrt::backends::GpuPhiAllocator gpu_allocator;
 
 
+<<<<<<< HEAD
   ::Tensor* input = predictor->GetInput(0);
+=======
+  ::phi::DenseTensor* input = predictor->GetInput(0);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   input->Resize({2, 3, 256, 256});
   input->AllocateFrom(&gpu_allocator, ::phi::DataType::FLOAT32);
   auto* data = reinterpret_cast<float*>(input->data());

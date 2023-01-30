@@ -157,8 +157,12 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
+<<<<<<< HEAD
 const char* ip_ = "127.0.0.1";
 const char* ip2 = "127.0.0.1";
+=======
+std::string ip_ = "127.0.0.1", ip2 = "127.0.0.1";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 uint32_t port_ = 5209, port2 = 5210;
 
 std::vector<std::string> host_sign_list_;
@@ -204,10 +208,17 @@ void RunServer2() {
   pserver_ptr2->build_peer2peer_connection(1);
 }
 
+<<<<<<< HEAD
 void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
                    dense_regions,  // NOLINT
                int index,
                paddle::distributed::PsBaseService* service) {
+=======
+void RunClient(
+    std::map<uint64_t, std::vector<paddle::distributed::Region>>& dense_regions,
+    int index,
+    paddle::distributed::PsBaseService* service) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();

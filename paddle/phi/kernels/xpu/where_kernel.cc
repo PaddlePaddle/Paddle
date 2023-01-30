@@ -31,6 +31,7 @@ void WhereKernel(const Context& ctx,
   T* out_data = ctx.template Alloc<T>(out);
 
   auto cond_dims = phi::vectorize<int>(condition.dims());
+<<<<<<< HEAD
   auto x_dims = phi::vectorize<int>(x.dims());
 
   // use [1] to replace [], because xpu not support []
@@ -44,6 +45,17 @@ void WhereKernel(const Context& ctx,
   int ret = xpu::select(
       ctx.x_context(), cond_data, x_data, y_data, out_data, cond_dims, x_dims);
 
+=======
+  auto input_dims = phi::vectorize<int>(x.dims());
+
+  int ret = xpu::select(ctx.x_context(),
+                        cond_data,
+                        x_data,
+                        y_data,
+                        out_data,
+                        cond_dims,
+                        input_dims);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "select");
 }
 

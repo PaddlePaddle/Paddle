@@ -13,7 +13,10 @@
 # limitations under the License.
 
 from PIL import Image
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.utils import try_import
 
 __all__ = []
@@ -23,15 +26,25 @@ _image_backend = 'pil'
 
 def set_image_backend(backend):
     """
+<<<<<<< HEAD
     Specifies the backend used to load images in class :ref:`api_paddle_datasets_ImageFolder`
     and :ref:`api_paddle_datasets_DatasetFolder` . Now support backends are pillow and opencv.
     If backend not set, will use 'pil' as default.
+=======
+    Specifies the backend used to load images in class ``paddle.vision.datasets.ImageFolder`` 
+    and ``paddle.vision.datasets.DatasetFolder`` . Now support backends are pillow and opencv. 
+    If backend not set, will use 'pil' as default. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Args:
         backend (str): Name of the image load backend, should be one of {'pil', 'cv2'}.
 
     Examples:
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .. code-block:: python
 
             import os
@@ -83,10 +96,15 @@ def set_image_backend(backend):
     global _image_backend
     if backend not in ['pil', 'cv2', 'tensor']:
         raise ValueError(
+<<<<<<< HEAD
             "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}".format(
                 backend
             )
         )
+=======
+            "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}".
+            format(backend))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     _image_backend = backend
 
 
@@ -98,7 +116,11 @@ def get_image_backend():
         str: backend of image load.
 
     Examples:
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .. code-block:: python
 
             from paddle.vision import get_image_backend
@@ -116,14 +138,23 @@ def image_load(path, backend=None):
     Args:
         path (str): Path of the image.
         backend (str, optional): The image decoding backend type. Options are
+<<<<<<< HEAD
             `cv2`, `pil`, `None`. If backend is None, the global _imread_backend
             specified by :ref:`api_paddle_vision_set_image_backend` will be used. Default: None.
+=======
+            `cv2`, `pil`, `None`. If backend is None, the global _imread_backend 
+            specified by ``paddle.vision.set_image_backend`` will be used. Default: None.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         PIL.Image or np.array: Loaded image.
 
     Examples:
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .. code-block:: python
 
             import numpy as np
@@ -136,7 +167,11 @@ def image_load(path, backend=None):
             fake_img.save(path)
 
             set_image_backend('pil')
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             pil_img = image_load(path).convert('RGB')
 
             # should be PIL.Image.Image
@@ -148,17 +183,26 @@ def image_load(path, backend=None):
             # np_img = image_load(path)
             # # should get numpy.ndarray
             # print(type(np_img))
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     if backend is None:
         backend = _image_backend
     if backend not in ['pil', 'cv2', 'tensor']:
         raise ValueError(
+<<<<<<< HEAD
             "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}".format(
                 backend
             )
         )
+=======
+            "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}".
+            format(backend))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if backend == 'pil':
         return Image.open(path)

@@ -16,8 +16,13 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+=======
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/gpu/reduce_grad.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -29,6 +34,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = x.dims().size();
@@ -55,6 +61,25 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   using MPType = typename kps::details::MPTypeTrait<T>::Type;
   funcs::BroadcastKernel<phi::ElementwiseType::kUnary, T, T>(
       dev_ctx, inputs, &outputs, 0, kps::DivideFunctor<T, MPType>(reduce_num));
+=======
+  int dim_size = x.dims().size();
+  std::vector<int> reduce_dims =
+      funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
+  int reduce_num = 1;
+  for (auto i : reduce_dims) {
+    reduce_num *= (x.dims())[i];
+  }
+  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+  ReduceGradKernel<T, T, Context, kps::DivideFunctor<T, MPType>>(
+      dev_ctx,
+      x,
+      out_grad,
+      dims.GetData(),
+      keep_dim,
+      reduce_all,
+      x_grad,
+      kps::DivideFunctor<T, MPType>(reduce_num));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

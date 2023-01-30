@@ -29,17 +29,29 @@ template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+<<<<<<< HEAD
 
 static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   std::vector<int> res;
   int rank = ctx.Input<phi::DenseTensor>("X")->dims().size();
+=======
+using framework::Tensor;
+
+static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
+  std::vector<int> res;
+  int rank = ctx.Input<Tensor>("X")->dims().size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (ctx.HasInput("Offsets")) {
     PADDLE_ENFORCE_EQ(ctx.Attr<std::vector<int>>("offsets").empty(),
                       true,
                       platform::errors::InvalidArgument(
                           "Input 'Offsets' and attribute 'offsets' "
                           "should not be used at the same time for CropOp."));
+<<<<<<< HEAD
     const auto* offsets_tensor = ctx.Input<phi::DenseTensor>("Offsets");
+=======
+    const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(),
                       1,
                       platform::errors::InvalidArgument(
@@ -56,7 +68,11 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
                                           offsets_tensor->dims()[0],
                                           rank));
     const int* offsets_data;
+<<<<<<< HEAD
     phi::DenseTensor cpu_tmp_tensor;
+=======
+    framework::Tensor cpu_tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (platform::is_cpu_place(offsets_tensor->place())) {
       offsets_data = offsets_tensor->data<int>();
     } else {
@@ -82,8 +98,13 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
 
 template <typename DeviceContext, typename T, size_t D>
 void CropFunction(const framework::ExecutionContext& context) {
+<<<<<<< HEAD
   auto* x = context.Input<phi::DenseTensor>("X");
   auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+  auto* x = context.Input<Tensor>("X");
+  auto* out = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto out_dims = out->dims();
   if (out_dims[0] == -1) {
     out_dims[0] = x->dims()[0];
@@ -114,7 +135,11 @@ template <typename DeviceContext, typename T>
 class CropKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     int rank = context.Input<phi::DenseTensor>("X")->dims().size();
+=======
+    int rank = context.Input<Tensor>("X")->dims().size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_GE(
         rank,
         1,
@@ -154,11 +179,18 @@ class CropKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T, size_t D>
 void CropGradFunction(const framework::ExecutionContext& context) {
+<<<<<<< HEAD
   auto* d_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
   auto* x = context.Input<phi::DenseTensor>("X");
   if (d_x != nullptr) {
     auto* d_out =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+  auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
+  auto* x = context.Input<Tensor>("X");
+  if (d_x != nullptr) {
+    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     d_x->mutable_data<T>(x->dims(), context.GetPlace());
     auto offsets = GetOffsets(context);
     Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
@@ -180,9 +212,13 @@ class CropGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     size_t rank =
+<<<<<<< HEAD
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"))
             ->dims()
             .size();
+=======
+        context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_GE(
         rank,
         1,

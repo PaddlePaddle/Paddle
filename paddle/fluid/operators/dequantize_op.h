@@ -22,7 +22,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using phi::KernelKey;
+=======
+using framework::OpKernelType;
+using framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class DeQuantOp : public framework::OperatorWithKernel {
  public:
@@ -34,7 +39,11 @@ class DeQuantOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override;
 };
 

@@ -23,8 +23,13 @@ template <typename T>
 class GatherOpMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *x = ctx.Input<phi::DenseTensor>("X");
     auto *index = ctx.Input<phi::DenseTensor>("Index");
+=======
+    auto *x = ctx.Input<Tensor>("X");
+    auto *index = ctx.Input<Tensor>("Index");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto axis = ctx.Attr<int>("axis");
 
     const auto index_dims = index->dims();
@@ -44,7 +49,11 @@ class GatherOpMLUKernel : public framework::OpKernel<T> {
               index_dims.size()));
     }
 
+<<<<<<< HEAD
     auto *out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto *out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc x_desc(*x);
@@ -68,9 +77,15 @@ template <typename T>
 class GatherGradOpMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *index = ctx.Input<phi::DenseTensor>("Index");
     auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto *index = ctx.Input<Tensor>("Index");
+    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const auto index_dims = index->dims();
     if (index_dims.size() == 2) {

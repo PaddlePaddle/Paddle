@@ -18,12 +18,24 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 template <typename T>
 void LabelSmoothMuls(const platform::Place& place,
                      const aclrtStream& stream,
                      const phi::DenseTensor* in,
                      float val,
                      phi::DenseTensor* out) {
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+template <typename T>
+void LabelSmoothMuls(const platform::Place& place,
+                     const aclrtStream& stream,
+                     const Tensor* in,
+                     float val,
+                     Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   out->mutable_data<T>(in->dims(), place);
   const auto& runner = NpuOpRunner("Muls", {*in}, {*out}, {{"value", val}});
   runner.Run(stream);
@@ -32,9 +44,15 @@ void LabelSmoothMuls(const platform::Place& place,
 template <typename T>
 void LabelSmoothAdds(const platform::Place& place,
                      const aclrtStream& stream,
+<<<<<<< HEAD
                      const phi::DenseTensor* in,
                      float val,
                      phi::DenseTensor* out) {
+=======
+                     const Tensor* in,
+                     float val,
+                     Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   out->mutable_data<T>(in->dims(), place);
   const auto& runner = NpuOpRunner("Adds", {*in}, {*out}, {{"value", val}});
   runner.Run(stream);
@@ -43,9 +61,15 @@ void LabelSmoothAdds(const platform::Place& place,
 template <typename T>
 void LabelSmoothAddBroadCast(const platform::Place& place,
                              const aclrtStream& stream,
+<<<<<<< HEAD
                              const phi::DenseTensor* in1,
                              const phi::DenseTensor* in2,
                              phi::DenseTensor* out) {
+=======
+                             const Tensor* in1,
+                             const Tensor* in2,
+                             Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   out->mutable_data<T>(place);
   const auto& runner = NpuOpRunner("AddV2", {*in1, *in2}, {*out}, {});
   runner.Run(stream);
@@ -55,9 +79,15 @@ template <typename T>
 class LabelSmoothNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out_t = ctx.Output<phi::DenseTensor>("Out");
     auto* in_t = ctx.Input<phi::DenseTensor>("X");
     auto* dist_t = ctx.Input<phi::DenseTensor>("PriorDist");
+=======
+    auto* out_t = ctx.Output<LoDTensor>("Out");
+    auto* in_t = ctx.Input<LoDTensor>("X");
+    auto* dist_t = ctx.Input<Tensor>("PriorDist");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto epsilon = ctx.Attr<float>("epsilon");
 
     auto label_dim = in_t->dims()[in_t->dims().size() - 1];
@@ -68,15 +98,25 @@ class LabelSmoothNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     if (dist_t) {
+<<<<<<< HEAD
       phi::DenseTensor tmp;
       phi::DenseTensor dist;
       phi::DenseTensor tmp2;
+=======
+      Tensor tmp;
+      Tensor dist;
+      Tensor tmp2;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       LabelSmoothMuls<T>(place, stream, in_t, (1 - epsilon), &tmp);
       LabelSmoothMuls<T>(place, stream, dist_t, epsilon, &tmp2);
       tmp2.Resize({1, label_dim});
       LabelSmoothAddBroadCast<T>(place, stream, &tmp, &tmp2, out_t);
     } else {
+<<<<<<< HEAD
       phi::DenseTensor tmp;
+=======
+      Tensor tmp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       LabelSmoothMuls<T>(place, stream, in_t, (1 - epsilon), &tmp);
       LabelSmoothAdds<T>(place, stream, &tmp, (epsilon / label_dim), out_t);
     }
@@ -87,8 +127,13 @@ template <typename T>
 class LabelSmoothGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* d_out_t = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* d_in_t = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* d_out_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_in_t = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto epsilon = ctx.Attr<float>("epsilon");
 
     auto place = ctx.GetPlace();

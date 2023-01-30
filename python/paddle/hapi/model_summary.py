@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numbers
 import warnings
 from collections import OrderedDict
@@ -22,6 +23,17 @@ import paddle
 import paddle.nn as nn
 from paddle.autograd import no_grad
 from paddle.static import InputSpec
+=======
+import warnings
+import numpy as np
+import numbers
+
+import paddle
+import paddle.nn as nn
+from paddle.static import InputSpec
+from paddle.autograd import no_grad
+from collections import OrderedDict
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -31,11 +43,19 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
     Args:
         net (Layer): the network which must be a subinstance of Layer.
+<<<<<<< HEAD
         input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. if model only
                     have one input, input_size can be tuple or InputSpec. if model
                     have multiple input, input_size must be a list which contain
                     every input's shape. Note that input_size only dim of
                     batch_size can be None or -1. Default: None. Note that
+=======
+        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. if model only 
+                    have one input, input_size can be tuple or InputSpec. if model
+                    have multiple input, input_size must be a list which contain 
+                    every input's shape. Note that input_size only dim of
+                    batch_size can be None or -1. Default: None. Note that 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     input_size and input cannot be None at the same time.
         dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
         input: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
@@ -51,7 +71,11 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
             class LeNet(nn.Layer):
                 def __init__(self, num_classes=10):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(LeNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self.num_classes = num_classes
                     self.features = nn.Sequential(
                         nn.Conv2D(
@@ -93,10 +117,17 @@ def summary(net, input_size=None, dtypes=None, input=None):
                         x = paddle.flatten(x, 1)
                         x = self.fc(x + y)
                     return x
+<<<<<<< HEAD
 
             lenet_multi_input = LeNetMultiInput()
 
             params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)],
+=======
+            
+            lenet_multi_input = LeNetMultiInput()
+
+            params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)], 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                         dtypes=['float32', 'float32'])
             print(params_info)
 
@@ -110,7 +141,11 @@ def summary(net, input_size=None, dtypes=None, input=None):
                         x = paddle.flatten(x, 1)
                         x = self.fc(x + inputs[1])
                     return x
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             lenet_list_input = LeNetListInput()
             input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
             params_info = paddle.summary(lenet_list_input, input=input_data)
@@ -161,6 +196,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
         _input_size = []
         for item in input_size:
             if isinstance(item, int):
+<<<<<<< HEAD
                 item = (item,)
             assert isinstance(
                 item, (tuple, InputSpec)
@@ -168,19 +204,34 @@ def summary(net, input_size=None, dtypes=None, input=None):
             expect item in input_size is a tuple or InputSpec, but got {}'.format(
                 type(item)
             )
+=======
+                item = (item, )
+            assert isinstance(item,
+                              (tuple, InputSpec)), 'When input_size is list, \
+            expect item in input_size is a tuple or InputSpec, but got {}'.format(
+                                  type(item))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if isinstance(item, InputSpec):
                 _input_size.append(tuple(item.shape))
             else:
                 _input_size.append(item)
     elif isinstance(input_size, int):
+<<<<<<< HEAD
         _input_size = (input_size,)
+=======
+        _input_size = (input_size, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         _input_size = input_size
 
     if not paddle.in_dynamic_mode():
         warnings.warn(
+<<<<<<< HEAD
             "Your model was created in static graph mode, this may not get correct summary information!"
+=======
+            "Your model was created in static mode, this may not get correct summary information!"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
         in_train_mode = False
     else:
@@ -210,10 +261,15 @@ def summary(net, input_size=None, dtypes=None, input=None):
             elif isinstance(item, numbers.Number):
                 if item <= 0:
                     raise ValueError(
+<<<<<<< HEAD
                         "Expected element in input size greater than zero, but got {}".format(
                             item
                         )
                     )
+=======
+                        "Expected element in input size greater than zero, but got {}"
+                        .format(item))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             new_shape.append(item)
         return tuple(new_shape)
 
@@ -236,6 +292,10 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
 @no_grad()
 def summary_string(model, input_size=None, dtypes=None, input=None):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _all_is_numper(items):
         for item in items:
             if not isinstance(item, numbers.Number):
@@ -276,6 +336,10 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
         return output_shape
 
     def register_hook(layer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def hook(layer, input, output):
             class_name = str(layer.__class__).split(".")[-1].split("'")[0]
 
@@ -313,8 +377,12 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
                 try:
                     if (getattr(getattr(layer, k), 'trainable')) and (
+<<<<<<< HEAD
                         not getattr(getattr(layer, k), 'stop_gradient')
                     ):
+=======
+                            not getattr(getattr(layer, k), 'stop_gradient')):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         summary[m_key]["trainable_params"] += np.prod(v.shape)
                         summary[m_key]["trainable"] = True
                         trainable_flag = True
@@ -325,11 +393,17 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
             summary[m_key]["nb_params"] = params
 
+<<<<<<< HEAD
         if (
             not isinstance(layer, nn.Sequential)
             and not isinstance(layer, nn.LayerList)
             and (not (layer == model) or depth < 1)
         ):
+=======
+        if (not isinstance(layer, nn.Sequential)
+                and not isinstance(layer, nn.LayerList)
+                and (not (layer == model) or depth < 1)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             hooks.append(layer.register_forward_post_hook(hook))
         # For rnn, gru and lstm layer
@@ -374,11 +448,16 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             'input_shape_width': 20,
             'output_shape_width': 20,
             'params_width': 15,
+<<<<<<< HEAD
             'table_width': 75,
+=======
+            'table_width': 75
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         for layer in summary:
             if head_length['output_shape_width'] < len(
+<<<<<<< HEAD
                 str(summary[layer]["output_shape"])
             ):
                 head_length['output_shape_width'] = len(
@@ -398,6 +477,21 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
                 head_length['params_width'] = len(
                     str(summary[layer]["nb_params"])
                 )
+=======
+                    str(summary[layer]["output_shape"])):
+                head_length['output_shape_width'] = len(
+                    str(summary[layer]["output_shape"]))
+            if head_length['input_shape_width'] < len(
+                    str(summary[layer]["input_shape"])):
+                head_length['input_shape_width'] = len(
+                    str(summary[layer]["input_shape"]))
+            if head_length['layer_width'] < len(str(layer)):
+                head_length['layer_width'] = len(str(layer))
+            if head_length['params_width'] < len(
+                    str(summary[layer]["nb_params"])):
+                head_length['params_width'] = len(
+                    str(summary[layer]["nb_params"]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         _temp_width = 0
         for k, v in head_length.items():
@@ -413,6 +507,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
     summary_str += "-" * table_width['table_width'] + "\n"
     line_new = "{:^{}} {:^{}} {:^{}} {:^{}}".format(
+<<<<<<< HEAD
         "Layer (type)",
         table_width['layer_width'],
         "Input Shape",
@@ -422,6 +517,12 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
         "Param #",
         table_width['params_width'],
     )
+=======
+        "Layer (type)", table_width['layer_width'], "Input Shape",
+        table_width['input_shape_width'], "Output Shape",
+        table_width['output_shape_width'], "Param #",
+        table_width['params_width'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     summary_str += line_new + "\n"
     summary_str += "=" * table_width['table_width'] + "\n"
     total_params = 0
@@ -431,6 +532,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     for layer in summary:
         # input_shape, output_shape, trainable, nb_params
         line_new = "{:^{}} {:^{}} {:^{}} {:^{}}".format(
+<<<<<<< HEAD
             layer,
             table_width['layer_width'],
             str(summary[layer]["input_shape"]),
@@ -440,39 +542,66 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             "{0:,}".format(summary[layer]["nb_params"]),
             table_width['params_width'],
         )
+=======
+            layer, table_width['layer_width'],
+            str(summary[layer]["input_shape"]),
+            table_width['input_shape_width'],
+            str(summary[layer]["output_shape"]),
+            table_width['output_shape_width'], "{0:,}".format(
+                summary[layer]["nb_params"]), table_width['params_width'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         total_params += summary[layer]["nb_params"]
 
         try:
             total_output += np.sum(
+<<<<<<< HEAD
                 np.prod(summary[layer]["output_shape"], axis=-1)
             )
+=======
+                np.prod(summary[layer]["output_shape"], axis=-1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         except:
             for output_shape in summary[layer]["output_shape"]:
                 total_output += np.sum(np.prod(output_shape, axis=-1))
 
         if "trainable" in summary[layer]:
+<<<<<<< HEAD
             if summary[layer]["trainable"]:
+=======
+            if summary[layer]["trainable"] == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 trainable_params += summary[layer]["trainable_params"]
         summary_str += line_new + "\n"
 
     def _get_input_size(input_size, size):
         if isinstance(input_size, (list, tuple)) and _all_is_numper(input_size):
+<<<<<<< HEAD
             size = abs(np.prod(input_size) * 4.0 / (1024**2.0))
+=======
+            size = abs(np.prod(input_size) * 4. / (1024**2.))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             size = sum([_get_input_size(i, size) for i in input_size])
         return size
 
     total_input_size = _get_input_size(input_size, 0)
 
+<<<<<<< HEAD
     total_output_size = abs(
         2.0 * total_output * 4.0 / (1024**2.0)
     )  # x2 for gradients
     total_params_size = abs(total_params * 4.0 / (1024**2.0))
+=======
+    total_output_size = abs(2. * total_output * 4. /
+                            (1024**2.))  # x2 for gradients
+    total_params_size = abs(total_params * 4. / (1024**2.))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     total_size = total_params_size + total_output_size + total_input_size
 
     summary_str += "=" * table_width['table_width'] + "\n"
     summary_str += "Total params: {0:,}".format(total_params) + "\n"
     summary_str += "Trainable params: {0:,}".format(trainable_params) + "\n"
+<<<<<<< HEAD
     summary_str += (
         "Non-trainable params: {0:,}".format(total_params - trainable_params)
         + "\n"
@@ -482,6 +611,13 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     summary_str += (
         "Forward/backward pass size (MB): %0.2f" % total_output_size + "\n"
     )
+=======
+    summary_str += "Non-trainable params: {0:,}".format(total_params -
+                                                        trainable_params) + "\n"
+    summary_str += "-" * table_width['table_width'] + "\n"
+    summary_str += "Input size (MB): %0.2f" % total_input_size + "\n"
+    summary_str += "Forward/backward pass size (MB): %0.2f" % total_output_size + "\n"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     summary_str += "Params size (MB): %0.2f" % total_params_size + "\n"
     summary_str += "Estimated Total Size (MB): %0.2f" % total_size + "\n"
     summary_str += "-" * table_width['table_width'] + "\n"
@@ -489,5 +625,9 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     # return summary
     return summary_str, {
         'total_params': total_params,
+<<<<<<< HEAD
         'trainable_params': trainable_params,
+=======
+        'trainable_params': trainable_params
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }

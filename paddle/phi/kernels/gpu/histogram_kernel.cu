@@ -14,9 +14,15 @@
 
 #include "paddle/phi/kernels/histogram_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -25,7 +31,11 @@
 namespace phi {
 
 using IndexType = int64_t;
+<<<<<<< HEAD
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -61,13 +71,21 @@ __global__ void KernelHistogram(const T* input,
     if (input_value >= min_value && input_value <= max_value) {
       const IndexType output_index =
           GetBin<T, IndexType>(input_value, min_value, max_value, nbins);
+<<<<<<< HEAD
       phi::CudaAtomicAdd(&buf_hist[output_index], 1);
+=======
+      paddle::platform::CudaAtomicAdd(&buf_hist[output_index], 1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
   __syncthreads();
 
   for (int i = threadIdx.x; i < nbins; i += blockDim.x) {
+<<<<<<< HEAD
     phi::CudaAtomicAdd(&output[i], buf_hist[i]);
+=======
+    paddle::platform::CudaAtomicAdd(&output[i], buf_hist[i]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -85,7 +103,11 @@ void HistogramKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   const int input_numel = input.numel();
 
+<<<<<<< HEAD
   int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
+=======
+  int64_t* out_data = output->mutable_data<int64_t>(dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<Context, int64_t>()(
       dev_ctx, output, static_cast<int64_t>(0));
 
@@ -98,10 +120,15 @@ void HistogramKernel(const Context& dev_ctx,
     auto input_x = phi::EigenVector<T>::Flatten(input);
 
     DenseTensor input_min_t, input_max_t;
+<<<<<<< HEAD
     input_min_t.Resize({1});
     input_max_t.Resize({1});
     auto* input_min_data = dev_ctx.template Alloc<T>(&input_min_t);
     auto* input_max_data = dev_ctx.template Alloc<T>(&input_max_t);
+=======
+    auto* input_min_data = input_min_t.mutable_data<T>({1}, dev_ctx.GetPlace());
+    auto* input_max_data = input_max_t.mutable_data<T>({1}, dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto input_min_scala = phi::EigenScalar<T>::From(input_min_t);
     auto input_max_scala = phi::EigenScalar<T>::From(input_max_t);
 

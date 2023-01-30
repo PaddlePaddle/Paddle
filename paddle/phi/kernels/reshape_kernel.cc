@@ -19,17 +19,27 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
 template <typename Context>
+<<<<<<< HEAD
 void ReshapeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const IntArray& shape,
                         DenseTensor* out) {
+=======
+void ReshapeKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const IntArray& shape,
+                   DenseTensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
   if (x.initialized() && x.Holder() == out->Holder()) {
@@ -45,6 +55,7 @@ void ReshapeInferKernel(const Context& dev_ctx,
   out->ResetLoD(x.lod());
 }
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_XPU
 template <>
 void ReshapeInferKernel<phi::XPUContext>(const XPUContext& dev_ctx,
@@ -79,10 +90,20 @@ void ReshapeKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* xshape) {
   ReshapeInferKernel(dev_ctx, x, shape, out);
+=======
+template <typename Context>
+void ReshapeWithXShape(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const IntArray& shape,
+                       DenseTensor* out,
+                       DenseTensor* xshape) {
+  ReshapeKernel(dev_ctx, x, shape, out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_GENERAL_KERNEL(reshape_infer,
                            CPU,
                            ALL_LAYOUT,
@@ -109,4 +130,32 @@ PD_REGISTER_GENERAL_KERNEL(reshape_infer,
                            ALL_DTYPE) {}
 PD_REGISTER_GENERAL_KERNEL(
     reshape, XPU, ALL_LAYOUT, phi::ReshapeKernel<phi::XPUContext>, ALL_DTYPE) {}
+=======
+PD_REGISTER_GENERAL_KERNEL(
+    reshape, CPU, ALL_LAYOUT, phi::ReshapeKernel<phi::CPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                           CPU,
+                           ALL_LAYOUT,
+                           phi::ReshapeWithXShape<phi::CPUContext>,
+                           ALL_DTYPE) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_GENERAL_KERNEL(
+    reshape, GPU, ALL_LAYOUT, phi::ReshapeKernel<phi::GPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::ReshapeWithXShape<phi::GPUContext>,
+                           ALL_DTYPE) {}
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_GENERAL_KERNEL(
+    reshape, XPU, ALL_LAYOUT, phi::ReshapeKernel<phi::XPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                           XPU,
+                           ALL_LAYOUT,
+                           phi::ReshapeWithXShape<phi::XPUContext>,
+                           ALL_DTYPE) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif

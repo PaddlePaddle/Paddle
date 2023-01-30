@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,6 +21,17 @@ import paddle.fluid.core as core
 
 
 class TestSelectedRows(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import paddle.fluid.core as core
+import unittest
+import numpy as np
+
+
+class TestSelectedRows(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_selected_rows(self):
         place = core.CPUPlace()
         height = 10
@@ -41,6 +53,7 @@ class TestSelectedRows(unittest.TestCase):
         self.assertEqual(10, selected_rows.height())
 
         # compare tensor
+<<<<<<< HEAD
         self.assertAlmostEqual(
             2.0, selected_rows.get_tensor()._get_float_element(0)
         )
@@ -51,6 +64,15 @@ class TestSelectedRows(unittest.TestCase):
             4.0,
             selected_rows.get_tensor()._get_float_element(2 * row_numel + 8),
         )
+=======
+        self.assertAlmostEqual(2.0,
+                               selected_rows.get_tensor()._get_float_element(0))
+        self.assertAlmostEqual(1.0,
+                               selected_rows.get_tensor()._get_float_element(1))
+        self.assertAlmostEqual(
+            4.0,
+            selected_rows.get_tensor()._get_float_element(2 * row_numel + 8))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

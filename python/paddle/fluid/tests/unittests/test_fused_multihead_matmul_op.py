@@ -12,12 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
 from paddle.fluid import core
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+from paddle.fluid import core
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.random(123)
 
@@ -26,11 +36,16 @@ def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
     # clip to shiftx, otherwise, when calc loss with
     # log(exp(shiftx)), may get log(0)=INF
+<<<<<<< HEAD
     shiftx = (x - np.max(x)).clip(-64.0)
+=======
+    shiftx = (x - np.max(x)).clip(-64.)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
 )
@@ -142,6 +157,12 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
     not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
 )
 class TestFusedMultiheadMatmulOp(OpTest):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "Paddle core is not compiled with CUDA")
+class TestFusedMultiheadMatmulOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.seq_len = 128
         self.size_per_head = 64
@@ -154,15 +175,24 @@ class TestFusedMultiheadMatmulOp(OpTest):
         self.config()
         h = self.seq_len
         w = self.head_number * self.size_per_head
+<<<<<<< HEAD
         self.Input = (
             np.random.random((self.batch_size, h, w)).astype("float32") - 0.5
         )
+=======
+        self.Input = np.random.random(
+            (self.batch_size, h, w)).astype("float32") - 0.5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.WQ = np.random.random((w, w)).astype("float32")
         self.KQ = np.random.random((w, w)).astype("float32")
         self.VQ = np.random.random((w, w)).astype("float32")
         self.CombinedW = np.hstack((self.WQ, self.KQ, self.VQ)).reshape(
+<<<<<<< HEAD
             (w, 3, w)
         )
+=======
+            (w, 3, w))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.Q = np.dot(self.Input, self.WQ)
         self.K = np.dot(self.Input, self.KQ)
         self.V = np.dot(self.Input, self.VQ)
@@ -172,6 +202,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
         self.BiasV = np.random.random((1, w)).astype("float32")
         self.CombinedB = np.vstack((self.BiasQ, self.BiasK, self.BiasV))
         self.BiasQK = np.random.random(
+<<<<<<< HEAD
             (self.batch_size, self.head_number, self.seq_len, self.seq_len)
         ).astype("float32")
         # Compute Q path
@@ -185,10 +216,19 @@ class TestFusedMultiheadMatmulOp(OpTest):
                 self.size_per_head,
             ),
         )
+=======
+            (self.batch_size, self.head_number, self.seq_len,
+             self.seq_len)).astype("float32")
+        # Compute Q path
+        fc_q = self.Q + self.BiasQ
+        reshape_q = np.reshape(fc_q, (self.batch_size, self.seq_len,
+                                      self.head_number, self.size_per_head))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         transpose_q = np.transpose(reshape_q, (0, 2, 1, 3))
         scale_q = self.scale * transpose_q
         # Compute K path
         fc_k = self.K + self.BiasK
+<<<<<<< HEAD
         reshape_k = np.reshape(
             fc_k,
             (
@@ -198,6 +238,10 @@ class TestFusedMultiheadMatmulOp(OpTest):
                 self.size_per_head,
             ),
         )
+=======
+        reshape_k = np.reshape(fc_k, (self.batch_size, self.seq_len,
+                                      self.head_number, self.size_per_head))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         transpose_k = np.transpose(reshape_k, (0, 2, 3, 1))
 
         # Compute Q*K
@@ -206,6 +250,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
         softmax_qk = np.apply_along_axis(stable_softmax, 3, eltadd_qk)
         # Compute V path
         fc_v = self.V + self.BiasV
+<<<<<<< HEAD
         reshape_v = np.reshape(
             fc_v,
             (
@@ -215,6 +260,10 @@ class TestFusedMultiheadMatmulOp(OpTest):
                 self.size_per_head,
             ),
         )
+=======
+        reshape_v = np.reshape(fc_v, (self.batch_size, self.seq_len,
+                                      self.head_number, self.size_per_head))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         transpose_v = np.transpose(reshape_v, (0, 2, 1, 3))
 
         # Compute QK*V
@@ -226,14 +275,22 @@ class TestFusedMultiheadMatmulOp(OpTest):
             "Input": self.Input,
             "W": self.CombinedW,
             "Bias": self.CombinedB,
+<<<<<<< HEAD
             "BiasQK": self.BiasQK,
+=======
+            "BiasQK": self.BiasQK
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             "transpose_Q": False,
             "transpose_K": True,
             "transpose_V": False,
             "head_number": self.head_number,
+<<<<<<< HEAD
             "alpha": self.scale,
+=======
+            "alpha": self.scale
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Out": reshape_qkv}
 
@@ -243,6 +300,10 @@ class TestFusedMultiheadMatmulOp(OpTest):
 
 
 class TestFusedMultiHeadMatmulOp2(TestFusedMultiheadMatmulOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.seq_len = 256
         self.size_per_head = 32

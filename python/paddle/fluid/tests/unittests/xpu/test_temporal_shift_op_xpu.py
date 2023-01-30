@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -29,6 +30,22 @@ from xpu.get_test_cover_info import (
 import paddle
 import paddle.nn.functional as F
 
+=======
+from __future__ import division
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+
+import paddle
+import paddle.nn.functional as F
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 np.random.seed(10)
 
@@ -38,6 +55,7 @@ def temporal_shift(x, seg_num, shift_ratio, data_format):
         x = np.transpose(x, (0, 3, 1, 2))
     shape = x.shape
     reshape_x = x.reshape((-1, seg_num, shape[1], shape[2], shape[3]))
+<<<<<<< HEAD
     pad_x = np.pad(
         reshape_x, ((0, 0), (1, 1), (0, 0), (0, 0), (0, 0)), 'constant'
     )
@@ -46,6 +64,15 @@ def temporal_shift(x, seg_num, shift_ratio, data_format):
     slice1 = pad_x[:, :seg_num, :c1, :, :]
     slice2 = pad_x[:, 2 : seg_num + 2, c1:c2, :, :]
     slice3 = pad_x[:, 1 : seg_num + 1, c2:, :, :]
+=======
+    pad_x = np.pad(reshape_x, ((0, 0), (1, 1), (0, 0), (0, 0), (0, 0)),
+                   'constant')
+    c1 = int(shape[1] * shift_ratio)
+    c2 = int(shape[1] * 2 * shift_ratio)
+    slice1 = pad_x[:, :seg_num, :c1, :, :]
+    slice2 = pad_x[:, 2:seg_num + 2, c1:c2, :, :]
+    slice3 = pad_x[:, 1:seg_num + 1, c2:, :, :]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     concat_x = np.concatenate([slice1, slice2, slice3], axis=2)
     out = concat_x.reshape(shape)
     if data_format == "NHWC":
@@ -54,11 +81,19 @@ def temporal_shift(x, seg_num, shift_ratio, data_format):
 
 
 class XPUTestTemporalShiftOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = "temporal_shift"
         self.use_dynamic_create_class = False
 
     class TestXPUTemporalShift(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.initTestCase()
             self.op_type = 'temporal_shift'
@@ -69,16 +104,25 @@ class XPUTestTemporalShiftOp(XPUOpTestWrapper):
             self.attrs = {
                 "seg_num": self.seg_num,
                 "shift_ratio": self.shift_ratio,
+<<<<<<< HEAD
                 "data_format": self.data_format,
+=======
+                "data_format": self.data_format
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.inputs = {
                 "X": x,
             }
 
+<<<<<<< HEAD
             output = temporal_shift(
                 x, self.seg_num, self.shift_ratio, self.data_format
             )
+=======
+            output = temporal_shift(x, self.seg_num, self.shift_ratio,
+                                    self.data_format)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.outputs = {"Out": output}
             self.python_out_sig = ["Out"]
 
@@ -96,6 +140,10 @@ class XPUTestTemporalShiftOp(XPUOpTestWrapper):
             self.data_format = 'NCHW'
 
     class TestXPUTemporalShift2(TestXPUTemporalShift):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (1, 1, 1, 1)
             self.seg_num = 1
@@ -104,6 +152,10 @@ class XPUTestTemporalShiftOp(XPUOpTestWrapper):
             self.data_format = 'NCHW'
 
     class TestXPUTemporalShift3(TestXPUTemporalShift):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (4, 9, 1, 1)
             self.seg_num = 2
@@ -112,6 +164,10 @@ class XPUTestTemporalShiftOp(XPUOpTestWrapper):
             self.data_format = 'NCHW'
 
     class TestXPUTemporalShift4(TestXPUTemporalShift):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (4, 1, 10, 10)
             self.seg_num = 2
@@ -120,6 +176,10 @@ class XPUTestTemporalShiftOp(XPUOpTestWrapper):
             self.data_format = 'NCHW'
 
     class TestXPUTemporalShift5(TestXPUTemporalShift):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (1, 1, 1, 1)
             self.seg_num = 1
@@ -128,6 +188,10 @@ class XPUTestTemporalShiftOp(XPUOpTestWrapper):
             self.data_format = 'NHWC'
 
     class TestXPUTemporalShift6(TestXPUTemporalShift):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (6, 5, 5, 1)
             self.seg_num = 3
@@ -136,6 +200,10 @@ class XPUTestTemporalShiftOp(XPUOpTestWrapper):
             self.data_format = 'NHWC'
 
     class TestXPUTemporalShift7(TestXPUTemporalShift):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (9, 1, 1, 4)
             self.seg_num = 3

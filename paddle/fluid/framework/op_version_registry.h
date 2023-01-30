@@ -230,8 +230,15 @@ class OpVersion {
 
 class OpVersionRegistrar {
  public:
+<<<<<<< HEAD
   static OpVersionRegistrar& GetInstance();
 
+=======
+  static OpVersionRegistrar& GetInstance() {
+    static OpVersionRegistrar instance;
+    return instance;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   OpVersion& Register(const std::string& op_type);
   const std::unordered_map<std::string, OpVersion>& GetVersionMap() {
     return op_version_map_;
@@ -363,8 +370,15 @@ class PassVersionCheckers {
 
 class PassVersionCheckerRegistrar {
  public:
+<<<<<<< HEAD
   static PassVersionCheckerRegistrar& GetInstance();
 
+=======
+  static PassVersionCheckerRegistrar& GetInstance() {
+    static PassVersionCheckerRegistrar instance;
+    return instance;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PassVersionCheckers& Register(const std::string& pass_name) {
     PADDLE_ENFORCE_EQ(pass_version_checkers_map_.find(pass_name),
                       pass_version_checkers_map_.end(),

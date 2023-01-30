@@ -11,11 +11,19 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 
+<<<<<<< HEAD
 #include <vector>
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
+=======
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
+
+#include <vector>
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace framework {
 class Scope;
@@ -34,7 +42,11 @@ class GroupNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+<<<<<<< HEAD
     VLOG(4) << "convert a fluid group_norm op to tensorrt group_norm plugin";
+=======
+    VLOG(3) << "convert a fluid group_norm op";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     framework::OpDesc op_desc(op, nullptr);
 
@@ -50,7 +62,11 @@ class GroupNormOpConverter : public OpConverter {
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dims) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
+<<<<<<< HEAD
       auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
+=======
+      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*dims) = temp_tensor->dims();
 
       auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
@@ -61,8 +77,11 @@ class GroupNormOpConverter : public OpConverter {
     framework::DDim bias_dims;
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
+<<<<<<< HEAD
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (engine_->with_dynamic_shape()) {
       int gn_num = groups;
       std::vector<int64_t> mean_shape({gn_num});
@@ -76,8 +95,12 @@ class GroupNormOpConverter : public OpConverter {
               epsilon,
               groups,
               mean_shape,
+<<<<<<< HEAD
               variance_shape,
               with_fp16);
+=======
+              variance_shape);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
       auto output_name = op_desc.Output("Y")[0];
@@ -95,8 +118,12 @@ class GroupNormOpConverter : public OpConverter {
           epsilon,
           groups,
           mean_shape,
+<<<<<<< HEAD
           variance_shape,
           with_fp16);
+=======
+          variance_shape);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddPlugin(&input_itensor, 1, plugin);
       auto output_name = op_desc.Output("Y")[0];

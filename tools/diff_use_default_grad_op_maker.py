@@ -16,9 +16,14 @@ import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
+<<<<<<< HEAD
 import sys
 
 import paddle.fluid as fluid
+=======
+import paddle.fluid as fluid
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def generate_spec(filename):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -22,6 +23,23 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestConvAffineChannelFusePass(PassAutoScanTest):
+=======
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume, reproduce_failure
+import hypothesis.strategies as st
+
+
+class TestConvAffineChannelFusePass(PassAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -37,6 +55,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         out_channel = groups * out_channel_factor
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dilations = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=2), min_size=2, max_size=2
             )
@@ -58,6 +77,24 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             if data_format == "NCHW"
             else [batch_size, 64, 64, in_channel]
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
+        paddings = draw(
+            st.lists(st.integers(min_value=0, max_value=2),
+                     min_size=2,
+                     max_size=2))
+        strides = draw(
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
+        has_bias = draw(st.booleans())
+
+        x_shape = [
+            batch_size, in_channel, 64, 64
+        ] if data_format == "NCHW" else [batch_size, 64, 64, in_channel]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         w_shape = [out_channel, filter_channel, filter_size, filter_size]
         scale_shape = [out_channel]
         bias_shape = [out_channel]
@@ -74,6 +111,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         def generate_scale_bias():
             return np.random.random(bias_shape).astype(np.float32)
 
+<<<<<<< HEAD
         conv2d_op = OpConfig(
             "conv2d",
             inputs={
@@ -101,6 +139,31 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             data_layout=data_format,
         )
         if has_bias:
+=======
+        conv2d_op = OpConfig("conv2d",
+                             inputs={
+                                 "Input": ["input_data"],
+                                 "Filter": ["conv2d_weight"],
+                             },
+                             outputs={"Output": ["conv_output"]},
+                             data_format=data_format,
+                             dilations=dilations,
+                             padding_algorithm=padding_algorithm,
+                             groups=groups,
+                             paddings=paddings,
+                             strides=strides,
+                             has_bias=has_bias,
+                             is_test=True)
+        ac_op = OpConfig("affine_channel",
+                         inputs={
+                             "X": ["conv_output"],
+                             "Scale": ["affine_channel_scale"],
+                             "Bias": ["affine_channel_bias"]
+                         },
+                         outputs={"Out": ["affine_channel_ouput"]},
+                         data_layout=data_format)
+        if has_bias == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             conv2d_op.inputs["Bias"] = ["conv2d_bias"]
         ops = [conv2d_op, ac_op]
 
@@ -110,6 +173,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
                 "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
             weights={
+<<<<<<< HEAD
                 "conv2d_weight": TensorConfig(
                     data_gen=partial(generate_weight)
                 ),
@@ -127,6 +191,21 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             program_config.weights["conv2d_bias"] = TensorConfig(
                 data_gen=partial(generate_bias)
             )
+=======
+                "conv2d_weight":
+                TensorConfig(data_gen=partial(generate_weight)),
+                "conv2d_bias":
+                TensorConfig(data_gen=partial(generate_bias)),
+                "affine_channel_scale":
+                TensorConfig(data_gen=partial(generate_scale_bias)),
+                "affine_channel_bias":
+                TensorConfig(data_gen=partial(generate_scale_bias)),
+            },
+            outputs=["affine_channel_ouput"])
+        if has_bias == True:
+            program_config.weights["conv2d_bias"] = TensorConfig(
+                data_gen=partial(generate_bias))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return program_config
 
     def sample_predictor_configs(self, program_config):
@@ -143,6 +222,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
 
         # mkldnn Output has diff with bias!
         def teller2(program_config, predictor_config):
+<<<<<<< HEAD
             return (
                 predictor_config.mkldnn_enabled()
                 and program_config.ops[0].attrs['has_bias']
@@ -160,6 +240,20 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             IgnoreReasons.PASS_ACCURACY_ERROR,
             "Currently mkldnn Output has diff with bias!",
         )
+=======
+            return predictor_config.mkldnn_enabled(
+            ) and program_config.ops[0].attrs['has_bias'] == True
+
+        self.add_ignore_check_case(
+            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The output format of conv2d is wrong when data_format attribute is NHWC, \
+            because currently its fused op (Conv2DFusion) only supports data format of channel first (NCHW)."
+        )
+
+        self.add_ignore_check_case(
+            teller2, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "Currently mkldnn Output has diff with bias!")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test(self):
         self.run_and_statis(

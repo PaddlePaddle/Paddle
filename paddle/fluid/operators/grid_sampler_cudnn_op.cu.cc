@@ -25,6 +25,10 @@ class DenseTensor;
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using DataLayout = platform::DataLayout;
 using ScopedSpatialTransformerDescriptor =
@@ -42,9 +46,15 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
                           "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* grid = ctx.Input<phi::DenseTensor>("Grid");
     auto* output = ctx.Output<phi::DenseTensor>("Output");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* grid = ctx.Input<Tensor>("Grid");
+    auto* output = ctx.Output<Tensor>("Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int n = input->dims()[0];
     int c = input->dims()[1];
@@ -91,6 +101,7 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
                           "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* grid = ctx.Input<phi::DenseTensor>("Grid");
     auto* output_grad =
@@ -99,6 +110,13 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* grid_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Grid"));
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* grid = ctx.Input<Tensor>("Grid");
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* grid_grad = ctx.Output<Tensor>(framework::GradVarName("Grid"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto output_grad_dims = output_grad->dims();
     const int n = output_grad_dims[0];

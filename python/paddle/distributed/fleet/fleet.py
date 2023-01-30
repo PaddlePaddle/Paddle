@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+<<<<<<< HEAD
 import os
 
 import paddle
@@ -31,6 +32,32 @@ from .base.runtime_factory import RuntimeFactory
 from .base.strategy_compiler import StrategyCompiler
 from .meta_parallel import model_parallel_random_seed
 from .utils.log_util import logger, set_log_level
+=======
+import paddle
+import os
+from types import MethodType
+import numpy as np
+from paddle.fluid.framework import _global_flags
+from paddle.fluid import compiler
+from .base.role_maker import (
+    UserDefinedRoleMaker,
+    PaddleCloudRoleMaker,
+    RoleMakerBase,
+)
+from .base.strategy_compiler import StrategyCompiler
+from .base.distributed_strategy import DistributedStrategy
+from .base.meta_optimizer_factory import MetaOptimizerFactory
+from .base.runtime_factory import RuntimeFactory
+from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.fluid.dygraph import parallel_helper
+from paddle.fluid.ir import apply_build_strategy
+from .base import topology as tp
+from .meta_parallel import model_parallel_random_seed
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid import core
+from .utils.log_util import logger, set_log_level
+import logging
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -98,7 +125,11 @@ inited_runtime_handler = wrap_decorator(_inited_runtime_handler_)
 is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 
 
+<<<<<<< HEAD
 class Fleet:
+=======
+class Fleet(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Unified API for distributed training of PaddlePaddle
     Please reference the https://github.com/PaddlePaddle/PaddleFleetX for details
@@ -185,9 +216,14 @@ class Fleet:
                 the rolemaker by yourself, it will be automatically initialized to PaddleRoleMaker.
                 The default value is None.
             is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program
+<<<<<<< HEAD
                 runs on Collective mode or ParameterServer mode. True means the program runs on
                 Collective mode, and False means running on ParameterServer mode. The default value
                 is False.
+=======
+                runs on the CPU or GPU. False means set distributed training using CPU, and True means
+                GPU.The default value is False.The default value is False.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             strategy (DistributedStrategy): Extra properties for distributed training.
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
             log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
@@ -274,14 +310,23 @@ class Fleet:
         self.strategy_compiler = StrategyCompiler()
 
         if self._role_maker._is_non_distributed() and self._is_collective:
+<<<<<<< HEAD
             if paddle.framework.core.is_compiled_with_cuda():
                 gpus_num = paddle.framework.core.get_cuda_device_count()
+=======
+            if paddle.fluid.core.is_compiled_with_cuda():
+                gpus_num = paddle.fluid.core.get_cuda_device_count()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if gpus_num != 1:
                     raise ValueError(
                         "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
                     )
 
+<<<<<<< HEAD
         if in_dygraph_mode():
+=======
+        if paddle.fluid.framework._non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if self.worker_num() == 1:
                 # if worker_num is 1, should construct default topology & hcg
                 self._topology = tp.CommunicateTopology()
@@ -306,7 +351,11 @@ class Fleet:
                 paddle.distributed.init_parallel_env()
 
             # hybrid parallel not support for npu/xpu
+<<<<<<< HEAD
             if not self._user_defined_strategy.heter_ccl_mode:
+=======
+            if self._user_defined_strategy.heter_ccl_mode == False:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # init hybrid parallel environment in dygraph
                 if tp._HYBRID_PARALLEL_GROUP is None:
                     self._init_hybrid_parallel_env()
@@ -972,6 +1021,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
+<<<<<<< HEAD
     def save_cache_table(
         self, table_id, pass_id, mem_cache_key_threshold=4000000000
     ):
@@ -981,6 +1031,8 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def save_one_table(self, table_id, path, mode):
         """
         save fleet one table from path
@@ -1023,8 +1075,13 @@ class Fleet:
                 import paddle.distributed.fleet as fleet
                 fleet.init()
                 import paddle
+<<<<<<< HEAD
                 place = paddle.CPUPlace()
                 exe =  paddle.static.Executor(place)
+=======
+                place = paddle.fluid.CPUPlace()
+                exe = paddle.fluid.Executor(place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 # build net
                 # fleet.distributed_optimizer(...)
@@ -1036,8 +1093,11 @@ class Fleet:
             executor, dirname, scope, program, var_names
         )
 
+<<<<<<< HEAD
     @is_non_distributed_check
     @inited_runtime_handler
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
@@ -1256,7 +1316,11 @@ class Fleet:
             )
         else:
             if (
+<<<<<<< HEAD
                 in_dygraph_mode()
+=======
+                paddle.fluid.framework._non_static_mode()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 or self._role_maker._is_non_distributed()
                 or self._is_collective
             ):
@@ -1272,11 +1336,16 @@ class Fleet:
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy
         )
+<<<<<<< HEAD
         if in_dygraph_mode():
+=======
+        if paddle.fluid.framework._non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
             self._context = context
             return target_opt.minimize(loss)
+<<<<<<< HEAD
         else:
             # cache original feed forward program
             self.origin_main_program = loss.block.program
@@ -1554,6 +1623,214 @@ class Fleet:
             fleet.util._set_strategy(context["valid_strategy"])
 
             return optimize_ops, params_grads
+=======
+
+        # cache original feed forward program
+        self.origin_main_program = loss.block.program
+        # add distributed attr
+        if not hasattr(self.origin_main_program, "distributed_info_"):
+            setattr(self.origin_main_program, "distributed_info_", dict())
+            self.origin_main_program.distributed_info_[
+                "dp_degree"
+            ] = self._user_defined_strategy.sharding_configs["dp_degree"]
+            self.origin_main_program.distributed_info_[
+                "mp_degree"
+            ] = self._user_defined_strategy.sharding_configs["mp_degree"]
+            self.origin_main_program.distributed_info_[
+                "pp_degree"
+            ] = self._user_defined_strategy.sharding_configs["pp_degree"]
+            self.origin_main_program.distributed_info_[
+                "sharding_degree"
+            ] = self._user_defined_strategy.sharding_configs["sharding_degree"]
+
+        context["origin_main_program"] = self.origin_main_program
+        context["origin_main_programs"] = [self.origin_main_program]
+        context["loss"] = loss
+        if startup_program == None:
+            self.origin_startup_program = (
+                paddle.static.default_startup_program().clone(for_test=False)
+            )
+            startup_program = paddle.static.default_startup_program()
+        else:
+            self.origin_startup_program = startup_program.clone(for_test=False)
+
+        context["origin_startup_program"] = startup_program
+        context["origin_startup_programs"] = [startup_program]
+        context["role_maker"] = self._role_maker
+
+        # Use the auto-parallel's routines instead
+        if (
+            self._user_defined_strategy.semi_auto
+            or self._user_defined_strategy.auto_search
+        ):
+            from ..auto_parallel.parallelizer import AutoParallelizer
+
+            auto_parallelizer = AutoParallelizer(self)
+            (
+                optimize_ops,
+                params_grads,
+                dist_startup_prog,
+                dist_main_prog,
+            ) = auto_parallelizer.parallelize(
+                loss, startup_program, parameter_list, no_grad_set
+            )
+
+            return optimize_ops, params_grads, dist_startup_prog, dist_main_prog
+
+        # compile time
+        distributed_optimizer_list = (
+            MetaOptimizerFactory()._get_valid_meta_optimizers(
+                self.user_defined_optimizer
+            )
+        )
+
+        context["user_defined_strategy"] = copy.deepcopy(
+            self._user_defined_strategy
+        )
+        copy_user_defined_strategy = copy.deepcopy(self._user_defined_strategy)
+
+        # trigger the auto-parallel in very strict condition
+        # strategy = DistributedStrategy()
+        # strategy.auto = True
+        # optimizer = paddle.optimizer.SGD(learning_rate=0.1)
+        # optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        if copy_user_defined_strategy._is_strict_auto():
+            # turn on all the strategy for each optimizer
+            for opt in distributed_optimizer_list:
+                opt._enable_strategy(copy_user_defined_strategy, context)
+
+        valid_optimizer_list = []
+        valid_graph_optimizer_list = []
+        can_not_apply_optimizer_list = []
+        # recall meta optimizers for ranking
+        for opt in distributed_optimizer_list:
+            opt._set_basic_info(
+                loss,
+                self._role_maker,
+                self.user_defined_optimizer,
+                copy_user_defined_strategy,
+            )
+            if opt._can_apply() and not opt._is_graph_out():
+                valid_optimizer_list.append(opt)
+            elif opt._can_apply() and opt._is_graph_out():
+                valid_graph_optimizer_list.append(opt)
+            else:
+                can_not_apply_optimizer_list.append(opt)
+        # combine recalled meta optimizers to be a valid meta optimizer
+        (
+            meta_optimizer,
+            graph_optimizer,
+        ) = self.strategy_compiler.generate_optimizer(
+            loss,
+            self._role_maker,
+            self.user_defined_optimizer,
+            copy_user_defined_strategy,
+            valid_optimizer_list,
+            valid_graph_optimizer_list,
+        )
+
+        valid_strategy = self.strategy_compiler._get_valid_strategy(
+            copy_user_defined_strategy, can_not_apply_optimizer_list
+        )
+
+        context["valid_strategy"] = copy.deepcopy(valid_strategy)
+        logger.debug("valid_strategy: " + str(context["valid_strategy"]))
+        logger.debug(
+            "user_defined_strategy: " + str(context["user_defined_strategy"])
+        )
+
+        applied_meta_list = self.strategy_compiler._get_applied_meta_list()
+        applied_graph_list = self.strategy_compiler._get_applied_graph_list()
+
+        context['applied_meta_list'] = applied_meta_list
+        context['applied_graph_list'] = applied_graph_list
+
+        self._context = context
+
+        self.valid_strategy = valid_strategy
+        self.valid_strategy._enable_env()
+
+        optimize_ops = []
+        params_grads = []
+
+        if self._role_maker._is_non_distributed() and not self._is_collective:
+            if self._runtime_handle is None:
+                self._runtime_handle = RuntimeFactory()._create_runtime(context)
+
+            compiled_program = compiler.CompiledProgram(
+                self.origin_main_program
+            ).with_data_parallel(loss_name=loss.name, share_vars_from=None)
+            loss.block.program._graph = compiled_program
+            return self.user_defined_optimizer.minimize(
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set
+            )
+
+        if meta_optimizer:
+            logger.debug(
+                "before minimize program id: " + str(id(loss.block.program))
+            )
+            optimize_ops, params_grads = meta_optimizer.minimize(
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set
+            )
+            logger.debug(
+                "after minimize program id: " + str(id(loss.block.program))
+            )
+            default_program = paddle.static.default_main_program()
+            logger.debug("default program id: " + str(id(default_program)))
+
+            if id(default_program) != id(loss.block.program):
+                paddle.fluid.framework.switch_main_program(loss.block.program)
+            logger.debug(
+                "default program id after switch: " + str(id(default_program))
+            )
+
+        else:
+            optimize_ops, params_grads = self.user_defined_optimizer.minimize(
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set
+            )
+
+        context["program_optimize_ops"] = optimize_ops
+        context["program_params_grads"] = params_grads
+
+        if graph_optimizer:
+            logger.debug(
+                "before graph minimize program id: "
+                + str(id(loss.block.program))
+            )
+            optimize_ops, params_grads = graph_optimizer.minimize(
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set
+            )
+            # since we do not encourage users to use graph operations
+            # if a graph optimizer takes effect, mostly
+            # optimizers_ops and params_grads are None
+            # i.e. users can not modify current computation graph anymore
+            context["graph_optimize_ops"] = optimize_ops
+            context["graph_optimize_grads"] = params_grads
+        else:
+            apply_ir_passes(loss.block.program, startup_program, self)
+
+        if not self._role_maker._is_heter_parameter_server_mode:
+            program = paddle.static.default_main_program()
+            opt_info = {} if program._fleet_opt is None else program._fleet_opt
+            opt_info["mpi_size"] = self.worker_num()
+            opt_info["mpi_rank"] = self.worker_index()
+            for (
+                k,
+                v,
+            ) in self._user_defined_strategy.trainer_desc_configs.items():
+                if v or k not in opt_info:
+                    opt_info[k] = v
+            program._fleet_opt = opt_info
+
+        if self._runtime_handle is None:
+            self._runtime_handle = RuntimeFactory()._create_runtime(context)
+
+        import paddle.distributed.fleet as fleet
+
+        fleet.util._set_strategy(context["valid_strategy"])
+
+        return optimize_ops, params_grads
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _minimize_losses_impl(
         self,
@@ -1617,7 +1894,11 @@ class Fleet:
         # default_program = paddle.static.default_main_program()
 
         # if id(default_program) != id(losses[0].block.program):
+<<<<<<< HEAD
         #     paddle.framework.switch_main_program(losses[0].block.program)
+=======
+        #     paddle.fluid.framework.switch_main_program(losses[0].block.program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads

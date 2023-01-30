@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
@@ -21,6 +22,15 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+=======
+import numpy as np
+
+from op_test import OpTest
+import paddle
+import paddle.nn.functional as F
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
@@ -28,6 +38,7 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
 
     if data_format == "NCHW":
         n, c, h, w = x.shape
+<<<<<<< HEAD
         new_shape = (
             n,
             c,
@@ -43,11 +54,20 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
             c * down_factor * down_factor,
             h // down_factor,
             w // down_factor,
+=======
+        new_shape = (n, c, h // down_factor, down_factor, w // down_factor,
+                     down_factor)
+        npresult = np.reshape(x, new_shape)
+        npresult = npresult.transpose(0, 1, 3, 5, 2, 4)
+        oshape = [
+            n, c * down_factor * down_factor, h // down_factor, w // down_factor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         npresult = np.reshape(npresult, oshape)
         return npresult
     else:
         n, h, w, c = x.shape
+<<<<<<< HEAD
         new_shape = (
             n,
             h // down_factor,
@@ -63,6 +83,14 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
             h // down_factor,
             w // down_factor,
             c * down_factor * down_factor,
+=======
+        new_shape = (n, h // down_factor, down_factor, w // down_factor,
+                     down_factor, c)
+        npresult = np.reshape(x, new_shape)
+        npresult = npresult.transpose(0, 1, 3, 5, 2, 4)
+        oshape = [
+            n, h // down_factor, w // down_factor, c * down_factor * down_factor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         npresult = np.reshape(npresult, oshape)
         return npresult
@@ -92,7 +120,11 @@ class TestPixelUnshuffleOp(OpTest):
         self.outputs = {"Out": npresult}
         self.attrs = {
             "downscale_factor": down_factor,
+<<<<<<< HEAD
             "data_format": self.format,
+=======
+            "data_format": self.format
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_data_format(self):
@@ -134,6 +166,7 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
     def test_static_graph_functional(self):
         '''test_static_graph_functional'''
 
+<<<<<<< HEAD
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
@@ -146,10 +179,24 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             x_2 = paddle.fluid.data(
                 name="x2", shape=[2, 12, 12, 1], dtype="float64"
             )
+=======
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+
+            paddle.enable_static()
+            x_1 = paddle.fluid.data(name="x",
+                                    shape=[2, 1, 12, 12],
+                                    dtype="float64")
+            x_2 = paddle.fluid.data(name="x2",
+                                    shape=[2, 12, 12, 1],
+                                    dtype="float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out_1 = F.pixel_unshuffle(x_1, 3)
             out_2 = F.pixel_unshuffle(x_2, 3, "NHWC")
 
             exe = paddle.static.Executor(place=place)
+<<<<<<< HEAD
             res_1 = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_1_np},
@@ -163,6 +210,17 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
                 fetch_list=out_2,
                 use_prune=True,
             )
+=======
+            res_1 = exe.run(fluid.default_main_program(),
+                            feed={"x": self.x_1_np},
+                            fetch_list=out_1,
+                            use_prune=True)
+
+            res_2 = exe.run(fluid.default_main_program(),
+                            feed={"x2": self.x_2_np},
+                            fetch_list=out_2,
+                            use_prune=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             assert np.allclose(res_1, self.out_1_np)
             assert np.allclose(res_2, self.out_2_np)
@@ -171,6 +229,7 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
     def test_static_graph_layer(self):
         '''test_static_graph_layer'''
 
+<<<<<<< HEAD
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
@@ -183,6 +242,19 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             x_2 = paddle.fluid.data(
                 name="x2", shape=[2, 12, 12, 1], dtype="float64"
             )
+=======
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+
+            paddle.enable_static()
+            x_1 = paddle.fluid.data(name="x",
+                                    shape=[2, 1, 12, 12],
+                                    dtype="float64")
+            x_2 = paddle.fluid.data(name="x2",
+                                    shape=[2, 12, 12, 1],
+                                    dtype="float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # init instance
             ps_1 = paddle.nn.PixelUnshuffle(3)
             ps_2 = paddle.nn.PixelUnshuffle(3, "NHWC")
@@ -192,6 +264,7 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             out_2_np = pixel_unshuffle_np(self.x_2_np, 3, "NHWC")
 
             exe = paddle.static.Executor(place=place)
+<<<<<<< HEAD
             res_1 = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_1_np},
@@ -205,6 +278,17 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
                 fetch_list=out_2,
                 use_prune=True,
             )
+=======
+            res_1 = exe.run(fluid.default_main_program(),
+                            feed={"x": self.x_1_np},
+                            fetch_list=out_1,
+                            use_prune=True)
+
+            res_2 = exe.run(fluid.default_main_program(),
+                            feed={"x2": self.x_2_np},
+                            fetch_list=out_2,
+                            use_prune=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             assert np.allclose(res_1, out_1_np)
             assert np.allclose(res_2, out_2_np)
@@ -223,26 +307,44 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
 
         npresult = pixel_unshuffle_np(x, down_factor, data_format)
 
+<<<<<<< HEAD
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
+=======
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.disable_static(place=place)
 
+<<<<<<< HEAD
             pixel_unshuffle = paddle.nn.PixelUnshuffle(
                 down_factor, data_format=data_format
             )
+=======
+            pixel_unshuffle = paddle.nn.PixelUnshuffle(down_factor,
+                                                       data_format=data_format)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             result = pixel_unshuffle(paddle.to_tensor(x))
 
             np.testing.assert_allclose(result.numpy(), npresult, rtol=1e-05)
 
+<<<<<<< HEAD
             result_functional = F.pixel_unshuffle(
                 paddle.to_tensor(x), 3, data_format
             )
             np.testing.assert_allclose(
                 result_functional.numpy(), npresult, rtol=1e-05
             )
+=======
+            result_functional = F.pixel_unshuffle(paddle.to_tensor(x), 3,
+                                                  data_format)
+            np.testing.assert_allclose(result_functional.numpy(),
+                                       npresult,
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             pixel_unshuffle_str = 'downscale_factor={}'.format(down_factor)
             if data_format != 'NCHW':
@@ -290,9 +392,14 @@ class TestPixelUnshuffleError(unittest.TestCase):
         def error_data_format():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([2, 1, 12, 12]).astype("float64")
+<<<<<<< HEAD
                 pixel_unshuffle = F.pixel_unshuffle(
                     paddle.to_tensor(x), 3, "WOW"
                 )
+=======
+                pixel_unshuffle = F.pixel_unshuffle(paddle.to_tensor(x), 3,
+                                                    "WOW")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, error_data_format)
 

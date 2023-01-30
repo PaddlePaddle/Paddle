@@ -18,6 +18,10 @@ __all__ = []
 
 
 class MetaOptimizerBase(Optimizer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, optimizer):
         self.inner_opt = optimizer
         self._learning_rate = self.inner_opt._learning_rate
@@ -25,9 +29,14 @@ class MetaOptimizerBase(Optimizer):
         self.meta_optimizers_white_list = []
         self.meta_optimizers_black_list = []
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.loss = loss
         self.role_maker = role_maker
         self.user_defined_optimizer = user_defined_optimizer
@@ -50,20 +59,29 @@ class MetaOptimizerBase(Optimizer):
     def _disable_strategy(self, dist_strategy):
         raise NotImplementedError(
             "you should implement disable strategy in {}".format(
+<<<<<<< HEAD
                 type(self).__name__
             )
         )
+=======
+                type(self).__name__))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _enable_strategy(self, dist_strategy, context=None):
         raise NotImplementedError(
             "you should implement enable strategy in {}".format(
+<<<<<<< HEAD
                 type(self).__name__
             )
         )
+=======
+                type(self).__name__))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def apply_gradients(self, params_grads):
         return self.inner_opt.apply_gradients(params_grads=params_grads)
 
+<<<<<<< HEAD
     def backward(
         self,
         loss,
@@ -103,4 +121,44 @@ class MetaOptimizerBase(Optimizer):
         optimize_ops, params_grads = self.minimize_impl(
             loss, startup_program, parameter_list, no_grad_set
         )
+=======
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+        return self.inner_opt.backward(loss, startup_program, parameter_list,
+                                       no_grad_set, callbacks)
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        return self.inner_opt.apply_optimize(loss,
+                                             startup_program=startup_program,
+                                             params_grads=params_grads)
+
+    def minimize_impl(self,
+                      loss,
+                      startup_program=None,
+                      parameter_list=None,
+                      no_grad_set=None):
+        params_grads = self.backward(loss,
+                                     startup_program=startup_program,
+                                     parameter_list=parameter_list,
+                                     no_grad_set=no_grad_set)
+
+        optimize_ops = self.apply_optimize(loss,
+                                           startup_program=startup_program,
+                                           params_grads=params_grads)
+
+        return optimize_ops, params_grads
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        optimize_ops, params_grads = self.minimize_impl(loss, startup_program,
+                                                        parameter_list,
+                                                        no_grad_set)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return optimize_ops, params_grads

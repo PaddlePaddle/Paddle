@@ -149,7 +149,11 @@ void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
 }
 
 std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
+<<<<<<< HEAD
     const ProgramDesc &backward_program, bool skip_no_need_buffer) {
+=======
+    const ProgramDesc &backward_program) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::set<std::string> skip_eager_delete_vars;
   auto backward_ops = backward_program.Block(0).AllOps();
   auto &op_info_map = OpInfoMap::Instance();
@@ -158,7 +162,10 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
   std::unordered_set<std::string> no_need_buffer_ins;
   for (size_t i = 0; i < backward_ops.size(); ++i) {
     framework::OpDesc *op = backward_ops[i];
+<<<<<<< HEAD
     VLOG(4) << "parse op type: " << op->Type();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (op->Type() == "share_buffer") {
       VLOG(1) << "skip share_buffer op";
       continue;
@@ -167,9 +174,13 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
     auto &op_info = op_info_map.Get(op->Type());
     auto &inferer = op_info.NoNeedBufferVarsInferer();
     no_need_buffer_ins.clear();
+<<<<<<< HEAD
     // TODO(Aurelius84): Need remove skip_no_need_buffer after cinn fix this
     // problem.
     if (inferer != nullptr && !skip_no_need_buffer) {
+=======
+    if (inferer != nullptr) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       no_need_buffer_ins =
           inferer(op->Inputs(), op->Outputs(), op->GetAttrMap());
     }
@@ -188,7 +199,10 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
     }
   }
   for (const std::string &var_name : op_inputs) {
+<<<<<<< HEAD
     VLOG(4) << "parse op.input: " << var_name;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (op_outputs.find(var_name) == op_outputs.end()) {
       VLOG(1) << "skip eager var: " << var_name;
       skip_eager_delete_vars.insert(var_name);
@@ -299,8 +313,11 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
   if (interpretercore_info_cache.Size() > 4u /* max_cached_size*/) {
+<<<<<<< HEAD
     VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
                "all cache!";
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     interpretercore_info_cache.Finalize();
   }
   auto core = std::make_shared<InterpreterCore>(

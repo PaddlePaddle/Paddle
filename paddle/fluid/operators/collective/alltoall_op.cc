@@ -36,10 +36,17 @@ class AllToAllOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -61,13 +68,38 @@ Scatter tensors from all participators to all participators.
   }
 };
 
+<<<<<<< HEAD
+=======
+template <typename T>
+class AllToAllOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> retv) const override {
+    retv->SetType("alltoall");
+    retv->SetInput("X", this->OutputGrad("Out"));
+    retv->SetOutput("Out", this->InputGrad("X"));
+    retv->SetAttrMap(this->Attrs());
+  }
+};
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+<<<<<<< HEAD
 REGISTER_OP_WITHOUT_GRADIENT(alltoall, ops::AllToAllOp, ops::AllToAllOpMaker)
+=======
+REGISTER_OPERATOR(alltoall,
+                  ops::AllToAllOp,
+                  ops::AllToAllOpMaker,
+                  ops::AllToAllOpGradMaker<paddle::framework::OpDesc>,
+                  ops::AllToAllOpGradMaker<paddle::imperative::OpBase>)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 REGISTER_OP_CPU_KERNEL(alltoall,
                        ops::AllToAllOpCPUKernel<float>,

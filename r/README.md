@@ -55,7 +55,11 @@ Other configuration options and descriptions are as fallows.
 ``` r
 config$enable_profile() # turn on inference profile
 config$enable_use_gpu(gpu_memory_mb, gpu_id) # use GPU
+<<<<<<< HEAD
 config$disable_gpu() # disable GPU
+=======
+config$disable_gpu() # disable GPU 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 config$gpu_device_id() # get GPU id
 config$switch_ir_optim(TRUE) # turn on IR optimize(default is TRUE)
 config$enable_tensorrt_engine(workspace_size,

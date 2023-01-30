@@ -13,6 +13,10 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
+=======
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 import paddle
 import numpy as np
@@ -20,6 +24,7 @@ import traceback
 from collections import namedtuple
 from .. import core
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
+<<<<<<< HEAD
 from ..multiprocess_utils import (
     _cleanup_mmap,
     CleanupFuncRegistrar,
@@ -28,25 +33,46 @@ from ..multiprocess_utils import (
 from ..framework import _non_static_mode, _in_eager_without_dygraph_check
 from .flat import _flatten_batch
 
+=======
+from ..multiprocess_utils import _cleanup_mmap, CleanupFuncRegistrar, MP_STATUS_CHECK_INTERVAL
+from ..framework import _non_static_mode, _in_eager_without_dygraph_check
+from .flat import _flatten_batch
+
+# NOTE: queue has a different name in python2 and python3
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import queue
 
 __all__ = ['get_worker_info']
 
 
+<<<<<<< HEAD
 class _IterableDatasetStopIteration:
+=======
+class _IterableDatasetStopIteration(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, worker_id):
         self.worker_id = worker_id
 
 
+<<<<<<< HEAD
 class _ResumeIteration:
     pass
 
 
 class _DatasetKind:
+=======
+class _ResumeIteration(object):
+    pass
+
+
+class _DatasetKind(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     MAP = 0
     ITER = 1
 
     @staticmethod
+<<<<<<< HEAD
     def create_fetcher(
         kind, dataset, auto_collate_batch, collate_fn, drop_last
     ):
@@ -58,11 +84,26 @@ class _DatasetKind:
             return _IterableDatasetFetcher(
                 dataset, auto_collate_batch, collate_fn, drop_last
             )
+=======
+    def create_fetcher(kind, dataset, auto_collate_batch, collate_fn,
+                       drop_last):
+        if kind == _DatasetKind.MAP:
+            return _MapDatasetFetcher(dataset, auto_collate_batch, collate_fn,
+                                      drop_last)
+        elif kind == _DatasetKind.ITER:
+            return _IterableDatasetFetcher(dataset, auto_collate_batch,
+                                           collate_fn, drop_last)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             raise NotImplementedError("unknown Dataset kind {}".format(kind))
 
 
+<<<<<<< HEAD
 class ParentWatchDog:
+=======
+class ParentWatchDog(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self._parent_pid = os.getppid()
         self._parent_alive = True
@@ -144,7 +185,11 @@ def get_worker_info():
     return _worker_info
 
 
+<<<<<<< HEAD
 class WorkerInfo:
+=======
+class WorkerInfo(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     __initialized = False
 
     def __init__(self, **kwargs):
@@ -154,6 +199,7 @@ class WorkerInfo:
 
     def __setattr__(self, key, val):
         if self.__initialized:
+<<<<<<< HEAD
             raise RuntimeError(
                 "Cannot assign attributes to {} objects".format(
                     self.__class__.__name__
@@ -163,6 +209,15 @@ class WorkerInfo:
 
 
 class _WorkerException:
+=======
+            raise RuntimeError("Cannot assign attributes to {} objects".format(
+                self.__class__.__name__))
+        return super(WorkerInfo, self).__setattr__(key, val)
+
+
+class _WorkerException(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, worker_id, exc_info=None):
         self.worker_id = worker_id
         exc_info = exc_info or sys.exc_info()
@@ -171,8 +226,12 @@ class _WorkerException:
 
     def reraise(self):
         msg = "DataLoader worker({}) caught {} with message:\n{}".format(
+<<<<<<< HEAD
             self.worker_id, self.exc_type.__name__, self.exc_msg
         )
+=======
+            self.worker_id, self.exc_type.__name__, self.exc_msg)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if getattr(self.exc_type, "message", None):
             raise self.exc_type(message=msg)
         raise self.exc_type(msg)
@@ -210,12 +269,21 @@ class _WorkerException:
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+<<<<<<< HEAD
 INIT_A = 0x43B0D7E5
 MULT_A = 0x931E8875
 INIT_B = 0x8B51F9DD
 MULT_B = 0x58F38DED
 MIX_MULT_L = 0xCA01F9DD
 MIX_MULT_R = 0x4973F715
+=======
+INIT_A = 0x43b0d7e5
+MULT_A = 0x931e8875
+INIT_B = 0x8b51f9dd
+MULT_B = 0x58f38ded
+MIX_MULT_L = 0xca01f9dd
+MIX_MULT_R = 0x4973f715
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 XSHIFT = np.dtype(np.uint32).itemsize * 8 // 2
 MASK32 = 0xFFFFFFFF
 
@@ -261,6 +329,7 @@ def _generate_states(base_seed=0, worker_id=0):
     return states
 
 
+<<<<<<< HEAD
 def _worker_loop(
     dataset,
     dataset_kind,
@@ -277,6 +346,11 @@ def _worker_loop(
     base_seed,
     shm_cahce_size=0,
 ):
+=======
+def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
+                 auto_collate_batch, collate_fn, drop_last, init_fn, worker_id,
+                 num_workers, use_shared_memory, base_seed):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
         # some shared memory objects may have been applied for but have not yet
@@ -287,8 +361,11 @@ def _worker_loop(
         # set signal handler
         core._set_process_signal_handler()
 
+<<<<<<< HEAD
         core._set_max_memory_map_allocation_pool_size(shm_cahce_size)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # set different numpy seed for each worker
         try:
             import numpy as np
@@ -303,20 +380,33 @@ def _worker_loop(
             np.random.seed(_generate_states(base_seed, worker_id))
 
         global _worker_info
+<<<<<<< HEAD
         _worker_info = WorkerInfo(
             id=worker_id,
             num_workers=num_workers,
             dataset=dataset,
             seed=base_seed,
         )
+=======
+        _worker_info = WorkerInfo(id=worker_id,
+                                  num_workers=num_workers,
+                                  dataset=dataset,
+                                  seed=base_seed)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         init_exception = None
         try:
             if init_fn is not None:
                 init_fn(worker_id)
+<<<<<<< HEAD
             fetcher = _DatasetKind.create_fetcher(
                 dataset_kind, dataset, auto_collate_batch, collate_fn, drop_last
             )
+=======
+            fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
+                                                  auto_collate_batch,
+                                                  collate_fn, drop_last)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         except:
             init_exception = _WorkerException(worker_id)
 
@@ -332,16 +422,27 @@ def _worker_loop(
             if isinstance(data, _ResumeIteration):
                 out_queue.put((data, None, None))
                 iterator_drained = False
+<<<<<<< HEAD
                 fetcher = _DatasetKind.create_fetcher(
                     dataset_kind, dataset, auto_collate_batch, collate_fn, True
                 )
+=======
+                fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
+                                                      auto_collate_batch,
+                                                      collate_fn, True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 continue
 
             # None as poison piil, so worker event should be set
             if data is None:
+<<<<<<< HEAD
                 assert (
                     done_event.is_set() or iterator_drained
                 ), "get None when worker done_event set"
+=======
+                assert done_event.is_set() or iterator_drained, \
+                        "get None when worker done_event set"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 break
             # If worker done event is set but get still get data in
             # indices_queue, remaining data should be get and skipped.
@@ -362,10 +463,15 @@ def _worker_loop(
                     with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
                         batch = fetcher.fetch(indices)
             except Exception as e:
+<<<<<<< HEAD
                 if (
                     isinstance(e, StopIteration)
                     and dataset_kind == _DatasetKind.ITER
                 ):
+=======
+                if isinstance(
+                        e, StopIteration) and dataset_kind == _DatasetKind.ITER:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     out_queue.put(_IterableDatasetStopIteration(worker_id))
                     iterator_drained = True
                 else:
@@ -375,6 +481,7 @@ def _worker_loop(
                     out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
+<<<<<<< HEAD
 
                     def numpy2lodtensor(arr):
                         lodtensor = core.Tensor()
@@ -388,13 +495,32 @@ def _worker_loop(
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))
+=======
+                    # NOTE: In eager mode, Tensor._share_memory has no
+                    # effect, fall back to _array_to_share_memory_tensor
+                    def tensor_share_memory(tensor):
+                        if _in_eager_without_dygraph_check():
+                            return core._array_to_share_memory_tensor(tensor)
+                        return tensor._share_memory()
+                    tensor_list = [
+                        core._array_to_share_memory_tensor(b)
+                        if isinstance(b, np.ndarray) \
+                        else tensor_share_memory(b) for b in batch
+                    ]
+                    out_queue.put((idx, tensor_list, structure))
+                    core._remove_tensor_list_mmap_fds(tensor_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 else:
                     out_queue.put((idx, batch, structure))
     except KeyboardInterrupt:
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
     except:
+<<<<<<< HEAD
         raise
+=======
+        six.reraise(*sys.exc_info())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     finally:
         if use_shared_memory:
             _cleanup_mmap()

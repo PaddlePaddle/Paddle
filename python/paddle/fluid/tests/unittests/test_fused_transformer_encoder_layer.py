@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,6 +23,19 @@ from paddle.nn import TransformerEncoderLayer
 
 
 class TestFusedTransformerEncoderLayer(unittest.TestCase):
+=======
+import numpy as np
+
+import paddle
+from paddle.incubate.nn import FusedTransformerEncoderLayer
+from paddle.nn import TransformerEncoderLayer
+from paddle.fluid.framework import default_main_program, in_dygraph_mode
+import unittest
+
+
+class TestFusedTransformerEncoderLayer(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setActivation(self):
         self.activation = 'gelu'
 
@@ -61,8 +75,13 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
     def fused_weight(self, weight, num_head):
         a = paddle.transpose(weight, perm=[1, 0])
         return paddle.reshape(
+<<<<<<< HEAD
             a, shape=[1, num_head, int(a.shape[0] / num_head), a.shape[1]]
         )
+=======
+            a, shape=[1, num_head,
+                      int(a.shape[0] / num_head), a.shape[1]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def fused_qkv(self, q, k, v, num_head):
         fq = self.fused_weight(q, num_head)
@@ -75,6 +94,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
             return
         default_main_program().random_seed = 42
         base_encoder = TransformerEncoderLayer(
+<<<<<<< HEAD
             self.d_model,
             self.nhead,
             self.dim_feedforward,
@@ -98,6 +118,18 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
                 ),
                 dtype=self.attn_mask_type,
             )
+=======
+            self.d_model, self.nhead, self.dim_feedforward, self.dropout_rate,
+            self.activation, self.attn_dropout_rate, self.act_dropout_rate,
+            self.pre_layer_norm)
+        src = np.random.rand(self.batch_size, self.query_length,
+                             self.embed_dim).astype(self.dtype)
+
+        if self.has_attn_mask:
+            attn_mask = np.ones((self.batch_size, self.num_heads,
+                                 self.query_length, self.key_length),
+                                dtype=self.attn_mask_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             attn_mask_tensor = paddle.to_tensor(attn_mask)
         else:
             attn_mask = None
@@ -105,6 +137,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
 
         dout = np.random.random(src.shape).astype(self.dtype)
 
+<<<<<<< HEAD
         base_out = base_encoder(
             paddle.to_tensor(src, stop_gradient=False), attn_mask_tensor
         )
@@ -120,6 +153,16 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
             self.act_dropout_rate,
             self.pre_layer_norm,
         )
+=======
+        base_out = base_encoder(paddle.to_tensor(src, stop_gradient=False),
+                                attn_mask_tensor)
+        paddle.autograd.backward([base_out], [paddle.to_tensor(dout)], True)
+
+        fused_encoder = FusedTransformerEncoderLayer(
+            self.d_model, self.nhead, self.dim_feedforward, self.dropout_rate,
+            self.activation, self.attn_dropout_rate, self.act_dropout_rate,
+            self.pre_layer_norm)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         fused_encoder.ffn._linear1_weight.set_value(base_encoder.linear1.weight)
         fused_encoder.ffn._linear1_bias.set_value(base_encoder.linear1.bias)
@@ -133,6 +176,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
             fused_encoder.ffn._ln2_bias.set_value(base_encoder.norm2.bias)
 
         fused_encoder.fused_attn.linear_weight.set_value(
+<<<<<<< HEAD
             base_encoder.self_attn.out_proj.weight
         )
         fused_encoder.fused_attn.linear_bias.set_value(
@@ -149,6 +193,19 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
             fused_encoder.fused_attn.ln_scale.set_value(
                 base_encoder.norm1.weight
             )
+=======
+            base_encoder.self_attn.out_proj.weight)
+        fused_encoder.fused_attn.linear_bias.set_value(
+            base_encoder.self_attn.out_proj.bias)
+        if self.pre_layer_norm:
+            fused_encoder.fused_attn.pre_ln_scale.set_value(
+                base_encoder.norm1.weight)
+            fused_encoder.fused_attn.pre_ln_bias.set_value(
+                base_encoder.norm1.bias)
+        else:
+            fused_encoder.fused_attn.ln_scale.set_value(
+                base_encoder.norm1.weight)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             fused_encoder.fused_attn.ln_bias.set_value(base_encoder.norm1.bias)
 
         q = base_encoder.self_attn.q_proj.weight
@@ -163,6 +220,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         tmp = paddle.concat(x=[q_bias, k_bias, v_bias], axis=0)
         qkv_bias = paddle.reshape(
             tmp,
+<<<<<<< HEAD
             shape=[3, self.num_heads, int(tmp.shape[0] / 3 / self.num_heads)],
         )
         fused_encoder.fused_attn.qkv_bias.set_value(qkv_bias)
@@ -210,27 +268,76 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
 
 
 class TestFusedTransformerEncoderLayerAct(TestFusedTransformerEncoderLayer):
+=======
+            shape=[3, self.num_heads,
+                   int(tmp.shape[0] / 3 / self.num_heads)])
+        fused_encoder.fused_attn.qkv_bias.set_value(qkv_bias)
+
+        fused_out = fused_encoder(paddle.to_tensor(src, stop_gradient=False),
+                                  attn_mask_tensor)
+        paddle.autograd.backward([fused_out], [paddle.to_tensor(dout)], True)
+
+        correct_ffn_str = 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}'.format(
+            self.d_model, self.dim_feedforward, self.dropout_rate,
+            fused_encoder.ffn._epsilon, self.activation, self.dropout_rate,
+            self.pre_layer_norm, self.dtype)
+        self.assertTrue(fused_encoder.ffn.extra_repr(), correct_ffn_str)
+
+        correct_attn_str = 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, epsilon={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}'.format(
+            self.embed_dim, self.num_heads, self.dropout_rate,
+            self.dropout_rate, fused_encoder.fused_attn._epsilon, None, None,
+            self.pre_layer_norm, False, self.dtype)
+        self.assertTrue(fused_encoder.fused_attn.extra_repr(), correct_attn_str)
+
+        np.testing.assert_allclose(fused_out.numpy(),
+                                   base_out.numpy(),
+                                   rtol=self.rtol,
+                                   atol=self.atol)
+        np.testing.assert_allclose(fused_out.grad.numpy(),
+                                   base_out.grad.numpy(),
+                                   rtol=self.rtol,
+                                   atol=self.atol)
+
+
+class TestFusedTransformerEncoderLayerAct(TestFusedTransformerEncoderLayer):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setActivation(self):
         self.activation = 'relu'
 
 
 class TestFusedTransformerEncoderLayerPreLayerNorm(
+<<<<<<< HEAD
     TestFusedTransformerEncoderLayer
 ):
+=======
+        TestFusedTransformerEncoderLayer):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setPreLayerNorm(self):
         self.pre_layer_norm = True
 
 
 class TestFusedTransformerEncoderLayerAttnMaskIsNone(
+<<<<<<< HEAD
     TestFusedTransformerEncoderLayer
 ):
+=======
+        TestFusedTransformerEncoderLayer):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setAttnMask(self):
         self.has_attn_mask = False
 
 
 class TestFusedTransformerEncoderLayerPreLnTrueAttnMaskIsNone(
+<<<<<<< HEAD
     TestFusedTransformerEncoderLayer
 ):
+=======
+        TestFusedTransformerEncoderLayer):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setPreLayerNorm(self):
         self.pre_layer_norm = True
 

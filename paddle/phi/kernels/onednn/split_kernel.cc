@@ -19,6 +19,7 @@
 
 namespace phi {
 
+<<<<<<< HEAD
 const std::vector<int64_t> get_slice_strides(
     const std::vector<int64_t>& out_vec_dims,
     const dnnl::memory::desc& full_md,
@@ -36,6 +37,8 @@ const std::vector<int64_t> get_slice_strides(
   return slice_strides;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
                  const DenseTensor& x,
@@ -66,10 +69,14 @@ void SplitKernel(const Context& dev_ctx,
         out_vec_dims, offset, reorder_src_memory_p);
 
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+<<<<<<< HEAD
         out[i],
         out_vec_dims,
         get_slice_strides(out_vec_dims, x.mem_desc(), axis),
         dev_ctx.GetPlace());
+=======
+        out[i], out_vec_dims, x.format(), dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto reorder_p =
         reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
 
@@ -89,14 +96,22 @@ void SplitWithNumKernel(const Context& dev_ctx,
                         std::vector<DenseTensor*> outs) {
   int axis_value = axis_scalar.to<int>();
   auto input_axis_dim = x.dims().at(axis_value);
+<<<<<<< HEAD
   const std::vector<int64_t> sections_vec(num, input_axis_dim / num);
 
+=======
+  std::vector<int64_t> sections_vec;
+  for (int i = 0; i < num; ++i) {
+    sections_vec.push_back(input_axis_dim / num);
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   IntArray sections(sections_vec);
   SplitKernel<T, Context>(dev_ctx, x, sections, axis_scalar, outs);
 }
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(split,
                    OneDNN,
                    ONEDNN,
@@ -114,3 +129,14 @@ PD_REGISTER_KERNEL(split_with_num,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {}
+=======
+PD_REGISTER_KERNEL(
+    split, OneDNN, ALL_LAYOUT, phi::SplitKernel, float, phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(split_with_num,
+                   OneDNN,
+                   ALL_LAYOUT,
+                   phi::SplitWithNumKernel,
+                   float,
+                   phi::dtype::bfloat16) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

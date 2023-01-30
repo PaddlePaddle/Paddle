@@ -13,16 +13,26 @@
 # limitations under the License.
 
 import copy
+<<<<<<< HEAD
 import logging
 from abc import ABC, abstractmethod
 
 from ..utils import get_logger, is_recompute_op
 from .trial import OptimizationTunerTrial as Trial
 from .trial import TrialStatus
+=======
+from abc import ABC, abstractmethod
+import logging
+
+from ..utils import get_logger
+from .trial import TrialStatus
+from .trial import OptimizationTunerTrial as Trial
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class AlgorithmBase(ABC):
     """
+<<<<<<< HEAD
     An Tuning alogrithm is a class to find out an optimal configuration
     given the selected tuning optimization pass(es) and the arguments to be tuned.
     Different optimization pass(es) will correspond to a different algorithm,
@@ -32,6 +42,16 @@ class AlgorithmBase(ABC):
     search space pruning rules specific for the given optimization scenario.
     """
 
+=======
+    An Tuning alogrithm is a class to find out an optimal configuration 
+    given the selected tuning optimization pass(es) and the arguments to be tuned. 
+    Different optimization pass(es) will correspond to a different algorithm,
+    where different search space **pruning rules** will applied.
+
+    In another word, the key "algorithm" for this class is the 
+    search space pruning rules specific for the given optimization scenario.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     _REGISTERED_ALGORITHMS = {}
 
     name = None
@@ -53,9 +73,15 @@ class AlgorithmBase(ABC):
 
     def collect_model_info(self, main_prog, startup_prog):
         """
+<<<<<<< HEAD
         Collect the model static info (from programs) that could be used to
         pruning candidate trials and saving tuning time. For instance,
         model info like number of model parameters and activation memory could be
+=======
+        Collect the model static info (from programs) that could be used to 
+        pruning candidate trials and saving tuning time.For instance, 
+        model info like number of model parameters and activation memory could be 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         used to prune candidated trial and decide the next trial.
         """
         pass
@@ -71,7 +97,11 @@ class AlgorithmBase(ABC):
     @abstractmethod
     def update(self, results):
         """
+<<<<<<< HEAD
         Update the algorthim with the results of last trial. Using this information is used to
+=======
+        Update the algorthim with the results of last trial. Using this information is used to 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         pruning the search space of the future trial.
         """
         pass
@@ -89,6 +119,10 @@ class AlgorithmBase(ABC):
 
 
 def register_algor(name):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def impl(cls):
         AlgorithmBase._register(name, cls)
         cls.name = name
@@ -116,13 +150,21 @@ class ShardingStageAlgorithm(AlgorithmBase):
         self._max_stage = 3
         self._trial_idx = 0
 
+<<<<<<< HEAD
         stage_range = self._config.sharding.get("tuning_range", None)
+=======
+        stage_range = self._config.sharding.to_dict().get("tuning_range", None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if stage_range:
             assert set(stage_range).issubset(
                 set([0, 1, 2, 3])
             ), "Sharding Stage should belong into range within 0 - 3 but got {}.".format(
+<<<<<<< HEAD
                 stage_range
             )
+=======
+                stage_range)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             stage_range.sort(reverse=True)
         else:
             stage_range = list(range(self._max_stage + 1)).sort(reverse=True)
@@ -157,6 +199,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
             )
         else:
             self._trial_idx += 1
+<<<<<<< HEAD
 
 
 @register_algor("recompute")
@@ -246,3 +289,5 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
                     self._trail_left
                     + (self._trail_right - self._trail_left) / 2
                 )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

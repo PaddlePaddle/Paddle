@@ -19,7 +19,10 @@
 #include <vector>
 
 namespace paddle {
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace framework {
 class ProgramDesc;
 }  // namespace framework

@@ -24,17 +24,31 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class TopkKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get the top k elements of each row of input tensor
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto* indices = ctx.Output<phi::DenseTensor>("Indices");
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    auto* indices = ctx.Output<Tensor>("Indices");
+
+    size_t k = static_cast<int>(ctx.Attr<int>("k"));
+    auto* k_t = ctx.Input<Tensor>("K");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (k_t) {
       k = k_t->data<int>()[0];
       framework::DDim output_dims = output->dims();
@@ -92,12 +106,19 @@ template <typename DeviceContext, typename T>
 class TopkGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* out_grad =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* indices = context.Input<phi::DenseTensor>("Indices");
     auto* x_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* x = context.Input<Tensor>("X");
+    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* indices = context.Input<Tensor>("Indices");
+    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     const T* out_grad_data = out_grad->data<T>();

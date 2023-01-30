@@ -37,6 +37,15 @@ void RmspropDenseKernel(const Context& dev_ctx,
                         DenseTensor* moment_out,
                         DenseTensor* mean_square_out,
                         DenseTensor* mean_grad_out) {
+<<<<<<< HEAD
+=======
+  // check input
+  PADDLE_ENFORCE_EQ(centered,
+                    false,
+                    errors::Unimplemented(
+                        "centered=True is not supported in the xpu kernel of "
+                        "rmsprop. use XPU_BLACK_LIST to disable this op."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // copy learning_rate to cpu
   PADDLE_ENFORCE_EQ(
       learning_rate.dims().size(),
@@ -56,6 +65,7 @@ void RmspropDenseKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(moment_out);
   dev_ctx.template Alloc<T>(mean_square_out);
 
+<<<<<<< HEAD
   if (centered) {
     dev_ctx.template Alloc<T>(mean_grad_out);
     auto mg_tensor = mean_grad.get_ptr();
@@ -106,6 +116,25 @@ void RmspropDenseKernel(const Context& dev_ctx,
                          param.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "uncentered rmsprop");
   }
+=======
+  // int rmsprop(Context* ctx, const T* g, const T* p, const float* ms, const
+  // float* mom, T* p_out, float* ms_out, float* mom_out, float epsilon, float
+  // rho, float momentum, float lr, int n);
+  int r = xpu::rmsprop(dev_ctx.x_context(),
+                       grad.data<T>(),
+                       param.data<T>(),
+                       mean_square.data<T>(),
+                       moment.data<T>(),
+                       param_out->data<T>(),
+                       mean_square_out->data<T>(),
+                       moment_out->data<T>(),
+                       epsilon,
+                       decay,
+                       momentum,
+                       learning_rate_cpu,
+                       param.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "rmsprop");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 }  // namespace phi
 

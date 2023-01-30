@@ -30,7 +30,11 @@ class PSLib(Fleet):
     """PSLib class."""
 
     def __init__(self):
+<<<<<<< HEAD
         super().__init__(Mode.PSLIB)
+=======
+        super(PSLib, self).__init__(Mode.PSLIB)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._opt_info = None
         self._local_ip = 0
         self._fleet_ptr = None
@@ -43,15 +47,24 @@ class PSLib(Fleet):
     def init(self, role_maker=None):
         if role_maker is None:
             role_maker = MPISymetricRoleMaker()
+<<<<<<< HEAD
         super().init(role_maker)
+=======
+        super(PSLib, self).init(role_maker)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._fleet_ptr = fluid.core.Fleet()
         self._heter_ptr = None
         if isinstance(role_maker, HeterRoleMaker):
             self._heter_ptr = fluid.core.Heter()
 
+<<<<<<< HEAD
     def _set_client_communication_config(
         self, request_timeout_ms, connect_timeout_ms, max_retry
     ):
+=======
+    def _set_client_communication_config(self, request_timeout_ms,
+                                         connect_timeout_ms, max_retry):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._client2client_request_timeout_ms = request_timeout_ms
         self._client2client_connect_timeout_ms = connect_timeout_ms
         self._client2client_max_retry = max_retry
@@ -71,12 +84,17 @@ class PSLib(Fleet):
 
         if len(self._main_programs) == 0:
             raise ValueError(
+<<<<<<< HEAD
                 "You should run DistributedOptimizer.minimize() first"
             )
+=======
+                "You should run DistributedOptimizer.minimize() first")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
+<<<<<<< HEAD
                     self._opt_info["fleet_desc"]
                 )
                 self._dist_desc = self._opt_info["fleet_desc"]
@@ -84,11 +102,19 @@ class PSLib(Fleet):
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first"
                 )
+=======
+                    self._opt_info["fleet_desc"])
+                self._dist_desc = self._opt_info["fleet_desc"]
+            else:
+                raise Exception(
+                    "You should run DistributedOptimizer.minimize() first")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # barrier_all for init_server, wait for server starts
             if isinstance(self._role_maker, HeterRoleMaker):
                 if self._role_maker.is_xpu():
                     local_endpoint = self._role_maker.get_local_endpoint()
                     local_endpoint = local_endpoint.split(":")
+<<<<<<< HEAD
                     self._heter_ptr.start_xpu_service(
                         str(local_endpoint[0]), int(local_endpoint[1])
                     )
@@ -106,6 +132,20 @@ class PSLib(Fleet):
                     self._heter_ptr.set_xpu_list(
                         self._role_maker._xpu_endpoints
                     )
+=======
+                    self._heter_ptr.start_xpu_service(str(local_endpoint[0]),
+                                                      int(local_endpoint[1]))
+            self._role_maker._barrier_all()
+            self.all_ips_ = self._role_maker._all_gather(self._local_ip)
+            # worker_index * 2 is for compatible with older versions of pslib
+            self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
+                                        self._role_maker._get_size(),
+                                        self._role_maker.worker_index() * 2)
+            if isinstance(self._role_maker, HeterRoleMaker):
+                if self._role_maker.is_worker():
+                    self._heter_ptr.set_xpu_list(
+                        self._role_maker._xpu_endpoints)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self._heter_ptr.create_client2xpu_connection()
             # barrier_all for init_worker
             self._role_maker._barrier_all()
@@ -119,8 +159,12 @@ class PSLib(Fleet):
                 self._fleet_ptr.set_client2client_config(
                     self._client2client_request_timeout_ms,
                     self._client2client_connect_timeout_ms,
+<<<<<<< HEAD
                     self._client2client_max_retry,
                 )
+=======
+                    self._client2client_max_retry)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
@@ -146,6 +190,7 @@ class PSLib(Fleet):
                             var_name = table.dense_variable_name[i]
                             if scope.find_var(var_name) is None:
                                 raise ValueError(
+<<<<<<< HEAD
                                     "var "
                                     + var_name
                                     + " not found in scope, "
@@ -156,12 +201,26 @@ class PSLib(Fleet):
                             self._fleet_ptr.init_model(
                                 scope, int(table.table_id), var_name_list
                             )
+=======
+                                    "var " + var_name +
+                                    " not found in scope, " +
+                                    "you should run startup program first")
+                            var_name_list.append(var_name)
+                        if not self._opt_info["use_ps_gpu"]:
+                            self._fleet_ptr.init_model(scope,
+                                                       int(table.table_id),
+                                                       var_name_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # barrier for init model done
             self._role_maker._barrier_worker()
         else:
             raise NameError(
+<<<<<<< HEAD
                 "You should run DistributedOptimizer.minimize() first"
             )
+=======
+                "You should run DistributedOptimizer.minimize() first")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_server(self, model_dir=None, **kwargs):
         """
@@ -190,12 +249,18 @@ class PSLib(Fleet):
 
     def run_server(self):
         """
+<<<<<<< HEAD
         init_pserver(): will be called by user. When a user knows current process is_worker(), he/she
             should call init_pserver() to initialize global information about parameter server
+=======
+         init_pserver(): will be called by user. When a user knows current process is_worker(), he/she
+             should call init_pserver() to initialize global information about parameter server
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
+<<<<<<< HEAD
                     self._opt_info["fleet_desc"]
                 )
                 self._dist_desc = self._opt_info["fleet_desc"]
@@ -207,34 +272,58 @@ class PSLib(Fleet):
             self._fleet_ptr.init_server(
                 self._dist_desc_str, self._role_maker.server_index() * 2
             )
+=======
+                    self._opt_info["fleet_desc"])
+                self._dist_desc = self._opt_info["fleet_desc"]
+            else:
+                raise Exception(
+                    "You should run DistributedOptimizer.minimize() first")
+            # server_index * 2 is for compatible with older versions of pslib
+            self._fleet_ptr.init_server(self._dist_desc_str,
+                                        self._role_maker.server_index() * 2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if isinstance(self._role_maker, MPISymetricRoleMaker):
                 self._local_ip = self._fleet_ptr.run_server()
             else:
                 local_endpoint = self._role_maker.get_local_endpoint()
                 local_endpoint = local_endpoint.split(":")
                 self._local_ip = self._fleet_ptr.run_server(
+<<<<<<< HEAD
                     str(local_endpoint[0]), int(local_endpoint[1])
                 )
+=======
+                    str(local_endpoint[0]), int(local_endpoint[1]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # barrier_all for init_server
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
 
+<<<<<<< HEAD
             self._fleet_ptr.gather_servers(
                 self.all_ips_, self._role_maker._get_size()
             )
+=======
+            self._fleet_ptr.gather_servers(self.all_ips_,
+                                           self._role_maker._get_size())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # barrier_all for init_worker, wait all workers start
             self._role_maker._barrier_all()
         else:
             raise Exception(
+<<<<<<< HEAD
                 "You should run DistributedOptimizer.minimize() first"
             )
+=======
+                "You should run DistributedOptimizer.minimize() first")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def end_pass(self, scope):
         if self._role_maker.worker_index() < self._role_maker.xpu_num():
             self._heter_ptr.end_pass(scope, self._role_maker.worker_index())
             self._heter_ptr.stop_xpu_service(self._role_maker.worker_index())
 
+<<<<<<< HEAD
     def train_from_dataset(
         self,
         executor,
@@ -286,6 +375,46 @@ class PSLib(Fleet):
             print_period,
             fetch_handler,
         )
+=======
+    def train_from_dataset(self,
+                           executor,
+                           program=None,
+                           dataset=None,
+                           scope=None,
+                           thread=0,
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100,
+                           fetch_handler=None):
+        """
+
+        """
+
+        if self._role_maker.is_worker():
+            self._role_maker._barrier_heter()
+        executor.train_from_dataset(program, dataset, scope, thread, debug,
+                                    fetch_list, fetch_info, print_period,
+                                    fetch_handler)
+
+    def start_heter_trainer(self,
+                            executor,
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
+        """
+
+        """
+
+        trainer_instance = executor.start_heter_trainer(program, scope, debug,
+                                                        fetch_list, fetch_info,
+                                                        print_period,
+                                                        fetch_handler)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if self._role_maker.is_xpu():
             print("barrier heter")
             self._role_maker._barrier_heter()
@@ -325,6 +454,7 @@ class PSLib(Fleet):
         self._optimizer = DownpourOptimizer(optimizer, strategy)
         return self._optimizer
 
+<<<<<<< HEAD
     def save_inference_model(
         self,
         executor,
@@ -334,6 +464,15 @@ class PSLib(Fleet):
         main_program=None,
         export_for_deployment=True,
     ):
+=======
+    def save_inference_model(self,
+                             executor,
+                             dirname,
+                             feeded_var_names=None,
+                             target_vars=None,
+                             main_program=None,
+                             export_for_deployment=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         save pserver model called from a worker
         Args:
@@ -403,9 +542,18 @@ class PSLib(Fleet):
             self._fleet_ptr.save_model(dirname, mode)
         self._role_maker._barrier_worker()
 
+<<<<<<< HEAD
     def save_model_with_whitelist(
         self, executor, dirname, whitelist_path, main_program=None, **kwargs
     ):
+=======
+    def save_model_with_whitelist(self,
+                                  executor,
+                                  dirname,
+                                  whitelist_path,
+                                  main_program=None,
+                                  **kwargs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         save whitelist, mode is consistent with fleet.save_persistables,
         when using fleet, it will save sparse and dense feature
@@ -431,9 +579,14 @@ class PSLib(Fleet):
         self._fleet_ptr.client_flush()
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
+<<<<<<< HEAD
             self._fleet_ptr.save_model_with_whitelist(
                 table_id, dirname, mode, whitelist_path
             )
+=======
+            self._fleet_ptr.save_model_with_whitelist(table_id, dirname, mode,
+                                                      whitelist_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._role_maker._barrier_worker()
 
     def save_multi_table_one_path(self, table_ids, model_dir, **kwargs):
@@ -454,9 +607,14 @@ class PSLib(Fleet):
         mode = kwargs.get("mode", 0)
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
+<<<<<<< HEAD
             self._fleet_ptr.save_multi_table_one_path(
                 table_ids, model_dir, mode
             )
+=======
+            self._fleet_ptr.save_multi_table_one_path(table_ids, model_dir,
+                                                      mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._role_maker._barrier_worker()
 
     def save_cache_model(self, executor, dirname, main_program=None, **kwargs):
@@ -485,6 +643,7 @@ class PSLib(Fleet):
 
         if self._role_maker.is_first_worker():
             cache_threshold = self._fleet_ptr.get_cache_threshold(table_id)
+<<<<<<< HEAD
         # check cache threshold right or not
         self._role_maker._barrier_worker()
 
@@ -492,6 +651,14 @@ class PSLib(Fleet):
             self._fleet_ptr.cache_shuffle(
                 table_id, dirname, mode, cache_threshold
             )
+=======
+        #check cache threshold right or not
+        self._role_maker._barrier_worker()
+
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.cache_shuffle(table_id, dirname, mode,
+                                          cache_threshold)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._role_maker._barrier_worker()
 
@@ -550,9 +717,14 @@ class PSLib(Fleet):
                             break
                     if skip:
                         continue
+<<<<<<< HEAD
                     self._fleet_ptr.shrink_dense_table(
                         i.table_id, scope, var_list, decay, emb_dim
                     )
+=======
+                    self._fleet_ptr.shrink_dense_table(i.table_id, scope,
+                                                       var_list, decay, emb_dim)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._role_maker._barrier_worker()
 
     def clear_one_table(self, table_id):
@@ -622,9 +794,14 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         mode = kwargs.get("mode", 0)
         if self._role_maker.is_first_worker():
+<<<<<<< HEAD
             self._fleet_ptr.load_table_with_whitelist(
                 table_id, model_path, mode
             )
+=======
+            self._fleet_ptr.load_table_with_whitelist(table_id, model_path,
+                                                      mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._role_maker._barrier_worker()
 
     def load_one_table(self, table_id, model_path, **kwargs):
@@ -667,6 +844,7 @@ class PSLib(Fleet):
         load_combine = kwargs.get("load_combine", False)
         self._role_maker._barrier_worker()
         if scope is not None and model_proto_file is not None:
+<<<<<<< HEAD
             self._load_one_table_from_paddle_model(
                 scope,
                 table_id,
@@ -675,10 +853,16 @@ class PSLib(Fleet):
                 var_names,
                 load_combine,
             )
+=======
+            self._load_one_table_from_paddle_model(scope, table_id, model_path,
+                                                   model_proto_file, var_names,
+                                                   load_combine)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif self._role_maker.is_first_worker():
             self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
         self._role_maker._barrier_worker()
 
+<<<<<<< HEAD
     def _load_one_table_from_paddle_model(
         self,
         scope,
@@ -688,6 +872,15 @@ class PSLib(Fleet):
         var_names=None,
         load_combine=False,
     ):
+=======
+    def _load_one_table_from_paddle_model(self,
+                                          scope,
+                                          table_id,
+                                          model_path,
+                                          model_proto_file,
+                                          var_names=None,
+                                          load_combine=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         load params from paddle model, and push params to pserver
         Args:
@@ -703,15 +896,21 @@ class PSLib(Fleet):
         if self._role_maker.is_first_worker():
             # get fs config from fleet_desc
             fs_name = self._opt_info["fleet_desc"].fs_client_param.uri
+<<<<<<< HEAD
             fs_ugi = (
                 self._opt_info["fleet_desc"].fs_client_param.user
                 + ","
                 + self._opt_info["fleet_desc"].fs_client_param.passwd
             )
+=======
+            fs_ugi = self._opt_info["fleet_desc"].fs_client_param.user + "," + \
+                     self._opt_info["fleet_desc"].fs_client_param.passwd
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             hadoop_bin = self._opt_info["fleet_desc"].fs_client_param.hadoop_bin
             # download model_path if it's hdfs/afs
             if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
                 dest = "./model_for_load_table_%s" % table_id
+<<<<<<< HEAD
                 cmd = (
                     hadoop_bin
                     + " fs -D fs.default.name="
@@ -723,11 +922,17 @@ class PSLib(Fleet):
                     + " "
                     + dest
                 )
+=======
+                cmd = hadoop_bin + " fs -D fs.default.name=" + fs_name + \
+                      " -D hadoop.job.ugi=" + fs_ugi + " -get " + model_path + \
+                      " " + dest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ret = os.system(cmd)
                 if ret != 0:
                     raise RuntimeError("download model failed")
                 model_path = dest
             # download model_proto_file if it's hdfs/afs
+<<<<<<< HEAD
             if model_proto_file.startswith(
                 "hdfs:"
             ) or model_proto_file.startswith("afs:"):
@@ -743,6 +948,14 @@ class PSLib(Fleet):
                     + " "
                     + dest
                 )
+=======
+            if model_proto_file.startswith("hdfs:") or \
+                    model_proto_file.startswith("afs:"):
+                dest = "./model_proto_file_for_load_table_%s" % table_id
+                cmd = hadoop_bin + " fs -D fs.default.name=" + fs_name + \
+                      " -D hadoop.job.ugi=" + fs_ugi + " -get " + \
+                      model_proto_file + " " + dest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ret = os.system(cmd)
                 if ret != 0:
                     raise RuntimeError("download model proto file failed")
@@ -760,6 +973,7 @@ class PSLib(Fleet):
                     if skip:
                         continue
                     self._fleet_ptr.load_from_paddle_model(
+<<<<<<< HEAD
                         scope,
                         table_id,
                         var_names,
@@ -768,6 +982,10 @@ class PSLib(Fleet):
                         table_var_names,
                         load_combine,
                     )
+=======
+                        scope, table_id, var_names, model_path,
+                        model_proto_file, table_var_names, load_combine)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._role_maker._barrier_worker()
 
     def confirm(self):
@@ -853,8 +1071,12 @@ class PSLib(Fleet):
         if self._role_maker.is_first_worker():
             if prefix is not None:
                 self._fleet_ptr.save_model_one_table_with_prefix(
+<<<<<<< HEAD
                     table_id, model_dir, mode, prefix
                 )
+=======
+                    table_id, model_dir, mode, prefix)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 self._fleet_ptr.save_model_one_table(table_id, model_dir, mode)
         self._role_maker._barrier_worker()
@@ -878,6 +1100,7 @@ class PSLib(Fleet):
 fleet = PSLib()
 
 
+<<<<<<< HEAD
 def _prepare_params(
     input,
     size,
@@ -887,6 +1110,15 @@ def _prepare_params(
     param_attr=None,
     dtype='float32',
 ):
+=======
+def _prepare_params(input,
+                    size,
+                    is_sparse=False,
+                    is_distributed=False,
+                    padding_idx=None,
+                    param_attr=None,
+                    dtype='float32'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     preprocess params, this interface is not for users.
     Args:
@@ -916,18 +1148,28 @@ def _prepare_params(
     if d_size.get(name) is None:
         d_size[name] = size
     elif d_size[name] != size:
+<<<<<<< HEAD
         raise ValueError(
             "embedding size error: %s vs %s" % (size, d_size[name])
         )
+=======
+        raise ValueError("embedding size error: %s vs %s" %
+                         (size, d_size[name]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # check embedding accessor
     accessor = FLEET_GLOBAL_DICT["cur_accessor"]
     if d_accessor.get(name) is None:
         d_accessor[name] = accessor
     elif d_accessor[name] != accessor:
+<<<<<<< HEAD
         raise ValueError(
             "embedding size error: %s vs %s" % (d_accessor[name], accessor)
         )
+=======
+        raise ValueError("embedding size error: %s vs %s" %
+                         (d_accessor[name], accessor))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # check embedding table id
     if d_table.get(name) is None:
@@ -943,6 +1185,7 @@ def _prepare_params(
         raise ValueError("dtype must be float32")
 
 
+<<<<<<< HEAD
 def _fleet_embedding(
     input,
     size,
@@ -952,6 +1195,15 @@ def _fleet_embedding(
     param_attr=None,
     dtype='float32',
 ):
+=======
+def _fleet_embedding(input,
+                     size,
+                     is_sparse=False,
+                     is_distributed=False,
+                     padding_idx=None,
+                     param_attr=None,
+                     dtype='float32'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     add fleet embedding, this interface is not for users.
     Args:
@@ -964,9 +1216,14 @@ def _fleet_embedding(
         dtype(str): data type of output
     """
     # check and set params
+<<<<<<< HEAD
     _prepare_params(
         input, size, is_sparse, is_distributed, padding_idx, param_attr, dtype
     )
+=======
+    _prepare_params(input, size, is_sparse, is_distributed, padding_idx,
+                    param_attr, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     name = param_attr.name
     size = size[-1]
     if padding_idx is None:
@@ -981,6 +1238,7 @@ def _fleet_embedding(
         ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
         padding_id=padding_idx,
         dtype=dtype,
+<<<<<<< HEAD
         scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"],
     )
 
@@ -994,6 +1252,18 @@ def _fleet_embedding_v2(
     param_attr=None,
     dtype='float32',
 ):
+=======
+        scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"])
+
+
+def _fleet_embedding_v2(input,
+                        size,
+                        is_sparse=False,
+                        is_distributed=False,
+                        padding_idx=None,
+                        param_attr=None,
+                        dtype='float32'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     add fleet embedding v2, this interface is not for users.
     Args:
@@ -1006,9 +1276,14 @@ def _fleet_embedding_v2(
         dtype(str): data type of output
     """
     # check and set params
+<<<<<<< HEAD
     _prepare_params(
         input, size, is_sparse, is_distributed, padding_idx, param_attr, dtype
     )
+=======
+    _prepare_params(input, size, is_sparse, is_distributed, padding_idx,
+                    param_attr, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     name = param_attr.name
     size = size[-1]
     if padding_idx is None:
@@ -1023,11 +1298,18 @@ def _fleet_embedding_v2(
         ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
         padding_id=padding_idx,
         dtype=dtype,
+<<<<<<< HEAD
         scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"],
     )
 
 
 class fleet_embedding:
+=======
+        scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"])
+
+
+class fleet_embedding(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     fleet embedding class, it is used as a wrapper
     Example:
@@ -1085,7 +1367,11 @@ class DownpourOptimizer(DistributedOptimizer):
     """
 
     def __init__(self, optimizer, strategy=None):
+<<<<<<< HEAD
         super().__init__(optimizer, strategy)
+=======
+        super(DownpourOptimizer, self).__init__(optimizer, strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._optimizer = optimizer
         self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
@@ -1094,12 +1380,17 @@ class DownpourOptimizer(DistributedOptimizer):
                 "Currently, distributed optimizer only support Adam"
                 "Will config built-in adam for you."
                 "We will support more functions in DistributedOptimizer",
+<<<<<<< HEAD
                 sys.stderr,
             )
+=======
+                sys.stderr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self._optimizer_name = "DistributedAdam"
 
         self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
 
+<<<<<<< HEAD
     def backward(
         self,
         loss,
@@ -1108,6 +1399,14 @@ class DownpourOptimizer(DistributedOptimizer):
         no_grad_set=None,
         callbacks=None,
     ):
+=======
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         Currently, backward function can not be called through DistributedOptimizer
         """
@@ -1135,8 +1434,12 @@ class DownpourOptimizer(DistributedOptimizer):
         current_endpoint = ''
         num_trainers = 0
         if os.getenv('PADDLE_TRAINER_ENDPOINTS') and os.getenv(
+<<<<<<< HEAD
             'PADDLE_CURRENT_ENDPOINT'
         ):
+=======
+                'PADDLE_CURRENT_ENDPOINT'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
             current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
             num_trainers = len(trainer_endpoints.split(','))
@@ -1145,7 +1448,11 @@ class DownpourOptimizer(DistributedOptimizer):
             'trainer_id': trainer_id,
             'num_trainers': num_trainers,
             'current_endpoint': current_endpoint,
+<<<<<<< HEAD
             'trainer_endpoints': trainer_endpoints,
+=======
+            'trainer_endpoints': trainer_endpoints
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def _remove_collective_op_for_embedding(self, loss, table_name):
@@ -1172,6 +1479,7 @@ class DownpourOptimizer(DistributedOptimizer):
         for index in need_remove_op_index:
             block._remove_op(index)
 
+<<<<<<< HEAD
     def minimize(
         self,
         losses,
@@ -1181,6 +1489,15 @@ class DownpourOptimizer(DistributedOptimizer):
         no_grad_set=None,
         program_mode="all_reduce",
     ):
+=======
+    def minimize(self,
+                 losses,
+                 scopes=None,
+                 startup_programs=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 program_mode="all_reduce"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
@@ -1194,7 +1511,11 @@ class DownpourOptimizer(DistributedOptimizer):
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
+<<<<<<< HEAD
             program_mode (str|"all_reduce"): grad action for grogram when use_ps_gpu.
+=======
+            program_mode (str|"all_reduce"): grad action for grogram when use_ps_gpu. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
@@ -1203,6 +1524,7 @@ class DownpourOptimizer(DistributedOptimizer):
         if not isinstance(losses, list):
             losses = [losses]
 
+<<<<<<< HEAD
         (
             optimize_ops,
             param_grads,
@@ -1214,6 +1536,15 @@ class DownpourOptimizer(DistributedOptimizer):
             no_grad_set,
             self._strategy,
         )
+=======
+        optimize_ops, param_grads, opt_info = \
+            self._distributed_optimizer._minimize(
+                losses,
+                startup_programs,
+                parameter_list,
+                no_grad_set,
+                self._strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         opt_info["mpi_rank"] = fleet.worker_index()
         opt_info["mpi_size"] = fleet.worker_num()
         fleet._set_opt_info(opt_info)
@@ -1232,6 +1563,7 @@ class DownpourOptimizer(DistributedOptimizer):
         fleet._scopes = scopes
         if opt_info["use_ps_gpu"]:
             from paddle.fluid.transpiler.collective import MultiThread
+<<<<<<< HEAD
 
             # check start program
             if program_mode not in [
@@ -1244,6 +1576,15 @@ class DownpourOptimizer(DistributedOptimizer):
                     "You should set program_mode in [ all_reduce, \
                                 fuse_all_reduce, all_gather, all_reduce_xpu ]"
                 )
+=======
+            # check start program
+            if program_mode not in [
+                    "all_reduce", "fuse_all_reduce", "all_gather",
+                    "all_reduce_xpu"
+            ]:
+                raise ValueError("You should set program_mode in [ all_reduce, \
+                                fuse_all_reduce, all_gather, all_reduce_xpu ]")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             env = self.get_dist_env()
             if not isinstance(losses, list):
                 startup_programs = [startup_programs]
@@ -1252,6 +1593,7 @@ class DownpourOptimizer(DistributedOptimizer):
                 t = MultiThread(trans_mode=program_mode)
                 start_program = startup_programs[i]
                 main_program = programs[i]
+<<<<<<< HEAD
                 t.transpile(
                     startup_program=start_program,
                     main_program=main_program,
@@ -1269,6 +1611,21 @@ class DownpourOptimizer(DistributedOptimizer):
                 embedding_table = self._distributed_optimizer._find_multi_distributed_lookup_table(
                     [loss]
                 )
+=======
+                t.transpile(startup_program=start_program,
+                            main_program=main_program,
+                            rank=env["trainer_id"],
+                            endpoints=env["trainer_endpoints"],
+                            current_endpoint=env['current_endpoint'],
+                            wait_port=False)
+                if i > 0:
+                    self._remove_collective_ops(start_program,
+                                                "c_comm_init_all")
+            for i in range(0, len(losses)):
+                loss = losses[i]
+                embedding_table = self._distributed_optimizer._find_multi_distributed_lookup_table(
+                    [loss])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self._remove_collective_op_for_embedding(loss, embedding_table)
 
         return [optimize_ops, param_grads]

@@ -59,11 +59,14 @@ class DependOp : public framework::OperatorBase {
   }
 };
 
+<<<<<<< HEAD
 class DependOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {}
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class DependOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -78,7 +81,11 @@ b = opA(a)
 y = opB(x)
 
 if tensor b and tensor x has some inner dependency, for example, x share data with b,
+<<<<<<< HEAD
 we need to add explicit dependency for x <- b, otherwise the these two operators may
+=======
+we need to add explicit dependency for x <- b, otherwise the these two operators may 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 be executed parellel in static graph. We can use depend op as below,
 
 b = opA(a)
@@ -89,6 +96,7 @@ y = opB(x)
   }
 };
 
+<<<<<<< HEAD
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(DependNoNeedBufferVarsInferer, "X", "Dep");
 
 }  // namespace operators
@@ -104,3 +112,14 @@ REGISTER_OPERATOR(
     ops::DependOpProtoMaker,
     ops::DependOpShapeInference,
     ops::DependNoNeedBufferVarsInferer);
+=======
+}  // namespace operators
+}  // namespace paddle
+
+REGISTER_OPERATOR(
+    depend,
+    paddle::operators::DependOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    paddle::operators::DependOpProtoMaker);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -12,21 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_collective_api_base import TestDistBase
 
 import paddle
 
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_api_base import TestDistBase
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
 class TestCollectiveAllreduceAPI(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_allreduce_nccl(self):
         if paddle.fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place(
                 "collective_allreduce_api.py", "allreduce", "nccl"
             )
@@ -52,10 +67,29 @@ class TestCollectiveAllreduceAPI(TestDistBase):
             "int8",
             "uint8",
             "bool",
+=======
+            self.check_with_place("collective_allreduce_api.py", "allreduce",
+                                  "nccl")
+
+    def test_allreduce_bkcl(self):
+        if paddle.fluid.core.is_compiled_with_xpu():
+            self.check_with_place("collective_allreduce_api.py", "allreduce",
+                                  "bkcl")
+
+    def test_allreduce_gloo(self):
+        self.check_with_place("collective_allreduce_api.py", "allreduce",
+                              "gloo", "2")
+
+    def test_allreduce_nccl_dygraph(self):
+        dtypes_to_test = [
+            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
+            "bool"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         if self._nccl_version >= 2100:
             dtypes_to_test.append("bfloat16")
         for dtype in dtypes_to_test:
+<<<<<<< HEAD
             self.check_with_place(
                 "collective_allreduce_api_dygraph.py",
                 "allreduce",
@@ -85,6 +119,26 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                 static_mode="0",
                 dtype=dtype,
             )
+=======
+            self.check_with_place("collective_allreduce_api_dygraph.py",
+                                  "allreduce",
+                                  "nccl",
+                                  static_mode="0",
+                                  dtype=dtype)
+
+    def test_allreduce_gloo_dygraph(self):
+        dtypes_to_test = [
+            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
+            "bool", "bfloat16"
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_allreduce_api_dygraph.py",
+                                  "allreduce",
+                                  "gloo",
+                                  "2",
+                                  static_mode="0",
+                                  dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

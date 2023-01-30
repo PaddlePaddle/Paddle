@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import subprocess
 import sys
@@ -24,23 +25,49 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import os
+import sys
+import time
+import threading
+import subprocess
+import unittest
+import numpy
+
+import paddle
+import paddle.fluid as fluid
+
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.utils.launch_utils import find_free_ports
 
 paddle.enable_static()
 
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
+<<<<<<< HEAD
     def net(self):
         x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
         x1 = paddle.static.data(
             name='x1', shape=[-1, 1], dtype='int64', lod_level=1
         )
+=======
+
+    def net(self):
+        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+        x1 = fluid.layers.data(name='x1', shape=[1], dtype='int64', lod_level=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         emb = fluid.layers.embedding(
             input=x1,
             size=[10000, 10],
             param_attr=fluid.ParamAttr(
                 name="embedding",
+<<<<<<< HEAD
                 initializer=fluid.initializer.Constant(value=0.01),
             ),
             is_sparse=True,
@@ -51,10 +78,25 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         y_predict = paddle.static.nn.fc(x=z, size=1)
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+=======
+                initializer=fluid.initializer.Constant(value=0.01)),
+            is_sparse=True)
+
+        pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
+        z = fluid.layers.concat(input=[x, pool], axis=1)
+        y_predict = fluid.layers.fc(input=z, size=1, act=None)
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         avg_cost = paddle.mean(cost)
         return avg_cost, x, x1, y
 
     def fake_reader(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def reader():
             for i in range(10000):
                 x = numpy.random.random((1, 13)).astype('float32')
@@ -91,11 +133,17 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         feeder = fluid.DataFeeder(place=place, feed_list=[x, z, y])
 
         for batch_id, data in enumerate(train_reader()):
+<<<<<<< HEAD
             exe.run(
                 fluid.default_main_program(),
                 feed=feeder.feed(data),
                 fetch_list=[],
             )
+=======
+            exe.run(fluid.default_main_program(),
+                    feed=feeder.feed(data),
+                    fetch_list=[])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         fleet.stop_worker()
 
@@ -122,6 +170,10 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
 
     def test_communicator(self):
         run_server_cmd = """
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import sys
 import os
@@ -168,11 +220,17 @@ half_run_server.run_ut()
 
         ps_cmd = "{} {}".format(_python, server_file)
 
+<<<<<<< HEAD
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+=======
+        ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         time.sleep(5)
 

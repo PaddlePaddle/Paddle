@@ -15,6 +15,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using fp16 = paddle::platform::float16;
 
 template <typename T>
@@ -30,67 +34,107 @@ struct DensityPriorBoxFunction {
     FillNpuTensorWithConstant<float>(&t0, static_cast<float>(0));
     FillNpuTensorWithConstant<float>(&t1, static_cast<float>(1));
   }
+<<<<<<< HEAD
   void Arange(int n, phi::DenseTensor* x) {
+=======
+  void Arange(int n, Tensor* x) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  x should be init first
     FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
     const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {*x}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Add(const phi::DenseTensor* x,
            const phi::DenseTensor* y,
            phi::DenseTensor* z) {
+=======
+  void Add(const Tensor* x, const Tensor* y, Tensor* z) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  z should be init first
     const auto& runner = NpuOpRunner("AddV2", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Cast(const phi::DenseTensor* x, phi::DenseTensor* y) {
+=======
+  void Cast(const Tensor* x, Tensor* y) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto dst_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(y->type()));
     const auto& runner = NpuOpRunner(
         "Cast", {*x}, {*y}, {{"dst_type", static_cast<int>(dst_dtype)}});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Sub(const phi::DenseTensor* x,
            const phi::DenseTensor* y,
            phi::DenseTensor* z) {
+=======
+  void Sub(const Tensor* x, const Tensor* y, Tensor* z) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  z should be init first
     const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Mul(const phi::DenseTensor* x,
            const phi::DenseTensor* y,
            phi::DenseTensor* z) {
+=======
+  void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  y should be init first
     const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Adds(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
+=======
+  void Adds(const Tensor* x, float scalar, Tensor* y) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  y should be init first
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Muls(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
+=======
+  void Muls(const Tensor* x, float scalar, Tensor* y) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  y should be init first
     const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Maximum(const phi::DenseTensor* x,
                const phi::DenseTensor* y,
                phi::DenseTensor* z) {
+=======
+  void Maximum(const Tensor* x, const Tensor* y, Tensor* z) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  y should be init first
     const auto& runner = NpuOpRunner("Maximum", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Minimum(const phi::DenseTensor* x,
                const phi::DenseTensor* y,
                phi::DenseTensor* z) {
+=======
+  void Minimum(const Tensor* x, const Tensor* y, Tensor* z) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  y should be init first
     const auto& runner = NpuOpRunner("Minimum", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Concat(const std::vector<phi::DenseTensor>& inputs,
               int axis,
               phi::DenseTensor* output) {
+=======
+  void Concat(const std::vector<Tensor>& inputs, int axis, Tensor* output) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  output should be init first
     std::vector<std::string> names;
     for (size_t i = 0; i < inputs.size(); i++) {
@@ -104,9 +148,13 @@ struct DensityPriorBoxFunction {
     runner.AddInputNames(names);
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Tile(const phi::DenseTensor* x,
             phi::DenseTensor* y,
             const std::vector<int>& multiples) {
+=======
+  void Tile(const Tensor* x, Tensor* y, const std::vector<int>& multiples) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  y should be init first
     if (x->dims() == y->dims()) {
       framework::TensorCopy(
@@ -120,7 +168,11 @@ struct DensityPriorBoxFunction {
         NpuOpRunner("TileD", {*x}, {*y}, {{"multiples", multiples}});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void FloatVec2Tsr(const std::vector<float>& vec, phi::DenseTensor* tsr_dst) {
+=======
+  void FloatVec2Tsr(const std::vector<float>& vec, Tensor* tsr_dst) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //
     framework::TensorFromVector<T>(vec, ctx.device_context(), tsr_dst);
     ctx.template device_context<platform::NPUDeviceContext>().Wait();
@@ -130,6 +182,7 @@ struct DensityPriorBoxFunction {
   platform::Place place;
   aclrtStream stream;
   const framework::ExecutionContext& ctx;
+<<<<<<< HEAD
   phi::DenseTensor t0;
   phi::DenseTensor t1;
   phi::DenseTensor tn;
@@ -138,6 +191,16 @@ struct DensityPriorBoxFunction {
 template <>
 void DensityPriorBoxFunction<fp16>::Arange(int n, phi::DenseTensor* x) {
   phi::DenseTensor x_fp32(experimental::DataType::FLOAT32);
+=======
+  Tensor t0;
+  Tensor t1;
+  Tensor tn;
+};
+
+template <>
+void DensityPriorBoxFunction<fp16>::Arange(int n, Tensor* x) {
+  Tensor x_fp32(experimental::DataType::FLOAT32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   x_fp32.mutable_data<float>(x->dims(), place);
   FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
   const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {x_fp32}, {});
@@ -147,8 +210,13 @@ void DensityPriorBoxFunction<fp16>::Arange(int n, phi::DenseTensor* x) {
 
 template <>
 void DensityPriorBoxFunction<fp16>::FloatVec2Tsr(const std::vector<float>& vec,
+<<<<<<< HEAD
                                                  phi::DenseTensor* tsr_dst) {
   phi::DenseTensor tsr_fp32(experimental::DataType::FLOAT32);
+=======
+                                                 Tensor* tsr_dst) {
+  Tensor tsr_fp32(experimental::DataType::FLOAT32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tsr_fp32.mutable_data<float>(tsr_dst->dims(), place);
   framework::TensorFromVector<float>(vec, ctx.device_context(), &tsr_fp32);
   ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
@@ -159,10 +227,17 @@ template <typename T>
 class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* image = ctx.Input<phi::DenseTensor>("Image");
     auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
     auto* vars = ctx.Output<phi::DenseTensor>("Variances");
+=======
+    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
+    auto* image = ctx.Input<paddle::framework::Tensor>("Image");
+    auto* boxes = ctx.Output<paddle::framework::Tensor>("Boxes");
+    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto variances = ctx.Attr<std::vector<float>>("variances");
     auto clip = ctx.Attr<bool>("clip");
@@ -184,9 +259,15 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     DensityPriorBoxFunction<T> F(ctx);
 
+<<<<<<< HEAD
     phi::DenseTensor h(_type);
     h.mutable_data<T>({layer_h}, place);
     phi::DenseTensor w(_type);
+=======
+    Tensor h(_type);
+    h.mutable_data<T>({layer_h}, place);
+    Tensor w(_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     w.mutable_data<T>({layer_w}, place);
     F.Arange(layer_h, &h);
     F.Arange(layer_w, &w);
@@ -202,11 +283,19 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < densities.size(); ++i) {
       num_priors_per_ratio += densities[i] * densities[i];
     }
+<<<<<<< HEAD
     phi::DenseTensor di(_type);
     phi::DenseTensor dj(_type);
     phi::DenseTensor shifts(_type);
     phi::DenseTensor box_w_ratio(_type);
     phi::DenseTensor box_h_ratio(_type);
+=======
+    Tensor di(_type);
+    Tensor dj(_type);
+    Tensor shifts(_type);
+    Tensor box_w_ratio(_type);
+    Tensor box_h_ratio(_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     di.mutable_data<T>({ratios_size * num_priors_per_ratio}, place);
     dj.mutable_data<T>({ratios_size * num_priors_per_ratio}, place);
     shifts.mutable_data<T>({ratios_size * num_priors_per_ratio}, place);
@@ -219,13 +308,18 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
       //  Range = start:start+ratios_size*density_sqr, density = densities[i]
       int density_sqr = densities[i] * densities[i];
       //  shifts[Range] = [step_average/density]*ratios_size*density_sqr
+<<<<<<< HEAD
       phi::DenseTensor shifts_part =
+=======
+      Tensor shifts_part =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           shifts.Slice(start, start + ratios_size * density_sqr);
       FillNpuTensorWithConstant<T>(&shifts_part,
                                    static_cast<T>(step_average / densities[i]));
 
       //  di[Range] = [ i // density for i in range(density_sqr) ] * ratios_size
       //  dj[Range] = [ i % density for i in range(density_sqr) ] * ratios_size
+<<<<<<< HEAD
       phi::DenseTensor di_part =
           di.Slice(start, start + ratios_size * density_sqr);
       phi::DenseTensor dj_part =
@@ -234,6 +328,14 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
         di_part.Resize({ratios_size, densities[i], densities[i]});
         dj_part.Resize({ratios_size, densities[i], densities[i]});
         phi::DenseTensor range_n(_type);
+=======
+      Tensor di_part = di.Slice(start, start + ratios_size * density_sqr);
+      Tensor dj_part = dj.Slice(start, start + ratios_size * density_sqr);
+      if (densities[i] > 1) {
+        di_part.Resize({ratios_size, densities[i], densities[i]});
+        dj_part.Resize({ratios_size, densities[i], densities[i]});
+        Tensor range_n(_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         range_n.mutable_data<T>({densities[i]}, place);
         F.Arange(densities[i], &range_n);
         range_n.Resize({1, densities[i], 1});
@@ -255,9 +357,15 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
         //  Range_mini = start_box_ratio:start_box_ratio+density_sqr
         //  box_h_ratio[Range_mini] = [fixed_sizes[i] * sqrt(ar)]  * density_sqr
         //  box_w_ratio[Range_mini] = [fixed_sizes[i] / sqrt(ar)]  * density_sqr
+<<<<<<< HEAD
         phi::DenseTensor box_h_ratio_part =
             box_h_ratio.Slice(start_box_ratio, start_box_ratio + density_sqr);
         phi::DenseTensor box_w_ratio_part =
+=======
+        Tensor box_h_ratio_part =
+            box_h_ratio.Slice(start_box_ratio, start_box_ratio + density_sqr);
+        Tensor box_w_ratio_part =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             box_w_ratio.Slice(start_box_ratio, start_box_ratio + density_sqr);
         FillNpuTensorWithConstant<T>(&box_w_ratio_part,
                                      static_cast<T>(fixed_sizes[i] * sqrt(ar)));
@@ -275,8 +383,13 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
 
     //  c_x = (w+offset)*step_w - 0.5*step_average + 0.5*shifts + dj*shifts
     //  c_y = (h+offset)*step_h - 0.5*step_average + 0.5*shifts + di*shifts
+<<<<<<< HEAD
     phi::DenseTensor c_x(_type);
     phi::DenseTensor c_y(_type);
+=======
+    Tensor c_x(_type);
+    Tensor c_y(_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto dim0 =
         phi::make_ddim({1, layer_w, ratios_size * num_priors_per_ratio, 1});
     auto dim1 =
@@ -302,17 +415,29 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
     F.Muls(&box_w_ratio, static_cast<float>(0.5), &box_w_ratio);
     F.Muls(&box_h_ratio, static_cast<float>(0.5), &box_h_ratio);
 
+<<<<<<< HEAD
     phi::DenseTensor zero_t(_type);
     phi::DenseTensor one_t(_type);
+=======
+    Tensor zero_t(_type);
+    Tensor one_t(_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     zero_t.mutable_data<T>({1}, place);
     one_t.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&zero_t, static_cast<T>(0));
     FillNpuTensorWithConstant<T>(&one_t, static_cast<T>(1));
 
+<<<<<<< HEAD
     phi::DenseTensor outbox0(_type);
     phi::DenseTensor outbox1(_type);
     phi::DenseTensor outbox2(_type);
     phi::DenseTensor outbox3(_type);
+=======
+    Tensor outbox0(_type);
+    Tensor outbox1(_type);
+    Tensor outbox2(_type);
+    Tensor outbox3(_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     outbox0.mutable_data<T>(dim0, place);
     outbox1.mutable_data<T>(dim1, place);
     outbox2.mutable_data<T>(dim0, place);
@@ -350,17 +475,29 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
         {layer_h, layer_w, ratios_size * num_priors_per_ratio, 4});
     boxes->mutable_data<T>(place);
     vars->mutable_data<T>(place);
+<<<<<<< HEAD
     phi::DenseTensor boxes_share(_type);
     phi::DenseTensor vars_share(_type);
+=======
+    Tensor boxes_share(_type);
+    Tensor vars_share(_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     boxes_share.ShareDataWith(*boxes);
     boxes_share.Resize(out_dim);
     vars_share.ShareDataWith(*vars);
     vars_share.Resize(out_dim);
 
+<<<<<<< HEAD
     phi::DenseTensor box0(_type);
     phi::DenseTensor box1(_type);
     phi::DenseTensor box2(_type);
     phi::DenseTensor box3(_type);
+=======
+    Tensor box0(_type);
+    Tensor box1(_type);
+    Tensor box2(_type);
+    Tensor box3(_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // out_dim = {layer_h, layer_w, ratios_size*num_priors_per_ratio, 1}
     out_dim[3] = 1;
     box0.mutable_data<T>(out_dim, place);
@@ -378,7 +515,11 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
 
     std::vector<int> multiples = {
         layer_h, layer_w, ratios_size * num_priors_per_ratio, 1};
+<<<<<<< HEAD
     phi::DenseTensor variances_t(_type);
+=======
+    Tensor variances_t(_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     //  variances.size() == 4
     variances_t.mutable_data<T>({4}, place);
     F.FloatVec2Tsr(variances, &variances_t);

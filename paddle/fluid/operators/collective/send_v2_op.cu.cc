@@ -18,7 +18,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/collective/process_group.h"
+=======
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
@@ -26,7 +30,11 @@ namespace operators {
 
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
+<<<<<<< HEAD
 void send_shape_info(const phi::DenseTensor& x,
+=======
+void send_shape_info(const framework::Tensor& x,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      const platform::Place& place,
                      const gpuStream_t& stream,
                      platform::NCCLComm* comm,
@@ -47,19 +55,32 @@ void send_shape_info(const phi::DenseTensor& x,
   int shape_size = dims.size();
 
   // step1: send the shape size
+<<<<<<< HEAD
   phi::DenseTensor cpu_shape_size_tensor(shape_dytpe);
+=======
+  framework::Tensor cpu_shape_size_tensor(shape_dytpe);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   cpu_shape_size_tensor.Resize({1});
   cpu_shape_size_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
   auto* cpu_data = cpu_shape_size_tensor.data<int>();
   cpu_data[0] = shape_size;
 
   if (group) {
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> shape_size_tensor;
+=======
+    std::vector<framework::Tensor> shape_size_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     shape_size_tensor.template emplace_back(cpu_shape_size_tensor);
     auto shape_size_task = group->Send(shape_size_tensor, peer);
   } else {
     // copy the shape size tensor to gpu and send
+<<<<<<< HEAD
     phi::DenseTensor* gpu_shape_size_tensor = new phi::DenseTensor(shape_dytpe);
+=======
+    framework::Tensor* gpu_shape_size_tensor =
+        new framework::Tensor(shape_dytpe);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     gpu_shape_size_tensor->Resize({1});
     gpu_shape_size_tensor->mutable_data(place, shape_dytpe);
     framework::TensorCopySync(
@@ -75,7 +96,11 @@ void send_shape_info(const phi::DenseTensor& x,
   VLOG(3) << "send the shape size: " << shape_size << " to peer";
 
   // step2: send the shape
+<<<<<<< HEAD
   phi::DenseTensor cpu_shape_tensor(shape_dytpe);
+=======
+  framework::Tensor cpu_shape_tensor(shape_dytpe);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   cpu_shape_tensor.Resize({shape_size});
   cpu_shape_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
   auto* cpu_shape_data = cpu_shape_tensor.data<int>();
@@ -84,12 +109,20 @@ void send_shape_info(const phi::DenseTensor& x,
   }
 
   if (group) {
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> shape_tensor;
+=======
+    std::vector<framework::Tensor> shape_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     shape_tensor.template emplace_back(cpu_shape_tensor);
     auto shape_task = group->Send(shape_tensor, peer);
   } else {
     // copy the shape tensor to gpu and send
+<<<<<<< HEAD
     phi::DenseTensor* gpu_shape_tensor = new phi::DenseTensor(shape_dytpe);
+=======
+    framework::Tensor* gpu_shape_tensor = new framework::Tensor(shape_dytpe);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     gpu_shape_tensor->Resize({shape_size});
     gpu_shape_tensor->mutable_data(place, shape_dytpe);
     framework::TensorCopySync(cpu_shape_tensor, place, gpu_shape_tensor);
@@ -129,7 +162,11 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
+<<<<<<< HEAD
       auto x = ctx.Input<phi::DenseTensor>("X");
+=======
+      auto x = ctx.Input<framework::LoDTensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       if (dynamic_shape) {
         // dynamic shape for switch send/recv
@@ -151,8 +188,13 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     if (ctx.Attr<bool>("use_calc_stream")) {
+<<<<<<< HEAD
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
+=======
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       stream = comm->stream();
     }
@@ -185,7 +227,11 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       }
       return;
     }
+<<<<<<< HEAD
     auto x = ctx.Input<phi::DenseTensor>("X");
+=======
+    auto x = ctx.Input<framework::LoDTensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int numel = x->numel();
 
     if (dynamic_shape) {
@@ -221,7 +267,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(send_v2,
                         ops::SendOpV2CUDAKernel<float>,
                         ops::SendOpV2CUDAKernel<double>,
+<<<<<<< HEAD
 #if NCCL_VERSION_CODE >= 21000
+=======
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         ops::SendOpV2CUDAKernel<plat::bfloat16>,
 #endif
                         ops::SendOpV2CUDAKernel<int>,

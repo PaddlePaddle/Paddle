@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import site
 import sys
 import unittest
@@ -23,6 +24,20 @@ import paddle
 import paddle.static as static
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
+=======
+import sys
+import site
+import unittest
+import paddle
+import paddle.static as static
+import tempfile
+import subprocess
+import numpy as np
+from paddle import fluid
+from paddle.vision.transforms import Compose, Normalize
+from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
@@ -57,7 +72,11 @@ def custom_relu_static(
 
             exe = static.Executor()
             exe.run(static.default_startup_program())
+<<<<<<< HEAD
             # in static graph mode, x data has been covered by out
+=======
+            # in static mode, x data has been covered by out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out_v = exe.run(
                 static.default_main_program(),
                 feed={'X': np_x},
@@ -72,7 +91,11 @@ def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
     paddle.enable_static()
     paddle.set_device(device)
 
+<<<<<<< HEAD
     places = static.cpu_places() if device == 'cpu' else static.cuda_places()
+=======
+    places = static.cpu_places() if device is 'cpu' else static.cuda_places()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     with static.scope_guard(static.Scope()):
         with static.program_guard(static.Program()):
             x = static.data(name='X', shape=[None, 8], dtype=dtype)
@@ -83,7 +106,11 @@ def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
+<<<<<<< HEAD
             # in static graph mode, x data has been covered by out
+=======
+            # in static mode, x data has been covered by out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             compiled_prog = static.CompiledProgram(
                 static.default_main_program()
             ).with_data_parallel(loss_name=out.name, places=places)
@@ -145,10 +172,15 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
     paddle.set_device(device)
 
     t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
+<<<<<<< HEAD
     t.retain_grads()
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
     out.retain_grads()
+=======
+
+    out = func(t) if use_func else paddle.nn.functional.relu(t)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dx = paddle.grad(
         outputs=out,
         inputs=t,
@@ -259,7 +291,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         ),
                     )
 
+<<<<<<< HEAD
     def test_dynamic(self):
+=======
+    def func_dynamic(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for device in self.devices:
             for dtype in self.dtypes:
                 if device == 'cpu' and dtype == 'float16':
@@ -287,6 +323,14 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         ),
                     )
 
+<<<<<<< HEAD
+=======
+    def test_dynamic(self):
+        with _test_eager_guard():
+            self.func_dynamic()
+        self.func_dynamic()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_static_save_and_load_inference_model(self):
         paddle.enable_static()
         np_data = np.random.random((1, 1, 28, 28)).astype("float32")
@@ -323,7 +367,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         np_data = np.random.random((1, 1, 28, 28)).astype("float32")
         np_label = np.random.random((1, 1)).astype("int64")
         path_prefix = "custom_op_inference/custom_relu"
+<<<<<<< HEAD
         from paddle.inference import Config, create_predictor
+=======
+        from paddle.inference import Config
+        from paddle.inference import create_predictor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for device in self.devices:
             predict = custom_relu_static_inference(
@@ -353,6 +402,10 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         paddle.disable_static()
 
     def test_double_grad_dynamic(self):
+<<<<<<< HEAD
+=======
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for device in self.devices:
             for dtype in self.dtypes:
                 if device == 'cpu' and dtype == 'float16':
@@ -378,6 +431,10 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         dx_grad, pd_dx_grad
                     ),
                 )
+<<<<<<< HEAD
+=======
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_with_dataloader(self):
         for device in self.devices:
@@ -398,7 +455,10 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             )
 
             for batch_id, (image, _) in enumerate(train_loader()):
+<<<<<<< HEAD
                 image = paddle.to_tensor(image)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 out = self.custom_ops[0](image)
                 pd_out = paddle.nn.functional.relu(image)
                 np.testing.assert_array_equal(

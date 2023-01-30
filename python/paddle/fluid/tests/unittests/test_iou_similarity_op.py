@@ -12,13 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy.random as random
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import numpy.random as random
+import sys
+import math
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from op_test import OpTest
 
 
 class TestIOUSimilarityOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
@@ -34,9 +48,13 @@ class TestIOUSimilarityOp(OpTest):
         self.attrs = {"box_normalized": self.box_normalized}
         self.outputs = {'Out': self.output}
 
+<<<<<<< HEAD
     def _compute_iou(
         self,
     ):
+=======
+    def _compute_iou(self, ):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for row in range(self.boxes1.shape[0]):
             for col in range(self.boxes2.shape[0]):
                 xmin1, ymin1, xmax1, ymax1 = self.boxes1[row]
@@ -66,11 +84,19 @@ class TestIOUSimilarityOp(OpTest):
 
 
 class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
     def setUp(self):
+<<<<<<< HEAD
         super().setUp()
+=======
+        super(TestIOUSimilarityOpWithLoD, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = False
@@ -82,11 +108,19 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
 
 
 class TestIOUSimilarityOpWithBoxNormalized(TestIOUSimilarityOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
     def setUp(self):
+<<<<<<< HEAD
         super().setUp()
+=======
+        super(TestIOUSimilarityOpWithBoxNormalized, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = True

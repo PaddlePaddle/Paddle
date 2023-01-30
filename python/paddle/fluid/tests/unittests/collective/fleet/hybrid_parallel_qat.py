@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -24,6 +25,23 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.distributed.utils.launch_utils import find_free_ports, get_cluster
 from paddle.quantization import ImperativeQuantAware
+=======
+from __future__ import division
+from __future__ import print_function
+
+import os
+import paddle
+import numpy as np
+import random
+import paddle.distributed as dist
+import paddle.fluid as fluid
+import paddle.distributed.fleet as fleet
+from paddle.io import DataLoader, Dataset
+import unittest
+import paddle.nn as nn
+from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
+from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -81,8 +99,12 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
 
     if world_size > 1:
         input_parallel = paddle.distributed.collective._c_identity(
+<<<<<<< HEAD
             lm_output, group=model_parallel_group
         )
+=======
+            lm_output, group=model_parallel_group)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         logits = paddle.matmul(input_parallel, logit_weights, transpose_y=True)
 
@@ -90,14 +112,19 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
             return logits
 
         return paddle.distributed.collective._c_concat(
+<<<<<<< HEAD
             logits, group=model_parallel_group
         )
+=======
+            logits, group=model_parallel_group)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         logits = paddle.matmul(lm_output, logit_weights, transpose_y=True)
         return logits
 
 
 class PACT(nn.Layer):
+<<<<<<< HEAD
     def __init__(self, init_value=20):
         super().__init__()
         alpha_attr = paddle.ParamAttr(
@@ -107,6 +134,17 @@ class PACT(nn.Layer):
         self.alpha = self.create_parameter(
             shape=[1], attr=alpha_attr, dtype='float32'
         )
+=======
+
+    def __init__(self, init_value=20):
+        super(PACT, self).__init__()
+        alpha_attr = paddle.ParamAttr(
+            name=self.full_name() + ".pact",
+            initializer=paddle.nn.initializer.Constant(value=init_value))
+        self.alpha = self.create_parameter(shape=[1],
+                                           attr=alpha_attr,
+                                           dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x):
         out_left = paddle.nn.functional.relu(x - self.alpha)
@@ -116,6 +154,7 @@ class PACT(nn.Layer):
 
 
 class SimpleMPNet(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         vocab_size,
@@ -134,43 +173,78 @@ class SimpleMPNet(nn.Layer):
         else:
             init_fc1_data = np_fc1[:, (inner_size // 2) :]
             init_fc2_data = np_fc2[(inner_size // 2) :, :]
+=======
+
+    def __init__(self, vocab_size, hidden_size, inner_size, output_size, np_fc1,
+                 np_fc2, mp_id):
+        super(SimpleMPNet, self).__init__()
+
+        if mp_id == 0:
+            init_fc1_data = np_fc1[:, :(inner_size // 2)]
+            init_fc2_data = np_fc2[:(inner_size // 2), :]
+        else:
+            init_fc1_data = np_fc1[:, (inner_size // 2):]
+            init_fc2_data = np_fc2[(inner_size // 2):, :]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
             hidden_size,
             inner_size,
             weight_attr=paddle.framework.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Assign(init_fc1_data)
             ),
             gather_output=False,
             has_bias=True,
         )
+=======
+                initializer=paddle.nn.initializer.Assign(init_fc1_data)),
+            gather_output=False,
+            has_bias=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.linear2 = fleet.meta_parallel.RowParallelLinear(
             inner_size,
             hidden_size,
             weight_attr=paddle.framework.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Assign(init_fc2_data)
             ),
             input_is_parallel=True,
             has_bias=True,
         )
+=======
+                initializer=paddle.nn.initializer.Assign(init_fc2_data)),
+            input_is_parallel=True,
+            has_bias=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.linear3 = paddle.nn.Linear(
             hidden_size,
             output_size,
             weight_attr=paddle.framework.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Constant(0.0)
             ),
             bias_attr=paddle.framework.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(0.0)
             ),
         )
+=======
+                initializer=paddle.nn.initializer.Constant(0.0)),
+            bias_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(0.0)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
             vocab_size,
             hidden_size,
+<<<<<<< HEAD
             weight_attr=paddle.nn.initializer.Constant(value=1.0),
         )
+=======
+            weight_attr=paddle.nn.initializer.Constant(value=1.))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x):
         x = self.embedding(x)
@@ -182,62 +256,102 @@ class SimpleMPNet(nn.Layer):
 
 
 class SimpleDPNet(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
 
         super().__init__()
+=======
+
+    def __init__(self, vocab_size, hidden_size, inner_size, output_size, np_fc1,
+                 np_fc2):
+
+        super(SimpleDPNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear1 = paddle.nn.Linear(
             hidden_size,
             inner_size,
             weight_attr=paddle.framework.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Assign(np_fc1)
             ),
             bias_attr=paddle.framework.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(0.0)
             ),
         )
+=======
+                initializer=paddle.nn.initializer.Assign(np_fc1)),
+            bias_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(0.0)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.linear2 = paddle.nn.Linear(
             inner_size,
             hidden_size,
             weight_attr=paddle.framework.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Assign(np_fc2)
             ),
             bias_attr=paddle.framework.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(0.0)
             ),
         )
+=======
+                initializer=paddle.nn.initializer.Assign(np_fc2)),
+            bias_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(0.0)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.linear3 = paddle.nn.Linear(
             hidden_size,
             output_size,
             weight_attr=paddle.framework.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Constant(0.0)
             ),
             bias_attr=paddle.framework.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(0.0)
             ),
         )
+=======
+                initializer=paddle.nn.initializer.Constant(0.0)),
+            bias_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(0.0)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.embedding = paddle.nn.Embedding(
             vocab_size,
             hidden_size,
+<<<<<<< HEAD
             weight_attr=paddle.nn.initializer.Constant(value=1.0),
         )
+=======
+            weight_attr=paddle.nn.initializer.Constant(value=1.))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x):
         x = self.embedding(x)
         x = self.linear1(x)
         x = self.linear2(x)
         x = self.linear3(x)
+<<<<<<< HEAD
         x = paddle.matmul(
             x, get_attr(self.embedding, "weight"), transpose_y=True
         )
+=======
+        x = paddle.matmul(x,
+                          get_attr(self.embedding, "weight"),
+                          transpose_y=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return x
 
 
 class TestDistMPTraning(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -245,7 +359,11 @@ class TestDistMPTraning(unittest.TestCase):
         strategy.hybrid_configs = {
             "dp_degree": self.data_parallel_size,
             "mp_degree": self.model_parallel_size,
+<<<<<<< HEAD
             "pp_degree": 1,
+=======
+            "pp_degree": 1
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         fleet.init(is_collective=True, strategy=strategy)
         self.onnx_format = False
@@ -262,6 +380,7 @@ class TestDistMPTraning(unittest.TestCase):
         return loss
 
     def build_optimizer(self, model):
+<<<<<<< HEAD
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.001, parameters=model.parameters()
         )
@@ -270,6 +389,16 @@ class TestDistMPTraning(unittest.TestCase):
     def build_model_optimizer(
         self, weight_quantize_type, activation_quantize_type, use_pact=False
     ):
+=======
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
+                                         parameters=model.parameters())
+        return optimizer
+
+    def build_model_optimizer(self,
+                              weight_quantize_type,
+                              activation_quantize_type,
+                              use_pact=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         mp_id = hcg.get_model_parallel_rank()
@@ -279,12 +408,17 @@ class TestDistMPTraning(unittest.TestCase):
             weight_quantize_type=weight_quantize_type,
             activation_quantize_type=activation_quantize_type,
             fuse_conv_bn=self.fuse_conv_bn,
+<<<<<<< HEAD
             act_preprocess_layer=PACT if use_pact else None,
         )
+=======
+            act_preprocess_layer=PACT if use_pact else None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         set_random_seed(1024, dp_id, rank_id)
 
         np_fc1 = np.ones((hidden_size, inner_size))
         np_fc2 = np.ones(
+<<<<<<< HEAD
             (inner_size, hidden_size)
         )  # np.random.random_sample((inner_size, hidden_size))
 
@@ -297,14 +431,26 @@ class TestDistMPTraning(unittest.TestCase):
             np_fc2,
             mp_id,
         )
+=======
+            (inner_size,
+             hidden_size))  #np.random.random_sample((inner_size, hidden_size))
+
+        model_a = SimpleMPNet(vocab_size, hidden_size, inner_size, output_size,
+                              np_fc1, np_fc2, mp_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         model_a = imperative_qat.quantize(model_a)
         optimizer_a = self.build_optimizer(model_a)
         model_a = fleet.distributed_model(model_a)
         optimizer_a = fleet.distributed_optimizer(optimizer_a)
 
+<<<<<<< HEAD
         model_b = SimpleDPNet(
             vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
         )
+=======
+        model_b = SimpleDPNet(vocab_size, hidden_size, inner_size, output_size,
+                              np_fc1, np_fc2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         model_b = imperative_qat.quantize(model_b)
         optimizer_b = self.build_optimizer(model_b)
 
@@ -314,6 +460,7 @@ class TestDistMPTraning(unittest.TestCase):
 
         for epoch in range(5):
 
+<<<<<<< HEAD
             np_data = np.random.randint(
                 0,
                 vocab_size,
@@ -322,10 +469,17 @@ class TestDistMPTraning(unittest.TestCase):
                     seq_length,
                 ),
             )
+=======
+            np_data = np.random.randint(0, vocab_size, (
+                batch_size,
+                seq_length,
+            ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             batch = paddle.to_tensor(np_data)
             loss_a = self.train_batch(batch, model_a, optimizer_a, True)
             loss_b = self.train_batch(batch, model_b, optimizer_b, False)
 
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=1e-6
             )
@@ -335,6 +489,15 @@ class TestDistMPTraning(unittest.TestCase):
             not fluid.core.is_compiled_with_cuda()
             or fluid.core.get_cuda_device_count() == 0
         ):
+=======
+            np.testing.assert_allclose(loss_a.numpy(),
+                                       loss_b.numpy(),
+                                       rtol=1e-6)
+
+    def test_mp_model_1(self):
+        if not fluid.core.is_compiled_with_cuda(
+        ) or fluid.core.get_cuda_device_count() == 0:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return
         selected_gpus = get_gpus('0,1')
         cluster = None
@@ -342,6 +505,7 @@ class TestDistMPTraning(unittest.TestCase):
 
         model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
             weight_quantize_type='abs_max',
+<<<<<<< HEAD
             activation_quantize_type='moving_average_abs_max',
         )
         self.train(model_a, optimizer_a, model_b, optimizer_b)
@@ -351,6 +515,14 @@ class TestDistMPTraning(unittest.TestCase):
             not fluid.core.is_compiled_with_cuda()
             or fluid.core.get_cuda_device_count() == 0
         ):
+=======
+            activation_quantize_type='moving_average_abs_max')
+        self.train(model_a, optimizer_a, model_b, optimizer_b)
+
+    def test_mp_model_2(self):
+        if not fluid.core.is_compiled_with_cuda(
+        ) or fluid.core.get_cuda_device_count() == 0:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return
         selected_gpus = get_gpus('0,1')
         cluster = None
@@ -359,8 +531,12 @@ class TestDistMPTraning(unittest.TestCase):
         model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
             weight_quantize_type='channel_wise_abs_max',
             activation_quantize_type='moving_average_abs_max',
+<<<<<<< HEAD
             use_pact=True,
         )
+=======
+            use_pact=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.train(model_a, optimizer_a, model_b, optimizer_b)
 
 

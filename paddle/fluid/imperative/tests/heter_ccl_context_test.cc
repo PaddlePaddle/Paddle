@@ -49,7 +49,11 @@ void AllReduceByStream(int local_rank, int device_id) {
 
   // input and output data
   framework::Variable* src_dev_var(new framework::Variable());
+<<<<<<< HEAD
   auto* src_dev_tensor = src_dev_var->GetMutable<phi::DenseTensor>();
+=======
+  auto* src_dev_tensor = src_dev_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   src_dev_tensor->mutable_data<float>(phi::make_ddim({data_size}), place);
 
   std::vector<float> src_vec;
@@ -60,7 +64,11 @@ void AllReduceByStream(int local_rank, int device_id) {
   ctx.Wait();
 
   framework::Variable* dst_dev_var(new framework::Variable());
+<<<<<<< HEAD
   auto* dst_dev_tensor = dst_dev_var->GetMutable<phi::DenseTensor>();
+=======
+  auto* dst_dev_tensor = dst_dev_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   dst_dev_tensor->mutable_data<float>(phi::make_ddim({data_size}), place);
 
   // call allreduce

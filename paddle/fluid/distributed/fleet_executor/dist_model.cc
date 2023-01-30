@@ -43,7 +43,11 @@ bool IsPersistable(const framework::VarDesc *var) {
 }
 
 bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
+<<<<<<< HEAD
                                  phi::DenseTensor *input_tensor,
+=======
+                                 framework::LoDTensor *input_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = phi::make_ddim(input_data.shape);
@@ -515,7 +519,11 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
   feed_tensors_.resize(feeds_.size());
   for (size_t i = 0; i < input_data.size(); ++i) {
     // feed each data separately
+<<<<<<< HEAD
     phi::DenseTensor *input_tensor = &(feed_tensors_[i]);
+=======
+    framework::LoDTensor *input_tensor = &(feed_tensors_[i]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!LoadDataFromDistModelTensor(input_data[i], input_tensor, place_)) {
       LOG(ERROR) << "Fail to load data from tensor " << input_data[i].name;
       return false;
@@ -556,7 +564,11 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
+<<<<<<< HEAD
     auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
+=======
+    auto &fetch = PADDLE_GET(framework::LoDTensor, fetch_var);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(output_data->at(i));
     output->name = idx_to_fetches_[idx];
@@ -587,7 +599,11 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
 }
 
 template <typename T>
+<<<<<<< HEAD
 bool DistModel::FetchResult(const phi::DenseTensor &fetch,
+=======
+bool DistModel::FetchResult(const framework::LoDTensor &fetch,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             DistModelTensor *output_data) {
   auto shape = phi::vectorize(fetch.dims());
   output_data->shape.assign(shape.begin(), shape.end());

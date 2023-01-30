@@ -12,15 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import tarfile
+=======
+import tarfile, os
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def untar(fname, dirs):
     """
     extract the tar.gz file
     :param fname: the name of tar.gz file
+<<<<<<< HEAD
     :param dirs: the path of decompressed file
+=======
+    :param dirs: the path of decompressed file 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     :return: bool
     """
     try:

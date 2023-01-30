@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -22,6 +23,18 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
+=======
+from auto_scan_test import PassAutoScanTest
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+from functools import partial
+import unittest
+import hypothesis.strategies as st
+
+
+class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def sample_program_config(self, draw):
         data_format = draw(st.sampled_from(['NCHW', 'NHWC']))
         dilations = draw(st.sampled_from([[2, 2]]))
@@ -31,6 +44,7 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
         strides = draw(st.sampled_from([[1, 2]]))
         axis = draw(st.sampled_from([0]))
         activation_type = draw(
+<<<<<<< HEAD
             st.sampled_from(
                 [
                     'relu',
@@ -49,6 +63,13 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
                 ]
             )
         )
+=======
+            st.sampled_from([
+                'relu', 'gelu', 'swish', 'mish', 'sqrt', 'hard_swish',
+                'sigmoid', 'abs', 'relu6', 'clip', 'tanh', 'hard_sigmoid',
+                'leaky_relu'
+            ]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def generate_data(input_type):
             if input_type == 'NCHW':
@@ -56,6 +77,7 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
             elif input_type == 'NHWC':
                 return np.random.random([16, 64, 64, 48]).astype(np.float32)
             elif input_type == 'weights':
+<<<<<<< HEAD
                 return np.random.random([16, int(48 / groups), 3, 3]).astype(
                     np.float32
                 )
@@ -116,12 +138,74 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
                 outputs={'Out': ['activation_output']},
                 beta=draw(st.floats(min_value=0.1, max_value=1.0)),
             )
+=======
+                return np.random.random([16, int(48 / groups), 3,
+                                         3]).astype(np.float32)
+
+        conv2d_op1 = OpConfig(type='conv2d',
+                              inputs={
+                                  'Input': ['conv_input_1'],
+                                  'Filter': ['conv_weights_1']
+                              },
+                              outputs={'Output': ['conv_output_1']},
+                              attrs={
+                                  'data_format': data_format,
+                                  'dilations': dilations,
+                                  'padding_algorithm': padding_algorithm,
+                                  'groups': groups,
+                                  'paddings': paddings,
+                                  'strides': strides
+                              })
+
+        conv2d_op2 = OpConfig(type='conv2d',
+                              inputs={
+                                  'Input': ['conv_input_2'],
+                                  'Filter': ['conv_weights_2']
+                              },
+                              outputs={'Output': ['conv_output_2']},
+                              attrs={
+                                  'data_format': data_format,
+                                  'dilations': dilations,
+                                  'padding_algorithm': padding_algorithm,
+                                  'groups': groups,
+                                  'paddings': paddings,
+                                  'strides': strides
+                              })
+
+        concat_op = OpConfig(type='concat',
+                             inputs={'X': ['conv_output_1', 'conv_output_2']},
+                             outputs={'Out': ['concat_output']},
+                             attrs={'axis': axis})
+
+        if activation_type == 'relu6':
+            activation_op = OpConfig(activation_type,
+                                     inputs={'X': ['concat_output']},
+                                     outputs={'Out': ['activation_output']},
+                                     threshold=draw(
+                                         st.floats(min_value=1.0,
+                                                   max_value=10.0)))
+        elif activation_type == 'leaky_relu':
+            activation_op = OpConfig(activation_type,
+                                     inputs={'X': ['concat_output']},
+                                     outputs={'Out': ['activation_output']},
+                                     alpha=draw(
+                                         st.floats(min_value=0.1,
+                                                   max_value=1.0)))
+        elif activation_type == 'swish':
+            activation_op = OpConfig(activation_type,
+                                     inputs={'X': ['concat_output']},
+                                     outputs={'Out': ['activation_output']},
+                                     beta=draw(
+                                         st.floats(min_value=0.1,
+                                                   max_value=1.0)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif activation_type == 'clip':
             activation_op = OpConfig(
                 activation_type,
                 inputs={'X': ['concat_output']},
                 outputs={'Out': ['activation_output']},
                 min=draw(st.floats(min_value=0.1, max_value=0.49)),
+<<<<<<< HEAD
                 max=draw(st.floats(min_value=0.5, max_value=1.0)),
             )
         else:
@@ -130,12 +214,20 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
                 inputs={'X': ['concat_output']},
                 outputs={'Out': ['activation_output']},
             )
+=======
+                max=draw(st.floats(min_value=0.5, max_value=1.0)))
+        else:
+            activation_op = OpConfig(activation_type,
+                                     inputs={'X': ['concat_output']},
+                                     outputs={'Out': ['activation_output']})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_net = [conv2d_op1, conv2d_op2, concat_op, activation_op]
 
         program_config = ProgramConfig(
             ops=model_net,
             inputs={
+<<<<<<< HEAD
                 'conv_input_1': TensorConfig(
                     data_gen=partial(generate_data, data_format)
                 ),
@@ -153,17 +245,39 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
             },
             outputs=['activation_output'],
         )
+=======
+                'conv_input_1':
+                TensorConfig(data_gen=partial(generate_data, data_format)),
+                'conv_input_2':
+                TensorConfig(data_gen=partial(generate_data, data_format))
+            },
+            weights={
+                'conv_weights_1':
+                TensorConfig(data_gen=partial(generate_data, 'weights')),
+                'conv_weights_2':
+                TensorConfig(data_gen=partial(generate_data, 'weights'))
+            },
+            outputs=['activation_output'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
+<<<<<<< HEAD
         yield config, ['fused_conv2d', 'fused_conv2d', 'concat'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
             quant=False, passes=['conv_activation_mkldnn_fuse_pass']
         )
+=======
+        yield config, ['conv2d', 'conv2d', 'concat'], (1e-5, 1e-5)
+
+    def test(self):
+        self.run_and_statis(quant=False,
+                            passes=['conv_activation_mkldnn_fuse_pass'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

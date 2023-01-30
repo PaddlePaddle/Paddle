@@ -12,11 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
 from test_dist_base import TestDistBase
 
+=======
+from __future__ import print_function
+import unittest
+from test_dist_base import TestDistBase
+import os
+
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
@@ -24,6 +33,10 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistSeResneXtNCCL(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reader_alloc = False
@@ -31,6 +44,7 @@ class TestDistSeResneXtNCCL(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+<<<<<<< HEAD
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -42,6 +56,17 @@ class TestDistSeResneXtNCCL(TestDistBase):
 
 
 class TestDistSeResneXtNCCLMP(TestDistBase):
+=======
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_se_resnext.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
+
+
+class TestDistSeResneXtNCCLMP(TestDistBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reader_alloc = False
@@ -50,6 +75,7 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+<<<<<<< HEAD
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -59,6 +85,14 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
                 need_envs={"NCCL_P2P_DISABLE": "1"},
                 log_name=flag_name,
             )
+=======
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_se_resnext.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  need_envs={"NCCL_P2P_DISABLE": "1"},
+                                  log_name=flag_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

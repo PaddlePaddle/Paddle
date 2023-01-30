@@ -12,15 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from op_test import OpTest
 
 
 class TestDpsgdOp(OpTest):
+<<<<<<< HEAD
     def setUp(self):
         '''Test Dpsgd Operator with supplied attributes'''
+=======
+
+    def setUp(self):
+        '''Test Dpsgd Operator with supplied attributes
+        '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.op_type = "dpsgd"
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -33,7 +46,11 @@ class TestDpsgdOp(OpTest):
         self.inputs = {
             'Param': param,
             'Grad': grad,
+<<<<<<< HEAD
             'LearningRate': np.array([learning_rate]).astype("float32"),
+=======
+            'LearningRate': np.array([learning_rate]).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {'clip': clip, 'batch_size': batch_size, 'sigma': sigma}
@@ -69,6 +86,9 @@ def dpsgd_step(inputs, attributes):
 
 if __name__ == "__main__":
     import paddle
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle.enable_static()
     unittest.main()

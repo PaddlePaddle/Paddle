@@ -32,6 +32,7 @@ class DecodeJpegOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -49,6 +50,26 @@ class DecodeJpegOp : public framework::OperatorWithKernel {
     }
 
     return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (var_name == "X") {
+      return expected_kernel_type;
+    }
+
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(tensor.dtype()),
+        tensor.place(),
+        tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -60,9 +81,15 @@ class DecodeJpegOpMaker : public framework::OpProtoAndCheckerMaker {
              "of the JPEG image. It is a tensor with rank 1.");
     AddOutput("Out", "The output tensor of DecodeJpeg op");
     AddComment(R"DOC(
+<<<<<<< HEAD
 This operator decodes a JPEG image into a 3 dimensional RGB Tensor
 or 1 dimensional Gray Tensor. Optionally converts the image to the
 desired format. The values of the output tensor are uint8 between 0
+=======
+This operator decodes a JPEG image into a 3 dimensional RGB Tensor 
+or 1 dimensional Gray Tensor. Optionally converts the image to the 
+desired format. The values of the output tensor are uint8 between 0 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 and 255.
 )DOC");
     AddAttr<std::string>(

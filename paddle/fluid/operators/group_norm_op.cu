@@ -21,13 +21,22 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/operators/group_norm_op.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
+=======
+using DataLayout = framework::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
 #define ALIGN_BYTES 16
 
@@ -51,7 +60,11 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
   typedef cub::WarpReduce<T> WarpReduce;
   typename WarpReduce::TempStorage temp_storage;
   value = WarpReduce(temp_storage).Sum(value);
+<<<<<<< HEAD
   if (cub::LaneId() == 0) phi::CudaAtomicAdd(sum, value);
+=======
+  if (cub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T>
@@ -265,6 +278,7 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+<<<<<<< HEAD
     const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
@@ -274,6 +288,18 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     auto* y = ctx.Output<phi::DenseTensor>("Y");
     auto* mean = ctx.Output<phi::DenseTensor>("Mean");
     auto* var = ctx.Output<phi::DenseTensor>("Variance");
+=======
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
+    const float epsilon = ctx.Attr<float>("epsilon");
+    auto* scale = ctx.Input<Tensor>("Scale");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* x = ctx.Input<Tensor>("X");
+
+    auto* y = ctx.Output<Tensor>("Y");
+    auto* mean = ctx.Output<Tensor>("Mean");
+    auto* var = ctx.Output<Tensor>("Variance");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const auto groups = ctx.Attr<int>("groups");
 
     const auto x_dims = x->dims();
@@ -291,7 +317,11 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     var->mutable_data<T>(ctx.GetPlace());
     phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+<<<<<<< HEAD
     phi::DenseTensor temp_var;
+=======
+    Tensor temp_var;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
     auto* x_data = x->data<T>();
     auto* y_data = y->data<T>();
@@ -324,7 +354,11 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     if (data_layout == DataLayout::kNCHW) {
+<<<<<<< HEAD
       using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+=======
+      using AccT = typename details::MPTypeTrait<T>::Type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       constexpr int vec_size = sizeof(float4) / sizeof(T);
       int size = group_size * imsize;
       const int max_num_threads = 1024;
@@ -429,14 +463,22 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
 
   if (flags & kHasScale) {
 #if CUDA_VERSION >= 11070
+<<<<<<< HEAD
     phi::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+=======
+    platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #else
     CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
 #endif
   }
   if (flags & kHasBias) {
 #if CUDA_VERSION >= 11070
+<<<<<<< HEAD
     phi::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+=======
+    platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #else
     CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
 #endif
@@ -612,6 +654,7 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+<<<<<<< HEAD
     const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -628,6 +671,24 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     auto* d_scale =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
     auto* d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+=======
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
+    const float epsilon = ctx.Attr<float>("epsilon");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* mean = ctx.Input<Tensor>("Mean");
+    auto* var = ctx.Input<Tensor>("Variance");
+    auto* scale = ctx.Input<Tensor>("Scale");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto groups = ctx.Attr<int>("groups");
+
+    // init output
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const auto& x_dims = x->dims();
     const int C =
@@ -642,7 +703,11 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
+<<<<<<< HEAD
     phi::DenseTensor ds, db;
+=======
+    Tensor ds, db;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ds.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
     db.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
     T* ds_data = ds.data<T>();
@@ -728,7 +793,11 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
         // p1 = scale * var_inv
         // p2 = (db * scale * mean - ds * scale) * pow(var_inv, 3) * (1/n)
         // p3 = -p2 * mean[ng] - db * scale * var_inv * (1/n);
+<<<<<<< HEAD
         phi::DenseTensor p1, p2, p3;
+=======
+        Tensor p1, p2, p3;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         p1.mutable_data<T>({x_dims[0] * C}, ctx.GetPlace());
         p2.mutable_data<T>({x_dims[0], groups}, ctx.GetPlace());
         p3.mutable_data<T>({x_dims[0], groups}, ctx.GetPlace());
@@ -770,12 +839,20 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
         set_zero(dev_ctx, d_bias, static_cast<T>(0));
       }
 
+<<<<<<< HEAD
       phi::DenseTensor temp_var;
+=======
+      Tensor temp_var;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
       set_zero(dev_ctx, &temp_var, static_cast<T>(0));
       T* temp_var_data = temp_var.data<T>();
 
+<<<<<<< HEAD
       phi::DenseTensor temp_mean;
+=======
+      Tensor temp_mean;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       temp_mean.mutable_data<T>(var->dims(), ctx.GetPlace());
       set_zero(dev_ctx, &temp_mean, static_cast<T>(0));
       T* temp_mean_data = temp_mean.data<T>();

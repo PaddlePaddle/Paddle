@@ -18,7 +18,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+=======
+#include "paddle/fluid/operators/eigen/eigen_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -31,7 +35,11 @@ void SignKernel(const Context& dev_ctx,
   auto eigen_x = phi::EigenVector<T>::Flatten(x);
 
   auto& dev = *dev_ctx.eigen_device();
+<<<<<<< HEAD
   phi::funcs::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
+=======
+  paddle::operators::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       dev, eigen_out, eigen_x);
 }
 

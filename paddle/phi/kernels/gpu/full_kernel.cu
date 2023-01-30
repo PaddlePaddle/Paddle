@@ -20,11 +20,19 @@ limitations under the License. */
 namespace phi {
 
 template <typename InT, typename OutT = InT>
+<<<<<<< HEAD
 struct FullFunctor {
   OutT value;
 
   template <typename VType>
   explicit inline FullFunctor(VType val) {
+=======
+struct FullFuctor {
+  OutT value;
+
+  template <typename VType>
+  explicit inline FullFuctor(VType val) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     value = static_cast<OutT>(val);
   }
 
@@ -50,7 +58,11 @@ void FullKernel(const Context& dev_ctx,
     // the data will not be loaded in the kernel because the number of
     // parameters in the operator is 0
     phi::funcs::ElementwiseKernel<T>(
+<<<<<<< HEAD
         dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
+=======
+        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -104,7 +116,11 @@ void FullLikeKernel(const Context& dev_ctx,
   int numel = out->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
+<<<<<<< HEAD
         dev_ctx, inputs, &outputs, FullFunctor<T>(value));
+=======
+        dev_ctx, inputs, &outputs, FullFuctor<T>(value));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -138,8 +154,12 @@ PD_REGISTER_KERNEL(full_like,
                    int64_t,
                    bool,
                    phi::dtype::bfloat16,
+<<<<<<< HEAD
                    phi::dtype::float16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
+=======
+                   phi::dtype::float16) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }

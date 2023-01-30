@@ -27,8 +27,13 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
@@ -54,8 +59,13 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
+<<<<<<< HEAD
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
+=======
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       stream = comm->stream();
     }
@@ -84,7 +94,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_reducescatter,
                         ops::CReduceScatterOpCUDAKernel<float>,
                         ops::CReduceScatterOpCUDAKernel<double>,
+<<<<<<< HEAD
 #if NCCL_VERSION_CODE >= 21000
+=======
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         ops::CReduceScatterOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CReduceScatterOpCUDAKernel<int>,

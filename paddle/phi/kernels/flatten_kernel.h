@@ -21,6 +21,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void FlattenInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         int start_axis,
@@ -28,12 +29,26 @@ void FlattenInferKernel(const Context& dev_ctx,
                         DenseTensor* out);
 
 template <typename T, typename Context>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void FlattenKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int start_axis,
                    int stop_axis,
+<<<<<<< HEAD
                    DenseTensor* out,
                    DenseTensor* xshape);
+=======
+                   DenseTensor* out);
+
+template <typename T, typename Context>
+void FlattenWithXShape(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       int start_axis,
+                       int stop_axis,
+                       DenseTensor* out,
+                       DenseTensor* xshape);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T, typename Context>
 DenseTensor Flatten(const Context& dev_ctx,
@@ -43,7 +58,11 @@ DenseTensor Flatten(const Context& dev_ctx,
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   FlattenInferMeta(x, start_axis, stop_axis, &meta_out);
+<<<<<<< HEAD
   FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, &dense_out);
+=======
+  FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, &dense_out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return dense_out;
 }
 

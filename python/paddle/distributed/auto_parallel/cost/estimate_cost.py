@@ -16,11 +16,20 @@ from collections import OrderedDict
 from functools import reduce
 
 import paddle
+<<<<<<< HEAD
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 from ..dist_tensor import DistributedTensor
 from ..operators.common import get_distributed_operator_impl_container
 from .base_cost import Cost
+=======
+import paddle.fluid.core as core
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from .base_cost import Cost
+from ..operators.common import get_distributed_operator_impl_container
+from ..dist_tensor import DistributedTensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class CostEstimator:
@@ -190,7 +199,11 @@ class CostEstimator:
                 # Calc dist op cost
                 dist_op = dist_context.get_dist_op_for_program(op)
                 op_dist_attr = dist_op.dist_attr
+<<<<<<< HEAD
                 processes = op_dist_attr.process_mesh.process_ids
+=======
+                processes = op_dist_attr.process_mesh.processes
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 container = get_distributed_operator_impl_container(
                     op_dist_attr.impl_type
@@ -273,8 +286,13 @@ class CostEstimator:
         # This estimation will be improved, now reshard and inplace are not considered.
         # Persist var is not free.
         def _convert_pm_and_dm_to_str(process_mesh, dims_mapping):
+<<<<<<< HEAD
             processes = ",".join([str(x) for x in process_mesh.process_ids])
             topology = ",".join([str(x) for x in process_mesh.shape])
+=======
+            processes = ",".join([str(x) for x in process_mesh.processes])
+            topology = ",".join([str(x) for x in process_mesh.topology])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dims_mapping = ",".join([str(x) for x in dims_mapping])
             result = processes + topology + dims_mapping
             return result
@@ -318,8 +336,13 @@ class CostEstimator:
                     sizes = DistributedTensor.get_local_sizes(
                         global_sizes,
                         input_dims_mapping,
+<<<<<<< HEAD
                         process_mesh.shape,
                         process_mesh.process_ids,
+=======
+                        process_mesh.topology,
+                        process_mesh.processes,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     )
                     var_info[var_name][key]["memory"] = self._calculate_bytes(
                         sizes, dtype
@@ -346,8 +369,13 @@ class CostEstimator:
                     sizes = DistributedTensor.get_local_sizes(
                         global_sizes,
                         output_dims_mapping,
+<<<<<<< HEAD
                         process_mesh.shape,
                         process_mesh.process_ids,
+=======
+                        process_mesh.topology,
+                        process_mesh.processes,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     )
                     var_info[var_name][key]["memory"] = self._calculate_bytes(
                         sizes, dtype
@@ -380,7 +408,11 @@ class CostEstimator:
                 # Not used
                 if var_name + key not in has_used_vars:
                     has_used_vars.add(has_used_var)
+<<<<<<< HEAD
                     for process in process_mesh.process_ids:
+=======
+                    for process in process_mesh.processes:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         if process not in memories:
                             memories[process] = 0
                         memories[process] += var_info[var_name][key]["memory"]
@@ -390,7 +422,11 @@ class CostEstimator:
                         if has_used_var not in can_free_vars:
                             can_free_vars.add(has_used_var)
                             if not var.persistable:
+<<<<<<< HEAD
                                 for process in process_mesh.process_ids:
+=======
+                                for process in process_mesh.processes:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                     if process not in can_free_memories:
                                         can_free_memories[process] = 0
                                     can_free_memories[process] += var_info[
@@ -409,7 +445,11 @@ class CostEstimator:
                 # Not used
                 if var_name + key not in has_used_vars:
                     has_used_vars.add(has_used_var)
+<<<<<<< HEAD
                     for process in process_mesh.process_ids:
+=======
+                    for process in process_mesh.processes:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         if process not in memories:
                             memories[process] = 0
                         memories[process] += var_info[var_name][key]["memory"]
@@ -419,7 +459,11 @@ class CostEstimator:
                         if has_used_var not in can_free_vars:
                             can_free_vars.add(has_used_var)
                             if not var.persistable:
+<<<<<<< HEAD
                                 for process in process_mesh.process_ids:
+=======
+                                for process in process_mesh.processes:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                     if process not in can_free_memories:
                                         can_free_memories[process] = 0
                                     can_free_memories[process] += var_info[
@@ -544,9 +588,14 @@ class CostEstimator:
 
 
 def get_cost_from_engine(engine, mode):
+<<<<<<< HEAD
     import copy
 
     from ..utils import to_list
+=======
+    from ..utils import to_list
+    import copy
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # Construct cost estimator by original main program
     serial_main_prog = (

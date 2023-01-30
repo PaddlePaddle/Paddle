@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from .distribute_transpiler import (
     DistributeTranspiler,
     DistributeTranspilerConfig,
 )
+=======
+from __future__ import print_function
+
+from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .memory_optimization_transpiler import memory_optimize, release_memory
 from .ps_dispatcher import HashName, RoundRobin
 

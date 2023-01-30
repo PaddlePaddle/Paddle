@@ -12,15 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 from test_fusion_lstm_op import ACTIVATION, fc
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+from test_fusion_lstm_op import fc, ACTIVATION
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from test_softmax_op import stable_softmax
 
 
 def attention_lstm(
+<<<<<<< HEAD
     x,  # T x M
     lod,  # 1 x N
     h0,  # N x D
@@ -33,6 +43,19 @@ def attention_lstm(
     act_cell,
     act_cand,
 ):
+=======
+        x,  # T x M
+        lod,  # 1 x N
+        h0,  # N x D
+        c0,  # N x D
+        fcws,  # (M+D) x 1, 1x1
+        fcbs,  # 1 x 1, 1x1
+        w,  # (M+D) x 4D
+        b,  # 1 x 4D
+        act_gate,
+        act_cell,
+        act_cand):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     T = sum(lod[0])
     N = len(lod[0])
@@ -46,9 +69,14 @@ def attention_lstm(
     start_offset = 0
     for bid in range(N):
         seq_len = lod[0][bid]
+<<<<<<< HEAD
         xi = np.copy(x[start_offset : start_offset + seq_len, :]).reshape(
             seq_len, M
         )
+=======
+        xi = np.copy(x[start_offset:start_offset + seq_len, :]).reshape(
+            seq_len, M)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         prev_cell = np.copy(c0[bid]).reshape([1, D])
         prev_hidden = np.copy(h0[bid]).reshape([1, D])
         for step in range(seq_len):
@@ -89,6 +117,10 @@ def attention_lstm(
 
 
 class TestAttentionLSTMOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         pass
 
@@ -119,6 +151,7 @@ class TestAttentionLSTMOp(OpTest):
         fcb2 = np.random.normal(size=(1, 1)).astype('float32')
 
         # lstm weight and bias
+<<<<<<< HEAD
         w = np.random.normal(size=(self.M + self.D, self.D * 4)).astype(
             'float32'
         )
@@ -137,6 +170,16 @@ class TestAttentionLSTMOp(OpTest):
             ACTIVATION[self.act_cell],
             ACTIVATION[self.act_cand],
         )
+=======
+        w = np.random.normal(size=(self.M + self.D,
+                                   self.D * 4)).astype('float32')
+        b = np.random.normal(size=(1, self.D * 4)).astype('float32')
+
+        h, c = attention_lstm(x, self.lod, h0, c0, [fcw1, fcw2], [fcb1, fcb2],
+                              w, b, ACTIVATION[self.act_gate],
+                              ACTIVATION[self.act_cell],
+                              ACTIVATION[self.act_cand])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'X': (x, self.lod),
@@ -146,7 +189,11 @@ class TestAttentionLSTMOp(OpTest):
             'AttentionScalar': fcw2,
             'AttentionScalarBias': fcb2,
             'LSTMWeight': w,
+<<<<<<< HEAD
             'LSTMBias': b,
+=======
+            'LSTMBias': b
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         if self.has_initial_hidden:
@@ -159,7 +206,11 @@ class TestAttentionLSTMOp(OpTest):
         self.attrs = {
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
+<<<<<<< HEAD
             'candidate_activation': self.act_cand,
+=======
+            'candidate_activation': self.act_cand
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -167,11 +218,19 @@ class TestAttentionLSTMOp(OpTest):
 
 
 class TestAttentionOpNonInit(TestAttentionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.has_initial_hidden = False
 
 
 class TestAttentionOpAct(TestAttentionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 3
         self.D = 2
@@ -181,24 +240,40 @@ class TestAttentionOpAct(TestAttentionLSTMOp):
 
 
 class TestAttentionOpMD1(TestAttentionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 36
         self.D = 8
 
 
 class TestAttentionOpMD2(TestAttentionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 8
         self.D = 8
 
 
 class TestAttentionOpMD3(TestAttentionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 15
         self.D = 30
 
 
 class TestAttentionOpBS1(TestAttentionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.lod = [[5]]
         self.M = 16
@@ -206,11 +281,19 @@ class TestAttentionOpBS1(TestAttentionLSTMOp):
 
 
 class TestAttentionOpBS2(TestAttentionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.lod = [[3, 6]]
 
 
 class TestAttentionOpBS5(TestAttentionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.lod = [[3, 2, 4, 7, 5]]
 

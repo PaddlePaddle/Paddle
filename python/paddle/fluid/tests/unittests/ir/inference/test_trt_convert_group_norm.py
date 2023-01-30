@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -21,10 +22,24 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+<<<<<<< HEAD
+=======
+        inputs = program_config.inputs
+        weights = program_config.weights
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
@@ -49,15 +64,23 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
 
         for batch in [1, 2, 4]:
             for group in [1, 4, 32, -1]:
+<<<<<<< HEAD
                 for epsilon in [0.00001, 0.00005]:
+=======
+                for epsilon in [0.0001, 0.0007, -1, 1]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     for data_layout in ['NCHW']:
                         dics = [
                             {
                                 "epsilon": epsilon,
                                 "groups": group,
                                 "data_layout": data_layout,
+<<<<<<< HEAD
                             },
                             {},
+=======
+                            }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         ]
                         ops_config = [
                             {
@@ -123,16 +146,20 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
+<<<<<<< HEAD
         self.trt_param.workspace_size = 2013265920
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-2
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
+<<<<<<< HEAD
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.workspace_size = 2013265920
@@ -142,12 +169,34 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
             attrs, True
         ), 1e-2
 
+=======
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False
+        ), (1e-3, 1e-3)
+
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
+<<<<<<< HEAD
 
     def test(self):
+=======
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), (1e-3, 1e-3)
+
+    def add_skip_trt_case(self):
+        pass
+
+    def test(self):
+        self.add_skip_trt_case()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.run_test()
 
 

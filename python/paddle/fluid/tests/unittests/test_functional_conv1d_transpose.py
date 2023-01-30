@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from unittest import TestCase
 
@@ -23,6 +24,20 @@ import paddle.nn.functional as F
 
 
 class TestFunctionalConv1DError(TestCase):
+=======
+import paddle
+import paddle.nn.functional as F
+from paddle import fluid
+import paddle.fluid.dygraph as dg
+import paddle.fluid.initializer as I
+import numpy as np
+import unittest
+from unittest import TestCase
+
+
+class TestFunctionalConv1DError(TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.input = []
         self.filter = []
@@ -37,6 +52,7 @@ class TestFunctionalConv1DError(TestCase):
         with dg.guard():
             x = dg.to_variable(self.input, dtype=paddle.float32)
             w = dg.to_variable(self.filter, dtype=paddle.float32)
+<<<<<<< HEAD
             b = (
                 None
                 if self.bias is None
@@ -52,6 +68,18 @@ class TestFunctionalConv1DError(TestCase):
                 groups=self.groups,
                 data_format=self.data_format,
             )
+=======
+            b = None if self.bias is None else dg.to_variable(
+                self.bias, dtype=paddle.float32)
+            y = F.conv1d_transpose(x,
+                                   w,
+                                   b,
+                                   padding=self.padding,
+                                   stride=self.stride,
+                                   dilation=self.dilation,
+                                   groups=self.groups,
+                                   data_format=self.data_format)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_exception(self):
         with self.assertRaises(ValueError):
@@ -59,6 +87,10 @@ class TestFunctionalConv1DError(TestCase):
 
 
 class TestFunctionalConv1DErrorCase1(TestFunctionalConv1DError):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.input = np.random.randn(1, 3, 3)
         self.filter = np.random.randn(3, 3, 1)
@@ -70,6 +102,7 @@ class TestFunctionalConv1DErrorCase1(TestFunctionalConv1DError):
         self.data_format = "NCL"
 
 
+<<<<<<< HEAD
 class TestFunctionalConv1DErrorCase2(TestFunctionalConv1DError):
     def setUp(self):
         self.input = np.random.randn(1, 3, 3)
@@ -82,5 +115,7 @@ class TestFunctionalConv1DErrorCase2(TestFunctionalConv1DError):
         self.data_format = "NCL"
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

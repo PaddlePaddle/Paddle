@@ -16,7 +16,11 @@
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -64,6 +68,13 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
           << "op compat for matmul_elementwise_add_mkldnn_fuse_pass failed.";
       return;
     }
+<<<<<<< HEAD
+=======
+    if (matmul->Op()->HasAttr("ResidualData")) {
+      LOG(WARNING) << "matmul_elementwise_add can be fused once";
+      return;
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
@@ -78,8 +89,12 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
 
   gpd(graph, handler);
   AddStatis(found_matmul_elementwise_add_count);
+<<<<<<< HEAD
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       (found_matmul_elementwise_add_count > 0)) {
+=======
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PrettyLogDetail("---    fused %d %s (as %s) with elementwise_add",
                     found_matmul_elementwise_add_count,
                     matmul_type,

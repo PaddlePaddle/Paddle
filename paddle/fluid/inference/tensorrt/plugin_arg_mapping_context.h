@@ -46,18 +46,29 @@ class PluginArgumentMappingContext : public ::phi::ArgumentMappingContext {
 
   bool IsSelectedRowsInput(const std::string& name) const override;
 
+<<<<<<< HEAD
   bool IsSelectedRowsInputs(const std::string& name) const override;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool IsSparseCooTensorInput(const std::string& name) const override;
 
   bool IsSparseCsrTensorInput(const std::string& name) const override;
 
+<<<<<<< HEAD
+=======
+  bool IsSelectedRowsInputs(const std::string& name) const override;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool IsDenseTensorVectorInput(const std::string& name) const override;
 
   bool IsDenseTensorOutput(const std::string& name) const override;
 
+<<<<<<< HEAD
   bool IsSparseCooTensorOutput(const std::string& name) const override;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool IsSelectedRowsOutput(const std::string& name) const override;
 
   bool IsForInferShape() const override { return false; }

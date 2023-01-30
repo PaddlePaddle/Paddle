@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from collections import OrderedDict
 
@@ -26,6 +27,24 @@ class TestLayerDict(unittest.TestCase):
                 ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
             ]
         )
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+from collections import OrderedDict
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestLayerDict(unittest.TestCase):
+
+    def func_layer_dict(self):
+        layers = OrderedDict([
+            ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
+            ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
+        ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         layers_dicts = paddle.nn.LayerDict(sublayers=layers)
 
@@ -59,12 +78,19 @@ class TestLayerDict(unittest.TestCase):
         layers_dicts['linear'] = layers['linear']
         check_layer_dict()
 
+<<<<<<< HEAD
         sublayer = OrderedDict(
             [
                 ('sigmod', paddle.nn.Sigmoid()),
                 ('relu', paddle.nn.ReLU()),
             ]
         )
+=======
+        sublayer = OrderedDict([
+            ('sigmod', paddle.nn.Sigmoid()),
+            ('relu', paddle.nn.ReLU()),
+        ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         layers.update(sublayer)
         layers_dicts.update(sublayer)
         check_layer_dict()
@@ -91,7 +117,16 @@ class TestLayerDict(unittest.TestCase):
         layers_dicts.update(list_format_layers)
         check_layer_dict()
 
+<<<<<<< HEAD
     def test_layer_dict_error_inputs(self):
+=======
+    def test_layer_dict(self):
+        with _test_eager_guard():
+            self.func_layer_dict()
+        self.func_layer_dict()
+
+    def func_layer_dict_error_inputs(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         layers = [
             ('conv1d', paddle.nn.Conv1D(3, 2, 3), "conv1d"),
             ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
@@ -102,6 +137,14 @@ class TestLayerDict(unittest.TestCase):
 
         self.assertRaises(AssertionError, layers_dicts.update, 1)
 
+<<<<<<< HEAD
+=======
+    def test_layer_dict_error_inputs(self):
+        with _test_eager_guard():
+            self.func_layer_dict_error_inputs()
+        self.func_layer_dict_error_inputs()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

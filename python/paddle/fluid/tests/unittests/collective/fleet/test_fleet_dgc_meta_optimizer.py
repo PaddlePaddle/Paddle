@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -22,20 +23,41 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import DGCOptimizer
+=======
+import unittest
+import paddle
+from paddle import fluid
+import os
+import paddle.distributed.fleet as fleet
+from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+from paddle.distributed.fleet.meta_optimizers import DGCOptimizer
+import paddle.distributed.fleet.base.role_maker as role_maker
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
+<<<<<<< HEAD
     def test_dgc_optimizer_backward(self):
         """test dgc optimizer backward"""
+=======
+
+    def test_dgc_optimizer_backward(self):
+        """ test dgc optimizer backward """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
         self.set_strategy(strategy, 'dgc')
+<<<<<<< HEAD
         opt = fluid.optimizer.MomentumOptimizer(
             learning_rate=0.001, momentum=0.9
         )
+=======
+        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
+                                                momentum=0.9)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dgc_opt = DGCOptimizer(opt)
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         dgc_opt._set_basic_info(avg_cost, role, opt, strategy)
@@ -45,14 +67,23 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertNotIn('dgc', ops)
 
     def test_dgc_optimizer_gradients(self):
+<<<<<<< HEAD
         """test dgc optimizer backward + gradients"""
+=======
+        """ test dgc optimizer backward + gradients """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
         self.set_strategy(strategy, 'dgc')
+<<<<<<< HEAD
         opt = fluid.optimizer.MomentumOptimizer(
             learning_rate=0.001, momentum=0.9
         )
+=======
+        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
+                                                momentum=0.9)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dgc_opt = DGCOptimizer(opt)
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         dgc_opt._set_basic_info(avg_cost, role, opt, strategy)
@@ -65,14 +96,23 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertIn('dgc_momentum', ops)
 
     def test_dgc_optimizer_optimize(self):
+<<<<<<< HEAD
         """test dgc optimizer backward + optimize"""
+=======
+        """ test dgc optimizer backward + optimize """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
         self.set_strategy(strategy, 'dgc')
+<<<<<<< HEAD
         opt = fluid.optimizer.MomentumOptimizer(
             learning_rate=0.001, momentum=0.9
         )
+=======
+        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
+                                                momentum=0.9)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dgc_opt = DGCOptimizer(opt)
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         dgc_opt._set_basic_info(avg_cost, role, opt, strategy)
@@ -134,8 +174,13 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(outs))
 
     def test_amp_recompute_lars_dgc_not_apply_optimizer(self):
+<<<<<<< HEAD
         """test amp + recompute + lars + dgc,
         amp -/-> dgc, max_path is amp-->recompute-->lars
+=======
+        """ test amp + recompute + lars + dgc,
+            amp -/-> dgc, max_path is amp-->recompute-->lars
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)

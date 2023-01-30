@@ -12,12 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import collections
 from functools import reduce
 from itertools import product
 
 import paddle
 
+=======
+from __future__ import print_function
+import sys
+import paddle
+import collections
+import numpy as np
+from itertools import product
+from functools import reduce
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from ..utils.log_util import logger
 
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
@@ -25,7 +35,11 @@ __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 _HYBRID_PARALLEL_GROUP = None
 
 
+<<<<<<< HEAD
 class ParallelMode:
+=======
+class ParallelMode(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     There are all the parallel modes currently supported:
@@ -50,7 +64,11 @@ class ParallelMode:
     SHARDING_PARALLEL = 3
 
 
+<<<<<<< HEAD
 class CommunicateTopology:
+=======
+class CommunicateTopology(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(
         self,
         hybrid_group_names=["data", "pipe", "sharding", "model"],
@@ -136,7 +154,11 @@ class CommunicateTopology:
         return self.get_rank(**tf)
 
 
+<<<<<<< HEAD
 class HybridCommunicateGroup:
+=======
+class HybridCommunicateGroup(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, topology):
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
@@ -413,7 +435,11 @@ class HybridCommunicateGroup:
         )
 
 
+<<<<<<< HEAD
 class _CommunicateGroup:
+=======
+class _CommunicateGroup(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """tmp for static"""
 
     def __init__(self):

@@ -337,11 +337,14 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
           pair.first != "X") {
         continue;
       }
+<<<<<<< HEAD
       if ((op_type == "max_pool2d_with_index_grad" ||
            op_type == "max_pool2d_with_index") &&
           pair.first == "Mask") {
         continue;
       }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
         if (pair.first == "LnScale" || pair.first == "LnBias" ||
@@ -358,9 +361,13 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
+<<<<<<< HEAD
   } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type) ||
              AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
                  op_type)) {
+=======
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";
@@ -386,11 +393,14 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
+<<<<<<< HEAD
       if ((op_type == "max_pool2d_with_index_grad" ||
            op_type == "max_pool2d_with_index") &&
           pair.first != "Mask" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
           dst_type == framework::proto::VarType::FP32) {
         if (pair.first != "LnScale" && pair.first != "LnBias" &&
@@ -438,11 +448,14 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
         pair.first != "X") {
       continue;
     }
+<<<<<<< HEAD
     if ((op_type == "max_pool2d_with_index_grad" ||
          op_type == "max_pool2d_with_index") &&
         pair.first == "Mask") {
       continue;
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
       if (pair.first == "LnScale" || pair.first == "LnBias" ||
           pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||

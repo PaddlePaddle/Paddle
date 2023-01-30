@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -26,6 +31,10 @@ np.random.seed(10)
 
 
 class TestExpandAsOpRank1(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -49,6 +58,10 @@ class TestExpandAsOpRank1(OpTest):
 
 
 class TestExpandAsOpRank2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -72,6 +85,10 @@ class TestExpandAsOpRank2(OpTest):
 
 
 class TestExpandAsOpRank3(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -95,6 +112,10 @@ class TestExpandAsOpRank3(OpTest):
 
 
 class TestExpandAsOpRank4(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -119,6 +140,7 @@ class TestExpandAsOpRank4(OpTest):
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
@@ -131,15 +153,39 @@ class TestExpandAsV2API(unittest.TestCase):
             shape=[2, 12, 14],
             dtype="float32",
         )
+=======
+
+    def test_api(self):
+        input1 = np.random.random([12, 14]).astype("float32")
+        input2 = np.random.random([2, 12, 14]).astype("float32")
+        x = fluid.layers.data(name='x',
+                              shape=[12, 14],
+                              append_batch_size=False,
+                              dtype="float32")
+
+        y = fluid.layers.data(name='target_tensor',
+                              shape=[2, 12, 14],
+                              append_batch_size=False,
+                              dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         out_1 = paddle.expand_as(x, y=y)
 
         exe = fluid.Executor(place=fluid.NPUPlace(0))
+<<<<<<< HEAD
         res_1 = exe.run(
             fluid.default_main_program(),
             feed={"x": input1, "target_tensor": input2},
             fetch_list=[out_1],
         )
+=======
+        res_1 = exe.run(fluid.default_main_program(),
+                        feed={
+                            "x": input1,
+                            "target_tensor": input2
+                        },
+                        fetch_list=[out_1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 

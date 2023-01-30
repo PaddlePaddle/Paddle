@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -20,6 +21,20 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+
+import paddle
+import numpy as np
+import random
+import paddle.distributed as dist
+import paddle.fluid as fluid
+import paddle.distributed.fleet as fleet
+from paddle import framework
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def set_random_seed(seed):
@@ -38,6 +53,7 @@ def class_center_sample_numpy(label, classes_list, num_samples):
     unique_label_per_device = []
 
     for i in range(nranks):
+<<<<<<< HEAD
         index = np.logical_and(
             unique_label >= class_interval[i],
             unique_label < class_interval[i + 1],
@@ -45,6 +61,12 @@ def class_center_sample_numpy(label, classes_list, num_samples):
         pos_class_center_per_device.append(
             unique_label[index] - class_interval[i]
         )
+=======
+        index = np.logical_and(unique_label >= class_interval[i],
+                               unique_label < class_interval[i + 1])
+        pos_class_center_per_device.append(unique_label[index] -
+                                           class_interval[i])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         unique_label_per_device.append(unique_label[index])
 
     num_samples_per_device = []
@@ -54,9 +76,14 @@ def class_center_sample_numpy(label, classes_list, num_samples):
 
     remapped_dict = {}
     for i in range(nranks):
+<<<<<<< HEAD
         for idx, v in enumerate(
             unique_label_per_device[i], sampled_class_interval[i]
         ):
+=======
+        for idx, v in enumerate(unique_label_per_device[i],
+                                sampled_class_interval[i]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             remapped_dict[v] = idx
 
     remapped_label = []
@@ -67,6 +94,10 @@ def class_center_sample_numpy(label, classes_list, num_samples):
 
 
 class TestParallelClassCenterSampleOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         fleet.init(is_collective=True, strategy=strategy)
@@ -87,6 +118,7 @@ class TestParallelClassCenterSampleOp(unittest.TestCase):
 
         for dtype in ('int32', 'int64'):
             for _ in range(5):
+<<<<<<< HEAD
                 classes_list = np.random.randint(10, 15, (nranks,))
                 num_class = np.sum(classes_list)
 
@@ -116,6 +148,26 @@ class TestParallelClassCenterSampleOp(unittest.TestCase):
                     sampled_class_index.numpy()[: len(np_sampled_class_index)],
                     np_sampled_class_index,
                 )
+=======
+                classes_list = np.random.randint(10, 15, (nranks, ))
+                num_class = np.sum(classes_list)
+
+                np_label = np.random.randint(0,
+                                             num_class, (batch_size, ),
+                                             dtype=dtype)
+                label = paddle.to_tensor(np_label, dtype=dtype)
+                np_remapped_label, np_sampled_class_center_per_device = class_center_sample_numpy(
+                    np_label, classes_list, num_samples)
+                remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
+                    label, classes_list[rank_id], num_samples)
+                np.testing.assert_allclose(remapped_label.numpy(),
+                                           np_remapped_label)
+                np_sampled_class_index = np_sampled_class_center_per_device[
+                    rank_id]
+                np.testing.assert_allclose(
+                    sampled_class_index.numpy()[:len(np_sampled_class_index)],
+                    np_sampled_class_index)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -18,11 +18,19 @@ import atexit
 
 from . import core
 
+<<<<<<< HEAD
+=======
+# NOTE: queue has a different name in python2 and python3
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import queue
 
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
+<<<<<<< HEAD
 MP_STATUS_CHECK_INTERVAL = 5.0
+=======
+MP_STATUS_CHECK_INTERVAL = 5.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # NOTE: [ mmap files clear ] If there is still data in the multiprocess queue when the main process finishes reading,
 # the data in the queue needs to be popped. Then the LoDTensor read by the main process
@@ -55,7 +63,11 @@ def _cleanup_mmap():
 
 
 # NOTE used for register a function to be executed at interpreter exit.
+<<<<<<< HEAD
 class CleanupFuncRegistrar:
+=======
+class CleanupFuncRegistrar():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # Record the cleanup functions that have been executed
     _executed_func_set = set()
     # Record the cleanup functions that have been registered
@@ -63,6 +75,10 @@ class CleanupFuncRegistrar:
 
     @classmethod
     def register(cls, function, signals=[]):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def _func_exectuor():
             if function not in cls._executed_func_set:
                 try:
@@ -91,10 +107,15 @@ class CleanupFuncRegistrar:
             for sig in signals:
                 orig_handler = signal.signal(sig, _signal_handler)
                 if orig_handler not in (signal.SIG_DFL, signal.SIG_IGN):
+<<<<<<< HEAD
                     if (
                         sig == signal.SIGINT
                         and orig_handler is signal.default_int_handler
                     ):
+=======
+                    if (sig == signal.SIGINT
+                            and orig_handler is signal.default_int_handler):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         continue
                     if orig_handler not in cls._registered_func_set:
                         atexit.register(orig_handler)

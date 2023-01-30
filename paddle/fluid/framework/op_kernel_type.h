@@ -19,15 +19,23 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+=======
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class OpKernelType {
  public:
   constexpr static int kDefaultCustomizedTypeValue = 0;
@@ -51,7 +59,11 @@ class OpKernelType {
         customized_type_value_(customized_type_value) {}
 
   OpKernelType(proto::VarType::Type data_type,
+<<<<<<< HEAD
                const phi::DeviceContext& dev_ctx,
+=======
+               const platform::DeviceContext& dev_ctx,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain,
                int customized_type_value = kDefaultCustomizedTypeValue)
@@ -103,12 +115,18 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
       (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_MKLDNN
   // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
+<<<<<<< HEAD
   ret |= (l != DataLayout::ONEDNN && r == DataLayout::ONEDNN);
   ret |= (l == DataLayout::ONEDNN && r != DataLayout::ONEDNN);
+=======
+  ret |= (l != DataLayout::kMKLDNN && r == DataLayout::kMKLDNN);
+  ret |= (l == DataLayout::kMKLDNN && r != DataLayout::kMKLDNN);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
   return ret;
 }
 
+<<<<<<< HEAD
 inline bool NeedTransformDataType(const phi::KernelKey& l,
                                   const phi::KernelKey& r) {
   return l.dtype() != phi::DataType::ALL_DTYPE &&
@@ -135,6 +153,17 @@ inline bool NeedTransform(const phi::KernelKey& l, const phi::KernelKey& r) {
   return !backends_are_same_class(l.backend(), r.backend()) ||
          NeedTransformDataType(l, r) ||
          NeedTransformLayout(l.layout(), r.layout());
+=======
+inline bool NeedTransformDataType(const OpKernelType& l,
+                                  const OpKernelType& r) {
+  return (l.data_type_ != r.data_type_);
+}
+
+inline bool NeedTransform(const OpKernelType& l, const OpKernelType& r) {
+  return (!platform::places_are_same_class(l.place_, r.place_)) ||
+         (l.data_type_ != r.data_type_) ||
+         NeedTransformLayout(l.data_layout_, r.data_layout_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace framework

@@ -12,36 +12,65 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
 import unittest
+<<<<<<< HEAD
 
 import paddle.fluid as fluid
 
 
 class EntryAttrChecks(unittest.TestCase):
+=======
+import paddle.fluid as fluid
+from paddle.fluid.framework import default_main_program
+from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
+
+
+class EntryAttrChecks(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def embedding_layer(self):
         prog = fluid.Program()
         scope = fluid.core.Scope()
 
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog):
+<<<<<<< HEAD
                 input = paddle.static.data(
                     name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
                 )
+=======
+                input = fluid.layers.data(name="dnn_data",
+                                          shape=[-1, 1],
+                                          dtype="int64",
+                                          lod_level=1,
+                                          append_batch_size=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 emb = fluid.layers.embedding(
                     input=input,
                     size=[100, 10],
                     is_sparse=True,
                     is_distributed=True,
+<<<<<<< HEAD
                     param_attr=fluid.ParamAttr(name="deep_embedding"),
                 )
                 pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
                 predict = paddle.static.nn.fc(
                     x=pool, size=2, activation='softmax'
                 )
+=======
+                    param_attr=fluid.ParamAttr(name="deep_embedding"))
+                pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
+                predict = fluid.layers.fc(input=pool, size=2, act='softmax')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         block = prog.global_block()
         for op in block.ops:
@@ -54,6 +83,10 @@ class EntryAttrChecks(unittest.TestCase):
 
 
 class TestEntryAttrs(EntryAttrChecks):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_embedding_layer(self):
         self.embedding_layer()
 

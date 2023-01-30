@@ -14,7 +14,12 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/dynload/rocblas.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/dynload/rocblas.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -30,33 +35,62 @@ template <>
 struct CUBlas<float> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_sgemm(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_sgemm(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_saxpy(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_saxpy(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_sscal(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_sscal(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_scopy(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_scopy(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_sgemv(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_sgemv(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
     PADDLE_ENFORCE_GPU_SUCCESS(
+<<<<<<< HEAD
         phi::dynload::rocblas_sgemm_strided_batched(args...));
+=======
+        paddle::platform::dynload::rocblas_sgemm_strided_batched(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   // HIP not supportted, refer to the doc here:
@@ -69,7 +103,12 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_strsm(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_strsm(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
@@ -101,33 +140,62 @@ template <>
 struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dgemm(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_dgemm(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_daxpy(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_daxpy(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dscal(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_dscal(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dcopy(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_dcopy(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dgemv(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_dgemv(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
     PADDLE_ENFORCE_GPU_SUCCESS(
+<<<<<<< HEAD
         phi::dynload::rocblas_dgemm_strided_batched(args...));
+=======
+        paddle::platform::dynload::rocblas_dgemm_strided_batched(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
@@ -138,7 +206,12 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dtrsm(args...));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_dtrsm(args...));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
@@ -184,7 +257,11 @@ struct CUBlas<phi::dtype::float16> {
                    const float16 *beta,
                    float16 *C,
                    int ldc) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_hgemm(
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_hgemm(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         handle,
         transa,
         transb,
@@ -219,6 +296,7 @@ struct CUBlas<phi::dtype::float16> {
                                  int ldc,
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_hgemm_strided_batched(
         handle,
         transa,
@@ -238,6 +316,28 @@ struct CUBlas<phi::dtype::float16> {
         ldc,
         strideC,
         batchCount));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_hgemm_strided_batched(
+            handle,
+            transa,
+            transb,
+            m,
+            n,
+            k,
+            reinterpret_cast<const rocblas_half *>(alpha),
+            reinterpret_cast<const rocblas_half *>(A),
+            lda,
+            strideA,
+            reinterpret_cast<const rocblas_half *>(B),
+            ldb,
+            strideB,
+            reinterpret_cast<const rocblas_half *>(beta),
+            reinterpret_cast<rocblas_half *>(C),
+            ldc,
+            strideC,
+            batchCount));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
@@ -263,6 +363,7 @@ struct CUBlas<phi::dtype::float16> {
                       rocblas_datatype computeType) {
     rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
     dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+<<<<<<< HEAD
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_gemm_ex(handle,
                                                                transa,
                                                                transb,
@@ -287,6 +388,33 @@ struct CUBlas<phi::dtype::float16> {
                                                                algo,
                                                                0,
                                                                0));
+=======
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          paddle::platform::dynload::rocblas_gemm_ex(handle,
+                                                     transa,
+                                                     transb,
+                                                     m,
+                                                     n,
+                                                     k,
+                                                     alpha,
+                                                     A,
+                                                     Atype,
+                                                     lda,
+                                                     B,
+                                                     Btype,
+                                                     ldb,
+                                                     beta,
+                                                     C,
+                                                     Ctype,
+                                                     ldc,
+                                                     C,
+                                                     Ctype,
+                                                     ldc,
+                                                     computeType,
+                                                     algo,
+                                                     0,
+                                                     0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     });
   }
 };
@@ -305,7 +433,11 @@ struct CUBlas<phi::dtype::complex<float>> {
                    const phi::dtype::complex<float> *beta,
                    phi::dtype::complex<float> *C,
                    int ldc) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_cgemv(
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_cgemv(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         handle,
         transa,
         m,
@@ -327,7 +459,11 @@ struct CUBlas<phi::dtype::complex<float>> {
                    const int incX,
                    phi::dtype::complex<float> *Y,
                    const int incY) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_caxpy(
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_caxpy(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         handle,
         n,
         reinterpret_cast<const rocblas_float_complex *>(alpha),
@@ -355,6 +491,7 @@ struct CUBlas<phi::dtype::complex<float>> {
                                  int ldc,
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_cgemm_strided_batched(
         handle,
         transa,
@@ -374,6 +511,28 @@ struct CUBlas<phi::dtype::complex<float>> {
         ldc,
         strideC,
         batchCount));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_cgemm_strided_batched(
+            handle,
+            transa,
+            transb,
+            m,
+            n,
+            k,
+            reinterpret_cast<const rocblas_float_complex *>(alpha),
+            reinterpret_cast<const rocblas_float_complex *>(A),
+            lda,
+            strideA,
+            reinterpret_cast<const rocblas_float_complex *>(B),
+            ldb,
+            strideB,
+            reinterpret_cast<const rocblas_float_complex *>(beta),
+            reinterpret_cast<rocblas_float_complex *>(C),
+            ldc,
+            strideC,
+            batchCount));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   static void GEMM(rocblas_handle handle,
@@ -390,7 +549,11 @@ struct CUBlas<phi::dtype::complex<float>> {
                    const phi::dtype::complex<float> *beta,
                    phi::dtype::complex<float> *C,
                    int ldc) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_cgemm(
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_cgemm(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         handle,
         transa,
         transb,
@@ -430,6 +593,7 @@ struct CUBlas<phi::dtype::complex<float>> {
                       rocblas_datatype computeType) {
     rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
     dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+<<<<<<< HEAD
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_gemm_ex(handle,
                                                                transa,
                                                                transb,
@@ -454,6 +618,33 @@ struct CUBlas<phi::dtype::complex<float>> {
                                                                algo,
                                                                0,
                                                                0));
+=======
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          paddle::platform::dynload::rocblas_gemm_ex(handle,
+                                                     transa,
+                                                     transb,
+                                                     m,
+                                                     n,
+                                                     k,
+                                                     alpha,
+                                                     A,
+                                                     Atype,
+                                                     lda,
+                                                     B,
+                                                     Btype,
+                                                     ldb,
+                                                     beta,
+                                                     C,
+                                                     Ctype,
+                                                     ldc,
+                                                     C,
+                                                     Ctype,
+                                                     ldc,
+                                                     computeType,
+                                                     algo,
+                                                     0,
+                                                     0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     });
   }
 };
@@ -472,7 +663,11 @@ struct CUBlas<phi::dtype::complex<double>> {
                    const phi::dtype::complex<double> *beta,
                    phi::dtype::complex<double> *C,
                    int ldc) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_zgemv(
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_zgemv(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         handle,
         transa,
         m,
@@ -494,7 +689,11 @@ struct CUBlas<phi::dtype::complex<double>> {
                    const int incX,
                    phi::dtype::complex<double> *Y,
                    const int incY) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_zaxpy(
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_zaxpy(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         handle,
         n,
         reinterpret_cast<const rocblas_double_complex *>(alpha),
@@ -523,6 +722,7 @@ struct CUBlas<phi::dtype::complex<double>> {
       int ldc,
       long long int strideC,  // NOLINT
       int batchCount) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_zgemm_strided_batched(
         handle,
         transa,
@@ -542,6 +742,28 @@ struct CUBlas<phi::dtype::complex<double>> {
         ldc,
         strideC,
         batchCount));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::rocblas_zgemm_strided_batched(
+            handle,
+            transa,
+            transb,
+            m,
+            n,
+            k,
+            reinterpret_cast<const rocblas_double_complex *>(alpha),
+            reinterpret_cast<const rocblas_double_complex *>(A),
+            lda,
+            strideA,
+            reinterpret_cast<const rocblas_double_complex *>(B),
+            ldb,
+            strideB,
+            reinterpret_cast<const rocblas_double_complex *>(beta),
+            reinterpret_cast<rocblas_double_complex *>(C),
+            ldc,
+            strideC,
+            batchCount));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   static void GEMM(rocblas_handle handle,
@@ -558,7 +780,11 @@ struct CUBlas<phi::dtype::complex<double>> {
                    const phi::dtype::complex<double> *beta,
                    phi::dtype::complex<double> *C,
                    int ldc) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_zgemm(
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_zgemm(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         handle,
         transa,
         transb,
@@ -598,6 +824,7 @@ struct CUBlas<phi::dtype::complex<double>> {
                       rocblas_datatype computeType) {
     rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
     dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+<<<<<<< HEAD
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_gemm_ex(handle,
                                                                transa,
                                                                transb,
@@ -622,6 +849,33 @@ struct CUBlas<phi::dtype::complex<double>> {
                                                                algo,
                                                                0,
                                                                0));
+=======
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          paddle::platform::dynload::rocblas_gemm_ex(handle,
+                                                     transa,
+                                                     transb,
+                                                     m,
+                                                     n,
+                                                     k,
+                                                     alpha,
+                                                     A,
+                                                     Atype,
+                                                     lda,
+                                                     B,
+                                                     Btype,
+                                                     ldb,
+                                                     beta,
+                                                     C,
+                                                     Ctype,
+                                                     ldc,
+                                                     C,
+                                                     Ctype,
+                                                     ldc,
+                                                     computeType,
+                                                     algo,
+                                                     0,
+                                                     0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     });
   }
 };
@@ -759,6 +1013,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
   context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
+<<<<<<< HEAD
         phi::dynload::rocblas_gemm_ex(handle,
                                       cuTransB,
                                       cuTransA,
@@ -783,6 +1038,32 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                       algo,
                                       0,
                                       0));
+=======
+        paddle::platform::dynload::rocblas_gemm_ex(handle,
+                                                   cuTransB,
+                                                   cuTransA,
+                                                   N,
+                                                   M,
+                                                   K,
+                                                   &h_alpha,
+                                                   B,
+                                                   rocblas_datatype_bf16_r,
+                                                   ldb,
+                                                   A,
+                                                   rocblas_datatype_bf16_r,
+                                                   lda,
+                                                   &h_beta,
+                                                   C,
+                                                   rocblas_datatype_bf16_r,
+                                                   N,
+                                                   C,
+                                                   rocblas_datatype_bf16_r,
+                                                   N,
+                                                   rocblas_datatype_f32_r,
+                                                   algo,
+                                                   0,
+                                                   0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   });
 }
 
@@ -1140,6 +1421,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   const int64_t strideC = M * N;
   context_.CublasCall([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
+<<<<<<< HEAD
         phi::dynload::rocblas_sgemm_strided_batched(handle,
                                                     cuTransB,
                                                     cuTransA,
@@ -1158,6 +1440,26 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                     ldc,
                                                     strideC,
                                                     batchCount));
+=======
+        paddle::platform::dynload::rocblas_sgemm_strided_batched(handle,
+                                                                 cuTransB,
+                                                                 cuTransA,
+                                                                 N,
+                                                                 M,
+                                                                 K,
+                                                                 &alpha,
+                                                                 B,
+                                                                 ldb,
+                                                                 strideB,
+                                                                 A,
+                                                                 lda,
+                                                                 strideA,
+                                                                 &beta,
+                                                                 C,
+                                                                 ldc,
+                                                                 strideC,
+                                                                 batchCount));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   });
 }
 
@@ -1190,6 +1492,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   const int64_t strideC = M * N;
   context_.CublasCall([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
+<<<<<<< HEAD
         phi::dynload::rocblas_dgemm_strided_batched(handle,
                                                     cuTransB,
                                                     cuTransA,
@@ -1208,6 +1511,26 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                     ldc,
                                                     strideC,
                                                     batchCount));
+=======
+        paddle::platform::dynload::rocblas_dgemm_strided_batched(handle,
+                                                                 cuTransB,
+                                                                 cuTransA,
+                                                                 N,
+                                                                 M,
+                                                                 K,
+                                                                 &alpha,
+                                                                 B,
+                                                                 ldb,
+                                                                 strideB,
+                                                                 A,
+                                                                 lda,
+                                                                 strideA,
+                                                                 &beta,
+                                                                 C,
+                                                                 ldc,
+                                                                 strideC,
+                                                                 batchCount));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   });
 }
 
@@ -1242,6 +1565,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 
   context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
+<<<<<<< HEAD
         phi::dynload::rocblas_gemm_strided_batched_ex(handle,
                                                       cuTransB,
                                                       cuTransA,
@@ -1271,6 +1595,38 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                       algo,
                                                       0,
                                                       0));
+=======
+        paddle::platform::dynload::rocblas_gemm_strided_batched_ex(
+            handle,
+            cuTransB,
+            cuTransA,
+            N,
+            M,
+            K,
+            &h_alpha,
+            B,
+            rocblas_datatype_bf16_r,
+            ldb,
+            strideB,
+            A,
+            rocblas_datatype_bf16_r,
+            lda,
+            strideA,
+            &h_beta,
+            C,
+            rocblas_datatype_bf16_r,
+            ldc,
+            strideC,
+            C,
+            rocblas_datatype_bf16_r,
+            ldc,
+            strideC,
+            batchCount,
+            rocblas_datatype_f32_r,
+            algo,
+            0,
+            0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   });
 }
 

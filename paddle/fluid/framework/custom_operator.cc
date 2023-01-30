@@ -41,9 +41,12 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -136,8 +139,13 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
   for (auto& in_name : inputs) {
     VLOG(3) << "Custom Operator: input name - " << in_name;
     if (detail::IsDuplicableVar(in_name)) {
+<<<<<<< HEAD
       // return const std::vector<const phi::DenseTensor*>
       auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
+=======
+      // return const std::vector<const Tensor*>
+      auto vec_x = ctx.MultiInput<Tensor>(in_name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_NE(vec_x.empty(),
                         true,
                         platform::errors::NotFound(
@@ -164,7 +172,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       }
       kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
     } else {
+<<<<<<< HEAD
       auto* x = ctx.Input<phi::DenseTensor>(in_name);
+=======
+      auto* x = ctx.Input<Tensor>(in_name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_NOT_NULL(
           x,
           platform::errors::NotFound("Input tensor (%s) is nullptr.", in_name));
@@ -225,7 +237,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
 
   VLOG(3) << "Custom Operator: push outputs into CustomOpKernelContext.";
   // cache the target tensor pointers
+<<<<<<< HEAD
   std::vector<phi::DenseTensor*> true_out_ptrs;
+=======
+  std::vector<Tensor*> true_out_ptrs;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (size_t i = 0; i < outputs.size(); ++i) {
     auto out_name = outputs[i];
     if (detail::IsDuplicableVar(out_name)) {
@@ -234,7 +250,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                          "If custom operator's outputs contains `paddle::Vec("
                          ")` type, "
                          "it only can hold one output."));
+<<<<<<< HEAD
       auto vec_out = ctx.MultiOutput<phi::DenseTensor>(out_name);
+=======
+      auto vec_out = ctx.MultiOutput<Tensor>(out_name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_NE(vec_out.empty(),
                         true,
                         platform::errors::NotFound(
@@ -256,7 +276,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       }
       kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
     } else {
+<<<<<<< HEAD
       auto* out = ctx.Output<phi::DenseTensor>(out_name);
+=======
+      auto* out = ctx.Output<Tensor>(out_name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_NOT_NULL(out,
                               platform::errors::NotFound(
                                   "Output tensor (%s) is nullptr.", out_name));
@@ -287,7 +311,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       auto* true_out = true_out_ptrs.at(i);
       auto calc_out =
           std::dynamic_pointer_cast<phi::DenseTensor>(calc_outs->at(i).impl());
+<<<<<<< HEAD
       // assign meta info
+=======
+      // assgin meta info
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto* true_out_meta = phi::DenseTensorUtils::GetMutableMeta(true_out);
       true_out_meta->dims = calc_out->dims();
       true_out_meta->dtype = calc_out->dtype();
@@ -305,7 +333,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     PADDLE_THROW(platform::errors::External("%s", ex.what()));
   } catch (...) {
     PADDLE_THROW(platform::errors::Fatal(
+<<<<<<< HEAD
         "Custom operator raises an unknown exception in runtime."));
+=======
+        "Custom operator raises an unknown exception in rumtime."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -422,9 +454,15 @@ class CustomOperator : public OperatorWithKernel {
    * The RAW type is used here as the data type, indicating that
    * it can only be determined at runtime.
    */
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(proto::VarType::RAW, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   /**
@@ -432,6 +470,7 @@ class CustomOperator : public OperatorWithKernel {
    * Because the kernel data type is RAW, we should skip the cast for
    * data type difference when PrepareData.
    */
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
@@ -439,6 +478,15 @@ class CustomOperator : public OperatorWithKernel {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           tensor.layout(),
                           expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const OpKernelType& expected_kernel_type) const override {
+    return OpKernelType(expected_kernel_type.data_type_,
+                        expected_kernel_type.place_,
+                        tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -514,10 +562,17 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Custom Operator.
 
+<<<<<<< HEAD
 According to the phi::DenseTensor operation function implemented by the user
 independently of the framework, it is encapsulated into a framework
 operator to adapt to various execution scenarios such as dynamic graph
 mode, static graph mode, and inference mode.
+=======
+According to the Tensor operation function implemented by the user 
+independently of the framework, it is encapsulated into a framework 
+operator to adapt to various execution scenarios such as dynamic graph, 
+mode static graph mode, and inference mode.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 )DOC");
   }
@@ -711,6 +766,7 @@ static void RegisterOperatorKernel(const std::string& name,
   RegisterOperatorKernelWithPlace(
       name, op_kernel_func, proto::VarType::RAW, platform::CUDAPlace());
 #endif
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_XPU)
   RegisterOperatorKernelWithPlace(
       name, op_kernel_func, proto::VarType::RAW, platform::XPUPlace());
@@ -728,6 +784,8 @@ static void RegisterOperatorKernel(const std::string& name,
     }
   }
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
@@ -999,9 +1057,17 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                       "Custom grad operator infershape error. "
                       "If a custom grad operator contains only one input and "
                       "only one output, the input shape will be directly set "
+<<<<<<< HEAD
                       "to the output shape. Otherwise, Please set the forward "
                       "input as the grad operator's input or  set the "
                       "InferShapeFn of custom grad operator by "
+=======
+                      "to "
+                      "the output shape. Otherwise, Please set the forward "
+                      "input "
+                      "as the grad operator's input or  set the InferShapeFn "
+                      "of custom grad operator by "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       ".SetInferShapeFn(PD_INFER_SHAPE(...))"));
               ctx->ShareDim(grad_op_inputs[0], out_name);
             }

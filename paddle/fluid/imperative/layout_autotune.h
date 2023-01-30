@@ -26,7 +26,11 @@ namespace imperative {
 
 class Tracer;
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
+=======
+using DataLayout = paddle::experimental::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class LayoutAutoTune {
  public:

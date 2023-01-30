@@ -66,7 +66,11 @@ class CinnGraphSymbolization {
       int64_t graph_id,
       const ir::Graph& graph,
       const ::cinn::common::Target& target,
+<<<<<<< HEAD
       const std::map<std::string, const phi::DenseTensor*>& input_tensors)
+=======
+      const std::map<std::string, const LoDTensor*>& input_tensors)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       : graph_id_(graph_id),
         graph_(graph),
         target_(target),
@@ -99,7 +103,11 @@ class CinnGraphSymbolization {
   const int64_t graph_id_;
   const ir::Graph& graph_;
   const ::cinn::common::Target& target_;
+<<<<<<< HEAD
   const std::map<std::string, const phi::DenseTensor*>& input_tensors_;
+=======
+  const std::map<std::string, const LoDTensor*>& input_tensors_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // preserve cinn variable map
   std::unordered_map<std::string, ::cinn::frontend::Variable> var_map_;

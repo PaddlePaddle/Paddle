@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -27,15 +28,37 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+
+import paddle
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestReduceMinOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'reduce_min'
 
     class XPUTestReduceMinBase(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_case()
@@ -46,21 +69,35 @@ class XPUTestReduceMinOp(XPUOpTestWrapper):
             self.attrs = {
                 'use_xpu': True,
                 'reduce_all': self.reduce_all,
+<<<<<<< HEAD
                 'keep_dim': self.keep_dim,
+=======
+                'keep_dim': self.keep_dim
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.inputs = {'X': np.random.random(self.shape).astype("float32")}
             if self.attrs['reduce_all']:
                 self.outputs = {'Out': self.inputs['X'].min()}
             else:
                 self.outputs = {
+<<<<<<< HEAD
                     'Out': self.inputs['X'].min(
                         axis=self.axis, keepdims=self.attrs['keep_dim']
                     )
+=======
+                    'Out':
+                    self.inputs['X'].min(axis=self.axis,
+                                         keepdims=self.attrs['keep_dim'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
 
         def init_case(self):
             self.shape = (5, 6, 10)
+<<<<<<< HEAD
             self.axis = (0,)
+=======
+            self.axis = (0, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.reduce_all = False
             self.keep_dim = False
 
@@ -71,9 +108,16 @@ class XPUTestReduceMinOp(XPUOpTestWrapper):
             pass
 
     class XPUTestReduceMinCase1(XPUTestReduceMinBase):
+<<<<<<< HEAD
         def init_case(self):
             self.shape = (5, 6, 10)
             self.axis = (0,)
+=======
+
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (0, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.reduce_all = False
             self.keep_dim = True
 

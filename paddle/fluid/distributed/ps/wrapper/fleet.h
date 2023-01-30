@@ -47,6 +47,10 @@ namespace distributed {
 
 class PSCore;
 
+<<<<<<< HEAD
+=======
+using framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using framework::Scope;
 using framework::Variable;
 using phi::SelectedRows;
@@ -110,6 +114,7 @@ class FleetWrapper {
   // is_training is true means training, false means inference, the behavior is
   // different on pserver
 
+<<<<<<< HEAD
   void PullSparseToTensorSync(
       const uint64_t table_id,
       int fea_dim,
@@ -118,6 +123,15 @@ class FleetWrapper {
       bool is_training,
       std::vector<const phi::DenseTensor*>* inputs,  // NOLINT
       std::vector<phi::DenseTensor*>* outputs);      // NOLINT
+=======
+  void PullSparseToTensorSync(const uint64_t table_id,
+                              int fea_dim,
+                              uint64_t padding_id,
+                              platform::Place place,
+                              bool is_training,
+                              std::vector<const LoDTensor*>* inputs,  // NOLINT
+                              std::vector<LoDTensor*>* outputs);      // NOLINT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
@@ -188,18 +202,31 @@ class FleetWrapper {
       const std::string& click_name,
       platform::Place place,
       const std::vector<std::string>& input_names,
+<<<<<<< HEAD
       std::vector<const phi::DenseTensor*>* inputs,    // NOLINT
       std::vector<const phi::DenseTensor*>* outputs);  // NOLINT
+=======
+      std::vector<const LoDTensor*>* inputs,    // NOLINT
+      std::vector<const LoDTensor*>* outputs);  // NOLINT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void PushSparseFromTensorAsync(const uint64_t table_id,
                                  int fea_dim,
                                  uint64_t padding_id,
                                  platform::Place place,
+<<<<<<< HEAD
                                  std::vector<const phi::DenseTensor*>* inputs,
                                  std::vector<int>& slots,  // NOLINT
                                  const phi::DenseTensor* shows,
                                  const phi::DenseTensor* clicks,
                                  std::vector<phi::DenseTensor*>* outputs,
+=======
+                                 std::vector<const LoDTensor*>* inputs,
+                                 std::vector<int>& slots,  // NOLINT
+                                 const LoDTensor* shows,
+                                 const LoDTensor* clicks,
+                                 std::vector<LoDTensor*>* outputs,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  bool use_cvm_op = false);
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -242,9 +269,12 @@ class FleetWrapper {
   void BarrierWithTable(uint32_t barrier_type);
 
   void PrintTableStat(const uint64_t table_id);
+<<<<<<< HEAD
   void SaveCacheTable(const uint64_t table_id,
                       uint16_t pass_id,
                       size_t threshold);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);

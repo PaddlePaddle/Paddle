@@ -51,9 +51,15 @@ class DistributedPushSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -63,16 +69,25 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
+<<<<<<< HEAD
              "(phi::DenseTensor) Ids's type should be phi::DenseTensor"
+=======
+             "(LoDTensor) Ids's type should be LoDTensor"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "THe ids to be looked up in W.")
         .AsDuplicable();
 
     AddInput("Shows",
+<<<<<<< HEAD
              "(phi::DenseTensor) Shows's type should be phi::DenseTensor"
+=======
+             "(LoDTensor) Shows's type should be LoDTensor"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "THe shows default to be 1.")
         .AsDuplicable();
 
     AddInput("Clicks",
+<<<<<<< HEAD
              "(phi::DenseTensor) Clicks's type should be phi::DenseTensor"
              "THe clicks usually equal to label.")
         .AsDuplicable();
@@ -80,6 +95,14 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Outputs",
         "(phi::DenseTensor) The lookup results, which have the same type as W.")
+=======
+             "(LoDTensor) Clicks's type should be LoDTensor"
+             "THe clicks usually equal to label.")
+        .AsDuplicable();
+
+    AddOutput("Outputs",
+              "(LoDTensor) The lookup results, which have the same type as W.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .AsDuplicable();
 
     AddAttr<int>("table_id", "sparse table id").SetDefault(0);

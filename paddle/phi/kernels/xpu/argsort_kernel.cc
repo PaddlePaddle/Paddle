@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/argsort_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -21,6 +22,15 @@
 
 namespace phi {
 
+=======
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+namespace phi {
+
+const int XPU_SORT_MAX_SIZE = 16384;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, typename TID>
 static inline void xpu_argsort(xpu::Context* ctx,
                                const T* input_data,
@@ -31,7 +41,16 @@ static inline void xpu_argsort(xpu::Context* ctx,
                                bool descending) {
   int ret =
       xpu::sort(ctx, input_data, output_data, indices_data, m, n, descending);
+<<<<<<< HEAD
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sort");
+=======
+  PADDLE_ENFORCE_EQ(
+      ret,
+      XPU_SUCCESS,
+      errors::External("XPU sort kernel return wrong value[%d %s].",
+                       ret,
+                       XPUAPIErrorMsg[ret]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T>
@@ -41,13 +60,32 @@ static inline void xpu_transpose(xpu::Context* ctx,
                                  const std::vector<int>& xshape,
                                  const std::vector<int>& permute) {
   int ret = xpu::transpose(ctx, x, y, xshape, permute);
+<<<<<<< HEAD
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "transpose");
+=======
+  PADDLE_ENFORCE_EQ(
+      ret,
+      XPU_SUCCESS,
+      errors::External("XPU transpose kernel return wrong value[%d %s]",
+                       ret,
+                       XPUAPIErrorMsg[ret]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename TX, typename TY>
 static inline void xpu_cast(xpu::Context* ctx, const TX* x, TY* y, int len) {
+<<<<<<< HEAD
   int ret = xpu::cast(ctx, x, y, len);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
+=======
+  int ret = xpu::cast_v2(ctx, x, y, len);
+  PADDLE_ENFORCE_EQ(
+      ret,
+      XPU_SUCCESS,
+      errors::External("XPU cast kernel return wrong value[%d %s]",
+                       ret,
+                       XPUAPIErrorMsg[ret]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T,
@@ -172,14 +210,29 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* output,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
+<<<<<<< HEAD
   auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   int n = in_dims[axis];
 
+=======
+  axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+  int n = in_dims[axis];
+
+  PADDLE_ENFORCE_LT(
+      n,
+      XPU_SORT_MAX_SIZE,
+      errors::InvalidArgument(
+          "The axis dimension of Input should less than %d, but got %d.",
+          XPU_SORT_MAX_SIZE,
+          in_dims[axis]));
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto input_data = input.data<T>();
   auto output_data = dev_ctx.template Alloc<T>(output);
   auto indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
+<<<<<<< HEAD
   if (rank == 0) {
     phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
     phi::funcs::set_constant(dev_ctx, indices, 0);
@@ -207,6 +260,18 @@ void ArgsortKernel(const Context& dev_ctx,
     }
   }
 
+=======
+  int len_before = phi::product(phi::slice_ddim(in_dims, 0, axis));
+  int len_after =
+      phi::product(phi::slice_ddim(in_dims, axis + 1, in_dims.size()));
+  bool int64_need_cast =
+      (std::is_same<T, int64_t>::value && n > (XPU_SORT_MAX_SIZE / 2)) ? true
+                                                                       : false;
+  bool index_need_cast = (n > (XPU_SORT_MAX_SIZE / 2)) ? true : false;
+  std::vector<int> permute_vec{0, 2, 1};
+  std::vector<int> data_shape{len_before, n, len_after};
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (int64_need_cast) {
     XPUArgsort<T, true, true>()(dev_ctx.x_context(),
                                 input_data,

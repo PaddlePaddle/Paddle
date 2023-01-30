@@ -51,21 +51,37 @@ void shard_index(const Tensor &table_t,
   auto stream =
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
+<<<<<<< HEAD
   phi::DenseTensor id_t_d;
+=======
+  framework::Tensor id_t_d;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   id_t_d.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNPU(&id_t_d, static_cast<T>(0.0), context);
   id_t_d.Resize(ids_t.dims());
 
+<<<<<<< HEAD
   phi::DenseTensor id_t_u;
+=======
+  framework::Tensor id_t_u;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   id_t_u.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNPU(&id_t_u, static_cast<T>(height - 1), context);
   id_t_u.Resize(ids_t.dims());
 
+<<<<<<< HEAD
   phi::DenseTensor id_matched_d;
   id_matched_d.mutable_data<bool>(ids_t.dims(), context.GetPlace());
   phi::DenseTensor id_matched_u;
   id_matched_u.mutable_data<bool>(ids_t.dims(), context.GetPlace());
   phi::DenseTensor ignore_tensor;
+=======
+  framework::Tensor id_matched_d;
+  id_matched_d.mutable_data<bool>(ids_t.dims(), context.GetPlace());
+  framework::Tensor id_matched_u;
+  id_matched_u.mutable_data<bool>(ids_t.dims(), context.GetPlace());
+  framework::Tensor ignore_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ignore_tensor.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNPU(&ignore_tensor, static_cast<T>(height), context);
   ignore_tensor.Resize(ids_t.dims());
@@ -111,24 +127,43 @@ void shard_index(const Tensor &table_t,
 
 template <typename TIds, typename T>
 void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
+<<<<<<< HEAD
   auto *table_t = context.Input<phi::DenseTensor>("W");
   auto *ids_t = context.Input<phi::DenseTensor>("Ids");
   auto *output_t = context.Output<phi::DenseTensor>("Out");
+=======
+  auto *table_t = context.Input<LoDTensor>("W");
+  auto *ids_t = context.Input<LoDTensor>("Ids");
+  auto *output_t = context.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const int64_t start_idx = context.Attr<int64_t>("start_index");
 
   auto stream =
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
 
+<<<<<<< HEAD
   phi::DenseTensor ids_t_local;
+=======
+  framework::Tensor ids_t_local;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
   auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
+<<<<<<< HEAD
   phi::DenseTensor table_t_pad;
 
   size_t mem_size = table_t->numel() * phi::SizeOf(table_t->dtype());
   size_t line_mem_size = table_t->dims()[1] * phi::SizeOf(table_t->dtype());
+=======
+  framework::LoDTensor table_t_pad;
+
+  size_t mem_size =
+      table_t->numel() * framework::DataTypeSize(table_t->dtype());
+  size_t line_mem_size =
+      table_t->dims()[1] * framework::DataTypeSize(table_t->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_EQ(line_mem_size % 64,
                     0,
                     platform::errors::InvalidArgument(
@@ -165,7 +200,11 @@ template <typename T>
 class CEmbeddingNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *ids_t = context.Input<phi::DenseTensor>("Ids");
+=======
+    auto *ids_t = context.Input<LoDTensor>("Ids");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
@@ -181,12 +220,19 @@ template <typename TIds, typename T>
 void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // get inputs
   const int64_t start_idx = context.Attr<int64_t>("start_index");
+<<<<<<< HEAD
   auto ids_t = context.Input<phi::DenseTensor>("Ids");
   auto d_output_t =
       context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
   auto table_t = context.Input<phi::DenseTensor>("W");
   auto table_grad_t =
       context.Output<phi::DenseTensor>(framework::GradVarName("W"));
+=======
+  auto ids_t = context.Input<LoDTensor>("Ids");
+  auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
+  auto table_t = context.Input<Tensor>("W");
+  auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   VLOG(10) << "ids_t:" << ids_t << ", d_output_t:" << d_output_t
            << ", table_t:" << table_t << ", table_grad_t" << table_grad_t;
@@ -196,13 +242,21 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
           .stream();
 
   // convert ids_t to local valid
+<<<<<<< HEAD
   phi::DenseTensor ids_t_local;
+=======
+  framework::Tensor ids_t_local;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
   // padding table_t -> table_t_pad
   auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
+<<<<<<< HEAD
   phi::DenseTensor table_t_pad;
+=======
+  framework::LoDTensor table_t_pad;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // set table_t_pad to zero
   uint8_t *pad_data = reinterpret_cast<uint8_t *>(
@@ -227,11 +281,19 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // copy table_t_pad to table_t
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
   const size_t mem_size =
+<<<<<<< HEAD
       table_grad_t->numel() * phi::SizeOf(table_grad_t->dtype());
 
   // check align
   size_t line_mem_size =
       table_grad_t->dims()[1] * phi::SizeOf(table_grad_t->dtype());
+=======
+      table_grad_t->numel() * framework::DataTypeSize(table_grad_t->dtype());
+
+  // check align
+  size_t line_mem_size =
+      table_grad_t->dims()[1] * framework::DataTypeSize(table_grad_t->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_EQ(line_mem_size % 64,
                     0,
                     platform::errors::InvalidArgument(
@@ -245,7 +307,11 @@ template <typename T>
 class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *ids_t = context.Input<phi::DenseTensor>("Ids");
+=======
+    auto *ids_t = context.Input<LoDTensor>("Ids");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {

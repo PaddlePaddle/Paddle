@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -23,10 +24,21 @@ from paddle.fluid.tests.unittests.op_test import (
     OpTestTool,
     convert_float_to_uint16,
 )
+=======
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestClipOneDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "clip"
         self.set_inputs()
@@ -34,6 +46,7 @@ class TestClipOneDNNOp(OpTest):
         self.set_additional_inputs()
         self.adjust_op_settings()
 
+<<<<<<< HEAD
         self.min = (
             self.attrs['min']
             if 'Min' not in self.inputs
@@ -44,6 +57,12 @@ class TestClipOneDNNOp(OpTest):
             if 'Max' not in self.inputs
             else self.inputs['Max']
         )
+=======
+        self.min = self.attrs[
+            'min'] if not 'Min' in self.inputs else self.inputs['Min']
+        self.max = self.attrs[
+            'max'] if not 'Max' in self.inputs else self.inputs['Max']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.outputs = {'Out': np.clip(self.x_fp32, self.min, self.max)}
 
@@ -68,16 +87,28 @@ class TestClipOneDNNOp(OpTest):
 
 
 class TestClipMinAsInputOneDNNOp(TestClipOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_additional_inputs(self):
         self.inputs['Min'] = np.array([6.8]).astype('float32')
 
 
 class TestClipMaxAsInputOneDNNOp(TestClipOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_additional_inputs(self):
         self.inputs['Max'] = np.array([9.1]).astype('float32')
 
 
 class TestClipMaxAndMinAsInputsOneDNNOp(TestClipOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_additional_inputs(self):
         self.inputs['Max'] = np.array([8.5]).astype('float32')
         self.inputs['Min'] = np.array([7.1]).astype('float32')
@@ -85,8 +116,15 @@ class TestClipMaxAndMinAsInputsOneDNNOp(TestClipOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+<<<<<<< HEAD
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestClipBF16OneDNNOp(parent):
+=======
+
+    @OpTestTool.skip_if_not_cpu_bf16()
+    class TestClipBF16OneDNNOp(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_inputs(self):
             self.x_fp32 = np.random.random((10, 10)).astype(np.float32) * 25
             self.inputs = {'X': convert_float_to_uint16(self.x_fp32)}
@@ -101,10 +139,15 @@ def create_bf16_test_class(parent):
 
             for i in range(self.dx.shape[0]):
                 for j in range(self.dx.shape[1]):
+<<<<<<< HEAD
                     if (
                         self.x_fp32[j][i] > self.min
                         and self.x_fp32[j][i] < self.max
                     ):
+=======
+                    if self.x_fp32[j][i] > self.min and self.x_fp32[j][
+                            i] < self.max:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self.dx[j][i] = self.dout[j][i]
 
         def test_check_output(self):
@@ -113,12 +156,19 @@ def create_bf16_test_class(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
+<<<<<<< HEAD
                 core.CPUPlace(),
                 ["X"],
                 "Out",
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
             )
+=======
+                core.CPUPlace(), ["X"],
+                "Out",
+                user_defined_grads=[self.dx],
+                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")
     TestClipBF16OneDNNOp.__name__ = cls_name

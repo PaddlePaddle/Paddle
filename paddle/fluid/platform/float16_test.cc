@@ -110,7 +110,11 @@ TEST(float16, comparison_cpu) {
 }
 
 TEST(float16, lod_tensor_cpu) {
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor;
+=======
+  framework::LoDTensor lod_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<float16> input_data = {
       float16(1.0f), float16(0.5f), float16(0.33333f), float16(0.0f)};

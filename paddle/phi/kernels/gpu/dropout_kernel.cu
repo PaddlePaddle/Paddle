@@ -14,9 +14,15 @@
 
 #include "paddle/phi/kernels/dropout_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/dropout_impl.cu.h"
+=======
+#include "paddle/fluid/operators/dropout_impl.cu.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -36,6 +42,7 @@ void DropoutRawKernel(const Context& dev_ctx,
   if (mask) {
     dev_ctx.template Alloc<uint8_t>(mask);
   }
+<<<<<<< HEAD
   phi::funcs::DropoutFwGPUKernelDriver<T>(dev_ctx,
                                           is_test,
                                           p.to<float>(),
@@ -47,6 +54,19 @@ void DropoutRawKernel(const Context& dev_ctx,
                                           mask,
                                           out,
                                           false);
+=======
+  paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
+                                                 is_test,
+                                                 p.to<float>(),
+                                                 upscale_in_train,
+                                                 fix_seed,
+                                                 seed,
+                                                 x,
+                                                 seed_tensor.get_ptr(),
+                                                 mask,
+                                                 out,
+                                                 false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T, typename Context>
@@ -66,6 +86,7 @@ void DropoutNdKernel(const Context& dev_ctx,
   if (mask) {
     dev_ctx.template Alloc<uint8_t>(mask);
   }
+<<<<<<< HEAD
   phi::funcs::DropoutFwGPUKernelDriver<T>(dev_ctx,
                                           is_test,
                                           p.to<float>(),
@@ -77,6 +98,19 @@ void DropoutNdKernel(const Context& dev_ctx,
                                           mask,
                                           out,
                                           true);
+=======
+  paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
+                                                 is_test,
+                                                 p.to<float>(),
+                                                 upscale_in_train,
+                                                 fix_seed,
+                                                 seed,
+                                                 x,
+                                                 seed_tensor.get_ptr(),
+                                                 mask,
+                                                 out,
+                                                 true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

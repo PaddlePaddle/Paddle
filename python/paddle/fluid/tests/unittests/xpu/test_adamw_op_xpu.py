@@ -17,6 +17,7 @@ import sys
 sys.path.append("..")
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test_xpu import XPUOpTest
@@ -28,6 +29,18 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid as fluid
+=======
+import paddle
+import random
+import numpy as np
+import paddle.fluid as fluid
+from functools import partial
+from paddle.framework import core
+
+from op_test_xpu import XPUOpTest
+
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def adamw_step(inputs, attributes):
@@ -74,25 +87,45 @@ def simple_lr_setting(param, decay_rate, n_layers):
     else:
         depth = 0
 
+<<<<<<< HEAD
     return decay_rate ** (n_layers + 2 - depth)
 
 
 class XPUTestAdamwOp1(XPUOpTestWrapper):
+=======
+    return decay_rate**(n_layers + 2 - depth)
+
+
+class XPUTestAdamwOp1(XPUOpTestWrapper):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'adamw'
         self.use_dynamic_create_class = False
 
     class TestAdamW(XPUOpTest):
+<<<<<<< HEAD
         def setUp(self):
             # Test AdamW Op with supplied attributes
+=======
+
+        def setUp(self):
+            #Test AdamW Op with supplied attributes
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.op_type = "adamw"
             self.init_shape()
             self.dtype = self.in_type_str
             param = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             grad = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+<<<<<<< HEAD
             moment1 = np.random.uniform(-1, 1, self.shape).astype("float32")
             # The second moment is positive
             moment2 = np.random.random(self.shape).astype("float32")
+=======
+            moment1 = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            # The second moment is positive
+            moment2 = np.random.random(self.shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             learning_rate = 0.004
             beta1 = 0.78
@@ -106,9 +139,15 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
                 'Grad': grad,
                 'Moment1': moment1,
                 'Moment2': moment2,
+<<<<<<< HEAD
                 'LearningRate': np.array([learning_rate]).astype("float32"),
                 'Beta1Pow': np.array([beta1_pow]).astype("float32"),
                 'Beta2Pow': np.array([beta2_pow]).astype("float32"),
+=======
+                'LearningRate': np.array([learning_rate]).astype(self.dtype),
+                'Beta1Pow': np.array([beta1_pow]).astype(self.dtype),
+                'Beta2Pow': np.array([beta2_pow]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.attrs = {
@@ -116,19 +155,32 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
                 'beta1': beta1,
                 'beta2': beta2,
                 "coeff": 0.5,
+<<<<<<< HEAD
                 "with_decay": True,
             }
 
             param_out, moment1_out, moment2_out = adamw_step(
                 self.inputs, self.attrs
             )
+=======
+                "with_decay": True
+            }
+
+            param_out, moment1_out, \
+                moment2_out = adamw_step(self.inputs, self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.outputs = {
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
                 'ParamOut': param_out,
+<<<<<<< HEAD
                 'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
                 'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
+=======
+                'Beta1PowOut': np.array([beta1_pow]).astype(self.dtype) * beta1,
+                'Beta2PowOut': np.array([beta2_pow]).astype(self.dtype) * beta2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def init_shape(self):
@@ -139,22 +191,38 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             self.check_output_with_place(place=paddle.XPUPlace(0))
 
     class TestAdamW2(TestAdamW):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_shape(self):
             self.shape = [
                 1000,
             ]
 
     class TestAdamW3(TestAdamW):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_shape(self):
             self.shape = [200, 3000]
 
 
 class XPUTestAdamwOp2(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'adamw'
         self.use_dynamic_create_class = False
 
     class TestAdamWOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_adamw_op_dygraph(self):
             paddle.disable_static()
             value = np.arange(26).reshape(2, 13).astype(self.in_type_str)
@@ -164,8 +232,12 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 learning_rate=0.01,
                 parameters=linear.parameters(),
                 apply_decay_param_fun=lambda name: True,
+<<<<<<< HEAD
                 weight_decay=0.01,
             )
+=======
+                weight_decay=0.01)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             for _ in range(2):
                 out = linear(a)
@@ -182,9 +254,14 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 learning_rate=0.0,
                 parameters=linear.parameters(),
                 apply_decay_param_fun=lambda name: True,
+<<<<<<< HEAD
                 weight_decay=0.01,
             )
             assert adam.__str__() is not None
+=======
+                weight_decay=0.01)
+            assert (adam.__str__() is not None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_adamw_op(self):
             paddle.enable_static()
@@ -196,6 +273,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             with fluid.program_guard(train_prog, startup):
                 with fluid.unique_name.guard():
                     data = fluid.data(name="data", shape=shape)
+<<<<<<< HEAD
                     conv = paddle.static.nn.conv2d(data, 8, 3)
                     loss = paddle.mean(conv)
 
@@ -219,13 +297,40 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                         weight_decay=0.01,
                         epsilon=1e-8,
                     )
+=======
+                    conv = fluid.layers.conv2d(data, 8, 3)
+                    loss = paddle.mean(conv)
+
+                    beta1 = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=0.85,
+                        dtype=self.in_type_str,
+                        persistable=True)
+                    beta2 = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=0.95,
+                        dtype=self.in_type_str,
+                        persistable=True)
+                    betas = [beta1, beta2]
+                    opt = paddle.optimizer.AdamW(learning_rate=1e-5,
+                                                 beta1=beta1,
+                                                 beta2=beta2,
+                                                 weight_decay=0.01,
+                                                 epsilon=1e-8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     opt.minimize(loss)
 
             exe.run(startup)
             data_np = np.random.random(shape).astype(self.in_type_str)
+<<<<<<< HEAD
             rets = exe.run(
                 train_prog, feed={"data": data_np}, fetch_list=[loss]
             )
+=======
+            rets = exe.run(train_prog,
+                           feed={"data": data_np},
+                           fetch_list=[loss])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             assert rets[0] is not None
             paddle.disable_static()
 
@@ -233,6 +338,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             paddle.disable_static()
             linear = paddle.nn.Linear(10, 10)
             with self.assertRaises(ValueError):
+<<<<<<< HEAD
                 adam = paddle.optimizer.AdamW(
                     0.1, beta1=-1, parameters=linear.parameters()
                 )
@@ -246,6 +352,22 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 )
 
     class TestAdamWOpGroup(TestAdamWOp):
+=======
+                adam = paddle.optimizer.AdamW(0.1,
+                                              beta1=-1,
+                                              parameters=linear.parameters())
+            with self.assertRaises(ValueError):
+                adam = paddle.optimizer.AdamW(0.1,
+                                              beta2=-1,
+                                              parameters=linear.parameters())
+            with self.assertRaises(ValueError):
+                adam = paddle.optimizer.AdamW(0.1,
+                                              epsilon=-1,
+                                              parameters=linear.parameters())
+
+    class TestAdamWOpGroup(TestAdamWOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_adamw_op_dygraph(self):
             paddle.disable_static()
             value = np.arange(26).reshape(2, 13).astype(self.in_type_str)
@@ -254,6 +376,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             linear_2 = paddle.nn.Linear(5, 3)
             adam = paddle.optimizer.AdamW(
                 learning_rate=0.01,
+<<<<<<< HEAD
                 parameters=[
                     {'params': linear_1.parameters()},
                     {'params': linear_2.parameters(), 'weight_decay': 0.001},
@@ -261,6 +384,16 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 apply_decay_param_fun=lambda name: True,
                 weight_decay=0.01,
             )
+=======
+                parameters=[{
+                    'params': linear_1.parameters()
+                }, {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001
+                }],
+                apply_decay_param_fun=lambda name: True,
+                weight_decay=0.01)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             for _ in range(2):
                 out = linear_1(a)
@@ -270,6 +403,10 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 adam.clear_gradients()
 
     class TestAdamWOpGroupWithLR(TestAdamWOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_adamw_op_dygraph(self):
             paddle.disable_static()
             value = np.arange(26).reshape(2, 13).astype(self.in_type_str)
@@ -278,6 +415,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             linear_2 = paddle.nn.Linear(5, 3)
             adam = paddle.optimizer.AdamW(
                 learning_rate=paddle.optimizer.lr.PiecewiseDecay(
+<<<<<<< HEAD
                     boundaries=[3, 6], values=[0.1, 0.2, 0.3]
                 ),
                 parameters=[
@@ -293,6 +431,18 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 apply_decay_param_fun=lambda name: True,
                 weight_decay=0.01,
             )
+=======
+                    boundaries=[3, 6], values=[0.1, 0.2, 0.3]),
+                parameters=[{
+                    'params': linear_1.parameters(),
+                    'learning_rate': 0.1,
+                }, {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                }],
+                apply_decay_param_fun=lambda name: True,
+                weight_decay=0.01)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             for _ in range(2):
                 out = linear_1(a)
@@ -305,8 +455,12 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('adamw')
 for stype in support_types:
     create_test_class(globals(), XPUTestAdamwOp1, stype)
+<<<<<<< HEAD
     if stype == "float32":
         create_test_class(globals(), XPUTestAdamwOp2, stype)
+=======
+    create_test_class(globals(), XPUTestAdamwOp2, stype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == "__main__":
     paddle.enable_static()

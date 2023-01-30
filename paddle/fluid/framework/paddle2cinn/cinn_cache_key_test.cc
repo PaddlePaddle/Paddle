@@ -39,10 +39,17 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
   x->SetType(proto::VarType::LOD_TENSOR);
   ir::Graph graph(program);
 
+<<<<<<< HEAD
   phi::DenseTensor tensor;
   tensor.Resize({1, 2, 3});
   const phi::DenseTensor *tensor_pointer = &tensor;
   std::map<std::string, const phi::DenseTensor *> feed_tensors = {
+=======
+  LoDTensor tensor;
+  tensor.Resize({1, 2, 3});
+  const LoDTensor *tensor_pointer = &tensor;
+  std::map<std::string, const LoDTensor *> feed_tensors = {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {"X", tensor_pointer}};
 
   DDim ddim = phi::make_ddim({1, 2, 3});
@@ -59,7 +66,11 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
   EXPECT_EQ(cache_key3, cache_key4);
 
   CinnCacheKeyByStructure cache_key5(
+<<<<<<< HEAD
       empty_graph, std::map<std::string, const phi::DenseTensor *>(), "unk");
+=======
+      empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CinnCacheKeyByStructure cache_key6(
       empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
@@ -112,10 +123,17 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   x->SetType(proto::VarType::LOD_TENSOR);
   ir::Graph graph(program);
 
+<<<<<<< HEAD
   phi::DenseTensor tensor;
   tensor.Resize({1, 2, 3});
   const phi::DenseTensor *tensor_pointer = &tensor;
   std::map<std::string, const phi::DenseTensor *> feed_tensors = {
+=======
+  LoDTensor tensor;
+  tensor.Resize({1, 2, 3});
+  const LoDTensor *tensor_pointer = &tensor;
+  std::map<std::string, const LoDTensor *> feed_tensors = {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {"X", tensor_pointer}};
 
   DDim ddim = phi::make_ddim({1, 2, 3});
@@ -132,7 +150,11 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   EXPECT_EQ(cache_key3, cache_key4);
 
   CinnCacheKeyByAddress cache_key5(
+<<<<<<< HEAD
       empty_graph, std::map<std::string, const phi::DenseTensor *>(), "unk");
+=======
+      empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CinnCacheKeyByAddress cache_key6(
       empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
@@ -186,10 +208,17 @@ TEST(CinnCacheKeyTest, TestSameGraph) {
   x2->SetType(proto::VarType::LOD_TENSOR);
   ir::Graph graph2(program2);
 
+<<<<<<< HEAD
   phi::DenseTensor tensor;
   tensor.Resize({1, 2, 3});
   const phi::DenseTensor *tensor_pointer = &tensor;
   std::map<std::string, const phi::DenseTensor *> feed_tensors = {
+=======
+  LoDTensor tensor;
+  tensor.Resize({1, 2, 3});
+  const LoDTensor *tensor_pointer = &tensor;
+  std::map<std::string, const LoDTensor *> feed_tensors = {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {"X", tensor_pointer}};
 
   CinnCacheKeyByAddress cache_key_by_address1(graph1, feed_tensors, "x86");

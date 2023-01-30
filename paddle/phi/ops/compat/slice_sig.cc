@@ -19,6 +19,7 @@ namespace phi {
 KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
   // if input is Tensor Array
   if (ctx.IsDenseTensorVectorInput("Input")) {
+<<<<<<< HEAD
     const char* starts_name = "starts";
     if (ctx.HasInput("StartsTensor")) {
       starts_name = "StartsTensor";
@@ -40,6 +41,9 @@ KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
       return KernelSignature(
           "slice_array", {"Input"}, {starts_name, ends_name}, {"Out"});
     }
+=======
+    return KernelSignature("unregistered", {}, {}, {});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   if (ctx.HasInput("StartsTensor")) {
@@ -119,6 +123,7 @@ KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature SliceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorVectorInput("Input")) {
+<<<<<<< HEAD
     const char* starts_name = "starts";
     if (ctx.HasInput("StartsTensor")) {
       starts_name = "StartsTensor";
@@ -143,6 +148,9 @@ KernelSignature SliceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                              {starts_name, ends_name},
                              {"Input@GRAD"});
     }
+=======
+    return KernelSignature("unregistered", {}, {}, {});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   if (ctx.HasInput("StartsTensor")) {

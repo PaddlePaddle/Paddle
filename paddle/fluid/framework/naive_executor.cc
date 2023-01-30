@@ -15,22 +15,33 @@
 #include "paddle/fluid/framework/naive_executor.h"
 
 #include <string>
+<<<<<<< HEAD
 #include <unordered_map>
 #include <unordered_set>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
+=======
+
+#include "paddle/fluid/framework/op_registry.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 #endif
 #ifdef PADDLE_WITH_INFERENCE_NVTX
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
+=======
+#if PADDLE_WITH_TENSORRT
+#include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -54,13 +65,17 @@ void NaiveExecutor::Run() {
   platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_INFERENCE_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
                                 platform::NvtxRangeColor::Green);
@@ -95,6 +110,10 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
   platform::CudaNvtxRangePop();
 #endif
+=======
+    op->Run(*scope_, place_);
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
@@ -156,7 +175,11 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc,
   }
 }
 
+<<<<<<< HEAD
 phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
+=======
+LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_NOT_NULL(scope_,
                           platform::errors::PreconditionNotMet(
                               "Need to init scope in NaiveExecutor firstly."));
@@ -164,6 +187,7 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
       platform::errors::NotFound("No variable [%s] in current scope.", name));
+<<<<<<< HEAD
   auto *tensor = const_cast<phi::DenseTensor *>(&var->Get<phi::DenseTensor>());
   return tensor;
 }
@@ -209,6 +233,20 @@ void NaiveExecutor::MakeReusePlan(
       }
     }
   }
+=======
+  auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
+  return tensor;
+}
+
+void NaiveExecutor::CleanFeedFetchOps() {
+  std::vector<std::unique_ptr<OperatorBase>> ops;
+  for (auto &op : ops_) {
+    if (op->Type() != "feed" && op->Type() != "fetch") {
+      ops.emplace_back(std::move(op));
+    }
+  }
+  ops_.swap(ops);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 NaiveExecutor::~NaiveExecutor() {
@@ -220,7 +258,11 @@ NaiveExecutor::~NaiveExecutor() {
 }
 
 void NaiveExecutor::ResetTrtOps(int num) {
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_TENSORRT
+=======
+#if PADDLE_WITH_TENSORRT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (auto &op : ops_) {
     if (op->Type() == "tensorrt_engine") {
       operators::TensorRTEngineOp *trtop =

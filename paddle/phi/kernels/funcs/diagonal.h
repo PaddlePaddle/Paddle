@@ -104,8 +104,12 @@ DenseTensor Diagonal(const DeviceContext& context,
     DenseTensor diag;
     DDim diag_dims = phi::make_ddim(ret_dims);
     auto dig_stride = phi::stride(diag_dims);
+<<<<<<< HEAD
     diag.Resize(diag_dims);
     auto diag_data = context.template Alloc<T>(&diag);
+=======
+    auto diag_data = diag.mutable_data<T>(diag_dims, context.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int64_t pos = std::abs(offset) * offset_stride;
     int64_t dim_size = ret_strides.size();
@@ -156,6 +160,7 @@ __global__ void DiagonalCuda(const T* data1,
                              int64_t* x_stride,
                              int64_t* out_stride,
                              int64_t numel,
+<<<<<<< HEAD
                              int64_t out_numel,
                              bool is_grad) {
   CUDA_KERNEL_LOOP(idx, out_numel) {
@@ -208,6 +213,60 @@ __global__ void DiagonalCuda(const T* data1,
       data2[idx] = data1[input_offset];
     } else {
       data2[input_offset] = data1[idx];
+=======
+                             bool is_grad) {
+  CUDA_KERNEL_LOOP(idx, numel) {
+    int64_t idx_dim[X_DIM_SIZE] = {0};
+    int64_t temp = 0;
+    for (size_t i = 0; i < X_DIM_SIZE - 1; i++) {
+      idx_dim[i] = (idx - temp) / x_stride[i];
+      temp = temp + idx_dim[i] * x_stride[i];
+    }
+    idx_dim[X_DIM_SIZE - 1] = idx - temp;
+
+    int64_t axis1_dim = idx_dim[axis1_];
+    int64_t axis2_dim = idx_dim[axis2_];
+
+    int64_t out_dim[OUT_DIM_SIZE] = {0};
+    int temp_pos = 0;
+    for (int i = 0; i < X_DIM_SIZE; i++) {
+      if (i != axis1_ && i != axis2_) {
+        out_dim[temp_pos] = idx_dim[i];
+        temp_pos++;
+      }
+    }
+    bool flag = false;
+    if (offset_ == 0 && axis1_dim == axis2_dim) {
+      out_dim[temp_pos] = axis1_dim;
+      flag = true;
+    } else if (offset_ > 0 && (axis1_dim + offset_) == axis2_dim) {
+      out_dim[temp_pos] = axis1_dim;
+      flag = true;
+    } else if (offset_ < 0 && (axis1_dim + offset_) == axis2_dim) {
+      out_dim[temp_pos] = axis2_dim;
+      flag = true;
+    }
+    if (!is_grad) {
+      if (flag) {
+        int64_t idx_output = 0;
+        for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
+          idx_output = idx_output + out_dim[i] * out_stride[i];
+        }
+        idx_output = idx_output + out_dim[OUT_DIM_SIZE - 1];
+        data2[idx_output] = data1[idx];
+      }
+    } else {
+      if (flag) {
+        int64_t idx_output = 0;
+        for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
+          idx_output = idx_output + out_dim[i] * out_stride[i];
+        }
+        idx_output = idx_output + out_dim[OUT_DIM_SIZE - 1];
+        data2[idx] = data1[idx_output];
+      } else {
+        data2[idx] = static_cast<T>(0);
+      }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }

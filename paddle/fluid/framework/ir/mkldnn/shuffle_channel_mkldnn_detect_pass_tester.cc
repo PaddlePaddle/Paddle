@@ -26,9 +26,15 @@ namespace ir {
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
                    const DDim& dims) {
+<<<<<<< HEAD
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
   tensor->mutable_data<float>(phi::CPUPlace());
+=======
+  auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
+  tensor->Resize(dims);
+  tensor->mutable_data<float>(platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 Scope* CreateParamScope() {

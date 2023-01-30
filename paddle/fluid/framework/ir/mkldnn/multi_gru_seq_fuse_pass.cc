@@ -21,9 +21,15 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -48,11 +54,20 @@ std::vector<std::string> JoinInputs(Node* op1,
 void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Fusing two consecutive multi_gru ops.";
   PADDLE_ENFORCE_NOT_NULL(graph,
+<<<<<<< HEAD
                           phi::errors::InvalidArgument(
                               "Pointer to graph argument cannot be NULL."));
   FusePassBase::Init(name_scope_, graph);
   PADDLE_ENFORCE_NOT_NULL(
       param_scope(), phi::errors::InvalidArgument("Scope cannot be nullptr."));
+=======
+                          platform::errors::InvalidArgument(
+                              "Pointer to graph argument cannot be NULL."));
+  FusePassBase::Init(name_scope_, graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      param_scope(),
+      platform::errors::InvalidArgument("Scope cannot be nullptr."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   GraphPatternDetector gpd;
   patterns::MultiGruSeq pattern{gpd.mutable_pattern(), name_scope_};

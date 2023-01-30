@@ -1,4 +1,88 @@
 cc_test(
+<<<<<<< HEAD
+=======
+  test_copy_dev_api
+  SRCS test_copy_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_dot_dev_api
+  SRCS test_dot_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_creation_dev_api
+  SRCS test_creation_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_flatten_dev_api
+  SRCS test_flatten_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_matmul_dev_api
+  SRCS test_matmul_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_mean_dev_api
+  SRCS test_mean_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_scale_dev_api
+  SRCS test_scale_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_cast_dev_api
+  SRCS test_cast_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_elementwise_dev_api
+  SRCS test_elementwise_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_reshape_dev_api
+  SRCS test_reshape_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_sum_dev_api
+  SRCS test_sum_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_conj_dev_api
+  SRCS test_conj_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_concat_dev_api
+  SRCS test_concat_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_split_dev_api
+  SRCS test_split_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_sparse_utils_dev_api
+  SRCS test_sparse_utils_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_sparse_conv3d_dev_api
+  SRCS test_sparse_conv3d_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_sparse_pool_dev_api
+  SRCS test_sparse_pool_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_sparse_activation_dev_api
+  SRCS test_sparse_activation_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_sparse_elementwise_dev_api
+  SRCS test_sparse_elementwise_dev_api.cc
+  DEPS phi phi_api_utils)
+cc_test(
+  test_sparse_transpose_dev_api
+  SRCS test_sparse_transpose_dev_api.cc
+  DEPS phi phi_api_utils)
+
+cc_test(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   test_math_function
   SRCS test_math_function.cc
   DEPS math_function)
@@ -7,10 +91,13 @@ if(WITH_GPU)
     test_math_function_gpu
     SRCS test_math_function.cu
     DEPS math_function)
+<<<<<<< HEAD
   nv_test(
     test_broadcast_gpu
     SRCS test_ternary_broadcast.cu
     DEPS gtest)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 if(WITH_ROCM)
   hip_test(
@@ -22,7 +109,11 @@ endif()
 cc_test(
   test_cpu_vec
   SRCS test_cpu_vec.cc
+<<<<<<< HEAD
   DEPS blas phi_backends)
+=======
+  DEPS blas cpu_info)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # For String Kernels
 cc_test(
@@ -66,6 +157,7 @@ cc_test(
   test_transfer_layout_dev_api
   SRCS test_transfer_layout_dev_api.cc
   DEPS phi phi_api_utils)
+<<<<<<< HEAD
 
 if(WITH_GPU)
   nv_test(
@@ -91,3 +183,5 @@ cc_test(
   test_cache
   SRCS test_cache.cc
   DEPS gtest cache)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

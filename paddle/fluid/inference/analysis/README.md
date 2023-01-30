@@ -1,7 +1,11 @@
 # Inference Analysis
 
 The `inference/analysis` module is used to analyze and optimize the inference program,
+<<<<<<< HEAD
 it references some philosophy from `LLVM/analysis`,
+=======
+it references some philosophy from `LLVM/analysis`, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 and make the various optimization features be pluggable and co-exist in a pipeline.
 
 We borrowed some concepts from LLVM, such as
@@ -31,14 +35,22 @@ each pass will generate unified debug information or visualization for better de
 ## Supported Passes
 
 ### `FluidToDataFlowGraphPass`
+<<<<<<< HEAD
 Transform the fluid `ProgramDesc` to a `DataFlowGraph` to give an abstract representation for all the middle passes,
+=======
+Transform the fluid `ProgramDesc` to a `DataFlowGraph` to give an abstract representation for all the middle passes, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 this should be the first pass of the pipeline.
 
 ### `DataFlowGraphToFluidPass`
 Generate a final `ProgramDesc` from a data flow graph, this should be the last pass of the pipeline.
 
 ### `TensorRTSubgraphNodeMarkPass`
+<<<<<<< HEAD
 Mark the `Node` that are supported by TensorRT,
+=======
+Mark the `Node` that are supported by TensorRT, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 this pass will generate a visualization file which can be used for debugging.
 
 ### `TensorRTSubGraphPass`

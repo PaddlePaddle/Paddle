@@ -23,7 +23,11 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 namespace paddle {
 namespace distributed {
+<<<<<<< HEAD
 std::vector<std::string> GraphPyService::split(const std::string& str,
+=======
+std::vector<std::string> GraphPyService::split(std::string& str,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                const char pattern) {
   std::vector<std::string> res;
   std::stringstream input(str);
@@ -44,7 +48,11 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
     if (table_feat_mapping[idx].find(feat_name) ==
         table_feat_mapping[idx].end()) {
       VLOG(0) << "for table name not found,make a new one";
+<<<<<<< HEAD
       int res = static_cast<int>(table_feat_mapping[idx].size());
+=======
+      int res = (int)table_feat_mapping[idx].size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       table_feat_mapping[idx][feat_name] = res;
       VLOG(0) << "seq id = " << table_feat_mapping[idx][feat_name];
     }
@@ -72,8 +80,13 @@ void add_graph_node(std::string name,
 void remove_graph_node(std::string name, std::vector<int64_t> node_ids) {}
 void GraphPyService::set_up(std::string ips_str,
                             int shard_num,
+<<<<<<< HEAD
                             const std::vector<std::string> node_types,
                             const std::vector<std::string> edge_types) {
+=======
+                            std::vector<std::string> node_types,
+                            std::vector<std::string> edge_types) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set_shard_num(shard_num);
   set_num_node_types(node_types.size());
   /*
@@ -86,12 +99,20 @@ void GraphPyService::set_up(std::string ips_str,
     */
   id_to_edge = edge_types;
   for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
+<<<<<<< HEAD
     int res = static_cast<int>(edge_to_id.size());
+=======
+    int res = (int)edge_to_id.size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     edge_to_id[edge_types[table_id]] = res;
   }
   id_to_feature = node_types;
   for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
+<<<<<<< HEAD
     int res = static_cast<int>(feature_to_id.size());
+=======
+    int res = (int)feature_to_id.size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     feature_to_id[node_types[table_id]] = res;
   }
   table_feat_mapping.resize(node_types.size());
@@ -312,8 +333,13 @@ void GraphPyClient::clear_nodes(std::string name) {
 }
 
 void GraphPyClient::add_graph_node(std::string name,
+<<<<<<< HEAD
                                    std::vector<int64_t>& node_ids,    // NOLINT
                                    std::vector<bool>& weight_list) {  // NOLINT
+=======
+                                   std::vector<int64_t>& node_ids,
+                                   std::vector<bool>& weight_list) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // if (this->table_id_map.count(name)) {
   //   uint32_t table_id = this->table_id_map[name];
   //   auto status =

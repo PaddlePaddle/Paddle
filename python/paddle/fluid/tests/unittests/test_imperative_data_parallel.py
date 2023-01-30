@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -26,6 +27,27 @@ from paddle.nn import Linear
 class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
         super().__init__()
+=======
+from __future__ import print_function
+
+import contextlib
+import unittest
+import numpy as np
+import six
+import unittest
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dygraph
+from paddle.fluid.dygraph.nn import Linear
+import paddle.fluid.core as core
+
+
+class MLP(fluid.Layer):
+
+    def __init__(self, param_attr=None, bias_attr=None):
+        super(MLP, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._linear1 = Linear(784, 10)
         self._linear2 = Linear(10, 10)
@@ -37,16 +59,26 @@ class MLP(fluid.Layer):
 
 
 class TestDataParallelStateDict(unittest.TestCase):
+<<<<<<< HEAD
     def test_data_parallel_state_dict(self):
         with fluid.dygraph.guard():
             init_parallel_env()
             mlp = MLP()
             parallel_mlp = dygraph.parallel.DataParallel(mlp)
+=======
+
+    def test_data_parallel_state_dict(self):
+        with fluid.dygraph.guard():
+            strategy = dygraph.parallel.prepare_context()
+            mlp = MLP()
+            parallel_mlp = dygraph.parallel.DataParallel(mlp, strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             single_state = mlp.state_dict()
             parallel_state = parallel_mlp.state_dict()
 
             base_para = {}
+<<<<<<< HEAD
             place = (
                 fluid.CPUPlace()
                 if not core.is_compiled_with_cuda()
@@ -58,6 +90,15 @@ class TestDataParallelStateDict(unittest.TestCase):
                 np.testing.assert_array_equal(
                     v.numpy(), parallel_state[k].numpy()
                 )
+=======
+            place = fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            for k, v in single_state.items():
+                self.assertTrue(k in parallel_state)
+
+                np.testing.assert_array_equal(v.numpy(),
+                                              parallel_state[k].numpy())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 base_para[k] = v.numpy()
 

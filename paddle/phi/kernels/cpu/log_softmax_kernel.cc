@@ -19,7 +19,10 @@
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -110,11 +113,14 @@ void LogSoftmaxKernel(const Context& dev_ctx,
   const int canonical_axis = funcs::CanonicalAxis(axis, rank);
 
   dev_ctx.template Alloc<T>(out);
+<<<<<<< HEAD
   // For 0D Tensor
   if (rank == 0) {
     phi::funcs::set_constant(dev_ctx, out, 0.0);
     return;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (x.numel() != 0) {
     LogSoftmaxFunctor<Context, T>()(dev_ctx, &x, out, canonical_axis);
   }

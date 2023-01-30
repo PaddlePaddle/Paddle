@@ -93,6 +93,7 @@ class PD_INFER_DECL Predictor {
   explicit Predictor(const Config& config);
 
   ///
+<<<<<<< HEAD
   /// \brief Get all input names and their corresponding shapes
   ///
   /// \return the map of input names and shape
@@ -100,6 +101,8 @@ class PD_INFER_DECL Predictor {
   std::map<std::string, std::vector<int64_t>> GetInputTensorShape();
 
   ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief Get all input names and their corresponding type
   ///
   /// \return the map of input names and type
@@ -144,6 +147,7 @@ class PD_INFER_DECL Predictor {
   std::unique_ptr<Tensor> GetOutputHandle(const std::string& name);
 
   ///
+<<<<<<< HEAD
   /// \brief Get all output names and their corresponding shapes
   ///
   /// \return the map of output names and shape
@@ -158,6 +162,8 @@ class PD_INFER_DECL Predictor {
   std::map<std::string, DataType> GetOutputTypes();
 
   ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief Clone to get the new predictor. thread safe.
   ///
   /// \return get a new predictor
@@ -179,6 +185,7 @@ class PD_INFER_DECL Predictor {
   uint64_t TryShrinkMemory();
 
   ///
+<<<<<<< HEAD
   /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
   /// The hook function signature is void(const std::string&, const
@@ -189,6 +196,8 @@ class PD_INFER_DECL Predictor {
   void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc);
 
   ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief Get the execution stream on devices with a concept of stream,
   /// otherwise returns nullptr.
   ///

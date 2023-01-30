@@ -18,10 +18,17 @@ Usage:
     python check_op_kernel_same_dtypes.py > all_kernels.txt
     python check_op_kernel_same_dtypes.py OP_KERNEL_DTYPE_DEV.spec OP_KERNEL_DTYPE_PR.spec > is_valid
 """
+<<<<<<< HEAD
 import collections
 import re
 import sys
 
+=======
+from __future__ import print_function
+import sys
+import re
+import collections
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
@@ -37,15 +44,24 @@ def get_all_kernels():
         pattern = re.compile(r'data_type\[([^\]]+)\]')
         for op_info in op_infos:
             infos = pattern.findall(op_info)
+<<<<<<< HEAD
             if infos is None or len(infos) == 0:
                 continue
+=======
+            if infos is None or len(infos) == 0: continue
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             register_type = infos[0].split(":")[-1]
             op_kernel_types[op_type].append(register_type.lower())
 
+<<<<<<< HEAD
     for (op_type, op_kernels) in sorted(
         op_kernel_types.items(), key=lambda x: x[0]
     ):
+=======
+    for (op_type, op_kernels) in sorted(op_kernel_types.items(),
+                                        key=lambda x: x[0]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print(op_type, " ".join(sorted(op_kernels)))
 
 
@@ -59,6 +75,7 @@ def read_file(file_path):
 def print_diff(op_type, op_kernel_dtype_set, grad_op_kernel_dtype_set):
     if len(op_kernel_dtype_set) > len(grad_op_kernel_dtype_set):
         lack_dtypes = list(op_kernel_dtype_set - grad_op_kernel_dtype_set)
+<<<<<<< HEAD
         print(
             "{} supports [{}] now, but its grad op kernel not supported.".format(
                 op_type, " ".join(lack_dtypes)
@@ -71,6 +88,14 @@ def print_diff(op_type, op_kernel_dtype_set, grad_op_kernel_dtype_set):
                 op_type + "_grad", " ".join(lack_dtypes)
             )
         )
+=======
+        print("{} supports [{}] now, but its grad op kernel not supported.".
+              format(op_type, " ".join(lack_dtypes)))
+    else:
+        lack_dtypes = list(grad_op_kernel_dtype_set - op_kernel_dtype_set)
+        print("{} supports [{}] now, but its forward op kernel not supported.".
+              format(op_type + "_grad", " ".join(lack_dtypes)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def contain_current_op(op_type, op_info_dict):
@@ -100,8 +125,12 @@ def check_change_or_add_op_kernel_dtypes_valid():
             origin_dtype_set = origin_all_kernel_dtype_dict[op_type]
             # op kernel changed
             if origin_dtype_set != dtype_set and not contain_current_op(
+<<<<<<< HEAD
                 op_type, added_or_changed_op_info
             ):
+=======
+                    op_type, added_or_changed_op_info):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 added_or_changed_op_info[op_type] = dtype_set
             else:
                 # do nothing
@@ -121,8 +150,12 @@ def check_change_or_add_op_kernel_dtypes_valid():
             grad_op_type = op_type + "_grad"
             if grad_op_type in new_all_kernel_dtype_dict:
                 grad_op_kernel_dtype_set = set(
+<<<<<<< HEAD
                     new_all_kernel_dtype_dict[grad_op_type]
                 )
+=======
+                    new_all_kernel_dtype_dict[grad_op_type])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if dtype_set != grad_op_kernel_dtype_set:
                     print_diff(op_type, dtype_set, grad_op_kernel_dtype_set)
         # if changed grad op
@@ -130,8 +163,12 @@ def check_change_or_add_op_kernel_dtypes_valid():
             forward_op_type = op_type.rstrip("_grad")
             if forward_op_type in new_all_kernel_dtype_dict:
                 op_kernel_dtype_set = set(
+<<<<<<< HEAD
                     new_all_kernel_dtype_dict[forward_op_type]
                 )
+=======
+                    new_all_kernel_dtype_dict[forward_op_type])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if op_kernel_dtype_set != dtype_set:
                     print_diff(forward_op_type, op_kernel_dtype_set, dtype_set)
 
@@ -141,8 +178,14 @@ if len(sys.argv) == 1:
 elif len(sys.argv) == 3:
     check_change_or_add_op_kernel_dtypes_valid()
 else:
+<<<<<<< HEAD
     print(
         "Usage:\n"
         "\tpython check_op_kernel_same_dtypes.py > all_kernels.txt\n"
         "\tpython check_op_kernel_same_dtypes.py OP_KERNEL_DTYPE_DEV.spec OP_KERNEL_DTYPE_PR.spec > diff"
     )
+=======
+    print("Usage:\n" \
+          "\tpython check_op_kernel_same_dtypes.py > all_kernels.txt\n" \
+          "\tpython check_op_kernel_same_dtypes.py OP_KERNEL_DTYPE_DEV.spec OP_KERNEL_DTYPE_PR.spec > diff")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -27,6 +27,7 @@ void FloorDivideRawKernel(const Context& dev_ctx,
                           int axis,
                           DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+<<<<<<< HEAD
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -37,6 +38,10 @@ void FloorDivideRawKernel(const Context& dev_ctx,
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
+=======
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_floordiv<XPUType>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T, typename Context>
@@ -46,6 +51,7 @@ void MaximumRawKernel(const Context& dev_ctx,
                       int axis,
                       DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+<<<<<<< HEAD
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -56,6 +62,10 @@ void MaximumRawKernel(const Context& dev_ctx,
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
+=======
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_max<XPUType>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T, typename Context>
@@ -65,6 +75,7 @@ void MinimumRawKernel(const Context& dev_ctx,
                       int axis,
                       DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+<<<<<<< HEAD
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -75,6 +86,10 @@ void MinimumRawKernel(const Context& dev_ctx,
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
+=======
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_min<XPUType>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T, typename Context>
@@ -84,6 +99,7 @@ void RemainderRawKernel(const Context& dev_ctx,
                         int axis,
                         DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+<<<<<<< HEAD
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -94,6 +110,10 @@ void RemainderRawKernel(const Context& dev_ctx,
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
+=======
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_mod<XPUType>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T, typename Context>
@@ -103,6 +123,7 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
                              int axis,
                              DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+<<<<<<< HEAD
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -113,6 +134,10 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
+=======
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_pow<XPUType>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

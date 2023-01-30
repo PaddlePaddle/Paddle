@@ -157,8 +157,11 @@ bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
 }
 
+<<<<<<< HEAD
 bool Tensor::is_xpu() const { return paddle::platform::is_xpu_place(place()); }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool Tensor::is_custom_device() const {
   return paddle::platform::is_custom_place(place());
 }

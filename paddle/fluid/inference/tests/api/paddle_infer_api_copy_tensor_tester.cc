@@ -15,7 +15,10 @@ limitations under the License. */
 #include <cuda_runtime.h>
 #include <gtest/gtest.h>
 
+<<<<<<< HEAD
 #include <array>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <cstring>
 #include <numeric>
 
@@ -32,7 +35,11 @@ class InferApiTesterUtils {
   static std::unique_ptr<Tensor> CreateInferTensorForTest(
       const std::string &name, PlaceType place, void *p_scope) {
     auto var = static_cast<paddle::framework::Scope *>(p_scope)->Var(name);
+<<<<<<< HEAD
     var->GetMutable<phi::DenseTensor>();
+=======
+    var->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     const auto &dev_ctxs = pool.device_contexts();
@@ -208,33 +215,46 @@ static void test_copy_tensor(PlaceType src_place, PlaceType dst_place) {
 TEST(CopyTensor, float32) {
   test_copy_tensor<float>(PlaceType::kCPU, PlaceType::kCPU);
   test_copy_tensor<float>(PlaceType::kCPU, PlaceType::kGPU);
+<<<<<<< HEAD
   test_copy_tensor<float>(PlaceType::kGPU, PlaceType::kCPU);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   test_copy_tensor<float>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, int32) {
   test_copy_tensor<int32_t>(PlaceType::kCPU, PlaceType::kCPU);
+<<<<<<< HEAD
   test_copy_tensor<int32_t>(PlaceType::kCPU, PlaceType::kGPU);
   test_copy_tensor<int32_t>(PlaceType::kGPU, PlaceType::kCPU);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   test_copy_tensor<int32_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, int64) {
   test_copy_tensor<int64_t>(PlaceType::kCPU, PlaceType::kCPU);
+<<<<<<< HEAD
   test_copy_tensor<int64_t>(PlaceType::kCPU, PlaceType::kGPU);
   test_copy_tensor<int64_t>(PlaceType::kGPU, PlaceType::kCPU);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   test_copy_tensor<int64_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, int8) {
   test_copy_tensor<int8_t>(PlaceType::kCPU, PlaceType::kCPU);
+<<<<<<< HEAD
   test_copy_tensor<int8_t>(PlaceType::kCPU, PlaceType::kGPU);
   test_copy_tensor<int8_t>(PlaceType::kGPU, PlaceType::kCPU);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   test_copy_tensor<int8_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, uint8) {
   test_copy_tensor<uint8_t>(PlaceType::kCPU, PlaceType::kCPU);
+<<<<<<< HEAD
   test_copy_tensor<uint8_t>(PlaceType::kCPU, PlaceType::kGPU);
   test_copy_tensor<uint8_t>(PlaceType::kGPU, PlaceType::kCPU);
   test_copy_tensor<uint8_t>(PlaceType::kGPU, PlaceType::kGPU);
@@ -369,6 +389,12 @@ TEST(CopyTensor, bool_cpu_to_gpu) {
 }
 
 TEST(CopyTensor, float16_cpu_to_cpu) {
+=======
+  test_copy_tensor<uint8_t>(PlaceType::kGPU, PlaceType::kGPU);
+}
+
+TEST(CopyTensor, float16) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::framework::Scope scope;
   auto tensor_src = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
@@ -390,7 +416,11 @@ TEST(CopyTensor, float16_cpu_to_cpu) {
   EXPECT_EQ(tensor_dst->shape()[0], 2);
   EXPECT_EQ(tensor_dst->shape()[1], 3);
 
+<<<<<<< HEAD
   std::vector<float16> data_check(6, float16(2.0));
+=======
+  std::vector<float16> data_check(6, float16(1.0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_dst->CopyToCpu<float16>(data_check.data());
 
   for (int i = 0; i < 6; i++) {
@@ -398,7 +428,11 @@ TEST(CopyTensor, float16_cpu_to_cpu) {
   }
 }
 
+<<<<<<< HEAD
 TEST(CopyTensor, float16_gpu_to_gpu) {
+=======
+TEST(CopyTensor, float16_gpu) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::framework::Scope scope;
   auto tensor_src = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
@@ -420,6 +454,7 @@ TEST(CopyTensor, float16_gpu_to_gpu) {
   EXPECT_EQ(tensor_dst->shape()[0], 2);
   EXPECT_EQ(tensor_dst->shape()[1], 3);
 
+<<<<<<< HEAD
   std::vector<float16> data_check(6, float16(2.0));
   tensor_dst->CopyToCpu<float16>(data_check.data());
 
@@ -481,6 +516,9 @@ TEST(CopyTensor, float16_gpu_to_cpu) {
   EXPECT_EQ(tensor_dst->shape()[1], 3);
 
   std::vector<float16> data_check(6, float16(2.0));
+=======
+  std::vector<float16> data_check(6, float16(1.0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_dst->CopyToCpu<float16>(data_check.data());
 
   for (int i = 0; i < 6; i++) {

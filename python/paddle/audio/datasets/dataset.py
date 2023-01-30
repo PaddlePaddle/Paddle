@@ -15,14 +15,25 @@ from typing import List
 
 import paddle
 
+<<<<<<< HEAD
 from ..features import MFCC, LogMelSpectrogram, MelSpectrogram, Spectrogram
+=======
+from ..features import MelSpectrogram
+from ..features import Spectrogram
+from ..features import MFCC
+from ..features import LogMelSpectrogram
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 feat_funcs = {
     'raw': None,
     'melspectrogram': MelSpectrogram,
     'mfcc': MFCC,
     'logmelspectrogram': LogMelSpectrogram,
+<<<<<<< HEAD
     'spectrogram': Spectrogram,
+=======
+    'spectrogram': Spectrogram
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 
@@ -31,6 +42,7 @@ class AudioClassificationDataset(paddle.io.Dataset):
     Base class of audio classification dataset.
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         files: List[str],
@@ -39,6 +51,14 @@ class AudioClassificationDataset(paddle.io.Dataset):
         sample_rate: int = None,
         **kwargs,
     ):
+=======
+    def __init__(self,
+                 files: List[str],
+                 labels: List[int],
+                 feat_type: str = 'raw',
+                 sample_rate: int = None,
+                 **kwargs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         Ags:
             files (:obj:`List[str]`): A list of absolute path of audio files.
@@ -46,7 +66,11 @@ class AudioClassificationDataset(paddle.io.Dataset):
             feat_type (:obj:`str`, `optional`, defaults to `raw`):
                 It identifies the feature type that user wants to extrace of an audio file.
         """
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AudioClassificationDataset, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if feat_type not in feat_funcs.keys():
             raise RuntimeError(
@@ -58,9 +82,13 @@ class AudioClassificationDataset(paddle.io.Dataset):
 
         self.feat_type = feat_type
         self.sample_rate = sample_rate
+<<<<<<< HEAD
         self.feat_config = (
             kwargs  # Pass keyword arguments to customize feature config
         )
+=======
+        self.feat_config = kwargs  # Pass keyword arguments to customize feature config
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _get_data(self, input_file: str):
         raise NotImplementedError
@@ -79,9 +107,14 @@ class AudioClassificationDataset(paddle.io.Dataset):
         if feat_func is not None:
             waveform = waveform.unsqueeze(0)  # (batch_size, T)
             if self.feat_type != 'spectrogram':
+<<<<<<< HEAD
                 feature_extractor = feat_func(
                     sr=self.sample_rate, **self.feat_config
                 )
+=======
+                feature_extractor = feat_func(sr=self.sample_rate,
+                                              **self.feat_config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 feature_extractor = feat_func(**self.feat_config)
             record['feat'] = feature_extractor(waveform).squeeze(0)

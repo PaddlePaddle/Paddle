@@ -12,10 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import os
 import contextlib
 import unittest
 import numpy as np
+<<<<<<< HEAD
+=======
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import pickle
 
 import paddle
@@ -32,6 +41,7 @@ from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 
 class TestLayer(fluid.dygraph.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         num_channels,
@@ -68,6 +78,39 @@ class TestLayer(fluid.dygraph.Layer):
         self._sync_batch_norm2 = SyncBatchNorm(
             num_filters, weight_attr=False, bias_attr=False
         )
+=======
+
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 groups=1,
+                 act=None):
+        super(TestLayer, self).__init__()
+
+        self._conv = Conv2D(in_channels=num_channels,
+                            out_channels=num_filters,
+                            kernel_size=filter_size,
+                            stride=stride,
+                            padding=(filter_size - 1) // 2,
+                            groups=groups,
+                            bias_attr=False)
+
+        self._sync_batch_norm = SyncBatchNorm(num_filters)
+
+        self._conv2 = Conv2D(in_channels=num_filters,
+                             out_channels=num_filters,
+                             kernel_size=filter_size,
+                             stride=stride,
+                             padding=(filter_size - 1) // 2,
+                             groups=groups,
+                             bias_attr=False)
+
+        self._sync_batch_norm2 = SyncBatchNorm(num_filters,
+                                               weight_attr=False,
+                                               bias_attr=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -79,6 +122,7 @@ class TestLayer(fluid.dygraph.Layer):
 
 
 class TestSyncBatchNorm(TestParallelDyGraphRunnerBase):
+<<<<<<< HEAD
     def get_model(self):
         model = TestLayer(3, 64, 7)
         train_reader = paddle.batch(
@@ -89,13 +133,28 @@ class TestSyncBatchNorm(TestParallelDyGraphRunnerBase):
         opt = fluid.optimizer.Adam(
             learning_rate=1e-3, parameter_list=model.parameters()
         )
+=======
+
+    def get_model(self):
+        model = TestLayer(3, 64, 7)
+        train_reader = paddle.batch(paddle.dataset.flowers.test(use_xmap=False),
+                                    batch_size=32,
+                                    drop_last=True)
+        opt = fluid.optimizer.Adam(learning_rate=1e-3,
+                                   parameter_list=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return model, train_reader, opt
 
     def run_one_loop(self, model, opt, data):
         batch_size = len(data)
+<<<<<<< HEAD
         dy_x_data = np.array([x[0].reshape(3, 224, 224) for x in data]).astype(
             'float32'
         )
+=======
+        dy_x_data = np.array([x[0].reshape(3, 224, 224)
+                              for x in data]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         img = to_variable(dy_x_data)
         img.stop_gradient = False
 

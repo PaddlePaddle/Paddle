@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 # Test set_value op in static graph mode
 
 import unittest
@@ -24,6 +25,24 @@ from paddle.fluid.layer_helper import LayerHelper
 
 
 class TestSetValueBase(unittest.TestCase):
+=======
+# Test set_value op in static mode
+
+from __future__ import print_function
+
+import unittest
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.layer_helper import LayerHelper
+from functools import reduce
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+
+
+class TestSetValueBase(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         self.set_dtype()
@@ -49,6 +68,10 @@ class TestSetValueBase(unittest.TestCase):
 
 
 class TestSetValueApi(TestSetValueBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _run_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(self.program):
@@ -68,11 +91,16 @@ class TestSetValueApi(TestSetValueBase):
         paddle.enable_static()
         return out
 
+<<<<<<< HEAD
     def test_api(self):
+=======
+    def func_test_api(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         static_out = self._run_static()
         dynamic_out = self._run_dynamic()
         self._get_answer()
 
+<<<<<<< HEAD
         error_msg = (
             "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
         )
@@ -84,11 +112,27 @@ class TestSetValueApi(TestSetValueBase):
             (self.data == dynamic_out).all(),
             msg=error_msg.format("dynamic", self.data, dynamic_out),
         )
+=======
+        error_msg = "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
+        self.assertTrue((self.data == static_out).all(),
+                        msg=error_msg.format("static", self.data, static_out))
+        self.assertTrue((self.data == dynamic_out).all(),
+                        msg=error_msg.format("dynamic", self.data, dynamic_out))
+
+    def test_api(self):
+        with _test_eager_guard():
+            self.func_test_api()
+        self.func_test_api()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
 # 1.1 item is int
 class TestSetValueItemInt(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0] = self.value
 
@@ -99,6 +143,10 @@ class TestSetValueItemInt(TestSetValueApi):
 # 1.2 item is slice
 # 1.2.1 step is 1
 class TestSetValueItemSlice(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:2] = self.value
 
@@ -107,6 +155,10 @@ class TestSetValueItemSlice(TestSetValueApi):
 
 
 class TestSetValueItemSlice2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:-1] = self.value
 
@@ -115,6 +167,10 @@ class TestSetValueItemSlice2(TestSetValueApi):
 
 
 class TestSetValueItemSlice3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:-1, 0:2] = self.value
 
@@ -123,6 +179,10 @@ class TestSetValueItemSlice3(TestSetValueApi):
 
 
 class TestSetValueItemSlice4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:, 1:2, :] = self.value
 
@@ -131,6 +191,10 @@ class TestSetValueItemSlice4(TestSetValueApi):
 
 
 class TestSetValueItemSlice5(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:, 1:1, :] = self.value
 
@@ -139,7 +203,13 @@ class TestSetValueItemSlice5(TestSetValueApi):
 
 
 class TestSetValueItemSliceInWhile(TestSetValueApi):
+<<<<<<< HEAD
     def _call_setitem(self, x):
+=======
+
+    def _call_setitem(self, x):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def cond(i, x):
             return i < 1
 
@@ -148,8 +218,13 @@ class TestSetValueItemSliceInWhile(TestSetValueApi):
             i = i + 1
             return i, x
 
+<<<<<<< HEAD
         i = paddle.zeros(shape=(1,), dtype='int32')
         i, x = paddle.static.nn.while_loop(cond, body, [i, x])
+=======
+        i = paddle.zeros(shape=(1, ), dtype='int32')
+        i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _get_answer(self):
         self.data[0] = self.value
@@ -157,6 +232,10 @@ class TestSetValueItemSliceInWhile(TestSetValueApi):
 
 # 1.2.2 step > 1
 class TestSetValueItemSliceStep(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [5, 5, 5]
 
@@ -168,6 +247,10 @@ class TestSetValueItemSliceStep(TestSetValueApi):
 
 
 class TestSetValueItemSliceStep2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [7, 5, 5]
 
@@ -179,6 +262,10 @@ class TestSetValueItemSliceStep2(TestSetValueApi):
 
 
 class TestSetValueItemSliceStep3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:-1, 0:2, ::2] = self.value
 
@@ -187,6 +274,10 @@ class TestSetValueItemSliceStep3(TestSetValueApi):
 
 
 class TestSetValueItemSliceStep4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:, 1:2:2, :] = self.value
 
@@ -196,6 +287,10 @@ class TestSetValueItemSliceStep4(TestSetValueApi):
 
 # 1.2.3 step < 0
 class TestSetValueItemSliceNegetiveStep(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [5, 2]
 
@@ -210,6 +305,10 @@ class TestSetValueItemSliceNegetiveStep(TestSetValueApi):
 
 
 class TestSetValueItemSliceNegetiveStep2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [5]
 
@@ -224,6 +323,10 @@ class TestSetValueItemSliceNegetiveStep2(TestSetValueApi):
 
 
 class TestSetValueItemSliceNegetiveStep3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [3]
 
@@ -238,6 +341,10 @@ class TestSetValueItemSliceNegetiveStep3(TestSetValueApi):
 
 
 class TestSetValueItemSliceNegetiveStep4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [3, 4, 5]
 
@@ -252,6 +359,10 @@ class TestSetValueItemSliceNegetiveStep4(TestSetValueApi):
 
 
 class TestSetValueItemEllipsis1(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:, ..., 1:] = self.value
 
@@ -260,6 +371,10 @@ class TestSetValueItemEllipsis1(TestSetValueApi):
 
 
 class TestSetValueItemEllipsis2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:, ...] = self.value
 
@@ -268,6 +383,10 @@ class TestSetValueItemEllipsis2(TestSetValueApi):
 
 
 class TestSetValueItemEllipsis3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[..., 1:] = self.value
 
@@ -276,6 +395,10 @@ class TestSetValueItemEllipsis3(TestSetValueApi):
 
 
 class TestSetValueItemEllipsis4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[...] = self.value
 
@@ -285,6 +408,10 @@ class TestSetValueItemEllipsis4(TestSetValueApi):
 
 # 1.4 item is Paddle Tensor
 class TestSetValueItemTensor(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         x[zero] = self.value
@@ -294,6 +421,10 @@ class TestSetValueItemTensor(TestSetValueApi):
 
 
 class TestSetValueItemTensor2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         two = paddle.full([1], 2, dtype="int64")
@@ -304,6 +435,10 @@ class TestSetValueItemTensor2(TestSetValueApi):
 
 
 class TestSetValueItemTensor3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         two = paddle.full([1], 2, dtype="int64")
@@ -314,6 +449,10 @@ class TestSetValueItemTensor3(TestSetValueApi):
 
 
 class TestSetValueItemTensor4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         two = paddle.full([1], 2, dtype="int64")
@@ -324,6 +463,10 @@ class TestSetValueItemTensor4(TestSetValueApi):
 
 
 class TestSetValueItemTensor5(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         two = paddle.full([1], 2, dtype="int64")
@@ -334,6 +477,10 @@ class TestSetValueItemTensor5(TestSetValueApi):
 
 
 class TestSetValueItemTensor6(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [3, 4, 5]
 
@@ -348,6 +495,10 @@ class TestSetValueItemTensor6(TestSetValueApi):
 
 # 1.5 item is None
 class TestSetValueItemNone1(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[None] = self.value
 
@@ -356,6 +507,10 @@ class TestSetValueItemNone1(TestSetValueApi):
 
 
 class TestSetValueItemNone2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0, None, 1] = self.value
 
@@ -364,6 +519,10 @@ class TestSetValueItemNone2(TestSetValueApi):
 
 
 class TestSetValueItemNone3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[:, None, None, 1] = self.value
 
@@ -372,6 +531,10 @@ class TestSetValueItemNone3(TestSetValueApi):
 
 
 class TestSetValueItemNone4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0, 0, None, 1] = self.value
 
@@ -380,6 +543,10 @@ class TestSetValueItemNone4(TestSetValueApi):
 
 
 class TestSetValueItemNone5(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0, None, 0, None, 1] = self.value
 
@@ -388,6 +555,10 @@ class TestSetValueItemNone5(TestSetValueApi):
 
 
 class TestSetValueItemNone6(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[None, 0, 0, None, 0] = self.value
 
@@ -396,6 +567,10 @@ class TestSetValueItemNone6(TestSetValueApi):
 
 
 class TestSetValueItemNone7(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[:, None, 1] = np.zeros(self.shape)[:, None, 0]
 
@@ -404,6 +579,10 @@ class TestSetValueItemNone7(TestSetValueApi):
 
 
 class TestSetValueItemNone8(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[:, 1, None] = np.zeros(self.shape)[:, 0, None]
 
@@ -412,6 +591,10 @@ class TestSetValueItemNone8(TestSetValueApi):
 
 
 class TestSetValueItemNone9(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
 
@@ -420,6 +603,10 @@ class TestSetValueItemNone9(TestSetValueApi):
 
 
 class TestSetValueItemNone10(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[..., None, :, None] = np.zeros(self.shape)[..., None, :, None]
 
@@ -429,6 +616,10 @@ class TestSetValueItemNone10(TestSetValueApi):
 
 # 1.5 item is list or Tensor of bol
 class TestSetValueItemBool1(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[[True, False]] = self.value
 
@@ -437,6 +628,10 @@ class TestSetValueItemBool1(TestSetValueApi):
 
 
 class TestSetValueItemBool2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[[False, False]] = self.value
 
@@ -445,6 +640,10 @@ class TestSetValueItemBool2(TestSetValueApi):
 
 
 class TestSetValueItemBool3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[[False, True]] = np.zeros(self.shape[2])
 
@@ -453,6 +652,10 @@ class TestSetValueItemBool3(TestSetValueApi):
 
 
 class TestSetValueItemBool4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         idx = paddle.assign(np.array([False, True]))
         x[idx] = np.zeros(self.shape[2])
@@ -462,6 +665,7 @@ class TestSetValueItemBool4(TestSetValueApi):
 
 
 class TestSetValueItemBool5(TestSetValueApi):
+<<<<<<< HEAD
     def _call_setitem(self, x):
         idx = paddle.assign(
             np.array([[False, True, False], [True, True, False]])
@@ -475,6 +679,21 @@ class TestSetValueItemBool5(TestSetValueApi):
 
 
 class TestSetValueItemBool6(TestSetValueApi):
+=======
+
+    def _call_setitem(self, x):
+        idx = paddle.assign(
+            np.array([[False, True, False], [True, True, False]]))
+        x[idx] = self.value
+
+    def _get_answer(self):
+        self.data[np.array([[False, True, False], [True, True,
+                                                   False]])] = self.value
+
+
+class TestSetValueItemBool6(TestSetValueApi):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0, ...] = 0
         x[x > 0] = self.value
@@ -489,7 +708,13 @@ class TestSetValueItemBool6(TestSetValueApi):
 
 
 def create_test_value_int32(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = 7
 
@@ -509,7 +734,13 @@ create_test_value_int32(TestSetValueItemSlice4)
 
 
 def create_test_value_int64(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = 7
 
@@ -529,7 +760,13 @@ create_test_value_int64(TestSetValueItemSlice4)
 
 
 def create_test_value_fp16(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = 3.7
 
@@ -549,7 +786,13 @@ create_test_value_fp16(TestSetValueItemSlice4)
 
 
 def create_test_value_fp32(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = 3.3
 
@@ -569,7 +812,13 @@ create_test_value_fp32(TestSetValueItemSlice4)
 
 
 def create_test_value_fp64(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = 2.0**127  # float32:[-2^128, 2^128)
 
@@ -589,7 +838,13 @@ create_test_value_fp64(TestSetValueItemSlice4)
 
 
 def create_test_value_bool(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = 0
 
@@ -610,7 +865,13 @@ create_test_value_bool(TestSetValueItemSlice4)
 
 # 2.2 value is numpy.array (int32, int64, float32, float64, bool)
 def create_test_value_numpy_int32(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = np.array([5])
 
@@ -630,7 +891,13 @@ create_test_value_numpy_int32(TestSetValueItemSlice4)
 
 
 def create_test_value_numpy_int64(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = np.array([1])
 
@@ -650,7 +917,13 @@ create_test_value_numpy_int64(TestSetValueItemSlice4)
 
 
 def create_test_value_numpy_fp32(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = np.array([1])
 
@@ -670,7 +943,13 @@ create_test_value_numpy_fp32(TestSetValueItemSlice4)
 
 
 def create_test_value_numpy_fp64(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = np.array([2**127]).astype("float64")
 
@@ -690,7 +969,13 @@ create_test_value_numpy_fp64(TestSetValueItemSlice4)
 
 
 def create_test_value_numpy_bool(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = np.array([0])
 
@@ -711,7 +996,13 @@ create_test_value_numpy_bool(TestSetValueItemSlice4)
 
 # 2.3 value is a Paddle Tensor (int32, int64, float32, float64, bool)
 def create_test_value_tensor_int32(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_dtype(self):
             self.dtype = "int32"
 
@@ -735,7 +1026,13 @@ create_test_value_tensor_int32(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_int64(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_dtype(self):
             self.dtype = "int64"
 
@@ -759,7 +1056,13 @@ create_test_value_tensor_int64(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_fp32(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_dtype(self):
             self.dtype = "float32"
 
@@ -783,7 +1086,13 @@ create_test_value_tensor_fp32(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_fp64(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_dtype(self):
             self.dtype = "float64"
 
@@ -807,7 +1116,13 @@ create_test_value_tensor_fp64(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_bool(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_dtype(self):
             self.dtype = "bool"
 
@@ -832,6 +1147,10 @@ create_test_value_tensor_bool(TestSetValueItemSlice4)
 
 # 3. Test different shape of value
 class TestSetValueValueShape1(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_value(self):
         self.value = np.array([3, 4, 5, 6])  # shape is (4,)
 
@@ -843,6 +1162,10 @@ class TestSetValueValueShape1(TestSetValueApi):
 
 
 class TestSetValueValueShape2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_value(self):
         self.value = np.array([[3, 4, 5, 6]])  # shape is (1,4)
 
@@ -854,10 +1177,17 @@ class TestSetValueValueShape2(TestSetValueApi):
 
 
 class TestSetValueValueShape3(TestSetValueApi):
+<<<<<<< HEAD
     def set_value(self):
         self.value = np.array(
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
         )  # shape is (3,4)
+=======
+
+    def set_value(self):
+        self.value = np.array([[1, 1, 1, 1], [2, 2, 2, 2],
+                               [3, 3, 3, 3]])  # shape is (3,4)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _call_setitem(self, x):
         x[0] = self.value
@@ -867,12 +1197,20 @@ class TestSetValueValueShape3(TestSetValueApi):
 
 
 class TestSetValueValueShape4(TestSetValueApi):
+<<<<<<< HEAD
     def set_value(self):
         self.value = np.array(
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
         ).astype(
             self.dtype
         )  # shape is (3,4)
+=======
+
+    def set_value(self):
+        self.value = np.array([[1, 1, 1, 1], [2, 2, 2, 2],
+                               [3, 3, 3,
+                                3]]).astype(self.dtype)  # shape is (3,4)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _call_setitem(self, x):
         x[0] = paddle.assign(self.value)  # x is Paddle.Tensor
@@ -882,6 +1220,10 @@ class TestSetValueValueShape4(TestSetValueApi):
 
 
 class TestSetValueValueShape5(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_value(self):
         self.value = np.array([3, 3, 3]).astype(self.dtype)
 
@@ -897,35 +1239,61 @@ class TestSetValueValueShape5(TestSetValueApi):
 
 # 4. Test error
 class TestError(TestSetValueBase):
+<<<<<<< HEAD
     def _value_type_error(self):
         with self.assertRaisesRegex(
             TypeError,
             "Only support to assign an integer, float, numpy.ndarray or paddle.Tensor",
+=======
+
+    def _value_type_error(self):
+        with self.assertRaisesRegexp(
+                TypeError,
+                "Only support to assign an integer, float, numpy.ndarray or paddle.Tensor"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             value = [1]
             x[0] = value
 
     def _dtype_error(self):
+<<<<<<< HEAD
         with self.assertRaisesRegex(
             TypeError,
             "When assign a numpy.ndarray, integer or float to a paddle.Tensor, ",
+=======
+        with self.assertRaisesRegexp(
+                TypeError,
+                "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ):
             y = paddle.ones(shape=self.shape, dtype="float16")
             y[0] = 1
 
     def _step_error(self):
+<<<<<<< HEAD
         with self.assertRaisesRegex(ValueError, "step can not be 0"):
+=======
+        with self.assertRaisesRegexp(ValueError, "step can not be 0"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[0:1:0] = self.value
 
     def _ellipsis_error(self):
+<<<<<<< HEAD
         with self.assertRaisesRegex(
             IndexError, "An index can only have a single ellipsis"
         ):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[..., ...] = self.value
         with self.assertRaisesRegex(ValueError, "the start or end is None"):
+=======
+        with self.assertRaisesRegexp(
+                IndexError, "An index can only have a single ellipsis"):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            x[..., ...] = self.value
+        with self.assertRaisesRegexp(ValueError, "the start or end is None"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             one = paddle.ones([1])
             x[::one] = self.value
@@ -969,8 +1337,14 @@ class TestError(TestSetValueBase):
 
 
 class Model(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(Model, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.conv = paddle.nn.Conv2D(12, 12, 3)
 
     def forward(self, x, y):
@@ -984,6 +1358,10 @@ class Model(paddle.nn.Layer):
 
 
 class TestBackward(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_static(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -997,9 +1375,15 @@ class TestBackward(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
             y = paddle.static.data(name="y", shape=[4, 4], dtype='float32')
 
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[4, 1], dtype='int64'
             )
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[4, 1],
+                                       dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             z = paddle.add(x, y)
             var = y[0, :]
@@ -1007,9 +1391,14 @@ class TestBackward(unittest.TestCase):
 
             prediction = paddle.static.nn.fc(x=z, size=2, activation='softmax')
 
+<<<<<<< HEAD
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction, label=label
             )
+=======
+            cost = paddle.nn.functional.cross_entropy(input=prediction,
+                                                      label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss = paddle.mean(cost)
             sgd = paddle.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
@@ -1019,9 +1408,18 @@ class TestBackward(unittest.TestCase):
 
         var_grad, z_grad = exe.run(
             main_program,
+<<<<<<< HEAD
             feed={"x": x_np, "y": y_np, "label": label_np},
             fetch_list=[var.name + "@GRAD", z.name + "@GRAD"],
         )
+=======
+            feed={
+                "x": x_np,
+                "y": y_np,
+                "label": label_np
+            },
+            fetch_list=[var.name + "@GRAD", z.name + "@GRAD"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertTrue((var_grad == z_grad[0, :]).all())
         paddle.disable_static()
@@ -1036,9 +1434,23 @@ class TestBackward(unittest.TestCase):
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
 
+<<<<<<< HEAD
 
 class TestGradientTruncated(unittest.TestCase):
     def test_consistent_with_competitor(self):
+=======
+    def test_dynamic(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        with _test_eager_guard():
+            self.func_test_dynamic()
+        self.func_test_dynamic()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+
+class TestGradientTruncated(unittest.TestCase):
+
+    def func_test_consistent_with_competitor(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.disable_static()
 
         def set_value(t, value):
@@ -1048,9 +1460,14 @@ class TestGradientTruncated(unittest.TestCase):
             return y.sum()
 
         # case 1
+<<<<<<< HEAD
         array = np.arange(1, 1 + 2 * 3 * 4, dtype="float32").reshape(
             [1, 2, 1, 3, 1, 4]
         )
+=======
+        array = np.arange(1, 1 + 2 * 3 * 4,
+                          dtype="float32").reshape([1, 2, 1, 3, 1, 4])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         value = np.arange(100, 104, dtype="float32").reshape(1, 4)
 
         inps = paddle.to_tensor(array, stop_gradient=False)
@@ -1059,6 +1476,7 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value(inps, value)
         loss.backward()
 
+<<<<<<< HEAD
         value_grad = np.array([[600.0, 606.0, 612.0, 618.0]])
         input_grad = np.array(
             [
@@ -1094,6 +1512,24 @@ class TestGradientTruncated(unittest.TestCase):
                 value_grad, value.grad.numpy()
             ),
         )
+=======
+        value_grad = np.array([[600., 606., 612., 618.]])
+        input_grad = np.array([[[[[[4., 32., 108., 256.]],
+                                  [[500., 864., 1372., 2048.]],
+                                  [[2916., 4000., 5324., 6912.]]]],
+                                [[[[0., 0., 0., 0.]], [[0., 0., 0., 0.]],
+                                  [[0., 0., 0., 0.]]]]]])
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
+            format(input_grad, inps.grad.numpy()))
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
+            format(value_grad, value.grad.numpy()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # case 2
         array = np.arange(1, 2 * 3 * 4 + 1, dtype="float32").reshape([4, 2, 3])
@@ -1105,6 +1541,7 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value(inps2, value2)
         loss.backward()
 
+<<<<<<< HEAD
         value_grad2 = np.array([600.0])
         input_grad2 = np.array(
             [
@@ -1128,6 +1565,25 @@ class TestGradientTruncated(unittest.TestCase):
                 value_grad, value2.grad.numpy()
             ),
         )
+=======
+        value_grad2 = np.array([600.])
+        input_grad2 = np.array([[[4., 32., 108.], [0., 0., 0.]],
+                                [[1372., 2048., 2916.], [4000., 5324., 6912.]],
+                                [[8788., 10976., 13500.],
+                                 [16384., 19652., 23328.]],
+                                [[27436., 32000., 37044.],
+                                 [42592., 48668., 55296.]]])
+        np.testing.assert_array_equal(
+            inps2.grad.numpy(),
+            input_grad2,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
+            format(input_grad, inps2.grad.numpy()))
+        np.testing.assert_array_equal(
+            value2.grad.numpy(),
+            value_grad2,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
+            format(value_grad, value2.grad.numpy()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # case 3
         def set_value3(t, value):
@@ -1136,9 +1592,14 @@ class TestGradientTruncated(unittest.TestCase):
             y = a * a
             return y.sum()
 
+<<<<<<< HEAD
         array = np.arange(1, 1 + 2 * 3 * 4, dtype="float32").reshape(
             [4, 3, 1, 1, 2, 1]
         )
+=======
+        array = np.arange(1, 1 + 2 * 3 * 4,
+                          dtype="float32").reshape([4, 3, 1, 1, 2, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         value = np.arange(100, 100 + 2, dtype="float32").reshape(1, 2, 1)
 
         inps = paddle.to_tensor(array, stop_gradient=False)
@@ -1147,6 +1608,7 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value3(inps, value)
         loss.backward()
 
+<<<<<<< HEAD
         value_grad = np.array([[[600.0], [606.0]]])
         input_grad = np.array(
             [
@@ -1184,15 +1646,45 @@ class TestGradientTruncated(unittest.TestCase):
         )
 
         # case 4: step >0
+=======
+        value_grad = np.array([[[600.], [606.]]])
+        input_grad = np.array([[[[[[0.], [0.]]]], [[[[0.], [0.]]]],
+                                [[[[0.], [0.]]]]],
+                               [[[[[1372.], [2048.]]]], [[[[2916.], [4000.]]]],
+                                [[[[5324.], [6912.]]]]],
+                               [[[[[8788.], [10976.]]]], [[[[13500.],
+                                                            [16384.]]]],
+                                [[[[19652.], [23328.]]]]],
+                               [[[[[27436.], [32000.]]]],
+                                [[[[37044.], [42592.]]]],
+                                [[[[48668.], [55296.]]]]]])
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
+            format(input_grad, inps.grad.numpy()))
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
+            format(value_grad, value.grad.numpy()))
+
+        #case 4: step >0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value4(t, value):
             a = t * t
             a[0, :, 0, ::3] = value
             y = a * a
             return y.sum()
 
+<<<<<<< HEAD
         array = np.arange(1, 1 + 2 * 3 * 4, dtype="float32").reshape(
             [2, 3, 1, 4, 1]
         )
+=======
+        array = np.arange(1, 1 + 2 * 3 * 4,
+                          dtype="float32").reshape([2, 3, 1, 4, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         value = np.arange(100, 100 + 2, dtype="float32").reshape(1, 2, 1)
 
         inps = paddle.to_tensor(array, stop_gradient=False)
@@ -1201,6 +1693,7 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value4(inps, value)
         loss.backward()
 
+<<<<<<< HEAD
         value_grad = np.array([[[600.0], [606.0]]])
         input_grad = np.array(
             [
@@ -1230,6 +1723,25 @@ class TestGradientTruncated(unittest.TestCase):
                 value_grad, value.grad.numpy()
             ),
         )
+=======
+        value_grad = np.array([[[600.], [606.]]])
+        input_grad = np.array([[[[[0.], [32.], [108.], [0.]]],
+                                [[[0.], [864.], [1372.], [0.]]],
+                                [[[0.], [4000.], [5324.], [0.]]]],
+                               [[[[8788.], [10976.], [13500.], [16384.]]],
+                                [[[19652.], [23328.], [27436.], [32000.]]],
+                                [[[37044.], [42592.], [48668.], [55296.]]]]])
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
+            format(input_grad, inps.grad.numpy()))
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
+            format(value_grad, value.grad.numpy()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # case 5:a[0].shape==value.shape
         def set_value5(t, value):
@@ -1247,6 +1759,7 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value5(inps, value)
         loss.backward()
 
+<<<<<<< HEAD
         value_grad = np.array(
             [
                 [200.0, 202.0, 204.0, 206.0],
@@ -1282,6 +1795,26 @@ class TestGradientTruncated(unittest.TestCase):
                 value_grad, value.grad.numpy()
             ),
         )
+=======
+        value_grad = np.array([[200., 202., 204.,
+                                206.], [208., 210., 212., 214.],
+                               [216., 218., 220., 222.]])
+        input_grad = np.array([[[0., 0., 0., 0.], [0., 0., 0., 0.],
+                                [0., 0., 0., 0.]],
+                               [[8788., 10976., 13500., 16384.],
+                                [19652., 23328., 27436., 32000.],
+                                [37044., 42592., 48668., 55296.]]])
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
+            format(input_grad, inps.grad.numpy()))
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
+            format(value_grad, value.grad.numpy()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # case 6: pass stop_gradient from value to x
         x = paddle.zeros([8, 8], dtype='float32')
@@ -1295,10 +1828,22 @@ class TestGradientTruncated(unittest.TestCase):
         self.assertTrue(not x.stop_gradient)
         self.assertTrue(not x.is_leaf)
 
+<<<<<<< HEAD
     def test_static_graph(self):
         paddle.enable_static()
 
         to_string = lambda x, i: x + '_' + str(i)
+=======
+    def test_consistent_with_competitor(self):
+        with _test_eager_guard():
+            self.func_test_consistent_with_competitor()
+        self.func_test_consistent_with_competitor()
+
+    def test_static_graph(self):
+        paddle.enable_static()
+
+        to_string = lambda x, i, : x + '_' + str(i)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
 
         def op1(x):
@@ -1306,6 +1851,7 @@ class TestGradientTruncated(unittest.TestCase):
             # test stop_gradient
             value.stop_gradient = True
             x.stop_gradient = False
+<<<<<<< HEAD
             start = paddle.fluid.layers.fill_constant(
                 [1], "int32", 5, force_cpu=True
             )
@@ -1315,6 +1861,20 @@ class TestGradientTruncated(unittest.TestCase):
             step = paddle.fluid.layers.fill_constant(
                 [1], "int32", -2, force_cpu=True
             )
+=======
+            start = paddle.fluid.layers.fill_constant([1],
+                                                      "int32",
+                                                      5,
+                                                      force_cpu=True)
+            end = paddle.fluid.layers.fill_constant([1],
+                                                    "int32",
+                                                    0,
+                                                    force_cpu=True)
+            step = paddle.fluid.layers.fill_constant([1],
+                                                     "int32",
+                                                     -2,
+                                                     force_cpu=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             inputs = {
                 'Input': x,
@@ -1327,18 +1887,29 @@ class TestGradientTruncated(unittest.TestCase):
                 ],
                 'StepsTensorList': [
                     step,
+<<<<<<< HEAD
                 ],
+=======
+                ]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             helper = LayerHelper("set_value")
             y = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
             helper.append_op(
                 type="set_value",
                 inputs=inputs,
                 outputs={'Out': y},
                 attrs={'axes': [0]},
             )
+=======
+            helper.append_op(type="set_value",
+                             inputs=inputs,
+                             outputs={'Out': y},
+                             attrs={'axes': [0]})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             return y, value
 
@@ -1354,16 +1925,27 @@ class TestGradientTruncated(unittest.TestCase):
                 'steps': [-4],
                 'decrease_axes': [],
                 'none_axes': [],
+<<<<<<< HEAD
                 'dtype': paddle.float32,
+=======
+                'dtype': paddle.float32
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             inputs = {'Input': x, 'ValueTensor': value}
 
             helper = LayerHelper("set_value")
             y = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
             helper.append_op(
                 type="set_value", inputs=inputs, outputs={'Out': y}, attrs=attrs
             )
+=======
+            helper.append_op(type="set_value",
+                             inputs=inputs,
+                             outputs={'Out': y},
+                             attrs=attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             return y, value
 
@@ -1371,6 +1953,7 @@ class TestGradientTruncated(unittest.TestCase):
             value = paddle.fluid.layers.fill_constant([1], "float32", 1)
             x.stop_gradient = True
             value.stop_gradient = False
+<<<<<<< HEAD
             start = paddle.fluid.layers.fill_constant(
                 [1], "int32", 0, force_cpu=True
             )
@@ -1380,6 +1963,20 @@ class TestGradientTruncated(unittest.TestCase):
             step = paddle.fluid.layers.fill_constant(
                 [1], "int32", 3, force_cpu=True
             )
+=======
+            start = paddle.fluid.layers.fill_constant([1],
+                                                      "int32",
+                                                      0,
+                                                      force_cpu=True)
+            end = paddle.fluid.layers.fill_constant([1],
+                                                    "int32",
+                                                    5,
+                                                    force_cpu=True)
+            step = paddle.fluid.layers.fill_constant([1],
+                                                     "int32",
+                                                     3,
+                                                     force_cpu=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             inputs = {
                 'Input': x,
@@ -1392,31 +1989,49 @@ class TestGradientTruncated(unittest.TestCase):
                 ],
                 'StepsTensorList': [
                     step,
+<<<<<<< HEAD
                 ],
+=======
+                ]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             helper = LayerHelper("set_value")
             y = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
             helper.append_op(
                 type="set_value",
                 inputs=inputs,
                 outputs={'Out': y},
                 attrs={'axes': [0]},
             )
+=======
+            helper.append_op(type="set_value",
+                             inputs=inputs,
+                             outputs={'Out': y},
+                             attrs={'axes': [0]})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             return y, value
 
         def set_value(array, i, op):
             name_x = to_string('x', i)
+<<<<<<< HEAD
             x = paddle.static.data(
                 name=name_x, shape=array.shape, dtype='float32'
             )
+=======
+            x = paddle.static.data(name=name_x,
+                                   shape=array.shape,
+                                   dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # set_value_op in __get/setitem__ is an inplace operation.
             # When `input.stop_gradient = True` and `value.stop_gradient = False`,
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
+<<<<<<< HEAD
             y2 = y + 1
             loss = paddle.sum(y2)
             sgd = paddle.optimizer.Adam()
@@ -1426,6 +2041,16 @@ class TestGradientTruncated(unittest.TestCase):
                 if not paddle.fluid.core.is_compiled_with_cuda()
                 else paddle.fluid.CUDAPlace(0)
             )
+=======
+
+            y2 = y + 1
+            loss = paddle.fluid.layers.reduce_sum(y2)
+            sgd = paddle.optimizer.Adam()
+            sgd.minimize(loss)
+            place = paddle.fluid.CPUPlace(
+            ) if not paddle.fluid.core.is_compiled_with_cuda(
+            ) else paddle.fluid.CUDAPlace(0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             prog = paddle.static.default_main_program()
             exe = paddle.static.Executor(place)
@@ -1440,9 +2065,14 @@ class TestGradientTruncated(unittest.TestCase):
 
         input_shape = [7, 6, 5, 4, 3, 2]
 
+<<<<<<< HEAD
         array = np.arange(0, numel(input_shape), dtype="float32").reshape(
             input_shape
         )
+=======
+        array = np.arange(0, numel(input_shape),
+                          dtype="float32").reshape(input_shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for i in range(len(input_shape)):
             program = paddle.static.Program()
@@ -1466,6 +2096,10 @@ class TestGradientTruncated(unittest.TestCase):
 
 
 class TestSetValueInplace(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_inplace(self):
         paddle.disable_static()
         with paddle.fluid.dygraph.guard():
@@ -1478,12 +2112,20 @@ class TestSetValueInplace(unittest.TestCase):
 
             self.assertTrue(id(b) == id(c))
             np.testing.assert_array_equal(b.numpy(), c.numpy())
+<<<<<<< HEAD
             self.assertEqual(b.inplace_version, 0)
+=======
+            self.assertEqual(b.inplace_version, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         paddle.enable_static()
 
 
 class TestSetValueInplaceLeafVar(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_inplace_var_become_leaf_var(self):
         paddle.disable_static()
 

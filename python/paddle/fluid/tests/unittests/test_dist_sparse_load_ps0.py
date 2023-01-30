@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import shutil
 import tempfile
@@ -22,11 +23,29 @@ import numpy as np
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+import os
+import unittest
+import numpy as np
+import tempfile
+import shutil
+from op_test import OpTest, randomize_probability
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle.distributed.fleet.base.role_maker as role_maker
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.fleet import fleet
 
 
 class SparseLoadOp(unittest.TestCase):
+<<<<<<< HEAD
     """Test load operator."""
+=======
+    """ Test load operator.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def net(self, emb_array, fc_array):
         with fluid.unique_name.guard():
@@ -39,6 +58,7 @@ class SparseLoadOp(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name="embedding",
                     initializer=fluid.initializer.NumpyArrayInitializer(
+<<<<<<< HEAD
                         emb_array
                     ),
                 ),
@@ -56,6 +76,20 @@ class SparseLoadOp(unittest.TestCase):
                 ),
             )
             loss = paddle.mean(fc1)
+=======
+                        emb_array)),
+            )
+
+            fc1 = fluid.layers.fc(
+                input=emb,
+                size=10,
+                act="relu",
+                param_attr=fluid.ParamAttr(
+                    name='fc',
+                    initializer=fluid.initializer.NumpyArrayInitializer(
+                        fc_array)))
+            loss = fluid.layers.reduce_mean(fc1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return loss
 
     def save_origin_model(self, emb_array, fc_array):
@@ -70,14 +104,22 @@ class SparseLoadOp(unittest.TestCase):
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
                 model_path = tempfile.mkdtemp()
+<<<<<<< HEAD
                 paddle.distributed.io.save_persistables(
                     executor=exe, dirname=model_path
                 )
+=======
+                fluid.io.save_persistables(executor=exe, dirname=model_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return model_path
 
 
 @unittest.skip(reason="Skip unstable ut, need rewrite with new implement")
 class TestSparseLoadOpCase1(SparseLoadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_2ps_0_load(self):
         # init No.0 server env
         env = {}
@@ -117,8 +159,12 @@ class TestSparseLoadOpCase1(SparseLoadOp):
         fc_w = np.array(fluid.global_scope().find_var("fc").get_tensor())
 
         emb = np.array(
+<<<<<<< HEAD
             fluid.global_scope().find_var("embedding.block0").get_tensor()
         )
+=======
+            fluid.global_scope().find_var("embedding.block0").get_tensor())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         assert fc_w.all() == fc_array.all()
         assert emb.all() == emb_array[::2].all()

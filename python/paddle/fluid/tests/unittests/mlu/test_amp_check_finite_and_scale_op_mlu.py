@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -25,6 +30,10 @@ SEED = 2022
 
 
 class TestCheckFiniteAndUnscaleOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "check_finite_and_unscale"
@@ -53,6 +62,10 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
 
 
 class TestCheckFiniteAndUnscaleOpWithNan(TestCheckFiniteAndUnscaleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         x = np.random.random((129, 129)).astype(self.dtype)
         x[128][128] = np.nan
@@ -71,6 +84,10 @@ class TestCheckFiniteAndUnscaleOpWithNan(TestCheckFiniteAndUnscaleOp):
 
 
 class TestCheckFiniteAndUnscaleOpWithInf(TestCheckFiniteAndUnscaleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         x = np.random.random((129, 129)).astype(self.dtype)
         x[128][128] = np.inf
@@ -89,6 +106,10 @@ class TestCheckFiniteAndUnscaleOpWithInf(TestCheckFiniteAndUnscaleOp):
 
 
 class TestCheckFiniteAndUnscaleOpMultiInput(TestCheckFiniteAndUnscaleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         x0 = np.random.random((129, 129)).astype(self.dtype)
         x1 = np.random.random((129, 129)).astype(self.dtype)
@@ -102,6 +123,10 @@ class TestCheckFiniteAndUnscaleOpMultiInput(TestCheckFiniteAndUnscaleOp):
 
 
 class TestCheckFiniteAndUnscaleOpMultiInputWithNan(TestCheckFiniteAndUnscaleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         x0 = np.random.random((129, 129)).astype(self.dtype)
         x0[128][128] = np.nan
@@ -121,6 +146,10 @@ class TestCheckFiniteAndUnscaleOpMultiInputWithNan(TestCheckFiniteAndUnscaleOp):
 
 
 class TestCheckFiniteAndUnscaleOpMultiInputWithInf(TestCheckFiniteAndUnscaleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         x0 = np.random.random((129, 129)).astype(self.dtype)
         x0[128][128] = np.nan

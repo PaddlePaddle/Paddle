@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle.fluid.data_feeder as data_feeder
 import paddle.framework as framework
 from paddle.distributed.communication.group import (
@@ -30,12 +31,25 @@ def _recv_in_dygraph(
         )
 
     task = group.process_group.recv(tensor, src_rank_in_group, sync_op)
+=======
+import paddle.fluid.framework as framework
+from paddle.distributed import collective
+
+
+def _recv_in_dygraph(tensor, src, group, sync_op, use_calc_stream):
+    group = collective._get_default_group() if group is None else group
+    if use_calc_stream:
+        return group.process_group.recv_on_calc_stream(tensor, src)
+
+    task = group.process_group.recv(tensor, src, sync_op)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if sync_op:
         task.wait()
 
     return task
 
 
+<<<<<<< HEAD
 def _recv_in_static_mode(
     tensor, src_rank_in_group, group, sync_op, use_calc_stream
 ):
@@ -62,6 +76,8 @@ def _recv_in_static_mode(
     return None
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
     """
 
@@ -78,6 +94,12 @@ def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
     Returns:
         Return a task object.
 
+<<<<<<< HEAD
+=======
+    Warning:
+        This API only supports the dygraph mode now.
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
         .. code-block:: python
 
@@ -97,6 +119,7 @@ def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
             out = data.numpy()
             # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
     """
+<<<<<<< HEAD
     if _warn_cur_rank_not_in_group(group):
         return
 
@@ -119,3 +142,19 @@ def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
         return _recv_in_static_mode(
             tensor, src, group, sync_op, use_calc_stream
         )
+=======
+    if group is not None and not group.is_member():
+        raise RuntimeError(
+            "The group should not be None and all ranks which invoke this operation should be the member of this group."
+        )
+
+    if not sync_op and use_calc_stream:
+        raise RuntimeError(
+            "use_calc_stream can only be True in sync op behavior.")
+
+    if framework.in_dygraph_mode():
+        return _recv_in_dygraph(tensor, src, group, sync_op, use_calc_stream)
+
+    raise RuntimeError(
+        "paddle.distributed.stream.recv is only supported in dygraph mode now.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

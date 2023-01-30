@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 
 sys.path.append("..")
@@ -24,11 +25,32 @@ from test_uniform_random_op import (
 )
 
 import paddle
+=======
+from __future__ import print_function
+
+import sys
+
+sys.path.append("..")
+import subprocess
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+from test_uniform_random_op import TestUniformRandomOp, TestUniformRandomOpSelectedRows
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestXPUUniformRandomOp(TestUniformRandomOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
@@ -39,6 +61,10 @@ class TestXPUUniformRandomOp(TestUniformRandomOp):
 
 
 class TestXPUUniformRandomOpSelectedRows(TestUniformRandomOpSelectedRows):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -28,6 +33,10 @@ paddle.enable_static()
 
 
 class TestScaleOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "scale"
         self.place = paddle.device.MLUPlace(0)
@@ -48,6 +57,10 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpScaleVariable(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "scale"
         self.place = paddle.device.MLUPlace(0)
@@ -57,7 +70,11 @@ class TestScaleOpScaleVariable(OpTest):
         self.scale = -2.3
         self.inputs = {
             'X': np.random.random((10, 10)).astype(self.dtype),
+<<<<<<< HEAD
             'ScaleTensor': np.array([self.scale]).astype('float32'),
+=======
+            'ScaleTensor': np.array([self.scale]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {}
         self.outputs = {'Out': self.inputs['X'] * self.dtype(self.scale)}
@@ -70,6 +87,10 @@ class TestScaleOpScaleVariable(OpTest):
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         pass
 
@@ -88,9 +109,14 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         in_selected_rows = scope.var(in_name).get_selected_rows()
         in_selected_rows.set_height(in_height)
         in_selected_rows.set_rows(in_rows)
+<<<<<<< HEAD
         in_array = np.random.random((len(in_rows), in_row_numel)).astype(
             self.dtype
         )
+=======
+        in_array = np.random.random(
+            (len(in_rows), in_row_numel)).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         in_tensor = in_selected_rows.get_tensor()
         in_tensor.set(in_array, place)
@@ -129,18 +155,33 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         def test_type():
             paddle.scale([10])
+=======
+
+    def test_errors(self):
+
+        def test_type():
+            fluid.layers.scale([10])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(TypeError, test_type)
 
 
 # Add FP16 test
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_mlu(), "core is not compiled with MLU"
 )
 class TestScaleFp16Op(TestScaleOp):
+=======
+@unittest.skipIf(not core.is_compiled_with_mlu(),
+                 "core is not compiled with MLU")
+class TestScaleFp16Op(TestScaleOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -148,10 +189,17 @@ class TestScaleFp16Op(TestScaleOp):
         self.check_output_with_place(self.place, atol=0.002)
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_mlu(), "core is not compiled with MLU"
 )
 class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
+=======
+@unittest.skipIf(not core.is_compiled_with_mlu(),
+                 "core is not compiled with MLU")
+class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -165,6 +213,10 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
 
 
 class TestScaleApiStatic(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -182,11 +234,19 @@ class TestScaleApiStatic(unittest.TestCase):
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -200,6 +260,10 @@ class TestScaleApiDygraph(unittest.TestCase):
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 

@@ -21,6 +21,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class FusedMultiTransformerOp : public framework::OperatorWithKernel {
  private:
   static constexpr const char *OpName = "FusedMultiTransformerOp";
@@ -91,6 +96,30 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
             x_dim,
             y_dim));
 
+<<<<<<< HEAD
+=======
+    if (ctx->Attrs().Get<int>("ring_id") == -1) {
+      if (trans_qkvw) {
+        PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
+                          y_dim[3],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 4"
+                              "(3, num_head, dim_head, dim_embed),"
+                              "and must satisfy the limitations: "
+                              "(num_head * dim_head == dim_embed)"));
+
+      } else {
+        PADDLE_ENFORCE_EQ(y_dim[2] * y_dim[3],
+                          y_dim[0],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 4"
+                              "(dim_embed, 3, num_head, dim_head),"
+                              "and must satisfy the limitations: "
+                              "(num_head * dim_head == dim_embed)"));
+      }
+    }
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (ctx->HasInputs("CacheKV")) {
       // [2, batch_size, num_head, max_seq_len, head_size]
       const auto &c_dims = ctx->GetInputsDim("CacheKV");
@@ -120,6 +149,15 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                             "head %d, but got %d",
                             trans_qkvw ? y_dim[1] : y_dim[2],
                             c_dim[2]));  // num_head
+<<<<<<< HEAD
+=======
+      PADDLE_ENFORCE_GT(
+          c_dim[3],
+          0,
+          paddle::platform::errors::InvalidArgument(
+              "The forth dim of CacheKV must be greater than 0, but got %d",
+              c_dim[3]));  // cache_seq_len
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_EQ(c_dim[4],
                         trans_qkvw ? y_dim[2] : y_dim[3],
                         paddle::platform::errors::InvalidArgument(
@@ -133,6 +171,7 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -151,6 +190,24 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "TimeStep") {
+      VLOG(10) << "var_name:" << var_name << " need not to transform";
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -172,6 +229,7 @@ class FusedMultiTransformerOpOpMaker
     AddInput("CacheKV", "(optional) The cached KV for generation inference.")
         .AsDispensable()
         .AsDuplicable();
+<<<<<<< HEAD
     AddInput("PreCaches",
              "(optional) The prefix caches for generation inference.")
         .AsDispensable()
@@ -179,6 +237,8 @@ class FusedMultiTransformerOpOpMaker
     AddInput("RotaryPosEmb",
              "(optional) The RoPE embeddings for generation inference.")
         .AsDispensable();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddInput("TimeStep",
              "(optional, int) The time step for generation inference.")
         .AsDispensable();
@@ -214,6 +274,7 @@ class FusedMultiTransformerOpOpMaker
                   "else, uses post_layer_norm architecuture. "
                   "[default true].")
         .SetDefault(true);
+<<<<<<< HEAD
     AddAttr<int>("rotary_emb_dims",
                  "the Attr(dims) for RotaryPosEmb's Computation  [default 0].")
         .SetDefault(0)
@@ -226,6 +287,8 @@ class FusedMultiTransformerOpOpMaker
                   "0 and 2, But received [%s].",
                   rotary_emb_dims));
         });
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<float>("epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
@@ -264,6 +327,7 @@ class FusedMultiTransformerOpOpMaker
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
+<<<<<<< HEAD
     AddAttr<std::string>("act_method", "act_method")
         .SetDefault("gelu")
         .AddCustomChecker([](const std::string &act_type) {
@@ -275,6 +339,9 @@ class FusedMultiTransformerOpOpMaker
                   "FusedMultiTransformer. "));
         });
 
+=======
+    AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<bool>(
         "trans_qkvw",
         "Whether the weights of qkv should be transposed. If true,"

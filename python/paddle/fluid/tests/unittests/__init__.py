@@ -17,9 +17,17 @@
 # please refer to https://stackoverflow.com/questions/8953844/import-module-from-subfolder
 
 import os
+<<<<<<< HEAD
 
 import sys
 
 dirname, filename = os.path.split(os.path.abspath(__file__))
 sys.path.insert(0, dirname)
 print(sys.path)
+=======
+if os.name == 'nt':
+    import sys
+    dirname, filename = os.path.split(os.path.abspath(__file__))
+    sys.path.insert(0, dirname)
+    print(sys.path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

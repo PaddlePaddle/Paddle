@@ -49,10 +49,15 @@ void ParseSafeEagerDeletionSkipVars(
 void AppendSkipDeletionVars(const std::vector<std::string>& append_vars,
                             std::set<std::string>* all_vars);
 
+<<<<<<< HEAD
 // TODO(Aurelius84) : Need remove skip_no_need_buffer after cinn fix this
 // problem.
 std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
     const ProgramDesc& backward_program, bool skip_no_need_buffer = false);
+=======
+std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
+    const ProgramDesc& backward_program);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace details
 

@@ -99,6 +99,7 @@ void FusionRepeatedFCReluOp::InferShape(
   ctx->ShareLoD("X", /*->*/ "Out");
 }
 
+<<<<<<< HEAD
 phi::KernelKey FusionRepeatedFCReluOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -116,6 +117,23 @@ void FusionRepeatedFCReluOpMaker::Make() {
       .AsDuplicable()
       .AsIntermediate();
   AddOutput("Out", "(phi::DenseTensor) Output tensor of this operator.");
+=======
+framework::OpKernelType FusionRepeatedFCReluOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+}
+
+void FusionRepeatedFCReluOpMaker::Make() {
+  AddInput("X", "(LoDTensor) Input tensors of this operator.");
+  AddInput("W", "(Tensor) The weight tensors of this operator.").AsDuplicable();
+  AddInput("Bias", "(Tensor) The bias tensors of this operator.")
+      .AsDuplicable();
+  AddOutput("ReluOut", "(Tensor) The output tensor of each relu operator.")
+      .AsDuplicable()
+      .AsIntermediate();
+  AddOutput("Out", "(LoDTensor) Output tensor of this operator.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddComment(R"DOC(
   Fusion Repeated FC with Relu Operator.
 )DOC");
@@ -142,11 +160,19 @@ template <typename T>
 class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto weights = ctx.MultiInput<phi::DenseTensor>("W");
     auto biases = ctx.MultiInput<phi::DenseTensor>("Bias");
     auto relus = ctx.MultiOutput<phi::DenseTensor>("ReluOut");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto in = ctx.Input<Tensor>("X");
+    auto weights = ctx.MultiInput<Tensor>("W");
+    auto biases = ctx.MultiInput<Tensor>("Bias");
+    auto relus = ctx.MultiOutput<Tensor>("ReluOut");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto place = ctx.GetPlace();
     int weight_sz = static_cast<int>(weights.size());
 

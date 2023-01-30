@@ -18,13 +18,22 @@
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename DeviceContext, typename T>
 class SequenceEnumerateKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* in = context.Input<phi::DenseTensor>("X");
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* in = context.Input<LoDTensor>("X");
+    auto* out = context.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int win_size = context.Attr<int>("win_size");
     auto pad_value = static_cast<T>(context.Attr<int>("pad_value"));
 
@@ -32,7 +41,11 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
         in->lod().empty(),
         false,
         platform::errors::InvalidArgument(
+<<<<<<< HEAD
             "Input(X) phi::DenseTensor of SequenceEnumerateOp does not contain "
+=======
+            "Input(X) Tensor of SequenceEnumerateOp does not contain "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "LoD information."));
 
     auto in_dims = in->dims();

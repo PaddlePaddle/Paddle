@@ -1,4 +1,5 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+<<<<<<< HEAD
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -6,22 +7,40 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+=======
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import collections
 import math
 import re
 from functools import partial
+=======
+import os
+import re
+import math
+from functools import partial
+import collections
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 
 # Parameters for the entire model (stem, all blocks, and head)
+<<<<<<< HEAD
 GlobalParams = collections.namedtuple(
     'GlobalParams',
     [
@@ -60,6 +79,27 @@ BlockArgs.__new__.__defaults__ = (None,) * len(BlockArgs._fields)
 
 def round_filters(filters, global_params):
     """Calculate and round number of filters based on depth multiplier."""
+=======
+GlobalParams = collections.namedtuple('GlobalParams', [
+    'batch_norm_momentum', 'batch_norm_epsilon', 'dropout_rate', 'num_classes',
+    'width_coefficient', 'depth_coefficient', 'depth_divisor', 'min_depth',
+    'drop_connect_rate', 'image_size'
+])
+
+# Parameters for an individual model block
+BlockArgs = collections.namedtuple('BlockArgs', [
+    'kernel_size', 'num_repeat', 'input_filters', 'output_filters',
+    'expand_ratio', 'id_skip', 'stride', 'se_ratio'
+])
+
+# Change namedtuple defaults
+GlobalParams.__new__.__defaults__ = (None, ) * len(GlobalParams._fields)
+BlockArgs.__new__.__defaults__ = (None, ) * len(BlockArgs._fields)
+
+
+def round_filters(filters, global_params):
+    """ Calculate and round number of filters based on depth multiplier. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     multiplier = global_params.width_coefficient
     if not multiplier:
         return filters
@@ -67,16 +107,25 @@ def round_filters(filters, global_params):
     min_depth = global_params.min_depth
     filters *= multiplier
     min_depth = min_depth or divisor
+<<<<<<< HEAD
     new_filters = max(
         min_depth, int(filters + divisor / 2) // divisor * divisor
     )
+=======
+    new_filters = max(min_depth,
+                      int(filters + divisor / 2) // divisor * divisor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if new_filters < 0.9 * filters:  # prevent rounding by more than 10%
         new_filters += divisor
     return int(new_filters)
 
 
 def round_repeats(repeats, global_params):
+<<<<<<< HEAD
     """Round number of filters based on depth multiplier."""
+=======
+    """ Round number of filters based on depth multiplier. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     multiplier = global_params.depth_coefficient
     if not multiplier:
         return repeats
@@ -96,8 +145,13 @@ def drop_connect(inputs, prob, training):
 
 
 def get_same_padding_conv2d(image_size=None):
+<<<<<<< HEAD
     """Chooses static padding if you have specified an image size, and dynamic padding otherwise.
     Static padding is necessary for ONNX exporting of models."""
+=======
+    """ Chooses static padding if you have specified an image size, and dynamic padding otherwise.
+        Static padding is necessary for ONNX exporting of models. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if image_size is None:
         return Conv2dDynamicSamePadding
     else:
@@ -105,6 +159,7 @@ def get_same_padding_conv2d(image_size=None):
 
 
 class Conv2dDynamicSamePadding(nn.Conv2D):
+<<<<<<< HEAD
     """2D Convolutions like TensorFlow, for a dynamic image size"""
 
     def __init__(
@@ -117,6 +172,18 @@ class Conv2dDynamicSamePadding(nn.Conv2D):
         groups=1,
         bias_attr=None,
     ):
+=======
+    """ 2D Convolutions like TensorFlow, for a dynamic image size """
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 stride=1,
+                 dilation=1,
+                 groups=1,
+                 bias_attr=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         super().__init__(
             in_channels,
             out_channels,
@@ -125,17 +192,24 @@ class Conv2dDynamicSamePadding(nn.Conv2D):
             0,
             dilation,
             groups,
+<<<<<<< HEAD
             bias_attr=bias_attr,
         )
         self.stride = (
             self._stride if len(self._stride) == 2 else [self._stride[0]] * 2
         )
+=======
+            bias_attr=bias_attr)
+        self.stride = self._stride if len(
+            self._stride) == 2 else [self._stride[0]] * 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x):
         ih, iw = x.shape[-2:]
         kh, kw = self.weight.shape[-2:]
         sh, sw = self.stride
         oh, ow = math.ceil(ih / sh), math.ceil(iw / sw)
+<<<<<<< HEAD
         pad_h = max(
             (oh - 1) * self.stride[0] + (kh - 1) * self._dilation[0] + 1 - ih, 0
         )
@@ -194,11 +268,56 @@ class Conv2dStaticSamePadding(nn.Conv2D):
             self.static_padding = nn.Pad2D(
                 [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2]
             )
+=======
+        pad_h = max((oh - 1) * self.stride[0] +
+                    (kh - 1) * self._dilation[0] + 1 - ih, 0)
+        pad_w = max((ow - 1) * self.stride[1] +
+                    (kw - 1) * self._dilation[1] + 1 - iw, 0)
+        if pad_h > 0 or pad_w > 0:
+            x = F.pad(x, [
+                pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2
+            ])
+        return F.conv2d(x, self.weight, self.bias, self.stride, self._padding,
+                        self._dilation, self._groups)
+
+
+class Conv2dStaticSamePadding(nn.Conv2D):
+    """ 2D Convolutions like TensorFlow, for a fixed image size"""
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 image_size=None,
+                 **kwargs):
+        if 'stride' in kwargs and isinstance(kwargs['stride'], list):
+            kwargs['stride'] = kwargs['stride'][0]
+        super().__init__(in_channels, out_channels, kernel_size, **kwargs)
+        self.stride = self._stride if len(
+            self._stride) == 2 else [self._stride[0]] * 2
+
+        # Calculate padding based on image size and save it
+        assert image_size is not None
+        ih, iw = image_size if type(
+            image_size) == list else [image_size, image_size]
+        kh, kw = self.weight.shape[-2:]
+        sh, sw = self.stride
+        oh, ow = math.ceil(ih / sh), math.ceil(iw / sw)
+        pad_h = max((oh - 1) * self.stride[0] +
+                    (kh - 1) * self._dilation[0] + 1 - ih, 0)
+        pad_w = max((ow - 1) * self.stride[1] +
+                    (kw - 1) * self._dilation[1] + 1 - iw, 0)
+        if pad_h > 0 or pad_w > 0:
+            self.static_padding = nn.Pad2D([
+                pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2
+            ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             self.static_padding = Identity()
 
     def forward(self, x):
         x = self.static_padding(x)
+<<<<<<< HEAD
         x = F.conv2d(
             x,
             self.weight,
@@ -208,13 +327,21 @@ class Conv2dStaticSamePadding(nn.Conv2D):
             self._dilation,
             self._groups,
         )
+=======
+        x = F.conv2d(x, self.weight, self.bias, self.stride, self._padding,
+                     self._dilation, self._groups)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return x
 
 
 class Identity(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
     ):
+=======
+    def __init__(self, ):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         super().__init__()
 
     def forward(self, x):
@@ -222,7 +349,11 @@ class Identity(nn.Layer):
 
 
 def efficientnet_params(model_name):
+<<<<<<< HEAD
     """Map EfficientNet model name to parameter coefficients."""
+=======
+    """ Map EfficientNet model name to parameter coefficients. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     params_dict = {
         # Coefficients:   width,depth,resolution,dropout
         'efficientnet-b0': (1.0, 1.0, 224, 0.2),
@@ -239,12 +370,21 @@ def efficientnet_params(model_name):
     return params_dict[model_name]
 
 
+<<<<<<< HEAD
 class BlockDecoder:
     """Block Decoder for readability, straight from the official TensorFlow repository"""
 
     @staticmethod
     def _decode_block_string(block_string):
         """Gets a block through a string notation of arguments."""
+=======
+class BlockDecoder(object):
+    """ Block Decoder for readability, straight from the official TensorFlow repository """
+
+    @staticmethod
+    def _decode_block_string(block_string):
+        """ Gets a block through a string notation of arguments. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert isinstance(block_string, str)
 
         ops = block_string.split('_')
@@ -256,9 +396,14 @@ class BlockDecoder:
                 options[key] = value
 
         # Check stride
+<<<<<<< HEAD
         assert ('s' in options and len(options['s']) == 1) or (
             len(options['s']) == 2 and options['s'][0] == options['s'][1]
         )
+=======
+        assert (('s' in options and len(options['s']) == 1) or
+                (len(options['s']) == 2 and options['s'][0] == options['s'][1]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return BlockArgs(
             kernel_size=int(options['k']),
@@ -268,19 +413,29 @@ class BlockDecoder:
             expand_ratio=int(options['e']),
             id_skip=('noskip' not in block_string),
             se_ratio=float(options['se']) if 'se' in options else None,
+<<<<<<< HEAD
             stride=[int(options['s'][0])],
         )
+=======
+            stride=[int(options['s'][0])])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @staticmethod
     def _encode_block_string(block):
         """Encodes a block to a string."""
         args = [
+<<<<<<< HEAD
             'r%d' % block.num_repeat,
             'k%d' % block.kernel_size,
             's%d%d' % (block.strides[0], block.strides[1]),
             'e%s' % block.expand_ratio,
             'i%d' % block.input_filters,
             'o%d' % block.output_filters,
+=======
+            'r%d' % block.num_repeat, 'k%d' % block.kernel_size, 's%d%d' %
+            (block.strides[0], block.strides[1]), 'e%s' % block.expand_ratio,
+            'i%d' % block.input_filters, 'o%d' % block.output_filters
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         if 0 < block.se_ratio <= 1:
             args.append('se%s' % block.se_ratio)
@@ -316,6 +471,7 @@ class BlockDecoder:
         return block_strings
 
 
+<<<<<<< HEAD
 def efficientnet(
     width_coefficient=None,
     depth_coefficient=None,
@@ -325,6 +481,15 @@ def efficientnet(
     num_classes=1000,
 ):
     """Get block arguments according to parameter and coefficients."""
+=======
+def efficientnet(width_coefficient=None,
+                 depth_coefficient=None,
+                 dropout_rate=0.2,
+                 drop_connect_rate=0.2,
+                 image_size=None,
+                 num_classes=1000):
+    """ Get block arguments according to parameter and coefficients. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     blocks_args = [
         'r1_k3_s11_e1_i32_o16_se0.25',
         'r2_k3_s22_e6_i16_o24_se0.25',
@@ -346,32 +511,48 @@ def efficientnet(
         depth_coefficient=depth_coefficient,
         depth_divisor=8,
         min_depth=None,
+<<<<<<< HEAD
         image_size=image_size,
     )
+=======
+        image_size=image_size, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return blocks_args, global_params
 
 
 def get_model_params(model_name, override_params):
+<<<<<<< HEAD
     """Get the block args and global params for a given model"""
+=======
+    """ Get the block args and global params for a given model """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if model_name.startswith('efficientnet'):
         w, d, s, p = efficientnet_params(model_name)
         blocks_args, global_params = efficientnet(
             width_coefficient=w,
             depth_coefficient=d,
             dropout_rate=p,
+<<<<<<< HEAD
             image_size=s,
         )
     else:
         raise NotImplementedError(
             'model name is not pre-defined: %s' % model_name
         )
+=======
+            image_size=s)
+    else:
+        raise NotImplementedError('model name is not pre-defined: %s' %
+                                  model_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if override_params:
         global_params = global_params._replace(**override_params)
     return blocks_args, global_params
 
 
 url_map = {
+<<<<<<< HEAD
     'efficientnet-b0': '/home/aistudio/data/weights/efficientnet-b0-355c32eb.pdparams',
     'efficientnet-b1': '/home/aistudio/data/weights/efficientnet-b1-f1951068.pdparams',
     'efficientnet-b2': '/home/aistudio/data/weights/efficientnet-b2-8bb594d6.pdparams',
@@ -398,6 +579,53 @@ url_map_advprop = {
 def load_pretrained_weights(
     model, model_name, weights_path=None, load_fc=True, advprop=False
 ):
+=======
+    'efficientnet-b0':
+    '/home/aistudio/data/weights/efficientnet-b0-355c32eb.pdparams',
+    'efficientnet-b1':
+    '/home/aistudio/data/weights/efficientnet-b1-f1951068.pdparams',
+    'efficientnet-b2':
+    '/home/aistudio/data/weights/efficientnet-b2-8bb594d6.pdparams',
+    'efficientnet-b3':
+    '/home/aistudio/data/weights/efficientnet-b3-5fb5a3c3.pdparams',
+    'efficientnet-b4':
+    '/home/aistudio/data/weights/efficientnet-b4-6ed6700e.pdparams',
+    'efficientnet-b5':
+    '/home/aistudio/data/weights/efficientnet-b5-b6417697.pdparams',
+    'efficientnet-b6':
+    '/home/aistudio/data/weights/efficientnet-b6-c76e70fd.pdparams',
+    'efficientnet-b7':
+    '/home/aistudio/data/weights/efficientnet-b7-dcc49843.pdparams',
+}
+
+url_map_advprop = {
+    'efficientnet-b0':
+    '/home/aistudio/data/weights/adv-efficientnet-b0-b64d5a18.pdparams',
+    'efficientnet-b1':
+    '/home/aistudio/data/weights/adv-efficientnet-b1-0f3ce85a.pdparams',
+    'efficientnet-b2':
+    '/home/aistudio/data/weights/adv-efficientnet-b2-6e9d97e5.pdparams',
+    'efficientnet-b3':
+    '/home/aistudio/data/weights/adv-efficientnet-b3-cdd7c0f4.pdparams',
+    'efficientnet-b4':
+    '/home/aistudio/data/weights/adv-efficientnet-b4-44fb3a87.pdparams',
+    'efficientnet-b5':
+    '/home/aistudio/data/weights/adv-efficientnet-b5-86493f6b.pdparams',
+    'efficientnet-b6':
+    '/home/aistudio/data/weights/adv-efficientnet-b6-ac80338e.pdparams',
+    'efficientnet-b7':
+    '/home/aistudio/data/weights/adv-efficientnet-b7-4652b6dd.pdparams',
+    'efficientnet-b8':
+    '/home/aistudio/data/weights/adv-efficientnet-b8-22a8fe65.pdparams',
+}
+
+
+def load_pretrained_weights(model,
+                            model_name,
+                            weights_path=None,
+                            load_fc=True,
+                            advprop=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Loads pretrained weights from weights path or download using url.
     Args:
         model (Module): The whole model of efficientnet.

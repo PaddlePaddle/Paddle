@@ -15,10 +15,28 @@
 # Notice that the following codes are modified from KerasTuner to implement our own tuner.
 # Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
 
+<<<<<<< HEAD
 from .tunable_variable import Boolean, Choice, Fixed, FloatRange, IntRange
 
 
 class TunableSpace:
+=======
+import collections
+import contextlib
+import copy
+import math
+import random
+import numpy as np
+
+from .tunable_variable import Boolean
+from .tunable_variable import Fixed
+from .tunable_variable import Choice
+from .tunable_variable import IntRange
+from .tunable_variable import FloatRange
+
+
+class TunableSpace(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     A TunableSpace is constructed by the tunable variables.
     """
@@ -100,6 +118,7 @@ class TunableSpace:
         return self._retrieve(tv)
 
     def int_range(self, name, start, stop, step=1, default=None):
+<<<<<<< HEAD
         tv = IntRange(
             name=name, start=start, stop=stop, step=step, default=default
         )
@@ -109,15 +128,39 @@ class TunableSpace:
         tv = FloatRange(
             name=name, start=start, stop=stop, step=step, default=default
         )
+=======
+        tv = IntRange(name=name,
+                      start=start,
+                      stop=stop,
+                      step=step,
+                      default=default)
+        return self._retrieve(tv)
+
+    def float_range(self, name, start, stop, step=None, default=None):
+        tv = FloatRange(name=name,
+                        start=start,
+                        stop=stop,
+                        step=step,
+                        default=default)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return self._retrieve(tv)
 
     def get_state(self):
         return {
+<<<<<<< HEAD
             "variables": [
                 {"class_name": v.__class__.__name__, "state": v.get_state()}
                 for v in self._variables.values()
             ],
             "values": dict((k, v) for (k, v) in self.values.items()),
+=======
+            "variables": [{
+                "class_name": v.__class__.__name__,
+                "state": v.get_state()
+            } for v in self._variables.values()],
+            "values":
+            dict((k, v) for (k, v) in self.values.items())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     @classmethod
@@ -137,6 +180,7 @@ def _deserialize_tunable_variable(state):
     if isinstance(state, classes):
         return state
 
+<<<<<<< HEAD
     if (
         not isinstance(state, dict)
         or "class_name" not in state
@@ -147,6 +191,13 @@ def _deserialize_tunable_variable(state):
                 state
             )
         )
+=======
+    if (not isinstance(state, dict) or "class_name" not in state
+            or "state" not in state):
+        raise ValueError(
+            "Expect state to be a python dict containing class_name and state as keys, but found {}"
+            .format(state))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = state["class_name"]
     cls = cls_name_to_cls[cls_name]

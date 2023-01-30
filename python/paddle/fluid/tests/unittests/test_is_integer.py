@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,6 +21,15 @@ import paddle
 
 
 class TestIsInteger(unittest.TestCase):
+=======
+import paddle
+import numpy as np
+import unittest
+
+
+class TestIsInteger(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_for_integer(self):
         x = paddle.arange(10)
         self.assertTrue(paddle.is_integer(x))

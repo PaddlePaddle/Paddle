@@ -18,8 +18,13 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/flags.h"
+=======
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk,
@@ -49,12 +54,16 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
     : underlying_allocator_(underlying_allocator),
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
+<<<<<<< HEAD
       allow_free_idle_chunk_(allow_free_idle_chunk) {
   total_alloc_times_ = 0;
   total_alloc_size_ = 0;
   total_free_times_ = 0;
   total_free_size_ = 0;
 }
+=======
+      allow_free_idle_chunk_(allow_free_idle_chunk) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
@@ -117,8 +126,11 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     VLOG(2) << "Not found and reallocate " << realloc_size << "("
             << static_cast<void *>(p) << "), and remaining " << remaining_size;
   }
+<<<<<<< HEAD
   ++total_alloc_times_;
   total_alloc_size_ += size;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;
   return new BlockAllocation(block_it);
 }
@@ -133,9 +145,12 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;
 
+<<<<<<< HEAD
   total_free_times_ += 1;
   total_free_size_ += block_it->size_;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   block_it->is_free_ = true;
 
   if (block_it != blocks.begin()) {
@@ -186,6 +201,7 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
       ++chunk_it;
     }
   }
+<<<<<<< HEAD
 
   Trace();
   return bytes;
@@ -210,6 +226,11 @@ void AutoGrowthBestFitAllocator::Trace() const {
           << " curr_chunks_num:" << chunks_.size();
 }
 
+=======
+  return bytes;
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

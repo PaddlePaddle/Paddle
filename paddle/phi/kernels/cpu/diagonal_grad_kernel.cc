@@ -90,7 +90,11 @@ PD_REGISTER_KERNEL(diagonal_grad,
                    float,
                    double,
                    int,
+<<<<<<< HEAD
                    int64_t,
                    bool,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+=======
+                   int64_t) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

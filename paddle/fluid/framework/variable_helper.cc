@@ -29,7 +29,11 @@ namespace framework {
 
 void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
+<<<<<<< HEAD
     var->GetMutable<phi::DenseTensor>();
+=======
+    var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
     var->GetMutable<phi::SelectedRows>();
   } else if (var_type == proto::VarType::FEED_MINIBATCH) {
@@ -67,9 +71,15 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
   // only support cpu now
   auto cpu_place = platform::CPUPlace();
 
+<<<<<<< HEAD
   if (src_var.IsType<phi::DenseTensor>()) {
     auto *tmp_grad_tensor = dst_var->GetMutable<phi::DenseTensor>();
     auto &src_tensor = src_var.Get<phi::DenseTensor>();
+=======
+  if (src_var.IsType<framework::LoDTensor>()) {
+    auto *tmp_grad_tensor = dst_var->GetMutable<framework::LoDTensor>();
+    auto &src_tensor = src_var.Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp_grad_tensor->set_lod(src_tensor.lod());
     framework::TensorCopy(src_tensor, cpu_place, tmp_grad_tensor);
   } else if (src_var.IsType<phi::SelectedRows>()) {

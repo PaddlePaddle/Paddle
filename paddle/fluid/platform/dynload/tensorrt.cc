@@ -41,6 +41,7 @@ void* GetDsoHandle(const std::string& dso_name) {
 
   void* dso_handle = dlopen(dso_name.c_str(), dynload_flags);
 
+<<<<<<< HEAD
   PADDLE_ENFORCE_NOT_NULL(
       dso_handle,
       paddle::platform::errors::NotFound(
@@ -55,6 +56,12 @@ void* GetDsoHandle(const std::string& dso_name) {
           "  - Windows: set PATH by `set PATH=XXX;%PATH%`\n"
           "  - Mac: set  DYLD_LIBRARY_PATH by `export "
           "DYLD_LIBRARY_PATH=...`\n"));
+=======
+  PADDLE_ENFORCE_NOT_NULL(dso_handle,
+                          paddle::platform::errors::NotFound(
+                              "TensorRT is needed, "
+                              "but TensorRT dynamic library is not found."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   return dso_handle;
 }

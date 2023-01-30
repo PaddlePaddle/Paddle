@@ -39,8 +39,12 @@ PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_TRY
   // NOTE(dev): [why not use egr::Controller::Instance::GernerateUniqueName()?]
   // Beacause Controller must holder a tracer, but 'tensor.name' maybe called
+<<<<<<< HEAD
   // everywhere such as static graph mode in @to_static, which means tracer is
   // None.
+=======
+  // everywhere such as static mode in @to_static, which means tracer is None.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   static egr::UniqueNameGenerator name_generator;
   if (self->tensor.name().empty()) {
     self->tensor.set_name(name_generator.Generate());
@@ -184,6 +188,7 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
       value[i] = ddim[i];
     }
   }
+<<<<<<< HEAD
   if (!egr::IsVariableCompatTensor(self->tensor)) {
     auto desired_layout =
         paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
@@ -219,6 +224,43 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
       value[2] = dims[1];
       value[3] = dims[2];
     }
+=======
+
+  auto desired_layout =
+      paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
+  auto default_layout =
+      paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
+  bool change_dim =
+      (desired_layout != default_layout &&
+       self->tensor.layout() == desired_layout && value.size() == 4);
+  VLOG(6) << "eager_properties 'Shape' method, layout autotune "
+          << " desired_layout: " << desired_layout
+          << " default_layout: " << default_layout
+          << " tensor layout: " << self->tensor.layout()
+          << " tensor's shape size is : " << value.size();
+  std::vector<int64_t> dims = value;
+  if (change_dim &&
+      paddle::framework::DataLayoutToString(desired_layout) == "NCHW") {
+    // NCHW -> NHWC
+    VLOG(6) << "layout autotune get Shape from NCHW -> NHWC " << value[0] << " "
+            << value[1] << " " << value[2] << " " << value[3] << " to "
+            << dims[0] << " " << dims[2] << " " << dims[3] << " " << dims[1];
+    value[0] = dims[0];
+    value[1] = dims[2];
+    value[2] = dims[3];
+    value[3] = dims[1];
+  } else if (change_dim &&
+             paddle::framework::DataLayoutToString(desired_layout) == "NHWC") {
+    // NHWC -> NCHW
+    VLOG(6) << "layout autotune get Shape from NHWC -> NCHW " << value[0] << " "
+            << value[1] << " " << value[2] << " " << value[3] << " to "
+            << dims[0] << " " << dims[3] << " " << dims[1] << " " << dims[2]
+            << " " << dims[1];
+    value[0] = dims[0];
+    value[1] = dims[3];
+    value[2] = dims[1];
+    value[3] = dims[2];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   return ToPyObject(value);
@@ -236,7 +278,12 @@ PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
     VLOG(3) << "VariableCompatTensor does not support `layout` method.";
     return ToPyObject(layout);
   } else {
+<<<<<<< HEAD
     return ToPyObject(phi::DataLayoutToString(self->tensor.layout()));
+=======
+    return ToPyObject(
+        paddle::framework::DataLayoutToString(self->tensor.layout()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   return ToPyObject(layout);

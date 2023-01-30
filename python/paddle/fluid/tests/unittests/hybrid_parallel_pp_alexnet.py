@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -21,6 +22,19 @@ from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+import paddle
+import numpy as np
+import random
+import paddle
+import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
+from hybrid_parallel_pp_layer import AlexNetPipeDesc, AlexNet
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -35,6 +49,10 @@ micro_batch_size = 2
 
 
 class TestDistPPTraning(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -47,17 +65,29 @@ class TestDistPPTraning(unittest.TestCase):
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,
+<<<<<<< HEAD
             "micro_batch_size": micro_batch_size,
+=======
+            "micro_batch_size": micro_batch_size
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         fleet.init(is_collective=True, strategy=strategy)
 
     def build_optimizer(self, model):
+<<<<<<< HEAD
         scheduler = paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[2], values=[0.001, 0.002], verbose=True
         )
         optimizer = paddle.optimizer.SGD(
             learning_rate=scheduler, parameters=model.parameters()
         )
+=======
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
+                                                       values=[0.001, 0.002],
+                                                       verbose=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
+                                         parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return scheduler, optimizer
 
     def test_pp_model(self):
@@ -68,7 +98,11 @@ class TestDistPPTraning(unittest.TestCase):
         rank_id = dist.get_rank()
         set_random_seed(1024, dp_id, rank_id)
 
+<<<<<<< HEAD
         # construct model a
+=======
+        #construct model a
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         model_a = AlexNet(10)
         scheduler_a, optimizer_a = self.build_optimizer(model_a)
 
@@ -88,6 +122,7 @@ class TestDistPPTraning(unittest.TestCase):
             param.set_value(parameters[idx + pp_id * (param_len // 2)])
 
         # construct reader
+<<<<<<< HEAD
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size, drop_last=True
         )
@@ -103,6 +138,17 @@ class TestDistPPTraning(unittest.TestCase):
                 .astype('int64')
                 .reshape(batch_size, 1)
             )
+=======
+        train_reader = paddle.batch(paddle.dataset.mnist.train(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
+
+        for step_id, data in enumerate(train_reader()):
+            x_data = np.array([x[0] for x in data]).astype('float32').reshape(
+                batch_size, 1, 28, 28)
+            y_data = np.array([x[1] for x in data
+                               ]).astype('int64').reshape(batch_size, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
             img.stop_gradient = True
@@ -120,9 +166,15 @@ class TestDistPPTraning(unittest.TestCase):
             loss_b = model_b.train_batch([img, label], optimizer_b, scheduler_b)
 
             print("loss: ", loss_a.numpy(), loss_b.numpy())
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=5e-5
             )
+=======
+            np.testing.assert_allclose(loss_a.numpy(),
+                                       loss_b.numpy(),
+                                       rtol=5e-5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

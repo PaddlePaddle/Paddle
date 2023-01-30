@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -21,16 +22,42 @@ from test_collective_multi_nodes import TestDistBase
 
 
 class TestDYgrapShardingDP(TestDistBase):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_multi_nodes import TestDistBase
+
+import os
+
+
+class TestDYgrapShardingDP(TestDistBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._trainers = 16
         self._init_env()
 
+<<<<<<< HEAD
     def test_hybrid_sharding_stage3(self):
         self.check_with_place(
             "mn_dygraph_group_sharded_stage3.py",
             backend="nccl",
             need_envs=os.environ,
         )
+=======
+    def test_hybrid_sharding_stage2(self):
+        self.check_with_place("mn_dygraph_sharding_stage2.py",
+                              backend="nccl",
+                              need_envs=os.environ)
+
+    def test_hybrid_sharding_stage3(self):
+        self.check_with_place("mn_dygraph_group_sharded_stage3.py",
+                              backend="nccl",
+                              need_envs=os.environ)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -119,6 +119,7 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
     }
 
     default:
+<<<<<<< HEAD
       PADDLE_THROW(platform::errors::Unavailable(
           "Unsupported attribute type %d.", attr_desc.type()));
   }
@@ -143,6 +144,10 @@ Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc) {
     default:
       PADDLE_THROW(platform::errors::Unavailable(
           "Unsupported attribute type %d.", attr_desc.type()));
+=======
+      PADDLE_THROW(platform::errors::Unavailable("Unsupport attribute type %d.",
+                                                 attr_desc.type()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   return paddle::blank();
 }

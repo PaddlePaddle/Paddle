@@ -7,6 +7,10 @@
 
 [English](./README.md) | 简体中文
 
+<<<<<<< HEAD
+=======
+[![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html)
 [![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](https://paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
@@ -38,13 +42,21 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 - **开发便捷的产业级深度学习框架**
 
     飞桨深度学习框架采用基于编程逻辑的组网范式，对于普通开发者而言更容易上手，符合他们的开发习惯。同时支持声明式和命令式编程，兼具开发的灵活性和高性能。网络结构自动设计，模型效果超越人类专家。
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 - **支持超大规模深度学习模型的训练**
 
     飞桨突破了超大规模深度学习模型训练技术，实现了支持千亿特征、万亿参数、数百节点的开源大规模训练平台，攻克了超大规模深度学习模型的在线学习难题，实现了万亿规模参数模型的实时更新。
     [查看详情](https://github.com/PaddlePaddle/Fleet)
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 - **支持多端多平台的高性能推理部署工具**
 

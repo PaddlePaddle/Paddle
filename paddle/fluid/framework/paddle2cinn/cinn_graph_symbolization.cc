@@ -45,7 +45,11 @@ using FeedInfoMap = CinnGraphSymbolization::FeedInfoMap;
 namespace utils {
 
 OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
+<<<<<<< HEAD
     const phi::DenseTensor& tensor, bool skip_trans_type = false) {
+=======
+    const Tensor& tensor, bool skip_trans_type = false) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   OpMapperContext::FeedInfo info;
   const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {
@@ -258,6 +262,7 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
 std::unordered_set<std::string> CinnGraphSymbolization::GetFetchIds() const {
   std::unordered_set<std::string> fetch_names;
   fetch_names.reserve(fetch_var_names_.size());
+<<<<<<< HEAD
   std::for_each(fetch_var_names_.begin(),
                 fetch_var_names_.end(),
                 [this, &fetch_names](const std::string& name) {
@@ -268,6 +273,19 @@ std::unordered_set<std::string> CinnGraphSymbolization::GetFetchIds() const {
                           "Cannot find %s in var_map_", name.c_str()));
                   fetch_names.insert(var_map_.at(name)->id);
                 });
+=======
+  std::for_each(
+      fetch_var_names_.begin(),
+      fetch_var_names_.end(),
+      [this, &fetch_names](const std::string& name) {
+        PADDLE_ENFORCE_EQ(
+            var_model_to_program_map_.count(name),
+            1,
+            platform::errors::PreconditionNotMet(
+                "Cannot find %s in var_model_to_program_map_", name.c_str()));
+        fetch_names.insert(var_model_to_program_map_.at(name));
+      });
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return fetch_names;
 }
 

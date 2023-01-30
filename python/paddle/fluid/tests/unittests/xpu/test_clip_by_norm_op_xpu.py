@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 #   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+=======
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +16,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test_xpu import XPUOpTest
@@ -83,6 +93,68 @@ class XPUTestClipByNormOp(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('clip_by_norm')
 for stype in support_types:
     create_test_class(globals(), XPUTestClipByNormOp, stype)
+=======
+import numpy as np
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from op_test_xpu import OpTest, XPUOpTest
+import paddle
+from paddle.fluid import Program, program_guard
+
+
+class TestXPUClipByNormOp(XPUOpTest):
+
+    def setUp(self):
+        self.op_type = "clip_by_norm"
+        self.dtype = np.float32
+        self.use_xpu = True
+        self.max_relative_error = 0.006
+        self.initTestCase()
+        input = np.random.random(self.shape).astype("float32")
+        input[np.abs(input) < self.max_relative_error] = 0.5
+        self.inputs = {
+            'X': input,
+        }
+        self.attrs = {}
+        self.attrs['max_norm'] = self.max_norm
+        norm = np.sqrt(np.sum(np.square(input)))
+        if norm > self.max_norm:
+            output = self.max_norm * input / norm
+        else:
+            output = input
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
+
+    def initTestCase(self):
+        self.shape = (100, )
+        self.max_norm = 1.0
+
+
+class TestCase1(TestXPUClipByNormOp):
+
+    def initTestCase(self):
+        self.shape = (100, )
+        self.max_norm = 1e20
+
+
+class TestCase2(TestXPUClipByNormOp):
+
+    def initTestCase(self):
+        self.shape = (16, 16)
+        self.max_norm = 0.1
+
+
+class TestCase3(TestXPUClipByNormOp):
+
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max_norm = 1.0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

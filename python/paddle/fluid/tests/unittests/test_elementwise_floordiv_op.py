@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -23,6 +24,21 @@ import paddle.fluid as fluid
 
 
 class TestElementwiseModOp(OpTest):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from op_test import OpTest
+
+import random
+
+
+class TestElementwiseModOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_mkldnn = False
 
@@ -38,7 +54,11 @@ class TestElementwiseModOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+=======
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -58,6 +78,7 @@ class TestElementwiseModOp(OpTest):
         pass
 
 
+<<<<<<< HEAD
 class TestElementwiseFloorDivOp_ZeroDim1(TestElementwiseModOp):
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, []).astype(self.dtype)
@@ -80,6 +101,10 @@ class TestElementwiseFloorDivOp_ZeroDim3(TestElementwiseModOp):
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
+=======
+class TestElementwiseModOp_scalar(TestElementwiseModOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -89,6 +114,10 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpInverse(TestElementwiseModOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10]).astype(self.dtype)
         self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
@@ -96,6 +125,10 @@ class TestElementwiseModOpInverse(TestElementwiseModOp):
 
 
 class TestFloorDivideOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="int64")

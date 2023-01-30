@@ -31,6 +31,7 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 static void DeepCopy(const phi::DenseTensor &src_item,
                      const std::string &fetch_var_name,
                      phi::DenseTensor *dst_item) {
@@ -46,6 +47,24 @@ static void DeepCopy(const phi::DenseTensor &src_item,
           fetch_var_name == framework::GradVarName("Filter")
               ? phi::DataLayout::kNCHW
               : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
+=======
+static void DeepCopy(const framework::LoDTensor &src_item,
+                     const std::string &fetch_var_name,
+                     framework::LoDTensor *dst_item) {
+  if (src_item.IsInitialized() && src_item.numel() > 0) {
+#ifdef PADDLE_WITH_MKLDNN
+    // Conversion from MKL-DNN to Paddle
+    if (src_item.layout() == framework::DataLayout::kMKLDNN) {
+      framework::Tensor out;
+      // Convert to desired Paddle layout, apart from grads of filter
+      // as params are not a subject to paddle's data_format
+      framework::innerTransDataLayoutFromMKLDNN(
+          src_item.layout(),
+          fetch_var_name == framework::GradVarName("Filter")
+              ? framework::DataLayout::kNCHW
+              : paddle::platform::MKLDNNDeviceContext::tls()
+                    .get_cur_paddle_data_layout(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           src_item,
           &out,
           platform::CPUPlace());
@@ -72,6 +91,7 @@ class FetchV2Op : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
@@ -98,16 +118,48 @@ class FetchV2Op : public framework::OperatorWithKernel {
       if (!src_item.IsInitialized()) {
         return phi::KernelKey(framework::proto::VarType::FP32,
                               platform::CPUPlace());
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (!tensor.IsInitialized()) {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto *fetch_var = ctx.InputVar("X");
+    if (fetch_var == nullptr) {
+      return framework::OpKernelType(framework::proto::VarType::FP32,
+                                     platform::CPUPlace());
+    }
+
+    if (fetch_var->IsType<framework::LoDTensor>()) {
+      auto &src_item = fetch_var->Get<framework::LoDTensor>();
+      if (!src_item.IsInitialized()) {
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
       auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
       if (!src_item.initialized()) {
+<<<<<<< HEAD
         return phi::KernelKey(framework::proto::VarType::FP32,
                               platform::CPUPlace());
+=======
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       if (src_item.empty() || !src_item[0].IsInitialized()) {
+<<<<<<< HEAD
         return phi::KernelKey(framework::proto::VarType::FP32,
                               platform::CPUPlace());
       }
@@ -115,6 +167,16 @@ class FetchV2Op : public framework::OperatorWithKernel {
 
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           platform::CPUPlace());
+=======
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
+      }
+    }
+
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -150,12 +212,21 @@ class FetchV2Kernel {
 
     bool deepcopy = ctx.Attr<bool>("deepcopy");
 
+<<<<<<< HEAD
     if (fetch_var->IsType<phi::DenseTensor>()) {
       auto &src_item = fetch_var->Get<phi::DenseTensor>();
       if (!src_item.IsInitialized()) {
         return;
       }
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
+=======
+    if (fetch_var->IsType<framework::LoDTensor>()) {
+      auto &src_item = fetch_var->Get<framework::LoDTensor>();
+      if (!src_item.IsInitialized()) {
+        return;
+      }
+      auto *dst_item = &(PADDLE_GET(framework::LoDTensor, fetch_list->at(col)));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       bool check_place = platform::is_cpu_place(src_item.place()) ||
                          platform::is_cuda_pinned_place(src_item.place());
       PADDLE_ENFORCE_EQ(
@@ -201,12 +272,19 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(phi::DenseTensor) The resulted phi::DenseTensor which is "
              "expected to return "
              "to users.");
     AddOutput("Out",
               "(vector<phi::DenseTensor>) A fetching list of phi::DenseTensor "
               "which may have "
+=======
+             "(LoDTensor) The resulted LoDTensor which is expected to return "
+             "to users.");
+    AddOutput("Out",
+              "(vector<LoDTensor>) A fetching list of LoDTensor which may have "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddAttr<bool>("deepcopy", "(bool) Whether deep copy is required.")

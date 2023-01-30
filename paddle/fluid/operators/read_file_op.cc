@@ -36,7 +36,11 @@ class CPUReadFileKernel : public framework::OpKernel<T> {
 
     input.seekg(0, std::ios::beg);
 
+<<<<<<< HEAD
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<int64_t> out_shape = {file_size};
     out->Resize(phi::make_ddim(out_shape));
 
@@ -61,10 +65,17 @@ class ReadFileOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(framework::proto::VarType::UINT8,
                           platform::CPUPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::UINT8,
+                                   platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

@@ -12,11 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import queue
 import sys
 import threading
 import time
+=======
+import queue
+import threading
+import os
+import json
+import time
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 taskQueue = queue.Queue()
 
@@ -31,12 +40,18 @@ def worker(fun):
 def threadPool(threadPoolNum):
     threadPool = []
     for i in range(threadPoolNum):
+<<<<<<< HEAD
         thread = threading.Thread(
             target=worker,
             args={
                 doFun,
             },
         )
+=======
+        thread = threading.Thread(target=worker, args={
+            doFun,
+        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         thread.daemon = True
         threadPool.append(thread)
     return threadPool
@@ -63,6 +78,7 @@ def insert_pile_to_h_file(rootPath):
         os.system('echo "\n#include <cstdio>\n" >> %s' % line)
         os.system(
             'echo "__attribute__((constructor)) static void calledFirst%s()\n{" >> %s'
+<<<<<<< HEAD
             % (func, line)
         )
         os.system(
@@ -97,6 +113,15 @@ def add_simple_cxx_test(rootPath):
         os.system('echo "  DEPS gtest)\n" >> %s' % variant_test_cmakeflie_path)
 
 
+=======
+            % (func, line))
+        os.system(
+            'echo \'    printf("precise test map fileeee: %%s\\\\n", __FILE__);\n}\' >> %s'
+            % line)
+        os.system('echo "\n#endif" >> %s' % line)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def remove_pile_from_h_file(rootPath):
     h_cu_files = '%s/tools/h_cu_files.log' % rootPath
     f = open(h_cu_files)
@@ -115,6 +140,7 @@ def get_h_cu_file(file_path):
     dir_path = file_path[1]
     filename = file_path[2]
     ut = filename.replace('^', '').replace('$', '').replace('.log', '')
+<<<<<<< HEAD
     ut_path = "%s/build/ut_map/%s" % (rootPath, ut)
     if os.path.exists(ut_path):
         os.system(
@@ -123,6 +149,11 @@ def get_h_cu_file(file_path):
         )
     else:
         print("%s has failed,no has direcotory" % ut)
+=======
+    os.system(
+        "cat %s/%s | grep 'precise test map fileeee:'| uniq >> %s/build/ut_map/%s/related_%s.txt"
+        % (dir_path, filename, rootPath, ut, ut))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def doFun(file_path):
@@ -155,7 +186,10 @@ if __name__ == "__main__":
     elif func == 'insert_pile_to_h_file':
         rootPath = sys.argv[2]
         insert_pile_to_h_file(rootPath)
+<<<<<<< HEAD
         add_simple_cxx_test(rootPath)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif func == 'analy_h_cu_file':
         dir_path = sys.argv[2]
         rootPath = sys.argv[3]

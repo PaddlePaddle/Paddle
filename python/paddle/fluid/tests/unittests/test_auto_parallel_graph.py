@@ -12,12 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+import os
+import json
+from paddle.distributed.auto_parallel.graph import Node
+from paddle.distributed.auto_parallel.graph import Edge
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.auto_parallel.graph import Graph
 
 
 class TestAutoParallelGraph(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_graph(self):
         graph = Graph(name="foo")
         self.assertEqual(graph.attrs["name"], "foo")

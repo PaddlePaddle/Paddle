@@ -14,9 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/coalesce_kernel.h"
 
+<<<<<<< HEAD
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -30,9 +33,15 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename IntT>
+<<<<<<< HEAD
 void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
                           const SparseCooTensor& x,
                           SparseCooTensor* out) {
+=======
+void CoalesceGPUKernel(const GPUContext& dev_ctx,
+                       const SparseCooTensor& x,
+                       SparseCooTensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.values();
   DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
@@ -176,6 +185,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void CoalesceCooKernel(const Context& dev_ctx,
                        const SparseCooTensor& x,
                        SparseCooTensor* out) {
@@ -183,14 +193,29 @@ void CoalesceCooKernel(const Context& dev_ctx,
       x.indices().dtype(), "CoalesceCooGPUKernel", ([&] {
         CoalesceCooGPUKernel<T, data_t>(dev_ctx, x, out);
       }));
+=======
+void CoalesceKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "CoalesceGPUKernel", ([&] {
+                                 CoalesceGPUKernel<T, data_t>(dev_ctx, x, out);
+                               }));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 }  // namespace sparse
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(coalesce_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::CoalesceCooKernel,
+=======
+PD_REGISTER_KERNEL(coalesce,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::CoalesceKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::float16,

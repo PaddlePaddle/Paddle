@@ -20,6 +20,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using SelectedRows = phi::SelectedRows;
 
 template <typename T>
@@ -31,14 +36,24 @@ class ShapeMLUKernel : public framework::OpKernel<T> {
     if (in_var->IsType<phi::SelectedRows>()) {
       in_dims = in_var->Get<phi::SelectedRows>().value().dims();
     } else {
+<<<<<<< HEAD
       in_dims = in_var->Get<phi::DenseTensor>().dims();
     }
     auto* out_t = ctx.Output<phi::DenseTensor>("Out");
+=======
+      in_dims = in_var->Get<LoDTensor>().dims();
+    }
+    auto* out_t = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out_t->Resize({in_dims.size()});
     out_t->mutable_data<int32_t>(ctx.GetPlace());
 
     // shape op cpu
+<<<<<<< HEAD
     phi::DenseTensor shape_on_cpu(
+=======
+    Tensor shape_on_cpu(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::TransToPhiDataType(framework::proto::VarType::INT32));
     shape_on_cpu.Resize({in_dims.size()});
     auto cpu_data = shape_on_cpu.mutable_data<int32_t>(platform::CPUPlace());

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import paddle
 import paddle.fluid.layers as layers
@@ -26,6 +31,7 @@ paddle.enable_static()
 
 
 class TestWhileOp(unittest.TestCase):
+<<<<<<< HEAD
     def simple_net(self):
         d0 = paddle.static.data(
             "d0", shape=[10], dtype='float32'
@@ -36,24 +42,53 @@ class TestWhileOp(unittest.TestCase):
         d2 = paddle.static.data(
             "d2", shape=[10], dtype='float32'
         )
+=======
+
+    def simple_net(self):
+        d0 = layers.data("d0",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d1 = layers.data("d1",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d2 = layers.data("d2",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # fill_constant npu op doesn't support int64
         i = layers.zeros(shape=[1], dtype='int32')
         i = layers.cast(i, 'int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
+<<<<<<< HEAD
         mem_array = paddle.tensor.array_write(x=init, i=i)
         data_array = paddle.tensor.array_write(x=d0, i=i)
         i = paddle.increment(i)
         paddle.tensor.array_write(d1, i, array=data_array)
         i = paddle.increment(i)
         paddle.tensor.array_write(d2, i, array=data_array)
+=======
+        mem_array = layers.array_write(x=init, i=i)
+        data_array = layers.array_write(x=d0, i=i)
+        i = layers.increment(i)
+        layers.array_write(d1, i, array=data_array)
+        i = layers.increment(i)
+        layers.array_write(d2, i, array=data_array)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         i = layers.zeros(shape=[1], dtype='int32')
         i = layers.cast(i, 'int64')
         i.stop_gradient = True
         array_len = layers.fill_constant(shape=[1], dtype='int32', value=5)
         array_len = layers.cast(array_len, 'int64')
         array_len.stop_gradient = True
+<<<<<<< HEAD
         cond = paddle.ones(shape=[1], dtype='int32')
+=======
+        cond = layers.ones(shape=[1], dtype='int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         cond = layers.cast(cond, 'bool')
         j = layers.fill_constant(shape=[1], dtype='int32', value=1)
         j = layers.cast(j, 'int64')
@@ -61,6 +96,7 @@ class TestWhileOp(unittest.TestCase):
         array_len2 = layers.fill_constant(shape=[1], dtype='int32', value=3)
         array_len2 = layers.cast(array_len2, 'int64')
         array_len2.stop_gradient = True
+<<<<<<< HEAD
         cond2 = paddle.logical_or(x=j, y=array_len2)
         cond2 = paddle.ones(shape=[1], dtype='int32')
         cond2 = layers.cast(cond2, 'bool')
@@ -84,6 +120,31 @@ class TestWhileOp(unittest.TestCase):
                 paddle.tensor.array_write(result2, i=j, array=mem_array)
                 paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
         sum_result = paddle.tensor.array_read(array=mem_array, i=j)
+=======
+        cond2 = layers.logical_or(x=j, y=array_len2)
+        cond2 = layers.ones(shape=[1], dtype='int32')
+        cond2 = layers.cast(cond2, 'bool')
+        while_op = layers.While(cond=cond)
+        while_op2 = layers.While(cond=cond2)
+        with while_op.block():
+            d = layers.array_read(array=data_array, i=i)
+            prev = layers.array_read(array=mem_array, i=i)
+            result = layers.sums(input=[d, prev])
+
+            i = layers.increment(x=i, in_place=True)
+            layers.array_write(result, i=i, array=mem_array)
+            layers.less_than(x=i, y=array_len, cond=cond)
+
+            with while_op2.block():
+                d2 = layers.array_read(array=data_array, i=j)
+                prev2 = layers.array_read(array=mem_array, i=j)
+                result2 = layers.sums(input=[d2, prev2])
+
+                j = layers.increment(x=j, in_place=True)
+                layers.array_write(result2, i=j, array=mem_array)
+                layers.less_than(x=j, y=array_len2, cond=cond2)
+        sum_result = layers.array_read(array=mem_array, i=j)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss = paddle.mean(sum_result)
         return loss, sum_result
 
@@ -103,10 +164,19 @@ class TestWhileOp(unittest.TestCase):
             for i in range(3):
                 d.append(numpy.random.random(size=[10]).astype('float32'))
 
+<<<<<<< HEAD
             outs = exe.run(
                 feed={'d0': d[0], 'd1': d[1], 'd2': d[2]},
                 fetch_list=[sum_result],
             )
+=======
+            outs = exe.run(feed={
+                'd0': d[0],
+                'd1': d[1],
+                'd2': d[2]
+            },
+                           fetch_list=[sum_result])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
     def test_simple_net_forward(self):

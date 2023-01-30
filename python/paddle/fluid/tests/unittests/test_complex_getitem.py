@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -21,6 +22,17 @@ import paddle.fluid.dygraph as dg
 
 
 class TestComplexGetitemLayer(unittest.TestCase):
+=======
+import paddle
+import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestComplexGetitemLayer(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -94,6 +106,18 @@ class TestComplexGetitemLayer(unittest.TestCase):
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
 
+<<<<<<< HEAD
+=======
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_case1()
+            self.test_case2()
+            self.test_case3()
+            self.test_case4()
+            self.test_case5()
+            self.test_case6()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

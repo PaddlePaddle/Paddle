@@ -62,8 +62,13 @@ struct FetchAsyncOpHandle : public OpHandleBase {
   std::vector<Scope *> GetLocalScopes() override { return *local_scopes_; }
 
   void FetchMergedLodTensor(
+<<<<<<< HEAD
       const std::vector<const phi::DenseTensor *> &src_lodtensors,
       phi::DenseTensor *dst_lodtensor);
+=======
+      const std::vector<const LoDTensor *> &src_lodtensors,
+      LoDTensor *dst_lodtensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   FetchResultType *data_;

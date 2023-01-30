@@ -32,7 +32,11 @@ static void clear_no_grad_edges(
   for (size_t i = 0; i < params.size(); ++i) {
     auto p_grad_name = paddle::framework::GradVarName(params[i].name());
     if (!block_desc->HasVar(p_grad_name)) {
+<<<<<<< HEAD
       VLOG(3) << "clear edge of " << p_grad_name;
+=======
+      VLOG(1) << "clear edge of " << p_grad_name;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
     }
   }
@@ -48,7 +52,11 @@ static void clear_no_grad_edges_with_partial_block(
     auto p_grad_name = paddle::framework::GradVarName(params[i].name());
     if (!forward_block_desc->HasVar(p_grad_name) &&
         !backward_block_desc->HasVar(p_grad_name)) {
+<<<<<<< HEAD
       VLOG(3) << "clear edge of " << p_grad_name;
+=======
+      VLOG(1) << "clear edge of " << p_grad_name;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
     }
   }
@@ -80,10 +88,22 @@ inline void run_program_ad_func(
       trace_backward, &p_autograd_x, &p_autograd_params);
 
   if (require_any_grad) {
+<<<<<<< HEAD
+=======
+    std::vector<std::string> out_names;
+    for (auto& t : deref_out) {
+      out_names.emplace_back(t.name());
+    }
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
 
+<<<<<<< HEAD
+=======
+    grad_node->SetFwdOutNames(out_names);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // Set Attributes
     grad_node->SetAttrMap(attrs);
     // Set TensorWrappers

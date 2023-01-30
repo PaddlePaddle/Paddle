@@ -7,12 +7,20 @@
 register_unity_group(
   cc
   elementwise_add_op.cc
+<<<<<<< HEAD
+=======
+  mkldnn/elementwise_add_mkldnn_op.cc
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   elementwise_div_op.cc
   elementwise_floordiv_op.cc
   elementwise_max_op.cc
   elementwise_min_op.cc
   elementwise_mod_op.cc
   elementwise_mul_op.cc
+<<<<<<< HEAD
+=======
+  mkldnn/elementwise_mul_mkldnn_op.cc
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   elementwise_pow_op.cc
   elementwise_sub_op.cc)
 register_unity_group(

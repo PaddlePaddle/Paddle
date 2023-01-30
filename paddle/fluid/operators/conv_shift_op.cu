@@ -13,12 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_shift_op.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace {
 
 inline int DivUp(int x, int y) { return (x + y - 1) / y; }
@@ -125,9 +134,15 @@ template <typename T>
 class ConvShiftKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
     const phi::DenseTensor *Y = context.Input<phi::DenseTensor>("Y");
     phi::DenseTensor *Out = context.Output<phi::DenseTensor>("Out");
+=======
+    const Tensor *X = context.Input<Tensor>("X");
+    const Tensor *Y = context.Input<Tensor>("Y");
+    Tensor *Out = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const T *x_data = X->data<T>();
     const T *y_data = Y->data<T>();
     T *out_data = Out->mutable_data<T>(context.GetPlace());
@@ -154,18 +169,29 @@ template <typename T>
 class ConvShiftGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
     const phi::DenseTensor *Y = context.Input<phi::DenseTensor>("Y");
     const phi::DenseTensor *dOut =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    const Tensor *X = context.Input<Tensor>("X");
+    const Tensor *Y = context.Input<Tensor>("Y");
+    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const T *x_data = X->data<T>();
     const T *y_data = Y->data<T>();
     const T *dout_data = dOut->data<T>();
 
+<<<<<<< HEAD
     phi::DenseTensor *dX =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     phi::DenseTensor *dY =
         context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
+    Tensor *dY = context.Output<Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int batch_size = X->dims()[0];
     int x_width = X->dims()[1];

@@ -25,11 +25,19 @@ class MergedMomentumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto param_dtype =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return phi::KernelKey(param_dtype, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto param_dtype =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return framework::OpKernelType(param_dtype, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

@@ -45,7 +45,11 @@ class RandpermKernel : public framework::OpKernel<T> {
     int n = ctx.Attr<int>("n");
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     framework::Variable* out_var = ctx.OutputVar("Out");
+<<<<<<< HEAD
     phi::DenseTensor* out_tensor =
+=======
+    framework::Tensor* out_tensor =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
@@ -53,7 +57,11 @@ class RandpermKernel : public framework::OpKernel<T> {
       random_permate<T>(out_data, n, seed);
 
     } else {
+<<<<<<< HEAD
       phi::DenseTensor tmp_tensor;
+=======
+      framework::Tensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tmp_tensor.Resize(phi::make_ddim({n}));
       T* tmp_data = tmp_tensor.mutable_data<T>(platform::CPUPlace());
       random_permate<T>(tmp_data, n, seed);

@@ -38,7 +38,11 @@ void Compare(f::Scope* scope,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
+<<<<<<< HEAD
   auto tensor_x = x->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<T> init;
   init.push_back(static_cast<T>(1.0));
@@ -53,7 +57,11 @@ void Compare(f::Scope* scope,
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
+<<<<<<< HEAD
   auto tensor_out = out->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto op =
       f::OpRegistry::CreateOp(op_type, {{"X", {"X"}}}, {{"Out", {"Out"}}}, {});

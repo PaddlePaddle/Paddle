@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -19,7 +24,10 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # from paddle.fluid import core
 # from paddle.fluid.op import Operator
 
@@ -28,6 +36,10 @@ SEED = 2022
 
 
 class TestShape(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "shape"
@@ -53,36 +65,64 @@ class TestShape(OpTest):
 
 
 class TestShape_fp16(TestShape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestShape_double(TestShape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestShape_int32(TestShape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestShape_int64(TestShape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int64
 
 
 class TestShape_int8(TestShape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int8
 
 
 class TestShape_uint8(TestShape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.uint8
 
 
 class TestShape_bool(TestShape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = bool
 

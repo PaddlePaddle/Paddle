@@ -33,11 +33,16 @@ static void LerpGradFunction(const Context& ctx,
   auto* dx = x_grad;
   auto* dy = y_grad;
 
+<<<<<<< HEAD
   auto& out_dims = out.dims();
+=======
+  auto dout_dims = dout.dims();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   DDim dx_dims;
   DDim dy_dims;
 
   auto w_dims = phi::funcs::ExtendDims2Rank(w.dims(), D);
+<<<<<<< HEAD
   auto g_dims = phi::funcs::ExtendDims2Rank(out_grad.dims(), D);
   Eigen::DSizes<int, D> dx_bcast_dims;
   Eigen::DSizes<int, D> dy_bcast_dims;
@@ -57,12 +62,34 @@ static void LerpGradFunction(const Context& ctx,
 
   auto eigen_w = phi::EigenTensor<T, D>::From(w, w_dims);
   auto eigen_dout = phi::EigenTensor<T, D>::From(dout, g_dims);
+=======
+  Eigen::DSizes<int, D> dx_bcast_dims;
+  Eigen::DSizes<int, D> dy_bcast_dims;
+  Eigen::DSizes<int, D> w_bcast_dims;
+
+  if (dx) {
+    dx_dims = phi::funcs::ExtendDims2Rank(dx->dims(), D);
+    phi::funcs::GetBroadcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
+  }
+  if (dy) {
+    dy_dims = phi::funcs::ExtendDims2Rank(dy->dims(), D);
+    phi::funcs::GetBroadcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
+  }
+  phi::funcs::GetBroadcastDims<D>(w_dims, dout_dims, &w_bcast_dims);
+
+  auto eigen_w = phi::EigenTensor<T, D>::From(w, w_dims);
+  auto eigen_dout = phi::EigenTensor<T, D>::From(dout);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   Eigen::DSizes<int, D * 2> dx_reshape_dims;
   Eigen::DSizes<int, D * 2> dy_reshape_dims;
   Eigen::DSizes<int, D> reduce_dims;
 
+<<<<<<< HEAD
   for (int i = 0; i < out_dims.size(); ++i) {
+=======
+  for (int i = 0; i < dout_dims.size(); ++i) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (dx) {
       dx_reshape_dims[2 * i] = dx_bcast_dims[i];
       dx_reshape_dims[2 * i + 1] = dx_dims[i];
@@ -79,8 +106,12 @@ static void LerpGradFunction(const Context& ctx,
   if (dx) {
     ctx.template Alloc<T>(dx);
     auto eigen_dx = phi::EigenTensor<T, D>::From(*dx, dx_dims);
+<<<<<<< HEAD
     auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) *
                       eigen_dout.broadcast(g_bcast_dims);
+=======
+    auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) * eigen_dout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     eigen_dx.device(place) = eigen_expr.reshape(dx_reshape_dims)
                                  .sum(reduce_dims)
                                  .reshape(eigen_dx.dimensions());
@@ -88,14 +119,19 @@ static void LerpGradFunction(const Context& ctx,
   if (dy) {
     ctx.template Alloc<T>(dy);
     auto eigen_dy = phi::EigenTensor<T, D>::From(*dy, dy_dims);
+<<<<<<< HEAD
     auto eigen_expr =
         eigen_w.broadcast(w_bcast_dims) * eigen_dout.broadcast(g_bcast_dims);
+=======
+    auto eigen_expr = eigen_w.broadcast(w_bcast_dims) * eigen_dout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     eigen_dy.device(place) = eigen_expr.reshape(dy_reshape_dims)
                                  .sum(reduce_dims)
                                  .reshape(eigen_dy.dimensions());
   }
 }
 
+<<<<<<< HEAD
 template <typename Context, typename T>
 static void LerpGradFunctionZero(const Context& ctx,
                                  const DenseTensor& x,
@@ -122,6 +158,8 @@ static void LerpGradFunctionZero(const Context& ctx,
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, typename Context>
 void LerpGradKernel(const Context& ctx,
                     const DenseTensor& x,
@@ -134,10 +172,17 @@ void LerpGradKernel(const Context& ctx,
   int rank = out.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
+<<<<<<< HEAD
       0,
       phi::errors::InvalidArgument(
           "The number of dimensions for LerpGradOp must be "
           "greater than or equal to 0, but the value received is %d.",
+=======
+      1,
+      phi::errors::InvalidArgument(
+          "The number of dimensions for LerpGradOp must be "
+          "greater than or equal to 1, but the value received is %d.",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           rank));
   PADDLE_ENFORCE_LE(
       rank,
@@ -147,10 +192,13 @@ void LerpGradKernel(const Context& ctx,
           "less than or equal to 6, but the value received is %d.",
           rank));
   switch (rank) {
+<<<<<<< HEAD
     case 0:
       LerpGradFunctionZero<Context, T>(
           ctx, x, y, weight, out, out_grad, x_grad, y_grad);
       break;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     case 1:
       LerpGradFunction<Context, T, 1>(
           ctx, x, y, weight, out, out_grad, x_grad, y_grad);

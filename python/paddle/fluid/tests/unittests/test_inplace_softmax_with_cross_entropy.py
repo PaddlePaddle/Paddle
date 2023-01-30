@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -26,11 +27,27 @@ class TestSoftmaxWithXe(unittest.TestCase):
         self.m, self.n = np.random.random_integers(
             low=100, high=2000, size=[2]
         ).astype('int64')
+=======
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import layers
+import numpy as np
+import unittest
+
+
+class TestSoftmaxWithXe(unittest.TestCase):
+
+    def setUp(self):
+        self.initParameter()
+        self.m, self.n = np.random.random_integers(low=100, high=2000,
+                                                   size=[2]).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def initParameter(self):
         self.dtype = 'float32'
         self.soft_label = False
 
+<<<<<<< HEAD
     def softmax_with_xe(
         self, x, y, place, inplace=True, numeric_stable_mode=True
     ):
@@ -50,12 +67,37 @@ class TestSoftmaxWithXe(unittest.TestCase):
                 )
                 y_d.desc.set_need_check_feed(False)
                 z_d, s_d = paddle.nn.functional.softmax_with_cross_entropy(
+=======
+    def softmax_with_xe(self,
+                        x,
+                        y,
+                        place,
+                        inplace=True,
+                        numeric_stable_mode=True):
+        m, n = x.shape
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with fluid.scope_guard(fluid.Scope()):
+                x_d = fluid.layers.data(name='x',
+                                        shape=[m, n],
+                                        dtype=self.dtype,
+                                        append_batch_size=False)
+                y_d = fluid.layers.data(
+                    name='y',
+                    shape=[m, 1] if not self.soft_label else [m, n],
+                    dtype='int64' if not self.soft_label else self.dtype,
+                    append_batch_size=False)
+                z_d, s_d = fluid.layers.softmax_with_cross_entropy(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     x_d,
                     y_d,
                     soft_label=self.soft_label,
                     return_softmax=True,
+<<<<<<< HEAD
                     numeric_stable_mode=numeric_stable_mode,
                 )
+=======
+                    numeric_stable_mode=numeric_stable_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 exe = fluid.Executor(place)
 
@@ -64,18 +106,32 @@ class TestSoftmaxWithXe(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.enable_inplace = inplace
                 prog = fluid.CompiledProgram(
+<<<<<<< HEAD
                     fluid.default_main_program()
                 ).with_data_parallel(
                     build_strategy=build_strategy, places=place
                 )
+=======
+                    fluid.default_main_program()).with_data_parallel(
+                        build_strategy=build_strategy, places=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 fetch_list = [z_d.name, s_d.name]
 
                 print('Inplace is {}'.format("ON" if inplace else "OFF"))
 
+<<<<<<< HEAD
                 z, s = exe.run(
                     prog, feed={x_d.name: x, y_d.name: y}, fetch_list=fetch_list
                 )
+=======
+                z, s = exe.run(prog,
+                               feed={
+                                   x_d.name: x,
+                                   y_d.name: y
+                               },
+                               fetch_list=fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return z, s
 
     def main_with_place(self, place):
@@ -85,6 +141,7 @@ class TestSoftmaxWithXe(unittest.TestCase):
         for a, b in x_range:
             x = ((b - a) * x + a).astype(self.dtype)
             if not self.soft_label:
+<<<<<<< HEAD
                 y = np.random.random_integers(
                     size=[self.m, 1], low=0, high=self.n - 1
                 ).astype('int64')
@@ -101,16 +158,50 @@ class TestSoftmaxWithXe(unittest.TestCase):
             z2, s2 = self.softmax_with_xe(
                 x, y, place, inplace=True, numeric_stable_mode=False
             )
+=======
+                y = np.random.random_integers(size=[self.m, 1],
+                                              low=0,
+                                              high=self.n - 1).astype('int64')
+            else:
+                y = np.random.random(size=[self.m, self.n]).astype(self.dtype)
+                norm_y = np.broadcast_to(np.reshape(np.sum(y, axis=1), [-1, 1]),
+                                         y.shape)
+                y = y / norm_y
+
+            z1, s1 = self.softmax_with_xe(x,
+                                          y,
+                                          place,
+                                          inplace=False,
+                                          numeric_stable_mode=False)
+            z2, s2 = self.softmax_with_xe(x,
+                                          y,
+                                          place,
+                                          inplace=True,
+                                          numeric_stable_mode=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertTrue((z1 == z2).all())
             self.assertTrue((s1 == s2).all())
 
+<<<<<<< HEAD
             z1, s1 = self.softmax_with_xe(
                 x, y, place, inplace=False, numeric_stable_mode=True
             )
             z2, s2 = self.softmax_with_xe(
                 x, y, place, inplace=True, numeric_stable_mode=True
             )
+=======
+            z1, s1 = self.softmax_with_xe(x,
+                                          y,
+                                          place,
+                                          inplace=False,
+                                          numeric_stable_mode=True)
+            z2, s2 = self.softmax_with_xe(x,
+                                          y,
+                                          place,
+                                          inplace=True,
+                                          numeric_stable_mode=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertTrue((z1 == z2).all())
             self.assertTrue((s1 == s2).all())
 
@@ -121,18 +212,30 @@ class TestSoftmaxWithXe(unittest.TestCase):
 
 
 class TestSoftmaxWithXe1(TestSoftmaxWithXe):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameter(self):
         self.dtype = 'float32'
         self.soft_label = True
 
 
 class TestSoftmaxWithXe2(TestSoftmaxWithXe):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameter(self):
         self.dtype = 'float64'
         self.soft_label = False
 
 
 class TestSoftmaxWithXe3(TestSoftmaxWithXe):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameter(self):
         self.dtype = 'float64'
         self.soft_label = True

@@ -22,20 +22,32 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 #endif
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
+=======
+#include "paddle/fluid/operators/top_k_function_cuda.h"
+#include "paddle/fluid/operators/top_k_op.h"
+#include "paddle/fluid/platform/float16.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // set cub base traits in order to handle float16
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
   case (dim): {                        \
     constexpr auto kBlockDim = (dim);  \
     __VA_ARGS__;                       \
   } break
 
+<<<<<<< HEAD
 #define FIXED_MAXLENGTH_BASE(MaxLength, ...) \
   case (MaxLength): {                        \
     constexpr auto maxLength = (MaxLength);  \
@@ -57,6 +69,14 @@ namespace operators {
   FIXED_MAXLENGTH_BASE(4, ##__VA_ARGS__); \
   FIXED_MAXLENGTH_BASE(5, ##__VA_ARGS__)
 
+=======
+#define FIXED_BLOCK_DIM(...)                \
+  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class TopkOpCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -65,6 +85,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto* indices = ctx.Output<phi::DenseTensor>("Indices");
@@ -73,6 +94,16 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
       phi::DenseTensor k_host;
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    auto* indices = ctx.Output<Tensor>("Indices");
+    int k = static_cast<int>(ctx.Attr<int>("k"));
+
+    auto* k_t = ctx.Input<Tensor>("K");
+    if (k_t) {
+      Tensor k_host;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopySync(*k_t, platform::CPUPlace(), &k_host);
       k = k_host.data<int>()[0];
       framework::DDim output_dims = output->dims();
@@ -91,7 +122,11 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     const int64_t input_width = inputdims[inputdims.size() - 1];
     const auto& dev_ctx = ctx.cuda_device_context();
     if ((input_width <= 1024 || k >= 128 || k == input_width)) {
+<<<<<<< HEAD
       if (phi::funcs::SortTopk<T>(
+=======
+      if (SortTopk<T>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               dev_ctx, input, input_width, input_height, k, output, indices)) {
         // Successed, return.
         return;
@@ -108,6 +143,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     // TODO(typhoonzero): refine this kernel.
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
+<<<<<<< HEAD
     phi::backends::gpu::GpuLaunchConfig config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
     switch (config.thread_per_block.x) {
@@ -128,6 +164,20 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
               "the input k has error when use getMaxLength function to get the "
               "maxLength."));
       });
+=======
+    switch (GetDesiredBlockDim(input_width)) {
+      FIXED_BLOCK_DIM(
+          KeMatrixTopK<T, 5, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
+                                                      k,
+                                                      indices_data,
+                                                      input_data,
+                                                      input_width,
+                                                      input_width,
+                                                      static_cast<int>(k),
+                                                      gridx,
+                                                      input_height));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       default:
         PADDLE_THROW(platform::errors::Unavailable(
             "Calculation error occurred in TopK Operator's CUDA Kernel."));
@@ -143,12 +193,19 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(context.GetPlace()),
         true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
+<<<<<<< HEAD
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* out_grad =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* indices = context.Input<phi::DenseTensor>("Indices");
     auto* x_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* x = context.Input<Tensor>("X");
+    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* indices = context.Input<Tensor>("Indices");
+    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     const T* out_grad_data = out_grad->data<T>();
@@ -162,9 +219,15 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
     const auto& dev_ctx = context.cuda_device_context();
     const int kMaxHeight = 2048;
     int gridx = row < kMaxHeight ? row : kMaxHeight;
+<<<<<<< HEAD
     switch (phi::funcs::GetDesiredBlockDim(col)) {
       FIXED_BLOCK_DIM(
           phi::funcs::AssignGrad<T, 5, kBlockDim>
+=======
+    switch (GetDesiredBlockDim(col)) {
+      FIXED_BLOCK_DIM(
+          AssignGrad<T, 5, kBlockDim>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
               x_grad_data, indices_data, out_grad_data, row, col, k));
       default:

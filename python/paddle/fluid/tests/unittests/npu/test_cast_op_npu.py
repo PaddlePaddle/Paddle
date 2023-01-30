@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -28,6 +33,10 @@ SEED = 2021
 
 @skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast1(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "cast"
@@ -39,7 +48,11 @@ class TestCast1(OpTest):
 
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP32),
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.FP16),
+=======
+            'out_dtype': int(core.VarDesc.VarType.FP16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_npu(self):
@@ -51,6 +64,10 @@ class TestCast1(OpTest):
 
 @skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "cast"
@@ -62,7 +79,11 @@ class TestCast2(OpTest):
 
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP16),
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.FP32),
+=======
+            'out_dtype': int(core.VarDesc.VarType.FP32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_npu(self):
@@ -74,6 +95,10 @@ class TestCast2(OpTest):
 
 @skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast3(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "cast"
@@ -85,7 +110,11 @@ class TestCast3(OpTest):
 
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.INT32),
+<<<<<<< HEAD
             'out_dtype': int(core.VarDesc.VarType.INT32),
+=======
+            'out_dtype': int(core.VarDesc.VarType.INT32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_npu(self):

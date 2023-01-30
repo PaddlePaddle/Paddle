@@ -24,7 +24,11 @@ namespace operators {
 class LUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddComment(R"DOC(LU decomposition,
+=======
+    AddComment(R"DOC(LU decomposition, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 Computes the LU factorization of a matrix or batches of matrices A.
                 )DOC");
     AddInput("X", "(Tensor) The input tensor, shape of (*,m,n)");
@@ -44,10 +48,17 @@ class LUOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -105,10 +116,17 @@ class LUGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(dtype, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(dtype, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

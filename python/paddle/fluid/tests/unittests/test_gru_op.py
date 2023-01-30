@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import functools
 import unittest
 
@@ -33,6 +34,32 @@ def gru(
     dtype='float32',
     origin_mode=False,
 ):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import math
+import functools
+from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
+from paddle import fluid
+from paddle.fluid import Program, program_guard
+
+
+def gru(
+        input,  # T x 3D
+        lod,  # 1 x N
+        h0,  # N x D
+        weight,  # D x 3D
+        bias,  # 1 x 3D
+        is_reverse,
+        act_state,
+        act_gate,
+        dtype='float32',
+        origin_mode=False):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _seq_to_batch(lod, is_reverse):
         idx_in_seq_list = []
         seq_lens = lod[0]
@@ -41,19 +68,29 @@ def gru(
             seq_starts.append(seq_starts[-1] + seq_lens[i])
         sorted_seqs = sorted(
             list(range(len(seq_lens))),
+<<<<<<< HEAD
             key=functools.cmp_to_key(lambda x, y: seq_lens[y] - seq_lens[x]),
         )
+=======
+            key=functools.cmp_to_key(lambda x, y: seq_lens[y] - seq_lens[x]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         num_batch = seq_lens[sorted_seqs[0]]
         for batch_idx in range(num_batch):
             idx_in_seq = []
             for i in range(len(seq_lens)):
                 if seq_lens[sorted_seqs[i]] <= batch_idx:
                     break
+<<<<<<< HEAD
                 idx = (
                     (seq_starts[sorted_seqs[i] + 1] - 1 - batch_idx)
                     if is_reverse
                     else (seq_starts[sorted_seqs[i]] + batch_idx)
                 )
+=======
+                idx = (seq_starts[sorted_seqs[i] + 1] - 1 -
+                       batch_idx) if is_reverse else (
+                           seq_starts[sorted_seqs[i]] + batch_idx)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 idx_in_seq.append(idx)
             idx_in_seq_list.append(idx_in_seq)
         return idx_in_seq_list, sorted_seqs
@@ -62,6 +99,7 @@ def gru(
         T = x.shape[0]
         D = w.shape[0]
         g = x + np.tile(b, (T, 1))
+<<<<<<< HEAD
         w_u_r = w.flatten()[: D * D * 2].reshape((D, D * 2))
         u_r = act_gate(np.dot(h_p, w_u_r) + g[:, : D * 2])
         u = u_r[:, :D]
@@ -69,6 +107,15 @@ def gru(
         r_h_p = r * h_p
         w_c = w.flatten()[D * D * 2 :].reshape((D, D))
         c = act_state(np.dot(r_h_p, w_c) + g[:, D * 2 :])
+=======
+        w_u_r = w.flatten()[:D * D * 2].reshape((D, D * 2))
+        u_r = act_gate(np.dot(h_p, w_u_r) + g[:, :D * 2])
+        u = u_r[:, :D]
+        r = u_r[:, D:D * 2]
+        r_h_p = r * h_p
+        w_c = w.flatten()[D * D * 2:].reshape((D, D))
+        c = act_state(np.dot(r_h_p, w_c) + g[:, D * 2:])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         g = np.hstack((u_r, c))
         if origin_mode:
             h = (1 - u) * c + u * h_p
@@ -93,7 +140,11 @@ def gru(
         x = input[idx_in_seq_list[batch_idx]]
         g, r_h_p, h = _step(x, h_p, weight, bias, act_state, act_gate)
         if batch_idx < (max_seq_len - 1):
+<<<<<<< HEAD
             h_p = h[: len(idx_in_seq_list[batch_idx + 1])]
+=======
+            h_p = h[:len(idx_in_seq_list[batch_idx + 1])]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         start_idx = end_idx
         end_idx = start_idx + len(idx_in_seq_list[batch_idx])
         batch_gate[start_idx:end_idx] = g
@@ -104,6 +155,10 @@ def gru(
 
 
 class TestGRUOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         pass
 
@@ -128,6 +183,7 @@ class TestGRUOp(OpTest):
         N = len(self.lod[0])
         input = np.random.rand(T, 3 * self.D).astype(self.dtype)
         weight = np.random.rand(self.D, 3 * self.D).astype(self.dtype)
+<<<<<<< HEAD
         bias = (
             np.random.rand(1, 3 * self.D).astype(self.dtype)
             if self.with_bias
@@ -151,6 +207,19 @@ class TestGRUOp(OpTest):
             self.dtype,
             self.origin_mode,
         )
+=======
+        bias = np.random.rand(1, 3 * self.D).astype(
+            self.dtype) if self.with_bias else np.zeros(
+                (1, 3 * self.D), dtype=self.dtype)
+        h0 = np.random.rand(N, self.D).astype(
+            self.dtype) if self.with_h0 else np.zeros(
+                (N, self.D), dtype=self.dtype)
+
+        batch_gate, batch_reset_hidden_prev, batch_hidden, hidden = gru(
+            input, self.lod, h0, weight, bias, self.is_reverse,
+            ACTIVATION[self.act_state], ACTIVATION[self.act_gate], self.dtype,
+            self.origin_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {'Input': (input, self.lod), 'Weight': weight}
 
         if self.with_bias:
@@ -171,41 +240,70 @@ class TestGRUOp(OpTest):
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
+<<<<<<< HEAD
             'is_test': self.is_test,
+=======
+            'is_test': self.is_test
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
         self.check_output(atol=1e-8, check_dygraph=False)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Input', 'H0', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False
         )
 
 
 class TestGRUOriginMode(TestGRUOp):
+=======
+        self.check_grad(['Input', 'H0', 'Weight', 'Bias'], ['Hidden'],
+                        check_dygraph=False)
+
+
+class TestGRUOriginMode(TestGRUOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.origin_mode = True
 
 
 class TestGRUOp2(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.dtype = 'float64'
 
 
 class TestGRUOp2Len0(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.lod = [[2, 0, 4]]
         self.dtype = 'float64'
 
 
 class TestGRUOp2OriginMode(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.dtype = 'float64'
         self.origin_mode = True
 
 
 class TestGRUOp2OriginModeLen0(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.lod = [[0, 3, 4]]
         self.dtype = 'float64'
@@ -213,6 +311,10 @@ class TestGRUOp2OriginModeLen0(TestGRUOp):
 
 
 class TestGRUOp2OriginModeLastLen0(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.lod = [[0, 3, 0]]
         self.dtype = 'float64'
@@ -220,37 +322,67 @@ class TestGRUOp2OriginModeLastLen0(TestGRUOp):
 
 
 class TestGRUOpNoInitial(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.with_h0 = False
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Input', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False
         )
 
 
 class TestGRUOpNoBias(TestGRUOp):
+=======
+        self.check_grad(['Input', 'Weight', 'Bias'], ['Hidden'],
+                        check_dygraph=False)
+
+
+class TestGRUOpNoBias(TestGRUOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.with_bias = False
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Input', 'H0', 'Weight'], ['Hidden'], check_dygraph=False
         )
 
 
 class TestGRUOpReverse(TestGRUOp):
+=======
+        self.check_grad(['Input', 'H0', 'Weight'], ['Hidden'],
+                        check_dygraph=False)
+
+
+class TestGRUOpReverse(TestGRUOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestGRUOpReverseOriginMode(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.is_reverse = True
         self.origin_mode = True
 
 
 class TestGRUOpInference(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_is_test(self):
         self.is_test = True
 
@@ -258,12 +390,40 @@ class TestGRUOpInference(TestGRUOp):
         new_outputs = {}
         new_outputs['Hidden'] = self.outputs['Hidden']
         self.outputs = new_outputs
+<<<<<<< HEAD
         super().test_check_output()
+=======
+        super(TestGRUOpInference, self).test_check_output()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # avoid checking gradient
     def test_check_grad(self):
         pass
 
 
+<<<<<<< HEAD
+=======
+class TestGruOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_Variable():
+                input_data = np.random.random((1, 1536)).astype("float32")
+                fluid.layers.dynamic_gru(input=input_data, size=512)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_h_0():
+                in_data = fluid.data(name="input",
+                                     shape=[None, 1536],
+                                     dtype="float32")
+                h = fluid.data(name="h", shape=[None, 512], dtype="int32")
+                fluid.layers.dynamic_gru(input=in_data, size=512, h_0=h)
+
+            self.assertRaises(TypeError, test_h_0)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

@@ -12,15 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import contextlib
 import unittest
 
 import paddle
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+import paddle
+import paddle.fluid as fluid
+import contextlib
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def train_simulator(test_batch_size=10):
     if test_batch_size <= 0:
+<<<<<<< HEAD
         raise ValueError(
             "batch_size should be a positive integeral value, "
             "but got batch_size={}".format(test_batch_size)
@@ -31,6 +40,16 @@ def train_simulator(test_batch_size=10):
     y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
     cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+=======
+        raise ValueError("batch_size should be a positive integeral value, "
+                         "but got batch_size={}".format(test_batch_size))
+
+    x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+    y_predict = fluid.layers.fc(input=x, size=1, act=None)
+    y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+
+    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     avg_cost = paddle.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
@@ -38,6 +57,7 @@ def train_simulator(test_batch_size=10):
 
     # Calculate memory usage in current network config
     lower_usage, upper_usage, unit = fluid.contrib.memory_usage(
+<<<<<<< HEAD
         fluid.default_main_program(), batch_size=test_batch_size
     )
 
@@ -48,6 +68,16 @@ def train_simulator(test_batch_size=10):
 
 
 class TestMemoryUsage(unittest.TestCase):
+=======
+        fluid.default_main_program(), batch_size=test_batch_size)
+
+    print("memory usage is about %.3f - %.3f %s" %
+          (lower_usage, upper_usage, unit))
+
+
+class TestMemoryUsage(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_with_unit_B(self):
         with self.program_scope_guard():
             train_simulator()

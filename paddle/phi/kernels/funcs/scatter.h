@@ -76,6 +76,10 @@ void ScatterAssign(const phi::CPUContext& ctx,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output) {
+<<<<<<< HEAD
+=======
+  // check index of shape 1-D
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -85,6 +89,7 @@ void ScatterAssign(const phi::CPUContext& ctx,
                                      "But received value is [%d]",
                                      index.dims()[1]));
   } else {
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(index.dims().size() == 1 || index.dims().size() == 0,
                       true,
                       phi::errors::InvalidArgument(
@@ -94,6 +99,16 @@ void ScatterAssign(const phi::CPUContext& ctx,
   }
 
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
+=======
+    PADDLE_ENFORCE_EQ(index.dims().size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "index.dims().size() should be 1 or 2 in scatter_op."
+                          "But received value is [%d]",
+                          index.dims().size()));
+  }
+  int64_t index_size = index.dims()[0];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto src_dims = src.dims();
   auto dst_dims = output->dims();
@@ -102,6 +117,7 @@ void ScatterAssign(const phi::CPUContext& ctx,
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
+<<<<<<< HEAD
   if (index.dims().size() != 0) {
     // check src shape and dst shape should match
     for (int i = 1; i < src_dims.size(); i++)
@@ -125,6 +141,25 @@ void ScatterAssign(const phi::CPUContext& ctx,
   } else {
     for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
   }
+=======
+  // check src shape and dst shape should match
+  for (int i = 1; i < src_dims.size(); i++)
+    PADDLE_ENFORCE_EQ(
+        src_dims[i],
+        dst_dims[i],
+        phi::errors::InvalidArgument(
+            "The dimensions of the source tensor and target tensor should"
+            " match, but received source tensor's %d-th dimension is %d,"
+            "target tensor's %d-th dimension is %d.",
+            i,
+            src_dims[i],
+            i,
+            dst_dims[i]));
+
+  // slice size
+  size_t slice_size = 1;
+  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   const size_t slice_bytes = slice_size * sizeof(T);
 
@@ -149,23 +184,37 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
                       const DenseTensor& src,
                       const DenseTensor& index,
                       DenseTensor* output) {
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(
       index.dims().size() == 1 || index.dims().size() == 0 ||
+=======
+  // check index of shape 1-D
+  PADDLE_ENFORCE_EQ(
+      index.dims().size() == 1 ||
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           (index.dims().size() == 2 && index.dims()[1] == 1),
       true,
       phi::errors::InvalidArgument(
           "index's shape is error, "
+<<<<<<< HEAD
           "expect index'dims shape is 0, 1, 2 (index.dims[1] should "
           "be 1), but got index'dims shape is %d",
           index.dims().size()));
 
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
+=======
+          "expect index'dims shape is 1 or 2 and index.dims[1] is 1"
+          "but got index'dims shape is %d",
+          index.dims().size()));
+  int64_t index_size = index.dims()[0];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto src_dims = src.dims();
   auto dst_dims = output->dims();
 
   const T* p_src = src.data<T>();
   const IndexT* p_index = index.data<IndexT>();
+<<<<<<< HEAD
   T* p_output = output->data<T>();
 
   if (index.dims().size() != 0) {
@@ -191,6 +240,28 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
   } else {
     for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
   }
+=======
+
+  T* p_output = output->data<T>();
+
+  // check src shape and dst shape should match
+  for (int i = 1; i < src_dims.size(); i++)
+    PADDLE_ENFORCE_EQ(
+        src_dims[i],
+        dst_dims[i],
+        phi::errors::InvalidArgument(
+            "The dimensions of the source tensor and target tensor should"
+            " match, but received source tensor's %d-th dimension is %d,"
+            "target tensor's %d-th dimension is %d.",
+            i,
+            src_dims[i],
+            i,
+            dst_dims[i]));
+
+  // slice size
+  size_t slice_size = 1;
+  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   const size_t& slice_bytes = slice_size * sizeof(T);
 

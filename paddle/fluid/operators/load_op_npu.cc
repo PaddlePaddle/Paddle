@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include <fstream>
 #include <string>
 #include <vector>
@@ -122,6 +123,9 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
+=======
+#include "paddle/fluid/operators/load_op.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace ops = paddle::operators;
 

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -30,6 +35,10 @@ paddle.enable_static()
 
 
 class TestNearestInterpOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -67,6 +76,7 @@ class TestNearestInterpOp(OpTest):
             output_h = self.out_h
             output_w = self.out_w
 
+<<<<<<< HEAD
         output_np = nearest_neighbor_interp_np(
             input_np,
             output_h,
@@ -78,6 +88,13 @@ class TestNearestInterpOp(OpTest):
             self.align_corners,
             self.data_layout,
         )
+=======
+        output_np = nearest_neighbor_interp_np(input_np, output_h, output_w,
+                                               scale_h, scale_w, self.out_size,
+                                               self.actual_shape,
+                                               self.align_corners,
+                                               self.data_layout)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -88,7 +105,11 @@ class TestNearestInterpOp(OpTest):
             'out_w': self.out_w,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
+<<<<<<< HEAD
             'data_layout': self.data_layout,
+=======
+            'data_layout': self.data_layout
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
@@ -104,6 +125,7 @@ class TestNearestInterpOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place, ['X'], 'Out', in_place=True, max_relative_error=0.02
             )
@@ -115,6 +137,17 @@ class TestNearestInterpOp(OpTest):
                 in_place=True,
                 max_relative_error=0.006,
             )
+=======
+            self.check_grad_with_place(self.place, ['X'],
+                                       'Out',
+                                       in_place=True,
+                                       max_relative_error=0.02)
+        else:
+            self.check_grad_with_place(self.place, ['X'],
+                                       'Out',
+                                       in_place=True,
+                                       max_relative_error=0.006)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -124,112 +157,196 @@ class TestNearestInterpOp(OpTest):
         self.input_shape = [2, 3, 4, 5]
         self.out_h = 2
         self.out_w = 2
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = False
 
 
 class TestNearestNeighborInterpFP16(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase1(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.align_corners = False
 
 
 class TestNearestNeighborInterpCase2(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.align_corners = False
 
 
 class TestNearestNeighborInterpCase3(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.align_corners = False
 
 
 class TestNearestNeighborInterpCase4(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([2, 2]).astype("int32")
         self.align_corners = False
 
 
 class TestNearestNeighborInterpCase5(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([11, 11]).astype("int32")
         self.align_corners = False
 
 
 class TestNearestNeighborInterpCase6(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([65, 129]).astype("int32")
         self.align_corners = False
 
 
 class TestNearestNeighborInterpSame(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
         self.out_w = 64
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.align_corners = False
 
 
 class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 64
         self.out_w = 32
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = False
 
 
 class TestNearestNeighborInterpScale1(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [3, 2, 7, 5]
         self.out_h = 64
         self.out_w = 32
+<<<<<<< HEAD
         self.scale = 2.0
+=======
+        self.scale = 2.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = None
         self.align_corners = False
 
 
 class TestNearestNeighborInterpScale2(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [3, 2, 5, 7]
@@ -241,6 +358,10 @@ class TestNearestNeighborInterpScale2(TestNearestInterpOp):
 
 
 class TestNearestNeighborInterpScale3(TestNearestInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [3, 2, 7, 5]
@@ -252,6 +373,10 @@ class TestNearestNeighborInterpScale3(TestNearestInterpOp):
 
 
 class TestNearestInterpOp_attr_tensor(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -294,9 +419,14 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         elif self.out_size is not None:
             size_tensor = []
             for index, ele in enumerate(self.out_size):
+<<<<<<< HEAD
                 size_tensor.append(
                     ("x" + str(index), np.ones((1)).astype('int32') * ele)
                 )
+=======
+                size_tensor.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.inputs['SizeTensor'] = size_tensor
 
         self.attrs['out_h'] = self.out_h
@@ -308,6 +438,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
+<<<<<<< HEAD
         output_np = nearest_neighbor_interp_np(
             input_np,
             out_h,
@@ -318,6 +449,11 @@ class TestNearestInterpOp_attr_tensor(OpTest):
             self.actual_shape,
             self.align_corners,
         )
+=======
+        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w, 0, 0,
+                                               self.out_size, self.actual_shape,
+                                               self.align_corners)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
@@ -331,31 +467,51 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         self.input_shape = [2, 5, 4, 4]
         self.out_h = 3
         self.out_w = 3
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = [3, 3]
         self.align_corners = False
 
 
 # out_size is a tensor list
 class TestNearestInterp_attr_tensor_Case1(TestNearestInterpOp_attr_tensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = [8, 12]
         self.align_corners = False
 
 
 # out_size is a 1-D tensor
 class TestNearestInterp_attr_tensor_Case2(TestNearestInterpOp_attr_tensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 64
         self.out_w = 32
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = False
         self.shape_by_1Dtensor = True
@@ -363,6 +519,10 @@ class TestNearestInterp_attr_tensor_Case2(TestNearestInterpOp_attr_tensor):
 
 # scale is a 1-D tensor
 class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [3, 2, 32, 16]
@@ -375,9 +535,15 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
 
 
 class TestNearestInterpOpAPI_dy(unittest.TestCase):
+<<<<<<< HEAD
     def test_case(self):
         import paddle
 
+=======
+
+    def test_case(self):
+        import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if core.is_compiled_with_npu():
             place = core.NPUPlace(0)
         else:
@@ -387,6 +553,7 @@ class TestNearestInterpOpAPI_dy(unittest.TestCase):
             scale_np = np.array([2, 2]).astype("int64")
             input_x = paddle.to_tensor(input_data)
             scale = paddle.to_tensor(scale_np)
+<<<<<<< HEAD
             expect_res = nearest_neighbor_interp_np(
                 input_data, out_h=12, out_w=12, align_corners=False
             )
@@ -396,6 +563,16 @@ class TestNearestInterpOpAPI_dy(unittest.TestCase):
                 mode="nearest",
                 align_corners=False,
             )
+=======
+            expect_res = nearest_neighbor_interp_np(input_data,
+                                                    out_h=12,
+                                                    out_w=12,
+                                                    align_corners=False)
+            out = interpolate(x=input_x,
+                              scale_factor=scale,
+                              mode="nearest",
+                              align_corners=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out.numpy(), expect_res)
 
 

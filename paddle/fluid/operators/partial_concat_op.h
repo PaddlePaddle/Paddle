@@ -23,6 +23,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 static inline int64_t ComputeStartIndex(int64_t start_index, int64_t size) {
   PADDLE_ENFORCE_EQ(
@@ -43,8 +47,13 @@ template <typename DeviceContext, typename T>
 class PartialConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto ins = ctx.MultiInput<framework::Tensor>("X");
+    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(ins[0] != nullptr,
                       true,
                       platform::errors::InvalidArgument(
@@ -88,9 +97,16 @@ template <typename T>
 class PartialConcatGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    auto outs =
+        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ(ins[0] != nullptr,
                       true,

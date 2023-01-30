@@ -196,12 +196,18 @@ class OpDesc {
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
+<<<<<<< HEAD
   const OperatorDistAttr *DistAttr() const;
   OperatorDistAttr *MutableDistAttr();
   void SetDistAttr(const OperatorDistAttr &dist_attr);
 
   void ResetBlock() { this->block_ = nullptr; }
 
+=======
+  OperatorDistAttr *MutableDistAttr();
+  void SetDistAttr(const OperatorDistAttr &dist_attr);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   friend class ProgramDesc;
   // Find VarDesc from OpDesc located Block into global Block
@@ -219,7 +225,11 @@ class OpDesc {
     return ret_val;
   }
 
+<<<<<<< HEAD
   // it it really needed? or just maintain a ptr from block?
+=======
+  // it it really needed? or just mantain a ptr from block?
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   proto::OpDesc desc_;
   BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+=======
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -37,15 +42,70 @@ class TestReshape2OneDNNOp(TestReshapeOp):
 
     def init_dtype(self):
         self.dtype = np.float32
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+
+
+@OpTestTool.skip_if(core.is_compiled_with_cuda(),
+                    "CUDA has to be skipped because it forces dygraph")
+class TestReshape2OneDNNOp(OpTest):
+
+    def setUp(self):
+        self.init_data()
+        self.set_op_type()
+        self.x = np.random.random(self.ori_shape).astype("float32")
+        self.set_inputs()
+        self.set_additional_inputs()
+        self.set_attrs()
+        self.set_outputs()
+
+    def set_op_type(self):
+        self.op_type = "reshape2"
+
+    def set_inputs(self):
+        self.inputs = {"X": self.x}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_additional_inputs(self):
         pass
 
+<<<<<<< HEAD
     def set_outputs(self):
         pass
 
 
 class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):
+=======
+    def set_attrs(self):
+        self.attrs = {"shape": self.new_shape, 'use_mkldnn': True}
+
+    def set_outputs(self):
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32")
+        }
+
+    def init_data(self):
+        self.ori_shape = (2, 60)
+        self.new_shape = (12, 10)
+        self.infered_shape = (12, 10)
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+
+class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (5, 25)
         self.new_shape = (5, -1, 5)
@@ -53,6 +113,7 @@ class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):
 
 
 class TestReshape2OneDNNOpDimInfer2(TestReshape2OneDNNOp):
+<<<<<<< HEAD
     def init_data(self):
         self.ori_shape = (6, 20)
         self.new_shape = (0, -1, 20)
@@ -65,10 +126,26 @@ class TestReshape2OneDNNOpDimInfer2(TestReshape2OneDNNOp):
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
             'XShape': np.random.random(self.ori_shape).astype("float32"),
+=======
+
+    def init_data(self):
+        self.ori_shape = (6, 20)
+        self.new_shape = (0, -1, 20)
+        self.actual_shape = (2, 3, 20)
+
+    def set_additional_inputs(self):
+        self.inputs["Shape"] = np.array(self.actual_shape, dtype="int32")
+
+    def set_outputs(self):
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.actual_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestReshape2OneDNNOp_attr_OnlyShape(TestReshape2OneDNNOp):
+<<<<<<< HEAD
     def set_additional_inputs(self):
         self.inputs["Shape"] = np.array(self.new_shape, dtype="int32")
 
@@ -76,6 +153,19 @@ class TestReshape2OneDNNOp_attr_OnlyShape(TestReshape2OneDNNOp):
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
             'XShape': np.random.random(self.ori_shape).astype("float32"),
+=======
+
+    def set_additional_inputs(self):
+        self.inputs["Shape"] = np.array(self.new_shape, dtype="int32")
+
+    def set_attrs(self):
+        self.attrs = {'use_mkldnn': True}
+
+    def set_outputs(self):
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_data(self):
@@ -85,8 +175,13 @@ class TestReshape2OneDNNOp_attr_OnlyShape(TestReshape2OneDNNOp):
 
 
 class TestReshape2OneDNNOpDimInfer1_attr_OnlyShape(
+<<<<<<< HEAD
     TestReshape2OneDNNOp_attr_OnlyShape
 ):
+=======
+        TestReshape2OneDNNOp_attr_OnlyShape):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (5, 20)
         self.new_shape = (5, -1, 10)
@@ -95,12 +190,21 @@ class TestReshape2OneDNNOpDimInfer1_attr_OnlyShape(
 
 
 class TestReshape2OneDNNOpDimInfer1_attr_ShapeTensor(TestReshape2OneDNNOp):
+<<<<<<< HEAD
     def set_additional_inputs(self):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
                 ("x" + str(index), np.ones((1)).astype('int32') * ele)
             )
+=======
+
+    def set_additional_inputs(self):
+        shape_tensor = []
+        for index, ele in enumerate(self.new_shape):
+            shape_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs["ShapeTensor"] = shape_tensor
 
@@ -112,6 +216,7 @@ class TestReshape2OneDNNOpDimInfer1_attr_ShapeTensor(TestReshape2OneDNNOp):
 
 
 class TestReshape2OneDNNOpDimInfer1_attr_ShapeTensorAndShape(
+<<<<<<< HEAD
     TestReshape2OneDNNOpDimInfer1_attr_ShapeTensor
 ):
     def set_additional_inputs(self):
@@ -120,14 +225,28 @@ class TestReshape2OneDNNOpDimInfer1_attr_ShapeTensorAndShape(
             shape_tensor.append(
                 ("x" + str(index), np.ones((1)).astype('int32') * ele)
             )
+=======
+        TestReshape2OneDNNOpDimInfer1_attr_ShapeTensor):
+
+    def set_additional_inputs(self):
+        shape_tensor = []
+        for index, ele in enumerate(self.new_shape):
+            shape_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs["Shape"] = np.array((1, 2, 3, 4), dtype="int32")
         self.inputs["ShapeTensor"] = shape_tensor
 
 
 class TestReshapeOneDNNOp(TestReshape2OneDNNOp):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def set_op_type(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.op_type = "reshape"
 
     def set_outputs(self):
@@ -138,6 +257,10 @@ class TestReshapeOneDNNOp(TestReshape2OneDNNOp):
 
 
 class TestReshapeOneDNNOpDimInfer1(TestReshapeOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (5, 25)
         self.new_shape = (5, -1, 5)
@@ -145,8 +268,13 @@ class TestReshapeOneDNNOpDimInfer1(TestReshapeOneDNNOp):
 
 
 class TestReshapeOneDNNOp_attr_OnlyShape(TestReshape2OneDNNOp_attr_OnlyShape):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def set_op_type(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.op_type = "reshape"
 
     def set_outputs(self):
@@ -157,8 +285,13 @@ class TestReshapeOneDNNOp_attr_OnlyShape(TestReshape2OneDNNOp_attr_OnlyShape):
 
 
 class TestReshapeOneDNNOpDimInfer1_attr_OnlyShape(
+<<<<<<< HEAD
     TestReshapeOneDNNOp_attr_OnlyShape
 ):
+=======
+        TestReshapeOneDNNOp_attr_OnlyShape):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (5, 20)
         self.new_shape = (5, -1, 10)
@@ -168,6 +301,7 @@ class TestReshapeOneDNNOpDimInfer1_attr_OnlyShape(
 
 #   BF16 TESTS
 def create_reshape_bf16_test_classes(parent):
+<<<<<<< HEAD
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestReshape2BF16OneDNNOp(parent):
         def setUp(self):
@@ -175,12 +309,22 @@ def create_reshape_bf16_test_classes(parent):
             self.dtype = np.uint16
             self.inputs = {"X": convert_float_to_uint16(self.x)}
             self.attrs['use_mkldnn'] = True
+=======
+
+    @OpTestTool.skip_if_not_cpu_bf16()
+    class TestReshape2BF16OneDNNOp(parent):
+
+        def set_inputs(self):
+            self.dtype = np.uint16
+            self.inputs = {"X": convert_float_to_uint16(self.x)}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def calculate_grads(self):
             self.dout = self.outputs['Out']
             self.dx = np.reshape(self.dout, self.ori_shape)
 
         def test_check_output(self):
+<<<<<<< HEAD
             self.check_output_with_place(
                 core.CPUPlace(), no_check_set=["XShape"]
             )
@@ -194,15 +338,33 @@ def create_reshape_bf16_test_classes(parent):
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[self.dout],
             )
+=======
+            self.check_output_with_place(core.CPUPlace(),
+                                         no_check_set=["XShape"])
+
+        def test_check_grad(self):
+            self.calculate_grads()
+            self.check_grad_with_place(core.CPUPlace(), ["X"],
+                                       "Out",
+                                       user_defined_grads=[self.dx],
+                                       user_defined_grad_outputs=[self.dout])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "Reshape2_BF16")
     TestReshape2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestReshape2BF16OneDNNOp
 
     class TestReshapeBF16OneDNNOp(TestReshape2BF16OneDNNOp):
+<<<<<<< HEAD
         def setUp(self):
             super().setUp()
             self.dtype = np.uint16
+=======
+
+        def set_op_type(self):
+            self.dtype = np.uint16
+            self.op_type = "reshape"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def set_outputs(self):
             self.outputs = {"Out": self.x.reshape(self.new_shape)}
@@ -213,12 +375,19 @@ def create_reshape_bf16_test_classes(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
+<<<<<<< HEAD
                 core.CPUPlace(),
                 ["X"],
                 "Out",
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
             )
+=======
+                core.CPUPlace(), ["X"],
+                "Out",
+                user_defined_grads=[self.dx],
+                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "Reshape_BF16")
     TestReshapeBF16OneDNNOp.__name__ = cls_name
@@ -229,4 +398,8 @@ create_reshape_bf16_test_classes(TestReshape2OneDNNOp)
 create_reshape_bf16_test_classes(TestReshape2OneDNNOpDimInfer1)
 
 if __name__ == "__main__":
+<<<<<<< HEAD
+=======
+    paddle.enable_static()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     unittest.main()

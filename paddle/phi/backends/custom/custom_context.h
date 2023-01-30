@@ -21,8 +21,12 @@ limitations under the License. */
 
 namespace phi {
 
+<<<<<<< HEAD
 class CustomContext : public DeviceContext,
                       public TypeInfoTraits<DeviceContext, CustomContext> {
+=======
+class CustomContext : public DeviceContext {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   explicit CustomContext(const CustomPlace&);
 
@@ -36,8 +40,11 @@ class CustomContext : public DeviceContext,
   // Wait for all operations completion in the stream.
   void Wait() const override;
 
+<<<<<<< HEAD
   static const char* name() { return "CustomContext"; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   // NOTE: DeviceContext hold resources. Used in training scenarios.
   // The interface used by the training scene, DeviceContext will initialize

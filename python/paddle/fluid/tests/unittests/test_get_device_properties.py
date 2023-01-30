@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from paddle.device.cuda import device_count, get_device_properties
@@ -19,6 +20,16 @@ from paddle.fluid import core
 
 
 class TestGetDeviceProperties(unittest.TestCase):
+=======
+import paddle
+import unittest
+from paddle.fluid import core
+from paddle.device.cuda import device_count, get_device_properties
+
+
+class TestGetDeviceProperties(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_get_device_properties_default(self):
         if core.is_compiled_with_cuda():
             props = get_device_properties()
@@ -44,6 +55,10 @@ class TestGetDeviceProperties(unittest.TestCase):
 
 
 class TestGetDevicePropertiesError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_error_api(self):
         if core.is_compiled_with_cuda():
 

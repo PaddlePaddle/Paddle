@@ -49,7 +49,10 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
  private:
   uint64_t FreeIdleChunks();
+<<<<<<< HEAD
   void Trace() const;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   template <typename T>
   using List = std::list<T>;
@@ -94,12 +97,15 @@ class AutoGrowthBestFitAllocator : public Allocator {
   size_t chunk_size_;
   bool allow_free_idle_chunk_;
 
+<<<<<<< HEAD
   // stat info
   size_t total_alloc_times_;
   size_t total_alloc_size_;
   size_t total_free_times_;
   size_t total_free_size_;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   SpinLock spinlock_;
 };
 

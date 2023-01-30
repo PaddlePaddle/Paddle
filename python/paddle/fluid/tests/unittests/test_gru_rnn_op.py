@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import sys
 import unittest
@@ -25,6 +26,23 @@ import paddle.fluid.core as core
 sys.path.append("./rnn")
 from convert import get_params_for_net
 from rnn_numpy import GRU
+=======
+import unittest
+import numpy as np
+import math
+
+from op_test import OpTest
+import paddle
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import random
+import sys
+
+sys.path.append("./rnn")
+from rnn_numpy import GRU
+from convert import get_params_for_net
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -32,6 +50,10 @@ paddle.enable_static()
 
 
 class TestGRUOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_weight_names(self):
         weight_names = []
         for i in range(self.num_layers):
@@ -45,16 +67,25 @@ class TestGRUOp(OpTest):
     def setUp(self):
         self.op_type = "rnn"
         self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+<<<<<<< HEAD
         self.sequence_length = (
             None
             if core.is_compiled_with_rocm()
             else np.array([12, 11, 10, 9, 8, 7, 6, 5], dtype=np.int32)
         )
+=======
+        self.sequence_length = None if core.is_compiled_with_rocm(
+        ) else np.array([12, 11, 10, 9, 8, 7, 6, 5], dtype=np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.num_layers = 1
         self.is_bidirec = False
         self.is_test = False
         self.mode = "GRU"
+<<<<<<< HEAD
         self.dropout = 0.0
+=======
+        self.dropout = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         seq_length = 12
         batch_size = 8
         input_size = 4
@@ -64,9 +95,16 @@ class TestGRUOp(OpTest):
         self.direction_num = 2 if self.is_bidirec else 1
         direction = "bidirectional" if self.is_bidirec else "forward"
 
+<<<<<<< HEAD
         input = np.random.uniform(
             low=-0.1, high=0.1, size=(seq_length, batch_size, input_size)
         ).astype(self.dtype)
+=======
+        input = np.random.uniform(low=-0.1,
+                                  high=0.1,
+                                  size=(seq_length, batch_size,
+                                        input_size)).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self.sequence_length is not None:
             input[3][1:][:] = 0
@@ -74,6 +112,7 @@ class TestGRUOp(OpTest):
             input[2][3:][:] = 0
             input[1][4:][:] = 0
 
+<<<<<<< HEAD
         rnn1 = GRU(
             input_size,
             self.hidden_size,
@@ -83,6 +122,15 @@ class TestGRUOp(OpTest):
             dropout=self.dropout,
             dtype=self.dtype,
         )
+=======
+        rnn1 = GRU(input_size,
+                   self.hidden_size,
+                   num_layers=self.num_layers,
+                   time_major=True,
+                   direction=direction,
+                   dropout=self.dropout,
+                   dtype=self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         flat_w = get_params_for_net(rnn1)
 
@@ -96,9 +144,14 @@ class TestGRUOp(OpTest):
 
             self._get_places = rocm_rnn_get_place
 
+<<<<<<< HEAD
         init_h = np.zeros(
             (self.num_layers * self.direction_num, batch_size, self.hidden_size)
         ).astype(self.dtype)
+=======
+        init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
+                           self.hidden_size)).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         state_out = np.ndarray((300)).astype("uint8")
 
@@ -106,7 +159,11 @@ class TestGRUOp(OpTest):
             'Input': input,
             'WeightList': flat_w,
             'PreState': [('init_h', init_h)],
+<<<<<<< HEAD
             'SequenceLength': self.sequence_length,
+=======
+            'SequenceLength': self.sequence_length
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         if self.sequence_length is None:
             self.inputs = {
@@ -121,13 +178,21 @@ class TestGRUOp(OpTest):
             'hidden_size': self.hidden_size,
             'num_layers': self.num_layers,
             'is_test': self.is_test,
+<<<<<<< HEAD
             'mode': self.mode,
+=======
+            'mode': self.mode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {
             'Out': output,
             'State': [('last_hidden', last_hidden)],
             'Reserve': np.ndarray((400)).astype("uint8"),
+<<<<<<< HEAD
             'DropoutState': state_out,
+=======
+            'DropoutState': state_out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_attrs(self):
@@ -145,23 +210,39 @@ class TestGRUOp(OpTest):
 
 
 class TestGRUOp1(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.sequence_length = None
 
 
 class TestGRUOp2(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
 
 
 class TestGRUOp3(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.sequence_length = None
         self.is_test = True
 
 
 class TestGRUOp4(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
@@ -169,6 +250,10 @@ class TestGRUOp4(TestGRUOp):
 
 
 class TestGRUOpAvx(TestGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.dtype = "float32"
         self.hidden_size = 8

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,13 +23,28 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.nn as nn
 from paddle.distributed.passes import PassManager, new_pass
+=======
+import paddle
+import paddle.distributed.fleet as fleet
+import numpy as np
+import paddle.nn as nn
+from paddle.distributed.passes import new_pass, PassManager
+import unittest
+from dist_pass_test_base import DistPassTestBase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class DemoNet(nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(DemoNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.conv1 = nn.Conv2D(3, 3, (3, 3), padding=1, data_format="NHWC")
         self.conv2 = nn.Conv2D(3, 3, (3, 3), padding=1, data_format="NHWC")
@@ -44,15 +60,25 @@ class DemoNet(nn.Layer):
 
 
 class TestInplaceAddtoPass(DistPassTestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.atol = 0.0
         self.rtol = 0.0
         paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
+<<<<<<< HEAD
         image = paddle.static.data(
             shape=[batch_size] + image_shape, dtype='float32', name='image'
         )
+=======
+        image = paddle.static.data(shape=[batch_size] + image_shape,
+                                   dtype='float32',
+                                   name='image')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model = DemoNet()
         pred_out = model(image)
@@ -83,8 +109,12 @@ class TestInplaceAddtoPass(DistPassTestBase):
 
     def apply_passes(self, main_prog, startup_prog):
         pass_manager = PassManager(
+<<<<<<< HEAD
             [new_pass("inplace_addto_op", {"use_cuda": True})]
         )
+=======
+            [new_pass("inplace_addto_op", {"use_cuda": True})])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 

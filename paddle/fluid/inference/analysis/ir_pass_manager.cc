@@ -45,6 +45,7 @@ IRPassManager::IRPassManager(Argument *argument) {
 
 void IRPassManager::CreatePasses(Argument *argument,
                                  const std::vector<std::string> &passes) {
+<<<<<<< HEAD
   // For graph_viz_pass
   std::string pre_pass;
   int pass_num = 0;
@@ -53,6 +54,13 @@ void IRPassManager::CreatePasses(Argument *argument,
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
     pass->Set("use_varseqlen", new bool(argument->tensorrt_use_varseqlen()));
     pass->Set("use_cutlass", new bool(argument->use_cutlass()));
+=======
+  std::string pre_pass;
+  int pass_num = 0;
+  for (const std::string &pass_name : passes) {
+    auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
+    pass->Set("use_varseqlen", new bool(argument->tensorrt_use_varseqlen()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     pass->Set("with_interleaved",
               new bool(argument->tensorrt_with_interleaved()));
     pass->Set("tensorrt_transformer_posid",
@@ -81,10 +89,13 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("optim_shape_tensor",
               new std::map<std::string, std::vector<int>>());
 
+<<<<<<< HEAD
     // This gpu_device_id is used by some fp16 precision passes, so move it
     // here.
     pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
@@ -94,14 +105,22 @@ void IRPassManager::CreatePasses(Argument *argument,
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
+<<<<<<< HEAD
     // Mixed precision related.
+=======
+    // mixed precision related
+    pass->Set("model_precision", new int(argument->model_precision()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     pass->Set(
         "mixed_black_list",
         new std::unordered_set<std::string>(argument->mixed_black_list()));
     pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
     pass->Set("mixed_precision_mode",
               new int(argument->mixed_precision_mode()));
+<<<<<<< HEAD
     pass->Set("model_precision", new int(argument->model_precision()));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -134,7 +153,10 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::unordered_set<int>(argument->quantize_excluded_op_ids()));
     } else if (pass_name == "cpu_quantize_pass") {
       if (argument->quantize_enabled_op_types().count("conv2d") ||
+<<<<<<< HEAD
           argument->quantize_enabled_op_types().count("fused_conv2d") ||
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           argument->quantize_enabled_op_types().count("depthwise_conv2d")) {
         pass->Set("data_layout", new std::string("NHWC"));
       }
@@ -158,8 +180,12 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_calib_mode", new bool(use_calib_mode));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
+<<<<<<< HEAD
       pass->Set("context_memory_sharing",
                 new bool(argument->trt_engine_memory_sharing()));
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -203,6 +229,10 @@ void IRPassManager::CreatePasses(Argument *argument,
             "model_opt_cache_dir",
             new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
       }
+<<<<<<< HEAD
+=======
+      pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
@@ -217,7 +247,10 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::vector<std::string>(argument->tensorrt_disabled_ops()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
       pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
       // not run fp16.
       pass->Set("disable_trt_plugin_fp16",
@@ -242,11 +275,16 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->dlnne_input_shape_dict()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+<<<<<<< HEAD
     } else if (pass_name == "memory_optimize_pass") {
       pass->Set("root_predictor_id", new int(argument->root_predictor_id()));
     } else if (pass_name == "build_cinn_pass") {
       pass->Set("is_inference_stage", new bool(argument->use_cinn_compiler()));
     } else if (pass_name == "lite_subgraph_pass") {
+=======
+    }
+    if (pass_name == "lite_subgraph_pass") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       bool lite_enable_int8 =
           argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;
       pass->Set("program",
@@ -261,7 +299,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_xpu", new bool(argument->use_xpu()));
       pass->Set("xpu_l3_workspace_size",
                 new int(argument->xpu_l3_workspace_size()));
+<<<<<<< HEAD
       pass->Set("use_opencl", new bool(argument->use_opencl()));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       pass->Set("cpu_math_library_num_threads",
                 new int(argument->cpu_math_library_num_threads()));
       pass->Set("locked", new bool(argument->xpu_locked()));
@@ -271,8 +312,11 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("precision", new std::string(argument->xpu_precision()));
       pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
       pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
+<<<<<<< HEAD
       pass->Set("enable_multi_stream",
                 new bool(argument->xpu_enable_multi_stream()));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // NNAdapter Related
       pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
       pass->Set("nnadapter_model_cache_dir",
@@ -294,7 +338,12 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("nnadapter_model_cache_token",
                 new std::vector<std::string>(
                     argument->nnadapter_model_cache_token()));
+<<<<<<< HEAD
     } else if (pass_name == "fc_fuse_pass") {
+=======
+    }
+    if (pass_name == "fc_fuse_pass") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       bool fc_mkldnn_pass = 0;
       for (const std::string &pass_n : passes) {

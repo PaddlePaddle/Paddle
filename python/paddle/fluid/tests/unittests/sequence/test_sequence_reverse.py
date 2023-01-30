@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -19,12 +20,23 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+=======
+import unittest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import numpy as np
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append("../")
 from op_test import OpTest
 
 
 class TestSequenceReverseBase(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         pass
 
@@ -38,6 +50,7 @@ class TestSequenceReverseBase(OpTest):
         self.y = self.get_output()
 
         self.inputs = {
+<<<<<<< HEAD
             'X': (
                 self.x,
                 [
@@ -52,6 +65,16 @@ class TestSequenceReverseBase(OpTest):
                     self.lod,
                 ],
             ),
+=======
+            'X': (self.x, [
+                self.lod,
+            ]),
+        }
+        self.outputs = {
+            'Y': (self.y, [
+                self.lod,
+            ]),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def get_output(self):
@@ -73,31 +96,53 @@ class TestSequenceReverseBase(OpTest):
 
 
 class TestSequenceReserve1(TestSequenceReverseBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.size = (12, 10)
         self.lod = [4, 5, 3]
 
 
 class TestSequenceReverse2(TestSequenceReverseBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.size = (12, 10)
         self.lod = [12]
 
 
 class TestSequenceReverse3(TestSequenceReverseBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.size = (12, 10)
         self.lod = [3, 0, 6, 3]
 
 
 class TestSequenceReverse4(TestSequenceReverseBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.size = (12, 10)
         self.lod = [0, 2, 10, 0]
 
 
 class TestSequenceReverseOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_error(self):
+=======
+
+    def test_error(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_variable():
             # the input type must be Variable
             x_data = np.random.random((2, 4)).astype("float32")
@@ -107,9 +152,13 @@ class TestSequenceReverseOpError(unittest.TestCase):
 
         def test_dtype():
             # dtype must be 'float32', 'float64', 'int8', 'int32', 'int64'
+<<<<<<< HEAD
             x2_data = paddle.static.data(
                 name='x2', shape=[-1, 4], dtype='float16'
             )
+=======
+            x2_data = fluid.layers.data(name='x2', shape=[4], dtype='float16')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             fluid.layers.sequence_reverse(x=x2_data)
 
         self.assertRaises(TypeError, test_dtype)

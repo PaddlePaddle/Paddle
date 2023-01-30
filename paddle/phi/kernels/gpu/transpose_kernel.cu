@@ -16,12 +16,22 @@
 
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
+=======
+#include "paddle/fluid/framework/gpu_utils.h"
+#include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
 namespace phi {
@@ -34,11 +44,15 @@ void TransposeKernel(const Context& ctx,
   if (out->numel() == 0) {
     return;
   }
+<<<<<<< HEAD
   if (axis.size() == 0) {
     phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
     return;
   }
   phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
+=======
+  paddle::operators::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

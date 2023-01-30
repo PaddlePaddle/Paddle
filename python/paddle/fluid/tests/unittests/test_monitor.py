@@ -15,10 +15,15 @@
 TestCases for Monitor
 """
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
@@ -29,6 +34,18 @@ import paddle.fluid.core as core
 
 class TestDatasetWithStat(unittest.TestCase):
     """TestCases for Dataset."""
+=======
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import numpy as np
+import os
+import unittest
+import tempfile
+
+
+class TestDatasetWithStat(unittest.TestCase):
+    """  TestCases for Dataset. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.use_data_loader = False
@@ -54,9 +71,16 @@ class TestDatasetWithStat(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
+<<<<<<< HEAD
             var = paddle.static.data(
                 name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
+=======
+            var = fluid.layers.data(name=slot,
+                                    shape=[1],
+                                    dtype="int64",
+                                    lod_level=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             slots_vars.append(var)
 
         embs = []
@@ -78,8 +102,12 @@ class TestDatasetWithStat(unittest.TestCase):
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
             data_loader = fluid.io.DataLoader.from_dataset(
+<<<<<<< HEAD
                 dataset, fluid.cpu_places(), self.drop_last
             )
+=======
+                dataset, fluid.cpu_places(), self.drop_last)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for i in range(self.epoch_num):
                 for data in data_loader():
                     exe.run(fluid.default_main_program(), feed=data)
@@ -87,6 +115,7 @@ class TestDatasetWithStat(unittest.TestCase):
         else:
             for i in range(self.epoch_num):
                 try:
+<<<<<<< HEAD
                     exe.train_from_dataset(
                         fluid.default_main_program(),
                         dataset,
@@ -94,6 +123,13 @@ class TestDatasetWithStat(unittest.TestCase):
                         fetch_info=["emb0", "emb1"],
                         print_period=1,
                     )
+=======
+                    exe.train_from_dataset(fluid.default_main_program(),
+                                           dataset,
+                                           fetch_list=[embs[0], embs[1]],
+                                           fetch_info=["emb0", "emb1"],
+                                           print_period=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 except Exception as e:
                     self.assertTrue(False)

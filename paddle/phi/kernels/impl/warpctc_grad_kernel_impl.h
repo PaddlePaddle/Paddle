@@ -17,12 +17,19 @@
 #include <vector>
 
 #include "paddle/fluid/operators/math/sequence_padding.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/sequence_scale.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/dynload/warpctc.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/sequence_scale.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/utils/optional.h"
 
 namespace phi {
@@ -79,7 +86,11 @@ void WarpctcGradKernel(const Context& dev_ctx,
         paddle::operators::math::kLengthBatchWidth);
 
     const T* loss_grad_data = loss_grad.data<T>();
+<<<<<<< HEAD
     phi::funcs::ScaleLoDTensorFunctor<Context, T>()(
+=======
+    paddle::operators::math::ScaleLoDTensorFunctor<Context, T>()(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dev_ctx, loss_grad_data, logits_grad);
   }
 }

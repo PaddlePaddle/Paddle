@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import json
 import multiprocessing
 from multiprocessing import Process
@@ -25,6 +26,28 @@ from CspFileReader import (
 
 
 class netFileReader(FileReader):
+=======
+import os
+import json
+import glob
+import logging
+import pandas as pd
+import multiprocessing
+
+from multiprocessing import Process
+
+from CspChromeTraceFormatter import ChromeTraceFormatter
+
+from CspFileReader import FileReader
+from CspFileReader import getLogger
+from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
+from CspFileReader import NETINFO_TRACE_NUM, DCGMINFO_TRACE_NUM, PIPELINEINFO_TRACE_NUM
+from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, FILEORGANIZEFORM_BYOTHER, FILEORGANIZEFORM
+
+
+class netFileReader(FileReader):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _parseSingleFile(self, fileNameList, tx_pid, rx_pid, q=None):
 
         traceInfo = {}
@@ -53,9 +76,14 @@ class netFileReader(FileReader):
                 for line in rf:
                     try:
                         event_str = json.loads(line.strip())
+<<<<<<< HEAD
                         event_str["pid"] = (
                             tx_pid if event_str["name"] == "tx" else rx_pid
                         )
+=======
+                        event_str["pid"] = tx_pid if event_str[
+                            "name"] == "tx" else rx_pid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         # the unit of net is ms, we need ns
                         event_str["ts"] = self._align_ts(event_str["ts"] * 1e6)
                         event_str["id"] = trainerId
@@ -63,19 +91,31 @@ class netFileReader(FileReader):
 
                     except Exception:
                         self._logger.warning(
+<<<<<<< HEAD
                             "invalid record [%s] in [%s]. skip it!"
                             % (line[:-1], fileName)
                         )
         traceInfo["traceEvents"] = traceEventList
 
         if q is not None:
+=======
+                            "invalid record [%s] in [%s]. skip it!" %
+                            (line[:-1], fileName))
+        traceInfo["traceEvents"] = traceEventList
+
+        if not q is None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             q.put(traceInfo)
         else:
             return traceInfo
 
     def parseFileByGroup(self, groupId, processNum=8):
         fileFist = self.getFileListByGroup(groupId)
+<<<<<<< HEAD
         fileFist = fileFist[: min(self._displaySize, len(fileFist))]
+=======
+        fileFist = fileFist[:min(self._displaySize, len(fileFist))]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         manager = multiprocessing.Manager()
         q = manager.Queue()
@@ -87,6 +127,7 @@ class netFileReader(FileReader):
 
         taskList = self._splitTaskListForMultiProcess(fileFist, processNum)
         for task in taskList:
+<<<<<<< HEAD
             subproc = Process(
                 target=self._parseSingleFile,
                 args=(
@@ -96,21 +137,39 @@ class netFileReader(FileReader):
                     q,
                 ),
             )
+=======
+            subproc = Process(target=self._parseSingleFile,
+                              args=(
+                                  task,
+                                  tx_pid,
+                                  rx_pid,
+                                  q,
+                              ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)
             self._logger.info(
                 "[Net info]: process [%d] has been started, total task num is %d ..."
+<<<<<<< HEAD
                 % (subproc.pid, len(processPool))
             )
+=======
+                % (subproc.pid, len(processPool)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for t in processPool:
             t.join()
             pidList.remove(t.pid)
             self._logger.info(
+<<<<<<< HEAD
                 "[Net info]: process [%d] has exited! remained %d process!"
                 % (t.pid, len(pidList))
             )
+=======
+                "[Net info]: process [%d] has exited! remained %d process!" %
+                (t.pid, len(pidList)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         traceInfo = {}
         isFistProcess = True

@@ -20,6 +20,11 @@ namespace paddle {
 namespace operators {
 
 using framework::ExecutionContext;
+<<<<<<< HEAD
+=======
+using framework::LoDTensor;
+using framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class MultiGRUOp : public framework::OperatorWithKernel {
  public:
@@ -28,7 +33,11 @@ class MultiGRUOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const ExecutionContext& ctx) const override;
 };
 

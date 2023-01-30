@@ -16,9 +16,16 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+=======
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 namespace funcs {
@@ -26,7 +33,11 @@ namespace funcs {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
+<<<<<<< HEAD
 using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
+=======
+using EigenMatrix = paddle::framework::EigenMatrix<T, MajorType, IndexType>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename DeviceContext, typename T>
 class CopyMatrixRowsFunctor {
@@ -37,9 +48,15 @@ class CopyMatrixRowsFunctor {
   // copy the input src to the indexed rows of output dst.
   // The indexed rows are based on the input index.
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& src,
                   paddle::framework::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,
+=======
+                  const paddle::framework::Tensor& src,
+                  paddle::framework::Vector<size_t> index_lod,
+                  paddle::framework::Tensor* dst,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   bool is_src_index);
 };
 
@@ -61,8 +78,13 @@ class LoDTensor2BatchFunctor {
 
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& lod_tensor,
                   phi::DenseTensor* batch,
+=======
+                  const paddle::framework::LoDTensor& lod_tensor,
+                  paddle::framework::LoDTensor* batch,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   bool is_cal_batch_lod,
                   bool is_reverse = false) const {
     if (!is_cal_batch_lod) {
@@ -131,7 +153,11 @@ class LoDTensor2BatchFunctor {
     // The max_seqlen represents batch size after rearranging the
     // input LodTensor. It is also the maximum length of input sequence.
 
+<<<<<<< HEAD
     phi::LoD batch_lods;
+=======
+    paddle::framework::LoD batch_lods;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
@@ -177,8 +203,13 @@ template <typename DeviceContext, typename T>
 class Batch2LoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& batch,
                   phi::DenseTensor* lod_tensor) const {
+=======
+                  const paddle::framework::LoDTensor& batch,
+                  paddle::framework::LoDTensor* lod_tensor) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_GT(
         in_lod.size(),

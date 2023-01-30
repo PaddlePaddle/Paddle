@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import importlib
 import os
 import shlex
@@ -23,6 +24,17 @@ import numpy as np
 
 import paddle
 
+=======
+import os
+import paddle
+import shlex
+import site
+import sys
+import importlib
+import unittest
+import numpy as np
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 MODULE_NAME = "custom_raw_op_kernel_op_lib"
 
 
@@ -38,9 +50,14 @@ def prepare_module_path():
     else:
         site_dir = site.getsitepackages()[0]
     custom_egg_path = [x for x in os.listdir(site_dir) if MODULE_NAME in x]
+<<<<<<< HEAD
     assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
         custom_egg_path
     )
+=======
+    assert len(custom_egg_path
+               ) == 1, "Matched egg number is %d." % len(custom_egg_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
 
@@ -49,6 +66,10 @@ def prepare_module_path():
 # temporarily.
 @unittest.skipIf(os.name == "nt", "Windows does not support yet.")
 class TestCustomRawReluOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @classmethod
     def setUpClass(cls):
         path = os.path.dirname(os.path.abspath(__file__))
@@ -68,7 +89,11 @@ class TestCustomRawReluOp(unittest.TestCase):
     def custom_raw_relu(self, x):
         module = importlib.import_module(MODULE_NAME)
         custom_raw_relu_op = getattr(module, "custom_raw_relu")
+<<<<<<< HEAD
         self.assertIsNotNone(custom_raw_relu_op)
+=======
+        self.assertTrue(custom_raw_relu_op is not None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return custom_raw_relu_op(x)
 
     def test_static(self):
@@ -80,6 +105,7 @@ class TestCustomRawReluOp(unittest.TestCase):
 
         exe = paddle.static.Executor()
         exe.run(paddle.static.default_startup_program())
+<<<<<<< HEAD
         x_np = np.random.uniform(low=-1.0, high=1.0, size=[2, 3]).astype(
             'float32'
         )
@@ -88,6 +114,13 @@ class TestCustomRawReluOp(unittest.TestCase):
             feed={x.name: x_np},
             fetch_list=[y1, y2],
         )
+=======
+        x_np = np.random.uniform(low=-1.0, high=1.0, size=[2,
+                                                           3]).astype('float32')
+        y1_value, y2_value = exe.run(paddle.static.default_main_program(),
+                                     feed={x.name: x_np},
+                                     fetch_list=[y1, y2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(y1_value, y2_value)
 
         paddle.disable_static()

@@ -100,7 +100,10 @@ class MultiHeadGPUComputeFunctor {
                   int head_size,
                   T *qkptr,
                   const T *bias_qk_ptr,
+<<<<<<< HEAD
                   bool bias_is_mask,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   T *tptr,
                   T alpha,
                   T beta);

@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 import paddle
@@ -27,8 +30,14 @@ def drop_path(x, training=False):
 
 
 class DropPath(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(DropPath, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -36,6 +45,10 @@ class DropPath(paddle.nn.Layer):
 
 
 class TestTrainEval(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.model = DropPath()
 

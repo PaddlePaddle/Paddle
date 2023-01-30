@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,14 +21,31 @@ from test_fc_op import MatrixGenerate, fc_refer
 from test_layer_norm_op import _reference_layer_norm_naive
 
 from paddle.fluid import core
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+from paddle.fluid import core
+from test_fc_op import fc_refer, MatrixGenerate
+from test_layer_norm_op import _reference_layer_norm_naive
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.random(123)
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
 )
 class TestFusedFCElementwiseLayerNormOp(OpTest):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "Paddle core is not compiled with CUDA")
+class TestFusedFCElementwiseLayerNormOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3, 2)
         self.y_shape = [1, 15]
@@ -46,12 +64,20 @@ class TestFusedFCElementwiseLayerNormOp(OpTest):
         y = np.random.random_sample(self.y_shape).astype(np.float32)
         add_out = fc_out + y
         # layer_norm
+<<<<<<< HEAD
         scale_shape = [np.prod(self.y_shape[self.begin_norm_axis :])]
         scale = np.random.random_sample(scale_shape).astype(np.float32)
         bias_1 = np.random.random_sample(scale_shape).astype(np.float32)
         out, mean, variance = _reference_layer_norm_naive(
             add_out, scale, bias_1, epsilon, self.begin_norm_axis
         )
+=======
+        scale_shape = [np.prod(self.y_shape[self.begin_norm_axis:])]
+        scale = np.random.random_sample(scale_shape).astype(np.float32)
+        bias_1 = np.random.random_sample(scale_shape).astype(np.float32)
+        out, mean, variance = _reference_layer_norm_naive(
+            add_out, scale, bias_1, epsilon, self.begin_norm_axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             "X": self.matrix.input,
@@ -59,12 +85,20 @@ class TestFusedFCElementwiseLayerNormOp(OpTest):
             "Bias0": self.matrix.bias,
             "Y": y,
             "Scale": scale,
+<<<<<<< HEAD
             "Bias1": bias_1,
+=======
+            "Bias1": bias_1
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             "activation_type": "relu",
             "epsilon": epsilon,
+<<<<<<< HEAD
             "begin_norm_axis": self.begin_norm_axis,
+=======
+            "begin_norm_axis": self.begin_norm_axis
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Out": out, "Mean": mean, "Variance": variance}
 
@@ -74,6 +108,10 @@ class TestFusedFCElementwiseLayerNormOp(OpTest):
 
 
 class TestFusedFCElementwiseLayerNormOp2(TestFusedFCElementwiseLayerNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
         self.y_shape = [4, 6]

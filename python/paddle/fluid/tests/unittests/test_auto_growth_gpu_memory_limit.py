@@ -12,12 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle.fluid as fluid
 
+=======
+import paddle.fluid as fluid
+import unittest
+import numpy as np
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 fluid.core.globals()['FLAGS_allocator_strategy'] = 'auto_growth'
 
 if fluid.is_compiled_with_cuda():
@@ -25,6 +32,10 @@ if fluid.is_compiled_with_cuda():
 
 
 class TestBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         if fluid.is_compiled_with_cuda():
             self._limit = fluid.core.globals()['FLAGS_gpu_memory_limit_mb']
@@ -37,10 +48,15 @@ class TestBase(unittest.TestCase):
 
         place = fluid.CUDAPlace(0)
         t = fluid.LoDTensor()
+<<<<<<< HEAD
         t.set(
             np.ndarray([int(self._limit / 2), other_dim], dtype='float32'),
             place,
         )
+=======
+        t.set(np.ndarray([int(self._limit / 2), other_dim], dtype='float32'),
+              place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         del t
 
         t = fluid.LoDTensor()

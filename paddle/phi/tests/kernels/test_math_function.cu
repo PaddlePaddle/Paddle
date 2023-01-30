@@ -26,7 +26,11 @@ void fill_fp16_data(phi::dtype::float16* in_ptr,
   PADDLE_ENFORCE_EQ(
       size,
       data.size(),
+<<<<<<< HEAD
       phi::errors::InvalidArgument(
+=======
+      paddle::platform::errors::InvalidArgument(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           "The size of argument data should"
           " be equal to the argument size. Expected %d, but received %d.",
           size,
@@ -43,11 +47,19 @@ inline phi::funcs::BlasT<phi::GPUContext, T> GetBlas(
 }
 
 TEST(math_function, notrans_mul_trans_fp32) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input1_gpu;
   phi::DenseTensor input2_gpu;
   phi::DenseTensor out_gpu;
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input1_gpu;
+  paddle::framework::Tensor input2_gpu;
+  paddle::framework::Tensor out_gpu;
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
@@ -79,11 +91,19 @@ TEST(math_function, notrans_mul_trans_fp32) {
 }
 
 TEST(math_function, notrans_mul_trans_fp16) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input1_gpu;
   phi::DenseTensor input2_gpu;
   phi::DenseTensor out_gpu;
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input1_gpu;
+  paddle::framework::Tensor input2_gpu;
+  paddle::framework::Tensor out_gpu;
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
@@ -126,11 +146,19 @@ TEST(math_function, notrans_mul_trans_fp16) {
 }
 
 TEST(math_function, trans_mul_notrans_fp32) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input1_gpu;
   phi::DenseTensor input2_gpu;
   phi::DenseTensor out_gpu;
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input1_gpu;
+  paddle::framework::Tensor input2_gpu;
+  paddle::framework::Tensor out_gpu;
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
@@ -168,11 +196,19 @@ TEST(math_function, trans_mul_notrans_fp32) {
 }
 
 TEST(math_function, trans_mul_notrans_fp16) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input1_gpu;
   phi::DenseTensor input2_gpu;
   phi::DenseTensor out_gpu;
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input1_gpu;
+  paddle::framework::Tensor input2_gpu;
+  paddle::framework::Tensor out_gpu;
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
@@ -220,12 +256,21 @@ TEST(math_function, trans_mul_notrans_fp16) {
 }
 
 TEST(math_function, gemm_notrans_cublas_fp32) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input2;
   phi::DenseTensor input3;
   phi::DenseTensor input1_gpu;
   phi::DenseTensor input2_gpu;
   phi::DenseTensor input3_gpu;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input2;
+  paddle::framework::Tensor input3;
+  paddle::framework::Tensor input1_gpu;
+  paddle::framework::Tensor input2_gpu;
+  paddle::framework::Tensor input3_gpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
@@ -278,12 +323,21 @@ TEST(math_function, gemm_notrans_cublas_fp32) {
 }
 
 TEST(math_function, gemm_notrans_cublas_fp16) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input2;
   phi::DenseTensor input3;
   phi::DenseTensor input1_gpu;
   phi::DenseTensor input2_gpu;
   phi::DenseTensor input3_gpu;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input2;
+  paddle::framework::Tensor input3;
+  paddle::framework::Tensor input1_gpu;
+  paddle::framework::Tensor input2_gpu;
+  paddle::framework::Tensor input3_gpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
@@ -355,12 +409,21 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
 }
 
 TEST(math_function, gemm_trans_cublas_fp32) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input2;
   phi::DenseTensor input3;
   phi::DenseTensor input1_gpu;
   phi::DenseTensor input2_gpu;
   phi::DenseTensor input3_gpu;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input2;
+  paddle::framework::Tensor input3;
+  paddle::framework::Tensor input1_gpu;
+  paddle::framework::Tensor input2_gpu;
+  paddle::framework::Tensor input3_gpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
@@ -407,12 +470,21 @@ TEST(math_function, gemm_trans_cublas_fp32) {
 }
 
 TEST(math_function, gemm_trans_cublas_fp16) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input2;
   phi::DenseTensor input3;
   phi::DenseTensor input1_gpu;
   phi::DenseTensor input2_gpu;
   phi::DenseTensor input3_gpu;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input2;
+  paddle::framework::Tensor input3;
+  paddle::framework::Tensor input1_gpu;
+  paddle::framework::Tensor input2_gpu;
+  paddle::framework::Tensor input3_gpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
@@ -479,9 +551,15 @@ TEST(math_function, gemm_trans_cublas_fp16) {
 
 template <typename T>
 void GemvTest(int m, int n, bool trans) {
+<<<<<<< HEAD
   phi::DenseTensor mat_a;
   phi::DenseTensor vec_b;
   phi::DenseTensor vec_c;
+=======
+  paddle::framework::Tensor mat_a;
+  paddle::framework::Tensor vec_b;
+  paddle::framework::Tensor vec_c;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
@@ -495,9 +573,15 @@ void GemvTest(int m, int n, bool trans) {
   T* data_b = vec_b.mutable_data<T>({trans ? m : n}, cpu_place);
   T* data_c = vec_c.mutable_data<T>({trans ? n : m}, cpu_place);
 
+<<<<<<< HEAD
   phi::DenseTensor g_mat_a;
   phi::DenseTensor g_vec_b;
   phi::DenseTensor g_vec_c;
+=======
+  paddle::framework::Tensor g_mat_a;
+  paddle::framework::Tensor g_vec_b;
+  paddle::framework::Tensor g_vec_c;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   T* g_data_a = g_mat_a.mutable_data<T>(mat_a.dims(), gpu_place);
   T* g_data_b = g_vec_b.mutable_data<T>(vec_b.dims(), gpu_place);
   T* g_data_c = g_vec_c.mutable_data<T>(vec_c.dims(), gpu_place);

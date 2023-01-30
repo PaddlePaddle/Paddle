@@ -72,6 +72,14 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
     cfg->SwitchIrOptim();
+<<<<<<< HEAD
+=======
+
+    size_t insertingIndex = cfg->pass_builder()->GetPassIndex(
+        "fc_elementwise_add_mkldnn_fuse_pass");
+    cfg->pass_builder()->InsertPass(insertingIndex, "fc_act_mkldnn_fuse_pass");
+    cfg->pass_builder()->InsertPass(insertingIndex, "fc_mkldnn_pass");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -103,7 +111,11 @@ TEST(Analyzer_vit_ocr, fuse_status) {
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
 
   CHECK_EQ(fuse_statis.at("fc_mkldnn_pass"), 33);
+<<<<<<< HEAD
   CHECK_EQ(fuse_statis.at("fused_conv2d_gelu_mkldnn_fuse_pass"), 2);
+=======
+  CHECK_EQ(fuse_statis.at("conv2d_gelu_mkldnn_fuse_pass"), 2);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CHECK_EQ(fuse_statis.at("fc_elementwise_add_mkldnn_fuse"), 16);
 }
 #endif

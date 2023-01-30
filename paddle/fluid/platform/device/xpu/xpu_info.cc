@@ -72,7 +72,11 @@ void MemcpySyncD2H(void* dst,
 }
 
 // if src.device == dst.device and you need sync , after call this function,
+<<<<<<< HEAD
 // need to call dev_ctx.Wait()
+=======
+// need to call xpu_wait()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void MemcpySyncD2D(void* dst,
                    const platform::XPUPlace& dst_place,
                    const void* src,

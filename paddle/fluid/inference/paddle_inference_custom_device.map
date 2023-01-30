@@ -1,5 +1,6 @@
 {
 	global:
+<<<<<<< HEAD
 		extern "C++" {
 			*paddle_infer::GetVersion*;
 			*paddle_infer::UpdateDllFlag*;
@@ -70,12 +71,18 @@
 		};
 
 		/* The following symbols need to reconsider. */
+=======
+		*paddle*;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 		*Pass*;
 		*profile*;
 		*phi*;
 		*FLAGS_*;
 		PD_*;
+<<<<<<< HEAD
 		*cinn*;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 	local:
 		*;
 };

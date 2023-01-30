@@ -175,11 +175,18 @@ class CoalesceGradTensorPass : public ir::Pass {
                 p_g.second));
         pinned_var_set->insert(it->Var()->Name());
       }
+<<<<<<< HEAD
       PADDLE_ENFORCE_EQ(
           IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
           true,
           platform::errors::InvalidArgument(
               "Parameter@Grad %s is not phi::DenseTensor.", p_g.second));
+=======
+      PADDLE_ENFORCE_EQ(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Parameter@Grad %s is not LoDTensor.", p_g.second));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 
@@ -560,6 +567,7 @@ class CoalesceGradTensorPass : public ir::Pass {
         all_persistable = false;
       }
     }
+<<<<<<< HEAD
     VLOG(4) << "all_persistable:" << all_persistable;
     VLOG(4) << "any_persistable:" << any_persistable;
     // NOTE. In scope_buffered_ssa_graph_executor, after each execution of
@@ -580,6 +588,40 @@ class CoalesceGradTensorPass : public ir::Pass {
                               dtype,
                               any_persistable,
                               global_block);
+=======
+
+    if (all_persistable) {
+      // All grads are persistable, only need to be executed once at the
+      // beginning.
+      result->Get<details::ProgramDescs>(details::kStartupProgramDescs)
+          .emplace_back();
+      ProgramDesc &program_desc =
+          result->Get<details::ProgramDescs>(details::kStartupProgramDescs)
+              .back();
+      auto *global_block = program_desc.MutableBlock(0);
+      AppendAllocSpaceForVarsOp(params_name,
+                                grads_name,
+                                fused_var_name,
+                                dtype,
+                                all_persistable,
+                                global_block);
+    } else {
+      // NOTE. In scope_buffered_ssa_graph_executor, after each execution of
+      // DropScope(), non persistable vars will be Erase or Clear. So
+      // coalesce_tensor op needs to be executed again after the execution
+      // of DropScope().
+      result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
+      ProgramDesc &program_desc =
+          result->Get<details::ProgramDescs>(details::kProgramDescs).back();
+      auto *global_block = program_desc.MutableBlock(0);
+      AppendAllocSpaceForVarsOp(params_name,
+                                grads_name,
+                                fused_var_name,
+                                dtype,
+                                any_persistable,
+                                global_block);
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,
@@ -588,15 +630,22 @@ class CoalesceGradTensorPass : public ir::Pass {
                                  const proto::VarType::Type &dtype,
                                  bool persistable,
                                  BlockDesc *global_block) const {
+<<<<<<< HEAD
     auto fused_out_var = global_block->Var(fused_var_name);
     fused_out_var->SetPersistable(persistable);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto op_desc = global_block->AppendOp();
     op_desc->SetType("coalesce_tensor");
     op_desc->SetInput("Input", params_name);
     op_desc->SetOutput("Output", grads_name);
     op_desc->SetOutput("FusedOutput", {fused_var_name});
     op_desc->SetAttr("dtype", static_cast<int>(dtype));
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     op_desc->SetAttr("persist_output", persistable);
   }
 };

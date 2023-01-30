@@ -17,7 +17,11 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/elementwise_kernel.h"
 
 namespace paddle {
@@ -25,6 +29,7 @@ namespace operators {
 
 class ElementwiseMulOp : public ElementwiseOp {
  public:
+<<<<<<< HEAD
   using ElementwiseOp::ElementwiseOp;
 
   phi::KernelKey GetExpectedKernelType(
@@ -44,6 +49,40 @@ class ElementwiseMulOp : public ElementwiseOp {
     } else {
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  using Tensor = framework::Tensor;
+  using ElementwiseOp::ElementwiseOp;
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
+    } else {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };

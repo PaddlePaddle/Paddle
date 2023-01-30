@@ -13,9 +13,19 @@
 # limitations under the License.
 """Test cloud role maker."""
 
+<<<<<<< HEAD
 import os
 import unittest
 
+=======
+from __future__ import print_function
+import os
+import platform
+import shutil
+import tempfile
+import unittest
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.distributed.fleet.base.role_maker as role_maker
 
 
@@ -26,8 +36,12 @@ class TestPSCloudRoleMakerCase1(unittest.TestCase):
 
     def setUp(self):
         os.environ[
+<<<<<<< HEAD
             "PADDLE_PSERVERS_IP_PORT_LIST"
         ] = "127.0.0.1:4001,127.0.0.1:4002"
+=======
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_paddle_trainers_num(self):
         # PADDLE_TRAINERS_NUM
@@ -42,8 +56,12 @@ class TestPSCloudRoleMakerCase2(unittest.TestCase):
 
     def setUp(self):
         os.environ[
+<<<<<<< HEAD
             "PADDLE_PSERVERS_IP_PORT_LIST"
         ] = "127.0.0.1:4001,127.0.0.1:4002"
+=======
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
 
     def test_training_role(self):
@@ -59,8 +77,12 @@ class TestPSCloudRoleMakerCase3(unittest.TestCase):
 
     def setUp(self):
         os.environ[
+<<<<<<< HEAD
             "PADDLE_PSERVERS_IP_PORT_LIST"
         ] = "127.0.0.1:4001,127.0.0.1:4002"
+=======
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'TRAINER'
 
@@ -77,8 +99,12 @@ class TestPSCloudRoleMakerCase4(unittest.TestCase):
 
     def setUp(self):
         os.environ[
+<<<<<<< HEAD
             "PADDLE_PSERVERS_IP_PORT_LIST"
         ] = "127.0.0.1:4001,127.0.0.1:4002"
+=======
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'PSERVER'
 
@@ -95,8 +121,12 @@ class TestPSCloudRoleMakerCase5(unittest.TestCase):
 
     def setUp(self):
         os.environ[
+<<<<<<< HEAD
             "PADDLE_PSERVERS_IP_PORT_LIST"
         ] = "127.0.0.1:4001,127.0.0.1:4002"
+=======
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'PSERVER'
         os.environ["PADDLE_PORT"] = str(4001)
@@ -114,11 +144,17 @@ class TestPSCloudRoleMakerCase6(unittest.TestCase):
 
     def setUp(self):
         os.environ[
+<<<<<<< HEAD
             "PADDLE_PSERVERS_IP_PORT_LIST"
         ] = "127.0.0.1:4001,127.0.0.1:4002"
         os.environ[
             "PADDLE_HETER_TRAINER_IP_PORT_LIST"
         ] = "127.0.0.1:4003,127.0.0.1:4004"
+=======
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+        os.environ[
+            "PADDLE_HETER_TRAINER_IP_PORT_LIST"] = "127.0.0.1:4003,127.0.0.1:4004"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'HETER_TRAINER'
 
@@ -135,11 +171,17 @@ class TestPSCloudRoleMakerCase7(unittest.TestCase):
 
     def setUp(self):
         os.environ[
+<<<<<<< HEAD
             "PADDLE_PSERVERS_IP_PORT_LIST"
         ] = "127.0.0.1:4001,127.0.0.1:4002"
         os.environ[
             "PADDLE_HETER_TRAINER_IP_PORT_LIST"
         ] = "127.0.0.1:4003,127.0.0.1:4004"
+=======
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+        os.environ[
+            "PADDLE_HETER_TRAINER_IP_PORT_LIST"] = "127.0.0.1:4003,127.0.0.1:4004"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'HETER_TRAINER'
         os.environ["PADDLE_PORT"] = str(4003)

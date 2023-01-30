@@ -29,6 +29,7 @@ namespace ir {
 //        other_op4    layer_norm            other_op4  other_op3
 //                       |
 //                   other_op3
+<<<<<<< HEAD
 //                                 or
 //
 //     |           |                            |            |
@@ -39,6 +40,8 @@ namespace ir {
 //        other_op4    layer_norm            other_op4  other_op3
 //                       |
 //                   other_op3
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class Graph;
 
 class PrelnResidualBiasFusePass : public FusePassBase {
@@ -90,7 +93,10 @@ class PrelnResidualBiasFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+<<<<<<< HEAD
   int ApplyPattern(ir::Graph* graph, bool with_bias) const;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace ir

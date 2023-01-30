@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.framework import core
 
 SEED = 2021
@@ -34,6 +44,10 @@ def get_c_embedding(start, end, table, ids):
 
 
 class TestCEmbeddingCPU(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_dtype()
         self.initcase()
@@ -47,9 +61,14 @@ class TestCEmbeddingCPU(OpTest):
     def initcase(self):
         self.op_type = "c_embedding"
         table = np.random.random((17, 64)).astype(self.dtype)
+<<<<<<< HEAD
         ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype(
             self.ids_dtype
         )
+=======
+        ids = np.random.randint(low=0, high=17 * 2,
+                                size=(2, 4)).astype(self.ids_dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.start_index = 10
         self.end_index = self.start_index + 17
 
@@ -74,6 +93,10 @@ class TestCEmbeddingCPU(OpTest):
 
 
 class TestCEmbeddingOpBase(TestCEmbeddingCPU):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_dtype()
         self.initcase()
@@ -107,6 +130,10 @@ class TestCEmbeddingOpBase(TestCEmbeddingCPU):
 
 
 class TestCEmbeddingOpFP32(TestCEmbeddingOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_dtype()
         self.initcase()
@@ -114,9 +141,14 @@ class TestCEmbeddingOpFP32(TestCEmbeddingOpBase):
     def initcase(self):
         self.op_type = "c_embedding"
         table = np.random.random((17, 64)).astype(self.dtype)
+<<<<<<< HEAD
         ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype(
             self.ids_dtype
         )
+=======
+        ids = np.random.randint(low=0, high=17 * 2,
+                                size=(2, 4)).astype(self.ids_dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.start_index = 10
         ids[0][1] = 12
         ids[0][2] = 12

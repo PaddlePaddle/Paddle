@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -24,6 +25,15 @@ from paddle.fluid.tests.unittests.test_fusion_lstm_op import (
 
 
 class TestFusionLSTMINT8MKLDNNOp(OpTest):
+=======
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.test_fusion_lstm_op import fc, ACTIVATION, fusion_lstm
+
+
+class TestFusionLSTMINT8MKLDNNOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         pass
 
@@ -63,8 +73,12 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         s8_max = 127.0
 
         scale_weights = s8_max / np.max(
+<<<<<<< HEAD
             np.abs(np.concatenate([wx[:, :], wh[:, :]], axis=0)), axis=0
         )
+=======
+            np.abs(np.concatenate([wx[:, :], wh[:, :]], axis=0)), axis=0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         scale_weights = scale_weights.astype('float')
 
@@ -72,11 +86,19 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             b = np.random.rand(1, 7 * self.OC).astype('float32')
         else:
             b = np.random.rand(1, 4 * self.OC).astype('float32')
+<<<<<<< HEAD
         w_b = np.copy(b[:, 0 : 4 * self.OC])
         w_c = b[:, 4 * self.OC :] if self.use_peepholes else None
 
         bx = np.random.normal(size=(1, 4 * self.OC)).astype('float32')
         b[0, 0 : 4 * self.OC] += bx[0, :]
+=======
+        w_b = np.copy(b[:, 0:4 * self.OC])
+        w_c = b[:, 4 * self.OC:] if self.use_peepholes else None
+
+        bx = np.random.normal(size=(1, 4 * self.OC)).astype('float32')
+        b[0, 0:4 * self.OC] += bx[0, :]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self.has_initial_state:
             h0 = np.random.rand(N, self.OC).astype('float32')
@@ -85,6 +107,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             h0 = np.zeros((N, self.OC)).astype('float32')
             c0 = np.zeros((N, self.OC)).astype('float32')
 
+<<<<<<< HEAD
         hidden_f32, c = fusion_lstm(
             x_f32,
             self.lod,
@@ -100,12 +123,23 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             ACTIVATION[self.act_cell],
             ACTIVATION[self.act_cand],
         )
+=======
+        hidden_f32, c = fusion_lstm(x_f32, self.lod, wx, bx, h0, c0, wh, w_b,
+                                    w_c, self.is_reverse,
+                                    ACTIVATION[self.act_gate],
+                                    ACTIVATION[self.act_cell],
+                                    ACTIVATION[self.act_cand])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'X': (x_u8, self.lod),
             'WeightX': wx,
             'WeightH': wh,
+<<<<<<< HEAD
             'Bias': b,
+=======
+            'Bias': b
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         if self.has_initial_state:
@@ -116,16 +150,27 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             self.error_margin = 1e-1
             self.outputs = {
                 'Hidden': (hidden_f32, self.lod),
+<<<<<<< HEAD
                 'Cell': (c, self.lod),
+=======
+                'Cell': (c, self.lod)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
         else:
             self.error_margin = 2
             hidden_u8 = np.rint(hidden_f32 * scale_data + shift_data).astype(
+<<<<<<< HEAD
                 np.uint8
             )
             self.outputs = {
                 'Hidden': (hidden_u8, self.lod),
                 'Cell': (c, self.lod),
+=======
+                np.uint8)
+            self.outputs = {
+                'Hidden': (hidden_u8, self.lod),
+                'Cell': (c, self.lod)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         self.attrs = {
@@ -139,12 +184,17 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             'force_fp32_output': self.force_fp32_output,
             'Scale_data': scale_data,
             'Shift_data': shift_data,
+<<<<<<< HEAD
             'Scale_weights': scale_weights,
+=======
+            'Scale_weights': scale_weights
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
+<<<<<<< HEAD
             self.check_output(
                 check_dygraph=False,
                 no_check_set=["Cell"],
@@ -153,22 +203,42 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
 
 
 class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
+=======
+            self.check_output(check_dygraph=False,
+                              no_check_set=["Cell"],
+                              atol=self.error_margin)
+
+
+class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.force_fp32_output = True
 
 
 class TestFusionLSTMINT8MKLDNNOp4(TestFusionLSTMINT8MKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestFusionLSTMINT8MKLDNNOp5(TestFusionLSTMINT8MKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.has_initial_state = True
 
 
 if __name__ == "__main__":
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

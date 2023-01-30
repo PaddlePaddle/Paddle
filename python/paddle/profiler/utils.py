@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import functools
 from contextlib import ContextDecorator
 from typing import Any
@@ -19,6 +20,15 @@ from warnings import warn
 
 from paddle.fluid import core
 from paddle.fluid.core import TracerEventType, _RecordEvent
+=======
+from typing import Any
+from warnings import warn
+import functools
+from contextlib import ContextDecorator
+
+from paddle.fluid import core
+from paddle.fluid.core import _RecordEvent, TracerEventType
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 _is_profiler_used = False
 _has_optimizer_wrapped = False
@@ -63,7 +73,11 @@ class RecordEvent(ContextDecorator):
             result = data1 + data2
             record_event.end()
 
+<<<<<<< HEAD
     Note:
+=======
+    **Note**:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of `RECORD`.
     """
 
@@ -164,7 +178,11 @@ def load_profiler_result(filename: str):
 
 
 def in_profiler_mode():
+<<<<<<< HEAD
     return _is_profiler_used
+=======
+    return _is_profiler_used == True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def wrap_optimizers():
@@ -182,13 +200,21 @@ def wrap_optimizers():
         return warpper
 
     global _has_optimizer_wrapped
+<<<<<<< HEAD
     if _has_optimizer_wrapped:
+=======
+    if _has_optimizer_wrapped == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return
     import paddle.optimizer as optimizer
 
     for classname in optimizer.__all__:
         if classname != 'Optimizer':
             classobject = getattr(optimizer, classname)
+<<<<<<< HEAD
             if getattr(classobject, 'step', None) is not None:
+=======
+            if getattr(classobject, 'step', None) != None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 classobject.step = optimizer_warpper(classobject.step)
     _has_optimizer_wrapped = True

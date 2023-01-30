@@ -14,8 +14,13 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
 
@@ -23,7 +28,11 @@ namespace phi {
 
 template <typename T>
 inline __device__ size_t Hash(T id, int64_t size) {
+<<<<<<< HEAD
   return static_cast<unsigned long long int>(id) % size;  // NOLINT
+=======
+  return id % size;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T>
@@ -169,7 +178,11 @@ __global__ void FillUniqueItems(const T* items,
 
 template <typename T>
 __global__ void ReindexSrcOutput(T* src_output,
+<<<<<<< HEAD
                                  int64_t num_items,
+=======
+                                 int num_items,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  int64_t size,
                                  const T* keys,
                                  const int* values) {

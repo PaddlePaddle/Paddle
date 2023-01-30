@@ -20,8 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 TEST(MIOpenHelper, ScopedTensorDescriptor) {
+<<<<<<< HEAD
   using phi::backends::gpu::DataLayout;
   using phi::backends::gpu::ScopedTensorDescriptor;
+=======
+  using paddle::platform::DataLayout;
+  using paddle::platform::ScopedTensorDescriptor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
@@ -31,9 +36,15 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
   int nd;
   std::vector<int> dims(4);
   std::vector<int> strides(4);
+<<<<<<< HEAD
   phi::dynload::miopenGetTensorDescriptor(
       desc, &type, dims.data(), strides.data());
   phi::dynload::miopenGetTensorDescriptorSize(desc, &nd);
+=======
+  paddle::platform::dynload::miopenGetTensorDescriptor(
+      desc, &type, dims.data(), strides.data());
+  paddle::platform::dynload::miopenGetTensorDescriptorSize(desc, &nd);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   EXPECT_EQ(nd, 4);
   for (size_t i = 0; i < dims.size(); ++i) {
@@ -51,9 +62,15 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
 
   std::vector<int> dims_5d(5);
   std::vector<int> strides_5d(5);
+<<<<<<< HEAD
   phi::dynload::miopenGetTensorDescriptor(
       desc_5d, &type, dims_5d.data(), strides_5d.data());
   phi::dynload::miopenGetTensorDescriptorSize(desc_5d, &nd);
+=======
+  paddle::platform::dynload::miopenGetTensorDescriptor(
+      desc_5d, &type, dims_5d.data(), strides_5d.data());
+  paddle::platform::dynload::miopenGetTensorDescriptorSize(desc_5d, &nd);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   EXPECT_EQ(nd, 5);
   for (size_t i = 0; i < dims_5d.size(); ++i) {
@@ -67,7 +84,11 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
 }
 
 TEST(MIOpenHelper, ScopedConvolutionDescriptor) {
+<<<<<<< HEAD
   using phi::backends::gpu::ScopedConvolutionDescriptor;
+=======
+  using paddle::platform::ScopedConvolutionDescriptor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ScopedConvolutionDescriptor conv_desc;
   std::vector<int> src_pads = {2, 2, 2};
@@ -80,7 +101,11 @@ TEST(MIOpenHelper, ScopedConvolutionDescriptor) {
   std::vector<int> pads(3);
   std::vector<int> strides(3);
   std::vector<int> dilations(3);
+<<<<<<< HEAD
   phi::dynload::miopenGetConvolutionNdDescriptor(
+=======
+  paddle::platform::dynload::miopenGetConvolutionNdDescriptor(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       desc, 3, &nd, pads.data(), strides.data(), dilations.data(), &mode);
 
   EXPECT_EQ(nd, 3);

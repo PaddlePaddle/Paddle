@@ -15,8 +15,13 @@
 #include "paddle/fluid/framework/ir/mkldnn/operator_scale_onednn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -25,6 +30,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
+<<<<<<< HEAD
   const std::vector<std::string> fusable_ops{
       "fc",
       "matmul",
@@ -34,6 +40,9 @@ void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
       "elementwise_mul",
       "elementwise_div",
   };
+=======
+  const std::vector<std::string> fusable_ops{"fc", "matmul", "matmul_v2"};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (const auto &op : fusable_ops) FuseScale(graph, op);
 }
 
@@ -81,7 +90,11 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
       auto *scale_var = scope->FindVar(scale_var_name);
       // ScaleTensor must be weight
       if (scale_var == nullptr) return;
+<<<<<<< HEAD
       auto *scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
+=======
+      auto *scale_tensor = scale_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       scale = *(scale_tensor->data<float>());
     }
 
@@ -113,8 +126,11 @@ REGISTER_PASS_CAPABILITY(operator_scale_onednn_fuse_pass)
             .EQ("fc", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
+<<<<<<< HEAD
             .LE("elementwise_add", 1)
             .LE("elementwise_sub", 1)
             .LE("elementwise_mul", 1)
             .LE("elementwise_div", 1)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             .EQ("scale", 0));

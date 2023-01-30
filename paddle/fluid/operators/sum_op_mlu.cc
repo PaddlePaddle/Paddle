@@ -19,17 +19,30 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using SelectedRows = phi::SelectedRows;
+=======
+using Tensor = framework::Tensor;
+using SelectedRows = phi::SelectedRows;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename DeviceContext, typename T>
 class SumMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
+<<<<<<< HEAD
     if (out_var->IsType<phi::DenseTensor>()) {
       // init
       auto *out = out_var->GetMutable<phi::DenseTensor>();
       auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+=======
+    if (out_var->IsType<framework::LoDTensor>()) {
+      // init
+      auto *out = out_var->GetMutable<framework::LoDTensor>();
+      auto ins = ctx.MultiInput<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       out->mutable_data<T>(ctx.GetPlace());
       auto place = ctx.GetPlace();
       int ins_size = static_cast<int>(ins.size());
@@ -61,7 +74,11 @@ class SumMLUKernel : public framework::OpKernel<T> {
 
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
+<<<<<<< HEAD
           "Expected type of Output(out) must be phi::DenseTensor or But got "
+=======
+          "Expected type of Output(out) must be Tensor or But got "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
     }

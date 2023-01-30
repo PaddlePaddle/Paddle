@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
 
 
 class TestDeviceName(unittest.TestCase):
+=======
+import paddle
+import unittest
+
+
+class TestDeviceName(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_device_name_default(self):
         if paddle.is_compiled_with_cuda():
             name = paddle.device.cuda.get_device_name()
@@ -35,6 +44,10 @@ class TestDeviceName(unittest.TestCase):
 
 
 class TestDeviceCapability(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_device_capability_default(self):
         if paddle.is_compiled_with_cuda():
             capability = paddle.device.cuda.get_device_capability()
@@ -48,8 +61,12 @@ class TestDeviceCapability(unittest.TestCase):
     def test_device_capability_CUDAPlace(self):
         if paddle.is_compiled_with_cuda():
             capability = paddle.device.cuda.get_device_capability(
+<<<<<<< HEAD
                 paddle.CUDAPlace(0)
             )
+=======
+                paddle.CUDAPlace(0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertIsNotNone(capability)
 
 

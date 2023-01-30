@@ -12,12 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from . import nn
 from .nn import *
 
+=======
+from __future__ import print_function
+
+from . import nn
+from .nn import *
+
+from .rnn_impl import *
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from . import metric_op
 from .metric_op import *
 
 __all__ = []
 __all__ += nn.__all__
+<<<<<<< HEAD
+=======
+__all__ += rnn_impl.__all__
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 __all__ += metric_op.__all__

@@ -33,12 +33,20 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                              int groups,
                              const std::vector<int>& dilations_t,
                              const std::string& data_format,
+<<<<<<< HEAD
+=======
+                             bool use_addto,
+                             int workspace_size_MB,
+                             bool exhaustive_search,
+                             bool fuse_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                              DenseTensor* input_grad,
                              DenseTensor* filter_grad) {
   const DenseTensor* output_grad = &out_grad;
 
   if (!input_grad && !filter_grad) return;
 
+<<<<<<< HEAD
   bool has_fuse_relu = dev_ctx.HasDnnAttr("fuse_relu_before_depthwise_conv");
   bool fuse_relu =
       has_fuse_relu
@@ -46,6 +54,8 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                 bool, dev_ctx.GetDnnAttr("fuse_relu_before_depthwise_conv"))
           : false;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<int> strides = strides_t;
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
@@ -55,8 +65,14 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
+<<<<<<< HEAD
   const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
   if (data_layout != phi::DataLayout::kNHWC) {
+=======
+  const paddle::framework::DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_format);
+  if (data_layout != paddle::framework::DataLayout::kNHWC) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
@@ -75,7 +91,11 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
 
   if (input_grad) {
+<<<<<<< HEAD
     dev_ctx.template Alloc<T>(input_grad);
+=======
+    input_grad->mutable_data<T>(dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
     if (fuse_relu) {
@@ -106,7 +126,11 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   }
 
   if (filter_grad) {
+<<<<<<< HEAD
     dev_ctx.template Alloc<T>(filter_grad);
+=======
+    filter_grad->mutable_data<T>(dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
     if (fuse_relu) {
       paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, true>

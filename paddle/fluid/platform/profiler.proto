@@ -58,4 +58,8 @@ message Profile {
   optional uint64 start_ns = 2;
   optional uint64 end_ns = 3;
   repeated MemEvent mem_events = 4;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

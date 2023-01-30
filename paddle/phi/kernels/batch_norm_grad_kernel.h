@@ -37,6 +37,10 @@ void BatchNormGradRawKernel(const Context& dev_ctx,
                             bool is_test,
                             bool use_global_stats,
                             bool trainable_statistics,
+<<<<<<< HEAD
+=======
+                            bool fuse_with_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             bool is_inplace,
                             DenseTensor* x_grad,
                             DenseTensor* scale_grad,
@@ -59,11 +63,16 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
+<<<<<<< HEAD
+=======
+                         bool fuse_with_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad);
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void BatchNormDoubleGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
@@ -86,4 +95,28 @@ void BatchNormDoubleGradKernel(
     DenseTensor* x_grad,
     DenseTensor* scale_grad,
     DenseTensor* y_grad_grad);
+=======
+void BatchNormDoubleGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& scale,
+                               const paddle::optional<DenseTensor>& mean,
+                               const paddle::optional<DenseTensor>& variance,
+                               const DenseTensor& saved_mean,
+                               const DenseTensor& saved_variance,
+                               const DenseTensor& y_grad,
+                               const DenseTensor& x_grad_grad,
+                               const DenseTensor& scale_grad_grad,
+                               const DenseTensor& bias_grad_grad,
+                               float momentum,
+                               float epsilon,
+                               const std::string& data_layout,
+                               bool is_test,
+                               bool use_global_stats,
+                               bool trainable_statistics,
+                               bool fuse_with_relu,
+                               DenseTensor* x_grad,
+                               DenseTensor* scale_grad,
+                               DenseTensor* y_grad_grad);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

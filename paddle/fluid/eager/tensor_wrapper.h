@@ -29,9 +29,12 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+<<<<<<< HEAD
 #ifndef PADDLE_NO_PYTHON
 #include "paddle/fluid/eager/hooks.h"
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace egr {
 class TensorWrapper {
@@ -72,6 +75,7 @@ class TensorWrapper {
             "Unrecognized tensor type for no_need_buffer feature"));
       }
     } else {
+<<<<<<< HEAD
 #ifndef PADDLE_NO_PYTHON
       if (egr::SavedTensorsHooks::GetInstance().IsEnable() &&
           tensor.is_dense_tensor() && tensor.initialized()) {
@@ -90,6 +94,9 @@ class TensorWrapper {
 #ifndef PADDLE_NO_PYTHON
       }
 #endif
+=======
+      intermidiate_tensor_.set_impl(tensor.impl());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     if (VLOG_IS_ON(7)) {
@@ -106,6 +113,7 @@ class TensorWrapper {
     }
   }
 
+<<<<<<< HEAD
 #ifndef PADDLE_NO_PYTHON
   TensorWrapper(const TensorWrapper& other) {
     no_need_buffer_ = other.no_need_buffer_;
@@ -133,6 +141,8 @@ class TensorWrapper {
   }
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::experimental::Tensor recover() {
     VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
             << " for wrapper";
@@ -140,6 +150,7 @@ class TensorWrapper {
       VLOG(6) << "Return NULL tensor Here. ";
       return paddle::experimental::Tensor();
     }
+<<<<<<< HEAD
 #ifndef PADDLE_NO_PYTHON
     if (packed_value_ && unpack_hook_) {
       auto tensor_unpacked = (*unpack_hook_)(packed_value_);
@@ -153,6 +164,10 @@ class TensorWrapper {
 #ifndef PADDLE_NO_PYTHON
     }
 #endif
+=======
+
+    check_inplace_version();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
 
@@ -226,6 +241,7 @@ class TensorWrapper {
   paddle::experimental::Tensor intermidiate_tensor_;
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
+<<<<<<< HEAD
 #ifndef PADDLE_NO_PYTHON
   std::shared_ptr<egr::PyObjectHolderBase> packed_value_;
   std::shared_ptr<egr::UnPackHookBase> unpack_hook_;
@@ -233,5 +249,7 @@ class TensorWrapper {
   std::shared_ptr<void> packed_value_;
   std::shared_ptr<void> unpack_hook_;
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 }  // namespace egr

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -29,6 +30,32 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
         assert (
             paddle.distributed.is_initialized()
         ), "The distributed environment has been initialized."
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+
+import paddle
+import numpy as np
+import random
+import paddle.distributed as dist
+import paddle.fluid as fluid
+import paddle.distributed.fleet as fleet
+from paddle import framework
+
+
+class TestCollectiveAllToAllSingle(unittest.TestCase):
+
+    def setUp(self):
+        assert not paddle.distributed.is_initialized(), \
+            "The distributed environment has not been initialized."
+        dist.init_parallel_env()
+        assert paddle.distributed.is_initialized(), \
+            "The distributed environment has been initialized."
+
+        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_collective_alltoall_single(self):
         rank = dist.get_rank()
@@ -38,8 +65,12 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
         input = paddle.ones([size, size], dtype='int64') * rank
         output = paddle.empty([size, size], dtype='int64')
         expected_output = paddle.concat(
+<<<<<<< HEAD
             [paddle.ones([1, size], dtype='int64') * i for i in range(size)]
         )
+=======
+            [paddle.ones([1, size], dtype='int64') * i for i in range(size)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         group = dist.new_group([0, 1])
         dist.alltoall_single(input, output, group=group)
@@ -53,6 +84,7 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
 
         input = paddle.ones([sum(in_split_sizes), size], dtype='float32') * rank
         output = paddle.empty([(rank + 1) * size, size], dtype='float32')
+<<<<<<< HEAD
         expected_output = paddle.concat(
             [
                 paddle.ones([rank + 1, size], dtype='float32') * i
@@ -69,6 +101,20 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
             sync_op=False,
             group=group,
         )
+=======
+        expected_output = paddle.concat([
+            paddle.ones([rank + 1, size], dtype='float32') * i
+            for i in range(size)
+        ])
+
+        group = dist.new_group([0, 1])
+        task = dist.alltoall_single(input,
+                                    output,
+                                    in_split_sizes,
+                                    out_split_sizes,
+                                    sync_op=False,
+                                    group=group)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         task.wait()
 
         np.testing.assert_allclose(output.numpy(), expected_output.numpy())
@@ -76,9 +122,14 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
 
     def tearDown(self):
         dist.destroy_process_group()
+<<<<<<< HEAD
         assert (
             not paddle.distributed.is_initialized()
         ), "The distributed environment has been deinitialized."
+=======
+        assert not paddle.distributed.is_initialized(), \
+            "The distributed environment has been deinitialized."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

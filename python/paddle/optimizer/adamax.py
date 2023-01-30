@@ -12,19 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _C_ops
 
 from ..fluid import framework
 from ..fluid.dygraph import no_grad
 from ..fluid.framework import name_scope
 from .optimizer import Optimizer
+=======
+from .optimizer import Optimizer
+from ..fluid import core
+from ..fluid import framework
+from ..fluid.framework import Variable, name_scope
+from paddle import _C_ops, _legacy_C_ops
+from ..fluid.dygraph import no_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
 class Adamax(Optimizer):
     r"""
+<<<<<<< HEAD
     The Adamax optimizer is implemented based on the Adamax Optimization
+=======
+    The Adamax optimizer is implemented based on the Adamax Optimization 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
     which makes the learning rate update algorithm more stable and simple.
@@ -57,6 +70,7 @@ class Adamax(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
+<<<<<<< HEAD
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
@@ -73,6 +87,24 @@ class Adamax(Optimizer):
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
+=======
+	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+	    This parameter is required in dygraph mode. And you can specify different options for \
+            different parameter groups such as the learning rate, weight decay, etc, \
+            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            represents the scale of base learning_rate. \
+	    The default value is None in static mode, at this time all parameters will be updated.
+	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
+	    It canbe a float value as coeff of L2 regularization or \
+	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+	    If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+	    the regularization setting here in optimizer will be ignored for this parameter. \
+	    Otherwise, the regularization setting here in optimizer will take effect. \
+	    Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -83,7 +115,11 @@ class Adamax(Optimizer):
 
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
 
             inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
@@ -123,7 +159,11 @@ class Adamax(Optimizer):
                     'beta1': 0.8
                 }],
                 weight_decay=0.01,
+<<<<<<< HEAD
                 beta1=0.9)
+=======
+                beta1=0.9)                   
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out.backward()
             adam.step()
             adam.clear_grad()
@@ -153,7 +193,11 @@ class Adamax(Optimizer):
             raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
         if not 0 <= epsilon:
             raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Adamax, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,
@@ -210,6 +254,27 @@ class Adamax(Optimizer):
                 self._beta2,
                 self._epsilon,
             )
+<<<<<<< HEAD
+=======
+        elif framework._in_legacy_dygraph():
+            _legacy_C_ops.adamax(
+                param_and_grad[0],
+                param_and_grad[1],
+                self._create_param_lr(param_and_grad),
+                moment,
+                inf_norm,
+                beta1_pow_acc,
+                param_and_grad[0],
+                moment,
+                inf_norm,
+                "beta1",
+                self._beta1,
+                "beta2",
+                self._beta2,
+                "epsilon",
+                self._epsilon,
+            )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             # create the adamax optimize op
             adamax_op = block.append_op(
@@ -253,6 +318,7 @@ class Adamax(Optimizer):
                             beta1_pow_acc, self._beta1, 0.0, True
                         )
                         beta1_pow_acc.copy_(tmp, False)
+<<<<<<< HEAD
                 else:
                     with param.block.program._optimized_guard(
                         [param, grad]
@@ -267,6 +333,22 @@ class Adamax(Optimizer):
                             attrs={"scale": self._beta1},
                             stop_gradient=True,
                         )
+=======
+                    continue
+                with param.block.program._optimized_guard(
+                    [param, grad]
+                ), name_scope('adamax'):
+                    beta1_pow_acc = self._get_accumulator(
+                        self._beta1_pow_acc_str, param
+                    )
+                    block.append_op(
+                        type="scale",
+                        inputs={"X": beta1_pow_acc},
+                        outputs={"Out": beta1_pow_acc},
+                        attrs={"scale": self._beta1},
+                        stop_gradient=True,
+                    )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             for param, grad in parameters_and_grads['params']:
                 if grad is None or param.stop_gradient is True:
@@ -283,6 +365,7 @@ class Adamax(Optimizer):
                             beta1_pow_acc, self._beta1, 0.0, True
                         )
                         beta1_pow_acc.copy_(tmp, False)
+<<<<<<< HEAD
                 else:
                     with param.block.program._optimized_guard(
                         [param, grad]
@@ -300,6 +383,26 @@ class Adamax(Optimizer):
                             attrs={"scale": self._beta1},
                             stop_gradient=True,
                         )
+=======
+                    continue
+
+                with param.block.program._optimized_guard(
+                    [param, grad]
+                ), name_scope('adamax'):
+                    beta1_pow_acc = self._get_accumulator(
+                        self._beta1_pow_acc_str, param
+                    )
+                    self._beta1 = parameters_and_grads.get(
+                        'beta1', self._default_dict['beta1']
+                    )
+                    block.append_op(
+                        type="scale",
+                        inputs={"X": beta1_pow_acc},
+                        outputs={"Out": beta1_pow_acc},
+                        attrs={"scale": self._beta1},
+                        stop_gradient=True,
+                    )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

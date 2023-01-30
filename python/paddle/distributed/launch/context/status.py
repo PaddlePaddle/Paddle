@@ -13,7 +13,11 @@
 # limitations under the License.
 
 
+<<<<<<< HEAD
 class Status:
+=======
+class Status(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     UNINIT = "uninit"
     READY = "ready"
     RUNNING = "running"

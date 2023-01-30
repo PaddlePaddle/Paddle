@@ -12,12 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _C_ops
 
 from ..fluid import framework
 from ..fluid.dygraph import no_grad
 from ..framework import in_dygraph_mode
 from .optimizer import Optimizer
+=======
+from .optimizer import Optimizer
+from ..fluid import core
+from ..fluid import framework
+from ..fluid.framework import Variable, name_scope
+from ..framework import in_dygraph_mode
+from paddle import _C_ops, _legacy_C_ops
+from ..fluid.dygraph import no_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -49,14 +59,22 @@ class Adadelta(Optimizer):
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
+<<<<<<< HEAD
             The default value is None in static graph mode, at this time all parameters will be updated.
+=======
+            The default value is None in static mode, at this time all parameters will be updated.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
+<<<<<<< HEAD
             Default None, meaning there is no regularization.
+=======
+            Default None, meaning there is no regularization. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
@@ -67,7 +85,11 @@ class Adadelta(Optimizer):
 
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
 
             inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
@@ -97,7 +119,11 @@ class Adadelta(Optimizer):
                     'weight_decay': 0.001,
                     'learning_rate': 0.1,
                 }],
+<<<<<<< HEAD
                 weight_decay=0.01)
+=======
+                weight_decay=0.01)                   
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out.backward()
             adadelta.step()
             adadelta.clear_grad()
@@ -123,7 +149,11 @@ class Adadelta(Optimizer):
             raise ValueError("epsilon is not set.")
         if rho is None:
             raise ValueError("rho is not set.")
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Adadelta, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,
@@ -170,6 +200,7 @@ class Adadelta(Optimizer):
                     self._epsilon,
                 )
             return None
+<<<<<<< HEAD
         else:
             if not isinstance(block, framework.Block):
                 raise TypeError("block is not instance of framework.Block.")
@@ -193,6 +224,31 @@ class Adadelta(Optimizer):
             )
 
             return adadelta_op
+=======
+
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        # Create the adadelta optimizer op
+        adadelta_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "AvgSquaredGrad": avg_squared_grad_acc,
+                "AvgSquaredUpdate": avg_squared_update_acc,
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "AvgSquaredGradOut": avg_squared_grad_acc,
+                "AvgSquaredUpdateOut": avg_squared_update_acc,
+            },
+            attrs={"epsilon": self._epsilon, "rho": self._rho},
+            stop_gradient=True,
+        )
+
+        return adadelta_op
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])

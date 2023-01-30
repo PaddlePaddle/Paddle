@@ -26,6 +26,10 @@ RTOL = {
     'float32': 1e-03,
     'complex64': 1e-3,
     'float64': 1e-5,
+<<<<<<< HEAD
     'complex128': 1e-5,
+=======
+    'complex128': 1e-5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 ATOL = {'float32': 0.0, 'complex64': 0, 'float64': 0.0, 'complex128': 0}

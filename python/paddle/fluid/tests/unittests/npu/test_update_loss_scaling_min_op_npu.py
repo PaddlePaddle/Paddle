@@ -21,7 +21,11 @@ sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+<<<<<<< HEAD
 import paddle.static.amp.amp_nn as amp_nn
+=======
+import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from test_update_loss_scaling_op_npu import TestUpdateLossScalingOpBad
 
 paddle.enable_static()
@@ -29,6 +33,10 @@ SEED = 2021
 
 
 class TestUpdateLossScalingOpMinLossScalingBad(TestUpdateLossScalingOpBad):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "update_loss_scaling"
@@ -47,14 +55,22 @@ class TestUpdateLossScalingOpMinLossScalingBad(TestUpdateLossScalingOpBad):
             'FoundInfinite': found_inf,
             'PrevLossScaling': self.prev_loss_scaling,
             'InGoodSteps': self.num_good_steps,
+<<<<<<< HEAD
             'InBadSteps': self.num_bad_steps,
+=======
+            'InBadSteps': self.num_bad_steps
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.outputs = {
             'Out': [('out0', np.zeros_like(x))],
             'LossScaling': np.array([1639.0]).astype(self.dtype),
             'OutGoodSteps': self.zero_steps,
+<<<<<<< HEAD
             'OutBadSteps': self.zero_steps,
+=======
+            'OutBadSteps': self.zero_steps
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init(self):

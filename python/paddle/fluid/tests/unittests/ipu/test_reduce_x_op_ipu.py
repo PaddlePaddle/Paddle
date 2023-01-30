@@ -15,20 +15,31 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestMean(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
         self.set_test_op()
 
     def set_test_op(self):
+<<<<<<< HEAD
         self.op = paddle.mean
+=======
+        self.op = paddle.fluid.layers.reduce_mean
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
@@ -37,9 +48,15 @@ class TestMean(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = self.op(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -123,6 +140,7 @@ class TestMean(IPUOpTest):
 
 
 class TestMax(TestMean):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.max
 
@@ -138,14 +156,47 @@ class TestSum(TestMean):
 
 
 class TestLogsumexp(TestMean):
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.reduce_max
+
+
+class TestMin(TestMean):
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.reduce_min
+
+
+class TestProd(TestMean):
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.reduce_prod
+
+
+class TestSum(TestMean):
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.reduce_sum
+
+
+class TestLogsumexp(TestMean):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_op(self):
         self.op = paddle.logsumexp
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if 'dim' in self.attrs:
             self.attrs['axis'] = self.attrs['dim']
             del self.attrs['dim']
@@ -157,6 +208,10 @@ class TestLogsumexp(TestMean):
 
 
 class TestAll(TestMean):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @property
     def fp16_enabled(self):
         return False
@@ -173,19 +228,35 @@ class TestAll(TestMean):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='bool'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='bool')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = self.op(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def set_test_op(self):
+<<<<<<< HEAD
         self.op = paddle.all
 
 
 class TestAny(TestAll):
     def set_test_op(self):
         self.op = paddle.any
+=======
+        self.op = paddle.fluid.layers.reduce_all
+
+
+class TestAny(TestAll):
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.reduce_any
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

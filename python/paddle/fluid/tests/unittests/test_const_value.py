@@ -12,12 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid.framework as framework
 
 
 class ConstantTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_const_value(self):
         self.assertEqual(framework.GRAD_VAR_SUFFIX, "@GRAD")
         self.assertEqual(framework.TEMP_VAR_NAME, "@TEMP@")

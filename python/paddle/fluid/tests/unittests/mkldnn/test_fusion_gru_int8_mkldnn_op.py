@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -22,6 +23,16 @@ from paddle.fluid.tests.unittests.test_fusion_lstm_op import ACTIVATION
 
 
 class TestFusionGRUINT8MKLDNNOp(OpTest):
+=======
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.test_fusion_gru_op import fusion_gru
+from paddle.fluid.tests.unittests.test_fusion_lstm_op import fc, ACTIVATION
+
+
+class TestFusionGRUINT8MKLDNNOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         pass
 
@@ -63,6 +74,7 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
         # WeightH data shape in PP: [OC, 2 * OC] + [OC, OC]
         # Scales shape in oneDNN:   [3, OC]
         s8_max = 127.0
+<<<<<<< HEAD
         scale_ur = s8_max / np.max(
             np.abs(
                 np.concatenate(
@@ -117,6 +129,37 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
             ACTIVATION[self.act_state],
             ACTIVATION[self.act_gate],
         )
+=======
+        scale_ur = s8_max / np.max(np.abs(
+            np.concatenate([
+                wx[:, :2 * self.OC],
+                wh.flatten()[:2 * self.OC * self.OC].reshape(
+                    self.OC, 2 * self.OC)
+            ],
+                           axis=0)),
+                                   axis=0)
+        scale_o = s8_max / np.max(np.abs(
+            np.concatenate([
+                wx[:, 2 * self.OC:],
+                wh.flatten()[2 * self.OC * self.OC:].reshape(self.OC, self.OC)
+            ],
+                           axis=0)),
+                                  axis=0)
+
+        scale_weights = np.concatenate([scale_ur, scale_o]).astype('float')
+
+        bias = np.random.rand(
+            1, 3 * self.OC).astype('float32') if self.with_bias else np.zeros(
+                (1, 3 * self.OC), dtype='float32')
+        h0 = np.random.rand(
+            N, self.OC).astype('float32') if self.with_h0 else np.zeros(
+                (N, self.OC), dtype='float32')
+
+        _, _, _, hidden_f32 = fusion_gru(x_f32, self.lod, h0, wx, wh, bias,
+                                         self.is_reverse, self.origin_mode,
+                                         ACTIVATION[self.act_state],
+                                         ACTIVATION[self.act_gate])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {'X': (x_u8, self.lod), 'WeightX': wx, 'WeightH': wh}
 
@@ -132,8 +175,12 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
         else:
             self.error_margin = 1
             hidden_u8 = np.rint(hidden_f32 * scale_data + shift_data).astype(
+<<<<<<< HEAD
                 np.uint8
             )
+=======
+                np.uint8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             #  hidden_u8 = (hidden_f32 * scale_data + shift_data).astype(np.uint8)
             self.outputs = {'Hidden': (hidden_u8, self.lod)}
 
@@ -147,7 +194,11 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
             'force_fp32_output': self.force_fp32_output,
             'Scale_data': scale_data,
             'Shift_data': shift_data,
+<<<<<<< HEAD
             'Scale_weights': scale_weights,
+=======
+            'Scale_weights': scale_weights
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -155,27 +206,46 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
 
 
 class TestFusionGRUINT8MKLDNNOp2(TestFusionGRUINT8MKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.force_fp32_output = False
 
 
 class TestFusionGRUINT8MKLDNNOp3(TestFusionGRUINT8MKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.origin_mode = False
 
 
 class TestFusionGRUINT8MKLDNNOp4(TestFusionGRUINT8MKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.with_bias = False
 
 
 class TestFusionGRUINT8MKLDNNOp5(TestFusionGRUINT8MKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.with_h0 = False
 
 
 if __name__ == "__main__":
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

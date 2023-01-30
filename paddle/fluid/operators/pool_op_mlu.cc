@@ -46,8 +46,13 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
+<<<<<<< HEAD
     const phi::DenseTensor *in_x = ctx.Input<phi::DenseTensor>("X");
     phi::DenseTensor *out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    const Tensor *in_x = ctx.Input<Tensor>("X");
+    Tensor *out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(ctx.GetPlace());
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
@@ -102,8 +107,13 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
 
     // transpose NCHW to NHWC since cnnl pool2d has worse performance in that
     // layout.
+<<<<<<< HEAD
     phi::DenseTensor trans_in_x;
     phi::DenseTensor trans_out;
+=======
+    framework::Tensor trans_in_x;
+    framework::Tensor trans_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (channel_last) {
       trans_in_x = *in_x;
       trans_out = *out;
@@ -141,7 +151,11 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
           handle, pool_mode, out_w, out_h, &extra_input_size);
 
       if (extra_input_size > 0) {
+<<<<<<< HEAD
         phi::DenseTensor extra_host_tensor;
+=======
+        framework::Tensor extra_host_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         extra_host_tensor.mutable_data<int8_t>(
             {static_cast<int64_t>(extra_input_size)}, platform::CPUPlace());
         cnnlInitPoolingExtraInput(handle,
@@ -149,7 +163,11 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
                                   trans_in_x_desc.get(),
                                   trans_out_desc.get(),
                                   GetBasePtr(&extra_host_tensor));
+<<<<<<< HEAD
         phi::DenseTensor extra_device_tensor =
+=======
+        framework::Tensor extra_device_tensor =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
                 {static_cast<int64_t>(extra_input_size)}, dev_ctx);
         framework::TensorCopy(
@@ -212,12 +230,19 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
+<<<<<<< HEAD
     const phi::DenseTensor *in_x = ctx.Input<phi::DenseTensor>("X");
     const phi::DenseTensor *out = ctx.Input<phi::DenseTensor>("Out");
     const phi::DenseTensor *out_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     phi::DenseTensor *in_x_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    const Tensor *in_x = ctx.Input<Tensor>("X");
+    const Tensor *out = ctx.Input<Tensor>("Out");
+    const Tensor *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    Tensor *in_x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in_x_grad->mutable_data<T>(ctx.GetPlace());
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
@@ -251,10 +276,17 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
     }
 
     // inputs need with NHWC layout
+<<<<<<< HEAD
     phi::DenseTensor trans_in_x;
     phi::DenseTensor trans_out;
     phi::DenseTensor trans_out_grad;
     phi::DenseTensor trans_in_x_grad;
+=======
+    framework::Tensor trans_in_x;
+    framework::Tensor trans_out;
+    framework::Tensor trans_out_grad;
+    framework::Tensor trans_in_x_grad;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (channel_last) {
       trans_in_x = *in_x;
       trans_out = *out;
@@ -302,7 +334,11 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
                                  ceil_mode);
 
     if (pooling_type == "max") {
+<<<<<<< HEAD
       phi::DenseTensor index_tensor =
+=======
+      framework::Tensor index_tensor =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           ctx.AllocateTmpTensor<IDX_T, MLUDeviceContext>(trans_out_grad.dims(),
                                                          dev_ctx);
       MLUCnnlTensorDesc index_tensor_desc(

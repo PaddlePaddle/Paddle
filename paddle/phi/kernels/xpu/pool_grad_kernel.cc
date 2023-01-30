@@ -104,6 +104,10 @@ void Pool2dGradKernel(const Context& ctx,
   }
 
   if (pooling_type == "max") {
+<<<<<<< HEAD
+=======
+    // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     r = xpu::max_pool2d_grad<XPUType>(
         ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -141,6 +145,7 @@ void Pool2dGradKernel(const Context& ctx,
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2dgrad");
 }
+<<<<<<< HEAD
 
 template <typename T, typename Context>
 void MaxPool2dWithIndexGradKernel(const Context& ctx,
@@ -202,6 +207,8 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                     true);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index_grad");
 }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi
 
 PD_REGISTER_KERNEL(pool2d_grad,
@@ -210,9 +217,12 @@ PD_REGISTER_KERNEL(pool2d_grad,
                    phi::Pool2dGradKernel,
                    float,
                    phi::dtype::float16) {}
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(max_pool2d_with_index_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaxPool2dWithIndexGradKernel,
                    float,
                    phi::dtype::float16) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

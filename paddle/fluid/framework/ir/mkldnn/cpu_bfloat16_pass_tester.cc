@@ -17,6 +17,10 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_bfloat16_pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/place.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -67,16 +71,34 @@ void SetOp(ProgramDesc* prog,
 static const std::initializer_list<std::string> variable_names{
     "z", "a", "b", "c", "d", "e", "f", "g", "h", "i"};
 
+<<<<<<< HEAD
+=======
+void PreparePass(std::unique_ptr<ir::Graph>& graph,
+                 int* original_nodes_num,
+                 int* current_nodes_num) {
+  auto pass = PassRegistry::Instance().Get("cpu_bfloat16_pass");
+
+  *original_nodes_num = graph->Nodes().size();
+  graph.reset(pass->Apply(graph.release()));
+  *current_nodes_num = graph->Nodes().size();
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void MainTest(const ProgramDesc& prog,
               const int& quant_count,
               const int& dequant_count,
               const int& added_nodes_count) {
   auto graph = std::make_unique<ir::Graph>(prog);
+<<<<<<< HEAD
   auto pass = PassRegistry::Instance().Get("cpu_bfloat16_pass");
 
   int original_nodes_num = graph->Nodes().size();
   graph.reset(pass->Apply(graph.release()));
   int current_nodes_num = graph->Nodes().size();
+=======
+  int original_nodes_num, current_nodes_num;
+  PreparePass(graph, &original_nodes_num, &current_nodes_num);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;

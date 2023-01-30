@@ -24,6 +24,7 @@ import copy
 import errno
 import time
 import logging
+<<<<<<< HEAD
 
 # from . import fs
 from paddle.distributed.fleet.utils.fs import (
@@ -35,6 +36,11 @@ from paddle.distributed.fleet.utils.fs import (
     FSTimeOut,
     FSShellCmdAborted,
 )
+=======
+import six
+#from . import fs
+from paddle.distributed.fleet.utils.fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid import core
 import functools
 
@@ -44,7 +50,13 @@ __all__ = ["HDFSClient"]
 
 
 def _handle_errors(max_time_out=None):
+<<<<<<< HEAD
     def decorator(f):
+=======
+
+    def decorator(f):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         @functools.wraps(f)
         def handler(*args, **kwargs):
             o = args[0]
@@ -60,6 +72,7 @@ def _handle_errors(max_time_out=None):
             while True:
                 try:
                     return f(*args, **kwargs)
+<<<<<<< HEAD
                 # important: only ExecuteError need to retry
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
@@ -68,15 +81,29 @@ def _handle_errors(max_time_out=None):
                                 args, time.time() - start
                             )
                         )
+=======
+                #important: only ExecuteError need to retry
+                except ExecuteError as e:
+                    if time.time() - start >= time_out:
+                        raise FSTimeOut("args:{} timeout:{}".format(
+                            args,
+                            time.time() - start))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                     time.sleep(inter)
 
                 if time.time() - last_print_time > 30:
+<<<<<<< HEAD
                     print(
                         "hadoop operator timeout:args:{} timeout:{}".format(
                             args, time.time() - start
                         )
                     )
+=======
+                    print("hadoop operator timeout:args:{} timeout:{}".format(
+                        args,
+                        time.time() - start))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     last_print_time = time.time()
 
         return handler
@@ -85,6 +112,7 @@ def _handle_errors(max_time_out=None):
 
 
 class HDFSClient(FS):
+<<<<<<< HEAD
     def __init__(
         self,
         hadoop_home,
@@ -92,6 +120,15 @@ class HDFSClient(FS):
         time_out=5 * 60 * 1000,  # ms
         sleep_inter=1000,
     ):  # ms
+=======
+
+    def __init__(
+            self,
+            hadoop_home,
+            configs,
+            time_out=5 * 60 * 1000,  #ms
+            sleep_inter=1000):  #ms
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # Raise exception if JAVA_HOME not exists.
 
         self.pre_commands = []
@@ -101,7 +138,11 @@ class HDFSClient(FS):
         self.pre_commands.append(dfs)
 
         if configs:
+<<<<<<< HEAD
             for k, v in configs.items():
+=======
+            for k, v in six.iteritems(configs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 config_command = '-D%s=%s' % (k, v)
                 self.pre_commands.append(config_command)
 
@@ -109,8 +150,12 @@ class HDFSClient(FS):
         self._sleep_inter = sleep_inter
         self._base_cmd = " ".join(self.pre_commands)
         self._bd_err_re = re.compile(
+<<<<<<< HEAD
             r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:'
         )
+=======
+            r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _run_cmd(self, cmd, redirect_stderr=False):
         exe_cmd = "{} -{}".format(self._base_cmd, cmd)
@@ -130,8 +175,13 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def ls_dir(self, fs_path):
+<<<<<<< HEAD
         """
         list directory under fs_path, and only give the pure name, not include the fs_path
+=======
+        """	
+        list directory under fs_path, and only give the pure name, not include the fs_path	
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         if not self.is_exist(fs_path):
             return [], []
@@ -163,7 +213,11 @@ class HDFSClient(FS):
     def _test_match(self, lines):
         for l in lines:
             m = self._bd_err_re.match(l)
+<<<<<<< HEAD
             if m is not None:
+=======
+            if m != None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return m
 
         return None
@@ -281,8 +335,12 @@ class HDFSClient(FS):
         if test_exists:
             if not self.is_exist(fs_src_path):
                 raise FSFileNotExistsError(
+<<<<<<< HEAD
                     "{} is not exists".format(fs_src_path)
                 )
+=======
+                    "{} is not exists".format(fs_src_path))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))
@@ -298,7 +356,12 @@ class HDFSClient(FS):
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
+<<<<<<< HEAD
             if not self.is_exist(fs_src_path) and self.is_exist(fs_dst_path):
+=======
+            if not self.is_exist(fs_src_path) and \
+                    self.is_exist(fs_dst_path):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return
             raise e
 

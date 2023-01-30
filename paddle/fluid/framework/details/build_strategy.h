@@ -61,8 +61,13 @@ struct BuildStrategy {
   // separately, if you choose kReduce, every thread is to optimize 25
   // parameters.
   // Of particular note is, if you use kReduce when using CPU training,
+<<<<<<< HEAD
   // all the parameters are shared between different threads. This
   // feature will save memory.
+=======
+  // all the parameters are shared between different threads. This feature will
+  // save memory.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // FIXME(zcd): The result of the two modes(kAllReduce and kReduce) maybe not
   // equal for GPU. Because, the result of the different order of summing maybe
   // different, for example, the result of `a+b+c+d` may be different with the
@@ -88,8 +93,13 @@ struct BuildStrategy {
   std::string debug_graphviz_path_{""};
 
   // Add dependency between backward ops and optimization ops, make sure that
+<<<<<<< HEAD
   // all the backward ops are finished before running the optimization
   // ops. It might make the training speed of data parallelism faster.
+=======
+  // all the backward ops are finished before running the optimization ops.
+  // It might make the training speed of data parallelism faster.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool enable_backward_optimizer_op_deps_{true};
   // TODO(dev-paddle): enable_sequential_execution depends on
   // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
@@ -103,9 +113,12 @@ struct BuildStrategy {
   // Fix the op run order.
   bool fix_op_run_order_{false};
 
+<<<<<<< HEAD
   // Lowering sub-graph into cinn ops.
   bool build_cinn_pass_{false};
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Operator fusion
   // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
   // cycle.
@@ -129,8 +142,11 @@ struct BuildStrategy {
   bool sync_batch_norm_{false};
   // Fuse GEMM+Epilogue via cublasLt epilogue.
   bool fuse_gemm_epilogue_{false};
+<<<<<<< HEAD
   // Fused multi head attention
   bool fused_attention_{false};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // mkldnn_enabled_op_types specify the operator type list to
   // use MKLDNN acceleration. It is null in default, means
@@ -234,6 +250,7 @@ struct BuildStrategy {
   mutable std::shared_ptr<ir::PassBuilder> pass_builder_;
 };
 
+<<<<<<< HEAD
 inline std::ostream &operator<<(std::ostream &os,
                                 const BuildStrategy &strategy) {
   os << "BuildStrategy: " << &strategy << std::endl;
@@ -297,6 +314,8 @@ inline std::ostream &operator<<(std::ostream &os,
   return os;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -32,14 +32,23 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
 }
 
 std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
+<<<<<<< HEAD
     const phi::DenseTensor& src) {
+=======
+    const paddle::framework::Tensor& src) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return std::make_unique<phi::DenseTensor>(src);
 }
 
 phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
   auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
+<<<<<<< HEAD
   if (variable.IsType<phi::DenseTensor>()) {
     const auto& tensor = variable.Get<phi::DenseTensor>();
+=======
+  if (variable.IsType<framework::LoDTensor>()) {
+    const auto& tensor = variable.Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         tensor.numel(),
         1UL,
@@ -48,7 +57,11 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
                                           "value, it contains `%d` values.",
                                           tensor.numel()));
     if (!platform::is_same_place(tensor.place(), expected_place)) {
+<<<<<<< HEAD
       phi::DenseTensor tmp_tensor;
+=======
+      framework::LoDTensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       return {tmp_tensor};
     } else {
@@ -62,11 +75,21 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
   }
 }
 
+<<<<<<< HEAD
 phi::IntArray MakePhiIntArray(const phi::DenseTensor& src) { return {src}; }
 
 phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
   if (variable.IsType<phi::DenseTensor>()) {
     const auto& tensor = variable.Get<phi::DenseTensor>();
+=======
+phi::IntArray MakePhiIntArray(const paddle::framework::Tensor& src) {
+  return {src};
+}
+
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
+  if (variable.IsType<framework::LoDTensor>()) {
+    const auto& tensor = variable.Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return MakePhiIntArray(tensor);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -89,6 +112,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
 
   for (auto* var : variable_list) {
     paddle::experimental::DataType data_type;
+<<<<<<< HEAD
     if (var->IsType<phi::DenseTensor>()) {
       const auto& tensor = var->Get<phi::DenseTensor>();
       data_type = tensor.dtype();
@@ -97,16 +121,33 @@ phi::IntArray MakePhiIntArrayFromVarList(
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
           phi::DenseTensor tmp_tensor;
+=======
+    if (var->IsType<framework::LoDTensor>()) {
+      const auto& tensor = var->Get<framework::LoDTensor>();
+      data_type = tensor.dtype();
+      if (data_type == paddle::experimental::DataType::INT64) {
+        const auto& tensor = var->Get<framework::LoDTensor>();
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
+          framework::LoDTensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int64_t>());
         } else {
           vector_data.push_back(*tensor.data<int64_t>());
         }
       } else if (data_type == paddle::experimental::DataType::INT32) {
+<<<<<<< HEAD
         const auto& tensor = var->Get<phi::DenseTensor>();
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
           phi::DenseTensor tmp_tensor;
+=======
+        const auto& tensor = var->Get<framework::LoDTensor>();
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
+          framework::LoDTensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int32_t>());
         } else {

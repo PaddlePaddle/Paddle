@@ -1,27 +1,38 @@
 add_subdirectory(auto_parallel)
 add_subdirectory(collective)
+<<<<<<< HEAD
 add_subdirectory(fleet_executor)
 if(WITH_PYTHON)
   py_proto_compile(pslib_py_proto SRCS ps.proto)
+=======
+add_subdirectory(store)
+if(WITH_PYTHON)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   py_proto_compile(ps_py_proto SRCS the_one_ps.proto)
   add_custom_target(
     ps_py_proto_init ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory
             ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
   add_dependencies(ps_py_proto ps_py_proto_init)
+<<<<<<< HEAD
   set(PSLIB_PROTO_DSTPATH
       "${PADDLE_SOURCE_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/"
   )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if(NOT WIN32)
     add_custom_command(
       TARGET ps_py_proto
       POST_BUILD
       COMMAND mv the_one_ps_pb2.py
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/)
+<<<<<<< HEAD
     add_custom_command(
       TARGET pslib_py_proto
       POST_BUILD
       COMMAND mv ps_pb2.py "${PSLIB_PROTO_DSTPATH}")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   else()
     string(
       REPLACE "/" "\\" fleet_proto_dstpath
@@ -33,6 +44,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python the_one_ps_pb2 into directory ${fleet_proto_dstpath}."
     )
+<<<<<<< HEAD
     string(REPLACE "/" "\\" PSLIB_PROTO_DSTPATH "${PSLIB_PROTO_DSTPATH}")
     add_custom_command(
       TARGET pslib_py_proto
@@ -49,19 +61,38 @@ if(WITH_RPC)
 endif()
 
 if(NOT WITH_PSCORE)
+=======
+  endif()
+endif()
+
+if(NOT WITH_PSCORE)
+  add_subdirectory(fleet_executor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return()
 endif()
 
 proto_library(ps_framework_proto SRCS the_one_ps.proto)
 
 set(DISTRIBUTE_COMPILE_FLAGS
+<<<<<<< HEAD
     "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+=======
+    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )
 
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
   set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 add_subdirectory(common)
 add_subdirectory(ps)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
+<<<<<<< HEAD
+=======
+add_subdirectory(fleet_executor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

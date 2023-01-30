@@ -77,10 +77,18 @@ class TargetAssignOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -88,8 +96,12 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(phi::DenseTensor), This input is a 3D phi::DenseTensor with "
              "shape [M, P, K]. "
+=======
+             "(LoDTensor), This input is a 3D LoDTensor with shape [M, P, K]. "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "Some elements in X will be assigned to Out based on the "
              "MatchIndices and NegIndices.");
     AddInput("MatchIndices",
@@ -97,8 +109,12 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
              "with shape [N, P], If MatchIndices[i][j] is -1, the j-th entity "
              "of column is not matched to any entity of row in i-th instance.");
     AddInput("NegIndices",
+<<<<<<< HEAD
              "(phi::DenseTensor, default phi::DenseTensor<int>), The input "
              "negative example "
+=======
+             "(LoDTensor, default LoDTensor<int>), The input negative example "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "indices are an optional input with shape [Neg, 1], where Neg is "
              "the total number of negative example indices.")
         .AsDispensable();
@@ -132,7 +148,11 @@ If id = MatchIndices[i][j] > 0,
     Out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
     OutWeight[i][j] = 1.
 
+<<<<<<< HEAD
 Otherwise,
+=======
+Otherwise, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
     OutWeight[i][j] = 0.

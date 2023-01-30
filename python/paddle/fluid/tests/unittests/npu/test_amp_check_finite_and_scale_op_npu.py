@@ -21,12 +21,20 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+<<<<<<< HEAD
 from paddle.static.amp.amp_nn import check_finite_and_unscale
+=======
+from paddle.fluid.contrib.mixed_precision.amp_nn import check_finite_and_unscale
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestCheckFiniteAndUnscale(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_prog(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -34,6 +42,7 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             scale = paddle.static.data(name="scale", shape=[1], dtype='float32')
+<<<<<<< HEAD
             float_status = paddle.static.data(
                 name="status", shape=[8], dtype='float32'
             )
@@ -49,6 +58,22 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
             out, found_inf = check_finite_and_unscale(
                 [c], scale, float_status=float_status
             )
+=======
+            float_status = paddle.static.data(name="status",
+                                              shape=[8],
+                                              dtype='float32')
+            main_program.global_block().append_op(
+                type="alloc_float_status",
+                outputs={"FloatStatus": float_status})
+            main_program.global_block().append_op(
+                type="clear_float_status",
+                inputs={"FloatStatus": float_status},
+                outputs={"FloatStatusOut": float_status})
+            c = paddle.fluid.layers.elementwise_div(a, b)
+            out, found_inf = check_finite_and_unscale([c],
+                                                      scale,
+                                                      float_status=float_status)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return main_program, out, found_inf, float_status
 
@@ -58,9 +83,18 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
         exe = fluid.Executor(place)
         out_, founf_inf_, float_status_ = exe.run(
             main_program,
+<<<<<<< HEAD
             feed={"a": a, "b": b, "scale": scale},
             fetch_list=[out, found_inf, float_status],
         )
+=======
+            feed={
+                "a": a,
+                "b": b,
+                "scale": scale
+            },
+            fetch_list=[out, found_inf, float_status])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print(float_status_)
         return out_, founf_inf_
 
@@ -97,6 +131,10 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
 
 
 class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_prog(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -104,6 +142,7 @@ class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             scale = paddle.static.data(name="scale", shape=[1], dtype='float32')
+<<<<<<< HEAD
             float_status = paddle.static.data(
                 name="status", shape=[8], dtype='float32'
             )
@@ -131,6 +170,33 @@ class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
             out, found_inf = check_finite_and_unscale(
                 [d], scale, float_status=float_status
             )
+=======
+            float_status = paddle.static.data(name="status",
+                                              shape=[8],
+                                              dtype='float32')
+            main_program.global_block().append_op(
+                type="alloc_float_status",
+                outputs={"FloatStatus": float_status})
+            main_program.global_block().append_op(
+                type="clear_float_status",
+                inputs={"FloatStatus": float_status},
+                outputs={"FloatStatusOut": float_status})
+            c = paddle.fluid.layers.elementwise_div(a, b)
+            out, found_inf = check_finite_and_unscale([c],
+                                                      scale,
+                                                      float_status=float_status)
+            main_program.global_block().append_op(
+                type="alloc_float_status",
+                outputs={"FloatStatus": float_status})
+            main_program.global_block().append_op(
+                type="clear_float_status",
+                inputs={"FloatStatus": float_status},
+                outputs={"FloatStatusOut": float_status})
+            d = paddle.fluid.layers.elementwise_add(a, b)
+            out, found_inf = check_finite_and_unscale([d],
+                                                      scale,
+                                                      float_status=float_status)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return main_program, out, found_inf, float_status
 
@@ -140,9 +206,18 @@ class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
         exe = fluid.Executor(place)
         out_, founf_inf_, float_status_ = exe.run(
             main_program,
+<<<<<<< HEAD
             feed={"a": a, "b": b, "scale": scale},
             fetch_list=[out, found_inf, float_status],
         )
+=======
+            feed={
+                "a": a,
+                "b": b,
+                "scale": scale
+            },
+            fetch_list=[out, found_inf, float_status])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print(float_status_)
         return out_, founf_inf_
 

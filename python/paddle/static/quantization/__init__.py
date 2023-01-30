@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from .quantization_pass import (
     QuantizationTransformPass,
 )
@@ -64,3 +65,22 @@ from .post_training_quantization import (
 from .post_training_quantization import (
     WeightQuantization,
 )
+=======
+from ...fluid.contrib.slim.quantization.quantization_pass import QuantizationTransformPass
+from ...fluid.contrib.slim.quantization.quantization_pass import QuantizationFreezePass
+from ...fluid.contrib.slim.quantization.quantization_pass import ConvertToInt8Pass
+from ...fluid.contrib.slim.quantization.quantization_pass import TransformForMobilePass
+from ...fluid.contrib.slim.quantization.quantization_pass import OutScaleForTrainingPass
+from ...fluid.contrib.slim.quantization.quantization_pass import OutScaleForInferencePass
+from ...fluid.contrib.slim.quantization.quantization_pass import AddQuantDequantPass
+from ...fluid.contrib.slim.quantization.quantization_pass import ReplaceFakeQuantDequantPass
+from ...fluid.contrib.slim.quantization.quantization_pass import QuantWeightPass
+from ...fluid.contrib.slim.quantization.quantization_pass import QuantizationTransformPassV2
+from ...fluid.contrib.slim.quantization.quantization_pass import AddQuantDequantPassV2
+from ...fluid.contrib.slim.quantization.quant_int8_mkldnn_pass import QuantInt8MkldnnPass
+from ...fluid.contrib.slim.quantization.quant2_int8_mkldnn_pass import Quant2Int8MkldnnPass
+
+from ...fluid.contrib.slim.quantization.post_training_quantization import PostTrainingQuantization
+from ...fluid.contrib.slim.quantization.post_training_quantization import PostTrainingQuantizationProgram
+from ...fluid.contrib.slim.quantization.post_training_quantization import WeightQuantization
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

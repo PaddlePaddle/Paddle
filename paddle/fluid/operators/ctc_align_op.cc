@@ -35,10 +35,18 @@ class CTCAlignOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -92,12 +100,21 @@ Then:
     Output.dims = {8, 1}
     Output.LoD = [[0, 6, 8]]
 or Given:
+<<<<<<< HEAD
     Input.data = [[0, 1, 2, 2, 0, 4],
                   [0, 4, 5, 0, 6, 0],
                   [0, 7, 7, 7, 0, 0]]
     InputLength.data  = [[6],
                          [5],
                          [4]],
+=======
+    Input.data = [[0, 1, 2, 2, 0, 4], 
+                  [0, 4, 5, 0, 6, 0], 
+                  [0, 7, 7, 7, 0, 0]]
+    InputLength.data  = [[6],
+                         [5],
+                         [4]],   
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Input.dims = {3, 6},
     Input.Lod = []
 And:

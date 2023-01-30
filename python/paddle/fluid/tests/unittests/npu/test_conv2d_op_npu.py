@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -28,7 +33,13 @@ paddle.enable_static()
 
 
 def create_test_channel_last_class(parent):
+<<<<<<< HEAD
     class TestChannelLastCase(parent):
+=======
+
+    class TestChannelLastCase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data_format(self):
             self.data_format = "NHWC"
 
@@ -42,7 +53,13 @@ def create_test_channel_last_class(parent):
 
 
 def create_test_padding_SAME_class(parent):
+<<<<<<< HEAD
     class TestPaddingSMAECase(parent):
+=======
+
+    class TestPaddingSMAECase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_paddings(self):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
@@ -53,7 +70,13 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
+<<<<<<< HEAD
     class TestPaddingVALIDCase(parent):
+=======
+
+    class TestPaddingVALIDCase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_paddings(self):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
@@ -64,7 +87,13 @@ def create_test_padding_VALID_class(parent):
 
 
 def create_test_fp16_class(parent):
+<<<<<<< HEAD
     class TestFp16Case(parent):
+=======
+
+    class TestFp16Case(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -74,6 +103,10 @@ def create_test_fp16_class(parent):
 
 
 class TestConv2DOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -95,12 +128,17 @@ class TestConv2DOp(OpTest):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
+<<<<<<< HEAD
             'dilation': self.dilations,
+=======
+            'dilation': self.dilations
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.uniform(-1, 1, self.filter_size).astype(self.dtype)
 
+<<<<<<< HEAD
         output, _, _, _, _ = conv2d_forward_naive(
             input,
             filter,
@@ -108,11 +146,22 @@ class TestConv2DOp(OpTest):
             conv2d_param,
             data_format=self.data_format,
         )
+=======
+        output, _, _, _, _ = conv2d_forward_naive(input,
+                                                  filter,
+                                                  self.groups,
+                                                  conv2d_param,
+                                                  data_format=self.data_format)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output = output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
+<<<<<<< HEAD
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+=======
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'strides': self.stride,
@@ -127,6 +176,7 @@ class TestConv2DOp(OpTest):
         self.check_output_with_place(fluid.NPUPlace(0), atol=1e-2)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             fluid.NPUPlace(0),
             {'Input', 'Filter'},
@@ -154,6 +204,26 @@ class TestConv2DOp(OpTest):
             no_grad_set=set(['Input']),
             numeric_place=paddle.CPUPlace(),
         )
+=======
+        self.check_grad_with_place(fluid.NPUPlace(0), {'Input', 'Filter'},
+                                   'Output',
+                                   max_relative_error=0.03,
+                                   numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_filter(self):
+        self.check_grad_with_place(fluid.NPUPlace(0), ['Input'],
+                                   'Output',
+                                   max_relative_error=0.03,
+                                   no_grad_set=set(['Filter']),
+                                   numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_input(self):
+        self.check_grad_with_place(fluid.NPUPlace(0), ['Filter'],
+                                   'Output',
+                                   max_relative_error=0.03,
+                                   no_grad_set=set(['Input']),
+                                   numeric_place=paddle.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -171,6 +241,10 @@ class TestConv2DOp(OpTest):
 
 
 class TestWithPad(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -181,6 +255,10 @@ class TestWithPad(TestConv2DOp):
 
 
 class TestWithStride(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -191,6 +269,10 @@ class TestWithStride(TestConv2DOp):
 
 
 class TestWithGroup(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -202,6 +284,10 @@ class TestWithGroup(TestConv2DOp):
 
 
 class TestWith1x1(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -218,6 +304,10 @@ class TestWith1x1(TestConv2DOp):
 
 
 class TestWithDepthWise5x5(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -231,6 +321,10 @@ class TestWithDepthWise5x5(TestConv2DOp):
 
 
 class TestWithDepthWise7x7(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -244,6 +338,10 @@ class TestWithDepthWise7x7(TestConv2DOp):
 
 
 class TestWithDilation(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -260,6 +358,10 @@ class TestWithDilation(TestConv2DOp):
 
 
 class TestWithInput1x1Filter1x1(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -273,6 +375,10 @@ class TestWithInput1x1Filter1x1(TestConv2DOp):
 
 
 class TestConv2DOp_v2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -294,11 +400,16 @@ class TestConv2DOp_v2(OpTest):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
+<<<<<<< HEAD
             'dilation': self.dilations,
+=======
+            'dilation': self.dilations
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.uniform(-1, 1, self.filter_size).astype(self.dtype)
+<<<<<<< HEAD
         output, _, _, _, _ = conv2d_forward_naive(
             input,
             filter,
@@ -307,11 +418,21 @@ class TestConv2DOp_v2(OpTest):
             self.padding_algorithm,
             self.data_format,
         )
+=======
+        output, _, _, _, _ = conv2d_forward_naive(input, filter, self.groups,
+                                                  conv2d_param,
+                                                  self.padding_algorithm,
+                                                  self.data_format)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output = output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
+<<<<<<< HEAD
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+=======
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'strides': self.stride,
@@ -328,6 +449,7 @@ class TestConv2DOp_v2(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(
                 paddle.NPUPlace(0),
                 {'Input', 'Filter'},
@@ -379,6 +501,41 @@ class TestConv2DOp_v2(OpTest):
                 no_grad_set=set(['Input']),
                 numeric_place=paddle.CPUPlace(),
             )
+=======
+            self.check_grad_with_place(paddle.NPUPlace(0), {'Input', 'Filter'},
+                                       'Output',
+                                       max_relative_error=1.1)
+        else:
+            self.check_grad_with_place(paddle.NPUPlace(0), {'Input', 'Filter'},
+                                       'Output',
+                                       max_relative_error=0.02,
+                                       numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_filter(self):
+        if self.dtype == np.float16:
+            self.check_grad_with_place(paddle.NPUPlace(0), ['Input'],
+                                       'Output',
+                                       max_relative_error=0.99,
+                                       no_grad_set=set(['Filter']))
+        else:
+            self.check_grad_with_place(paddle.NPUPlace(0), ['Input'],
+                                       'Output',
+                                       max_relative_error=0.02,
+                                       no_grad_set=set(['Filter']),
+                                       numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_input(self):
+        if self.dtype == np.float16:
+            self.check_grad_with_place(paddle.NPUPlace(0), ['Filter'],
+                                       'Output',
+                                       max_relative_error=0.99,
+                                       no_grad_set=set(['Input']))
+        else:
+            self.check_grad_with_place(paddle.NPUPlace(0), ['Filter'],
+                                       'Output',
+                                       no_grad_set=set(['Input']),
+                                       numeric_place=paddle.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -409,12 +566,20 @@ class TestConv2DOp_v2(OpTest):
 
 
 class TestConv2DOp_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
 class TestWithPad_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -428,6 +593,10 @@ class TestWithPad_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithStride_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
@@ -441,6 +610,10 @@ class TestWithStride_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithGroup_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 2]
@@ -452,6 +625,10 @@ class TestWithGroup_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWith1x1_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -468,6 +645,10 @@ class TestWith1x1_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithDepthWise3x3_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [3, 4, 10, 10]  # NCHW
@@ -487,6 +668,10 @@ class TestWithDepthWise3x3_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithDepthWise5x5_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 4, 10, 10]  # NCHW
@@ -503,6 +688,10 @@ class TestWithDepthWise5x5_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithDepthWise7x7_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 8, 10, 10]  # NCHW
@@ -519,6 +708,10 @@ class TestWithDepthWise7x7_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithDilation_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 10, 10]  # NCHW
@@ -538,6 +731,10 @@ class TestWithDilation_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithInput1x1Filter1x1_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [100, 1, 1, 1]  # NCHW

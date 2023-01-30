@@ -27,14 +27,24 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
+<<<<<<< HEAD
+=======
+using DataLayout = framework::DataLayout;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /*
  * \brief Compute the depthwise convolution which include
  * forward process and backpropagation process
@@ -45,12 +55,21 @@ template <typename DeviceContext,
 class DepthwiseConvFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* output,
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& filter,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
+                  framework::Tensor* output,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
@@ -60,6 +79,7 @@ template <typename DeviceContext,
 class DepthwiseConvInputGradFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const phi::DenseTensor& output_grad,
@@ -67,6 +87,15 @@ class DepthwiseConvInputGradFunctor {
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* input_grad,
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& filter,
+                  const framework::Tensor& output_grad,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
+                  framework::Tensor* input_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
@@ -76,12 +105,21 @@ template <typename DeviceContext,
 class DepthwiseConvFilterGradFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* filter_grad,
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& output_grad,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
+                  framework::Tensor* filter_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
@@ -92,7 +130,11 @@ class DepthwiseConvFilterGradFunctor {
 template <typename T>
 __forceinline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+<<<<<<< HEAD
     val += phi::backends::gpu::CudaShuffleDownSync(lane_mask, val, mask);
+=======
+    val += platform::CudaShuffleDownSync(lane_mask, val, mask);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return val;
 }
 
@@ -981,7 +1023,11 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
       }
 #undef gaid
     }
+<<<<<<< HEAD
     phi::CudaAtomicAdd(&filter_grad_data[gbid], s);
+=======
+    platform::CudaAtomicAdd(&filter_grad_data[gbid], s);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -1057,7 +1103,11 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
     }
     for (int i = 0; i < c_filter * c_filter; ++i) {
       T* weight = filter_grad_data + i * output_channels + kernel_id;
+<<<<<<< HEAD
       phi::CudaAtomicAdd(&weight[0], r_weight[i]);
+=======
+      platform::CudaAtomicAdd(&weight[0], r_weight[i]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }
@@ -1197,12 +1247,21 @@ template <class T, bool fuse_relu_before_conv>
 class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* output,
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& filter,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
+                  framework::Tensor* output,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
@@ -1231,16 +1290,26 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 
     const T* input_data = input.data<T>();
     const T* filter_data = filter.data<T>();
+<<<<<<< HEAD
     T* output_data = context.template Alloc<T>(output);
 
     phi::DenseTensor filter_hwc;
+=======
+    T* output_data = output->mutable_data<T>(context.GetPlace());
+
+    framework::Tensor filter_hwc;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (data_layout == DataLayout::kNHWC) {
       framework::DDim filter_hwc_dims({filter.dims()[2],
                                        filter.dims()[3],
                                        filter.dims()[0],
                                        filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
+<<<<<<< HEAD
       context.template Alloc<T>(&filter_hwc);
+=======
+      filter_hwc.mutable_data<T>(context.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       std::vector<int> perm_axis({2, 3, 0, 1});
       phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
       trans(context, filter, &filter_hwc, perm_axis);
@@ -1373,6 +1442,7 @@ template <typename T, bool fuse_relu_before_conv>
 class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const phi::DenseTensor& output_grad,
@@ -1380,6 +1450,15 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* input_grad,
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& filter,
+                  const framework::Tensor& output_grad,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
+                  framework::Tensor* input_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
@@ -1409,16 +1488,26 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     const T* input_data = input.data<T>();
     const T* filter_data = filter.data<T>();
     const T* output_grad_data = output_grad.data<T>();
+<<<<<<< HEAD
     T* input_grad_data = context.template Alloc<T>(input_grad);
 
     phi::DenseTensor filter_hwc;
+=======
+    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+
+    framework::Tensor filter_hwc;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (data_layout == DataLayout::kNHWC) {
       framework::DDim filter_hwc_dims({filter.dims()[2],
                                        filter.dims()[3],
                                        filter.dims()[0],
                                        filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
+<<<<<<< HEAD
       context.template Alloc<T>(&filter_hwc);
+=======
+      filter_hwc.mutable_data<T>(context.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       std::vector<int> perm_axis({2, 3, 0, 1});
       phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
       trans(context, filter, &filter_hwc, perm_axis);
@@ -1550,12 +1639,21 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                      fuse_relu_before_conv> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* filter_grad,
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& output_grad,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
+                  framework::Tensor* filter_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
@@ -1584,7 +1682,11 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
 
     const T* input_data = input.data<T>();
     const T* output_grad_data = output_grad.data<T>();
+<<<<<<< HEAD
     T* filter_grad_data = context.template Alloc<T>(filter_grad);
+=======
+    T* filter_grad_data = filter_grad->mutable_data<T>(context.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int block_size = 512;
     int blocks;
@@ -1647,14 +1749,22 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                                    dilate_width,               \
                                                    filter_grad_data);          \
     } else {                                                                   \
+<<<<<<< HEAD
       phi::DenseTensor filter_grad_hwc;                                        \
+=======
+      framework::Tensor filter_grad_hwc;                                       \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (c_filter != -1) {                                                    \
         framework::DDim filter_grad_hwc_dims({filter_grad->dims()[2],          \
                                               filter_grad->dims()[3],          \
                                               filter_grad->dims()[0],          \
                                               filter_grad->dims()[1]});        \
         filter_grad_hwc.Resize(filter_grad_hwc_dims);                          \
+<<<<<<< HEAD
         context.template Alloc<T>(&filter_grad_hwc);                           \
+=======
+        filter_grad_hwc.mutable_data<T>(context.GetPlace());                   \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         phi::funcs::SetConstant<phi::GPUContext, T> set_zero;                  \
         set_zero(context, &filter_grad_hwc, static_cast<T>(0));                \
         filter_grad_data = filter_grad_hwc.data<T>();                          \

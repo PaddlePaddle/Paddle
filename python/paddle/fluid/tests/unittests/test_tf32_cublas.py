@@ -13,15 +13,24 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
+=======
+import six
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
 class TestTF32Switch(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_on_off(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
@@ -37,6 +46,10 @@ class TestTF32Switch(unittest.TestCase):
 
 
 class TestTF32OnMatmul(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_dygraph_without_out(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)

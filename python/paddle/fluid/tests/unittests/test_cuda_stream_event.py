@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import ctypes
 import unittest
 
@@ -22,6 +23,18 @@ from paddle.device import cuda
 
 
 class TestCurrentStream(unittest.TestCase):
+=======
+from paddle.device import cuda
+import paddle
+import ctypes
+
+import unittest
+import numpy as np
+
+
+class TestCurrentStream(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_current_stream(self):
         if paddle.is_compiled_with_cuda():
             s = cuda.current_stream()
@@ -39,6 +52,10 @@ class TestCurrentStream(unittest.TestCase):
 
 
 class TestSynchronize(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_synchronize(self):
         if paddle.is_compiled_with_cuda():
             self.assertIsNone(cuda.synchronize())
@@ -49,6 +66,10 @@ class TestSynchronize(unittest.TestCase):
 
 
 class TestCUDAStream(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_cuda_stream(self):
         if paddle.is_compiled_with_cuda():
             s = paddle.device.cuda.Stream()
@@ -86,6 +107,10 @@ class TestCUDAStream(unittest.TestCase):
 
 
 class TestCUDAEvent(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_cuda_event(self):
         if paddle.is_compiled_with_cuda():
             e = paddle.device.cuda.Event(True, False, False)
@@ -109,8 +134,13 @@ class TestCUDAEvent(unittest.TestCase):
 
 class TestStreamGuard(unittest.TestCase):
     '''
+<<<<<<< HEAD
     Note:
         The asynchronous execution property of CUDA Stream can only be tested offline.
+=======
+    Note: 
+        The asynchronous execution property of CUDA Stream can only be tested offline. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     '''
 
     def test_stream_guard_normal(self):
@@ -155,6 +185,7 @@ class TestStreamGuard(unittest.TestCase):
 
     def test_set_current_stream_raise_error(self):
         if paddle.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.assertRaises(
                 TypeError, paddle.device.cuda._set_current_stream, np.zeros(5)
             )
@@ -164,6 +195,16 @@ class TestStreamGuard(unittest.TestCase):
 
 
 class TestRawStream(unittest.TestCase):
+=======
+            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
+                              np.zeros(5))
+            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
+                              None)
+
+
+class TestRawStream(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_cuda_stream(self):
         if paddle.is_compiled_with_cuda():
             cuda_stream = paddle.device.cuda.current_stream().cuda_stream

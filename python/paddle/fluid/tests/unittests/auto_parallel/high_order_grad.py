@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 
 import paddle
+=======
+import random
+import paddle
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.fleet import auto
 from paddle.incubate.autograd import Hessian
 
@@ -23,6 +30,10 @@ paddle.seed(1234)
 
 
 class FCNet:
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, num_ins, num_outs, num_layers, hidden_size):
         self.num_ins = num_ins
         self.num_outs = num_outs
@@ -43,12 +54,21 @@ class FCNet:
                 lsize = self.hidden_size
                 rsize = self.hidden_size
 
+<<<<<<< HEAD
             w = paddle.static.create_parameter(
                 shape=[lsize, rsize], dtype="float32", is_bias=False
             )
             b = paddle.static.create_parameter(
                 shape=[rsize], dtype="float32", is_bias=True
             )
+=======
+            w = paddle.static.create_parameter(shape=[lsize, rsize],
+                                               dtype="float32",
+                                               is_bias=False)
+            b = paddle.static.create_parameter(shape=[rsize],
+                                               dtype="float32",
+                                               is_bias=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.weights.append(w)
             self.biases.append(b)
 
@@ -62,6 +82,7 @@ class FCNet:
 
 
 class LaplaceModel(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self, num_ins=2, num_outs=1, num_layers=5, hidden_size=20):
         super().__init__()
         self.net = FCNet(
@@ -70,6 +91,15 @@ class LaplaceModel(paddle.nn.Layer):
             num_layers=num_layers,
             hidden_size=hidden_size,
         )
+=======
+
+    def __init__(self, num_ins=2, num_outs=1, num_layers=5, hidden_size=20):
+        super(LaplaceModel, self).__init__()
+        self.net = FCNet(num_ins=num_ins,
+                         num_outs=num_outs,
+                         num_layers=num_layers,
+                         hidden_size=hidden_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, inputs, bc_index):
         inputs.stop_gradient = False
@@ -83,6 +113,10 @@ class LaplaceModel(paddle.nn.Layer):
 
 
 class LaplaceDataset(paddle.io.Dataset):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, num_sample):
         self.num_sample = num_sample
 
@@ -126,9 +160,16 @@ def main():
     dist_strategy = auto.Strategy()
     dist_strategy.auto_mode = "semi"
 
+<<<<<<< HEAD
     engine = auto.Engine(
         laplace, loss=loss_func, optimizer=optimizer, strategy=dist_strategy
     )
+=======
+    engine = auto.Engine(laplace,
+                         loss=loss_func,
+                         optimizer=optimizer,
+                         strategy=dist_strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     engine.fit(train_dataset, train_sample_split=2, batch_size=None)
 
     dist_context = engine.dist_context

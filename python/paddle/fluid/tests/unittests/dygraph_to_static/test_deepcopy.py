@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 from copy import deepcopy
 
 import numpy as np
@@ -23,6 +24,18 @@ from paddle.jit.dy2static.program_translator import StaticFunction
 
 
 class TestDeepCopy(unittest.TestCase):
+=======
+import paddle
+import numpy as np
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
+
+from test_rollback import Net, foo
+from copy import deepcopy
+
+
+class TestDeepCopy(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_net(self):
         net = Net()
         net = paddle.jit.to_static(net)

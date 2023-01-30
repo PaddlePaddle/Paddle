@@ -17,7 +17,11 @@
 #include <map>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/collective/process_group.h"
+=======
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
@@ -74,8 +78,12 @@ class EagerGroup {
   void ConcatTensors(const platform::Place &);
 
   // context is used to select the stream for split
+<<<<<<< HEAD
 
   void SplitTensors(const platform::DeviceContext &);
+=======
+  void SplitTensors(const platform::Place &);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from . import core
 from . import framework
 from . import executor
@@ -25,9 +29,15 @@ ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 
+<<<<<<< HEAD
 class ParallelExecutor:
     """
         :api_attr: Static Graph
+=======
+class ParallelExecutor(object):
+    """
+	:api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     The ParallelExecutor is an upgraded version of :code:`paddle.static.Executor` that supports multi-node model
     training and testing based on the data-parallel mode. In data-parallel mode,
@@ -147,6 +157,7 @@ class ParallelExecutor:
 
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         use_cuda,
@@ -159,6 +170,18 @@ class ParallelExecutor:
         trainer_id=0,
         scope=None,
     ):
+=======
+    def __init__(self,
+                 use_cuda,
+                 loss_name=None,
+                 main_program=None,
+                 share_vars_from=None,
+                 exec_strategy=None,
+                 build_strategy=None,
+                 num_trainers=1,
+                 trainer_id=0,
+                 scope=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if build_strategy is None:
             build_strategy = BuildStrategy()
 
@@ -166,13 +189,19 @@ class ParallelExecutor:
         if num_trainers != 1 and build_strategy.num_trainers != num_trainers:
             sys.stderr.write(
                 'The value of build_strategy.num_trainers[%d] is overwritten '
+<<<<<<< HEAD
                 'by the passed num_trainers[%d].\n'
                 % (build_strategy.num_trainers, num_trainers)
             )
+=======
+                'by the passed num_trainers[%d].\n' %
+                (build_strategy.num_trainers, num_trainers))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             build_strategy.num_trainers = num_trainers
         if trainer_id != 0 and build_strategy.trainer_id != trainer_id:
             sys.stderr.write(
                 'The value of build_strategy.trainer_id[%d] is overwritten '
+<<<<<<< HEAD
                 'by the passed trainer_id[%d].\n'
                 % (build_strategy.trainer_id, trainer_id)
             )
@@ -188,6 +217,18 @@ class ParallelExecutor:
             if main_program is not None
             else framework.default_main_program()
         )
+=======
+                'by the passed trainer_id[%d].\n' %
+                (build_strategy.trainer_id, trainer_id))
+            build_strategy.trainer_id = trainer_id
+
+        self._places = framework.cuda_places(
+        ) if use_cuda else framework.cpu_places()
+        self._scope = scope if scope is not None else executor.global_scope()
+
+        main_program = main_program if main_program is not None \
+            else framework.default_main_program()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._compiled_program = compiler.CompiledProgram(main_program)
         if share_vars_from:
@@ -200,9 +241,13 @@ class ParallelExecutor:
             build_strategy=build_strategy,
             exec_strategy=exec_strategy,
             share_vars_from=share_vars_from._compiled_program
+<<<<<<< HEAD
             if share_vars_from
             else None,
         )
+=======
+            if share_vars_from else None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
         self._exe = executor.Executor(self._place)
@@ -309,6 +354,7 @@ class ParallelExecutor:
                                          fetch_list=[loss.name])
 
         """
+<<<<<<< HEAD
         return self._exe.run(
             program=self._compiled_program,
             scope=self._scope,
@@ -316,6 +362,13 @@ class ParallelExecutor:
             fetch_list=fetch_list,
             return_numpy=return_numpy,
         )
+=======
+        return self._exe.run(program=self._compiled_program,
+                             scope=self._scope,
+                             feed=feed,
+                             fetch_list=fetch_list,
+                             return_numpy=return_numpy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def device_count(self):
@@ -375,20 +428,32 @@ class ParallelExecutor:
               parallel_exe.drop_local_exe_scopes()
 
         """
+<<<<<<< HEAD
         check_type(
             self._compiled_program._executor,
             "the Executor of compiled program",
             core.ParallelExecutor,
             "ParallelExecutor.drop_local_exe_scopes",
         )
+=======
+        check_type(self._compiled_program._executor,
+                   "the Executor of compiled program", core.ParallelExecutor,
+                   "ParallelExecutor.drop_local_exe_scopes")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._compiled_program._executor.drop_local_exe_scopes()
 
     # This API is used to check whether DropLocalExeScopes can work.
     def _need_create_local_exe_scopes(self):
+<<<<<<< HEAD
         check_type(
             self._compiled_program._executor,
             "the Executor of compiled program",
             core.ParallelExecutor,
             "ParallelExecutor._need_create_local_exe_scopes",
         )
+=======
+        check_type(self._compiled_program._executor,
+                   "the Executor of compiled program", core.ParallelExecutor,
+                   "ParallelExecutor._need_create_local_exe_scopes")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return self._compiled_program._executor._need_create_local_exe_scopes()

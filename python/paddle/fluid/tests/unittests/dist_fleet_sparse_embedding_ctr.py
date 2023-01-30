@@ -15,16 +15,34 @@
 Distribute CTR model for test fleet api
 """
 
+<<<<<<< HEAD
 import os
 
 import numpy as np
 from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
+=======
+from __future__ import print_function
+
+import os
+import time
+
+import random
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 import paddle.fluid as fluid
 
+<<<<<<< HEAD
 
 def fake_ctr_reader():
+=======
+from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
+
+
+def fake_ctr_reader():
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def reader():
         for _ in range(1000):
             deep = np.random.random_integers(0, 1e10, size=16).tolist()
@@ -52,6 +70,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
         dnn_input_dim, lr_input_dim = 10, 10
 
+<<<<<<< HEAD
         dnn_data = paddle.static.data(
             name="dnn_data",
             shape=[-1, 1],
@@ -70,16 +89,40 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dtype="int64",
             lod_level=0,
         )
+=======
+        dnn_data = fluid.layers.data(name="dnn_data",
+                                     shape=[-1, 1],
+                                     dtype="int64",
+                                     lod_level=1,
+                                     append_batch_size=False)
+        lr_data = fluid.layers.data(name="lr_data",
+                                    shape=[-1, 1],
+                                    dtype="int64",
+                                    lod_level=1,
+                                    append_batch_size=False)
+        label = fluid.layers.data(name="click",
+                                  shape=[-1, 1],
+                                  dtype="int64",
+                                  lod_level=0,
+                                  append_batch_size=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         datas = [dnn_data, lr_data, label]
 
         if args.reader == "pyreader":
+<<<<<<< HEAD
             self.reader = fluid.io.PyReader(
                 feed_list=datas,
                 capacity=64,
                 iterable=False,
                 use_double_buffer=False,
             )
+=======
+            self.reader = fluid.io.PyReader(feed_list=datas,
+                                            capacity=64,
+                                            iterable=False,
+                                            use_double_buffer=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # build dnn model
         initializer = int(os.getenv("INITIALIZER", "0"))
@@ -101,6 +144,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             is_test=inference,
             entry=entry,
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(name="deep_embedding", initializer=init),
         )
         dnn_pool = fluid.layers.sequence_pool(
@@ -117,6 +161,20 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 ),
                 name='dnn-fc-%d' % i,
             )
+=======
+            param_attr=fluid.ParamAttr(name="deep_embedding", initializer=init))
+        dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding,
+                                              pool_type="sum")
+        dnn_out = dnn_pool
+        for i, dim in enumerate(dnn_layer_dims[1:]):
+            fc = fluid.layers.fc(
+                input=dnn_out,
+                size=dim,
+                act="relu",
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Constant(value=0.01)),
+                name='dnn-fc-%d' % i)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dnn_out = fc
 
         # build lr model
@@ -127,6 +185,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             entry=entry,
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
+<<<<<<< HEAD
                 initializer=fluid.initializer.Constant(value=0.01),
             ),
         )
@@ -142,6 +201,17 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         cost = paddle.nn.functional.cross_entropy(
             input=predict, label=label, reduction='none', use_softmax=False
         )
+=======
+                initializer=fluid.initializer.Constant(value=0.01)))
+
+        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+        predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
+
+        acc = fluid.layers.accuracy(input=predict, label=label)
+        auc_var, _, _ = fluid.layers.auc(input=predict, label=label)
+        cost = fluid.layers.cross_entropy(input=predict, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         avg_cost = paddle.mean(x=cost)
 
         self.feeds = datas
@@ -172,6 +242,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             self.reader.start()
             try:
                 while True:
+<<<<<<< HEAD
                     loss_val = exe.run(
                         program=fluid.default_main_program(),
                         fetch_list=[self.avg_cost.name],
@@ -182,17 +253,30 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                             epoch_id, loss_val
                         )
                     )
+=======
+                    loss_val = exe.run(program=fluid.default_main_program(),
+                                       fetch_list=[self.avg_cost.name])
+                    loss_val = np.mean(loss_val)
+                    print("TRAIN ---> pass: {} loss: {}\n".format(
+                        epoch_id, loss_val))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             except fluid.core.EOFException:
                 self.reader.reset()
 
         model_dir = os.getenv("MODEL_DIR", None)
         if model_dir:
+<<<<<<< HEAD
             fleet.save_inference_model(
                 exe,
                 model_dir,
                 [feed.name for feed in self.feeds],
                 self.avg_cost,
             )
+=======
+            fleet.save_inference_model(exe, model_dir,
+                                       [feed.name for feed in self.feeds],
+                                       self.avg_cost)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             fleet.load_model(model_dir, mode=1)
 
 

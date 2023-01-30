@@ -20,6 +20,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace dynload = platform::dynload;
 template <typename T>
 using BatchNormParamType =
@@ -53,8 +57,13 @@ struct BNStatsFinalizeArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
+<<<<<<< HEAD
   phi::backends::gpu::TensorDescriptor in_desc;
   phi::backends::gpu::TensorDescriptor out_desc;
+=======
+  platform::TensorDescriptor in_desc;
+  platform::TensorDescriptor out_desc;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename T>
@@ -69,6 +78,7 @@ class CudnnBNStatsFinalize {
   ~CudnnBNStatsFinalize() {}
 
   void Forward(const phi::GPUContext &ctx,
+<<<<<<< HEAD
                const phi::DenseTensor &sum,
                const phi::DenseTensor &sum_of_squares,
                const phi::DenseTensor &scale,
@@ -79,6 +89,18 @@ class CudnnBNStatsFinalize {
                phi::DenseTensor *running_var,
                phi::DenseTensor *equiv_scale,
                phi::DenseTensor *equiv_bias,
+=======
+               const Tensor &sum,
+               const Tensor &sum_of_squares,
+               const Tensor &scale,
+               const Tensor &bias,
+               Tensor *saved_mean,
+               Tensor *saved_invstd,
+               Tensor *running_mean,
+               Tensor *running_var,
+               Tensor *equiv_scale,
+               Tensor *equiv_bias,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                double eps,
                float momentum,
                int64_t ele_count,

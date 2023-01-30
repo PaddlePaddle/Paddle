@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.utils import try_import
 
 __all__ = []
@@ -50,7 +53,11 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
 
             class LinearNet(paddle.nn.Layer):
                 def __init__(self):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(LinearNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self._linear = paddle.nn.Linear(128, 10)
 
                 def forward(self, x):
@@ -66,7 +73,11 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
 
             class Logic(paddle.nn.Layer):
                 def __init__(self):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(Logic, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 def forward(self, x, y, z):
                     if z:

@@ -20,7 +20,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     c_allreduce_sum,
     ops::CAllReduceOpCUDAKernel<ops::kRedSum, float>,
+<<<<<<< HEAD
 #if NCCL_VERSION_CODE >= 21000
+=======
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ops::CAllReduceOpCUDAKernel<ops::kRedSum, plat::bfloat16>,
 #endif
     ops::CAllReduceOpCUDAKernel<ops::kRedSum, double>,

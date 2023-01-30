@@ -214,6 +214,11 @@ void profile(bool use_mkldnn = false) {
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu", "fc"};
     cfg.SetMKLDNNOp(op_list);
+<<<<<<< HEAD
+=======
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -274,6 +279,11 @@ void compare(bool use_mkldnn = false) {
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu"};
     cfg.SetMKLDNNOp(op_list);
+<<<<<<< HEAD
+=======
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

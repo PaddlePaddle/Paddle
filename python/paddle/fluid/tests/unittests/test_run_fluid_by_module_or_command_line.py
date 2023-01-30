@@ -12,12 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import sys
 import unittest
 
 
 class TestRunFluidByModule(unittest.TestCase):
+=======
+import unittest
+import os
+import sys
+
+
+class TestRunFluidByModule(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_module(self):
         print(sys.executable)
         res = os.system(sys.executable + ' -m "paddle.fluid.reader"')
@@ -25,6 +35,10 @@ class TestRunFluidByModule(unittest.TestCase):
 
 
 class TestRunFluidByCommand(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_command(self):
         res = os.system(sys.executable + ' -c "import paddle.fluid"')
         self.assertEqual(res, 0)  # 0 means status OK

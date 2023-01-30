@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import List
@@ -21,6 +22,15 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import unittest
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
@@ -820,11 +830,15 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             "Y": ["matmul1_weight"],
                         },
                         "op_outputs": {"Out": ["matmul1_output"]},
+<<<<<<< HEAD
                         "op_attrs": {
                             "trans_x": False,
                             "trans_y": False,
                             "Input_scale_layer": 1.0,
                         },
+=======
+                        "op_attrs": {"trans_x": False, "trans_y": False},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     },
                     {
                         "op_type": "elementwise_add",
@@ -838,7 +852,10 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             "Scale_x": 1.0,
                             "Scale_y": 1.0,
                             "axis": 2,
+<<<<<<< HEAD
                             "Out": 1.0,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         },
                     },
                     {
@@ -1013,6 +1030,7 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                 "input_data1": [1, 197, 768],
             }
 
+<<<<<<< HEAD
         def generate_static_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [1, 197, 768],
@@ -1024,6 +1042,8 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                 "input_data1": [1, 197, 768],
             }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.min_input_shape = {}
@@ -1042,11 +1062,14 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.workspace_size = 2013265920
+<<<<<<< HEAD
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
             1e-3,
         )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
@@ -1058,6 +1081,7 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
             1e-5,
         )
 
+<<<<<<< HEAD
         # for static_shape
         clear_dynamic_shape()
         generate_static_shape(attrs)
@@ -1498,6 +1522,10 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
             SkipReasons.TRT_NOT_IMPLEMENTED,
             "The output has diff between gpu and trt in int8 mode.",
         )
+=======
+    def add_skip_trt_case(self):
+        pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test(self):
         self.add_skip_trt_case()

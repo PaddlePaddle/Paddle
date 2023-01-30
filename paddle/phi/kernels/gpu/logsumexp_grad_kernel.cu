@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/logsumexp_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/logsumexp_grad_kernel_impl.h"
@@ -28,3 +29,10 @@ PD_REGISTER_KERNEL(logsumexp_grad,
                    float,
                    double,
                    float16) {}
+=======
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/logsumexp_grad_kernel_impl.h"
+
+PD_REGISTER_KERNEL(
+    logsumexp_grad, GPU, ALL_LAYOUT, phi::LogsumexpGradKernel, float, double) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

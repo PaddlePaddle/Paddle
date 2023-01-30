@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,6 +21,19 @@ import paddle
 
 
 class TestCheckFetchList(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+
+import numpy as np
+import paddle
+import unittest
+
+
+class TestCheckFetchList(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         self.feed = {"x": np.array([[0], [0], [1], [0]], dtype='float32')}
@@ -31,9 +45,16 @@ class TestCheckFetchList(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x = paddle.static.data(name='x', shape=[4, 1], dtype='float32')
+<<<<<<< HEAD
             output = paddle.unique_consecutive(
                 x, return_inverse=True, return_counts=True, axis=0
             )
+=======
+            output = paddle.unique_consecutive(x,
+                                               return_inverse=True,
+                                               return_counts=True,
+                                               axis=0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.main_program = main_program
         self.fetch_list = output
@@ -44,14 +65,19 @@ class TestCheckFetchList(unittest.TestCase):
             self.main_program,
             feed=self.feed,
             fetch_list=[self.fetch_list],  # support single list/tuple
+<<<<<<< HEAD
             return_numpy=True,
         )
+=======
+            return_numpy=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np.testing.assert_array_equal(res[0], self.expected)
 
     def test_with_error(self):
         with self.assertRaises(TypeError):
             fetch_list = [23]
+<<<<<<< HEAD
             res = self.exe.run(
                 self.main_program, feed=self.feed, fetch_list=fetch_list
             )
@@ -61,6 +87,17 @@ class TestCheckFetchList(unittest.TestCase):
             res = self.exe.run(
                 self.main_program, feed=self.feed, fetch_list=fetch_list
             )
+=======
+            res = self.exe.run(self.main_program,
+                               feed=self.feed,
+                               fetch_list=fetch_list)
+
+        with self.assertRaises(TypeError):
+            fetch_list = [(self.fetch_list[0], 32)]
+            res = self.exe.run(self.main_program,
+                               feed=self.feed,
+                               fetch_list=fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 
 import yaml
@@ -20,6 +21,19 @@ from sparse_api_gen import SparseAPI
 
 
 class SparseBackwardAPI(SparseAPI, BackwardAPI):
+=======
+import os
+import yaml
+import argparse
+import re
+
+from sparse_api_gen import SparseAPI
+from backward_api_gen import BackwardAPI
+
+
+class SparseBackwardAPI(SparseAPI, BackwardAPI):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, bw_api_item_yaml):
         BackwardAPI.__init__(self, bw_api_item_yaml)
 
@@ -44,6 +58,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def get_define_args(self, inplace_flag=False):
         return BackwardAPI.get_define_args(self)
 
+<<<<<<< HEAD
     def gene_output(
         self,
         out_dtype_list,
@@ -51,18 +66,30 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
         code_indent='',
         inplace_flag=False,
     ):
+=======
+    def gene_output(self,
+                    out_dtype_list,
+                    out_tensor_type_list=None,
+                    code_indent='',
+                    inplace_flag=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         kernel_output = []
         output_names = []
         output_create = ""
         output_type_map = {
             'dense': 'TensorType::DENSE_TENSOR',
             'sparse_coo': 'TensorType::SPARSE_COO',
+<<<<<<< HEAD
             'sparse_csr': 'TensorType::SPARSE_CSR',
+=======
+            'sparse_csr': 'TensorType::SPARSE_CSR'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         if len(out_dtype_list) == 1:
             kernel_output.append('kernel_out')
             output_names.append('kernel_out')
+<<<<<<< HEAD
             inplace_assign = (
                 " = " + self.inplace_map[self.outputs['names'][0]]
                 if inplace_flag
@@ -70,6 +97,11 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                 and self.outputs['names'][0] in self.inplace_map
                 else ""
             )
+=======
+            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
+                0]] if inplace_flag and self.inplace_map is not None and self.outputs[
+                    'names'][0] in self.inplace_map else ""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             output_create = f"""
     auto kernel_out = SetSparseKernelOutput({self.outputs['names'][0]}, {output_type_map[out_dtype_list[0]]});"""
 
@@ -79,6 +111,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
             for i, out_type_item in enumerate(out_dtype_list):
                 kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
+<<<<<<< HEAD
                 if (
                     inplace_flag
                     and self.inplace_map is not None
@@ -95,13 +128,26 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                     + f"""
     auto kernel_out_{i} = SetSparseKernelOutput({self.outputs['names'][i]}, {output_type_map[out_dtype_list[i]]});"""
                 )
+=======
+                if inplace_flag and self.inplace_map is not None and self.outputs[
+                        'names'][i] in self.inplace_map:
+                    output_create = output_create + f"""
+    *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
+
+                output_create = output_create + f"""
+    auto kernel_out_{i} = SetSparseKernelOutput({self.outputs['names'][i]}, {output_type_map[out_dtype_list[i]]});"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
+<<<<<<< HEAD
                     self.api
                 )
             )
+=======
+                    self.api))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return kernel_output, output_names, output_create
 
@@ -134,26 +180,41 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/backward.h"
+<<<<<<< HEAD
 
 DECLARE_int32(low_precision_op_list);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 """
 
 
 def api_namespace():
+<<<<<<< HEAD
     return (
         """
+=======
+    return ("""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace experimental {
 namespace sparse {
 
+<<<<<<< HEAD
 """,
         """
+=======
+""", """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace sparse
 }  // namespace experimental
 }  // namespace paddle
+<<<<<<< HEAD
 """,
     )
+=======
+""")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def generate_api(api_yaml_path, header_file_path, source_file_path):
@@ -187,6 +248,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
 def main():
     parser = argparse.ArgumentParser(
+<<<<<<< HEAD
         description='Generate PaddlePaddle C++ Sparse API files'
     )
     parser.add_argument(
@@ -206,6 +268,20 @@ def main():
         help='output of generated api source code file',
         default='paddle/phi/api/lib/sparse_bw_api.cc',
     )
+=======
+        description='Generate PaddlePaddle C++ Sparse API files')
+    parser.add_argument('--api_yaml_path',
+                        help='path to sparse api yaml file',
+                        default='paddle/phi/api/yaml/sparse_backward.yaml')
+
+    parser.add_argument('--api_header_path',
+                        help='output of generated api header code file',
+                        default='paddle/phi/api/backward/sparse_bw_api.h')
+
+    parser.add_argument('--api_source_path',
+                        help='output of generated api source code file',
+                        default='paddle/phi/api/lib/sparse_bw_api.cc')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     options = parser.parse_args()
 

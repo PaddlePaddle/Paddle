@@ -12,33 +12,72 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+=======
+from __future__ import print_function
+
+import numpy as np
+import argparse
+import os
+import sys
+import signal
+import time
+import socket
+from contextlib import closing
+from six import string_types
+import math
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.profiler as profiler
+import paddle.fluid.unique_name as nameGen
+from paddle.fluid import core
+import unittest
+from multiprocessing import Process
+import paddle.fluid.layers as layers
+from functools import reduce
+from test_collective_base import TestCollectiveRunnerBase, runtime_main
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestCollectiveAllreduce(TestCollectiveRunnerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program):
         ring_id = 0
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
             tindata.desc.set_need_check_feed(False)
+=======
+            tindata = layers.data(name="tindata",
+                                  shape=[10, 1000],
+                                  dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             toutdata = main_prog.current_block().create_var(
                 name="outofallreduce",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
+<<<<<<< HEAD
                 stop_gradient=False,
             )
+=======
+                stop_gradient=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # tout = tin + tin - tin = tin
             if True:
@@ -59,6 +98,7 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
                     outputs={'Out': toutdata},
                 )
 
+<<<<<<< HEAD
             main_prog.global_block().append_op(
                 type='c_wait_compute',
                 inputs={'X': toutdata},
@@ -80,6 +120,23 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
                 outputs={'Out': toutdata},
                 attrs={'ring_id': ring_id},
             )
+=======
+            main_prog.global_block().append_op(type='c_wait_compute',
+                                               inputs={'X': toutdata},
+                                               outputs={'Out': toutdata},
+                                               attrs={'ring_id': ring_id})
+
+            main_prog.global_block().append_op(type="c_allreduce_sum",
+                                               inputs={'X': toutdata},
+                                               attrs={'ring_id': ring_id},
+                                               outputs={'Out': toutdata},
+                                               attr={'use_calc_stream': False})
+
+            main_prog.global_block().append_op(type="c_wait_comm",
+                                               inputs={'X': toutdata},
+                                               outputs={'Out': toutdata},
+                                               attrs={'ring_id': ring_id})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # tout = tin + tout - tin = tout
             if True:

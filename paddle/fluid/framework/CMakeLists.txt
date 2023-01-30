@@ -29,6 +29,7 @@ function(windows_symbolic TARGET)
   endforeach()
 endfunction()
 
+<<<<<<< HEAD
 # Usage: pass_library(target inference) will append to paddle_inference_pass.h
 set(pass_file
     ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h.tmp)
@@ -76,6 +77,8 @@ function(pass_library TARGET DEST)
   endif()
 endfunction()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 add_subdirectory(ir)
 add_subdirectory(details)
 add_subdirectory(fleet)
@@ -115,7 +118,11 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 cc_library(
   string_array
   SRCS string_array.cc
+<<<<<<< HEAD
   DEPS utf8proc phi_enforce)
+=======
+  DEPS utf8proc)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 cc_library(
   data_type
@@ -225,6 +232,13 @@ cc_test(
   SRCS reader_test.cc
   DEPS reader)
 
+<<<<<<< HEAD
+=======
+cc_library(
+  threadpool
+  SRCS threadpool.cc
+  DEPS enforce)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 cc_test(
   threadpool_test
   SRCS threadpool_test.cc
@@ -233,8 +247,12 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
+<<<<<<< HEAD
   DEPS framework_proto scope tensor_array sparse_coo_tensor sparse_csr_tensor
        extended_tensor)
+=======
+  DEPS framework_proto scope tensor_array sparse_coo_tensor sparse_csr_tensor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -500,8 +518,12 @@ if(WITH_XPU)
          phi_utils
          kernel_factory
          infershape_utils
+<<<<<<< HEAD
          op_utils
          op_compat_infos)
+=======
+         op_utils)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 else()
   cc_library(
     operator
@@ -526,8 +548,12 @@ else()
          phi_utils
          kernel_factory
          infershape_utils
+<<<<<<< HEAD
          op_utils
          op_compat_infos)
+=======
+         op_utils)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 cc_test(
@@ -618,8 +644,12 @@ if(WITH_PYTHON)
     fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
+<<<<<<< HEAD
     ps_py_proto_init
     pslib_py_proto)
+=======
+    ps_py_proto_init)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto
@@ -631,6 +661,7 @@ if(WITH_PYTHON)
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+<<<<<<< HEAD
     if(NOT WITH_ROCM)
       add_custom_target(
         fleet_executor_proto_init ALL
@@ -643,6 +674,18 @@ if(WITH_PYTHON)
           "Copy generated python proto into directory paddle/distributed/fleet/proto."
       )
     endif()
+=======
+    add_custom_target(
+      fleet_executor_proto_init ALL
+      DEPENDS fleet_proto_init fleet_executor_desc_py_proto
+      COMMAND
+        cp
+        ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
+        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+      COMMENT
+        "Copy generated python proto into directory paddle/distributed/fleet/proto."
+    )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
@@ -866,8 +909,12 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
+<<<<<<< HEAD
            fleet_executor
            flags)
+=======
+           fleet_executor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )
@@ -1159,6 +1206,7 @@ cc_library(
   op_compatible_info
   SRCS op_compatible_info.cc
   DEPS string_helper proto_desc)
+<<<<<<< HEAD
 cc_test_old(
   op_compatible_info_test
   SRCS
@@ -1170,6 +1218,22 @@ cc_test_old(
   glog)
 
 cc_library(
+=======
+cc_test(
+  op_compatible_info_test
+  SRCS op_compatible_info_test.cc
+  DEPS op_compatible_info proto_desc string_helper glog)
+
+cc_library(
+  save_load_util
+  SRCS save_load_util.cc
+  DEPS tensor scope layer)
+cc_test(
+  save_load_util_test
+  SRCS save_load_util_test.cc
+  DEPS save_load_util tensor scope layer)
+cc_library(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   generator
   SRCS generator.cc
   DEPS enforce place)
@@ -1247,4 +1311,29 @@ cc_test(
   SRCS phi_utils_test.cc
   DEPS phi_utils)
 
+<<<<<<< HEAD
 cc_test(convert_utils_test SRCS convert_utils_test.cc)
+=======
+if(WITH_GPU OR WITH_ROCM)
+  cc_library(
+    fluid_convert_utils
+    SRCS convert_utils.cc
+    DEPS data_type place gpu_info)
+else()
+  cc_library(
+    fluid_convert_utils
+    SRCS convert_utils.cc
+    DEPS data_type place)
+endif()
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(fluid_convert_utils mkldnn)
+endif()
+
+cc_test(
+  convert_utils_test
+  SRCS convert_utils_test.cc
+  DEPS fluid_convert_utils)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

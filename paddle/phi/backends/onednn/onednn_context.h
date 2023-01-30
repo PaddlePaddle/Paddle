@@ -20,12 +20,18 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/attribute.h"
 
 namespace phi {
 
 using TensorNameMap = std::map<std::string, std::vector<std::string>>;
 
+=======
+
+namespace phi {
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class OneDNNContextThreadLocals {
   // default mkldnn session id
 
@@ -137,6 +143,7 @@ class OneDNNContext : public CPUContext {
     return OneDNNContextThreadLocals::fetch();
   }
 
+<<<<<<< HEAD
   // Several methods for adapting ONEDNN-specific attributes and inputs
   bool HasDnnAttr(const std::string& attr_name) const;
   const Attribute& GetDnnAttr(const std::string& attr_name) const;
@@ -159,6 +166,8 @@ class OneDNNContext : public CPUContext {
 
   static const char* name() { return "OneDNNContext"; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;

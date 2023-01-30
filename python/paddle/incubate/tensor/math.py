@@ -12,25 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle.utils.deprecated as deprecated
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper, _non_static_mode
+=======
+from paddle.fluid.layer_helper import LayerHelper, _non_static_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+import paddle.utils.deprecated as deprecated
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
+<<<<<<< HEAD
 @deprecated(
     since="2.4.0",
     update_to="paddle.geometric.segment_sum",
     level=1,
     reason="paddle.incubate.segment_sum will be removed in future",
 )
+=======
+@deprecated(since="2.4.0",
+            update_to="paddle.geometric.segment_sum",
+            level=1,
+            reason="paddle.incubate.segment_sum will be removed in future")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def segment_sum(data, segment_ids, name=None):
     r"""
     Segment Sum Operator.
 
+<<<<<<< HEAD
     Sum the elements of input `data` which with
     the same index in `segment_ids`.
     It computes a tensor such that
@@ -39,11 +55,17 @@ def segment_sum(data, segment_ids, name=None):
 
         out_i = \sum_{j \in \{segment\_ids_j == i \} } data_{j}
 
+=======
+    This operator sums the elements of input `data` which with
+    the same index in `segment_ids`.
+    It computes a tensor such that $out_i = \\sum_{j} data_{j}$
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     where sum is over j such that `segment_ids[j] == i`.
 
     Args:
         data (Tensor): A tensor, available data type float32, float64, int32, int64.
         segment_ids (Tensor): A 1-D tensor, which have the same size
+<<<<<<< HEAD
                             with the first dimension of input data.
                             Available data type is int32, int64.
         name (str, optional): Name for the operation (optional, default is None).
@@ -51,6 +73,15 @@ def segment_sum(data, segment_ids, name=None):
 
     Returns:
        Tensor, the Segment Sum result.
+=======
+                            with the first dimension of input data. 
+                            Available data type is int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). 
+                            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+       output (Tensor): the reduced result.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
@@ -65,6 +96,7 @@ def segment_sum(data, segment_ids, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.segment_pool(data, segment_ids, "SUM")[0]
+<<<<<<< HEAD
     else:
         check_variable_and_dtype(
             data, "X", ("float32", "float64", "int32", "int64"), "segment_pool"
@@ -103,11 +135,52 @@ def segment_mean(data, segment_ids, name=None):
 
         out_i = \mathop{mean}_{j \in \{segment\_ids_j == i \} } data_{j}
 
+=======
+    if _in_legacy_dygraph():
+        out, tmp = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype',
+                                              "SUM")
+        return out
+
+    check_variable_and_dtype(data, "X",
+                             ("float32", "float64", "int32", "int64"),
+                             "segment_pool")
+    check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
+                             "segment_pool")
+
+    helper = LayerHelper("segment_sum", **locals())
+    out = helper.create_variable_for_type_inference(dtype=data.dtype)
+    summed_ids = helper.create_variable_for_type_inference(dtype=data.dtype)
+    helper.append_op(type="segment_pool",
+                     inputs={
+                         "X": data,
+                         "SegmentIds": segment_ids
+                     },
+                     outputs={
+                         "Out": out,
+                         "SummedIds": summed_ids
+                     },
+                     attrs={"pooltype": "SUM"})
+    return out
+
+
+@deprecated(since="2.4.0",
+            update_to="paddle.geometric.segment_mean",
+            level=1,
+            reason="paddle.incubate.segment_mean will be removed in future")
+def segment_mean(data, segment_ids, name=None):
+    r"""
+    Segment mean Operator.
+
+    Ihis operator calculate the mean value of input `data` which
+    with the same index in `segment_ids`.
+    It computes a tensor such that $out_i = \\frac{1}{n_i}  \\sum_{j} data[j]$
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     where sum is over j such that 'segment_ids[j] == i' and $n_i$ is the number
     of all index 'segment_ids[j] == i'.
 
     Args:
         data (tensor): a tensor, available data type float32, float64, int32, int64.
+<<<<<<< HEAD
         segment_ids (tensor): a 1-d tensor, which have the same size
                             with the first dimension of input data.
                             available data type is int32, int64.
@@ -116,6 +189,16 @@ def segment_mean(data, segment_ids, name=None):
 
     Returns:
        Tensor, the Segment Mean result.
+=======
+        segment_ids (tensor): a 1-d tensor, which have the same size 
+                            with the first dimension of input data. 
+                            available data type is int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). 
+                            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+       output (Tensor): the reduced result.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
@@ -132,6 +215,7 @@ def segment_mean(data, segment_ids, name=None):
     if in_dygraph_mode():
         return _C_ops.segment_pool(data, segment_ids, "MEAN")[0]
     if _non_static_mode():
+<<<<<<< HEAD
         out, tmp = _legacy_C_ops.segment_pool(
             data, segment_ids, 'pooltype', "MEAN"
         )
@@ -143,10 +227,22 @@ def segment_mean(data, segment_ids, name=None):
     check_variable_and_dtype(
         segment_ids, "SegmentIds", ("int32", "int64"), "segment_pool"
     )
+=======
+        out, tmp = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype',
+                                              "MEAN")
+        return out
+
+    check_variable_and_dtype(data, "X",
+                             ("float32", "float64", "int32", "int64"),
+                             "segment_pool")
+    check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
+                             "segment_pool")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     helper = LayerHelper("segment_mean", **locals())
     out = helper.create_variable_for_type_inference(dtype=data.dtype)
     summed_ids = helper.create_variable_for_type_inference(dtype=data.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="segment_pool",
         inputs={"X": data, "SegmentIds": segment_ids},
@@ -162,10 +258,30 @@ def segment_mean(data, segment_ids, name=None):
     level=1,
     reason="paddle.incubate.segment_min will be removed in future",
 )
+=======
+    helper.append_op(type="segment_pool",
+                     inputs={
+                         "X": data,
+                         "SegmentIds": segment_ids
+                     },
+                     outputs={
+                         "Out": out,
+                         "SummedIds": summed_ids
+                     },
+                     attrs={"pooltype": "MEAN"})
+    return out
+
+
+@deprecated(since="2.4.0",
+            update_to="paddle.geometric.segment_min",
+            level=1,
+            reason="paddle.incubate.segment_min will be removed in future")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def segment_min(data, segment_ids, name=None):
     r"""
     Segment min operator.
 
+<<<<<<< HEAD
     Calculate the minimum elements of input `data` which with
     the same index in `segment_ids`.
     It computes a tensor such that
@@ -174,11 +290,17 @@ def segment_min(data, segment_ids, name=None):
 
         out_i = \min_{j \in \{segment\_ids_j == i \} } data_{j}
 
+=======
+    This operator calculate the minimum elements of input `data` which with
+    the same index in `segment_ids`.
+    It computes a tensor such that $out_i = \\min_{j} data_{j}$
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     where min is over j such that `segment_ids[j] == i`.
 
     Args:
         data (tensor): a tensor, available data type float32, float64, int32, int64.
         segment_ids (tensor): a 1-d tensor, which have the same size
+<<<<<<< HEAD
                             with the first dimension of input data.
                             available data type is int32, int64.
         name (str, optional): Name for the operation (optional, default is None).
@@ -186,6 +308,15 @@ def segment_min(data, segment_ids, name=None):
 
     Returns:
        Tensor, the minimum result.
+=======
+                            with the first dimension of input data. 
+                            available data type is int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). 
+                            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+       output (Tensor): the reduced result.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
@@ -203,6 +334,7 @@ def segment_min(data, segment_ids, name=None):
         return _C_ops.segment_pool(data, segment_ids, "MIN")[0]
 
     if _non_static_mode():
+<<<<<<< HEAD
         out, tmp = _legacy_C_ops.segment_pool(
             data, segment_ids, 'pooltype', "MIN"
         )
@@ -214,10 +346,22 @@ def segment_min(data, segment_ids, name=None):
     check_variable_and_dtype(
         segment_ids, "SegmentIds", ("int32", "int64"), "segment_pool"
     )
+=======
+        out, tmp = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype',
+                                              "MIN")
+        return out
+
+    check_variable_and_dtype(data, "X",
+                             ("float32", "float64", "int32", "int64"),
+                             "segment_pool")
+    check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
+                             "segment_pool")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     helper = LayerHelper("segment_min", **locals())
     out = helper.create_variable_for_type_inference(dtype=data.dtype)
     summed_ids = helper.create_variable_for_type_inference(dtype=data.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="segment_pool",
         inputs={"X": data, "SegmentIds": segment_ids},
@@ -233,10 +377,30 @@ def segment_min(data, segment_ids, name=None):
     level=1,
     reason="paddle.incubate.segment_max will be removed in future",
 )
+=======
+    helper.append_op(type="segment_pool",
+                     inputs={
+                         "X": data,
+                         "SegmentIds": segment_ids
+                     },
+                     outputs={
+                         "Out": out,
+                         "SummedIds": summed_ids
+                     },
+                     attrs={"pooltype": "MIN"})
+    return out
+
+
+@deprecated(since="2.4.0",
+            update_to="paddle.geometric.segment_max",
+            level=1,
+            reason="paddle.incubate.segment_max will be removed in future")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def segment_max(data, segment_ids, name=None):
     r"""
     Segment max operator.
 
+<<<<<<< HEAD
     Calculate the maximum elements of input `data` which with
     the same index in `segment_ids`.
     It computes a tensor such that
@@ -245,11 +409,17 @@ def segment_max(data, segment_ids, name=None):
 
         out_i = \max_{j \in \{segment\_ids_j == i \} } data_{j}
 
+=======
+    This operator calculate the maximum elements of input `data` which with
+    the same index in `segment_ids`.
+    It computes a tensor such that $out_i = \\max_{j} data_{j}$
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     where max is over j such that `segment_ids[j] == i`.
 
     Args:
         data (tensor): a tensor, available data type float32, float64, int32, int64.
         segment_ids (tensor): a 1-d tensor, which have the same size
+<<<<<<< HEAD
                             with the first dimension of input data.
                             available data type is int32, int64.
         name (str, optional): Name for the operation (optional, default is None).
@@ -257,6 +427,15 @@ def segment_max(data, segment_ids, name=None):
 
     Returns:
        Tensor, the maximum result.
+=======
+                            with the first dimension of input data. 
+                            available data type is int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). 
+                            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+       output (Tensor): the reduced result.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
@@ -275,6 +454,7 @@ def segment_max(data, segment_ids, name=None):
         return out
 
     if _non_static_mode():
+<<<<<<< HEAD
         out, tmp = _legacy_C_ops.segment_pool(
             data, segment_ids, 'pooltype', "MAX"
         )
@@ -286,14 +466,38 @@ def segment_max(data, segment_ids, name=None):
     check_variable_and_dtype(
         segment_ids, "SegmentIds", ("int32", "int64"), "segment_pool"
     )
+=======
+        out, tmp = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype',
+                                              "MAX")
+        return out
+
+    check_variable_and_dtype(data, "X",
+                             ("float32", "float64", "int32", "int64"),
+                             "segment_pool")
+    check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
+                             "segment_pool")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     helper = LayerHelper("segment_max", **locals())
     out = helper.create_variable_for_type_inference(dtype=data.dtype)
     summed_ids = helper.create_variable_for_type_inference(dtype=data.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="segment_pool",
         inputs={"X": data, "SegmentIds": segment_ids},
         outputs={"Out": out, "SummedIds": summed_ids},
         attrs={"pooltype": "MAX"},
     )
+=======
+    helper.append_op(type="segment_pool",
+                     inputs={
+                         "X": data,
+                         "SegmentIds": segment_ids
+                     },
+                     outputs={
+                         "Out": out,
+                         "SummedIds": summed_ids
+                     },
+                     attrs={"pooltype": "MAX"})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return out

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from paddle.fluid.default_scope_funcs import (
@@ -25,6 +26,16 @@ from paddle.fluid.default_scope_funcs import (
 
 
 class TestDefaultScopeFuncs(unittest.TestCase):
+=======
+from __future__ import print_function
+
+from paddle.fluid.default_scope_funcs import *
+import unittest
+
+
+class TestDefaultScopeFuncs(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_cur_scope(self):
         self.assertIsNotNone(get_cur_scope())
 
@@ -40,6 +51,10 @@ class TestDefaultScopeFuncs(unittest.TestCase):
         leave_local_scope()
 
     def test_var_get_int(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def __new_scope__():
             i = var("var_i")
             self.assertFalse(i.is_int())

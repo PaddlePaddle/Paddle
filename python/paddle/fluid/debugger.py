@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
+=======
+from __future__ import print_function
+
+import sys
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import random
 import os
 import re
@@ -52,9 +59,14 @@ def repr_data_type(type):
 
 
 def repr_tensor(proto):
+<<<<<<< HEAD
     return "tensor(type={}, shape={})".format(
         _dtype2str_[int(proto.data_type)], str(proto.dims)
     )
+=======
+    return "tensor(type={}, shape={})".format(_dtype2str_[int(proto.data_type)],
+                                              str(proto.dims))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 reprtpl = "{ttype} {name} ({reprs})"
@@ -66,28 +78,42 @@ def repr_lodtensor(proto):
 
     level = proto.type.lod_tensor.lod_level
     reprs = repr_tensor(proto.type.lod_tensor.tensor)
+<<<<<<< HEAD
     return reprtpl.format(
         ttype="LoDTensor" if level > 0 else "Tensor",
         name=proto.name,
         reprs="level=%d, %s" % (level, reprs) if level > 0 else reprs,
     )
+=======
+    return reprtpl.format(ttype="LoDTensor" if level > 0 else "Tensor",
+                          name=proto.name,
+                          reprs="level=%d, %s" %
+                          (level, reprs) if level > 0 else reprs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def repr_selected_rows(proto):
     if proto.type.type != framework_pb2.VarType.SELECTED_ROWS:
         return
 
+<<<<<<< HEAD
     return reprtpl.format(
         ttype="SelectedRows",
         name=proto.name,
         reprs=repr_tensor(proto.type.selected_rows),
     )
+=======
+    return reprtpl.format(ttype="SelectedRows",
+                          name=proto.name,
+                          reprs=repr_tensor(proto.type.selected_rows))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def repr_tensor_array(proto):
     if proto.type.type != framework_pb2.VarType.LOD_TENSOR_ARRAY:
         return
 
+<<<<<<< HEAD
     return reprtpl.format(
         ttype="TensorArray",
         name=proto.name,
@@ -97,6 +123,13 @@ def repr_tensor_array(proto):
             repr_tensor(proto.type.lod_tensor.tensor),
         ),
     )
+=======
+    return reprtpl.format(ttype="TensorArray",
+                          name=proto.name,
+                          reprs="level=%d, %s" %
+                          (proto.type.tensor_array.lod_level,
+                           repr_tensor(proto.type.lod_tensor.tensor)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 type_handlers = [
@@ -123,6 +156,7 @@ def pprint_program_codes(program_desc):
 
 
 def pprint_block_codes(block_desc, show_backward=False):
+<<<<<<< HEAD
     def is_op_backward(op_desc):
         if op_desc.type.endswith('_grad'):
             return True
@@ -140,6 +174,21 @@ def pprint_block_codes(block_desc, show_backward=False):
         for var in op_desc.outputs:
             if is_var_backward(var):
                 return True
+=======
+
+    def is_op_backward(op_desc):
+        if op_desc.type.endswith('_grad'): return True
+
+        def is_var_backward(var):
+            if "@GRAD" in var.parameter: return True
+            for arg in var.arguments:
+                if "@GRAD" in arg: return True
+
+        for var in op_desc.inputs:
+            if is_var_backward(var): return True
+        for var in op_desc.outputs:
+            if is_var_backward(var): return True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return False
 
     def is_var_backward(var_desc):
@@ -147,8 +196,12 @@ def pprint_block_codes(block_desc, show_backward=False):
 
     if type(block_desc) is not framework_pb2.BlockDesc:
         block_desc = framework_pb2.BlockDesc.FromString(
+<<<<<<< HEAD
             block_desc.desc.serialize_to_string()
         )
+=======
+            block_desc.desc.serialize_to_string())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     var_reprs = []
     op_reprs = []
     for var in block_desc.vars:
@@ -157,8 +210,12 @@ def pprint_block_codes(block_desc, show_backward=False):
         var_reprs.append(repr_var(var))
 
     for op in block_desc.ops:
+<<<<<<< HEAD
         if not show_backward and is_op_backward(op):
             continue
+=======
+        if not show_backward and is_op_backward(op): continue
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         op_reprs.append(repr_op(op))
 
     tpl = "// block-{idx}  parent-{pidx}\n// variables\n{vars}\n\n// operators\n{ops}\n"
@@ -196,8 +253,12 @@ def _repr_op_fill_constant(optype, inputs, outputs, attrs):
         return "{output} = {data} [shape={shape}]".format(
             output=','.join(outputs),
             data=attrs['value'],
+<<<<<<< HEAD
             shape=str(attrs['shape']),
         )
+=======
+            shape=str(attrs['shape']))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 op_repr_handlers = [
@@ -231,6 +292,7 @@ def repr_op(opdesc):
 
     for handler in op_repr_handlers:
         res = handler(opdesc.type, inputs, outputs, attr_dict)
+<<<<<<< HEAD
         if res:
             return res
 
@@ -241,6 +303,15 @@ def repr_op(opdesc):
         attrs="{%s}" % ','.join(attrs),
         is_target=", is_target" if is_target else "",
     )
+=======
+        if res: return res
+
+    return tpl.format(outputs=', '.join(outputs),
+                      optype=opdesc.type,
+                      inputs=', '.join(inputs),
+                      attrs="{%s}" % ','.join(attrs),
+                      is_target=", is_target" if is_target else "")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
@@ -252,11 +323,18 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
     graph = GraphPreviewGenerator("some graph")
     # collect parameters and args
     protostr = block.desc.serialize_to_string()
+<<<<<<< HEAD
     desc = framework_pb2.BlockDesc.FromString(bytes(protostr))
 
     def need_highlight(name):
         if highlights is None:
             return False
+=======
+    desc = framework_pb2.BlockDesc.FromString(six.binary_type(protostr))
+
+    def need_highlight(name):
+        if highlights is None: return False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for pattern in highlights:
             assert type(pattern) is str
             if re.match(pattern, name):
@@ -269,11 +347,17 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
         # TODO(gongwb): format the var.type
         # create var
         if var.persistable:
+<<<<<<< HEAD
             varn = graph.add_param(
                 var.name,
                 str(var.type).replace("\n", "<br />", 1),
                 highlight=need_highlight(var.name),
             )
+=======
+            varn = graph.add_param(var.name,
+                                   str(var.type).replace("\n", "<br />", 1),
+                                   highlight=need_highlight(var.name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             varn = graph.add_arg(var.name, highlight=need_highlight(var.name))
         vars[var.name] = varn
@@ -285,8 +369,12 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
                 vars[arg] = graph.add_arg(arg, highlight=need_highlight(arg))
             varn = vars[arg]
             highlight = need_highlight(op.description) or need_highlight(
+<<<<<<< HEAD
                 varn.description
             )
+=======
+                varn.description)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if op2var:
                 graph.add_edge(op, varn, highlight=highlight)
             else:

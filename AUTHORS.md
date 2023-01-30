@@ -1,6 +1,9 @@
+<<<<<<< HEAD
 This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddle/Paddle/) codebase, to see a full list, please use the source control tool git. PaddlePaddle community encourages every Paddle codebase author include his/her GitHub account and fullname here.
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 | Github account | name |
 |---|---|
 | abhinavarora | Abhinav Arora |
@@ -12,7 +15,10 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | beckett1124 | Bin Qi |
 | ChengduoZH | Cheng-Duo Zhao|
 | chengxiaohua1105 | Xiao-Hua Cheng |
+<<<<<<< HEAD
 | chenwhql | Wei-Hang Chen |
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
 | ddokupil | Dariusz Dokupil |
@@ -20,7 +26,10 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | dragonwarrior | Long Wang |
 | dyning | Yuning Du |
 | emailweixu | Wei Xu |
+<<<<<<< HEAD
 | engineer1109 | Jia-Liang Wang |
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 | gangliao | Gang Liao |
 | gongweibao | Wei-Bao Gong |
 | guru4elephant | Daxiang Dong |
@@ -29,11 +38,17 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | Haichao-Zhang | Hai-Chao Zhang |
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
+<<<<<<< HEAD
 | houj04 | HOU Jue |
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
 | [jczaja](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jacek Czaja |
 | jiahy0825 | Hongyu Jia |
+=======
+| jacquesqiao | Long-Fei Qiao |
+| [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
+| [jczaja](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jacek Czaja |
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
 | kexinzhao | Ke-Xin Zhao |
@@ -86,13 +101,17 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | xushaoyong | Shao-Yong Xu |
 | Yancey1989 | Xu Yan |
 | zhaopu7 | Pu Zhao |
+<<<<<<< HEAD
 | zhiqiu | Qiu-Liang Chen |
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 | zhouxiao-coder | Xiao Zhou |
 | Zrachel | Rui-Qing Zhang |
 | jeng1220 | Bai-Cheng(Ryan) Jeng (NVIDIA) |
 | mingxu1067 | Ming Huang (NVIDIA) |
 | zlsh80826 | Reese Wang (NVIDIA) |
 | leo0519 | Leo Chen (NVIDIA) |
+<<<<<<< HEAD
 | jzhang533 | Jun Zhang |
 | Ligoml | Meng-Liu Li |
 | jeff41404 | Xiang Gao |
@@ -120,3 +139,5 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | yiakwy, yiakwy-xpu-ml-framework-team | Yi Wang (Graphcore) |
 | [Yulv-git](https://github.com/Yulv-git) | Shuangchi He |
 | [zrr1999](https://github.com/zrr1999) | Rongrui Zhan |
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

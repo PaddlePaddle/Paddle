@@ -22,6 +22,7 @@
         python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py -f ${PADDLE_ROOT}/python/paddle/fluid/tests/unittests/collective/testslist.csv
 ```
     Then the cmd generates a file named CMakeLists.txt in the save directory with the testslist.csv.
+<<<<<<< HEAD
 * usgae:
     The command accepts --files/-f or --dirpaths/-d options, both of which accepts multiple values.
     Option -f accepts a list of testslist.csv.
@@ -31,5 +32,16 @@
 * note:
 When commiting the codes, you should commit both the testslist.csv and the generated CMakeLists.txt. Once you pulled the repo, you don't need to run this command until you modify the testslists.csv file.
 
+=======
+* usgae:  
+    The command accepts --files/-f or --dirpaths/-d options, both of which accepts multiple values.  
+    Option -f accepts a list of testslist.csv.  
+    Option -d accepts a list of directory path including files named testslist.csv.  
+    Type `python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py --help` for details.
+
+* note:  
+When commiting the codes, you should commit both the testslist.csv and the generated CMakeLists.txt. Once you pulled the repo, you don't need to run this command until you modify the testslists.csv file.
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ### step 4. Build and test
     Build paddle and run ctest for the new unit test

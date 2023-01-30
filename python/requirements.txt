@@ -1,7 +1,13 @@
 requests>=2.20.0
 numpy>=1.13
+<<<<<<< HEAD
 protobuf>=3.1.0, <=3.20.2
 Pillow
+=======
+protobuf>=3.1.0, <=3.20.0
+Pillow
+six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 decorator
 astor
 paddle_bfloat==0.1.7

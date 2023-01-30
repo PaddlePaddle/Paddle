@@ -35,7 +35,11 @@ class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                              comment.type));
     AddOutput("Out", string::Sprintf("n-dim bool Variable"));
     AddComment(string::Sprintf(R"DOC(%s Operator
+<<<<<<< HEAD
 It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim phi::DenseTensor or Tensor.
+=======
+It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim LoDTensor or Tensor.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 Each element of Out is calculated by %s
 )DOC",
                                comment.type,
@@ -49,6 +53,7 @@ class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     OpComment comment;
     AddInput("X",
+<<<<<<< HEAD
              string::Sprintf(
                  "Operand of %s operator. Must be "
                  "a phi::DenseTensor or Tensor of type being one of bool, "
@@ -57,6 +62,15 @@ class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", string::Sprintf("n-dim bool phi::DenseTensor or Tensor."));
     AddComment(string::Sprintf(R"DOC(%s Operator
 It operates element-wise on X, and returns the Out. X and Out are N-dim phi::DenseTensor or Tensor.
+=======
+             string::Sprintf("Operand of %s operator. Must be "
+                             "a LoDTensor or Tensor of type being one of bool, "
+                             "int8, int16, int32, int64, float32, float64.",
+                             comment.type));
+    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor."));
+    AddComment(string::Sprintf(R"DOC(%s Operator
+It operates element-wise on X, and returns the Out. X and Out are N-dim LoDTensor or Tensor.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 Each element of Out is calculated by %s
 )DOC",
                                comment.type,
@@ -69,12 +83,20 @@ class LogicalOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // LogicalOp kernel's device type is decided by input tensor place
     kt.set_backend(
         phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    // LogicalOp kernel's device type is decided by input tensor place
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return kt;
   }
 };

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -36,8 +41,13 @@ class TestMatMulV2Op(OpTest):
         self.place = paddle.device.MLUPlace(0)
 
     def config(self):
+<<<<<<< HEAD
         self.x_shape = (100,)
         self.y_shape = (100,)
+=======
+        self.x_shape = (100, )
+        self.y_shape = (100, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.trans_x = False
         self.trans_y = False
 
@@ -76,7 +86,11 @@ class TestMatMuklOp2(TestMatMulV2Op):
     """
 
     def config(self):
+<<<<<<< HEAD
         self.x_shape = (100,)
+=======
+        self.x_shape = (100, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.y_shape = (1, 3, 2, 100)
         self.trans_x = False
         self.trans_y = True
@@ -88,7 +102,11 @@ class TestMatMuklOp3(TestMatMulV2Op):
     """
 
     def config(self):
+<<<<<<< HEAD
         self.x_shape = (100,)
+=======
+        self.x_shape = (100, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.y_shape = (1, 1, 100, 2)
         self.trans_x = False
         self.trans_y = False
@@ -100,7 +118,11 @@ class TestMatMuklOp4(TestMatMulV2Op):
     """
 
     def config(self):
+<<<<<<< HEAD
         self.x_shape = (100,)
+=======
+        self.x_shape = (100, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.y_shape = (1, 2, 100, 2)
         self.trans_x = False
         self.trans_y = False
@@ -113,7 +135,11 @@ class TestMatMuklOp5(TestMatMulV2Op):
 
     def config(self):
         self.x_shape = (1, 1, 100, 1)
+<<<<<<< HEAD
         self.y_shape = (100,)
+=======
+        self.y_shape = (100, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.trans_x = True
         self.trans_y = False
 
@@ -125,7 +151,11 @@ class TestMatMuklOp6(TestMatMulV2Op):
 
     def config(self):
         self.x_shape = (1, 2, 102, 1)
+<<<<<<< HEAD
         self.y_shape = (102,)
+=======
+        self.y_shape = (102, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.trans_x = True
         self.trans_y = False
 
@@ -137,7 +167,11 @@ class TestMatMuklOp7(TestMatMulV2Op):
 
     def config(self):
         self.x_shape = (1, 2, 1, 100)
+<<<<<<< HEAD
         self.y_shape = (100,)
+=======
+        self.y_shape = (100, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.trans_x = False
         self.trans_y = False
 
@@ -244,7 +278,11 @@ class TestMatMuklOp16(TestMatMulV2Op):
     """
 
     def config(self):
+<<<<<<< HEAD
         self.x_shape = 100
+=======
+        self.x_shape = (100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.y_shape = (1, 2, 2, 100, 2)
         self.trans_x = False
         self.trans_y = False
@@ -257,7 +295,11 @@ class TestMatMuklOp17(TestMatMulV2Op):
 
     def config(self):
         self.x_shape = (2, 1, 100)
+<<<<<<< HEAD
         self.y_shape = 100
+=======
+        self.y_shape = (100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.trans_x = False
         self.trans_y = False
 
@@ -298,11 +340,21 @@ class TestMatMuklOpBroadcast2(TestMatMulV2Op):
         self.trans_y = True
 
 
+<<<<<<< HEAD
 # --------------------test matmul fp16--------------------
 
 
 def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
     class TestMatMulOpFp16Case(parent):
+=======
+#--------------------test matmul fp16--------------------
+
+
+def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
+
+    class TestMatMulOpFp16Case(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -310,12 +362,18 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
             self.check_output_with_place(self.place, atol=atol)
 
         def test_check_grad(self):
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place,
                 ['X', 'Y'],
                 'Out',
                 max_relative_error=max_relative_error,
             )
+=======
+            self.check_grad_with_place(self.place, ['X', 'Y'],
+                                       'Out',
+                                       max_relative_error=max_relative_error)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestMatMulOpFp16Case.__name__ = cls_name
@@ -343,6 +401,10 @@ create_test_fp16_class(TestMatMuklOp18)
 
 
 class TestMatMulV2API(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_mlu():
@@ -359,11 +421,20 @@ class TestMatMulV2API(unittest.TestCase):
             y_np = np.random.random([3, 4]).astype("float32")
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             fetches = exe.run(
                 fluid.default_main_program(),
                 feed={"input_x": x_np, "input_y": y_np},
                 fetch_list=[result],
             )
+=======
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "input_x": x_np,
+                                  "input_y": y_np
+                              },
+                              fetch_list=[result])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static(self):
         for place in self.places:

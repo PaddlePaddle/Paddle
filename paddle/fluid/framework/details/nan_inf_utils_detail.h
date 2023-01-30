@@ -24,6 +24,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+<<<<<<< HEAD
 template <typename T,
           typename MT,
           std::enable_if_t<std::is_same<T, float>::value, bool> = true>
@@ -127,11 +128,27 @@ struct TensorCheckerVisitor {
                        const phi::DenseTensor& t,
                        const platform::Place& p)
       : op_type(o), var_name(v), tensor(t), place(p) {}
+=======
+template <typename DeviceContext>
+struct TensorCheckerVisitor {
+  TensorCheckerVisitor(const std::string& op_type,
+                       const std::string& var_name,
+                       const framework::Tensor& tensor,
+                       const platform::Place& place)
+      : op_type_(op_type),
+        var_name_(var_name),
+        tensor_(tensor),
+        place_(place) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   template <typename T>
   void apply(
       typename std::enable_if<std::is_integral<T>::value>::type* = 0) const {
+<<<<<<< HEAD
     VLOG(10) << var_name << " need not to check, it's type is not float point";
+=======
+    VLOG(10) << var_name_ << " need not to check, it's type is not float point";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename T>
@@ -142,16 +159,27 @@ struct TensorCheckerVisitor {
           std::is_same<T, ::paddle::platform::complex<double>>::value>::type* =
           0) const;
 
+<<<<<<< HEAD
   std::string op_type;
   std::string var_name;
   const phi::DenseTensor& tensor;
   const platform::Place& place;
+=======
+  std::string op_type_;
+  std::string var_name_;
+  const framework::Tensor& tensor_;
+  const platform::Place& place_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename DeviceContext>
 void tensor_check(const std::string& op_type,
                   const std::string& var_name,
+<<<<<<< HEAD
                   const phi::DenseTensor& tensor,
+=======
+                  const framework::Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const platform::Place& place);
 
 }  // namespace details

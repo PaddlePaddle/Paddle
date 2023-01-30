@@ -20,8 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using DDim = framework::DDim;
 using TensorList = std::vector<phi::DenseTensor>;
+=======
+using Tensor = framework::Tensor;
+using DDim = framework::DDim;
+using TensorList = std::vector<framework::Tensor>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename TensorType, typename T>
 void reset_parameter_vector(
     const std::vector<TensorType>& raw_params_vec,
@@ -59,6 +65,7 @@ class RNNMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Input
     auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto pre_state = ctx.MultiInput<phi::DenseTensor>("PreState");
     auto weight_list = ctx.MultiInput<phi::DenseTensor>("WeightList");
@@ -67,15 +74,31 @@ class RNNMLUKernel : public framework::OpKernel<T> {
     auto state = ctx.MultiOutput<phi::DenseTensor>("State");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto* reserve_data = ctx.Output<phi::DenseTensor>("Reserve");
+=======
+    auto* input = ctx.Input<Tensor>("Input");
+    auto pre_state = ctx.MultiInput<Tensor>("PreState");
+    auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
+    bool has_seq_length = ctx.HasInput("SequenceLength");
+    // Output
+    auto state = ctx.MultiOutput<Tensor>("State");
+    auto* output = ctx.Output<Tensor>("Out");
+    auto* reserve_data = ctx.Output<Tensor>("Reserve");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // Attributes
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
     const std::string& mode = ctx.Attr<std::string>("mode");
 
+<<<<<<< HEAD
     const phi::DenseTensor* sequence_length = nullptr;
     if (has_seq_length) {
       sequence_length = ctx.Input<phi::DenseTensor>("SequenceLength");
+=======
+    const Tensor* sequence_length = nullptr;
+    if (has_seq_length) {
+      sequence_length = ctx.Input<Tensor>("SequenceLength");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     auto init_h = pre_state[0];  // -> hx
@@ -177,7 +200,11 @@ class RNNMLUKernel : public framework::OpKernel<T> {
 
     // copy weight params
     size_t weightspace_size;
+<<<<<<< HEAD
     phi::DenseTensor weightspace;
+=======
+    framework::Tensor weightspace;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetRNNWeightSpaceSize(
         GetHandleFromCTX(ctx), rnn_desc.get(), &weightspace_size));
 
@@ -305,9 +332,16 @@ class RNNMLUKernel : public framework::OpKernel<T> {
       auto masked_mode = CNNL_MASKED_FILL;
       float off_value = 0.0f;
 
+<<<<<<< HEAD
       phi::DenseTensor on_value_tensor(input->dtype());
       phi::DenseTensor masked_tensor(framework::TransToPhiDataType(VT::INT8));
       phi::DenseTensor h_masked_tensor(framework::TransToPhiDataType(VT::INT8));
+=======
+      framework::Tensor on_value_tensor(input->dtype());
+      framework::Tensor masked_tensor(framework::TransToPhiDataType(VT::INT8));
+      framework::Tensor h_masked_tensor(
+          framework::TransToPhiDataType(VT::INT8));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       on_value_tensor.Resize({1});
       masked_tensor.Resize({seq_len, batch_size, direction_num * hidden_size});
       h_masked_tensor.Resize(
@@ -360,20 +394,34 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto stream = ctx.template device_context<MLUDeviceContext>().stream();
     // get the tensor pointer for the input
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto pre_state = ctx.MultiInput<phi::DenseTensor>("PreState");
     auto weight_list = ctx.MultiInput<phi::DenseTensor>("WeightList");
     auto* output = ctx.Input<phi::DenseTensor>("Out");
     auto* reserve_data = ctx.Input<phi::DenseTensor>("Reserve");
+=======
+    auto* input = ctx.Input<Tensor>("Input");
+    auto pre_state = ctx.MultiInput<Tensor>("PreState");
+    auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
+    auto* output = ctx.Input<Tensor>("Out");
+    auto* reserve_data = ctx.Input<Tensor>("Reserve");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
     const std::string& mode = ctx.Attr<std::string>("mode");
 
     bool has_seq_length = ctx.HasInput("SequenceLength");
+<<<<<<< HEAD
     const phi::DenseTensor* sequence_length = nullptr;
     if (has_seq_length) {
       sequence_length = ctx.Input<phi::DenseTensor>("SequenceLength");
+=======
+    const Tensor* sequence_length = nullptr;
+    if (has_seq_length) {
+      sequence_length = ctx.Input<Tensor>("SequenceLength");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     PADDLE_ENFORCE_EQ(
@@ -385,14 +433,20 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
     auto init_h = pre_state[0];  // -> hx
     auto init_c = pre_state[1];  // -> cx
 
+<<<<<<< HEAD
     auto output_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto state_grad =
         ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("State"));
+=======
+    auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto state_grad = ctx.MultiInput<Tensor>(framework::GradVarName("State"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto last_h_grad = state_grad[0];  // -> dhy
     auto last_c_grad = state_grad[1];  // -> dcy
 
     // get the tensor pointer for the output
+<<<<<<< HEAD
     auto* input_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
     auto weight_grad_list =
@@ -401,6 +455,15 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
         ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("PreState"));
     phi::DenseTensor* init_h_grad = nullptr;
     phi::DenseTensor* init_c_grad = nullptr;
+=======
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto weight_grad_list = ctx.MultiOutput<framework::Tensor>(
+        framework::GradVarName("WeightList"));
+    auto pre_state_grad =
+        ctx.MultiOutput<Tensor>(framework::GradVarName("PreState"));
+    Tensor* init_h_grad = nullptr;
+    Tensor* init_c_grad = nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (pre_state_grad.size() > 0) {    // has gradient
       init_h_grad = pre_state_grad[0];  // -> dhx
       init_c_grad = pre_state_grad[1];  // -> dcx
@@ -458,9 +521,15 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
     input_grad->mutable_data<T>(input->dims(), ctx.GetPlace());
     FillMLUTensorWithHostValue(ctx, static_cast<T>(0.0), input_grad);
 
+<<<<<<< HEAD
     phi::DenseTensor a, b;
     phi::DenseTensor* dynamic_grad_pre_h = &a;
     phi::DenseTensor* dynamic_grad_pre_c = &b;
+=======
+    Tensor a, b;
+    Tensor* dynamic_grad_pre_h = &a;
+    Tensor* dynamic_grad_pre_c = &b;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (init_h_grad) {
       init_h_grad->mutable_data<T>(last_h_grad->dims(), ctx.GetPlace());
       FillMLUTensorWithHostValue(ctx, static_cast<T>(0.0), init_h_grad);
@@ -517,7 +586,11 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
 
     // copy weight
     size_t weightspace_size;
+<<<<<<< HEAD
     phi::DenseTensor weightspace, dweightspace;
+=======
+    framework::Tensor weightspace, dweightspace;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetRNNWeightSpaceSize(
         GetHandleFromCTX(ctx), rnn_desc.get(), &weightspace_size));
 

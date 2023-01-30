@@ -14,11 +14,18 @@
 
 #pragma once
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/eigen/eigen_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace phi {
 
 namespace funcs {

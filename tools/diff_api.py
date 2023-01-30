@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import difflib
 import sys
 
@@ -39,7 +43,11 @@ for each_diff in result:
     if each_diff[0] != ' ':
         diffs.append(each_diff)
 '''
+<<<<<<< HEAD
 If you modify/add/delete the API files, including code and comment,
+=======
+If you modify/add/delete the API files, including code and comment, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 please follow these steps in order to pass the CI:
 
   1. cd ${paddle_path}, compile paddle;

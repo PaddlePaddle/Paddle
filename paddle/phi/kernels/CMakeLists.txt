@@ -65,18 +65,26 @@ set(COMMON_KERNEL_DEPS
     deformable_conv_functor
     matrix_reduce
     segment_pooling
+<<<<<<< HEAD
+=======
+    gather_scatter_kernel
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     pooling
     maxouting
     matrix_inverse
     matrix_solve
     phi_dynload_warpctc
+<<<<<<< HEAD
     phi_dynload_warprnnt
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sequence_padding
     sequence_scale
     fft
     phi_data_layout_transform
     gpc
     utf8proc
+<<<<<<< HEAD
     gather_scatter_functor)
 
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
@@ -87,6 +95,15 @@ set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
 if(WITH_CUDNN_FRONTEND)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cudnn-frontend)
 endif()
+=======
+    device_memory_aligment)
+
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
+endif()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
@@ -105,11 +122,14 @@ file(
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
+<<<<<<< HEAD
 if(WITH_CUTLASS)
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_MKLDNN)
   file(
     GLOB
@@ -124,7 +144,10 @@ if(WITH_MKLDNN)
     "strings/cpu/*.cc"
     "onednn/*.cc"
     "fusion/*.cc"
+<<<<<<< HEAD
     "fusion/onednn/*.cc"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "fusion/cpu/*.cc")
 else()
   file(

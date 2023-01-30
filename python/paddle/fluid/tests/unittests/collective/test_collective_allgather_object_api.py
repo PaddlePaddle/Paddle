@@ -13,15 +13,24 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import test_collective_api_base as test_base
 
 
 class TestCollectiveAllgatherObjectAPI(test_base.TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_allgather_nccl(self):
+<<<<<<< HEAD
         self.check_with_place(
             "collective_allgather_object_api_dygraph.py",
             "allgather_object",
@@ -39,6 +48,32 @@ class TestCollectiveAllgatherObjectAPI(test_base.TestDistBase):
             static_mode="0",
             dtype="pyobject",
         )
+=======
+        self.check_with_place("collective_allgather_object_api_dygraph.py",
+                              "allgather_object",
+                              "nccl",
+                              static_mode="0",
+                              dtype="pylist")
+        self.check_with_place("collective_allgather_object_api_dygraph.py",
+                              "allgather_object",
+                              "nccl",
+                              static_mode="0",
+                              dtype="pydict")
+
+    def test_allgather_gloo_dygraph(self):
+        self.check_with_place("collective_allgather_object_api_dygraph.py",
+                              "allgather_object",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="pylist")
+        self.check_with_place("collective_allgather_object_api_dygraph.py",
+                              "allgather_object",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="pydict")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

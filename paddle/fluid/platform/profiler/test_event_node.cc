@@ -13,11 +13,17 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 
 using paddle::framework::AttributeMap;
+=======
+#include "paddle/fluid/platform/profiler/chrometracing_logger.h"
+#include "paddle/fluid/platform/profiler/event_node.h"
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using paddle::platform::ChromeTracingLogger;
 using paddle::platform::CudaRuntimeTraceEventNode;
 using paddle::platform::DeviceTraceEvent;
@@ -35,7 +41,10 @@ using paddle::platform::OperatorSupplementEventNode;
 using paddle::platform::RuntimeTraceEvent;
 using paddle::platform::TracerEventType;
 using paddle::platform::TracerMemEventType;
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 TEST(NodeTreesTest, LogMe_case0) {
   std::list<HostTraceEvent> host_events;
   std::list<RuntimeTraceEvent> runtime_events;
@@ -82,9 +91,14 @@ TEST(NodeTreesTest, LogMe_case0) {
   input_shapes[std::string("X")].push_back(std::vector<int64_t>{4, 5, 6, 7});
   dtypes[std::string("X")].push_back(std::string("int8"));
   dtypes[std::string("X")].push_back(std::string("float32"));
+<<<<<<< HEAD
   AttributeMap attrs;
   op_supplement_events.push_back(OperatorSupplementEvent(
       11600, "op1", input_shapes, dtypes, "op1()", attrs, 0, 10, 10));
+=======
+  op_supplement_events.push_back(OperatorSupplementEvent(
+      11600, "op1", input_shapes, dtypes, "op1()", 10, 10));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   runtime_events.push_back(RuntimeTraceEvent(
       std::string("cudalaunch1"), 15000, 17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(
@@ -297,15 +311,21 @@ TEST(NodeTreesTest, HandleTrees_case0) {
                                      50,
                                      100,
                                      100));
+<<<<<<< HEAD
   AttributeMap attrs;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op_supplement_events.push_back(OperatorSupplementEvent(
       11600,
       "op1",
       std::map<std::string, std::vector<std::vector<int64_t>>>(),
       std::map<std::string, std::vector<std::string>>(),
       "op1()",
+<<<<<<< HEAD
       attrs,
       0,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       10,
       10));
   runtime_events.push_back(RuntimeTraceEvent(

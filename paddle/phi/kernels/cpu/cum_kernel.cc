@@ -57,6 +57,7 @@ void ScanKernel(const Context& dev_ctx,
                 bool reverse,
                 Reducer reducer,
                 DenseTensor* out) {
+<<<<<<< HEAD
   dev_ctx.template Alloc<T>(out);
 
   if (x.numel() == 1) {
@@ -65,6 +66,8 @@ void ScanKernel(const Context& dev_ctx,
     out->Resize(raw_dims);
     return;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto out_dims = out->dims();
 
   PADDLE_ENFORCE_EQ(
@@ -80,6 +83,11 @@ void ScanKernel(const Context& dev_ctx,
     axis += out_dims.size();
   }
 
+<<<<<<< HEAD
+=======
+  dev_ctx.template Alloc<T>(out);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int pre = 1;
   int post = 1;
   int mid = out_dims[axis];

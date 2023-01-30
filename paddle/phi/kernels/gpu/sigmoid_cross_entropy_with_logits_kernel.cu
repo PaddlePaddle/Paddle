@@ -37,8 +37,14 @@ struct SigmoidFwdFunctor {
     } else {
       T term1 = (x > 0) ? x : 0;
       T term2 = x * label;
+<<<<<<< HEAD
       T term3 = phi::funcs::real_log(
           static_cast<T>(1) + phi::funcs::real_exp(static_cast<T>(-abs(x))));
+=======
+      T term3 = paddle::operators::real_log(
+          static_cast<T>(1) +
+          paddle::operators::real_exp(static_cast<T>(-abs(x))));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       out_data = term1 - term2 + term3;
       counts = 1;

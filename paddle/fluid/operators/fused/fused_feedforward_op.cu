@@ -23,7 +23,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+=======
+#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -31,8 +35,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 template <typename T>
 static void AllReduce(phi::DenseTensor& tensor,  // NOLINT
+=======
+using Tensor = framework::Tensor;
+
+template <typename T>
+static void AllReduce(framework::Tensor& tensor,  // NOLINT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       const int ring_id,
                       const phi::GPUContext& ctx) {
   if (ring_id == -1) return;
@@ -42,9 +53,20 @@ static void AllReduce(phi::DenseTensor& tensor,  // NOLINT
   if (map->has(ring_id)) {
     paddle::distributed::ProcessGroup* pg = map->get(ring_id);
     auto pg_nccl = static_cast<distributed::ProcessGroupNCCL*>(pg);
+<<<<<<< HEAD
     paddle::distributed::AllreduceOptions opts;
     opts.reduce_op = distributed::ReduceOp::SUM;
     auto task = pg_nccl->AllReduce(&tensor, tensor, opts, true, true);
+=======
+
+    std::vector<phi::DenseTensor> in_tensor;
+    std::vector<phi::DenseTensor> out_tensor;
+    in_tensor.push_back(tensor);
+    out_tensor.push_back(tensor);
+    paddle::distributed::AllreduceOptions opts;
+    opts.reduce_op = distributed::ReduceOp::SUM;
+    auto task = pg_nccl->AllReduce(in_tensor, out_tensor, opts, true, true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     task->Wait();
   } else {
     auto dtype = platform::ToNCCLDataType(
@@ -69,9 +91,15 @@ template <typename DeviceContext, typename T>
 class FusedFeedForwardKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const phi::GPUContext& ctx,
+<<<<<<< HEAD
               const phi::DenseTensor& a,
               const phi::DenseTensor& b,
               phi::DenseTensor* c) const {
+=======
+              const framework::Tensor& a,
+              const framework::Tensor& b,
+              framework::Tensor* c) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     auto a_2d = FoldInitDims(a);
     auto b_2d = FoldInitDims(b);
@@ -82,6 +110,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
   }
 
   void FFN(const phi::GPUContext& ctx,
+<<<<<<< HEAD
            const phi::DenseTensor& x,
            const phi::DenseTensor& linear1_weight,
            const phi::DenseTensor* linear1_bias,
@@ -102,6 +131,28 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
            phi::DenseTensor* ln1_out,
            phi::DenseTensor* dropout1_out,
            phi::DenseTensor* dropout2_out,
+=======
+           const framework::Tensor& x,
+           const framework::Tensor& linear1_weight,
+           const framework::Tensor* linear1_bias,
+           const framework::Tensor& linear2_weight,
+           const framework::Tensor* linear2_bias,
+           const framework::Tensor* ln1_scale,
+           const framework::Tensor* ln1_bias,
+           const framework::Tensor* ln2_scale,
+           const framework::Tensor* ln2_bias,
+           framework::Tensor* out,
+           framework::Tensor* dropout1_mask,
+           framework::Tensor* dropout2_mask,
+           framework::Tensor* ln1_mean,
+           framework::Tensor* ln1_variance,
+           framework::Tensor* ln2_mean,
+           framework::Tensor* ln2_variance,
+           framework::Tensor* linear1_out,
+           framework::Tensor* ln1_out,
+           framework::Tensor* dropout1_out,
+           framework::Tensor* dropout2_out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            const int bsz_seq,
            const int d_model,
            const int dim_feedforward,
@@ -121,7 +172,11 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
         ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
     using U = LayerNormParamType<T>;
+<<<<<<< HEAD
     const phi::DenseTensor* in = &x;
+=======
+    const framework::Tensor* in = &x;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const U* ln1_scale_ptr =
         ln1_scale == nullptr ? nullptr : ln1_scale->data<U>();
@@ -151,7 +206,11 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
                                             act_method,
                                             dropout1_out->data<T>(),
                                             dropout1_mask->data<uint8_t>());
+<<<<<<< HEAD
     phi::DenseTensor linear2_out;
+=======
+    framework::Tensor linear2_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     linear2_out.Resize({bsz_seq, d_model});
     ctx.Alloc<T>(&linear2_out, linear2_out.numel() * sizeof(T));
     MatMul(ctx, *dropout1_out, linear2_weight, &linear2_out);
@@ -192,15 +251,24 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* linear1_weight = context.Input<phi::DenseTensor>("Linear1Weight");
     auto* linear1_bias = context.Input<phi::DenseTensor>("Linear1Bias");
     auto* linear2_weight = context.Input<phi::DenseTensor>("Linear2Weight");
     auto* linear2_bias = context.Input<phi::DenseTensor>("Linear2Bias");
+=======
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* linear1_weight = context.Input<framework::Tensor>("Linear1Weight");
+    auto* linear1_bias = context.Input<framework::Tensor>("Linear1Bias");
+    auto* linear2_weight = context.Input<framework::Tensor>("Linear2Weight");
+    auto* linear2_bias = context.Input<framework::Tensor>("Linear2Bias");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const bool pre_layer_norm = context.Attr<bool>("pre_layer_norm");
     auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
     auto* ln1_scale =
+<<<<<<< HEAD
         pre_layer_norm ? context.Input<phi::DenseTensor>("Ln1Scale") : nullptr;
     auto* ln1_bias =
         pre_layer_norm ? context.Input<phi::DenseTensor>("Ln1Bias") : nullptr;
@@ -227,6 +295,36 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
         pre_layer_norm ? context.Output<phi::DenseTensor>("Ln1Out") : nullptr;
     auto* dropout1_out = context.Output<phi::DenseTensor>("Dropout1Out");
     auto* dropout2_out = context.Output<phi::DenseTensor>("Dropout2Out");
+=======
+        pre_layer_norm ? context.Input<framework::Tensor>("Ln1Scale") : nullptr;
+    auto* ln1_bias =
+        pre_layer_norm ? context.Input<framework::Tensor>("Ln1Bias") : nullptr;
+    auto* ln2_scale = !pre_layer_norm
+                          ? context.Input<framework::Tensor>("Ln2Scale")
+                          : nullptr;
+    auto* ln2_bias =
+        !pre_layer_norm ? context.Input<framework::Tensor>("Ln2Bias") : nullptr;
+
+    auto* ln1_mean =
+        pre_layer_norm ? context.Output<framework::Tensor>("Ln1Mean") : nullptr;
+    auto* ln1_variance = pre_layer_norm
+                             ? context.Output<framework::Tensor>("Ln1Variance")
+                             : nullptr;
+    auto* ln2_mean = !pre_layer_norm
+                         ? context.Output<framework::Tensor>("Ln2Mean")
+                         : nullptr;
+    auto* ln2_variance = !pre_layer_norm
+                             ? context.Output<framework::Tensor>("Ln2Variance")
+                             : nullptr;
+    auto* out = context.Output<framework::Tensor>("Out");
+    auto* dropout1_mask = context.Output<framework::Tensor>("Dropout1Mask");
+    auto* dropout2_mask = context.Output<framework::Tensor>("Dropout2Mask");
+    auto* linear1_out = context.Output<framework::Tensor>("Linear1Out");
+    auto* ln1_out =
+        pre_layer_norm ? context.Output<framework::Tensor>("Ln1Out") : nullptr;
+    auto* dropout1_out = context.Output<framework::Tensor>("Dropout1Out");
+    auto* dropout2_out = context.Output<framework::Tensor>("Dropout2Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const std::string act_method = context.Attr<std::string>("act_method");
 
@@ -305,11 +403,19 @@ template <typename DeviceContext, typename T>
 class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
  public:
   void MatMulGrad(const phi::GPUContext& ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor& d_out,
                   const phi::DenseTensor& a,
                   const phi::DenseTensor& b,
                   phi::DenseTensor* d_a,
                   phi::DenseTensor* d_b) const {
+=======
+                  const framework::Tensor& d_out,
+                  const framework::Tensor& a,
+                  const framework::Tensor& b,
+                  framework::Tensor* d_a,
+                  framework::Tensor* d_b) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     auto a_2d = FoldInitDims(a);
     auto b_2d = FoldInitDims(b);
@@ -323,6 +429,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
   }
 
   void FFNGrad(const phi::GPUContext& ctx,
+<<<<<<< HEAD
                const phi::DenseTensor& d_out,
                const phi::DenseTensor& x,
                const phi::DenseTensor& dropout1_mask,
@@ -351,6 +458,36 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                phi::DenseTensor* d_ln1_beta,
                phi::DenseTensor* d_ln2_gamma,
                phi::DenseTensor* d_ln2_beta,
+=======
+               const framework::Tensor& d_out,
+               const framework::Tensor& x,
+               const framework::Tensor& dropout1_mask,
+               const framework::Tensor& dropout2_mask,
+               const framework::Tensor& linear1_out,
+               const framework::Tensor* ln1_out,
+               const framework::Tensor& dropout1_out,
+               const framework::Tensor* dropout2_out,
+               const framework::Tensor& linear1_weight,
+               const framework::Tensor* linear1_bias,
+               const framework::Tensor& linear2_weight,
+               const framework::Tensor* ln1_gamma,
+               const framework::Tensor* ln1_beta,
+               const framework::Tensor* ln1_mean,
+               const framework::Tensor* ln1_variance,
+               const framework::Tensor* ln2_gamma,
+               const framework::Tensor* ln2_beta,
+               const framework::Tensor* ln2_mean,
+               const framework::Tensor* ln2_variance,
+               framework::Tensor* d_x,
+               framework::Tensor* d_linear1_weight,
+               framework::Tensor* d_linear1_bias,
+               framework::Tensor* d_linear2_weight,
+               framework::Tensor* d_linear2_bias,
+               framework::Tensor* d_ln1_gamma,
+               framework::Tensor* d_ln1_beta,
+               framework::Tensor* d_ln2_gamma,
+               framework::Tensor* d_ln2_beta,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                const int bsz_seq,
                const int d_model,
                const int dim_feedforward,
@@ -389,7 +526,11 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
         d_ln2_gamma == nullptr ? nullptr : d_ln2_gamma->data<U>();
     U* d_ln2_beta_ptr = d_ln2_beta == nullptr ? nullptr : d_ln2_beta->data<U>();
 
+<<<<<<< HEAD
     phi::DenseTensor d_linear2_out, d_dropout2_out, d_residual;
+=======
+    framework::Tensor d_linear2_out, d_dropout2_out, d_residual;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     d_linear2_out.Resize({bsz_seq, d_model});
     ctx.Alloc<T>(&d_linear2_out, d_linear2_out.numel() * sizeof(T));
     d_dropout2_out.Resize({bsz_seq, d_model});
@@ -426,7 +567,11 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
           d_residual_ptr);
     }
 
+<<<<<<< HEAD
     phi::DenseTensor d_dropout1_out;
+=======
+    framework::Tensor d_dropout1_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     d_dropout1_out.Resize({bsz_seq, dim_feedforward});
     ctx.Alloc<T>(&d_dropout1_out, d_dropout1_out.numel() * sizeof(T));
     MatMulGrad(ctx,
@@ -436,7 +581,11 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                &d_dropout1_out,
                d_linear2_weight);
 
+<<<<<<< HEAD
     phi::DenseTensor d_linear1_out;
+=======
+    framework::Tensor d_linear1_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     d_linear1_out.Resize({bsz_seq, dim_feedforward});
     ctx.Alloc<T>(&d_linear1_out, d_linear1_out.numel() * sizeof(T));
     fused_act_dropout_helper.DropoutActBiasGrad(ctx,
@@ -449,7 +598,11 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                                                 act_method);
 
     if (pre_layer_norm) {
+<<<<<<< HEAD
       phi::DenseTensor d_ln1_out;
+=======
+      framework::Tensor d_ln1_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       d_ln1_out.Resize({bsz_seq, d_model});
       ctx.Alloc<T>(&d_ln1_out, d_ln1_out.numel() * sizeof(T));
       MatMulGrad(ctx,
@@ -477,8 +630,13 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 
     if (add_residual) {
       // gradient accumulation
+<<<<<<< HEAD
       std::vector<const phi::DenseTensor*> ins = {&d_residual, d_x};
       std::vector<phi::DenseTensor*> outs = {d_x};
+=======
+      std::vector<const Tensor*> ins = {&d_residual, d_x};
+      std::vector<Tensor*> outs = {d_x};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       phi::funcs::ElementwiseKernel<T>(
           ctx, ins, &outs, phi::funcs::AddFunctor<T>());
     }
@@ -488,6 +646,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     using U = LayerNormParamType<T>;
     auto& dev_ctx = context.template device_context<phi::GPUContext>();
     auto d_out =
+<<<<<<< HEAD
         *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto x = *context.Input<phi::DenseTensor>("X");
     const bool pre_layer_norm = context.Attr<bool>("pre_layer_norm");
@@ -525,10 +684,51 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                                              framework::GradVarName("Ln1Scale"))
                                        : nullptr;
     auto* d_ln1_bias = pre_layer_norm ? context.Output<phi::DenseTensor>(
+=======
+        *context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto x = *context.Input<framework::Tensor>("X");
+    const bool pre_layer_norm = context.Attr<bool>("pre_layer_norm");
+    auto dropout1_mask = *context.Input<framework::Tensor>("Dropout1Mask");
+    auto dropout2_mask = *context.Input<framework::Tensor>("Dropout2Mask");
+    auto linear1_out = *context.Input<framework::Tensor>("Linear1Out");
+    auto* ln1_out =
+        pre_layer_norm ? context.Input<framework::Tensor>("Ln1Out") : nullptr;
+    auto dropout1_out = *context.Input<framework::Tensor>("Dropout1Out");
+    auto* dropout2_out = context.Input<framework::Tensor>("Dropout2Out");
+    auto linear1_weight = *context.Input<framework::Tensor>("Linear1Weight");
+    auto* linear1_bias = context.Input<framework::Tensor>("Linear1Bias");
+    auto linear2_weight = *context.Input<framework::Tensor>("Linear2Weight");
+    auto* ln1_mean =
+        pre_layer_norm ? context.Input<framework::Tensor>("Ln1Mean") : nullptr;
+    auto* ln1_variance = pre_layer_norm
+                             ? context.Input<framework::Tensor>("Ln1Variance")
+                             : nullptr;
+    auto* ln1_scale =
+        pre_layer_norm ? context.Input<framework::Tensor>("Ln1Scale") : nullptr;
+    auto* ln1_bias =
+        pre_layer_norm ? context.Input<framework::Tensor>("Ln1Bias") : nullptr;
+    auto* ln2_mean =
+        !pre_layer_norm ? context.Input<framework::Tensor>("Ln2Mean") : nullptr;
+    auto* ln2_variance = !pre_layer_norm
+                             ? context.Input<framework::Tensor>("Ln2Variance")
+                             : nullptr;
+    auto* ln2_scale = !pre_layer_norm
+                          ? context.Input<framework::Tensor>("Ln2Scale")
+                          : nullptr;
+    auto* ln2_bias =
+        !pre_layer_norm ? context.Input<framework::Tensor>("Ln2Bias") : nullptr;
+
+    auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* d_ln1_scale = pre_layer_norm ? context.Output<framework::Tensor>(
+                                             framework::GradVarName("Ln1Scale"))
+                                       : nullptr;
+    auto* d_ln1_bias = pre_layer_norm ? context.Output<framework::Tensor>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                             framework::GradVarName("Ln1Bias"))
                                       : nullptr;
     auto* d_ln2_scale = pre_layer_norm
                             ? nullptr
+<<<<<<< HEAD
                             : context.Output<phi::DenseTensor>(
                                   framework::GradVarName("Ln2Scale"));
     auto* d_ln2_bias = pre_layer_norm ? nullptr
@@ -542,6 +742,21 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
         framework::GradVarName("Linear2Weight"));
     auto* d_linear2_bias =
         context.Output<phi::DenseTensor>(framework::GradVarName("Linear2Bias"));
+=======
+                            : context.Output<framework::Tensor>(
+                                  framework::GradVarName("Ln2Scale"));
+    auto* d_ln2_bias = pre_layer_norm ? nullptr
+                                      : context.Output<framework::Tensor>(
+                                            framework::GradVarName("Ln2Bias"));
+    auto* d_linear1_weight = context.Output<framework::Tensor>(
+        framework::GradVarName("Linear1Weight"));
+    auto* d_linear1_bias = context.Output<framework::Tensor>(
+        framework::GradVarName("Linear1Bias"));
+    auto* d_linear2_weight = context.Output<framework::Tensor>(
+        framework::GradVarName("Linear2Weight"));
+    auto* d_linear2_bias = context.Output<framework::Tensor>(
+        framework::GradVarName("Linear2Bias"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const float epsilon1 = context.Attr<float>("ln1_epsilon");
     const float epsilon2 = context.Attr<float>("ln2_epsilon");

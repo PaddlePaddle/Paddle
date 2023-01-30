@@ -13,6 +13,7 @@
 # limitations under the License
 
 import abc
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -30,6 +31,18 @@ from paddle.io import BatchSampler, IterableDataset
 
 
 class DistributedDataLoaderBase(metaclass=abc.ABCMeta):
+=======
+import numpy as np
+
+import paddle
+from paddle.io import BatchSampler, IterableDataset
+from paddle.fluid.dataloader.batch_sampler import _InfiniteIterableSampler, DistributedBatchSampler
+from paddle.fluid.dataloader.dataloader_iter import _DatasetKind, default_collate_fn, default_convert_fn
+
+
+class DistributedDataLoaderBase(metaclass=abc.ABCMeta):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @abc.abstractmethod
     def __iter__(self):
         raise NotImplementedError
@@ -38,6 +51,7 @@ class DistributedDataLoaderBase(metaclass=abc.ABCMeta):
     def __next__(self):
         raise NotImplementedError
 
+<<<<<<< HEAD
 
 class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
     def __init__(
@@ -59,6 +73,38 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
         data_parallel_world_size=[],
         data_parallel_rank=[],
     ):
+=======
+    @property
+    def index_sampler(self):
+        if self.auto_collate_batch:
+            return self.batch_sampler
+        else:
+            if self.dataset_kind == _DatasetKind.MAP:
+                return list(range(len(self.dataset)))
+            else:
+                return _InfiniteIterableSampler(self.dataset, 1)
+
+
+class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
+
+    def __init__(self,
+                 dataset,
+                 feed_list=None,
+                 capacity=None,
+                 use_double_buffer=True,
+                 iterable=True,
+                 return_list=False,
+                 use_multiprocess=False,
+                 drop_last=True,
+                 places=None,
+                 batch_size=1,
+                 epochs=1,
+                 steps_per_epoch=None,
+                 collate_fn=None,
+                 split_data=True,
+                 data_parallel_world_size=[],
+                 data_parallel_rank=[]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dataset = dataset
         self.feed_list = feed_list
         self.capacity = capacity
@@ -88,6 +134,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
         else:
             if isinstance(dataset, IterableDataset):
                 self.batch_sampler = _InfiniteIterableSampler(
+<<<<<<< HEAD
                     dataset, batch_size
                 )
             else:
@@ -97,6 +144,14 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                     shuffle=False,
                     drop_last=drop_last,
                 )
+=======
+                    dataset, batch_size)
+            else:
+                self.batch_sampler = BatchSampler(dataset,
+                                                  batch_size=batch_size,
+                                                  shuffle=False,
+                                                  drop_last=drop_last)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.auto_collate_batch = self.batch_sampler is not None
         self.sampler_iter = iter(self.index_sampler)
@@ -107,12 +162,17 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
             self.collate_fn = collate_fn or default_convert_fn
 
         self.dataset_fetcher = _DatasetKind.create_fetcher(
+<<<<<<< HEAD
             self.dataset_kind,
             self.dataset,
             self.auto_collate_batch,
             self.collate_fn,
             self.drop_last,
         )
+=======
+            self.dataset_kind, self.dataset, self.auto_collate_batch,
+            self.collate_fn, self.drop_last)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._steps = self._infer_steps()
         self._inner_dataloader = self._create_inner_dataloader()
@@ -135,7 +195,11 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
             raise StopIteration
 
     def _infer_steps(self):
+<<<<<<< HEAD
         if isinstance(self.steps_per_epoch, int) and self.steps_per_epoch > 0:
+=======
+        if self.steps_per_epoch is not None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return self.steps_per_epoch
         try:
             if isinstance(self.dataset, IterableDataset):
@@ -161,11 +225,16 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                 return _InfiniteIterableSampler(self.dataset, 1)
 
     def _create_inner_dataloader(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def data_generator():
             while True:
                 try:
                     indices = next(self.sampler_iter)
                     batch = self.dataset_fetcher.fetch(indices)
+<<<<<<< HEAD
                     if batch is None:
                         break
                 except StopIteration:
@@ -176,6 +245,14 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                         self.collate_fn,
                         self.drop_last,
                     )
+=======
+                    if batch is None: break
+                except StopIteration:
+                    self.dataset_fetcher = _DatasetKind.create_fetcher(
+                        self.dataset_kind, self.dataset,
+                        self.auto_collate_batch, self.collate_fn,
+                        self.drop_last)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     break
 
                 partial_data = []
@@ -186,6 +263,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                         continue
 
                     batch_size = array.shape[0]
+<<<<<<< HEAD
                     assert (
                         batch_size % self.dp_world_sizes[i] == 0
                     ), "batch_size [{}] is not divisible by dp_world_size [{}]".format(
@@ -196,6 +274,13 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                             self.dp_ranks[i]
                         ]
                     )
+=======
+                    assert batch_size % self.dp_world_sizes[i] == 0, \
+                        "batch_size [{}] is not divisible by dp_world_size [{}]".format(str(batch_size), str(self.dp_world_sizes[i]))
+                    partial_data.append(
+                        np.split(array,
+                                 self.dp_world_sizes[i])[self.dp_ranks[i]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 yield partial_data
 
@@ -207,14 +292,19 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
             iterable=False,
             return_list=self.return_list,
             use_multiprocess=self.use_multiprocess,
+<<<<<<< HEAD
             drop_last=self.drop_last,
         )
+=======
+            drop_last=self.drop_last)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dataloader.set_batch_generator(data_generator, self.places)
 
         return dataloader
 
 
 class DistributedDataLoader(DistributedDataLoaderBase):
+<<<<<<< HEAD
     def __init__(
         self,
         dataset,
@@ -236,6 +326,28 @@ class DistributedDataLoader(DistributedDataLoaderBase):
         data_parallel_world_size=[],
         data_parallel_rank=[],
     ):
+=======
+
+    def __init__(self,
+                 dataset,
+                 feed_list=None,
+                 places=None,
+                 return_list=True,
+                 batch_size=1,
+                 shuffle=False,
+                 drop_last=False,
+                 collate_fn=None,
+                 num_workers=0,
+                 use_buffer_reader=True,
+                 use_shared_memory=True,
+                 timeout=0,
+                 worker_init_fn=None,
+                 epochs=1,
+                 steps_per_epoch=None,
+                 split_data=True,
+                 data_parallel_world_size=[],
+                 data_parallel_rank=[]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dataset = dataset
         self.feed_list = feed_list
         self.return_list = return_list
@@ -256,6 +368,7 @@ class DistributedDataLoader(DistributedDataLoaderBase):
         self.split_data = split_data
         # TODO: rank info
         self.batch_sampler = DistributedBatchSampler(
+<<<<<<< HEAD
             self.dataset,
             self.batch_size,
             self.dp_world_sizes[0],
@@ -263,6 +376,10 @@ class DistributedDataLoader(DistributedDataLoaderBase):
             self.shuffle,
             self.drop_last,
         )
+=======
+            self.dataset, self.batch_size, self.dp_world_sizes[0],
+            self.dp_ranks[0], self.shuffle, self.drop_last)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._inner_dataloader = self._create_inner_dataloader()
 
     def __iter__(self):
@@ -283,8 +400,12 @@ class DistributedDataLoader(DistributedDataLoaderBase):
             use_buffer_reader=self.use_buffer_reader,
             use_shared_memory=self.use_shared_memory,
             timeout=self.timeout,
+<<<<<<< HEAD
             worker_init_fn=self.worker_init_fn,
         )
+=======
+            worker_init_fn=self.worker_init_fn)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.data = (x for x in dataloader)
 
         return dataloader

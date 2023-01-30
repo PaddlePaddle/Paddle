@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
+=======
+import paddle
+import numpy as np
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestReshape(unittest.TestCase):
@@ -44,6 +50,7 @@ class TestReshape(unittest.TestCase):
         dense_out = paddle.reshape(dense_x, new_shape)
 
         if format == "coo":
+<<<<<<< HEAD
             sp_x = paddle.to_tensor(
                 np_x, place=paddle.CPUPlace()
             ).to_sparse_coo(len(x_shape))
@@ -65,6 +72,27 @@ class TestReshape(unittest.TestCase):
             dense_x.grad.numpy() * np_x.astype('bool').astype('int'),
             rtol=1e-05,
         )
+=======
+            sp_x = paddle.to_tensor(np_x,
+                                    place=paddle.CPUPlace()).to_sparse_coo(
+                                        len(x_shape))
+        else:
+            sp_x = paddle.to_tensor(np_x,
+                                    place=paddle.CPUPlace()).to_sparse_csr()
+        sp_x.stop_gradient = False
+        sp_out = paddle.sparse.reshape(sp_x, new_shape)
+
+        np.testing.assert_allclose(sp_out.to_dense().numpy(),
+                                   dense_out.numpy(),
+                                   rtol=1e-05)
+
+        dense_out.backward()
+        sp_out.backward()
+        np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                   dense_x.grad.numpy() *
+                                   np_x.astype('bool').astype('int'),
+                                   rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # check gpu kernel
         if paddle.device.is_compiled_with_cuda():
@@ -74,6 +102,7 @@ class TestReshape(unittest.TestCase):
 
             if format == "coo":
                 sp_x = paddle.to_tensor(
+<<<<<<< HEAD
                     np_x, place=paddle.CUDAPlace(0)
                 ).to_sparse_coo(len(x_shape))
             else:
@@ -103,6 +132,30 @@ class TestReshape(unittest.TestCase):
             ],
             'coo',
         )
+=======
+                    np_x, place=paddle.CUDAPlace(0)).to_sparse_coo(len(x_shape))
+            else:
+                sp_x = paddle.to_tensor(
+                    np_x, place=paddle.CUDAPlace(0)).to_sparse_csr()
+            sp_x.stop_gradient = False
+            sp_out = paddle.sparse.reshape(sp_x, new_shape)
+
+            np.testing.assert_allclose(sp_out.to_dense().numpy(),
+                                       dense_out.numpy(),
+                                       rtol=1e-05)
+
+            dense_out.backward()
+            sp_out.backward()
+            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                       dense_x.grad.numpy() *
+                                       np_x.astype('bool').astype('int'),
+                                       rtol=1e-05)
+
+    def test_reshape_2d(self):
+        self.check_result([2, 5], [
+            10,
+        ], 'coo')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.check_result([12, 5], [15, 4], 'coo')
 
         self.check_result([10, 5], [2, 25], 'csr')

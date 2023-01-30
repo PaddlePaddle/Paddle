@@ -55,6 +55,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
                         DenseTensor* d_x) {
   auto in_dims = x.dims();
   auto out_dims = indices.dims();
+<<<<<<< HEAD
   T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
 
   // For 0D Tensor
@@ -63,6 +64,8 @@ void KthvalueGradKernel(const Context& dev_ctx,
     return;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   if (!keepdim) {
     std::vector<int> tmp_out_shape;
@@ -75,7 +78,11 @@ void KthvalueGradKernel(const Context& dev_ctx,
     }
     out_dims = phi::make_ddim(tmp_out_shape);
   }
+<<<<<<< HEAD
 
+=======
+  T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (axis == in_dims.size() - 1) {
     const int64_t input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));

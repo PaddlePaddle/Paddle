@@ -34,12 +34,21 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       return;
     }
 
+<<<<<<< HEAD
     auto current_step_tensor = context.Input<phi::DenseTensor>("current_step");
     auto* current_step = current_step_tensor->data<T>();
 
     // nranks
     auto nranks_tensor = context.Input<phi::DenseTensor>("nranks");
     const int nranks = static_cast<int>(*nranks_tensor->data<float>());
+=======
+    auto current_step_tensor = context.Input<framework::Tensor>("current_step");
+    auto* current_step = current_step_tensor->data<T>();
+
+    // nranks
+    auto nranks_tensor = context.Input<framework::Tensor>("nranks");
+    const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_GT(
         nranks,
         1,
@@ -47,8 +56,13 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
             "DGC is not useful when num_trainers <= 1, but now nranks=%d",
             nranks));
 
+<<<<<<< HEAD
     const phi::DenseTensor* g = context.Input<phi::DenseTensor>("Grad");
     phi::DenseTensor* g_out = context.Output<phi::DenseTensor>("Grad_out");
+=======
+    const framework::Tensor* g = context.Input<framework::Tensor>("Grad");
+    framework::Tensor* g_out = context.Output<framework::Tensor>("Grad_out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto g_e = framework::EigenVector<T>::Flatten(*g);
     auto g_out_e = framework::EigenVector<T>::Flatten(*g_out);
 
@@ -64,6 +78,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
     const auto* grad_var = context.InputVar("Grad");
     if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
       VLOG(10) << " so use momentum optimizer";
+<<<<<<< HEAD
       auto* learning_rate = context.Input<phi::DenseTensor>("LearningRate");
       bool multi_precision = context.Attr<bool>("multi_precision");
 
@@ -74,6 +89,18 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       auto* master_param_out =
           context.Output<phi::DenseTensor>("MasterParamOut");
       paddle::optional<phi::DenseTensor> master_param_opt(paddle::none);
+=======
+      auto* learning_rate = context.Input<framework::Tensor>("LearningRate");
+      bool multi_precision = context.Attr<bool>("multi_precision");
+
+      auto* param = context.Input<framework::Tensor>("Param");
+      auto* velocity = context.Input<framework::Tensor>("Velocity");
+      auto* param_out = context.Output<framework::Tensor>("ParamOut");
+      auto* velocity_out = context.Output<framework::Tensor>("VelocityOut");
+      auto* master_param_out =
+          context.Output<framework::Tensor>("MasterParamOut");
+      paddle::optional<framework::Tensor> master_param_opt(paddle::none);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       float mu = context.Attr<float>("mu");
       bool use_nesterov = context.Attr<bool>("use_nesterov");
       std::string regularization_method =
@@ -81,9 +108,15 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       float regularization_coeff = context.Attr<float>("regularization_coeff");
       float rescale_grad = context.Attr<float>("rescale_grad");
 
+<<<<<<< HEAD
       if (grad_var->IsType<phi::DenseTensor>()) {
         // sgd_dense
         auto* grad = context.Input<phi::DenseTensor>("Grad");
+=======
+      if (grad_var->IsType<framework::Tensor>()) {
+        // sgd_dense
+        auto* grad = context.Input<framework::Tensor>("Grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         phi::MomentumDenseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),
@@ -130,6 +163,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
 
     const auto* param_var = context.InputVar("Param");
 
+<<<<<<< HEAD
     auto* learning_rate = context.Input<phi::DenseTensor>("LearningRate");
     bool multi_precision = context.Attr<bool>("multi_precision");
     if (param_var->IsType<phi::DenseTensor>()) {
@@ -146,6 +180,24 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       if (grad_var->IsType<phi::DenseTensor>()) {
         // sgd_dense
         auto* grad = context.Input<phi::DenseTensor>("Grad");
+=======
+    auto* learning_rate = context.Input<framework::Tensor>("LearningRate");
+    bool multi_precision = context.Attr<bool>("multi_precision");
+    if (param_var->IsType<framework::LoDTensor>()) {
+      auto* param = context.Input<framework::Tensor>("Param");
+      auto* param_out = context.Output<framework::Tensor>("ParamOut");
+      auto* master_param_out =
+          context.Output<framework::Tensor>("MasterParamOut");
+      paddle::optional<framework::Tensor> master_param_opt(paddle::none);
+      if (multi_precision) {
+        auto* master_param = context.Input<framework::Tensor>("MasterParam");
+        master_param_opt = *master_param;
+      }
+
+      if (grad_var->IsType<framework::Tensor>()) {
+        // sgd_dense
+        auto* grad = context.Input<framework::Tensor>("Grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         phi::SGDDenseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),

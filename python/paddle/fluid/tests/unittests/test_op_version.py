@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle.fluid as fluid
@@ -21,14 +22,33 @@ import paddle.utils as utils
 class OpLastCheckpointCheckerTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         super().__init__(methodName)
+=======
+from __future__ import print_function
+
+import unittest
+
+import paddle.utils as utils
+import paddle.fluid as fluid
+
+
+class OpLastCheckpointCheckerTest(unittest.TestCase):
+
+    def __init__(self, methodName='runTest'):
+        super(OpLastCheckpointCheckerTest, self).__init__(methodName)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.checker = utils.OpLastCheckpointChecker()
         self.fake_op = 'for_pybind_test__'
 
     def test_op_attr_info(self):
         update_type = fluid.core.OpUpdateType.kNewAttr
+<<<<<<< HEAD
         info_list = self.checker.filter_updates(
             self.fake_op, update_type, 'STRINGS'
         )
+=======
+        info_list = self.checker.filter_updates(self.fake_op, update_type,
+                                                'STRINGS')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue(info_list)
         self.assertEqual(info_list[0].name(), 'STRINGS')
         self.assertEqual(info_list[0].default_value(), ['str1', 'str2'])
@@ -36,9 +56,14 @@ class OpLastCheckpointCheckerTest(unittest.TestCase):
 
     def test_op_input_output_info(self):
         update_type = fluid.core.OpUpdateType.kNewInput
+<<<<<<< HEAD
         info_list = self.checker.filter_updates(
             self.fake_op, update_type, 'NewInput'
         )
+=======
+        info_list = self.checker.filter_updates(self.fake_op, update_type,
+                                                'NewInput')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue(info_list)
         self.assertEqual(info_list[0].name(), 'NewInput')
         self.assertEqual(info_list[0].remark(), 'NewInput_')
@@ -51,8 +76,14 @@ class OpLastCheckpointCheckerTest(unittest.TestCase):
 
 
 class OpVersionTest(unittest.TestCase):
+<<<<<<< HEAD
     def __init__(self, methodName='runTest'):
         super().__init__(methodName)
+=======
+
+    def __init__(self, methodName='runTest'):
+        super(OpVersionTest, self).__init__(methodName)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.vmap = fluid.core.get_op_version_map()
         self.fake_op = 'for_pybind_test__'
 
@@ -72,6 +103,7 @@ class OpVersionTest(unittest.TestCase):
         true_l = [2.56, 1.28]
         self.assertEqual(len(true_l), len(desc_2[1].info().default_value()))
         for i in range(len(true_l)):
+<<<<<<< HEAD
             self.assertAlmostEqual(
                 desc_2[1].info().default_value()[i], true_l[i], 2
             )
@@ -79,6 +111,13 @@ class OpVersionTest(unittest.TestCase):
         self.assertEqual(
             desc_2[3].info().default_value(), [10000001, -10000001]
         )
+=======
+            self.assertAlmostEqual(desc_2[1].info().default_value()[i],
+                                   true_l[i], 2)
+        self.assertEqual(desc_2[2].info().default_value(), [10, 100])
+        self.assertEqual(desc_2[3].info().default_value(),
+                         [10000001, -10000001])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

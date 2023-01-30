@@ -26,10 +26,19 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 template <typename DeviceContext, typename T>
 inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
                                  const phi::DenseTensor* input,
                                  phi::DenseTensor* transformed_input) {
+=======
+using Tensor = framework::Tensor;
+
+template <typename DeviceContext, typename T>
+inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
+                                 const Tensor* input,
+                                 Tensor* transformed_input) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     // input
@@ -66,8 +75,13 @@ inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename T>
 inline void ResizeToChannelLast(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                                 const phi::DenseTensor* input,
                                 phi::DenseTensor* transformed_input) {
+=======
+                                const Tensor* input,
+                                Tensor* transformed_input) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     // input
@@ -104,8 +118,13 @@ inline void ResizeToChannelLast(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename T>
 inline void TransToChannelFirst(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                                 const phi::DenseTensor* input,
                                 phi::DenseTensor* transformed_input) {
+=======
+                                const Tensor* input,
+                                Tensor* transformed_input) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   VLOG(5) << "Why am I called?";
   int dim = input->dims().size() - 2;
   if (dim == 3) {
@@ -129,8 +148,13 @@ inline void TransToChannelFirst(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename T>
 inline void TransToChannelLast(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                                const phi::DenseTensor* input,
                                phi::DenseTensor* transformed_input) {
+=======
+                               const Tensor* input,
+                               Tensor* transformed_input) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     auto& dev_ctx = context.template device_context<DeviceContext>();

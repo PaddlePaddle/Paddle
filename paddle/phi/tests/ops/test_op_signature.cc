@@ -33,7 +33,11 @@ TEST(ARG_MAP, fill_constant) {
       {"ShapeTensor", "ValueTensor"}, {}, {}, {}, {"Out"});
   auto signature1 = (*OpUtilsMap::Instance().GetArgumentMappingFn(
       "fill_constant"))(arg_case1);
+<<<<<<< HEAD
   EXPECT_STREQ(signature1.name, "full_sr");
+=======
+  ASSERT_EQ(signature1.name, "full_sr");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case2(
       {"ShapeTensor"},
@@ -43,7 +47,11 @@ TEST(ARG_MAP, fill_constant) {
       {"Out"});
   auto signature2 = (*OpUtilsMap::Instance().GetArgumentMappingFn(
       "fill_constant"))(arg_case2);
+<<<<<<< HEAD
   EXPECT_STREQ(signature2.name, "full_sr");
+=======
+  ASSERT_EQ(signature2.name, "full_sr");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case3(
       {"ShapeTensor"},
@@ -53,13 +61,21 @@ TEST(ARG_MAP, fill_constant) {
       {"Out"});
   auto signature3 = (*OpUtilsMap::Instance().GetArgumentMappingFn(
       "fill_constant"))(arg_case3);
+<<<<<<< HEAD
   EXPECT_STREQ(signature3.name, "full_sr");
+=======
+  ASSERT_EQ(signature3.name, "full_sr");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case4(
       {"ShapeTensorList", "ValueTensor"}, {}, {}, {}, {"Out"});
   auto signature4 = (*OpUtilsMap::Instance().GetArgumentMappingFn(
       "fill_constant"))(arg_case4);
+<<<<<<< HEAD
   EXPECT_STREQ(signature4.name, "full_sr");
+=======
+  ASSERT_EQ(signature4.name, "full_sr");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case5(
       {"ShapeTensorList"},
@@ -69,7 +85,11 @@ TEST(ARG_MAP, fill_constant) {
       {"Out"});
   auto signature5 = (*OpUtilsMap::Instance().GetArgumentMappingFn(
       "fill_constant"))(arg_case5);
+<<<<<<< HEAD
   EXPECT_STREQ(signature5.name, "full_sr");
+=======
+  ASSERT_EQ(signature5.name, "full_sr");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case6(
       {"ShapeTensorList"},
@@ -79,7 +99,11 @@ TEST(ARG_MAP, fill_constant) {
       {"Out"});
   auto signature6 = (*OpUtilsMap::Instance().GetArgumentMappingFn(
       "fill_constant"))(arg_case6);
+<<<<<<< HEAD
   EXPECT_STREQ(signature6.name, "full_sr");
+=======
+  ASSERT_EQ(signature6.name, "full_sr");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case7(
       {"ValueTensor"},
@@ -89,7 +113,11 @@ TEST(ARG_MAP, fill_constant) {
       {"Out"});
   auto signature7 = (*OpUtilsMap::Instance().GetArgumentMappingFn(
       "fill_constant"))(arg_case7);
+<<<<<<< HEAD
   EXPECT_STREQ(signature7.name, "full_sr");
+=======
+  ASSERT_EQ(signature7.name, "full_sr");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case8(
       {},
@@ -101,7 +129,11 @@ TEST(ARG_MAP, fill_constant) {
       {"Out"});
   auto signature8 = (*OpUtilsMap::Instance().GetArgumentMappingFn(
       "fill_constant"))(arg_case8);
+<<<<<<< HEAD
   EXPECT_STREQ(signature8.name, "full_sr");
+=======
+  ASSERT_EQ(signature8.name, "full_sr");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case9(
       {},
@@ -112,7 +144,11 @@ TEST(ARG_MAP, fill_constant) {
       {"Out"});
   auto signature9 = (*OpUtilsMap::Instance().GetArgumentMappingFn(
       "fill_constant"))(arg_case9);
+<<<<<<< HEAD
   EXPECT_STREQ(signature9.name, "full_sr");
+=======
+  ASSERT_EQ(signature9.name, "full_sr");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(ARG_MAP, set_value) {
@@ -122,7 +158,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp32_values", paddle::any{std::vector<float>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case)
           .name,
       "set_value");
@@ -133,7 +173,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp64_values", paddle::any{std::vector<double>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case1)
           .name,
       "set_value");
@@ -144,7 +188,11 @@ TEST(ARG_MAP, set_value) {
       {{"int32_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case2)
           .name,
       "set_value");
@@ -155,7 +203,11 @@ TEST(ARG_MAP, set_value) {
       {{"int64_values", paddle::any{std::vector<int64_t>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case3)
           .name,
       "set_value");
@@ -166,7 +218,11 @@ TEST(ARG_MAP, set_value) {
       {{"bool_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case4)
           .name,
       "set_value");
@@ -177,7 +233,11 @@ TEST(ARG_MAP, set_value) {
       {},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case5)
           .name,
       "set_value_with_tensor");
@@ -188,7 +248,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp64_values", paddle::any{std::vector<double>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case6)
           .name,
       "set_value");
@@ -199,7 +263,11 @@ TEST(ARG_MAP, set_value) {
       {{"int32_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case7)
           .name,
       "set_value");
@@ -210,7 +278,11 @@ TEST(ARG_MAP, set_value) {
       {{"int64_values", paddle::any{std::vector<int64_t>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case8)
           .name,
       "set_value");
@@ -221,7 +293,11 @@ TEST(ARG_MAP, set_value) {
       {{"bool_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case9)
           .name,
       "set_value");
@@ -232,7 +308,11 @@ TEST(ARG_MAP, set_value) {
       {},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case10)
           .name,
       "set_value_with_tensor");
@@ -243,7 +323,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp64_values", paddle::any{std::vector<double>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case11)
           .name,
       "set_value");
@@ -254,7 +338,11 @@ TEST(ARG_MAP, set_value) {
       {{"int32_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case12)
           .name,
       "set_value");
@@ -265,7 +353,11 @@ TEST(ARG_MAP, set_value) {
       {{"int64_values", paddle::any{std::vector<int64_t>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case13)
           .name,
       "set_value");
@@ -276,14 +368,22 @@ TEST(ARG_MAP, set_value) {
       {{"bool_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case14)
           .name,
       "set_value");
 
   TestArgumentMappingContext arg_case15(
       {"Input", "StartsTensorList", "ValueTensor"}, {}, {}, {"Out"}, {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case15)
           .name,
       "set_value_with_tensor");
@@ -294,7 +394,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp32_values", paddle::any{std::vector<float>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case16)
           .name,
       "set_value");
@@ -305,7 +409,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp64_values", paddle::any{std::vector<double>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case17)
           .name,
       "set_value");
@@ -316,7 +424,11 @@ TEST(ARG_MAP, set_value) {
       {{"int32_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case18)
           .name,
       "set_value");
@@ -327,7 +439,11 @@ TEST(ARG_MAP, set_value) {
       {{"int64_values", paddle::any{std::vector<int64_t>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case19)
           .name,
       "set_value");
@@ -338,7 +454,11 @@ TEST(ARG_MAP, set_value) {
       {{"bool_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case20)
           .name,
       "set_value");
@@ -349,7 +469,11 @@ TEST(ARG_MAP, set_value) {
       {},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case21)
           .name,
       "set_value_with_tensor");
@@ -360,7 +484,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp64_values", paddle::any{std::vector<double>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case22)
           .name,
       "set_value");
@@ -371,7 +499,11 @@ TEST(ARG_MAP, set_value) {
       {{"int32_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case23)
           .name,
       "set_value");
@@ -382,7 +514,11 @@ TEST(ARG_MAP, set_value) {
       {{"int64_values", paddle::any{std::vector<int64_t>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case24)
           .name,
       "set_value");
@@ -393,14 +529,22 @@ TEST(ARG_MAP, set_value) {
       {{"bool_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case25)
           .name,
       "set_value");
 
   TestArgumentMappingContext arg_case26(
       {"Input", "EndsTensorList", "ValueTensor"}, {}, {}, {"Out"}, {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case26)
           .name,
       "set_value_with_tensor");
@@ -411,7 +555,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp32_values", paddle::any{std::vector<float>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case27)
           .name,
       "set_value");
@@ -422,7 +570,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp64_values", paddle::any{std::vector<double>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case28)
           .name,
       "set_value");
@@ -433,7 +585,11 @@ TEST(ARG_MAP, set_value) {
       {{"int32_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case29)
           .name,
       "set_value");
@@ -444,7 +600,11 @@ TEST(ARG_MAP, set_value) {
       {{"int64_values", paddle::any{std::vector<int64_t>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case30)
           .name,
       "set_value");
@@ -455,14 +615,22 @@ TEST(ARG_MAP, set_value) {
       {{"bool_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case31)
           .name,
       "set_value");
 
   TestArgumentMappingContext arg_case32(
       {"Input", "StepsTensorList", "ValueTensor"}, {}, {}, {"Out"}, {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case32)
           .name,
       "set_value_with_tensor");
@@ -473,7 +641,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp32_values", paddle::any{std::vector<float>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case33)
           .name,
       "set_value");
@@ -484,7 +656,11 @@ TEST(ARG_MAP, set_value) {
       {{"fp64_values", paddle::any{std::vector<double>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case34)
           .name,
       "set_value");
@@ -495,7 +671,11 @@ TEST(ARG_MAP, set_value) {
       {{"int32_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case35)
           .name,
       "set_value");
@@ -506,7 +686,11 @@ TEST(ARG_MAP, set_value) {
       {{"int64_values", paddle::any{std::vector<int64_t>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case36)
           .name,
       "set_value");
@@ -517,7 +701,11 @@ TEST(ARG_MAP, set_value) {
       {{"bool_values", paddle::any{std::vector<int>{1}}}},
       {"Out"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value"))(arg_case37)
           .name,
       "set_value");
@@ -530,7 +718,11 @@ TEST(ARG_MAP, set_value_grad) {
       {},
       {"Input@GRAD", "ValueTensor@GRAD"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ(
+=======
+  ASSERT_EQ(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       (*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(arg_case)
           .name,
       "set_value_grad");
@@ -541,20 +733,34 @@ TEST(ARG_MAP, set_value_grad) {
       {},
       {"Input@GRAD", "ValueTensor@GRAD"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
                    arg_case1)
                    .name,
                "set_value_grad");
+=======
+  ASSERT_EQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
+                arg_case1)
+                .name,
+            "set_value_grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case2({"Out@GRAD", "StartsTensorList"},
                                        {},
                                        {},
                                        {"Input@GRAD", "ValueTensor@GRAD"},
                                        {});
+<<<<<<< HEAD
   EXPECT_STREQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
                    arg_case2)
                    .name,
                "set_value_grad");
+=======
+  ASSERT_EQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
+                arg_case2)
+                .name,
+            "set_value_grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case3(
       {"Out@GRAD", "EndsTensorList", "StepsTensorList"},
@@ -562,30 +768,51 @@ TEST(ARG_MAP, set_value_grad) {
       {},
       {"Input@GRAD", "ValueTensor@GRAD"},
       {});
+<<<<<<< HEAD
   EXPECT_STREQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
                    arg_case3)
                    .name,
                "set_value_grad");
+=======
+  ASSERT_EQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
+                arg_case3)
+                .name,
+            "set_value_grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case4({"Out@GRAD", "EndsTensorList"},
                                        {},
                                        {},
                                        {"Input@GRAD", "ValueTensor@GRAD"},
                                        {});
+<<<<<<< HEAD
   EXPECT_STREQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
                    arg_case4)
                    .name,
                "set_value_grad");
+=======
+  ASSERT_EQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
+                arg_case4)
+                .name,
+            "set_value_grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case5({"Out@GRAD", "StepsTensorList"},
                                        {},
                                        {},
                                        {"Input@GRAD", "ValueTensor@GRAD"},
                                        {});
+<<<<<<< HEAD
   EXPECT_STREQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
                    arg_case5)
                    .name,
                "set_value_grad");
+=======
+  ASSERT_EQ((*OpUtilsMap::Instance().GetArgumentMappingFn("set_value_grad"))(
+                arg_case5)
+                .name,
+            "set_value_grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(ARG_MAP, allclose) {
@@ -598,8 +825,13 @@ TEST(ARG_MAP, allclose) {
       {});
   auto signature1 =
       (*OpUtilsMap::Instance().GetArgumentMappingFn("allclose"))(arg_case1);
+<<<<<<< HEAD
   EXPECT_STREQ(signature1.name, "allclose");
   EXPECT_STREQ(signature1.attr_names[0], "Rtol");
+=======
+  ASSERT_EQ(signature1.name, "allclose");
+  ASSERT_EQ(signature1.attr_names[0], "Rtol");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case2(
       {"Input", "Other", "Atol"},
@@ -610,26 +842,43 @@ TEST(ARG_MAP, allclose) {
       {});
   auto signature2 =
       (*OpUtilsMap::Instance().GetArgumentMappingFn("allclose"))(arg_case2);
+<<<<<<< HEAD
   EXPECT_STREQ(signature2.name, "allclose");
   EXPECT_STREQ(signature2.attr_names[1], "Atol");
+=======
+  ASSERT_EQ(signature2.name, "allclose");
+  ASSERT_EQ(signature2.attr_names[1], "Atol");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(ARG_MAP, reshape) {
   TestArgumentMappingContext arg_case1({"X", "ShapeTensor"}, {}, {}, {"Out"});
   auto signature1 =
       (*OpUtilsMap::Instance().GetArgumentMappingFn("reshape2"))(arg_case1);
+<<<<<<< HEAD
   EXPECT_STREQ(signature1.name, "reshape_infer");
+=======
+  ASSERT_EQ(signature1.name, "reshape");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case2({"X", "Shape"}, {}, {}, {"Out"});
   auto signature2 =
       (*OpUtilsMap::Instance().GetArgumentMappingFn("reshape2"))(arg_case2);
+<<<<<<< HEAD
   EXPECT_STREQ(signature2.name, "reshape_infer");
+=======
+  ASSERT_EQ(signature2.name, "reshape");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TestArgumentMappingContext arg_case3(
       {"X"}, {}, {{"shape", paddle::any(std::vector<int>({1, 2}))}}, {"Out"});
   auto signature3 =
       (*OpUtilsMap::Instance().GetArgumentMappingFn("reshape2"))(arg_case3);
+<<<<<<< HEAD
   EXPECT_STREQ(signature3.name, "reshape_infer");
+=======
+  ASSERT_EQ(signature3.name, "reshape");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace tests

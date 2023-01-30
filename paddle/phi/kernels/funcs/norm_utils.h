@@ -18,10 +18,13 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
+<<<<<<< HEAD
 #define CUDNN_PER_ACTIVATION_THRESHOLD 10240
 #define CUDNN_SPATIAL_THRESHOLD_TRAIN 880801
 #define CUDNN_SPATIAL_THRESHOLD_EVAL 65535
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void ExtractNCWHD(const phi::DDim &dims,
                          const DataLayout &data_layout,
                          int *N,

@@ -15,16 +15,24 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/memory/memcpy.h"
+<<<<<<< HEAD
 #include "paddle/fluid/operators/fake_quantize_op.cu.h"
 #include "paddle/fluid/operators/quantize_linear_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 using float16 = paddle::platform::float16;
+=======
+#include "paddle/fluid/operators/fake_dequantize_op.cu.h"
+#include "paddle/fluid/operators/fake_quantize_op.cu.h"
+#include "paddle/fluid/operators/quantize_linear_op.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
+<<<<<<< HEAD
 __global__ void KeDequantize(
     const T* in, const T* scale, T max_range, int64_t num, T* out) {
   int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -84,6 +92,18 @@ struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     T* out_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
+=======
+struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  T max_range,
+                  const int quant_axis,
+                  framework::Tensor* out) {
+    auto in_dims = in->dims();
+    const T* in_data = in->data<T>();
+    T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int64_t num = in->numel();
     const T* scale_factor = scale->data<T>();
     int64_t block_size = std::min(
@@ -111,10 +131,13 @@ struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
   }
 };
 
+<<<<<<< HEAD
 template struct DequantizeFunctor<phi::GPUContext, phi::dtype::float16>;
 template struct DequantizeFunctor<phi::GPUContext, float>;
 template struct DequantizeFunctor<phi::GPUContext, double>;
 template struct ChannelDequantizeFunctorV2<phi::GPUContext, float16>;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template struct ChannelDequantizeFunctorV2<phi::GPUContext, float>;
 template struct ChannelDequantizeFunctorV2<phi::GPUContext, double>;
 
@@ -124,6 +147,7 @@ template struct ChannelDequantizeFunctorV2<phi::GPUContext, double>;
 namespace ops = paddle::operators;
 using CUDA = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(dequantize_linear,
+<<<<<<< HEAD
                         ops::DeQuantizeLinearKernel<CUDA, float>,
                         ops::DeQuantizeLinearKernel<CUDA, float16>,
                         ops::DeQuantizeLinearKernel<CUDA, int8_t>,
@@ -132,3 +156,11 @@ REGISTER_OP_CUDA_KERNEL(dequantize_linear,
 REGISTER_OP_CUDA_KERNEL(quantize_linear,
                         ops::QuantizeLinearKernel<CUDA, float>,
                         ops::QuantizeLinearKernel<CUDA, float16>);
+=======
+                        ops::DeQuantizeLinearKernel<CUDA, float, float>,
+                        ops::DeQuantizeLinearKernel<CUDA, int8_t, float>,
+                        ops::DeQuantizeLinearKernel<CUDA, double, double>);
+
+REGISTER_OP_CUDA_KERNEL(quantize_linear,
+                        ops::QuantizeLinearKernel<CUDA, float>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

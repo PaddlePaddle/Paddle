@@ -18,7 +18,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/collective/process_group.h"
+=======
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
@@ -29,7 +33,11 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
+<<<<<<< HEAD
     auto out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(out->dims(), ctx.GetPlace());
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
     int numel = out->numel();

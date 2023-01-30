@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from paddle.fluid.core import CipherFactory, CipherUtils
@@ -22,6 +23,21 @@ class CipherUtilsTestCase(unittest.TestCase):
         key1 = CipherUtils.gen_key(256)
         key2 = CipherUtils.gen_key_to_file(256, "paddle_aes_test.keyfile")
         self.assertNotEqual(key1, key2)
+=======
+from paddle.fluid.core import CipherUtils
+from paddle.fluid.core import CipherFactory
+from paddle.fluid.core import Cipher
+
+import unittest
+
+
+class CipherUtilsTestCase(unittest.TestCase):
+
+    def test_gen_key(self):
+        key1 = CipherUtils.gen_key(256)
+        key2 = CipherUtils.gen_key_to_file(256, "paddle_aes_test.keyfile")
+        self.assertNotEquals(key1, key2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         key3 = CipherUtils.read_key_from_file("paddle_aes_test.keyfile")
         self.assertEqual(key2, key3)
         self.assertEqual(len(key1), 32)
@@ -29,6 +45,10 @@ class CipherUtilsTestCase(unittest.TestCase):
 
 
 class CipherTestCase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_aes_cipher(self):
         plaintext = "hello world"
         key = CipherUtils.gen_key(256)

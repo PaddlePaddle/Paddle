@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 from dist_pass_test_base import PassConflictChecker
 from model_zoo import resnet_model
@@ -21,6 +22,15 @@ from paddle.distributed.passes import new_pass
 
 
 class CheckPassConflictTest1(PassConflictChecker):
+=======
+from dist_pass_test_base import PassConflictChecker
+from paddle.distributed.passes import new_pass
+from model_zoo import resnet_model
+
+
+class CheckPassConflictTest1(PassConflictChecker):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def pass_config(self):
         return [
             new_pass("fuse_all_reduce", {"max_memory_size": 1024 * 1024}),
@@ -32,6 +42,10 @@ class CheckPassConflictTest1(PassConflictChecker):
 
 
 class CheckPassConflictTest2(PassConflictChecker):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def pass_config(self):
         return [
             new_pass("fuse_elewise_add_act"),

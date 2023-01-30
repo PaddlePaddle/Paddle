@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
 from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION, lstm
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+from paddle.fluid.tests.unittests.test_lstm_op import lstm, ACTIVATION
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def fc(x, w, b):
@@ -25,6 +34,7 @@ def fc(x, w, b):
 
 
 def fusion_lstm(
+<<<<<<< HEAD
     x,  # T x M
     lod,  # 1 x N
     wx=None,  # M x 4D
@@ -55,6 +65,27 @@ def fusion_lstm(
 
 
 class TestFusionLSTMOp(OpTest):
+=======
+        x,  # T x M
+        lod,  # 1 x N
+        wx=None,  # M x 4D
+        bx=None,  # 1 x 4D
+        h0=None,  # N x D
+        c0=None,  # N x D
+        w_h=None,  # D x 4D
+        w_b=None,  # 1 x 4D
+        w_c=None,  # 1 x 3D
+        is_reverse=False,
+        act_gate=None,
+        act_cell=None,
+        act_cand=None):
+    return lstm(fc(x, wx, bx), lod, h0, c0, w_h, w_b, w_c, is_reverse, act_gate,
+                act_cell, act_cand)
+
+
+class TestFusionLSTMOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         pass
 
@@ -89,14 +120,20 @@ class TestFusionLSTMOp(OpTest):
             b = np.random.normal(size=(1, 7 * self.D)).astype('float32')
         else:
             b = np.random.normal(size=(1, 4 * self.D)).astype('float32')
+<<<<<<< HEAD
         w_b = np.copy(b[:, 0 : 4 * self.D])
         w_c = b[:, 4 * self.D :] if self.use_peepholes else None
+=======
+        w_b = np.copy(b[:, 0:4 * self.D])
+        w_c = b[:, 4 * self.D:] if self.use_peepholes else None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # this is the weight of fc
         wx = np.random.normal(size=(self.M, 4 * self.D)).astype('float32')
         # this is the bias of fc
         # and it should be manually added into the bias of this fusion LSTM
         bx = np.random.normal(size=(1, 4 * self.D)).astype('float32')
+<<<<<<< HEAD
         b[0, 0 : 4 * self.D] += bx[0, :]
         h, c = fusion_lstm(
             x,
@@ -113,12 +150,22 @@ class TestFusionLSTMOp(OpTest):
             ACTIVATION[self.act_cell],
             ACTIVATION[self.act_cand],
         )
+=======
+        b[0, 0:4 * self.D] += bx[0, :]
+        h, c = fusion_lstm(x, self.lod, wx, bx, h0, c0, wh, w_b, w_c,
+                           self.is_reverse, ACTIVATION[self.act_gate],
+                           ACTIVATION[self.act_cell], ACTIVATION[self.act_cand])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'X': (x, self.lod),
             'WeightX': wx,
             'WeightH': wh,
+<<<<<<< HEAD
             'Bias': b,
+=======
+            'Bias': b
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         if self.has_initial_state:
@@ -135,7 +182,11 @@ class TestFusionLSTMOp(OpTest):
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
+<<<<<<< HEAD
             'use_mkldnn': self.use_mkldnn,
+=======
+            'use_mkldnn': self.use_mkldnn
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -145,63 +196,107 @@ class TestFusionLSTMOp(OpTest):
 
 
 class TestFusionLSTMOpInit(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.has_initial_state = True
 
 
 class TestFusionLSTMOpReverse(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.is_reverse = True
 
 
 class TestFusionLSTMOpInitReverse(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.has_initial_state = True
         self.is_reverse = True
 
 
 class TestFusionLSTMOpMD1(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 36
         self.D = 8
 
 
 class TestFusionLSTMOpMD2(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 8
         self.D = 8
 
 
 class TestFusionLSTMOpMD3(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 15
         self.D = 3
 
 
 class TestFusionLSTMOpBS1(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.lod = [[3]]
         self.D = 16
 
 
 class TestFusionLSTMOpPeepholes(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.use_peepholes = True
 
 
 class TestFusionLSTMOpPeepholesInit(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
 
 
 class TestFusionLSTMOpPeepholesReverse(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.use_peepholes = True
         self.is_reverse = True
 
 
 class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
@@ -209,6 +304,10 @@ class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
 
 
 class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.use_peepholes = True
         self.lod = [[2]]
@@ -217,6 +316,9 @@ class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
 
 if __name__ == '__main__':
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

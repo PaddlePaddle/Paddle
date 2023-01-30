@@ -107,6 +107,7 @@ paddle::experimental::Tensor fused_gemm_epilogue_dygraph_function(
     const paddle::experimental::Tensor& Y,
     const paddle::experimental::Tensor& Bias,
     const paddle::framework::AttributeMap& attr_map);
+<<<<<<< HEAD
 
 std::tuple<paddle::experimental::Tensor,
            paddle::experimental::Tensor,
@@ -120,3 +121,5 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
     const paddle::experimental::Tensor& LnScale,
     const paddle::experimental::Tensor& LnBias,
     const paddle::framework::AttributeMap& attr_map);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

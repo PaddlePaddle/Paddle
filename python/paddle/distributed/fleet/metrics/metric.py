@@ -14,11 +14,17 @@
 """Fleet Metrics"""
 
 import math
+<<<<<<< HEAD
 
 import numpy as np
 
 import paddle
 from paddle.static import Variable
+=======
+import numpy as np
+from paddle.static import Variable
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -38,12 +44,21 @@ def sum(input, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
+<<<<<<< HEAD
           input = paddle.cast(some_input, dtype='float32')
           cnt = paddle.sum(input)
           global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = paddle.add(cnt, global_cnt)
           paddle.assign(tmp, global_cnt)
 
+=======
+          input = fluid.layers.cast(some_input, dtype='float32')
+          cnt = fluid.layers.reduce_sum(input)
+          global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp = fluid.layers.elementwise_add(cnt, global_cnt)
+          fluid.layers.assign(tmp, global_cnt)
+          
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
           print("sum array: ", paddle.distributed.fleet.sum(res))
@@ -78,11 +93,19 @@ def max(input, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
+<<<<<<< HEAD
           input = paddle.cast(some_input, dtype='float32')
           cnt = paddle.sum(input)
           global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = paddle.maximum(cnt, global_cnt)
           paddle.assign(tmp, global_cnt)
+=======
+          input = fluid.layers.cast(some_input, dtype='float32')
+          cnt = fluid.layers.reduce_sum(input)
+          global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp = fluid.layers.elementwise_max(cnt, global_cnt)
+          fluid.layers.assign(tmp, global_cnt)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
@@ -118,11 +141,19 @@ def min(input, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
+<<<<<<< HEAD
           input = paddle.cast(some_input, dtype='float32')
           cnt = paddle.sum(input)
           global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = paddle.minimum(cnt, global_cnt)
           paddle.assign(tmp, global_cnt)
+=======
+          input = fluid.layers.cast(some_input, dtype='float32')
+          cnt = fluid.layers.reduce_sum(input)
+          global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp = fluid.layers.elementwise_min(cnt, global_cnt)
+          fluid.layers.assign(tmp, global_cnt)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
@@ -148,8 +179,13 @@ def auc(stat_pos, stat_neg, scope=None, util=None):
     distributed auc in fleet
 
     Args:
+<<<<<<< HEAD
         stat_pos(numpy.array|Variable|string): stat_pos in output of paddle.static.auc
         stat_neg(numpy.array|Variable|string): stat_neg in output of paddle.static.auc
+=======
+        stat_pos(numpy.array|Variable|string): stat_pos in output of fluid.layers.auc
+        stat_neg(numpy.array|Variable|string): stat_neg in output of fluid.layers.auc
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         scope(Scope): specific scope
 
     Returns:
@@ -159,11 +195,19 @@ def auc(stat_pos, stat_neg, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
+<<<<<<< HEAD
           similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(output, min=-15.0, max=15.0))
           binary_predict = paddle.concat(
               input=[paddle.subtract(paddle.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1)
           self.auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg] =
               paddle.static.auc(input=binary_predict, label=label, curve='ROC', num_thresholds=4096)
+=======
+          similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(output, min=-15.0, max=15.0))
+          binary_predict = fluid.layers.concat(
+              input=[fluid.layers.elementwise_sub(fluid.layers.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1)
+          self.auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg] =
+              fluid.layers.auc(input=binary_predict, label=label, curve='ROC', num_thresholds=4096)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
           # in train.py, after train or infer
           pos = np.array(scope.find_var(stat_pos.name).get_tensor())
@@ -231,7 +275,11 @@ def mae(abserr, total_ins_num, scope=None, util=None):
     distributed mae in fleet
 
     Args:
+<<<<<<< HEAD
         abserr(numpy.array|Variable|string): abserr in output of paddle.static.ctr_metric_bundle
+=======
+        abserr(numpy.array|Variable|string): abserr in output of fluid.contrib.layers.ctr_metric_bundle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
@@ -242,7 +290,11 @@ def mae(abserr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
+<<<<<<< HEAD
           sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
+=======
+          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(abserr.name).get_tensor())
@@ -259,8 +311,12 @@ def mae(abserr, total_ins_num, scope=None, util=None):
         abserr = np.array(scope.find_var(abserr).get_tensor())
     if isinstance(total_ins_num, Variable):
         total_ins_num = np.array(
+<<<<<<< HEAD
             scope.find_var(total_ins_num.name).get_tensor()
         )
+=======
+            scope.find_var(total_ins_num.name).get_tensor())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif isinstance(total_ins_num, str):
         total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
 
@@ -281,7 +337,11 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
     distributed rmse in fleet
 
     Args:
+<<<<<<< HEAD
         sqrerr(numpy.array|Variable|string): sqrerr in output of paddle.static.ctr_metric_bundle
+=======
+        sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
@@ -292,7 +352,11 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
+<<<<<<< HEAD
           sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
+=======
+          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(sqrerr.name).get_tensor())
@@ -309,8 +373,12 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
     if isinstance(total_ins_num, Variable):
         total_ins_num = np.array(
+<<<<<<< HEAD
             scope.find_var(total_ins_num.name).get_tensor()
         )
+=======
+            scope.find_var(total_ins_num.name).get_tensor())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif isinstance(total_ins_num, str):
         total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
@@ -331,7 +399,11 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
     distributed mse in fleet
 
     Args:
+<<<<<<< HEAD
         sqrerr(numpy.array|Variable|string): sqrerr in output of paddle.static.ctr_metric_bundle
+=======
+        sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
@@ -342,7 +414,11 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
+<<<<<<< HEAD
           sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
+=======
+          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
           # in train.py, after train or infer
           metric = np.array(scope.find_var(sqrerr.name).get_tensor())
@@ -359,8 +435,12 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
     if isinstance(total_ins_num, Variable):
         total_ins_num = np.array(
+<<<<<<< HEAD
             scope.find_var(total_ins_num.name).get_tensor()
         )
+=======
+            scope.find_var(total_ins_num.name).get_tensor())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif isinstance(total_ins_num, str):
         total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
@@ -391,6 +471,7 @@ def acc(correct, total, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
+<<<<<<< HEAD
           correct = paddle.static.create_global_var(dtype='float32', shape=[1], value=0)
           total = paddle.static.create_global_var(dtype='float32', shape=[1], value=0)
           acc = paddle.metric.accuracy(predict, label, k=1, correct=correct, total=total)
@@ -402,6 +483,19 @@ def acc(correct, total, scope=None, util=None):
           global_total = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp2 = paddle.minimum(total, global_total)
           paddle.assign(tmp2, global_total)
+=======
+          correct = fluid.layers.create_global_var(dtype='float32', shape=[1], value=0)
+          total = fluid.layers.create_global_var(dtype='float32', shape=[1], value=0)
+          acc = fluid.layers.acc(predict, label, k=1, correct=correct, total=total)
+
+          global_correct = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp1 = fluid.layers.elementwise_min(correct, global_correct)
+          fluid.layers.assign(tmp1, global_correct)
+
+          global_total = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp2 = fluid.layers.elementwise_min(total, global_total)
+          fluid.layers.assign(tmp2, global_total)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
           # in train.py, after train or infer
           correct_num = np.array(scope.find_var(correct.name).get_tensor())

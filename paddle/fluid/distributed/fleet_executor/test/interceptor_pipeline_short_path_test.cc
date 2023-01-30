@@ -83,10 +83,18 @@ TEST(AmplifierInterceptor, Amplifier) {
   // NOTE: don't delete, otherwise interceptor will use undefined node
   TaskNode* source =
       new TaskNode(0, SOURCE_ID, micro_steps);  // rank, task_id, max_run_times
+<<<<<<< HEAD
   TaskNode* node_a = new TaskNode(0, 0, 0, micro_steps);  // role, rank, task_id
   TaskNode* node_b = new TaskNode(0, 0, 1, 3);
   TaskNode* node_c = new TaskNode(0, 0, 2, 3);
   TaskNode* node_d = new TaskNode(0, 0, 3, micro_steps);
+=======
+  TaskNode* node_a =
+      new TaskNode(0, 0, 0, micro_steps, 0);  // role, rank, task_id
+  TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
+  TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
+  TaskNode* node_d = new TaskNode(0, 0, 3, micro_steps, 0);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TaskNode* sink = new TaskNode(0, SINK_ID, micro_steps);
 
   // source->a->b->c->d->sink

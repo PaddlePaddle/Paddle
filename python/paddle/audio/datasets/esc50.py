@@ -13,11 +13,19 @@
 # limitations under the License.
 import collections
 import os
+<<<<<<< HEAD
 from typing import List, Tuple
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils import download
 
+=======
+from typing import List
+from typing import Tuple
+
+from paddle.utils import download
+from paddle.dataset.common import DATA_HOME
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .dataset import AudioClassificationDataset
 
 __all__ = []
@@ -151,7 +159,11 @@ class ESC50(AudioClassificationDataset):
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, split)
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(ESC50, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 

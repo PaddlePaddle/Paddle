@@ -4,7 +4,11 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
+<<<<<<< HEAD
 set(DY2ST_EAGER_TEST_ENVS ${GC_ENVS})
+=======
+set(DY2ST_EAGER_TEST_ENVS ${GC_ENVS} FLAGS_enable_eager_mode=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 set(TEST_EAGER_OPS
     test_bmn
@@ -35,7 +39,11 @@ list(REMOVE_ITEM TEST_OPS test_lac)
 # NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope
 # will be removed and will cause some random failed in multi-thread.
 if(WITH_PYTHON)
+<<<<<<< HEAD
   py_test_modules(test_lac MODULES test_lac)
+=======
+  py_test_modules(test_lac MODULES test_lac ENVS FLAGS_enable_eager_mode=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
 endif()
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from typing import Sequence
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -24,6 +25,16 @@ from .fluid.framework import in_dygraph_mode
 from .fluid.layer_helper import LayerHelper
 from .tensor.attribute import is_floating_point, is_integer
 from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype
+=======
+import numpy as np
+import paddle
+from .tensor.attribute import is_complex, is_floating_point, is_integer
+from .tensor.creation import _real_to_complex_dtype, _complex_to_real_dtype
+from .fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from . import _C_ops, _legacy_C_ops
+from .fluid.data_feeder import check_variable_and_dtype
+from .fluid.layer_helper import LayerHelper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = [
     'fft',
@@ -524,6 +535,7 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
 
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
 
             arr = paddle.arange(4, dtype="float64")
@@ -551,6 +563,31 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             #          [(-8+8j),  0j    ,  0j    ,  -0j   ],
             #          [(-8+0j),  0j    ,  0j    ,  -0j   ],
             #          [(-8-8j),  0j    ,  0j    ,  -0j   ]]])
+=======
+            import numpy as np
+            import paddle
+
+            x = np.mgrid[:4, :4, :4][1]
+            xp = paddle.to_tensor(x)
+            fftn_xp = paddle.fft.fftn(xp, axes=(1, 2)).numpy()
+            print(fftn_xp)
+            #  [[[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]
+            #   [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]
+            #   [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]
+            #   [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
+            #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     if is_integer(x) or is_floating_point(x):
         return fftn_r2c(
@@ -908,6 +945,7 @@ def fft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
 
             arr = paddle.arange(2, dtype="float64")
@@ -918,6 +956,17 @@ def fft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
             # Tensor(shape=[2, 2], dtype=complex128, place=Place(gpu:0), stop_gradient=True,
             #        [[ (2+0j),  0j    ],
             #         [(-2+0j),  0j    ]])
+=======
+            import numpy as np
+            import paddle
+
+            x = np.mgrid[:2, :2][1]
+            xp = paddle.to_tensor(x)
+            fft2_xp = paddle.fft.fft2(xp).numpy()
+            print(fft2_xp)
+            #  [[ 2.+0.j -2.+0.j]
+            #   [ 0.+0.j  0.+0.j]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
     _check_at_least_ndim(x, 2)
@@ -979,6 +1028,7 @@ def ifft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
 
             arr = paddle.arange(2, dtype="float64")
@@ -989,6 +1039,17 @@ def ifft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
             # Tensor(shape=[2, 2], dtype=complex128, place=Place(gpu:0), stop_gradient=True,
             #        [[ (0.5+0j),  0j      ],
             #         [(-0.5+0j),  0j      ]])
+=======
+            import numpy as np
+            import paddle
+
+            x = np.mgrid[:2, :2][1]
+            xp = paddle.to_tensor(x)
+            ifft2_xp = paddle.fft.ifft2(xp).numpy()
+            print(ifft2_xp)
+            #  [[ 0.5+0.j -0.5+0.j]
+            #   [ 0. +0.j  0. +0.j]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     _check_at_least_ndim(x, 2)
     if s is not None:
@@ -1042,6 +1103,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     .. code-block:: python
 
         import paddle
+<<<<<<< HEAD
 
         arr = paddle.arange(5, dtype="float64")
         x = paddle.meshgrid(arr, arr)[0]
@@ -1053,6 +1115,18 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
         #  [-12.5 +4.0614962j    0.  +0.j           0.  +0.j        ]
         #  [-12.5 -4.0614962j    0.  +0.j           0.  +0.j        ]
         #  [-12.5-17.20477401j   0.  +0.j           0.  +0.j        ]]
+=======
+        import numpy as np
+
+        x = paddle.to_tensor(np.mgrid[:5, :5][0].astype(np.float32))
+        print(paddle.fft.rfft2(x))
+        # Tensor(shape=[5, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+        #        [[ (50+0j)                                        ,  (1.1920928955078125e-07+0j)                    ,  0j                                             ],
+        #         [(-12.5+17.204774856567383j)                     , (-9.644234211236835e-08+7.006946134424652e-08j) ,  0j                                             ],
+        #         [(-12.500000953674316+4.061495304107666j)        , (3.6837697336977726e-08-1.1337477445749755e-07j),  0j                                             ],
+        #         [(-12.500000953674316-4.061495304107666j)        , (3.6837697336977726e-08+1.1337477445749755e-07j),  0j                                             ],
+        #         [(-12.5-17.204774856567383j)                     , (-9.644234211236835e-08-7.006946134424652e-08j) ,  0j                                             ]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     _check_at_least_ndim(x, 2)
     if s is not None:
@@ -1202,6 +1276,7 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
 
             arr = paddle.arange(5, dtype="float64")
@@ -1216,6 +1291,15 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
             ihfft2_xp = paddle.fft.ihfft2(x)
             print(ihfft2_xp.numpy())
+=======
+            import numpy as np
+            import paddle
+
+            x = np.mgrid[:5, :5][0].astype(np.float64)
+            xp = paddle.to_tensor(x)
+            ihfft2_xp = paddle.fft.ihfft2(xp).numpy()
+            print(ihfft2_xp)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # [[ 2. +0.j          0. +0.j          0. +0.j        ]
             #  [-0.5-0.68819096j  0. +0.j          0. +0.j        ]
             #  [-0.5-0.16245985j  0. +0.j          0. +0.j        ]
@@ -1267,6 +1351,7 @@ def fftfreq(n, d=1.0, dtype=None, name=None):
 
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
 
             scalar_temp = 0.5
@@ -1277,6 +1362,20 @@ def fftfreq(n, d=1.0, dtype=None, name=None):
     """
     if d * n == 0:
         raise ValueError("d or n should not be 0.")
+=======
+            import numpy as np
+            import paddle
+
+            x = np.array([3, 1, 2, 2, 3], dtype=float)
+            scalar_temp = 0.5
+            n = x.size
+            fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
+            print(fftfreq_xp)
+
+            #  Tensor(shape=[5], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #           [ 0.        ,  0.40000001,  0.80000001, -0.80000001, -0.40000001])
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     dtype = paddle.framework.get_default_dtype()
     val = 1.0 / (n * d)
@@ -1316,10 +1415,20 @@ def rfftfreq(n, d=1.0, dtype=None, name=None):
 
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
 
             scalar_temp = 0.3
             rfftfreq_xp = paddle.fft.rfftfreq(5, d=scalar_temp)
+=======
+            import numpy as np
+            import paddle
+
+            x = np.array([3, 1, 2, 2, 3], dtype=float)
+            scalar_temp = 0.3
+            n = x.size
+            rfftfreq_xp = paddle.fft.rfftfreq(n, d=scalar_temp)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             print(rfftfreq_xp)
 
             #  Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -1355,6 +1464,7 @@ def fftshift(x, axes=None, name=None):
 
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
 
             fftfreq_xp = paddle.fft.fftfreq(5, d=0.3)
@@ -1366,6 +1476,17 @@ def fftshift(x, axes=None, name=None):
             print(res)
             # Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [-1.33333337, -0.66666669,  0.        ,  0.66666669,  1.33333337])
+=======
+            import numpy as np
+            import paddle
+
+            x = np.array([3, 1, 2, 2, 3], dtype=float)
+            n = x.size
+            fftfreq_xp = paddle.fft.fftfreq(n, d=0.3)
+            res = paddle.fft.fftshift(fftfreq_xp).numpy()
+            print(res)
+            #  [-1.3333334 -0.6666667  0.         0.6666667  1.3333334]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
     shape = paddle.shape(x)
@@ -1400,6 +1521,7 @@ def ifftshift(x, axes=None, name=None):
 
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
 
             fftfreq_xp = paddle.fft.fftfreq(5, d=0.3)
@@ -1411,6 +1533,17 @@ def ifftshift(x, axes=None, name=None):
             print(res)
             # Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [ 1.33333337, -1.33333337, -0.66666669,  0.        ,  0.66666669])
+=======
+            import numpy as np
+            import paddle
+
+            x = np.array([3, 1, 2, 2, 3], dtype=float)
+            n = x.size
+            fftfreq_xp = paddle.fft.fftfreq(n, d=0.3)
+            res = paddle.fft.ifftshift(fftfreq_xp).numpy()
+            print(res)
+            #  [ 1.3333334 -1.3333334 -0.6666667  0.         0.6666667]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
     shape = paddle.shape(x)
@@ -1442,12 +1575,24 @@ def fft_c2c(x, n, axis, norm, forward, name):
         _check_fft_n(n)
         s = [n]
         x = _resize_fft_input(x, s, axes)
+<<<<<<< HEAD
 
     if in_dygraph_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
         op_type = 'fft_c2c'
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
+=======
+    op_type = 'fft_c2c'
+
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
+    if in_dygraph_mode():
+        out = _C_ops.fft_c2c(x, axes, norm, forward)
+    elif _in_legacy_dygraph():
+        attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
+        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
+    else:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs = {
             'X': [x],
         }
@@ -1474,6 +1619,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
         _check_fft_n(n)
         s = [n]
         x = _resize_fft_input(x, s, axes)
+<<<<<<< HEAD
     if in_dygraph_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
@@ -1481,6 +1627,26 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], op_type
         )
+=======
+    op_type = 'fft_r2c'
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
+
+    if in_dygraph_mode():
+        out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
+    elif _in_legacy_dygraph():
+        attrs = (
+            'axes',
+            axes,
+            'normalization',
+            norm,
+            'forward',
+            forward,
+            'onesided',
+            onesided,
+        )
+        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
+    else:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs = {
             'X': [x],
         }
@@ -1516,15 +1682,39 @@ def fft_c2r(x, n, axis, norm, forward, name):
         _check_fft_n(n)
         s = [n // 2 + 1]
         x = _resize_fft_input(x, s, axes)
+<<<<<<< HEAD
+=======
+    op_type = 'fft_c2r'
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if in_dygraph_mode():
         if n is not None:
             out = _C_ops.fft_c2r(x, axes, norm, forward, n)
         else:
             out = _C_ops.fft_c2r(x, axes, norm, forward, 0)
+<<<<<<< HEAD
     else:
         op_type = 'fft_c2r'
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
+=======
+    elif _in_legacy_dygraph():
+        if n is not None:
+            attrs = (
+                'axes',
+                axes,
+                'normalization',
+                norm,
+                'forward',
+                forward,
+                'last_dim_size',
+                n,
+            )
+        else:
+            attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
+        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
+    else:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs = {
             'X': [x],
         }
@@ -1575,12 +1765,24 @@ def fftn_c2c(x, s, axes, norm, forward, name):
 
     if s is not None:
         x = _resize_fft_input(x, s, axes)
+<<<<<<< HEAD
 
     if in_dygraph_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
         op_type = 'fft_c2c'
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
+=======
+    op_type = 'fft_c2c'
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
+
+    if in_dygraph_mode():
+        out = _C_ops.fft_c2c(x, axes, norm, forward)
+    elif _in_legacy_dygraph():
+        attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
+        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
+    else:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs = {
             'X': [x],
         }
@@ -1626,6 +1828,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
     if s is not None:
         x = _resize_fft_input(x, s, axes)
 
+<<<<<<< HEAD
     if in_dygraph_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
@@ -1633,6 +1836,26 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], op_type
         )
+=======
+    op_type = 'fft_r2c'
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
+
+    if in_dygraph_mode():
+        out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
+    elif _in_legacy_dygraph():
+        attrs = (
+            'axes',
+            axes,
+            'normalization',
+            norm,
+            'forward',
+            forward,
+            'onesided',
+            onesided,
+        )
+        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
+    else:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs = {
             'X': [x],
         }
@@ -1690,14 +1913,39 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         fft_input_shape[-1] = fft_input_shape[-1] // 2 + 1
         x = _resize_fft_input(x, fft_input_shape, axes)
 
+<<<<<<< HEAD
+=======
+    op_type = 'fft_c2r'
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if in_dygraph_mode():
         if s is not None:
             out = _C_ops.fft_c2r(x, axes, norm, forward, s[-1])
         else:
             out = _C_ops.fft_c2r(x, axes, norm, forward, 0)
+<<<<<<< HEAD
     else:
         op_type = 'fft_c2r'
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
+=======
+    elif _in_legacy_dygraph():
+        if s:
+            attrs = (
+                'axes',
+                axes,
+                'normalization',
+                norm,
+                'forward',
+                forward,
+                'last_dim_size',
+                s[-1],
+            )
+        else:
+            attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
+        out = getattr(_legacy_C_ops, op_type)(x, *attrs)
+    else:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs = {
             'X': [x],
         }

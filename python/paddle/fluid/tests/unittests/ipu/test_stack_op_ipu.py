@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -36,12 +43,20 @@ class TestBase(IPUOpTest):
         self.feed_fp32 = {
             "x": x.astype(np.float32),
             "y": y.astype(np.float32),
+<<<<<<< HEAD
             "z": z.astype(np.float32),
+=======
+            "z": z.astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "y": y.astype(np.float16),
+<<<<<<< HEAD
             "z": z.astype(np.float16),
+=======
+            "z": z.astype(np.float16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_feed_attr(self):
@@ -54,6 +69,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
@@ -64,6 +80,18 @@ class TestBase(IPUOpTest):
             name=self.feed_list[2], shape=self.feed_shape[2], dtype='float32'
         )
         out = paddle.stack([x, y, z], **self.attrs)
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        y = paddle.static.data(name=self.feed_list[1],
+                               shape=self.feed_shape[1],
+                               dtype='float32')
+        z = paddle.static.data(name=self.feed_list[2],
+                               shape=self.feed_shape[2],
+                               dtype='float32')
+        out = paddle.fluid.layers.stack([x, y, z], **self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -78,6 +106,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"axis": -2}
 

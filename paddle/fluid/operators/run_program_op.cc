@@ -47,6 +47,7 @@ class RunProgramOp : public framework::OperatorWithKernel {
    *
    * Of course, the data type here is also not important.
    */
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
@@ -59,6 +60,19 @@ class RunProgramOp : public framework::OperatorWithKernel {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           expected_kernel_type.layout(),
                           expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return expected_kernel_type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -66,18 +80,30 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(vector<phi::DenseTensor>)"
+=======
+             "(vector<LoDTensor>)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "The input tensors of RunProgram operator, also the feed targets "
              "of loaded program.")
         .AsDuplicable();
     AddInput("Params",
+<<<<<<< HEAD
              "(vector<phi::DenseTensor or SelecetedRows>)"
+=======
+             "(vector<LoDTensor or SelecetedRows>)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "The input parameter of RunProgram operator, also the parameters "
              "of the loaded program.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out",
+<<<<<<< HEAD
               "(vector<phi::DenseTensor>)"
+=======
+              "(vector<LoDTensor>)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "The output tensors of RunProgram operator, also the fetch "
               "targets of the loaded program.")
         .AsDuplicable();
@@ -88,7 +114,11 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
               "NOTE: Do not use Scope directly because Scope output is not "
               "currently supported.");
     AddOutput("DOut",
+<<<<<<< HEAD
               "(vector<phi::DenseTensor>)"
+=======
+              "(vector<LoDTensor>)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "The output tensors for GRAD Tensors in RunProgram forward "
               "operator, the forward operator contains GRAD Tensors when it "
               "computes double grad.")
@@ -131,6 +161,7 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                         "(BlockDesc *)"
                         "The global block of executed backward program desc.")
         .SetDefault(nullptr);
+<<<<<<< HEAD
     AddAttr<std::vector<std::string>>("param_grad_names",
                                       "std::vector<std::string>"
                                       "The names of parameter gradients.")
@@ -150,6 +181,19 @@ NOTE: This operator is added so that the inference model stored by
 `fluid.io.save_inference_model` under the static graph mode can be loaded
 under the dynamic graph mode for fine-tuning or inferencing.
 
+=======
+    AddComment(R"DOC(
+RunProgram operator.
+
+The RunProgram operator receives a program's feed targets, fetch targets, 
+and parameters, and receives the forward and backward program desc 
+as attributes, and then executes the program by executor.
+
+NOTE: This operator is added so that the inference model stored by 
+`fluid.io.save_inference_model` under the static graph mode can be loaded 
+under the dynamic graph mode for fine-tuning or inferencing.
+      
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
   }
 };
@@ -174,6 +218,7 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
 
  protected:
   /* see [Why use single type kernel] */
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
@@ -186,6 +231,19 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           expected_kernel_type.layout(),
                           expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return expected_kernel_type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

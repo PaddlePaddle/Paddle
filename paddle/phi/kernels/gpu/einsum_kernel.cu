@@ -18,10 +18,17 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(einsum,
                    GPU,
                    ALL_LAYOUT,
                    phi::EinsumKernel,
+=======
+PD_REGISTER_KERNEL(einsum_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::EinsumKernelRaw,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::float16,
@@ -29,10 +36,17 @@ PD_REGISTER_KERNEL(einsum,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(einsum_infer,
                    GPU,
                    ALL_LAYOUT,
                    phi::EinsumInferKernel,
+=======
+PD_REGISTER_KERNEL(einsum,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::EinsumKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::float16,

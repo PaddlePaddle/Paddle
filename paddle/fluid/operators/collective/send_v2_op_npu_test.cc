@@ -111,7 +111,11 @@ void Prepare(f::Scope* scope,
 void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx) {
   std::cout << "BEGIN TEST:" << __FUNCTION__ << std::endl;
   auto x = scope->Var("Data");
+<<<<<<< HEAD
   auto tensor_x = x->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int num = atoi(getenv("DATA_SIZE"));
 
   EXPECT_GT(num, 0);

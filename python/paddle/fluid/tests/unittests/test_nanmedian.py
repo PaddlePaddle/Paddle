@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid.core as core
 
@@ -23,6 +30,7 @@ np.random.seed(102)
 
 
 class TestNanmedian(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         single_axis_shape = 120
         multi_axis_shape = (2, 3, 4, 5)
@@ -36,6 +44,22 @@ class TestNanmedian(unittest.TestCase):
             ).astype(np.float32),
             "single_axis_all_nan": np.full(single_axis_shape, np.nan),
             "multi_axis_all_nan": np.full(multi_axis_shape, np.nan),
+=======
+
+    def setUp(self):
+        single_axis_shape = (120)
+        multi_axis_shape = (2, 3, 4, 5)
+
+        self.fake_data = {
+            "single_axis_normal":
+            np.random.uniform(-1, 1, single_axis_shape).astype(np.float32),
+            "multi_axis_normal":
+            np.random.uniform(-1, 1, multi_axis_shape).astype(np.float32),
+            "single_axis_all_nan":
+            np.full(single_axis_shape, np.nan),
+            "multi_axis_all_nan":
+            np.full(multi_axis_shape, np.nan),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         single_partial_nan = self.fake_data["single_axis_normal"].copy()
@@ -60,6 +84,7 @@ class TestNanmedian(unittest.TestCase):
         col_data[:, :, 2, 3:] = np.nan
         self.fake_data["col_nan_odd"] = col_data
 
+<<<<<<< HEAD
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -76,6 +101,13 @@ class TestNanmedian(unittest.TestCase):
             [0, 1, 3],
             (1, 2, 3),
             [0, 2, 1, 3],
+=======
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+        self.axis_candiate_list = [
+            None, 0, 2, -1, -2, (1, 2), [0, -1], [0, 1, 3], (1, 2, 3),
+            [0, 2, 1, 3]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
     def test_api_static(self):
@@ -91,9 +123,14 @@ class TestNanmedian(unittest.TestCase):
             out4 = paddle.nanmedian(x, axis=axis, keepdim=True)
             out5 = paddle.nanmedian(x, axis=tuple(axis), keepdim=True)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             res = exe.run(
                 feed={'X': data}, fetch_list=[out1, out2, out3, out4, out5]
             )
+=======
+            res = exe.run(feed={'X': data},
+                          fetch_list=[out1, out2, out3, out4, out5])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for out in res:
             np.testing.assert_allclose(np_res, out, rtol=1e-05, equal_nan=True)
@@ -122,6 +159,7 @@ class TestNanmedian(unittest.TestCase):
                         continue
 
                 np_res = np.nanmedian(data, keepdims=keep_dim)
+<<<<<<< HEAD
                 pd_res = paddle.nanmedian(
                     paddle.to_tensor(data), keepdim=keep_dim
                 )
@@ -138,6 +176,25 @@ class TestNanmedian(unittest.TestCase):
             np.testing.assert_allclose(
                 np_res, pd_res.numpy(), rtol=1e-05, equal_nan=True
             )
+=======
+                pd_res = paddle.nanmedian(paddle.to_tensor(data),
+                                          keepdim=keep_dim)
+                np.testing.assert_allclose(np_res,
+                                           pd_res.numpy(),
+                                           rtol=1e-05,
+                                           equal_nan=True)
+
+        def test_axis_case(data, axis):
+            pd_res = paddle.nanmedian(paddle.to_tensor(data),
+                                      axis=axis,
+                                      keepdim=False)
+            axis = clean_axis_numpy(axis, len(data.shape))
+            np_res = np.nanmedian(data, axis=axis, keepdims=False)
+            np.testing.assert_allclose(np_res,
+                                       pd_res.numpy(),
+                                       rtol=1e-05,
+                                       equal_nan=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for name, data in self.fake_data.items():
             test_data_case(data)

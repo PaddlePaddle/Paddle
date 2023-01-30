@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from functools import reduce
 
 import numpy as np
@@ -39,6 +40,19 @@ from ..auto_parallel.utils import (
 )
 from .auto_parallel_sharding import ShardingPass
 from .pass_base import PassBase, register_pass
+=======
+import numpy as np
+from functools import reduce
+
+import paddle
+
+from paddle.fluid import core
+from .pass_base import PassBase, register_pass
+from ..auto_parallel.reshard import Resharder
+from ..auto_parallel.process_group import get_world_process_group
+from ..auto_parallel.utils import is_gradient_clip_op, is_optimize_op, OP_ROLE_KEY, OpRole, _get_comm_group
+from ..auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _get_params_grads(block):
@@ -69,8 +83,12 @@ def _get_dpmp_topology(origin_topology, sharding_group):
     """
     sharding_axis = 1
     dp_sharding_topology = [
+<<<<<<< HEAD
         origin_topology[0] // sharding_group.nranks,
         sharding_group.nranks,
+=======
+        origin_topology[0] // sharding_group.nranks, sharding_group.nranks
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ]
     if dp_sharding_topology[0] == 1:
         sharding_axis = 0
@@ -126,6 +144,7 @@ def _get_dpmp_process_mesh(rank_id, topology, processes, sharding_group):
     return dpmp_topology, list(dpmp_processes_in_sharding)
 
 
+<<<<<<< HEAD
 def _is_about_global_norm(
     rank_id, tensor_shape, topology, processes, dims_mapping, sharding_group
 ):
@@ -137,13 +156,29 @@ def _is_about_global_norm(
     complete_shape = Resharder.compute_complete_shape(
         tensor_shape, dpmp_topology, dims_mapping
     )
+=======
+def _is_about_global_norm(rank_id, tensor_shape, topology, processes,
+                          dims_mapping, sharding_group):
+    # get current process_mesh where the parameter exist.
+    dpmp_topology, dpmp_processes = _get_dpmp_process_mesh(
+        rank_id, topology, processes, sharding_group)
+
+    complete_shape = Resharder.compute_complete_shape(tensor_shape,
+                                                      dpmp_topology,
+                                                      dims_mapping)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     complete_partitions = []
     complete_param_ranks = []
     for process in dpmp_processes:
         partition_index = Resharder.compute_partition_index(
+<<<<<<< HEAD
             process, complete_shape, dims_mapping, dpmp_topology, dpmp_processes
         )
+=======
+            process, complete_shape, dims_mapping, dpmp_topology,
+            dpmp_processes)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if partition_index not in complete_partitions:
             complete_partitions.append(partition_index)
             complete_param_ranks.append(process)
@@ -151,22 +186,32 @@ def _is_about_global_norm(
     return rank_id in complete_param_ranks
 
 
+<<<<<<< HEAD
 class ClipHelper:
     def __init__(
         self, params_grads, rank_id, block, dist_context, pass_context
     ):
+=======
+class ClipHelper(object):
+
+    def __init__(self, params_grads, rank_id, block, dist_context):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         params, _ = zip(*params_grads)
         self.params = list(params)
         self.params_name = [p.name for p in self.params]
         self.rank_id = rank_id
         self.block = block
         self.dist_context = dist_context
+<<<<<<< HEAD
         self.pass_context = pass_context
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.sharding_group = None
         self.world_ranks = get_world_process_group().ranks
         if hasattr(dist_context, '_sharding_group'):
             self.sharding_group = dist_context._sharding_group
 
+<<<<<<< HEAD
         self.world_nranks = len(self.world_ranks)
         self.pure_data_parallel = self._is_pure_data_parallel()
         self.rank_to_params = self._partition_parameters(params)
@@ -202,11 +247,26 @@ class ClipHelper:
         if name not in self.params_name:
             return False
         return True
+=======
+    def _is_calcuate_norm(self, name):
+        if not self._is_local_param(name):
+            return False, []
+
+        param = self.params[self.params_name.index(name)]
+        dist_attr = self._get_dist_attr(name)
+        topology = dist_attr.process_mesh.topology
+        processes = dist_attr.process_mesh.processes
+        dims_mapping = dist_attr.dims_mapping
+        return _is_about_global_norm(self.rank_id, param.shape, topology,
+                                     processes, dims_mapping,
+                                     self.sharding_group)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _get_dist_attr(self, name):
         var = self.block.vars[name]
         return self.dist_context.get_tensor_dist_attr_for_program(var)
 
+<<<<<<< HEAD
     def is_local_var_with_dist_attr(self, name):
         """
         whether the var_name is belong to cur_rank
@@ -282,6 +342,39 @@ class ClipHelper:
                 sizes[rank] += numel
         return mapping
 
+=======
+    def _is_local_param(self, name):
+        if name not in self.params_name:
+            return False
+        return True
+
+    def _is_local_var(self, name):
+        dist_attr = self._get_dist_attr(name)
+        assert dist_attr is not None
+        return self.rank_id in dist_attr.process_mesh.processes
+
+    def _init_dist_attr(self, op):
+        op_dist_attr = OperatorDistributedAttribute()
+        op_dist_attr.process_mesh = self.world_ranks
+        for in_name in op.input_arg_names:
+            in_var = self.block.vars[in_name]
+            in_dist_attr = TensorDistributedAttribute()
+            in_dist_attr.process_mesh = self.world_ranks
+            in_dist_attr.dims_mapping = [-1]
+            self.dist_context.set_tensor_dist_attr_for_program(
+                in_var, in_dist_attr)
+            op_dist_attr.set_input_dist_attr(in_name, in_dist_attr)
+        for out_name in op.output_arg_names:
+            out_var = self.block.vars[out_name]
+            out_dist_attr = TensorDistributedAttribute()
+            out_dist_attr.process_mesh = self.world_ranks
+            out_dist_attr.dims_mapping = [-1]
+            self.dist_context.set_tensor_dist_attr_for_program(
+                out_var, out_dist_attr)
+            op_dist_attr.set_output_dist_attr(out_name, out_dist_attr)
+        self.dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 @register_pass("auto_parallel_grad_clip")
 class ClipGradByGloblNormPass(PassBase):
@@ -292,7 +385,11 @@ class ClipGradByGloblNormPass(PassBase):
     """
 
     def __init__(self):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(ClipGradByGloblNormPass, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.set_attr("rank_id", None)
         self.set_attr("dist_context", None)
         self.set_attr("params_grads", None)
@@ -317,17 +414,26 @@ class ClipGradByGloblNormPass(PassBase):
         dist_params_grads = self.get_attr("params_grads", None)
         # dist_params_grads = _get_params_grads(block)
 
+<<<<<<< HEAD
         self.clip_helper = ClipHelper(
             dist_params_grads, rank_id, block, dist_context, context
         )
+=======
+        self.clip_helper = ClipHelper(dist_params_grads, rank_id, block,
+                                      dist_context)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._remove_no_need_ops_vars(block)
 
     def _remove_no_need_ops_vars(self, block):
 
         removed_op_out_type = [
+<<<<<<< HEAD
             'squared_l2_norm',
             'square',
             'reduce_sum',
+=======
+            'clip_by_norm', 'squared_l2_norm', 'square', 'reduce_sum'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
         removed_op_idx = set()
@@ -336,6 +442,7 @@ class ClipGradByGloblNormPass(PassBase):
             if not is_gradient_clip_op(op):
                 continue
 
+<<<<<<< HEAD
             if op.type == 'clip_by_norm':
                 # remove 'clip_by_norm' op if the param is not updated with opt in current rank
                 input_name = op.input("X")[0]
@@ -359,22 +466,46 @@ class ClipGradByGloblNormPass(PassBase):
                         removed_tmp_var.update(set(op.output_arg_names))
                 else:
                     # 'reduce_sum' must be behind 'square'
+=======
+            if op.type in removed_op_out_type:
+                input_name = op.input("X")[0]
+                if input_name.find("@GRAD") != -1:
+                    #'clip_by_norm', 'squared_l2_norm', 'square'
+                    param_name = input_name[:input_name.find("@GRAD")]
+                    is_local = self.clip_helper._is_local_param(param_name)
+                    is_calculate = self.clip_helper._is_calcuate_norm(
+                        param_name)
+                    if not is_local or (not is_calculate
+                                        and op.type != 'clip_by_norm'):
+                        removed_op_idx.add(idx)
+                        removed_tmp_var.update(set(op.output_arg_names))
+                else:
+                    # 'reduce_sum'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     if idx - 1 in removed_op_idx:
                         removed_op_idx.add(idx)
                         removed_tmp_var.update(set(op.output_arg_names))
 
             elif op.type == 'elementwise_mul':
+<<<<<<< HEAD
                 # 'elementwise_mul' scale the param@GRAD with global_norm
                 # remove 'elementwise_mul' op if the param is not updated with opt in current rank
                 input_name = op.input("X")[0]
                 if input_name.find("@GRAD") != -1:
                     param_name = input_name[: input_name.find("@GRAD")]
                     is_local = self.clip_helper.is_local_param(param_name)
+=======
+                input_name = op.input("X")[0]
+                if input_name.find("@GRAD") != -1:
+                    param_name = input_name[:input_name.find("@GRAD")]
+                    is_local = self.clip_helper._is_local_param(param_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     if not is_local:
                         removed_op_idx.add(idx)
                         if block.ops[idx - 1].type == 'cast':
                             removed_op_idx.add(idx - 1)
                             removed_tmp_var.update(
+<<<<<<< HEAD
                                 set(block.ops[idx - 1].output_arg_names)
                             )
 
@@ -388,6 +519,15 @@ class ClipGradByGloblNormPass(PassBase):
                             input_name
                         )
                     ):
+=======
+                                set(block.ops[idx - 1].output_arg_names))
+
+            elif op.type == 'sum':
+                reserved_vars = []
+                for input_name in op.input_arg_names:
+                    if input_name not in removed_tmp_var and \
+                        self.clip_helper._is_local_var(input_name):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         reserved_vars.append(input_name)
                 if not reserved_vars:
                     removed_op_idx.add(idx)
@@ -395,8 +535,12 @@ class ClipGradByGloblNormPass(PassBase):
                     if block.ops[idx + 1].type == 'cast':
                         removed_op_idx.add(idx + 1)
                         removed_tmp_var.update(
+<<<<<<< HEAD
                             set(block.ops[idx + 1].output_arg_names)
                         )
+=======
+                            set(block.ops[idx + 1].output_arg_names))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 else:
                     op.desc.set_input("X", reserved_vars)
 
@@ -416,7 +560,10 @@ class ClipGradByGloblNormPass(PassBase):
             if op.type == 'sqrt':
                 input_name = op.input("X")[0]
                 input_var = block.vars[input_name]
+<<<<<<< HEAD
                 insert_leaf_fill_constant_node = False
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if paddle.distributed.get_world_size() > 1:
                     offset = 0
                     if input_name in removed_tmp_var:
@@ -431,6 +578,7 @@ class ClipGradByGloblNormPass(PassBase):
                                 'dtype': input_var.dtype,
                                 'value': 0,
                                 'force_cpu': False,
+<<<<<<< HEAD
                                 OP_ROLE_KEY: OpRole.Optimize,
                             },
                         )
@@ -440,6 +588,14 @@ class ClipGradByGloblNormPass(PassBase):
                         offset += 1
                         self.clip_helper._init_dist_attr(fill_constant_op)
                         insert_leaf_fill_constant_node = True
+=======
+                                OP_ROLE_KEY: OpRole.Optimize
+                            })
+                        fill_constant_op._set_attr('op_namescope',
+                                                   "/gradient_clip_pass")
+                        offset += 1
+                        self.clip_helper._init_dist_attr(fill_constant_op)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                     allreduce_op = block._insert_op(
                         idx + offset,
@@ -450,6 +606,7 @@ class ClipGradByGloblNormPass(PassBase):
                             'ring_id': 0,
                             'use_calc_stream': True,
                             OP_ROLE_KEY: OpRole.Optimize,
+<<<<<<< HEAD
                         },
                     )
                     # TODO better regular the usage of op namescope
@@ -497,6 +654,13 @@ class ClipGradByGloblNormPass(PassBase):
                             op_namescope="grad_clip_fill_constant_dep",
                         )
 
+=======
+                        })
+                    allreduce_op._set_attr('op_namescope',
+                                           "/gradient_clip_pass")
+                    self.clip_helper._init_dist_attr(allreduce_op)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for varname in removed_tmp_var:
             block._remove_var(varname, sync=False)
 

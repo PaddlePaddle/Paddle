@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_distributed_fused_lamb_op_with_clip import run_test
@@ -32,6 +33,24 @@ class TestDistributedFusedLambGradientMerge(unittest.TestCase):
             gradient_merge_steps=2,
             use_master_acc_grad=False,
         )
+=======
+from test_distributed_fused_lamb_op_with_clip import run_test
+import unittest
+
+
+class TestDistributedFusedLambGradientMerge(unittest.TestCase):
+
+    def test_gm(self):
+        run_test(clip_after_allreduce=True,
+                 max_global_norm=-1.0,
+                 gradient_merge_steps=2)
+
+    def test_gm_with_fp16_acc_grad(self):
+        run_test(clip_after_allreduce=True,
+                 max_global_norm=-1.0,
+                 gradient_merge_steps=2,
+                 use_master_acc_grad=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

@@ -22,15 +22,25 @@ template <typename T>
 class ClipMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto min = static_cast<T>(ctx.Attr<float>("min"));
     auto max = static_cast<T>(ctx.Attr<float>("max"));
 
     if (ctx.HasInput("Min")) {
+<<<<<<< HEAD
       phi::DenseTensor min_cpu;
       auto* min_tensor = ctx.Input<phi::DenseTensor>("Min");
+=======
+      Tensor min_cpu;
+      auto* min_tensor = ctx.Input<Tensor>("Min");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto* min_data = min_tensor->data<T>();
       if (platform::is_mlu_place(min_tensor->place())) {
         paddle::framework::TensorCopySync(
@@ -41,8 +51,13 @@ class ClipMLUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("Max")) {
+<<<<<<< HEAD
       phi::DenseTensor max_cpu;
       auto* max_tensor = ctx.Input<phi::DenseTensor>("Max");
+=======
+      Tensor max_cpu;
+      auto* max_tensor = ctx.Input<Tensor>("Max");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto* max_data = max_tensor->data<T>();
       if (platform::is_mlu_place(max_tensor->place())) {
         paddle::framework::TensorCopySync(
@@ -68,6 +83,7 @@ template <typename T>
 class ClipGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
@@ -81,6 +97,19 @@ class ClipGradMLUKernel : public framework::OpKernel<T> {
     auto min_val = ctx.Attr<float>("min");
     if (min_tensor) {
       phi::DenseTensor min_data;
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+
+    auto* min_tensor = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min") : nullptr;
+    auto* max_tensor = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max") : nullptr;
+
+    auto min_val = ctx.Attr<float>("min");
+    if (min_tensor) {
+      Tensor min_data;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopy(
           *min_tensor,
           platform::CPUPlace(),
@@ -91,7 +120,11 @@ class ClipGradMLUKernel : public framework::OpKernel<T> {
     }
     auto max_val = ctx.Attr<float>("max");
     if (max_tensor) {
+<<<<<<< HEAD
       phi::DenseTensor max_data;
+=======
+      Tensor max_data;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopy(
           *max_tensor,
           platform::CPUPlace(),

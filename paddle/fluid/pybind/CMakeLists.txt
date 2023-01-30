@@ -22,6 +22,10 @@ set(PYBIND_DEPS
     analysis_predictor
     imperative_profiler
     imperative_flag
+<<<<<<< HEAD
+=======
+    save_load_util
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dlpack_tensor
     device_context
     gloo_wrapper
@@ -37,12 +41,19 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     tcp_store
+<<<<<<< HEAD
     comm_context_manager
     new_profiler
     auto_parallel
     jit_layer
     jit_property
     prim_utils)
+=======
+    new_profiler
+    auto_parallel
+    jit_layer
+    jit_property)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -50,6 +61,7 @@ if(WITH_PSCORE)
     set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
   endif()
 endif()
+<<<<<<< HEAD
 if(WITH_RPC)
   set(PYBIND_DEPS
       ${PYBIND_DEPS}
@@ -64,6 +76,8 @@ if(WITH_RPC)
       gflags
       glog)
 endif()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
@@ -108,6 +122,10 @@ endif()
 
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
+<<<<<<< HEAD
+=======
+  list(APPEND PYBIND_DEPS py_layer_op)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 set(PYBIND_SRCS
@@ -138,9 +156,22 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+<<<<<<< HEAD
     xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc)
+=======
+    jit.cc
+    auto_parallel_py.cc
+    op_function1.cc
+    op_function2.cc
+    op_function3.cc
+    op_function4.cc
+    op_function5.cc
+    op_function6.cc
+    op_function7.cc
+    op_function8.cc)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
@@ -148,6 +179,7 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 if(WITH_PYTHON)
+<<<<<<< HEAD
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl)
@@ -163,6 +195,26 @@ if(WITH_PYTHON)
   endif()
   if(WITH_CUSTOM_DEVICE)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_custom)
+=======
+  set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
+  if(WITH_NCCL OR WITH_RCCL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
+    if(WITH_PSCORE)
+      set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
+    endif()
+  endif()
+  if(WITH_GLOO)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
+  endif()
+  if(WITH_ASCEND_CL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_hccl)
+    if(WITH_PSCORE)
+      set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
+    endif()
+  endif()
+  if(WITH_CUSTOM_DEVICE)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_custom)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   endif()
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -171,7 +223,10 @@ if(WITH_PYTHON)
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
+<<<<<<< HEAD
 set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
@@ -192,7 +247,11 @@ endif()
 
 if(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS
+<<<<<<< HEAD
       "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+=======
+      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   )
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -203,11 +262,19 @@ endif()
 if(WITH_PSCORE)
   if(WITH_ARM_BRPC)
     set(DISTRIBUTE_COMPILE_FLAGS
+<<<<<<< HEAD
         "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
     )
   else()
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+=======
+        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    )
+  else()
+    set(DISTRIBUTE_COMPILE_FLAGS
+        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     )
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -220,6 +287,7 @@ if(WITH_PSCORE)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
 endif()
 
+<<<<<<< HEAD
 if(WITH_RPC)
   if(WITH_ARM_BRPC)
     set(DISTRIBUTE_COMPILE_FLAGS
@@ -238,6 +306,8 @@ if(WITH_RPC)
   set(PYBIND_SRCS rpc.cc ${PYBIND_SRCS})
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_NCCL OR WITH_RCCL)
   list(APPEND PYBIND_SRCS nccl_wrapper_py.cc)
 endif()
@@ -285,10 +355,15 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
   endif()
 
+<<<<<<< HEAD
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
+=======
+  add_executable(op_function_generator op_function_generator.cc)
+  target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
   target_link_libraries(eager_legacy_op_function_generator
@@ -300,14 +375,41 @@ if(WITH_PYTHON)
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+<<<<<<< HEAD
   target_link_libraries(eager_legacy_op_function_generator
                         ${os_dependency_modules})
   if(WITH_ROCM)
+=======
+  target_link_libraries(op_function_generator ${os_dependency_modules})
+  target_link_libraries(eager_legacy_op_function_generator
+                        ${os_dependency_modules})
+  if(WITH_ROCM)
+    target_link_libraries(op_function_generator ${ROCM_HIPRTC_LIB})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     target_link_libraries(eager_legacy_op_function_generator ${ROCM_HIPRTC_LIB})
     target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
+<<<<<<< HEAD
+=======
+  set(impl_file1 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function1.cc)
+  set(tmp_impl_file1 ${impl_file1}.tmp)
+  set(impl_file2 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function2.cc)
+  set(tmp_impl_file2 ${impl_file2}.tmp)
+  set(impl_file3 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function3.cc)
+  set(tmp_impl_file3 ${impl_file3}.tmp)
+  set(impl_file4 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function4.cc)
+  set(tmp_impl_file4 ${impl_file4}.tmp)
+  set(impl_file5 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function5.cc)
+  set(tmp_impl_file5 ${impl_file5}.tmp)
+  set(impl_file6 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function6.cc)
+  set(tmp_impl_file6 ${impl_file6}.tmp)
+  set(impl_file7 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function7.cc)
+  set(tmp_impl_file7 ${impl_file7}.tmp)
+  set(impl_file8 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function8.cc)
+  set(tmp_impl_file8 ${impl_file8}.tmp)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set(CODE_GEN_SPLIT_FILE_COUNT "8")
   set(eager_impl_file
       ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_legacy_op_function.cc)
@@ -320,6 +422,10 @@ if(WITH_PYTHON)
       "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/"
       "${CODE_GEN_SPLIT_FILE_COUNT}")
 
+<<<<<<< HEAD
+=======
+  set(OP_IMPL_DEPS op_function_generator)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set(EAGER_OP_IMPL_DEPS eager_legacy_op_function_generator
                          eager_python_c_codegen)
 
@@ -332,6 +438,28 @@ if(WITH_PYTHON)
 
     file(
       WRITE
+<<<<<<< HEAD
+=======
+      ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
+      ""
+      "set build_times=1\n"
+      ":retry\n"
+      "ECHO op_function_generator run %build_times% time\n"
+      "taskkill /f /im op_function_generator.exe 2>NUL\n"
+      "${op_impl_path}/op_function_generator.exe ${op_function_output_path} ${CODE_GEN_SPLIT_FILE_COUNT}\n"
+      "if %ERRORLEVEL% NEQ 0 (\n"
+      "    set /a build_times=%build_times%+1\n"
+      "    if %build_times% GEQ 10 (\n"
+      "        exit /b 1\n"
+      "    ) else (\n"
+      "        goto :retry\n"
+      "    )\n"
+      ")\n"
+      "exit /b 0")
+
+    file(
+      WRITE
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_legacy_op_function_generator_retry.bat
       ""
       "set build_times=1\n"
@@ -393,6 +521,38 @@ if(WITH_PYTHON)
            ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
     endif()
 
+<<<<<<< HEAD
+=======
+    add_custom_command(
+      OUTPUT op_function
+      COMMAND
+        ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
+              ${impl_file1}
+      COMMENT "copy_if_different ${tmp_impl_file1} to ${impl_file1}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file2}
+              ${impl_file2}
+      COMMENT "copy_if_different ${tmp_impl_file2} to ${impl_file2}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file3}
+              ${impl_file3}
+      COMMENT "copy_if_different ${tmp_impl_file3} to ${impl_file3}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file4}
+              ${impl_file4}
+      COMMENT "copy_if_different ${tmp_impl_file4} to ${impl_file4}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file5}
+              ${impl_file5}
+      COMMENT "copy_if_different ${tmp_impl_file5} to ${impl_file5}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file6}
+              ${impl_file6}
+      COMMENT "copy_if_different ${tmp_impl_file6} to ${impl_file6}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file7}
+              ${impl_file7}
+      COMMENT "copy_if_different ${tmp_impl_file7} to ${impl_file7}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file8}
+              ${impl_file8}
+      COMMENT "copy_if_different ${tmp_impl_file8} to ${impl_file8}"
+      DEPENDS ${OP_IMPL_DEPS})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
       add_custom_command(
         OUTPUT ${eager_impl_file}
@@ -449,6 +609,41 @@ if(WITH_PYTHON)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
     endif()
+<<<<<<< HEAD
+=======
+    add_custom_command(
+      OUTPUT op_function
+      COMMAND
+        ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
+        "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
+        "${op_function_output_path}" "${CODE_GEN_SPLIT_FILE_COUNT}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
+              ${impl_file1}
+      COMMENT "copy_if_different ${tmp_impl_file1} to ${impl_file1}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file2}
+              ${impl_file2}
+      COMMENT "copy_if_different ${tmp_impl_file2} to ${impl_file2}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file3}
+              ${impl_file3}
+      COMMENT "copy_if_different ${tmp_impl_file3} to ${impl_file3}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file4}
+              ${impl_file4}
+      COMMENT "copy_if_different ${tmp_impl_file4} to ${impl_file4}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file5}
+              ${impl_file5}
+      COMMENT "copy_if_different ${tmp_impl_file5} to ${impl_file5}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file6}
+              ${impl_file6}
+      COMMENT "copy_if_different ${tmp_impl_file6} to ${impl_file6}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file7}
+              ${impl_file7}
+      COMMENT "copy_if_different ${tmp_impl_file7} to ${impl_file7}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file8}
+              ${impl_file8}
+      COMMENT "copy_if_different ${tmp_impl_file8} to ${impl_file8}"
+      DEPENDS ${OP_IMPL_DEPS}
+      VERBATIM)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
       add_custom_command(
         OUTPUT ${eager_impl_file}
@@ -463,6 +658,10 @@ if(WITH_PYTHON)
         VERBATIM)
     endif()
   endif()
+<<<<<<< HEAD
+=======
+  add_custom_target(op_function_generator_cmd ALL DEPENDS op_function)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_custom_target(eager_legacy_op_function_generator_cmd ALL
                       DEPENDS ${eager_impl_file})
@@ -479,7 +678,10 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_py_layer.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_legacy_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
+<<<<<<< HEAD
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     list(APPEND PYBIND_DEPS eager_api)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)
@@ -506,12 +708,16 @@ if(WITH_PYTHON)
   if(WIN32)
     set(SHARD_LIB_NAME libpaddle)
   endif()
+<<<<<<< HEAD
   set_property(GLOBAL PROPERTY PADDLE_LIB_NAME ${SHARD_LIB_NAME})
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   cc_library(
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
+<<<<<<< HEAD
   # TODO(zhiqiu): some symbols not exported even setting the following
   # property. Need to find a better way.
 
@@ -520,6 +726,8 @@ if(WITH_PYTHON)
   #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   # endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
     add_dependencies(${SHARD_LIB_NAME} eager_legacy_op_function_generator_cmd)
@@ -533,6 +741,7 @@ if(WITH_PYTHON)
     target_link_libraries(${SHARD_LIB_NAME} ${ROCM_HIPRTC_LIB})
   endif()
 
+<<<<<<< HEAD
   if(WITH_MPI)
     target_link_libraries(${SHARD_LIB_NAME} ${MPI_CXX_LIBRARIES})
   endif()
@@ -540,4 +749,9 @@ if(WITH_PYTHON)
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
 
+=======
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
+  add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()

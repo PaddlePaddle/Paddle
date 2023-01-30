@@ -204,14 +204,22 @@ void DownpourLiteWorker::CopyDenseVars() {
             << dest_var_name;
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     CHECK(src_var != nullptr) << src_var_name << " not found";  // NOLINT
+<<<<<<< HEAD
     phi::DenseTensor* src_tensor = src_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* src_tensor = src_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(src_tensor != nullptr)
         << src_var_name << " tensor is null";  // NOLINT
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     CHECK(dest_var != nullptr) << dest_var_name << " not found";  // NOLINT
+<<<<<<< HEAD
     phi::DenseTensor* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* dest_tensor = dest_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(dest_tensor != nullptr)
         << dest_var_name << " tensor is null";  // NOLINT
     float* dest_data = dest_tensor->data<float>();
@@ -307,18 +315,30 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
       if (var == nullptr) {
         continue;
       }
+<<<<<<< HEAD
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (tensor == nullptr) {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         platform::errors::InvalidArgument(
+<<<<<<< HEAD
                             "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         platform::errors::InvalidArgument(
                             "phi::DenseTensor %s contains NAN.", var_name));
+=======
+                            "Tensor %s contains Inf.", var_name));
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
+                        false,
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
@@ -487,10 +507,17 @@ void DownpourLiteWorker::TrainFiles() {
             if (var == nullptr) {
               continue;
             }
+<<<<<<< HEAD
             phi::DenseTensor* tensor = nullptr;
             int64_t len = 0;
             if (var->IsType<phi::DenseTensor>()) {
               tensor = var->GetMutable<phi::DenseTensor>();
+=======
+            Tensor* tensor = nullptr;
+            int64_t len = 0;
+            if (var->IsType<framework::LoDTensor>()) {
+              tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               len = tensor->numel();
             } else if (var->IsType<phi::SelectedRows>()) {
               auto selected_rows = var->GetMutable<phi::SelectedRows>();
@@ -527,18 +554,30 @@ void DownpourLiteWorker::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
+<<<<<<< HEAD
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (tensor == nullptr) {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         platform::errors::InvalidArgument(
+<<<<<<< HEAD
                             "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         platform::errors::InvalidArgument(
                             "phi::DenseTensor %s contains NAN.", var_name));
+=======
+                            "Tensor %s contains Inf.", var_name));
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
+                        false,
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)

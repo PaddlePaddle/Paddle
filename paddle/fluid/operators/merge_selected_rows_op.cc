@@ -12,12 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include <unordered_map>
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
+=======
+#include "paddle/fluid/operators/merge_selected_rows_op.h"
+
+#include <unordered_map>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -25,6 +31,26 @@ namespace operators {
 class MergeSelectedRowsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
+=======
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "MergeSelectedRows");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MergeSelectedRows");
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("X").front(),
+        framework::proto::VarType::SELECTED_ROWS,
+        platform::errors::InvalidArgument("Input(X) of MergeSelectedRowsOp "
+                                          "should be of type SelectedRows."));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetOutputsVarType("Out").front(),
+        framework::proto::VarType::SELECTED_ROWS,
+        platform::errors::InvalidArgument("Output(Out) of MergeSelectedRowsOp "
+                                          "should be of type SelectedRows."));
+
+    ctx->ShareDim("X", /*->*/ "Out");
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class MergeSelectedRowsOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -81,6 +107,7 @@ class MergeSelectedRowsOpInferVarType
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+<<<<<<< HEAD
 
 DECLARE_INFER_SHAPE_FUNCTOR(merge_selected_rows,
                             MergeSelectedRowsInferMetaFunctor,
@@ -91,3 +118,13 @@ REGISTER_OPERATOR(merge_selected_rows,
                   ops::MergeSelectedRowsOpMaker,
                   ops::MergeSelectedRowsOpInferVarType,
                   MergeSelectedRowsInferMetaFunctor);
+=======
+REGISTER_OPERATOR(merge_selected_rows,
+                  ops::MergeSelectedRowsOp,
+                  ops::MergeSelectedRowsOpMaker,
+                  ops::MergeSelectedRowsOpInferVarType);
+
+REGISTER_OP_CPU_KERNEL(merge_selected_rows,
+                       ops::MergeSelectedRowsKernel<phi::CPUContext, float>,
+                       ops::MergeSelectedRowsKernel<phi::CPUContext, double>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

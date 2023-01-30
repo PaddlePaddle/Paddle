@@ -47,7 +47,11 @@ void ConvertConv3d(TensorRTEngine* engine,
       Y_v,
       platform::errors::NotFound("Can not find %s presistale var in scope.",
                                  filter_var_name));
+<<<<<<< HEAD
   auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
+=======
+  auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {

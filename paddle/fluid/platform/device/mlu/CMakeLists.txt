@@ -2,7 +2,14 @@ if(NOT WITH_MLU)
   return()
 endif()
 
+<<<<<<< HEAD
 cc_test(mlu_enforce_test SRCS enforce_test.cc)
+=======
+cc_test(
+  mlu_enforce_test
+  SRCS enforce_test.cc
+  DEPS stringpiece)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 cc_library(
   mlu_info
   SRCS mlu_info.cc

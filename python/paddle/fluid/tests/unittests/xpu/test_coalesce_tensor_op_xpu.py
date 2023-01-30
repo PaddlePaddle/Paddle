@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -30,16 +31,40 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from paddle.fluid import core
+import sys
+
+sys.path.append("..")
+from op_test import OpTest
+
+alignment = 256
+import paddle
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'coalesce_tensor'
         self.use_dynamic_create_class = False
 
     class TestAllocContinuousSpace(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "coalesce_tensor"
             self.use_xpu = True
@@ -50,13 +75,21 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
             self.set_constant = attrs["set_constant"]
             self.Inputs = self.init_input()
             self.Outputs, self.FusedOutput = self.init_output(
+<<<<<<< HEAD
                 self.Inputs, self.set_constant, self.constant
             )
+=======
+                self.Inputs, self.set_constant, self.constant)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.inputs = {'Input': self.Inputs}
             self.attrs = attrs
             self.outputs = {
                 'Output': self.Outputs,
+<<<<<<< HEAD
                 'FusedOutput': self.FusedOutput,
+=======
+                'FusedOutput': self.FusedOutput
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def init_dtype(self):
@@ -67,9 +100,14 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
             inputs.append(("x1", np.random.random([20, 3]).astype(self.dtype)))
             inputs.append(("x2", np.random.random([20]).astype(self.dtype)))
             inputs.append(("x3", np.random.random([1]).astype(self.dtype)))
+<<<<<<< HEAD
             inputs.append(
                 ("x4", np.random.random([200, 30]).astype(self.dtype))
             )
+=======
+            inputs.append(("x4", np.random.random([200,
+                                                   30]).astype(self.dtype)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             inputs.append(("x5", np.random.random([30]).astype(self.dtype)))
             inputs.append(("x6", np.random.random([1]).astype(self.dtype)))
             return inputs
@@ -79,7 +117,11 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
                 "copy_data": True,
                 "set_constant": False,
                 "constant": 0.0,
+<<<<<<< HEAD
                 "dtype": self.fluid_dtype,
+=======
+                "dtype": self.fluid_dtype
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def init_output(self, input_list, set_constant, constant):
@@ -95,6 +137,7 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
 
             coalesce_tensor_var = np.concatenate([input for input in inputs])
             if set_constant:
+<<<<<<< HEAD
                 coalesce_tensor_var = (
                     np.ones((len(coalesce_tensor_var))) * constant
                 )
@@ -113,12 +156,29 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
             )
 
     class TestAllocContinuousSpace2(TestAllocContinuousSpace):
+=======
+                coalesce_tensor_var = np.ones(
+                    (len(coalesce_tensor_var))) * constant
+                outputs = [(out[0],
+                            np.ones(out[1].shape).astype(self.dtype) * constant)
+                           for out in outputs]
+            return outputs, coalesce_tensor_var
+
+        def test_check_output(self):
+            self.check_output_with_place(place=core.XPUPlace(0),
+                                         no_check_set=["FusedOutput"],
+                                         atol=1e-5)
+
+    class TestAllocContinuousSpace2(TestAllocContinuousSpace):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_attr(self):
             return {
                 "copy_data": False,
                 "set_constant": True,
                 "constant": 0.5,
                 "dtype": self.fluid_dtype,
+<<<<<<< HEAD
                 "user_defined_size_of_dtype": 2,
             }
 
@@ -126,6 +186,15 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
             self.check_output_with_place(
                 place=core.XPUPlace(0), no_check_set=["FusedOutput"], atol=1e-5
             )
+=======
+                "user_defined_size_of_dtype": 2
+            }
+
+        def test_check_output(self):
+            self.check_output_with_place(place=core.XPUPlace(0),
+                                         no_check_set=["FusedOutput"],
+                                         atol=1e-5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 support_types = get_xpu_op_support_types('coalesce_tensor')

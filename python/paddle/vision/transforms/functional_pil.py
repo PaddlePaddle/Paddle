@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numbers
 from collections.abc import Iterable, Sequence
 
@@ -20,6 +21,28 @@ from PIL import Image, ImageEnhance, ImageOps
 
 import paddle
 
+=======
+from __future__ import division
+
+import sys
+import math
+import numbers
+import warnings
+import collections
+from PIL import Image, ImageOps, ImageEnhance
+
+import numpy as np
+from numpy import sin, cos, tan
+import paddle
+
+if sys.version_info < (3, 3):
+    Sequence = collections.Sequence
+    Iterable = collections.Iterable
+else:
+    Sequence = collections.abc.Sequence
+    Iterable = collections.abc.Iterable
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 try:
     # PIL version >= "9.1.0"
     _pil_interp_from_str = {
@@ -28,7 +51,11 @@ try:
         'bicubic': Image.Resampling.BICUBIC,
         'box': Image.Resampling.BOX,
         'lanczos': Image.Resampling.LANCZOS,
+<<<<<<< HEAD
         'hamming': Image.Resampling.HAMMING,
+=======
+        'hamming': Image.Resampling.HAMMING
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 except:
     _pil_interp_from_str = {
@@ -37,7 +64,11 @@ except:
         'bicubic': Image.BICUBIC,
         'box': Image.BOX,
         'lanczos': Image.LANCZOS,
+<<<<<<< HEAD
         'hamming': Image.HAMMING,
+=======
+        'hamming': Image.HAMMING
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
 __all__ = []
@@ -50,7 +81,11 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (PIL.Image): Image to be converted to tensor.
+<<<<<<< HEAD
         data_format (str, optional): Data format of output tensor, should be 'HWC' or
+=======
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -60,8 +95,12 @@ def to_tensor(pic, data_format='CHW'):
 
     if data_format not in ['CHW', 'HWC']:
         raise ValueError(
+<<<<<<< HEAD
             'data_format should be CHW or HWC. Got {}'.format(data_format)
         )
+=======
+            'data_format should be CHW or HWC. Got {}'.format(data_format))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # PIL Image
     if pic.mode == 'I':
@@ -85,7 +124,11 @@ def to_tensor(pic, data_format='CHW'):
 
     dtype = paddle.fluid.data_feeder.convert_dtype(img.dtype)
     if dtype == 'uint8':
+<<<<<<< HEAD
         img = paddle.cast(img, np.float32) / 255.0
+=======
+        img = paddle.cast(img, np.float32) / 255.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     img = img.reshape([pic.size[1], pic.size[0], nchannel])
 
@@ -102,6 +145,7 @@ def resize(img, size, interpolation='bilinear'):
     Args:
         input (PIL.Image): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
+<<<<<<< HEAD
         interpolation (int|str, optional): Interpolation method. when use pil backend,
             support method are as following:
             - "nearest": Image.NEAREST,
@@ -109,6 +153,15 @@ def resize(img, size, interpolation='bilinear'):
             - "bicubic": Image.BICUBIC,
             - "box": Image.BOX,
             - "lanczos": Image.LANCZOS,
+=======
+        interpolation (int|str, optional): Interpolation method. when use pil backend, 
+            support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC, 
+            - "box": Image.BOX, 
+            - "lanczos": Image.LANCZOS, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "hamming": Image.HAMMING
 
     Returns:
@@ -116,9 +169,14 @@ def resize(img, size, interpolation='bilinear'):
 
     """
 
+<<<<<<< HEAD
     if not (
         isinstance(size, int) or (isinstance(size, Iterable) and len(size) == 2)
     ):
+=======
+    if not (isinstance(size, int) or
+            (isinstance(size, Iterable) and len(size) == 2)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         raise TypeError('Got inappropriate size arg: {}'.format(size))
 
     if isinstance(size, int):
@@ -150,7 +208,11 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
+<<<<<<< HEAD
             This value is only used when the padding_mode is constant. Default: 0.
+=======
+            This value is only used when the padding_mode is constant. Default: 0. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
 
             - constant: pads with a constant value, this value is specified with fill
@@ -181,6 +243,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
 
     if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
         raise ValueError(
+<<<<<<< HEAD
             "Padding must be an int or a 2, or 4 element tuple, not a "
             + "{} element tuple".format(len(padding))
         )
@@ -191,6 +254,13 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         'reflect',
         'symmetric',
     ], 'Padding mode should be either constant, edge, reflect or symmetric'
+=======
+            "Padding must be an int or a 2, or 4 element tuple, not a " +
+            "{} element tuple".format(len(padding)))
+
+    assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric'], \
+        'Padding mode should be either constant, edge, reflect or symmetric'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if isinstance(padding, list):
         padding = tuple(padding)
@@ -217,11 +287,16 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         if img.mode == 'P':
             palette = img.getpalette()
             img = np.asarray(img)
+<<<<<<< HEAD
             img = np.pad(
                 img,
                 ((pad_top, pad_bottom), (pad_left, pad_right)),
                 padding_mode,
             )
+=======
+            img = np.pad(img, ((pad_top, pad_bottom), (pad_left, pad_right)),
+                         padding_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             img = Image.fromarray(img)
             img.putpalette(palette)
             return img
@@ -229,6 +304,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         img = np.asarray(img)
         # RGB image
         if len(img.shape) == 3:
+<<<<<<< HEAD
             img = np.pad(
                 img,
                 ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)),
@@ -241,6 +317,15 @@ def pad(img, padding, fill=0, padding_mode='constant'):
                 ((pad_top, pad_bottom), (pad_left, pad_right)),
                 padding_mode,
             )
+=======
+            img = np.pad(img,
+                         ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)),
+                         padding_mode)
+        # Grayscale image
+        if len(img.shape) == 2:
+            img = np.pad(img, ((pad_top, pad_bottom), (pad_left, pad_right)),
+                         padding_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return Image.fromarray(img)
 
@@ -249,7 +334,11 @@ def crop(img, top, left, height, width):
     """Crops the given PIL Image.
 
     Args:
+<<<<<<< HEAD
         img (PIL.Image): Image to be cropped. (0,0) denotes the top left
+=======
+        img (PIL.Image): Image to be cropped. (0,0) denotes the top left 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             corner of the image.
         top (int): Vertical component of the top left corner of the crop box.
         left (int): Horizontal component of the top left corner of the crop box.
@@ -266,6 +355,7 @@ def crop(img, top, left, height, width):
 def center_crop(img, output_size):
     """Crops the given PIL Image and resize it to desired size.
 
+<<<<<<< HEAD
     Args:
         img (PIL.Image): Image to be cropped. (0,0) denotes the top left corner of the image.
         output_size (sequence or int): (height, width) of the crop box. If int,
@@ -276,14 +366,31 @@ def center_crop(img, output_size):
         PIL.Image: Cropped image.
 
     """
+=======
+        Args:
+            img (PIL.Image): Image to be cropped. (0,0) denotes the top left corner of the image.
+            output_size (sequence or int): (height, width) of the crop box. If int,
+                it is used for both directions
+            backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'. 
+        
+        Returns:
+            PIL.Image: Cropped image.
+
+        """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if isinstance(output_size, numbers.Number):
         output_size = (int(output_size), int(output_size))
 
     image_width, image_height = img.size
     crop_height, crop_width = output_size
+<<<<<<< HEAD
     crop_top = int(round((image_height - crop_height) / 2.0))
     crop_left = int(round((image_width - crop_width) / 2.0))
+=======
+    crop_top = int(round((image_height - crop_height) / 2.))
+    crop_left = int(round((image_width - crop_width) / 2.))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return crop(img, crop_top, crop_left, crop_height, crop_width)
 
 
@@ -396,8 +503,12 @@ def adjust_hue(img, hue_factor):
     """
     if not (-0.5 <= hue_factor <= 0.5):
         raise ValueError(
+<<<<<<< HEAD
             'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor)
         )
+=======
+            'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     input_mode = img.mode
     if input_mode in {'L', '1', 'I', 'F'}:
@@ -421,11 +532,19 @@ def affine(img, matrix, interpolation="nearest", fill=0):
     Args:
         img (PIL.Image): Image to be affined.
         matrix (float or int): Affine matrix.
+<<<<<<< HEAD
         interpolation (str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend,
             support method are as following:
             - "nearest": Image.NEAREST,
             - "bilinear": Image.BILINEAR,
+=======
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "bicubic": Image.BICUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
             If int, it is used for all channels respectively.
@@ -437,6 +556,7 @@ def affine(img, matrix, interpolation="nearest", fill=0):
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
 
+<<<<<<< HEAD
     return img.transform(
         img.size,
         Image.AFFINE,
@@ -449,16 +569,36 @@ def affine(img, matrix, interpolation="nearest", fill=0):
 def rotate(
     img, angle, interpolation="nearest", expand=False, center=None, fill=0
 ):
+=======
+    return img.transform(img.size, Image.AFFINE, matrix,
+                         _pil_interp_from_str[interpolation], fill)
+
+
+def rotate(img,
+           angle,
+           interpolation="nearest",
+           expand=False,
+           center=None,
+           fill=0):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Rotates the image by angle.
 
     Args:
         img (PIL.Image): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
+<<<<<<< HEAD
         interpolation (str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend,
             support method are as following:
             - "nearest": Image.NEAREST,
             - "bilinear": Image.BILINEAR,
+=======
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "bicubic": Image.BICUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
@@ -478,6 +618,7 @@ def rotate(
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
 
+<<<<<<< HEAD
     return img.rotate(
         angle,
         _pil_interp_from_str[interpolation],
@@ -485,6 +626,13 @@ def rotate(
         center,
         fillcolor=fill,
     )
+=======
+    return img.rotate(angle,
+                      _pil_interp_from_str[interpolation],
+                      expand,
+                      center,
+                      fillcolor=fill)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def perspective(img, coeffs, interpolation="nearest", fill=0):
@@ -493,11 +641,19 @@ def perspective(img, coeffs, interpolation="nearest", fill=0):
     Args:
         img (PIL.Image): Image to be perspectived.
         coeffs (list[float]): coefficients (a, b, c, d, e, f, g, h) of the perspective transforms.
+<<<<<<< HEAD
         interpolation (str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend,
             support method are as following:
             - "nearest": Image.NEAREST,
             - "bilinear": Image.BILINEAR,
+=======
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "bicubic": Image.BICUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively.
@@ -510,6 +666,7 @@ def perspective(img, coeffs, interpolation="nearest", fill=0):
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
 
+<<<<<<< HEAD
     return img.transform(
         img.size,
         Image.PERSPECTIVE,
@@ -517,6 +674,10 @@ def perspective(img, coeffs, interpolation="nearest", fill=0):
         _pil_interp_from_str[interpolation],
         fill,
     )
+=======
+    return img.transform(img.size, Image.PERSPECTIVE, coeffs,
+                         _pil_interp_from_str[interpolation], fill)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def to_grayscale(img, num_output_channels=1):
@@ -524,8 +685,13 @@ def to_grayscale(img, num_output_channels=1):
 
     Args:
         img (PIL.Image): Image to be converted to grayscale.
+<<<<<<< HEAD
         backend (str, optional): The image proccess backend type. Options are `pil`,
                     `cv2`. Default: 'pil'.
+=======
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
+                    `cv2`. Default: 'pil'. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         PIL.Image: Grayscale version of the image.
@@ -550,6 +716,7 @@ def to_grayscale(img, num_output_channels=1):
 
 def erase(img, i, j, h, w, v, inplace=False):
     """Erase the pixels of selected area in input image with given value. PIL format is
+<<<<<<< HEAD
      not support inplace.
 
     Args:
@@ -567,5 +734,24 @@ def erase(img, i, j, h, w, v, inplace=False):
     """
     np_img = np.array(img, dtype=np.uint8)
     np_img[i : i + h, j : j + w, ...] = v
+=======
+        not support inplace.
+
+       Args:
+            img (PIL.Image): input image, which shape is (C, H, W).
+            i (int): y coordinate of the top-left point of erased region.
+            j (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (np.array): value used to replace the pixels in erased region.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            PIL.Image: Erased image.
+        
+    """
+    np_img = np.array(img, dtype=np.uint8)
+    np_img[i:i + h, j:j + w, ...] = v
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     img = Image.fromarray(np_img, 'RGB')
     return img

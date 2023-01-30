@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,6 +22,19 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.dygraph import to_variable
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid.op import Operator
+from op_test import OpTest
+from paddle.fluid import Program, program_guard
+from paddle.fluid.dygraph import to_variable
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
@@ -63,6 +77,7 @@ def _reference_instance_norm_grad(x, d_y, scale, mean, var, epsilon):
     scale_tile = np.reshape(scale, (1, c, 1, 1))
     scale_tile = np.tile(scale_tile, (n, 1, h, w))
 
+<<<<<<< HEAD
     d_x = (
         scale_tile
         * var_inv
@@ -76,6 +91,12 @@ def _reference_instance_norm_grad(x, d_y, scale, mean, var, epsilon):
             )
         )
     )
+=======
+    d_x = scale_tile * var_inv * (
+        d_y - np.mean(d_y, axis=(2, 3), keepdims=True) -
+        (x - mean_tile) * var_inv *
+        np.mean(d_y * (x - mean_tile) * var_inv, axis=(2, 3), keepdims=True))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return d_x, d_scale, d_bias
 
 
@@ -86,6 +107,10 @@ def _cal_mean_variance(x, epsilon, mean_shape):
 
 
 class TestInstanceNormOpTraining(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.epsilon = 1e-5
         self.init_test_case()
@@ -94,6 +119,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
         self.shape = [2, 3, 4, 5]
         self.no_grad_set = set()
         self.fetch_list = [
+<<<<<<< HEAD
             'y',
             'saved_mean',
             'saved_variance',
@@ -106,12 +132,28 @@ class TestInstanceNormOpTraining(unittest.TestCase):
         np.testing.assert_allclose(
             np.array(tensor), np_array, rtol=1e-05, atol=atol, err_msg=msg
         )
+=======
+            'y', 'saved_mean', 'saved_variance', 'x@GRAD', 'scale@GRAD',
+            'bias@GRAD'
+        ]
+
+    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=1e-05,
+                                   atol=atol,
+                                   err_msg=msg)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_global_mean_var(self, mean_shape, x):
         mean, variance = _cal_mean_variance(x, self.epsilon, mean_shape)
         return mean, variance
 
     def test_forward_backward(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_with_place(place, shape):
             epsilon = self.epsilon
             n, c, h, w = shape[0], shape[1], shape[2], shape[3]
@@ -126,14 +168,22 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             d_y = np.random.random_sample(shape).astype(np.float32)
 
             y, saved_mean, variance_tmp = _reference_instance_norm_naive(
+<<<<<<< HEAD
                 x, scale, bias, epsilon, mean, variance
             )
+=======
+                x, scale, bias, epsilon, mean, variance)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             saved_variance = 1 / np.sqrt(variance_tmp + epsilon)
 
             d_x, d_scale, d_bias = _reference_instance_norm_grad(
+<<<<<<< HEAD
                 x, d_y, scale, saved_mean, saved_variance, epsilon
             )
+=======
+                x, d_y, scale, saved_mean, saved_variance, epsilon)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             var_dict = locals()
             var_dict['y@GRAD'] = d_y
@@ -142,12 +192,16 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             var_dict['bias@GRAD'] = d_bias
 
             var_names = [
+<<<<<<< HEAD
                 'x',
                 'scale',
                 'bias',
                 'y',
                 'saved_mean',
                 'saved_variance',
+=======
+                'x', 'scale', 'bias', 'y', 'saved_mean', 'saved_variance'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
             ground_truth = {name: var_dict[name] for name in var_names}
 
@@ -155,6 +209,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             with fluid.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
+<<<<<<< HEAD
                     block.create_var(
                         name=name,
                         dtype='float32',
@@ -176,12 +231,38 @@ class TestInstanceNormOpTraining(unittest.TestCase):
                         "epsilon": epsilon,
                     },
                 )
+=======
+                    block.create_var(name=name,
+                                     dtype='float32',
+                                     shape=ground_truth[name].shape)
+                in_op = block.append_op(type="instance_norm",
+                                        inputs={
+                                            "X": block.var("x"),
+                                            "Scale": block.var("scale"),
+                                            "Bias": block.var("bias"),
+                                        },
+                                        outputs={
+                                            "Y":
+                                            block.var("y"),
+                                            "SavedMean":
+                                            block.var("saved_mean"),
+                                            "SavedVariance":
+                                            block.var("saved_variance")
+                                        },
+                                        attrs={
+                                            "epsilon": epsilon,
+                                        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 block.create_var(name="y@GRAD", dtype='float32', shape=y.shape)
 
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+<<<<<<< HEAD
                     in_op.desc, self.no_grad_set, []
                 )
+=======
+                    in_op.desc, self.no_grad_set, [])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 grad_op_desc = grad_op_desc_list[0]
                 new_op_desc = block.desc.append_op()
                 new_op_desc.copy_from(grad_op_desc)
@@ -196,6 +277,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
                 program._sync_with_cpp()
 
                 exe = fluid.Executor(place)
+<<<<<<< HEAD
                 out = exe.run(
                     program,
                     feed={
@@ -204,6 +286,14 @@ class TestInstanceNormOpTraining(unittest.TestCase):
                     },
                     fetch_list=self.fetch_list,
                 )
+=======
+                out = exe.run(program,
+                              feed={
+                                  name: var_dict[name]
+                                  for name in ['x', 'scale', 'bias', 'y@GRAD']
+                              },
+                              fetch_list=self.fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             for id, name in enumerate(self.fetch_list):
                 self.__assert_close(var_dict[name], out[id], name)
@@ -212,14 +302,22 @@ class TestInstanceNormOpTraining(unittest.TestCase):
         places = [core.CPUPlace()]
 
         if core.is_compiled_with_cuda() and core.op_support_gpu(
+<<<<<<< HEAD
             "instance_norm"
         ):
+=======
+                "instance_norm"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             places.append(core.CUDAPlace(0))
         for place in places:
             test_with_place(place, self.shape)
 
 
 class TestInstanceNormOpTrainingCase1(TestInstanceNormOpTraining):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
@@ -227,6 +325,10 @@ class TestInstanceNormOpTrainingCase1(TestInstanceNormOpTraining):
 
 
 class TestInstanceNormOpTrainingCase2(TestInstanceNormOpTraining):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.shape = [20, 50, 4, 5]
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
@@ -234,6 +336,7 @@ class TestInstanceNormOpTrainingCase2(TestInstanceNormOpTraining):
 
 
 class TestInstanceNormOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of instance_norm must be Variable.
@@ -254,16 +357,48 @@ class TestInstanceNormOpErrorCase1(unittest.TestCase):
         with program_guard(Program(), Program()):
             # the first dimension of input for instance_norm must between [2d, 5d]
             x = paddle.static.data(name='x', shape=[3], dtype="float32")
+=======
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input of instance_norm must be Variable.
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.instance_norm, x1)
+
+            # the input dtype of instance_norm must be float32 or float64
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.instance_norm, x2)
+
+
+class TestInstanceNormOpErrorCase1(unittest.TestCase):
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the first dimension of input for instance_norm must between [2d, 5d]
+            x = fluid.layers.data(name='x',
+                                  shape=[3],
+                                  dtype="float32",
+                                  append_batch_size=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(ValueError, paddle.static.nn.instance_norm, x)
 
 
 class TestElasticNormOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.epsilon = 1e-5
         self.places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
+<<<<<<< HEAD
             "instance_norm"
         ):
+=======
+                "instance_norm"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.places.append(core.CUDAPlace(0))
 
     def test_norm(self):
@@ -276,6 +411,7 @@ class TestElasticNormOp(unittest.TestCase):
         scale = np.ones(scale_shape).astype(np.float32)
         bias = np.zeros(scale_shape).astype(np.float32)
         mean, variance = _cal_mean_variance(inputs, self.epsilon, mean_shape)
+<<<<<<< HEAD
         out_np, _, _ = _reference_instance_norm_naive(
             inputs, scale, bias, self.epsilon, mean, variance
         )
@@ -292,12 +428,40 @@ class TestElasticNormOp(unittest.TestCase):
 
 
 class TestElasticNormOpCase2(unittest.TestCase):
+=======
+        out_np, _, _ = _reference_instance_norm_naive(inputs, scale, bias,
+                                                      self.epsilon, mean,
+                                                      variance)
+
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                instance_norm = fluid.dygraph.InstanceNorm(5,
+                                                           param_attr=False,
+                                                           bias_attr=False)
+                outputs = instance_norm(to_variable(inputs))
+                np.testing.assert_allclose(outputs.numpy(),
+                                           out_np,
+                                           rtol=1e-05,
+                                           atol=1e-06)
+
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_norm()
+
+
+class TestElasticNormOpCase2(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.epsilon = 1e-5
         self.places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
+<<<<<<< HEAD
             "instance_norm"
         ):
+=======
+                "instance_norm"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.places.append(core.CUDAPlace(0))
 
     def test_norm(self):
@@ -310,6 +474,7 @@ class TestElasticNormOpCase2(unittest.TestCase):
         scale = np.ones(scale_shape).astype(np.float32)
         bias = np.zeros(scale_shape).astype(np.float32)
         mean, variance = _cal_mean_variance(inputs, self.epsilon, mean_shape)
+<<<<<<< HEAD
         out_np, _, _ = _reference_instance_norm_naive(
             inputs, scale, bias, self.epsilon, mean, variance
         )
@@ -323,6 +488,26 @@ class TestElasticNormOpCase2(unittest.TestCase):
                 np.testing.assert_allclose(
                     outputs.numpy(), out_np, rtol=1e-05, atol=1e-06
                 )
+=======
+        out_np, _, _ = _reference_instance_norm_naive(inputs, scale, bias,
+                                                      self.epsilon, mean,
+                                                      variance)
+
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                instance_norm = fluid.dygraph.InstanceNorm(3,
+                                                           param_attr=True,
+                                                           bias_attr=True)
+                outputs = instance_norm(to_variable(inputs))
+                np.testing.assert_allclose(outputs.numpy(),
+                                           out_np,
+                                           rtol=1e-05,
+                                           atol=1e-06)
+
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_norm()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

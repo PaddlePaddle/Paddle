@@ -15,12 +15,21 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 using paddle::platform::float16;
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+
+using paddle::platform::float16;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -367,6 +376,7 @@ template <typename T>
 class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
@@ -375,6 +385,16 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto* mask = ctx.Output<phi::DenseTensor>("Mask");
     auto* out_transform_matrix =
         ctx.Output<phi::DenseTensor>("TransformMatrix");
+=======
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out2in_idx = ctx.Output<framework::Tensor>("Out2InIdx");
+    auto* out2in_w = ctx.Output<framework::Tensor>("Out2InWeights");
+    auto* mask = ctx.Output<framework::Tensor>("Mask");
+    auto* out_transform_matrix =
+        ctx.Output<framework::Tensor>("TransformMatrix");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
     int* out2in_idx_data =
@@ -400,8 +420,13 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* rois_data = rois->data<T>();
 
+<<<<<<< HEAD
     phi::DenseTensor roi2image;
     phi::DenseTensor roi2image_dev;
+=======
+    framework::Tensor roi2image;
+    framework::Tensor roi2image_dev;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(platform::CPUPlace());
     auto lod = rois->lod().back();
@@ -511,10 +536,18 @@ template <typename T>
 class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out2in_idx = ctx.Input<phi::DenseTensor>("Out2InIdx");
     auto* out2in_w = ctx.Input<phi::DenseTensor>("Out2InWeights");
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out2in_idx = ctx.Input<framework::LoDTensor>("Out2InIdx");
+    auto* out2in_w = ctx.Input<framework::LoDTensor>("Out2InWeights");
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
 

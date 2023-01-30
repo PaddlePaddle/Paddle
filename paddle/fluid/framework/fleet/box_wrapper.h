@@ -589,7 +589,11 @@ class BoxWrapper {
           var,
           platform::errors::NotFound("Error: var %s is not found in scope.",
                                      varname.c_str()));
+<<<<<<< HEAD
       auto& gpu_tensor = var->Get<phi::DenseTensor>();
+=======
+      auto& gpu_tensor = var->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto* gpu_data = gpu_tensor.data<T>();
       auto len = gpu_tensor.numel();
       data->resize(len);
@@ -925,7 +929,11 @@ class BoxWrapper {
   std::map<std::string, MetricMsg*> metric_lists_;
   std::vector<std::string> metric_name_list_;
   std::vector<int> slot_vector_;
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> keys_tensor;  // Cache for pull_sparse
+=======
+  std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool use_afs_api_ = false;
 
  public:

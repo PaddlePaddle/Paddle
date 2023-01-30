@@ -23,18 +23,26 @@ PD_REGISTER_KERNEL(real_grad,
                    ALL_LAYOUT,
                    phi::RealGradKernel,
                    phi::dtype::complex<float>,
+<<<<<<< HEAD
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
+=======
+                   phi::dtype::complex<double>) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 PD_REGISTER_KERNEL(imag_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::ImagGradKernel,
                    phi::dtype::complex<float>,
+<<<<<<< HEAD
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
+=======
+                   phi::dtype::complex<double>) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 PD_REGISTER_KERNEL(
     complex_grad, CPU, ALL_LAYOUT, phi::ComplexGradKernel, float, double) {

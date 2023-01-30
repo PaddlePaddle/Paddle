@@ -119,3 +119,13 @@ struct OneHotGenerator<CPUContext, T> {
 
 PD_REGISTER_KERNEL(
     gumbel_softmax, CPU, ALL_LAYOUT, phi::GumbelSoftmaxKernel, float, double) {}
+<<<<<<< HEAD
+=======
+
+PD_REGISTER_KERNEL(gumbel_softmax_infer,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::GumbelSoftmaxInferKernel,
+                   float,
+                   double) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -319,12 +319,20 @@ template <typename T>
 class YoloBoxPostKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
+=======
+    using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // prepare inputs
     std::vector<const float*> boxes_input(3);
     std::vector<std::vector<int32_t>> boxes_input_dims(3);
     for (int i = 0; i < 3; i++) {
       auto* boxes_tensor =
+<<<<<<< HEAD
           context.Input<phi::DenseTensor>("Boxes" + std::to_string(i));
+=======
+          context.Input<framework::Tensor>("Boxes" + std::to_string(i));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       boxes_input[i] = boxes_tensor->data<float>();
       auto dims = boxes_tensor->dims();
       for (int j = 0; j < dims.size(); j++) {
@@ -332,6 +340,7 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
       }
     }
     const float* image_shape_data =
+<<<<<<< HEAD
         context.Input<phi::DenseTensor>("ImageShape")->data<float>();
     const float* image_scale_data =
         context.Input<phi::DenseTensor>("ImageScale")->data<float>();
@@ -339,6 +348,15 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
     // prepare outputs
     auto* boxes_scores_tensor = context.Output<phi::DenseTensor>("Out");
     auto* boxes_num_tensor = context.Output<phi::DenseTensor>("NmsRoisNum");
+=======
+        context.Input<framework::Tensor>("ImageShape")->data<float>();
+    const float* image_scale_data =
+        context.Input<framework::Tensor>("ImageScale")->data<float>();
+
+    // prepare outputs
+    auto* boxes_scores_tensor = context.Output<framework::Tensor>("Out");
+    auto* boxes_num_tensor = context.Output<framework::Tensor>("NmsRoisNum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // prepare anchors
     std::vector<int32_t> anchors;
@@ -381,7 +399,11 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
     // clip_bbox and scale_x_y is not used now!
     float nms_threshold = context.Attr<float>("nms_threshold");
 
+<<<<<<< HEAD
     int batch = context.Input<phi::DenseTensor>("ImageShape")->dims()[0];
+=======
+    int batch = context.Input<framework::Tensor>("ImageShape")->dims()[0];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TensorInfo* ts_info = new TensorInfo[batch * boxes_input.size()];
     for (int i = 0; i < batch * static_cast<int>(boxes_input.size()); i++) {
 #ifdef PADDLE_WITH_HIP

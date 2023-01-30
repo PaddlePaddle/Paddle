@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -27,18 +28,44 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import core
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 np.random.seed(10)
 
 
+<<<<<<< HEAD
 # Situation 1: repeat_times is a list (without tensor)
 class XPUTestTileOpRank1(XPUOpTestWrapper):
+=======
+#Situation 1: repeat_times is a list (without tensor)
+class XPUTestTileOpRank1(XPUOpTestWrapper):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'tile'
         self.use_dynamic_create_class = False
 
     class TestTileOpRank1(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.dtype = self.in_type
             self.__class__.no_need_check_grad = True
@@ -59,36 +86,62 @@ class XPUTestTileOpRank1(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+<<<<<<< HEAD
         def test_check_grad(self):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
     # with dimension expanding
     class TestTileOpRank2Expanding(TestTileOpRank1):
+=======
+    #with dimension expanding
+    class TestTileOpRank2Expanding(TestTileOpRank1):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.ori_shape = [120]
             self.repeat_times = [2, 2]
 
     class TestTileOpRank2(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.ori_shape = [12, 14]
             self.repeat_times = [2, 3]
 
     class TestTileOpRank3_Corner(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.ori_shape = (2, 10, 5)
             self.repeat_times = (1, 1, 1)
 
     class TestTileOpRank3_Corner2(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.ori_shape = (2, 10, 5)
             self.repeat_times = (2, 2)
 
     class TestTileOpRank3(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.ori_shape = (2, 4, 15)
             self.repeat_times = (2, 1, 4)
 
     class TestTileOpRank4(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.ori_shape = (2, 4, 5, 7)
             self.repeat_times = (3, 2, 1, 2)
@@ -96,11 +149,19 @@ class XPUTestTileOpRank1(XPUOpTestWrapper):
 
 # Situation 2: repeat_times is a list (with tensor)
 class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'tile'
         self.use_dynamic_create_class = False
 
     class TestTileOpRank1_tensor_attr(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.dtype = self.in_type
             self.__class__.no_need_check_grad = True
@@ -109,9 +170,14 @@ class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):
             self.init_data()
             repeat_times_tensor = []
             for index, ele in enumerate(self.repeat_times):
+<<<<<<< HEAD
                 repeat_times_tensor.append(
                     ("x" + str(index), np.ones((1)).astype('int32') * ele)
                 )
+=======
+                repeat_times_tensor.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.inputs = {
                 'X': np.random.random(self.ori_shape).astype(self.dtype),
@@ -129,16 +195,25 @@ class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+<<<<<<< HEAD
         def test_check_grad(self):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
+=======
+    class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.ori_shape = [12, 14]
             self.repeat_times = [1, 1]
             self.infer_repeat_times = [1, -1]
 
     class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.ori_shape = [12, 14]
             self.repeat_times = [2, 3]
@@ -147,11 +222,19 @@ class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):
 
 # Situation 3: repeat_times is a tensor
 class XPUTestTileOpRank1_tensor(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'tile'
         self.use_dynamic_create_class = False
 
     class TestTileOpRank1_tensor(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.dtype = self.in_type
             self.__class__.no_need_check_grad = True
@@ -174,10 +257,15 @@ class XPUTestTileOpRank1_tensor(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+<<<<<<< HEAD
         def test_check_grad(self):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
+=======
+    class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data(self):
             self.ori_shape = [12, 14]
             self.repeat_times = [2, 3]
@@ -192,6 +280,10 @@ for stype in support_types:
 
 # Test python API
 class TestTileAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api(self):
         with fluid.dygraph.guard(paddle.XPUPlace(0)):
             np_x = np.random.random([12, 14]).astype("float32")

@@ -19,7 +19,11 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"  // NOLINT
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
+=======
+#include "paddle/fluid/platform/place.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -69,9 +73,12 @@ void SetOp(ProgramDesc* prog,
   } else if (type == "slice") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
+<<<<<<< HEAD
   } else if (type == "split") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs});
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -134,7 +141,11 @@ void InitTensorHolder(Scope* scope,
                       const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
+<<<<<<< HEAD
   auto tensor = x->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor = x->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor->mutable_data(
       place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
@@ -146,7 +157,11 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
                  int* current_nodes_num,
                  std::string var_without_scale = "",
                  std::string var_signed = "") {
+<<<<<<< HEAD
   auto place = phi::CPUPlace();
+=======
+  auto place = paddle::platform::CPUPlace();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   NaiveExecutor exe{place};
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);
@@ -154,7 +169,11 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
   for (auto& v : variable_names) {
     if (v.compare(var_without_scale) == 0) continue;
     InitTensorHolder(&scope, place, v.c_str());
+<<<<<<< HEAD
     phi::DenseTensor tensor;
+=======
+    LoDTensor tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tensor.Resize({1});
     auto* ptr = tensor.mutable_data<double>(place);
     ptr[0] = SCALE;
@@ -174,7 +193,11 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
 void CheckScales(const OpDesc* op, float scale, float shift) {
   std::string type = op->Type();
   std::vector<std::string> scale_names;
+<<<<<<< HEAD
   if (type == "conv2d" || type == "fused_conv2d" || type == "fc") {
+=======
+  if (type == "conv2d" || type == "fc") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
               scale);
     scale_names.push_back("Scale_in");
@@ -330,7 +353,11 @@ TEST(CpuQuantizePass, quantize) {
   // Insert nodes: 8 Quant + 8 IN + 7 OUT + 7 DEQUANT
   int added_nodes = 8 + 8 + 7 + 7;
   std::unordered_map<std::string, int> expected_operators = {
+<<<<<<< HEAD
       {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
+=======
+      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,
@@ -343,7 +370,11 @@ TEST(CpuQuantizePass, do_not_quantize) {
   std::string mkldnn_data_type = "float32";
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
+<<<<<<< HEAD
       {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
+=======
+      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,
@@ -559,12 +590,17 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
            SCALE * S8_MAX);
 }
 
+<<<<<<< HEAD
 const std::vector<std::string> immutables = {"reshape2",
                                              "transpose2",
                                              "slice",
                                              "nearest_interp",
                                              "nearest_interp_v2",
                                              "split"};
+=======
+const std::vector<std::string> immutables = {
+    "reshape2", "transpose2", "slice", "nearest_interp", "nearest_interp_v2"};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class TestImmutables : public testing::TestWithParam<std::string> {};
 
@@ -881,6 +917,7 @@ TEST(CpuQuantizePass, multi_gru_3) {
   MainTestMultiGru(layers);
 }
 
+<<<<<<< HEAD
 static const std::initializer_list<std::string>
     variable_names_multi_inputs_outputs = {"a", "b", "c1", "c2", "d", "e"};
 
@@ -920,6 +957,8 @@ TEST(CpuQuantizePass, multi_inputs_outputs_ops) {
            added_nodes);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

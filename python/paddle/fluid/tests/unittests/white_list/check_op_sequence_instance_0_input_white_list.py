@@ -18,6 +18,11 @@
 # compiletime&runtime will be skipped. Ops in this whitelist need to declear
 # reasons for skipping compile_vs_runtime test or be fixed later.
 
+<<<<<<< HEAD
+=======
+#!/usr/bin/env python
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 # For ops in this whitelist, the check of instance size is 0 input will be skipped.

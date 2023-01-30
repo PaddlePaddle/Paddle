@@ -26,7 +26,11 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
     auto str_value = ctx.Attr<std::string>("str_value");
     auto float_value = ctx.Attr<float>("value");
 
+<<<<<<< HEAD
     auto *out_var = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto *out_var = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     T value;
     if (str_value.empty()) {
@@ -55,13 +59,21 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
     const T *value_data = &value;
     cnnlPointerMode_t pointer_mode = CNNL_POINTER_MODE_HOST;
     if (ctx.HasInput("ValueTensor")) {
+<<<<<<< HEAD
       auto *value_tensor = ctx.Input<phi::DenseTensor>("ValueTensor");
+=======
+      auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_EQ(
           value_tensor->numel(),
           1,
           platform::errors::InvalidArgument(
+<<<<<<< HEAD
               "When use phi::DenseTensor as value to set phi::DenseTensor "
               "value in fill_cosntant, "
+=======
+              "When use Tensor as value to set Tensor value in fill_cosntant, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "value input(ValueTensor) size must be 1, but get %d",
               value_tensor->numel()));
       value_data = value_tensor->data<T>();

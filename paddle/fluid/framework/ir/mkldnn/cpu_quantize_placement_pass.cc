@@ -25,6 +25,7 @@ class Graph;
 void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
   std::unordered_set<std::string> supported_op_types =
+<<<<<<< HEAD
       std::unordered_set<std::string>(
           {"concat",          "conv2d",          "depthwise_conv2d",
            "fused_conv2d",    "fused_conv3d",    "elementwise_add",
@@ -33,6 +34,26 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
            "pool2d",          "prior_box",       "reshape2",
            "transpose2",      "fusion_gru",      "fusion_lstm",
            "multi_gru",       "slice",           "split"});
+=======
+      std::unordered_set<std::string>({"concat",
+                                       "conv2d",
+                                       "depthwise_conv2d",
+                                       "elementwise_add",
+                                       "elementwise_mul",
+                                       "elementwise_sub",
+                                       "fc",
+                                       "matmul",
+                                       "nearest_interp",
+                                       "nearest_interp_v2",
+                                       "pool2d",
+                                       "prior_box",
+                                       "reshape2",
+                                       "transpose2",
+                                       "fusion_gru",
+                                       "fusion_lstm",
+                                       "multi_gru",
+                                       "slice"});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const auto& excluded_ids_list =
       Get<std::unordered_set<int>>("quantize_excluded_op_ids");
   const auto& op_types_list =
@@ -60,6 +81,10 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, quantize_placement_pattern);
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (std::find(excluded_ids_list.begin(),
                   excluded_ids_list.end(),
                   op->id()) != excluded_ids_list.end()) {
@@ -69,6 +94,10 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
     if (op->Op()->GetAttrIfExists<int>("skip_quant") == 1) {
       return;
     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);

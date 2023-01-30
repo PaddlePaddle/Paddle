@@ -58,7 +58,11 @@ TEST(Benchmark, FluidScaleCPU) {
     std::vector<float> src_data(128, 5.0);
     std::vector<int64_t> dims = {2, 4, 4, 4};
 
+<<<<<<< HEAD
     auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
@@ -107,7 +111,11 @@ TEST(Benchmark, FluidMatmulCPU) {
     std::vector<float> y_src_data(4, 2.0);
     std::vector<int64_t> dims = {2, 2};
 
+<<<<<<< HEAD
     auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
@@ -116,7 +124,11 @@ TEST(Benchmark, FluidMatmulCPU) {
                          x_src_data.data(),
                          sizeof(float) * x_src_data.size());
 
+<<<<<<< HEAD
     auto* y_tensor = Y->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+    auto* y_tensor = Y->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     y_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_y = y_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
@@ -168,7 +180,11 @@ TEST(Benchmark, FluidMLPCPU) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
 
+<<<<<<< HEAD
     auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_tensor->Resize(phi::make_ddim(x_dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
@@ -187,7 +203,11 @@ TEST(Benchmark, FluidMLPCPU) {
           new imperative::VarBase(true, "B"));
       B->SetOverridedStopGradient(false);
 
+<<<<<<< HEAD
       auto* w_tensor = W->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+      auto* w_tensor = W->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       w_tensor->Resize(phi::make_ddim(w_dims));
       auto* mutable_w = w_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place,
@@ -196,7 +216,11 @@ TEST(Benchmark, FluidMLPCPU) {
                            w_src_data.data(),
                            sizeof(float) * w_src_data.size());
 
+<<<<<<< HEAD
       auto* b_tensor = B->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+      auto* b_tensor = B->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       b_tensor->Resize(phi::make_ddim(b_dims));
       auto* mutable_b = b_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place,

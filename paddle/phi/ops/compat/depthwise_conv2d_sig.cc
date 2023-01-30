@@ -25,7 +25,15 @@ KernelSignature DepthwiseConv2dOpArgumentMapping(
                           "padding_algorithm",
                           "groups",
                           "dilations",
+<<<<<<< HEAD
                           "data_format"},
+=======
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search",
+                          "fuse_relu_before_depthwise_conv"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          {"Output"});
 }
 
@@ -38,28 +46,51 @@ KernelSignature DepthwiseConv2dGradOpArgumentMapping(
                           "padding_algorithm",
                           "groups",
                           "dilations",
+<<<<<<< HEAD
                           "data_format"},
+=======
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search",
+                          "fuse_relu_before_depthwise_conv"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          {"Input@GRAD", "Filter@GRAD"});
 }
 
 KernelSignature DepthwiseConv2dDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
+<<<<<<< HEAD
   return KernelSignature("depthwise_conv2d_double_grad",
+=======
+  return KernelSignature("depthwise_conv2d_grad_grad",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
                           "groups",
                           "dilations",
+<<<<<<< HEAD
                           "data_format"},
+=======
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search",
+                          "fuse_relu_before_depthwise_conv"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          {"DInput", "DFilter", "DDOutput"});
 }
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_BASE_KERNEL_NAME(depthwise_conv2d_grad_grad,
                              depthwise_conv2d_double_grad);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_ARG_MAPPING_FN(depthwise_conv2d,
                            phi::DepthwiseConv2dOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(depthwise_conv2d_grad,

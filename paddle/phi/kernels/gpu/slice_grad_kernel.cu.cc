@@ -23,7 +23,10 @@ PD_REGISTER_KERNEL(slice_grad,
                    ALL_LAYOUT,
                    phi::SliceGradRawKernel,
                    bool,
+<<<<<<< HEAD
                    uint8_t,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    int,
                    int64_t,
                    float,
@@ -32,6 +35,7 @@ PD_REGISTER_KERNEL(slice_grad,
                    phi::dtype::complex<double>,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
+<<<<<<< HEAD
 
 PD_REGISTER_KERNEL(slice_array_grad,
                    GPU,
@@ -62,3 +66,5 @@ PD_REGISTER_KERNEL(slice_array_dense_grad,
                    phi::dtype::complex<double>,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

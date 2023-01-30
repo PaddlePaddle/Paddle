@@ -27,7 +27,10 @@ limitations under the License. */
 #else
 #include <unistd.h>
 #endif
+<<<<<<< HEAD
 #include "glog/logging.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/macros.h"  // import DISABLE_COPY_AND_ASSIGN
 
@@ -116,7 +119,10 @@ bool SetCurrentThreadName(const std::string& name) {
     return false;
   }
   instance.SetCurrentThreadData(name);
+<<<<<<< HEAD
   VLOG(4) << __func__ << " " << name;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return true;
 }
 

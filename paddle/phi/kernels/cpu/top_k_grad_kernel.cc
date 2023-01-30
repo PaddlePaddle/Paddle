@@ -141,7 +141,11 @@ void TopkGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(topk_grad,
+=======
+PD_REGISTER_KERNEL(top_k_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    CPU,
                    ALL_LAYOUT,
                    phi::TopkGradKernel,

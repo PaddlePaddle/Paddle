@@ -14,6 +14,7 @@
 """
 """
 
+<<<<<<< HEAD
 import os
 import tarfile
 from collections import defaultdict
@@ -27,6 +28,24 @@ from paddle.io import Dataset
 __all__ = []
 
 DATA_URL = "http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz"
+=======
+from __future__ import print_function
+
+import os
+import six
+import tarfile
+import numpy as np
+from collections import defaultdict
+
+import paddle
+from paddle.io import Dataset
+import paddle.compat as cpt
+from paddle.dataset.common import _check_exists_and_download
+
+__all__ = []
+
+DATA_URL = ("http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DATA_MD5 = "0c38be43600334966403524a40dcd81e"
 
 TOTAL_EN_WORDS = 11250
@@ -82,7 +101,11 @@ class WMT16(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(SimpleNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 def forward(self, src_ids, trg_ids, trg_ids_next):
                     return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
@@ -103,6 +126,7 @@ class WMT16(Dataset):
 
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         data_file=None,
@@ -117,21 +141,40 @@ class WMT16(Dataset):
             'test',
             'val',
         ], "mode should be 'train', 'test' or 'val', but got {}".format(mode)
+=======
+    def __init__(self,
+                 data_file=None,
+                 mode='train',
+                 src_dict_size=-1,
+                 trg_dict_size=-1,
+                 lang='en',
+                 download=True):
+        assert mode.lower() in ['train', 'test', 'val'], \
+            "mode should be 'train', 'test' or 'val', but got {}".format(mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.mode = mode.lower()
 
         self.data_file = data_file
         if self.data_file is None:
+<<<<<<< HEAD
             assert (
                 download
             ), "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
                 data_file, DATA_URL, DATA_MD5, 'wmt16', download
             )
+=======
+            assert download, "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(data_file, DATA_URL,
+                                                        DATA_MD5, 'wmt16',
+                                                        download)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.lang = lang
         assert src_dict_size > 0, "dict_size should be set as positive number"
         assert trg_dict_size > 0, "dict_size should be set as positive number"
         self.src_dict_size = min(
+<<<<<<< HEAD
             src_dict_size, (TOTAL_EN_WORDS if lang == "en" else TOTAL_DE_WORDS)
         )
         self.trg_dict_size = min(
@@ -143,15 +186,30 @@ class WMT16(Dataset):
         self.trg_dict = self._load_dict(
             "de" if lang == "en" else "en", trg_dict_size
         )
+=======
+            src_dict_size, (TOTAL_EN_WORDS if lang == "en" else TOTAL_DE_WORDS))
+        self.trg_dict_size = min(
+            trg_dict_size, (TOTAL_DE_WORDS if lang == "en" else TOTAL_EN_WORDS))
+
+        # load source and target word dict
+        self.src_dict = self._load_dict(lang, src_dict_size)
+        self.trg_dict = self._load_dict("de" if lang == "en" else "en",
+                                        trg_dict_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # load data
         self.data = self._load_data()
 
     def _load_dict(self, lang, dict_size, reverse=False):
+<<<<<<< HEAD
         dict_path = os.path.join(
             paddle.dataset.common.DATA_HOME,
             "wmt16/%s_%d.dict" % (lang, dict_size),
         )
+=======
+        dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
+                                 "wmt16/%s_%d.dict" % (lang, dict_size))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dict_found = False
         if os.path.exists(dict_path):
             with open(dict_path, "rb") as d:
@@ -163,25 +221,38 @@ class WMT16(Dataset):
         with open(dict_path, "rb") as fdict:
             for idx, line in enumerate(fdict):
                 if reverse:
+<<<<<<< HEAD
                     word_dict[idx] = line.strip().decode()
                 else:
                     word_dict[line.strip().decode()] = idx
+=======
+                    word_dict[idx] = cpt.to_text(line.strip())
+                else:
+                    word_dict[cpt.to_text(line.strip())] = idx
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return word_dict
 
     def _build_dict(self, dict_path, dict_size, lang):
         word_dict = defaultdict(int)
         with tarfile.open(self.data_file, mode="r") as f:
             for line in f.extractfile("wmt16/train"):
+<<<<<<< HEAD
                 line = line.decode()
                 line_split = line.strip().split("\t")
                 if len(line_split) != 2:
                     continue
+=======
+                line = cpt.to_text(line)
+                line_split = line.strip().split("\t")
+                if len(line_split) != 2: continue
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 sen = line_split[0] if self.lang == "en" else line_split[1]
                 for w in sen.split():
                     word_dict[w] += 1
 
         with open(dict_path, "wb") as fout:
             fout.write(
+<<<<<<< HEAD
                 ("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)).encode()
             )
             for idx, word in enumerate(
@@ -191,6 +262,16 @@ class WMT16(Dataset):
                     break
                 fout.write(word[0].encode())
                 fout.write(b'\n')
+=======
+                cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
+            for idx, word in enumerate(
+                    sorted(six.iteritems(word_dict),
+                           key=lambda x: x[1],
+                           reverse=True)):
+                if idx + 3 == dict_size: break
+                fout.write(cpt.to_bytes(word[0]))
+                fout.write(cpt.to_bytes('\n'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _load_data(self):
         # the index for start mark, end mark, and unk are the same in source
@@ -208,16 +289,26 @@ class WMT16(Dataset):
         self.trg_ids_next = []
         with tarfile.open(self.data_file, mode="r") as f:
             for line in f.extractfile("wmt16/{}".format(self.mode)):
+<<<<<<< HEAD
                 line = line.decode()
+=======
+                line = cpt.to_text(line)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 line_split = line.strip().split("\t")
                 if len(line_split) != 2:
                     continue
                 src_words = line_split[src_col].split()
+<<<<<<< HEAD
                 src_ids = (
                     [start_id]
                     + [self.src_dict.get(w, unk_id) for w in src_words]
                     + [end_id]
                 )
+=======
+                src_ids = [start_id] + [
+                    self.src_dict.get(w, unk_id) for w in src_words
+                ] + [end_id]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 trg_words = line_split[trg_col].split()
                 trg_ids = [self.trg_dict.get(w, unk_id) for w in trg_words]
@@ -230,11 +321,16 @@ class WMT16(Dataset):
                 self.trg_ids_next.append(trg_ids_next)
 
     def __getitem__(self, idx):
+<<<<<<< HEAD
         return (
             np.array(self.src_ids[idx]),
             np.array(self.trg_ids[idx]),
             np.array(self.trg_ids_next[idx]),
         )
+=======
+        return (np.array(self.src_ids[idx]), np.array(self.trg_ids[idx]),
+                np.array(self.trg_ids_next[idx]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __len__(self):
         return len(self.src_ids)
@@ -256,14 +352,21 @@ class WMT16(Dataset):
             dict: The word dictionary for the specific language.
 
         Examples:
+<<<<<<< HEAD
 
             .. code-block:: python
 
+=======
+    
+            .. code-block:: python
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 from paddle.text.datasets import WMT16
                 wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
                 en_dict = wmt16.get_dict('en')
 
         """
+<<<<<<< HEAD
         dict_size = (
             self.src_dict_size if lang == self.lang else self.trg_dict_size
         )
@@ -272,6 +375,12 @@ class WMT16(Dataset):
             paddle.dataset.common.DATA_HOME,
             "wmt16/%s_%d.dict" % (lang, dict_size),
         )
+=======
+        dict_size = self.src_dict_size if lang == self.lang else self.trg_dict_size
+
+        dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
+                                 "wmt16/%s_%d.dict" % (lang, dict_size))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert os.path.exists(dict_path), "Word dictionary does not exist. "
         "Please invoke paddle.dataset.wmt16.train/test/validation first "
         "to build the dictionary."

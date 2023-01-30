@@ -670,6 +670,7 @@ TEST(BuildCinnPassTest, NoNeedBufferInput) {
       std::unordered_set<std::string>({"var5", "var6"}));
 }
 
+<<<<<<< HEAD
 TEST(BuildCinnPassTest, TestSkipGcVars) {
   auto g = BuildGraphWithOneCinnSubgraph();
 
@@ -711,6 +712,8 @@ TEST(BuildCinnPassTest, TestSkipGcVars) {
   ASSERT_EQ(CountNode(subnodes, "fetch"), 2);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

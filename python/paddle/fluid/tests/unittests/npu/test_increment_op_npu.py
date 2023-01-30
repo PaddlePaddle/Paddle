@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -29,6 +34,10 @@ NPUPlace = 0
 
 
 class TestIncrement(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(NPUPlace)
@@ -36,9 +45,14 @@ class TestIncrement(OpTest):
         self.init_dtype()
 
         self.inputs = {
+<<<<<<< HEAD
             'X': OpTest.np_dtype_to_fluid_dtype(
                 np.array([1]).astype(self.dtype)
             ),
+=======
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {"Step": 1}
@@ -56,6 +70,10 @@ class TestIncrement(OpTest):
 
 
 class TestIncrementFP16(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(NPUPlace)
@@ -63,9 +81,14 @@ class TestIncrementFP16(OpTest):
         self.init_dtype()
 
         self.inputs = {
+<<<<<<< HEAD
             'X': OpTest.np_dtype_to_fluid_dtype(
                 np.array([1]).astype(self.dtype)
             ),
+=======
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.pre_input_id = id(self.inputs['X'])
 
@@ -83,6 +106,10 @@ class TestIncrementFP16(OpTest):
 
 
 class TestIncrementINT64(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(NPUPlace)
@@ -90,9 +117,14 @@ class TestIncrementINT64(OpTest):
         self.init_dtype()
 
         self.inputs = {
+<<<<<<< HEAD
             'X': OpTest.np_dtype_to_fluid_dtype(
                 np.array([1]).astype(self.dtype)
             ),
+=======
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.pre_input_id = id(self.inputs['X'])
 
@@ -110,6 +142,10 @@ class TestIncrementINT64(OpTest):
 
 
 class TestIncrementInplace(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_npu(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -121,13 +157,18 @@ class TestIncrementInplace(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[1], dtype='float32')
+<<<<<<< HEAD
             b = paddle.increment(a)
+=======
+            b = fluid.layers.increment(a)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         place = paddle.NPUPlace(NPUPlace)
 
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
 
+<<<<<<< HEAD
         b_value = exe.run(
             main_prog,
             feed={
@@ -135,6 +176,11 @@ class TestIncrementInplace(unittest.TestCase):
             },
             fetch_list=[b],
         )
+=======
+        b_value = exe.run(main_prog, feed={
+            "a": a_np,
+        }, fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         print('input a id is : {}'.format(id(a)))
         print('input b id is : {}'.format(id(b)))

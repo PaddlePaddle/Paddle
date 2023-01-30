@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+=======
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from . import decorator
 from .decorator import decorate
 from . import fp16_lists
@@ -19,3 +24,12 @@ from .fp16_lists import CustomOpLists, AutoMixedPrecisionLists
 from . import fp16_utils
 from .fp16_utils import fp16_guard, cast_model_to_fp16, cast_parameters_to_fp16
 from . import bf16
+=======
+from ...fluid.contrib.mixed_precision import decorate  # noqa: F401
+from ...fluid.contrib.mixed_precision import CustomOpLists  # noqa: F401
+from ...fluid.contrib.mixed_precision import AutoMixedPrecisionLists  # noqa: F401
+from ...fluid.contrib.mixed_precision import fp16_guard  # noqa: F401
+from ...fluid.contrib.mixed_precision import cast_model_to_fp16  # noqa: F401
+from ...fluid.contrib.mixed_precision import cast_parameters_to_fp16  # noqa: F401
+from ...fluid.contrib.mixed_precision import bf16  # noqa: F401
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

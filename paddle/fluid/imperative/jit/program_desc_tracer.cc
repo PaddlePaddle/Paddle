@@ -261,8 +261,13 @@ void ProgramDescTracer::InsertVarIfNotExist(
                     true,
                     platform::errors::InvalidArgument(
                         "The variable to insert is not initialized."));
+<<<<<<< HEAD
   if (inner_var.IsType<phi::DenseTensor>()) {
     const auto &tensor = inner_var.Get<phi::DenseTensor>();
+=======
+  if (inner_var.IsType<framework::LoDTensor>()) {
+    const auto &tensor = inner_var.Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
     new_var_desc->SetShape(phi::vectorize<int64_t>(tensor.dims()));
     new_var_desc->SetLoDLevel(tensor.lod().size());

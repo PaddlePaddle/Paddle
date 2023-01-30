@@ -169,6 +169,13 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   VLOG(3) << "DeviceTransform in, src_place " << tensor.place()
           << " dst_place: " << dst_place;
 
+<<<<<<< HEAD
+=======
+  DefaultAllocator alloc(dst_place);
+  phi::DenseTensor out(&alloc,
+                       {tensor.dtype(), tensor.dims(), tensor.layout()});
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   // NOTE(yy): TransDataPlace should wait for computation of input.
@@ -187,7 +194,10 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   // the transforming is from CPU to GPU and the number of elements is little.
   // But the embarrassment is that this solution this solution makes training
   // slower.
+<<<<<<< HEAD
   phi::DenseTensor out;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::framework::TensorCopySync(tensor, dst_place, &out);
   return out;
 }
@@ -302,6 +312,7 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
   return paddle::none;
 }
 
+<<<<<<< HEAD
 std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
@@ -343,6 +354,8 @@ paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
   return paddle::none;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
                       phi::DenseTensor* out) {

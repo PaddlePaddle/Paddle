@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import pickle
 import sys
@@ -22,11 +23,30 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 import paddle
 import paddle.distributed.utils.moe_utils as moe_utils
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import numpy as np
+import os
+import sys
+import paddle
+import paddle.fluid as fluid
+import unittest
+import paddle.fluid.layers as layers
+from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+import pickle
+from paddle.fluid.framework import _enable_legacy_dygraph
+import paddle.distributed.utils.moe_utils as moe_utils
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 
@@ -38,6 +58,7 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
             n_expert = 2
             world_size = 2
             tot_expert = n_expert * world_size
+<<<<<<< HEAD
             local_input_buf = paddle.static.data(
                 name="local_input_buf", shape=[-1, in_feat], dtype="float32"
             )
@@ -51,6 +72,21 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
             output = moe_utils.global_gather(
                 local_input_buf, local_expert_count, global_expert_count
             )
+=======
+            local_input_buf = paddle.static.data(name="local_input_buf",
+                                                 shape=[-1, in_feat],
+                                                 dtype="float32")
+            local_expert_count = paddle.static.data(name="local_expert_count",
+                                                    shape=[tot_expert],
+                                                    dtype="int64")
+            global_expert_count = paddle.static.data(name="global_expert_count",
+                                                     shape=[tot_expert],
+                                                     dtype="int64")
+
+            output = moe_utils.global_gather(local_input_buf,
+                                             local_expert_count,
+                                             global_expert_count)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             return [output]
 
@@ -60,6 +96,7 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
+<<<<<<< HEAD
         paddle.distributed.init_parallel_env()
         nranks = 2
         if args['backend'] == 'nccl':
@@ -67,6 +104,14 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
             place = fluid.CUDAPlace(
                 device_id
             )  # if args.use_gpu else fluid.CPUPlace()
+=======
+        nranks = 2
+        paddle.distributed.init_parallel_env()
+        if args['backend'] == 'nccl':
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(
+                device_id)  #if args.use_gpu else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
@@ -77,6 +122,7 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
         n_expert = 2
         world_size = 2
         tot_expert = n_expert * world_size
+<<<<<<< HEAD
 
         tmp_main_prog = fluid.Program()
         with fluid.program_guard(tmp_main_prog, fluid.Program()):
@@ -120,6 +166,42 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
                 },
                 fetch_list=fetch_list,
             )
+=======
+        paddle.disable_static()
+
+        # Call paddle.distributed.alltoall() under legacy dygraph
+        _enable_legacy_dygraph()
+        np.random.seed(os.getpid())
+        local_expert_count = np.random.randint(1, 4,
+                                               size=tot_expert).astype("int64")
+        local_expert_count = paddle.to_tensor(local_expert_count)
+        global_expert_count = []
+        paddle.distributed.alltoall(paddle.split(local_expert_count, 2, axis=0),
+                                    global_expert_count)
+        global_expert_count = paddle.concat(global_expert_count, axis=0)
+        global_expert_count = global_expert_count.numpy()
+        local_expert_count = local_expert_count.numpy()
+        fwd_expert_count = sum(global_expert_count)
+        np.random.seed(os.getpid())
+        local_input_buf = np.random.rand(fwd_expert_count,
+                                         in_feat).astype("float32")
+
+        paddle.enable_static()
+        if args['static_mode']:
+            result = self.get_model(train_prog, startup_prog, rank)
+            exe = fluid.Executor(place)
+            exe.run(startup_prog)
+            fetch_list = []
+            for elem in result:
+                fetch_list.append(elem.name)
+            out = exe.run(train_prog,
+                          feed={
+                              'local_expert_count': local_expert_count,
+                              'global_expert_count': global_expert_count,
+                              'local_input_buf': local_input_buf
+                          },
+                          fetch_list=fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         sys.stdout.buffer.write(pickle.dumps(out))
 

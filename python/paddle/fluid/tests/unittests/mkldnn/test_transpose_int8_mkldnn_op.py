@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,6 +23,19 @@ from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 class TestTransposeOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest
+from mkldnn_op_test import format_reorder
+
+
+class TestTransposeOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -32,7 +46,11 @@ class TestTransposeOp(OpTest):
 
         self.inputs = {
             'X': format_reorder(self.input_data, self.shape).astype(np.int8)
+<<<<<<< HEAD
         }  # transform data format to 'NHWC' for INT8 transpose specially.
+=======
+        }  #transform data format to 'NHWC' for INT8 transpose specially.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.attrs = {
             'axis': list(self.axis),
@@ -41,7 +59,11 @@ class TestTransposeOp(OpTest):
 
         self.outputs = {
             'XShape': np.random.random(self.shape).astype(np.int8),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_op_type(self):
@@ -49,37 +71,65 @@ class TestTransposeOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
+<<<<<<< HEAD
         self.check_output_with_place(
             core.CPUPlace(), 1e-5, no_check_set=['XShape'], check_dygraph=False
         )
+=======
+        self.check_output_with_place(core.CPUPlace(),
+                                     1e-5,
+                                     no_check_set=['XShape'],
+                                     check_dygraph=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
 
     def initInputData(self):
         self.input_data = (np.random.randint(0, 100, self.shape) - 50).astype(
+<<<<<<< HEAD
             np.int8
         )
 
 
 class TestINT8Case(TestTransposeOp):
+=======
+            np.int8)
+
+
+class TestINT8Case(TestTransposeOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 4, 6, 8)
 
     def initInputData(self):
         self.input_data = (np.random.randint(0, 100, self.shape) - 50).astype(
+<<<<<<< HEAD
             np.int8
         )
 
 
 class TestUINT8Case(TestTransposeOp):
+=======
+            np.int8)
+
+
+class TestUINT8Case(TestTransposeOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (1, 3, 5, 7)
 
     def initDataType(self):
+<<<<<<< HEAD
         self.input_data = (np.random.randint(0, 100, self.shape)).astype(
             np.uint8
         )
+=======
+        self.input_data = (np.random.randint(0, 100,
+                                             self.shape)).astype(np.uint8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

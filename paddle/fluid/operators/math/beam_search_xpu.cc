@@ -56,6 +56,7 @@ template <typename T>
 class BeamSearchFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext &context,
+<<<<<<< HEAD
                   const phi::DenseTensor *pre_ids,
                   const phi::DenseTensor *pre_scores,
                   const phi::DenseTensor *ids,
@@ -63,6 +64,15 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
                   phi::DenseTensor *selected_ids,
                   phi::DenseTensor *selected_scores,
                   phi::DenseTensor *parent_idx,
+=======
+                  const framework::LoDTensor *pre_ids,
+                  const framework::LoDTensor *pre_scores,
+                  const framework::LoDTensor *ids,
+                  const framework::LoDTensor *scores,
+                  framework::LoDTensor *selected_ids,
+                  framework::LoDTensor *selected_scores,
+                  framework::Tensor *parent_idx,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   size_t level,
                   size_t beam_size,
                   int end_id,
@@ -185,7 +195,11 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
    * Pruning must one step later than finishing (thus pre_ids is needed here),
    * since the end tokens must be writed out.
    */
+<<<<<<< HEAD
   void PruneEndBeams(const phi::DenseTensor *pre_ids,
+=======
+  void PruneEndBeams(const framework::LoDTensor *pre_ids,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      const framework::LoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
@@ -269,10 +283,17 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
    * For each source, select top beam_size records.
    */
   std::vector<std::vector<Item>> SelectTopBeamSizeItems(
+<<<<<<< HEAD
       const phi::DenseTensor *pre_ids,
       const phi::DenseTensor *pre_scores,
       const phi::DenseTensor *ids,
       const phi::DenseTensor *scores,
+=======
+      const framework::LoDTensor *pre_ids,
+      const framework::LoDTensor *pre_scores,
+      const framework::LoDTensor *ids,
+      const framework::LoDTensor *scores,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       size_t lod_level,
       size_t beam_size,
       int end_id,

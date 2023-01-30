@@ -110,7 +110,11 @@ void FeatureNode::recover_from_buffer(char* buffer) {
     memcpy(&feat_len, buffer, sizeof(int));
     buffer += sizeof(int);
 
+<<<<<<< HEAD
     char str[feat_len + 1];  // NOLINT
+=======
+    char str[feat_len + 1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     memcpy(str, buffer, feat_len);
     buffer += feat_len;
     str[feat_len] = '\0';

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -23,12 +24,27 @@ import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
+=======
+from __future__ import print_function
+
+import sys
+import unittest
+import numpy as np
+from op_test import OpTest
+from test_softmax_op import stable_softmax
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+import paddle
+import paddle.nn.functional as F
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 CUDA_BLOCK_SIZE = 32
 
 
+<<<<<<< HEAD
 class CTCForward:
     def __init__(
         self,
@@ -41,6 +57,12 @@ class CTCForward:
         blank,
         norm_by_times,
     ):
+=======
+class CTCForward(object):
+
+    def __init__(self, softmax, softmax_lod, labels, labels_lod, num_classes,
+                 batch_size, blank, norm_by_times):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.softmax = softmax
         self.softmax_lod = softmax_lod
         self.labels = labels
@@ -123,17 +145,27 @@ class CTCForward:
         # calculate the forward and backward variables,
         # reference Chapter 7.3 of "Alex Grave, Supervised Sequence
         # Labelling with Recurrent Neural Networks"
+<<<<<<< HEAD
         log_acts = np.zeros(
             [total_times, self.num_classes], dtype=softmax_a_sequence.dtype
         )
+=======
+        log_acts = np.zeros([total_times, self.num_classes],
+                            dtype=softmax_a_sequence.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for i in range(total_times):
             for j in range(self.num_classes):
                 log_acts[i, j] = self.safe_log(softmax_a_sequence[i, j])
 
         # calculate the forward variables
+<<<<<<< HEAD
         forward_vars = np.zeros(
             [total_times, total_segments], dtype=softmax_a_sequence.dtype
         )
+=======
+        forward_vars = np.zeros([total_times, total_segments],
+                                dtype=softmax_a_sequence.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for i in range(total_times):
             for j in range(total_segments):
                 forward_vars[i, j] = self.LOG_ZERO
@@ -153,6 +185,7 @@ class CTCForward:
                 if j & 1 == 1:
                     label_idx = j // 2
                     label_val = labels_a_sequence[label_idx, 0]
+<<<<<<< HEAD
                     fv = self.log_add(
                         forward_vars[i - 1, j], forward_vars[i - 1, j - 1]
                     )
@@ -160,6 +193,12 @@ class CTCForward:
                         j > 1
                         and label_val != labels_a_sequence[label_idx - 1, 0]
                     ):
+=======
+                    fv = self.log_add(forward_vars[i - 1, j],
+                                      forward_vars[i - 1, j - 1])
+                    if j > 1 and label_val != labels_a_sequence[label_idx - 1,
+                                                                0]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         fv = self.log_add(fv, forward_vars[i - 1, j - 2])
                     fv = self.log_mul(fv, log_acts[i, label_val])
                 else:
@@ -173,8 +212,12 @@ class CTCForward:
         log_prob = forward_vars[total_times - 1, total_segments - 1]
         if total_segments > 1:
             log_prob = self.log_add(
+<<<<<<< HEAD
                 log_prob, forward_vars[total_times - 1, total_segments - 2]
             )
+=======
+                log_prob, forward_vars[total_times - 1, total_segments - 2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return -log_prob
 
@@ -189,6 +232,7 @@ class CTCForward:
                 labels_end_i = labels_offset + self.labels_lod[self.level][i]
 
                 softmax_a_sequence = self.softmax[
+<<<<<<< HEAD
                     softmax_start_i:softmax_end_i, :
                 ]
                 labels_a_sequence = self.labels[labels_start_i:labels_end_i, :]
@@ -203,11 +247,39 @@ class CTCForward:
                 self.loss[i] = self.forward_a_sequence(
                     softmax_a_sequence, labels_a_sequence
                 )
+=======
+                    softmax_start_i:softmax_end_i, :]
+                labels_a_sequence = self.labels[labels_start_i:labels_end_i, :]
+                self.loss[i] = self.forward_a_sequence(softmax_a_sequence,
+                                                       labels_a_sequence)
+                softmax_offset += self.softmax_lod[self.level][i]
+                labels_offset += self.labels_lod[self.level][i]
+            else:
+                softmax_a_sequence = self.softmax[:self.softmax_lod[i], i, :]
+                labels_a_sequence = self.labels[:self.labels_lod[i], :]
+                self.loss[i] = self.forward_a_sequence(softmax_a_sequence,
+                                                       labels_a_sequence)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return self.loss
 
 
+<<<<<<< HEAD
 class TestWarpCTCOp(OpTest):
+=======
+def python_api(logits,
+               label,
+               logits_length=None,
+               labels_length=None,
+               blank=0,
+               norm_by_times=False):
+    return paddle.fluid.layers.warpctc(logits, label, blank, norm_by_times,
+                                       logits_length, labels_length)
+
+
+class TestWarpCTCOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.batch_size = 4
         self.num_classes = 12
@@ -221,6 +293,7 @@ class TestWarpCTCOp(OpTest):
         self.config()
 
         logits = np.random.uniform(
+<<<<<<< HEAD
             0.1, 1.0, [sum(self.logits_lod[0]), self.num_classes]
         ).astype("float32")
         softmax = np.apply_along_axis(stable_softmax, 1, logits)
@@ -239,10 +312,25 @@ class TestWarpCTCOp(OpTest):
             self.blank,
             self.norm_by_times,
         )
+=======
+            0.1, 1.0,
+            [sum(self.logits_lod[0]), self.num_classes]).astype("float32")
+        softmax = np.apply_along_axis(stable_softmax, 1, logits)
+        # labels should not be blank
+        labels = np.random.randint(0,
+                                   self.num_classes - 1,
+                                   [sum(self.labels_lod[0]), 1],
+                                   dtype="int32")
+
+        ctc = CTCForward(softmax, self.logits_lod, labels, self.labels_lod,
+                         self.num_classes, self.batch_size, self.blank,
+                         self.norm_by_times)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss = ctc.forward()
 
         max_sequence_length = 0
         for i in range(self.batch_size):
+<<<<<<< HEAD
             max_sequence_length = max(
                 max_sequence_length, self.logits_lod[0][i]
             )
@@ -254,6 +342,17 @@ class TestWarpCTCOp(OpTest):
         self.inputs = {
             "Logits": (logits, self.logits_lod),
             "Label": (labels, self.labels_lod),
+=======
+            max_sequence_length = max(max_sequence_length,
+                                      self.logits_lod[0][i])
+        self.gradient = np.zeros(
+            [max_sequence_length, self.batch_size, self.num_classes],
+            dtype=logits.dtype)
+
+        self.inputs = {
+            "Logits": (logits, self.logits_lod),
+            "Label": (labels, self.labels_lod)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Loss": loss}
         self.attrs = {
@@ -267,6 +366,7 @@ class TestWarpCTCOp(OpTest):
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
         if core.is_compiled_with_rocm():
+<<<<<<< HEAD
             self.check_grad(
                 ["Logits"],
                 "Loss",
@@ -283,6 +383,21 @@ class TestWarpCTCOp(OpTest):
 
 
 class TestWarpCTCOpCase1(TestWarpCTCOp):
+=======
+            self.check_grad(["Logits"],
+                            "Loss",
+                            max_relative_error=0.009,
+                            check_dygraph=False)
+        else:
+            self.check_grad(["Logits"],
+                            "Loss",
+                            max_relative_error=0.007,
+                            check_dygraph=False)
+
+
+class TestWarpCTCOpCase1(TestWarpCTCOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.batch_size = 4
         self.num_classes = CUDA_BLOCK_SIZE + 2
@@ -293,6 +408,10 @@ class TestWarpCTCOpCase1(TestWarpCTCOp):
 
 
 class TestWarpCTCOpWithPadding(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.batch_size = 4
         self.num_classes = 8
@@ -305,10 +424,15 @@ class TestWarpCTCOpWithPadding(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+<<<<<<< HEAD
+=======
+        self.python_api = python_api
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.python_out_sig = ["Loss"]
         self.config()
 
         logits = np.random.uniform(
+<<<<<<< HEAD
             0.1, 1.0, [sum(self.logits_length), self.num_classes]
         ).astype("float32")
         softmax = np.apply_along_axis(stable_softmax, 1, logits)
@@ -327,10 +451,25 @@ class TestWarpCTCOpWithPadding(OpTest):
             self.blank,
             self.norm_by_times,
         )
+=======
+            0.1, 1.0,
+            [sum(self.logits_length), self.num_classes]).astype("float32")
+        softmax = np.apply_along_axis(stable_softmax, 1, logits)
+        # labels should not be blank
+        labels = np.random.randint(0,
+                                   self.num_classes - 1,
+                                   [sum(self.labels_length), 1],
+                                   dtype="int32")
+
+        ctc = CTCForward(softmax, self.logits_lod, labels, self.labels_lod,
+                         self.num_classes, self.batch_size, self.blank,
+                         self.norm_by_times)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss = ctc.forward()
 
         max_sequence_length = 0
         for i in range(self.batch_size):
+<<<<<<< HEAD
             max_sequence_length = max(
                 max_sequence_length, self.logits_length[i]
             )
@@ -339,6 +478,14 @@ class TestWarpCTCOpWithPadding(OpTest):
             [max_sequence_length, self.batch_size, self.num_classes],
             dtype=logits.dtype,
         )
+=======
+            max_sequence_length = max(max_sequence_length,
+                                      self.logits_length[i])
+        # reshape logits to T*N*S
+        new_logits = np.zeros(
+            [max_sequence_length, self.batch_size, self.num_classes],
+            dtype=logits.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         cur = 0
         for batch_id in range(self.batch_size):
@@ -350,12 +497,19 @@ class TestWarpCTCOpWithPadding(OpTest):
         # reshape labels to N*S
         max_target_seq_length = 0
         for i in range(self.batch_size):
+<<<<<<< HEAD
             max_target_seq_length = max(
                 max_target_seq_length, self.labels_length[i]
             )
         new_labels = np.zeros(
             [self.batch_size, max_target_seq_length], dtype="int32"
         )
+=======
+            max_target_seq_length = max(max_target_seq_length,
+                                        self.labels_length[i])
+        new_labels = np.zeros([self.batch_size, max_target_seq_length],
+                              dtype="int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         cur = 0
         for batch_id in range(self.batch_size):
@@ -365,14 +519,22 @@ class TestWarpCTCOpWithPadding(OpTest):
 
         self.gradient = np.zeros(
             [max_sequence_length, self.batch_size, self.num_classes],
+<<<<<<< HEAD
             dtype=logits.dtype,
         )
+=======
+            dtype=logits.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             "Logits": new_logits,
             "Label": new_labels,
             "LogitsLength": self.logits_length,
+<<<<<<< HEAD
             "LabelLength": self.labels_length,
+=======
+            "LabelLength": self.labels_length
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Loss": loss}
         self.attrs = {
@@ -381,11 +543,16 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
+<<<<<<< HEAD
         self.check_output(check_eager=False)
+=======
+        self.check_output(check_eager=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
         if core.is_compiled_with_rocm():
+<<<<<<< HEAD
             self.check_grad(
                 ["Logits"],
                 "Loss",
@@ -402,6 +569,21 @@ class TestWarpCTCOpWithPadding(OpTest):
 
 
 class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
+=======
+            self.check_grad(["Logits"],
+                            "Loss",
+                            max_relative_error=0.009,
+                            check_dygraph=False)
+        else:
+            self.check_grad(["Logits"],
+                            "Loss",
+                            max_relative_error=0.007,
+                            check_dygraph=False)
+
+
+class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.batch_size = 4
         self.num_classes = CUDA_BLOCK_SIZE + 2
@@ -414,6 +596,10 @@ class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
 
 
 class TestWarpCTCOpFp64(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.batch_size = 4
         self.num_classes = 8
@@ -426,10 +612,15 @@ class TestWarpCTCOpFp64(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+<<<<<<< HEAD
+=======
+        self.python_api = python_api
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.python_out_sig = ["Loss"]
         self.config()
 
         logits = np.random.uniform(
+<<<<<<< HEAD
             0.1, 1.0, [sum(self.logits_length), self.num_classes]
         ).astype("float64")
         softmax = np.apply_along_axis(stable_softmax, 1, logits)
@@ -448,10 +639,25 @@ class TestWarpCTCOpFp64(OpTest):
             self.blank,
             self.norm_by_times,
         )
+=======
+            0.1, 1.0,
+            [sum(self.logits_length), self.num_classes]).astype("float64")
+        softmax = np.apply_along_axis(stable_softmax, 1, logits)
+        # labels should not be blank
+        labels = np.random.randint(0,
+                                   self.num_classes - 1,
+                                   [sum(self.labels_length), 1],
+                                   dtype="int32")
+
+        ctc = CTCForward(softmax, self.logits_lod, labels, self.labels_lod,
+                         self.num_classes, self.batch_size, self.blank,
+                         self.norm_by_times)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss = ctc.forward()
 
         max_sequence_length = 0
         for i in range(self.batch_size):
+<<<<<<< HEAD
             max_sequence_length = max(
                 max_sequence_length, self.logits_length[i]
             )
@@ -460,6 +666,14 @@ class TestWarpCTCOpFp64(OpTest):
             [max_sequence_length, self.batch_size, self.num_classes],
             dtype=logits.dtype,
         )
+=======
+            max_sequence_length = max(max_sequence_length,
+                                      self.logits_length[i])
+        # reshape logits to T*N*S
+        new_logits = np.zeros(
+            [max_sequence_length, self.batch_size, self.num_classes],
+            dtype=logits.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         cur = 0
         for batch_id in range(self.batch_size):
@@ -471,12 +685,19 @@ class TestWarpCTCOpFp64(OpTest):
         # reshape labels to N*S
         max_target_seq_length = 0
         for i in range(self.batch_size):
+<<<<<<< HEAD
             max_target_seq_length = max(
                 max_target_seq_length, self.labels_length[i]
             )
         new_labels = np.zeros(
             [self.batch_size, max_target_seq_length], dtype="int32"
         )
+=======
+            max_target_seq_length = max(max_target_seq_length,
+                                        self.labels_length[i])
+        new_labels = np.zeros([self.batch_size, max_target_seq_length],
+                              dtype="int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         cur = 0
         for batch_id in range(self.batch_size):
@@ -486,14 +707,22 @@ class TestWarpCTCOpFp64(OpTest):
 
         self.gradient = np.zeros(
             [max_sequence_length, self.batch_size, self.num_classes],
+<<<<<<< HEAD
             dtype=logits.dtype,
         )
+=======
+            dtype=logits.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             "Logits": new_logits,
             "Label": new_labels,
             "LogitsLength": self.logits_length,
+<<<<<<< HEAD
             "LabelLength": self.labels_length,
+=======
+            "LabelLength": self.labels_length
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Loss": loss}
         self.attrs = {
@@ -502,6 +731,7 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
+<<<<<<< HEAD
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
@@ -535,11 +765,42 @@ class TestWarpCTCOpError(unittest.TestCase):
                     label_lengths=label_length,
                     reduction='none',
                 )
+=======
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.outputs['WarpCTCGrad'] = self.gradient
+        self.check_grad(["Logits"], "Loss", check_eager=True)
+
+
+class TestWarpCTCOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            logits = fluid.data(name='logits',
+                                shape=[5, 16, 6],
+                                dtype='float32')
+            logits_length = fluid.data(name='logits_length',
+                                       shape=[None],
+                                       dtype='int64')
+            label = fluid.data(name='label', shape=[16, 3], dtype='int32')
+            label_length = fluid.data(name='labels_length',
+                                      shape=[None],
+                                      dtype='int64')
+
+            def test_logits_Variable():
+                logits_data = np.random.rand(5, 16, 6).astype(logits.dtype)
+                fluid.layers.warpctc(input=logits_data,
+                                     label=label,
+                                     input_length=logits_length,
+                                     label_length=label_length)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_logits_Variable)
 
             def test_label_Variable():
                 label_data = np.random.randint(0, 5, [5, 1]).astype("int32")
+<<<<<<< HEAD
                 paddle.nn.functional.ctc_loss(
                     log_probs=logits,
                     labels=label_data,
@@ -547,11 +808,18 @@ class TestWarpCTCOpError(unittest.TestCase):
                     label_lengths=label_length,
                     reduction='none',
                 )
+=======
+                fluid.layers.warpctc(input=logits,
+                                     label=label_data,
+                                     input_length=logits_length,
+                                     label_length=label_length)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_label_Variable)
 
             def test_logits_len_Variable():
                 logits_length_data = np.array([5] * 16).astype("int64")
+<<<<<<< HEAD
                 paddle.nn.functional.ctc_loss(
                     log_probs=logits,
                     labels=label,
@@ -559,11 +827,18 @@ class TestWarpCTCOpError(unittest.TestCase):
                     label_lengths=label_length,
                     reduction='none',
                 )
+=======
+                fluid.layers.warpctc(input=logits,
+                                     label=label,
+                                     input_length=logits_length_data,
+                                     label_length=label_length)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_logits_len_Variable)
 
             def test_label_len_Variable():
                 label_length_data = np.array([3] * 16).astype("int64")
+<<<<<<< HEAD
                 paddle.nn.functional.ctc_loss(
                     log_probs=logits,
                     labels=label,
@@ -571,10 +846,20 @@ class TestWarpCTCOpError(unittest.TestCase):
                     label_length=label_length_data,
                     reduction='none',
                 )
+=======
+                fluid.layers.warpctc(input=logits,
+                                     label=label,
+                                     input_length=logits_length,
+                                     label_length=label_length_data)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_label_len_Variable)
 
     def test_dygraph_errors(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_dygraph_with_lod():
 
             logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
@@ -583,6 +868,7 @@ class TestWarpCTCOpError(unittest.TestCase):
             softmax = paddle.to_tensor(logits)
             labels = paddle.to_tensor(labels)
 
+<<<<<<< HEAD
             paddle.nn.functional.ctc_loss(
                 log_probs=softmax,
                 labels=labels,
@@ -590,6 +876,9 @@ class TestWarpCTCOpError(unittest.TestCase):
                 label_lengths=None,
                 reduction='none',
             )
+=======
+            fluid.layers.warpctc(input=softmax, label=labels)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         paddle.disable_static()
         self.assertRaises(ValueError, test_dygraph_with_lod)
@@ -597,6 +886,66 @@ class TestWarpCTCOpError(unittest.TestCase):
 
 
 class TestCTCLossAPICase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+    def test_functinal_api(self):
+        self.batch_size = 4
+        self.num_classes = CUDA_BLOCK_SIZE + 2
+        self.logits_length = np.array([4, 1, 3, 3], dtype=np.int64)
+        self.labels_length = np.array([3, 1, 4, 4], dtype=np.int64)
+        self.blank = self.num_classes - 1
+        self.norm_by_times = False
+
+        logits = np.random.uniform(
+            0.1, 1.0,
+            [max(self.logits_length), self.batch_size, self.num_classes
+             ]).astype("float32")
+        softmax = np.apply_along_axis(stable_softmax, -1, logits)
+        # labels should not be blank
+        labels = np.random.randint(
+            0,
+            self.num_classes - 1,
+            [self.batch_size, max(self.labels_length)],
+            dtype="int32")
+
+        ctc = CTCForward(softmax, self.logits_length, labels,
+                         self.labels_length, self.num_classes, self.batch_size,
+                         self.blank, self.norm_by_times)
+        loss_np = ctc.forward()
+
+        paddle.disable_static()
+        softmax = paddle.to_tensor(logits)
+        labels = paddle.to_tensor(labels)
+        logits_length = paddle.to_tensor(self.logits_length)
+        labels_length = paddle.to_tensor(self.labels_length)
+        loss_pd_mean = F.ctc_loss(softmax,
+                                  labels,
+                                  logits_length,
+                                  labels_length,
+                                  blank=self.blank,
+                                  reduction='mean')
+        loss_pd_mean = loss_pd_mean.numpy()
+
+        loss_pd_sum = F.ctc_loss(softmax,
+                                 labels,
+                                 logits_length,
+                                 labels_length,
+                                 blank=self.blank,
+                                 reduction='sum')
+        loss_pd_sum = loss_pd_sum.numpy()
+        paddle.enable_static()
+        loss_np = np.squeeze(loss_np, axis=-1)
+        loss_np_mean = (loss_np / labels_length.numpy()).mean()
+        loss_np_sum = loss_np.sum()
+
+        np.testing.assert_allclose(loss_pd_mean,
+                                   loss_np_mean,
+                                   rtol=1e-05,
+                                   atol=1)
+        np.testing.assert_allclose(loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_class_api(self):
         self.batch_size = 3
         self.num_classes = 15
@@ -606,16 +955,23 @@ class TestCTCLossAPICase(unittest.TestCase):
         self.norm_by_times = False
 
         logits = np.random.uniform(
+<<<<<<< HEAD
             0.1,
             1.0,
             [max(self.logits_length), self.batch_size, self.num_classes],
         ).astype("float32")
+=======
+            0.1, 1.0,
+            [max(self.logits_length), self.batch_size, self.num_classes
+             ]).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         softmax = np.apply_along_axis(stable_softmax, -1, logits)
         # labels should not be blank
         labels = np.random.randint(
             1,
             self.num_classes,
             [self.batch_size, max(self.labels_length)],
+<<<<<<< HEAD
             dtype="int32",
         )
 
@@ -629,6 +985,13 @@ class TestCTCLossAPICase(unittest.TestCase):
             self.blank,
             self.norm_by_times,
         )
+=======
+            dtype="int32")
+
+        ctc = CTCForward(softmax, self.logits_length, labels,
+                         self.labels_length, self.num_classes, self.batch_size,
+                         self.blank, self.norm_by_times)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss_np = ctc.forward()
 
         paddle.disable_static()
@@ -637,15 +1000,22 @@ class TestCTCLossAPICase(unittest.TestCase):
         logits_length = paddle.to_tensor(self.logits_length)
         labels_length = paddle.to_tensor(self.labels_length)
 
+<<<<<<< HEAD
         loss_pd = paddle.nn.CTCLoss(self.blank, 'none')(
             softmax, labels, logits_length, labels_length
         )
+=======
+        loss_pd = paddle.nn.CTCLoss(self.blank,
+                                    'none')(softmax, labels, logits_length,
+                                            labels_length)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss_pd = loss_pd.numpy()
         paddle.enable_static()
         loss_np = np.squeeze(loss_np, axis=-1)
 
         np.testing.assert_allclose(loss_pd, loss_np, rtol=1e-05, atol=1)
 
+<<<<<<< HEAD
     def test_eager_ctcloss(self):
         def test_functinal_api():
             self.batch_size = 4
@@ -719,6 +1089,8 @@ class TestCTCLossAPICase(unittest.TestCase):
 
         test_functinal_api()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == "__main__":
     unittest.main()

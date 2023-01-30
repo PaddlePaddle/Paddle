@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import contextlib
 import inspect
 import os
@@ -44,6 +45,49 @@ from paddle.metric import Metric
 from paddle.static import InputSpec as Input
 
 from .callbacks import EarlyStopping, config_callbacks
+=======
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import inspect
+import os
+import pickle
+import numpy as np
+import six
+import warnings
+import time
+import socket
+import contextlib
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import Variable
+from paddle.fluid.framework import _get_paddle_place
+from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.executor import global_scope
+from paddle.fluid.io import is_belong_to_optimizer
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
+from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
+from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers import collective
+
+from paddle.io import DataLoader
+from paddle.io import Dataset
+from paddle.io import DistributedBatchSampler
+from paddle.metric import Metric
+from paddle.static import InputSpec as Input
+from paddle.distributed.fleet.base import role_maker
+from paddle.autograd import no_grad
+from paddle.distributed import fleet
+from paddle.distributed.parallel import init_parallel_env
+
+from .callbacks import config_callbacks, EarlyStopping
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .model_summary import summary
 
 __all__ = []
@@ -90,7 +134,14 @@ def restore_flatten_list(l, splits):
 
 
 def extract_args(func):
+<<<<<<< HEAD
     return inspect.getfullargspec(func).args
+=======
+    if hasattr(inspect, 'getfullargspec'):
+        return inspect.getfullargspec(func)[0]
+    else:
+        return inspect.getargspec(func)[0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
@@ -100,7 +151,11 @@ def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
 
 
 def wait_server_ready(endpoints):
+<<<<<<< HEAD
     assert not isinstance(endpoints, str)
+=======
+    assert not isinstance(endpoints, six.string_types)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     while True:
         all_ok = True
         not_ready_endpoints = []
@@ -252,7 +307,11 @@ def _update_input_info(inputs):
     return shapes, dtypes
 
 
+<<<<<<< HEAD
 class StaticGraphAdapter:
+=======
+class StaticGraphAdapter(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     Model traning/inference with a static graph.
@@ -260,7 +319,11 @@ class StaticGraphAdapter:
     """
 
     def __init__(self, model):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(StaticGraphAdapter, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.model = model
         # with `_build_once` gone, parameters are now created in `__init__`
         # so we need to keep track of the parameters already created
@@ -305,7 +368,11 @@ class StaticGraphAdapter:
         self.mode = 'train'
         assert (
             update is True
+<<<<<<< HEAD
         ), "Does not support `update == False` in static graph mode by now."
+=======
+        ), "Does not support `update == False` in static mode by now."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -637,7 +704,11 @@ class StaticGraphAdapter:
                     metrics.append(to_list(metric.compute(*(outputs + labels))))
 
             if mode == 'train' and self.model._optimizer:
+<<<<<<< HEAD
                 self._loss_endpoint = paddle.add_n(losses)
+=======
+                self._loss_endpoint = fluid.layers.sum(losses)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if self._nranks > 1:
                     role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                     fleet.init(role)
@@ -729,9 +800,15 @@ class StaticGraphAdapter:
         self._compiled_progs[mode] = compiled_prog
 
 
+<<<<<<< HEAD
 class DynamicGraphAdapter:
     def __init__(self, model):
         super().__init__()
+=======
+class DynamicGraphAdapter(object):
+    def __init__(self, model):
+        super(DynamicGraphAdapter, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.model = model
         self._nranks = ParallelEnv().nranks
         self._local_rank = ParallelEnv().local_rank
@@ -749,7 +826,11 @@ class DynamicGraphAdapter:
         self._use_fp16_guard = True
 
         if self._nranks > 1:
+<<<<<<< HEAD
             dist.init_parallel_env()
+=======
+            init_parallel_env()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             stradegy = fluid.dygraph.parallel.ParallelStrategy()
             stradegy.nranks = ParallelEnv().nranks
             stradegy.local_rank = ParallelEnv().local_rank
@@ -795,7 +876,11 @@ class DynamicGraphAdapter:
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
+<<<<<<< HEAD
         final_loss = paddle.add_n(losses)
+=======
+        final_loss = fluid.layers.sum(losses)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self._amp_level != "O0":
             scaled = self.model._scaler.scale(final_loss)
@@ -899,11 +984,19 @@ class DynamicGraphAdapter:
 
     def save(self, path):
         params = self.model.network.state_dict()
+<<<<<<< HEAD
         paddle.save(params, path + '.pdparams')
         if self.model._optimizer is not None:
             if self.model._optimizer.state_dict():
                 optim = self.model._optimizer.state_dict()
                 paddle.save(optim, path + '.pdopt')
+=======
+        fluid.save_dygraph(params, path)
+        if self.model._optimizer is not None:
+            if self.model._optimizer.state_dict():
+                optim = self.model._optimizer.state_dict()
+                fluid.save_dygraph(optim, path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if hasattr(self.model, '_scaler') and self.model._scaler is not None:
             if self.model._scaler.state_dict():
                 scaler = self.model._scaler.state_dict()
@@ -1001,7 +1094,11 @@ class DynamicGraphAdapter:
             self.model._scaler = None
 
 
+<<<<<<< HEAD
 class Model:
+=======
+class Model(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     An Model object is network with training and inference features.
@@ -1012,7 +1109,11 @@ class Model:
     must be required for static graph.
 
     When training on GPU, auto mixed precision (AMP O1) and pure float16
+<<<<<<< HEAD
     (AMP O2) training are both supported in static graph mode and dynamic mode.
+=======
+    (AMP O2) training are both supported in static mode and dynamic mode.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     In static graph mode, before training with pure float16 (AMP O2),
     `multi_precision` could be set to True when creating optimizer, which can
     avoid poor accuracy or slow convergence in a way, and inputs of dtype float
@@ -1338,7 +1439,11 @@ class Model:
 
                 class Mnist(nn.Layer):
                     def __init__(self):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(Mnist, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self.net = nn.Sequential(
                             nn.Flatten(1),
                             nn.Linear(784, 200),
@@ -1535,7 +1640,11 @@ class Model:
                 assert isinstance(
                     self._optimizer._grad_clip,
                     (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm),
+<<<<<<< HEAD
                 ), "Only ClipGradByNorm and ClipGradByGlobalNorm are supported in amp training with level=O2 currently."
+=======
+                ), "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}
@@ -1605,7 +1714,11 @@ class Model:
             if 'use_fp16_guard' in amp_config_key_set:
                 if _non_static_mode():
                     raise ValueError(
+<<<<<<< HEAD
                         "'use_fp16_guard' is supported in static graph mode only."
+=======
+                        "'use_fp16_guard' is supported in static mode only."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     )
                 self._adapter._use_fp16_guard = amp_configs['use_fp16_guard']
                 amp_config_key_set.remove('use_fp16_guard')
@@ -1643,7 +1756,11 @@ class Model:
                 'incr_every_n_steps', 'decr_every_n_nan_or_inf',
                 'use_dynamic_loss_scaling', 'custom_white_list',
                 'custom_black_list', and 'custom_black_varnames'or
+<<<<<<< HEAD
                 'use_fp16_guard' is only supported in static graph mode. Mixed
+=======
+                'use_fp16_guard' is only supported in static mode. Mixed
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 precision API documentations  :ref:`api_paddle_amp_auto_cast`
                 and  :ref:`api_paddle_amp_GradScaler` could be referenced
                 for details. For convenience, 'amp_configs' could be set to
@@ -1724,7 +1841,11 @@ class Model:
                 evaluation at the end of epoch. If None, will not do evaluation.
                 An instance of paddle.io.Dataset or paddle.io.Dataloader
                 is recomended. Default: None.
+<<<<<<< HEAD
             batch_size (int|list, optional): The batch size of train_data and eval_data. When
+=======
+            batch_size (int, optional): The batch size of train_data and eval_data. When
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 train_data and eval_data are both the instance of Dataloader, this
                 parameter will be ignored. Default: 1.
             epochs (int, optional): The number of epochs to train the model. Default: 1.
@@ -1848,6 +1969,7 @@ class Model:
         """
         assert train_data is not None, "train_data must be given!"
 
+<<<<<<< HEAD
         if isinstance(batch_size, (tuple, list)) and all(
             [isinstance(x, int) for x in batch_size]
         ):
@@ -1862,6 +1984,12 @@ class Model:
             train_sampler = DistributedBatchSampler(
                 train_data,
                 batch_size=train_batch_size,
+=======
+        if isinstance(train_data, Dataset):
+            train_sampler = DistributedBatchSampler(
+                train_data,
+                batch_size=batch_size,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 shuffle=shuffle,
                 drop_last=drop_last,
             )
@@ -1877,7 +2005,11 @@ class Model:
 
         if eval_data is not None and isinstance(eval_data, Dataset):
             eval_sampler = DistributedBatchSampler(
+<<<<<<< HEAD
                 eval_data, batch_size=eval_batch_size
+=======
+                eval_data, batch_size=batch_size
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
             eval_loader = DataLoader(
                 eval_data,
@@ -2100,7 +2232,11 @@ class Model:
 
                 class MnistDataset(paddle.vision.datasets.MNIST):
                     def __init__(self, mode, return_label=True):
+<<<<<<< HEAD
                         super().__init__(mode=mode)
+=======
+                        super(MnistDataset, self).__init__(mode=mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self.return_label = return_label
 
                     def __getitem__(self, idx):

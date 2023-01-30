@@ -228,7 +228,11 @@ TEST(test_layer, test_debug_string) {
   // 4. test uninit lod tensor
   std::shared_ptr<imperative::VarBase> lod_tensor(
       new imperative::VarBase(false, "lod_tensor"));
+<<<<<<< HEAD
   auto tensor_l = lod_tensor->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_l = lod_tensor->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::string res_ui_lod_t = test_func(lod_tensor);
   ASSERT_TRUE(res_ui_lod_t.find("NOT_INITED") != std::string::npos);
 
@@ -320,7 +324,12 @@ TEST(test_layer, test_varbase_basic) {
   platform::CPUPlace place;
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
+<<<<<<< HEAD
   vin->MutableVar()->GetMutable<phi::DenseTensor>()->mutable_data<float>(place);
+=======
+  vin->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
+      place);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::shared_ptr<imperative::VarBase> vout(vin->NewVarBase(place, false));
   ASSERT_EQ(vout->Name(), "vin0");
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -41,6 +42,34 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
                 program_config.inputs["input_data1"].shape[-3]
                 != program_config.inputs["input_data2"].shape[-3]
             ):
+=======
+from auto_scan_test import PassAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
+
+
+class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
+
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        if program_config.inputs["input_data1"].shape[
+                -4] != 1 and program_config.inputs["input_data2"].shape[-4] != 1:
+            if program_config.inputs["input_data1"].shape[
+                    -4] != program_config.inputs["input_data2"].shape[-4]:
+                return False
+
+        if program_config.inputs["input_data1"].shape[
+                -3] != 1 and program_config.inputs["input_data2"].shape[-3] != 1:
+            if program_config.inputs["input_data1"].shape[
+                    -3] != program_config.inputs["input_data2"].shape[-3]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return False
 
         attrs = [
@@ -83,6 +112,7 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
             else:
                 return np.random.random(shape_y).astype(np.float32)
 
+<<<<<<< HEAD
         matmul_op = OpConfig(
             type="matmul_v2",
             inputs={"X": ["input_data1"], "Y": ["input_data2"]},
@@ -115,6 +145,40 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
             outputs={"Out": ["reshape2_output"], "XShape": ["reshape2_xshape"]},
             attrs={'shape': shape},
         )
+=======
+        matmul_op = OpConfig(type="matmul_v2",
+                             inputs={
+                                 "X": ["input_data1"],
+                                 "Y": ["input_data2"]
+                             },
+                             outputs={"Out": ["matmul_output"]},
+                             attrs={
+                                 "trans_x": transpose_X,
+                                 "trans_y": transpose_Y,
+                                 "fused_reshape_X": [],
+                                 "fused_reshape_Y": [],
+                                 "fused_transpose_X": [],
+                                 "fused_transpose_Y": [],
+                                 "fused_reshape_Out": [],
+                                 "fused_transpose_Out": []
+                             })
+
+        transpose2_op = OpConfig(type="transpose2",
+                                 inputs={"X": ["matmul_output"]},
+                                 outputs={
+                                     "Out": ["transpose2_output"],
+                                     "XShape": ["transpose2_xshape"]
+                                 },
+                                 attrs={'axis': axis})
+
+        reshape2_op = OpConfig(type="reshape2",
+                               inputs={"X": ["transpose2_output"]},
+                               outputs={
+                                   "Out": ["reshape2_output"],
+                                   "XShape": ["reshape2_xshape"]
+                               },
+                               attrs={'shape': shape})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_net = [matmul_op, transpose2_op, reshape2_op]
 
@@ -122,6 +186,7 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
             ops=model_net,
             weights={},
             inputs={
+<<<<<<< HEAD
                 "input_data1": TensorConfig(
                     data_gen=partial(generate_input, "x")
                 ),
@@ -131,6 +196,14 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
             },
             outputs=["reshape2_output"],
         )
+=======
+                "input_data1":
+                TensorConfig(data_gen=partial(generate_input, "x")),
+                "input_data2":
+                TensorConfig(data_gen=partial(generate_input, "y"))
+            },
+            outputs=["reshape2_output"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
@@ -149,8 +222,12 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
+<<<<<<< HEAD
             quant=False, passes=["matmul_transpose_reshape_mkldnn_fuse_pass"]
         )
+=======
+            quant=False, passes=["matmul_transpose_reshape_mkldnn_fuse_pass"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

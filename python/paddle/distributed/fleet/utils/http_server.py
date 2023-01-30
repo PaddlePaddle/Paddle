@@ -13,10 +13,23 @@
 # limitations under the License.
 """Http Server."""
 
+<<<<<<< HEAD
 import http.server as SimpleHTTPServer
 import logging
 import threading
 from http.server import HTTPServer
+=======
+import logging
+
+import six
+# NOTE: HTTPServer has a different name in python2 and python3
+from http.server import HTTPServer
+import http.server as SimpleHTTPServer
+
+import time
+import threading
+import socket
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -32,9 +45,15 @@ def get_logger(name, level, fmt):
     return logger
 
 
+<<<<<<< HEAD
 _http_server_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_http_server_logger = get_logger(__name__,
+                                 logging.INFO,
+                                 fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -125,14 +144,22 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
 
 
+<<<<<<< HEAD
 class KVHTTPServer(HTTPServer):
+=======
+class KVHTTPServer(HTTPServer, object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     it is a http server storing kv pairs.
     """
 
     def __init__(self, port, handler):
         """Init."""
+<<<<<<< HEAD
         super().__init__(('', port), handler)
+=======
+        super(KVHTTPServer, self).__init__(('', port), handler)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.delete_kv_lock = threading.Lock()
         self.delete_kv = {}
         self.kv_lock = threading.Lock()
@@ -164,8 +191,12 @@ class KVServer:
         start server until user calls stop to let it quit.
         """
         self.listen_thread = threading.Thread(
+<<<<<<< HEAD
             target=lambda: self.http_server.serve_forever()
         )
+=======
+            target=lambda: self.http_server.serve_forever())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.listen_thread.start()
 
     def stop(self):

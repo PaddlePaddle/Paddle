@@ -116,7 +116,11 @@ class GraphPyService {
     this->num_node_types = num_node_types;
   }
   int get_server_size(int server_size) { return server_size; }
+<<<<<<< HEAD
   std::vector<std::string> split(const std::string& str, const char pattern);
+=======
+  std::vector<std::string> split(std::string& str, const char pattern);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void set_up(std::string ips_str,
               int shard_num,
               std::vector<std::string> node_types,
@@ -165,8 +169,12 @@ class GraphPyClient : public GraphPyService {
   std::shared_ptr<paddle::distributed::GraphBrpcClient> get_ps_client() {
     return worker_ptr;
   }
+<<<<<<< HEAD
   void bind_local_server(int local_channel_index,
                          GraphPyServer& server) {  // NOLINT
+=======
+  void bind_local_server(int local_channel_index, GraphPyServer& server) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     worker_ptr->set_local_channel(local_channel_index);
     worker_ptr->set_local_graph_service(
         (paddle::distributed::GraphBrpcService*)server.get_ps_server()
@@ -178,10 +186,16 @@ class GraphPyClient : public GraphPyService {
   void load_node_file(std::string name, std::string filepath);
   void clear_nodes(std::string name);
   void add_graph_node(std::string name,
+<<<<<<< HEAD
                       std::vector<int64_t>& node_ids,   // NOLINT
                       std::vector<bool>& weight_list);  // NOLINT
   void remove_graph_node(std::string name,
                          std::vector<int64_t>& node_ids);  // NOLINT
+=======
+                      std::vector<int64_t>& node_ids,
+                      std::vector<bool>& weight_list);
+  void remove_graph_node(std::string name, std::vector<int64_t>& node_ids);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
   void start_client();

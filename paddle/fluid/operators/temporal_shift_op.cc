@@ -23,15 +23,27 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TemporalShiftOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -72,6 +84,7 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
           This operator calculates the temporal shifting features for Input(X).
 
+<<<<<<< HEAD
           Input(X) should be in shape of [N*T, C, H, W] or [N*T, H, W, C], while
           N is the batch size, T is the temporal segment number specified by
           :attr:`seg_num`, C is the channel number, H and W is the height and
@@ -86,6 +99,22 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
           of [N, T+2, C, H, W].
 
           Step 3: Assume :attr:`shift_ratio` is :math:`1/4`, slice padding
+=======
+          Input(X) should be in shape of [N*T, C, H, W] or [N*T, H, W, C], while 
+          N is the batch size, T is the temporal segment number specified by 
+          :attr:`seg_num`, C is the channel number, H and W is the height and 
+          width of features.
+
+          Temporal Shifting is calculated as follows when data format is NCHW:
+          
+          Step 1: Reshape Input(X) to [N, T, C, H, W].
+
+          Step 2: Pad 0 to reshaping result in the 2nd(T) dimension with 
+          padding width as 1 on each side, padding result will be in shape 
+          of [N, T+2, C, H, W].
+
+          Step 3: Assume :attr:`shift_ratio` is :math:`1/4`, slice padding 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           result as follows:
 
           $$
@@ -98,10 +127,17 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
           slice3 = x[:, 1:T+1, C/2:, :, :]
           $$
 
+<<<<<<< HEAD
           Step 4: Concatenate three slices along the 3rd(C) dimension and
           reshape result to [N*T, C, H, W].
 
           For details of temporal shifting, please refer to paper:
+=======
+          Step 4: Concatenate three slices along the 3rd(C) dimension and 
+          reshape result to [N*T, C, H, W].
+
+          For details of temporal shifting, please refer to paper: 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           `Temporal Shift Module <http://arxiv.org/abs/1811.08383>`_ .
 
          )DOC");
@@ -120,11 +156,19 @@ class TemporalShiftOpGrad : public framework::OperatorWithKernel {
     }
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

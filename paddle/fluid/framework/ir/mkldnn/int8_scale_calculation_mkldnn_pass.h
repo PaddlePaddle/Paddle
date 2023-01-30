@@ -31,7 +31,10 @@ class Int8ScaleCalculationMkldnnPass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+<<<<<<< HEAD
   void Int8ScaleImpl(ir::Graph* graph, const std::string& conv_type) const;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace ir

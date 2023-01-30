@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
+=======
+from __future__ import print_function
+
+import numpy as np
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle.fluid.core as core
 import paddle.fluid.proto.framework_pb2 as framework_pb2
@@ -26,16 +33,27 @@ def get_all_op_protos():
     protostrs = core.get_all_op_protos()
     ret_values = []
     for pbstr in protostrs:
+<<<<<<< HEAD
         op_proto = framework_pb2.OpProto.FromString(bytes(pbstr))
+=======
+        op_proto = framework_pb2.OpProto.FromString(six.binary_type(pbstr))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ret_values.append(op_proto)
     return ret_values
 
 
 def is_str(s):
+<<<<<<< HEAD
     return isinstance(s, str)
 
 
 class OpDescCreationMethod:
+=======
+    return isinstance(s, six.string_types)
+
+
+class OpDescCreationMethod(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Convert the user's input(only keyword arguments are supported) to OpDesc
     based on the OpProto.
@@ -47,8 +65,12 @@ class OpDescCreationMethod:
     def __init__(self, op_proto):
         if not isinstance(op_proto, framework_pb2.OpProto):
             raise TypeError(
+<<<<<<< HEAD
                 "Type of op_proto should be OpProto in PaddlePaddle."
             )
+=======
+                "Type of op_proto should be OpProto in PaddlePaddle.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.__op_proto__ = op_proto
         self.__extra_attrs__ = core.get_op_extra_attrs(op_proto.type)
 
@@ -68,9 +90,14 @@ class OpDescCreationMethod:
 
             if not input_parameter.duplicable and len(input_arguments) > 1:
                 raise ValueError(
+<<<<<<< HEAD
                     "Input %s expects only one input, but %d are given."
                     % (input_parameter.name, len(input_arguments))
                 )
+=======
+                    "Input %s expects only one input, but %d are given." %
+                    (input_parameter.name, len(input_arguments)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             ipt = op_desc.inputs.add()
             ipt.parameter = input_parameter.name
@@ -83,9 +110,14 @@ class OpDescCreationMethod:
 
             if not output_parameter.duplicable and len(output_arguments) > 1:
                 raise ValueError(
+<<<<<<< HEAD
                     "Output %s expects only one output, but %d are given."
                     % (output_parameter.name, len(output_arguments))
                 )
+=======
+                    "Output %s expects only one output, but %d are given." %
+                    (output_parameter.name, len(output_arguments)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             out = op_desc.outputs.add()
             out.parameter = output_parameter.name
@@ -129,14 +161,23 @@ class OpDescCreationMethod:
                     new_attr.float64 = user_defined_attr
                 else:
                     raise NotImplementedError(
+<<<<<<< HEAD
                         "A not supported attribute type: %s." % (str(attr.type))
                     )
+=======
+                        "A not supported attribute type: %s." %
+                        (str(attr.type)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for attr_name, defalut_val in self.__extra_attrs__.items():
             user_defined_attr = kwargs.get(attr_name, None)
             if user_defined_attr is not None:
                 attr_type = int(
+<<<<<<< HEAD
                     core.get_attrtibute_type(op_desc.type, attr_name)
                 )
+=======
+                    core.get_attrtibute_type(op_desc.type, attr_name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 new_attr = op_desc.attrs.add()
                 new_attr.name = attr_name
                 new_attr.type = attr_type
@@ -164,8 +205,13 @@ class OpDescCreationMethod:
                     new_attr.longs.extend(user_defined_attr)
                 else:
                     raise NotImplementedError(
+<<<<<<< HEAD
                         "A not supported attribute type: %s." % (str(attr_type))
                     )
+=======
+                        "A not supported attribute type: %s." %
+                        (str(attr_type)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return op_desc
 
@@ -181,7 +227,12 @@ class OpDescCreationMethod:
         return False
 
 
+<<<<<<< HEAD
 class OpInfo:
+=======
+class OpInfo(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, name, method, inputs, outputs, attrs, extra_attrs):
         self.name = name
         self.method = method
@@ -203,6 +254,7 @@ def create_op_creation_method(op_proto):
 
     extra_attrs_map = core.get_op_extra_attrs(op_proto.type)
 
+<<<<<<< HEAD
     return OpInfo(
         method=__impl__,
         name=op_proto.type,
@@ -214,6 +266,20 @@ def create_op_creation_method(op_proto):
 
 
 class OperatorFactory:
+=======
+    return OpInfo(method=__impl__,
+                  name=op_proto.type,
+                  inputs=[(var.name, var.duplicable)
+                          for var in op_proto.inputs],
+                  outputs=[(var.name, var.duplicable)
+                           for var in op_proto.outputs],
+                  attrs=[attr.name for attr in op_proto.attrs],
+                  extra_attrs=[item for item in extra_attrs_map.keys()])
+
+
+class OperatorFactory(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_methods = dict()
 
@@ -226,15 +292,23 @@ class OperatorFactory:
             if len(args) != 0:
                 raise ValueError(
                     "Except the argument \"type\","
+<<<<<<< HEAD
                     "all of the other arguments should be keyword arguments."
                 )
+=======
+                    "all of the other arguments should be keyword arguments.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             t = kwargs.pop("type")
         else:
             if len(args) != 1:
                 raise ValueError(
                     "Except the argument \"type\","
+<<<<<<< HEAD
                     "all of the other arguments should be keyword arguments."
                 )
+=======
+                    "all of the other arguments should be keyword arguments.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             t = args[0]
 
         return self.get_op_info(t).method(**kwargs)
@@ -266,7 +340,11 @@ class OperatorFactory:
         return self.get_op_info(type).extra_attrs
 
 
+<<<<<<< HEAD
 class __RecurrentOp__:
+=======
+class __RecurrentOp__(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     __proto__ = None
     type = "recurrent"
 
@@ -287,7 +365,11 @@ class __RecurrentOp__:
         return core.RecurrentOp.create(proto.SerializeToString())
 
 
+<<<<<<< HEAD
 class __DynamicRecurrentOp__:
+=======
+class __DynamicRecurrentOp__(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     __proto__ = None
     type = "dynamic_recurrent"
 
@@ -308,7 +390,11 @@ class __DynamicRecurrentOp__:
         return core.DynamicRecurrentOp.create(proto.SerializeToString())
 
 
+<<<<<<< HEAD
 class __CondOp__:
+=======
+class __CondOp__(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     __proto__ = None
     type = "cond"
 

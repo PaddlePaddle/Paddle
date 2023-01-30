@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -37,12 +38,38 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
             self.dst_shape,
             'shape should be %s, but get %s' % (self.dst_shape, shape),
         )
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.data_feeder import convert_dtype
+import paddle.fluid.core as core
+from paddle.static import program_guard, Program
+
+
+class TestEmptyLikeAPICommon(unittest.TestCase):
+
+    def __check_out__(self, out):
+        data_type = convert_dtype(out.dtype)
+        self.assertEqual(
+            data_type, self.dst_dtype,
+            'dtype should be %s, but get %s' % (self.dst_dtype, data_type))
+
+        shape = out.shape
+        self.assertTupleEqual(
+            shape, self.dst_shape,
+            'shape should be %s, but get %s' % (self.dst_shape, shape))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if data_type in ['float32', 'float64', 'int32', 'int64']:
             max_value = np.nanmax(out)
             min_value = np.nanmin(out)
             always_non_full_zero = max_value >= min_value
             always_full_zero = max_value == 0.0 and min_value == 0.0
+<<<<<<< HEAD
             self.assertTrue(
                 always_full_zero or always_non_full_zero,
                 'always_full_zero or always_non_full_zero.',
@@ -55,11 +82,25 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
                 total_num == true_num + false_num,
                 'The value should always be True or False.',
             )
+=======
+            self.assertTrue(always_full_zero or always_non_full_zero,
+                            'always_full_zero or always_non_full_zero.')
+        elif data_type in ['bool']:
+            total_num = out.size
+            true_num = np.sum(out == True)
+            false_num = np.sum(out == False)
+            self.assertTrue(total_num == true_num + false_num,
+                            'The value should always be True or False.')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             self.assertTrue(False, 'invalid data type')
 
 
 class TestEmptyLikeAPI(TestEmptyLikeAPICommon):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_config()
 
@@ -77,6 +118,10 @@ class TestEmptyLikeAPI(TestEmptyLikeAPICommon):
 
 
 class TestEmptyLikeAPI2(TestEmptyLikeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("float64")
         self.dtype = self.x.dtype
@@ -85,6 +130,10 @@ class TestEmptyLikeAPI2(TestEmptyLikeAPI):
 
 
 class TestEmptyLikeAPI3(TestEmptyLikeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("int")
         self.dtype = self.x.dtype
@@ -93,6 +142,10 @@ class TestEmptyLikeAPI3(TestEmptyLikeAPI):
 
 
 class TestEmptyLikeAPI4(TestEmptyLikeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("int64")
         self.dtype = self.x.dtype
@@ -101,6 +154,10 @@ class TestEmptyLikeAPI4(TestEmptyLikeAPI):
 
 
 class TestEmptyLikeAPI5(TestEmptyLikeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("bool")
         self.dtype = self.x.dtype
@@ -109,6 +166,10 @@ class TestEmptyLikeAPI5(TestEmptyLikeAPI):
 
 
 class TestEmptyLikeAPI6(TestEmptyLikeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("float64")
         self.dtype = "float32"
@@ -117,6 +178,10 @@ class TestEmptyLikeAPI6(TestEmptyLikeAPI):
 
 
 class TestEmptyLikeAPI7(TestEmptyLikeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("int")
         self.dtype = "float32"
@@ -125,6 +190,10 @@ class TestEmptyLikeAPI7(TestEmptyLikeAPI):
 
 
 class TestEmptyLikeAPI8(TestEmptyLikeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("int64")
         self.dtype = "float32"
@@ -133,6 +202,10 @@ class TestEmptyLikeAPI8(TestEmptyLikeAPI):
 
 
 class TestEmptyLikeAPI9(TestEmptyLikeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("bool")
         self.dtype = "float32"
@@ -141,6 +214,10 @@ class TestEmptyLikeAPI9(TestEmptyLikeAPI):
 
 
 class TestEmptyLikeAPI10(TestEmptyLikeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("float32")
         self.dtype = "bool"
@@ -149,6 +226,10 @@ class TestEmptyLikeAPI10(TestEmptyLikeAPI):
 
 
 class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_config()
 
@@ -162,6 +243,7 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
 
         with program_guard(train_program, startup_program):
             x = np.random.random(self.x_shape).astype(dtype)
+<<<<<<< HEAD
             data_x = paddle.static.data(
                 'x', shape=self.data_x_shape, dtype=dtype
             )
@@ -173,6 +255,16 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+            data_x = paddle.static.data('x',
+                                        shape=self.data_x_shape,
+                                        dtype=dtype)
+
+            out = paddle.empty_like(data_x)
+
+        place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         exe = paddle.static.Executor(place)
         res = exe.run(train_program, feed={'x': x}, fetch_list=[out])
 
@@ -188,13 +280,23 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
 
 
 class TestEmptyLikeAPI_Static2(TestEmptyLikeAPI_Static):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.x_shape = (3, 200, 3)
         self.data_x_shape = [-1, 200, 3]
 
 
 class TestEmptyError(unittest.TestCase):
+<<<<<<< HEAD
     def test_attr(self):
+=======
+
+    def test_attr(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_dtype():
             x = np.random.random((200, 3)).astype("float64")
             dtype = 'uint8'

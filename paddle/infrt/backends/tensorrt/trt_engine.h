@@ -80,15 +80,25 @@ class TrtEngine {
   void Run(const ::phi::GPUContext& ctx);
 
   // TODO(wilber): How to support multiple execution contexts?
+<<<<<<< HEAD
   bool SetUpInference(const InferenceOptions& inference,
                       const std::unordered_map<std::string, ::Tensor*>& inputs);
+=======
+  bool SetUpInference(
+      const InferenceOptions& inference,
+      const std::unordered_map<std::string, ::phi::DenseTensor*>& inputs);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void GetEngineInfo();
 
   void PrepareOutputHandle(const std::string& out_name);
 
   // TODO(wilber): The output tensor names are: output_0, output_1, ...
+<<<<<<< HEAD
   ::Tensor* GetOutput(const std::string&);
+=======
+  ::phi::DenseTensor* GetOutput(const std::string&);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   size_t GetOutputNum() const;
 
@@ -118,7 +128,11 @@ class TrtEngine {
   std::vector<std::unique_ptr<Bindings>> bindings_;
   int device_id_{0};
   bool is_dynamic_shape_{false};
+<<<<<<< HEAD
   std::unordered_map<std::string, ::Tensor> outputs_;
+=======
+  std::unordered_map<std::string, ::phi::DenseTensor> outputs_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace tensorrt

@@ -19,7 +19,10 @@ namespace platform {}  // namespace platform
 }  // namespace paddle
 
 DEFINE_INT_STATUS(STAT_total_feasign_num_in_mem)
+<<<<<<< HEAD
 DEFINE_INT_STATUS(STAT_epoch_finish)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DEFINE_INT_STATUS(STAT_gpu0_mem_size)
 DEFINE_INT_STATUS(STAT_gpu1_mem_size)
 DEFINE_INT_STATUS(STAT_gpu2_mem_size)

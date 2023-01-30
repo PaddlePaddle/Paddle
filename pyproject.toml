@@ -2,6 +2,7 @@
 exclude = "build"
 line-length = 80
 skip-string-normalization = true
+<<<<<<< HEAD
 
 [tool.isort]
 profile = "black"
@@ -18,3 +19,5 @@ extend_skip_glob = [
     "python/paddle/fluid/tests/unittests/npu/**",
     "python/paddle/fluid/tests/unittests/mlu/**",
 ]
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import time
 from threading import Thread
@@ -20,6 +21,17 @@ from ..utils.nvsmi import get_gpu_info, get_gpu_process, get_gpu_util
 
 
 class Watcher:
+=======
+from ..utils.nvsmi import get_gpu_process, get_gpu_util, get_gpu_info
+import time
+import os
+
+from threading import Thread
+
+
+class Watcher(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, ctx):
         self.ctx = ctx
 
@@ -30,9 +42,14 @@ class Watcher:
         # gpu log file
         self.gpus = self.ctx.args.devices or self.ctx.node.device.labels
         if len(self.gpus) > 0:
+<<<<<<< HEAD
             fn = os.path.join(
                 self.ctx.args.log_dir, "{}.gpu.log".format(self.ctx.args.job_id)
             )
+=======
+            fn = os.path.join(self.ctx.args.log_dir,
+                              "{}.gpu.log".format(self.ctx.args.job_id))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             os.makedirs(os.path.dirname(fn), exist_ok=True)
             self.gpu_fd = open(fn, 'w')
         else:

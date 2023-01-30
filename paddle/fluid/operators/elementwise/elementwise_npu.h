@@ -20,6 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
 
 template <typename T>
 void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
@@ -27,16 +28,34 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
                   int axis,
                   const framework::DDim& dst_dims,
                   phi::DenseTensor* transformed_src) {
+=======
+using Tensor = framework::Tensor;
+
+template <typename T>
+void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
+                  const Tensor* src,
+                  int axis,
+                  const framework::DDim& dst_dims,
+                  Tensor* transformed_src) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto stream = dev_ctx.stream();
 
   // 1. expand the axis with dim 1
   auto src_dims = src->dims();
+<<<<<<< HEAD
   phi::DenseTensor tmp_src;
+=======
+  Tensor tmp_src;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tmp_src.ShareDataWith(*src);
   tmp_src.Resize(src_dims);
   for (int i = 0; i < src_dims.size(); ++i) {
     if (src_dims[i] == 1 && dst_dims[i + axis] > 1) {
+<<<<<<< HEAD
       phi::DenseTensor tmp_tensor;
+=======
+      Tensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto tmp_tensor_dims = tmp_src.dims();
       tmp_tensor_dims[i] = dst_dims[i + axis];
       tmp_tensor.mutable_data<T>(tmp_tensor_dims, dev_ctx.GetPlace());
@@ -55,7 +74,11 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
   // 2.expand the ahead axis
   auto prev = phi::product(phi::slice_ddim(dst_dims, 0, axis));
   if (prev > 1) {
+<<<<<<< HEAD
     phi::DenseTensor tmp_tensor;
+=======
+    Tensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto tmp_tensor_dims = phi::slice_ddim(dst_dims, 0, axis + src_dims.size());
     tmp_tensor.mutable_data<T>(tmp_tensor_dims, dev_ctx.GetPlace());
     const auto& runner =
@@ -78,7 +101,11 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
     src_dims_vec.push_back(1);
     tmp_src.Resize(phi::make_ddim(src_dims_vec));
 
+<<<<<<< HEAD
     phi::DenseTensor tmp_tensor;
+=======
+    Tensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp_tensor.mutable_data<T>(dst_dims, dev_ctx.GetPlace());
     const auto& runner =
         NpuOpRunner("TileWithAxis",
@@ -95,11 +122,19 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
 
 template <typename T>
 void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
+<<<<<<< HEAD
                                const phi::DenseTensor* x,
                                const phi::DenseTensor* y,
                                int axis,
                                phi::DenseTensor* transformed_x,
                                phi::DenseTensor* transformed_y) {
+=======
+                               const Tensor* x,
+                               const Tensor* y,
+                               int axis,
+                               Tensor* transformed_x,
+                               Tensor* transformed_y) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   bool is_xsize_larger = true;
@@ -122,6 +157,7 @@ void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
+<<<<<<< HEAD
   PADDLE_ENFORCE_LE(
       axis,
       max_dim,
@@ -129,6 +165,14 @@ void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
+=======
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
+                    platform::errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim,
+                        axis));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   for (int i = 0; i < x_dims.size(); ++i) {
     dst_dims_vec[i + x_axis] =

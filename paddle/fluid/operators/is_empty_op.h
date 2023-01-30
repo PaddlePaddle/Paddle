@@ -24,9 +24,15 @@ class IsEmptyOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // get input
+<<<<<<< HEAD
     auto* input_tensor = context.Input<phi::DenseTensor>("X");
     // get output
     auto* output_tensor = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* input_tensor = context.Input<framework::LoDTensor>("X");
+    // get output
+    auto* output_tensor = context.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // Note: is_empty is always executed on CPU and the output data should
     // always be allocated for CPUPlace. We reigister CUDA kernel for this op to

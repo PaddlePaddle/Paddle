@@ -44,7 +44,11 @@ namespace analysis {
 
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
+<<<<<<< HEAD
     std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+=======
+    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 /*
@@ -139,7 +143,10 @@ struct Argument {
   unique_ptr_t field__##_;
 
   DECL_ARGUMENT_FIELD(predictor_id, PredictorID, int);
+<<<<<<< HEAD
   DECL_ARGUMENT_FIELD(root_predictor_id, RootPredictorID, int);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
   // Model specified with program and parameters files.
@@ -179,6 +186,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
 #ifdef PADDLE_WITH_MKLDNN
+<<<<<<< HEAD
+=======
+  // Calibration file path of quantize model
+  DECL_ARGUMENT_FIELD(calibration_file_path, CalibrationFilePath, std::string);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types,
                       QuantizeEnabledOpTypes,
@@ -202,7 +215,10 @@ struct Argument {
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
+<<<<<<< HEAD
   DECL_ARGUMENT_FIELD(use_cutlass, UseCutlass, bool);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
 
@@ -288,9 +304,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
   DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
+<<<<<<< HEAD
   DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
   DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir,
@@ -317,7 +336,10 @@ struct Argument {
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
+<<<<<<< HEAD
   DECL_ARGUMENT_FIELD(trt_engine_memory_sharing, TrtEngineMemorySharing, bool);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Indicate which kind of sort algorithm is used for operators, the memory
   // optimization relays on the sort algorithm.
@@ -353,9 +375,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_custom_patterns,
                       IpuCustomPatterns,
                       std::vector<std::vector<std::string>>);
+<<<<<<< HEAD
   DECL_ARGUMENT_FIELD(ipu_enable_model_runtime_executor,
                       IpuEnableModelRuntimeExecutor,
                       bool);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
@@ -369,6 +394,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(enable_gpu_mixed, EnableGPUMixed, bool);
   DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);
 
+<<<<<<< HEAD
   // cinn compiler related
   DECL_ARGUMENT_FIELD(use_cinn_compiler, UseCinnCompiler, bool);
 
@@ -377,6 +403,8 @@ struct Argument {
   DECL_ARGUMENT_FIELD(custom_device_type, CustomDeviceType, std::string);
   DECL_ARGUMENT_FIELD(custom_device_id, CustomDeviceId, int);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   std::unordered_set<std::string> valid_fields_;
 };

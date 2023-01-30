@@ -30,10 +30,17 @@ namespace cub = hipcub;
 #include <random>
 
 #include "paddle/fluid/framework/tensor_util.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif

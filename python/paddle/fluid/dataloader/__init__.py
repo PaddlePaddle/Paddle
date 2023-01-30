@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from . import dataset
 from .dataset import *
 
@@ -24,9 +29,16 @@ from .dataloader_iter import *
 from . import sampler
 from .sampler import *
 
+<<<<<<< HEAD
 __all__ = (
     dataset.__all__
     + batch_sampler.__all__
     + dataloader_iter.__all__
     + sampler.__all__
 )
+=======
+__all__ = dataset.__all__ \
+        + batch_sampler.__all__ \
+        + dataloader_iter.__all__ \
+        + sampler.__all__
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

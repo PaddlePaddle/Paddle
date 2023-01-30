@@ -15,6 +15,7 @@
 decorator to deprecate a function or class
 """
 
+<<<<<<< HEAD
 import functools
 import sys
 import warnings
@@ -23,10 +24,28 @@ import paddle
 
 __all__ = []
 
+=======
+import warnings
+import functools
+import paddle
+import sys
+
+__all__ = []
+
+# NOTE(zhiqiu): Since python 3.2, DeprecationWarning is ignored by default,
+# and since python 3.7, it is once again shown by default when triggered directly by code in __main__.
+# See details: https://docs.python.org/3/library/warnings.html#default-warning-filter
+# The following line set DeprecationWarning to show once, which is expected to work in python 3.2 -> 3.6
+# However, doing this could introduce one samll side effect, i.e., the DeprecationWarning which is not issued by @deprecated.
+# The side effect is acceptable, and we will find better way to do this if we could.
+warnings.simplefilter('default', DeprecationWarning)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 def deprecated(update_to="", since="", reason="", level=0):
     """Decorate a function to signify its deprecation.
 
+<<<<<<< HEAD
     This function wraps a method that will soon be removed and does two things:
         - The docstring of the API will be modified to include a notice
           about deprecation."
@@ -44,6 +63,25 @@ def deprecated(update_to="", since="", reason="", level=0):
 
     Returns:
         decorator: decorated function or class.
+=======
+       This function wraps a method that will soon be removed and does two things:
+           - The docstring of the API will be modified to include a notice
+             about deprecation."
+           - Raises a :class:`~exceptions.DeprecatedWarning` when old API is called.
+
+       Args:
+            since(str, optional): The version at which the decorated method is considered deprecated.
+            update_to(str, optional): The new API users should use.
+            reason(str, optional): The reason why the API is deprecated.
+            level(int, optional): The deprecated warning log level. It must be 
+                an Integer and must be one of 0, 1, 2. 
+                If `level == 0`, the warning message will not be showed. 
+                If `level == 1`, the warning message will be showed normally.
+                If `level == 2`, it will raise `RuntimeError`.
+           
+       Returns:
+           decorator: decorated function or class.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def decorator(func):
@@ -55,8 +93,12 @@ def deprecated(update_to="", since="", reason="", level=0):
         assert isinstance(reason, str), 'type of "reason" must be str.'
         assert isinstance(level, int) and level >= 0 and level < 3, (
             'type of "level" must be int and must be one of 0, 1, 2. But '
+<<<<<<< HEAD
             'received: {}.'.format(level)
         )
+=======
+            'received: {}.'.format(level))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         _since = since.strip()
         _update_to = update_to.strip()
@@ -71,8 +113,12 @@ def deprecated(update_to="", since="", reason="", level=0):
             assert _update_to.startswith(
                 "paddle."
             ), 'Argument update_to must start with "paddle.", your value is "{}"'.format(
+<<<<<<< HEAD
                 update_to
             )
+=======
+                update_to)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             msg += ' Please use "{}" instead.'.format(_update_to)
         if len(_reason) > 0:
             msg += "\nreason: {}".format(_reason)
@@ -85,6 +131,7 @@ def deprecated(update_to="", since="", reason="", level=0):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             """deprecated warning should be fired in 3 circumstances:
+<<<<<<< HEAD
             1. current version is develop version, i.e. "0.0.0", because we assume develop version is always the latest version.
             2. since version is empty, in this case, API is deprecated in all versions.
             3. current version is newer than since version.
@@ -96,6 +143,16 @@ def deprecated(update_to="", since="", reason="", level=0):
                         func.__module__, func.__name__
                     )
                 )
+=======
+               1. current version is develop version, i.e. "0.0.0", because we assume develop version is always the latest version.
+               2. since version is empty, in this case, API is deprecated in all versions.
+               3. current version is newer than since version.
+            """
+
+            if level == 2:
+                raise RuntimeError('API "{}.{}" has been deprecated.'.format(
+                    func.__module__, func.__name__))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             warningmsg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
             # ensure ANSI escape sequences print correctly in cmd and powershell
@@ -106,6 +163,7 @@ def deprecated(update_to="", since="", reason="", level=0):
             v_current += [0] * (4 - len(v_current))
             v_since = [int(i) for i in _since.split(".")]
             v_since += [0] * (4 - len(v_since))
+<<<<<<< HEAD
             if (
                 paddle.__version__ == "0.0.0"
                 or _since == ""
@@ -114,6 +172,12 @@ def deprecated(update_to="", since="", reason="", level=0):
                 warnings.warn(
                     warningmsg, category=DeprecationWarning, stacklevel=2
                 )
+=======
+            if paddle.__version__ == "0.0.0" or _since == "" or v_current >= v_since:
+                warnings.warn(warningmsg,
+                              category=DeprecationWarning,
+                              stacklevel=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             return func(*args, **kwargs)
 

@@ -55,8 +55,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/reader.h"
+=======
+#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/save_load_util.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -66,7 +71,10 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+<<<<<<< HEAD
 #include "paddle/fluid/prim/utils/utils.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
@@ -76,6 +84,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -93,8 +105,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/jit.h"
+<<<<<<< HEAD
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -184,10 +199,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_RPC)
 #include "paddle/fluid/pybind/rpc.h"
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -235,6 +253,7 @@ bool IsCompiledWithNCCL() {
 #endif
 }
 
+<<<<<<< HEAD
 bool IsCompiledWithMPI() {
 #ifdef PADDLE_WITH_MPI
   return true;
@@ -252,6 +271,8 @@ bool IsCompiledWithMPIAWARE() {
 #endif
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool IsCompiledWithROCM() {
 #ifndef PADDLE_WITH_HIP
   return false;
@@ -284,6 +305,7 @@ bool IsCompiledWithNPU() {
 #endif
 }
 
+<<<<<<< HEAD
 bool IsCompiledWithCustomDevice(std::string device_type) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
   return false;
@@ -298,6 +320,8 @@ bool IsCompiledWithCustomDevice(std::string device_type) {
 #endif
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool IsCompiledWithIPU() {
 #ifndef PADDLE_WITH_IPU
   return false;
@@ -342,7 +366,11 @@ bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
+<<<<<<< HEAD
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
+=======
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return true;
   else
     return false;
@@ -353,7 +381,11 @@ bool SupportsBfloat16FastPerformance() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
+<<<<<<< HEAD
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_bf16))
+=======
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_bf16))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return true;
   else
     return false;
@@ -364,8 +396,13 @@ bool SupportsInt8() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
+<<<<<<< HEAD
   return (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ||
           phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f));
+=======
+  return (platform::MayIUse(platform::cpu_isa_t::avx2) ||
+          platform::MayIUse(platform::cpu_isa_t::avx512f));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
@@ -373,8 +410,12 @@ bool SupportsVNNI() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
+<<<<<<< HEAD
   return phi::backends::cpu::MayIUse(
       phi::backends::cpu::cpu_isa_t::avx512_core_vnni);
+=======
+  return platform::MayIUse(platform::cpu_isa_t::avx512_core_vnni);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
@@ -569,7 +610,11 @@ static void inline CreateVariableIfNotExist(
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
+<<<<<<< HEAD
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+=======
+        auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
@@ -627,11 +672,18 @@ PYBIND11_MODULE(libpaddle, m) {
   BindEager(&m);
   BindEagerStringTensor(&m);
   BindCudaStream(&m);
+<<<<<<< HEAD
   BindXpuStream(&m);
   BindJit(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
   phi::backends::cpu::CpuTotalPhysicalMemory();
+=======
+  BindJit(&m);
+
+  // Not used, just make sure cpu_info.cc is linked.
+  paddle::platform::CpuTotalPhysicalMemory();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
 
@@ -660,6 +712,7 @@ PYBIND11_MODULE(libpaddle, m) {
         return oss.str();
       });
 
+<<<<<<< HEAD
   m.def("__set_bwd_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetBwdPrimEnabled);
   m.def("_is_bwd_prim_enabled",
@@ -670,6 +723,8 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
   m.def("__set_all_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
@@ -698,7 +753,11 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
 #ifdef PADDLE_WITH_CUDA
+<<<<<<< HEAD
   py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
+=======
+  py::class_<platform::CUDAGraph>(m, "CUDAGraph")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def_static("begin_capture",
                   [](platform::CUDAPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
@@ -706,11 +765,18 @@ PYBIND11_MODULE(libpaddle, m) {
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
+<<<<<<< HEAD
                   &phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID)
       .def("replay", &phi::backends::gpu::CUDAGraph::Replay)
       .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
       .def("print_to_dot_files",
            &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
+=======
+                  &platform::CUDAGraph::UniqueMemoryPoolID)
+      .def("replay", &platform::CUDAGraph::Replay)
+      .def("reset", &platform::CUDAGraph::Reset)
+      .def("print_to_dot_files", &platform::CUDAGraph::PrintToDotFiles);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {
@@ -729,6 +795,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
+<<<<<<< HEAD
     phi::DenseTensor tensor;
 
     if (dl.device.device_type == kDLCPU) {
@@ -737,6 +804,16 @@ PYBIND11_MODULE(libpaddle, m) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (dl.device.device_type == kDLGPU) {
       paddle::framework::TensorFromDLPack(dmt, &tensor);
+=======
+    framework::Tensor tensor;
+
+    if (dl.device.device_type == kDLCPU) {
+      paddle::framework::TensorFromDLPack(dl, &tensor);
+    }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (dl.device.device_type == kDLGPU) {
+      paddle::framework::TensorFromDLPack(dl, &tensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 #endif
     return tensor;
@@ -881,8 +958,11 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
+<<<<<<< HEAD
   m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
@@ -964,12 +1044,18 @@ All parameter, weight, gradient are variables in Paddle.
            [](const Variable &var) -> float { return var.Get<float>(); })
       .def(
           "get_tensor",
+<<<<<<< HEAD
           [](Variable &self) -> phi::DenseTensor * {
             return self.GetMutable<phi::DenseTensor>();
+=======
+          [](Variable &self) -> LoDTensor * {
+            return self.GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           },
           py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
+<<<<<<< HEAD
              if (self.IsType<String>()) {
                return py::bytes(*(self.GetMutable<String>()));
              } else {
@@ -984,6 +1070,16 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_vocab",
            [](Variable &self,
               const std::unordered_map<std::wstring, std::int32_t> &vocab) {
+=======
+             return py::bytes(*self.GetMutable<std::string>());
+           })
+      .def("set_string_list",
+           [](Variable &self, Strings str_list) {
+             *self.GetMutable<Strings>() = str_list;
+           })
+      .def("set_vocab",
+           [](Variable &self, Vocab vocab) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              *self.GetMutable<Vocab>() = vocab;
            })
       .def(
@@ -1099,7 +1195,11 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("name"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
+<<<<<<< HEAD
            its parent scope. Return None if not found.
+=======
+           its parent scope. Return None if not found. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
            Args:
                name (str): the variable name.
@@ -1114,7 +1214,11 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
+<<<<<<< HEAD
            its parent scope. Return None if not found.
+=======
+           its parent scope. Return None if not found. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
            Args:
                name (str): the variable names to be erase.
@@ -1231,6 +1335,10 @@ All parameter, weight, gradient are variables in Paddle.
           -> const paddle::framework::AttributeMap & {
         return operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
       });
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   m.def(
       "get_attrtibute_type",
       [](const std::string &op_type,
@@ -1246,6 +1354,7 @@ All parameter, weight, gradient are variables in Paddle.
            const std::unordered_set<std::string> &no_grad_set,
            const std::vector<BlockDesc *> &grad_sub_block) {
           std::unordered_map<std::string, std::string> grad_to_var;
+<<<<<<< HEAD
 
           auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
           auto grad_op_maker = op_info.GradOpMaker();
@@ -1297,6 +1406,13 @@ All parameter, weight, gradient are variables in Paddle.
             }
           }
 
+=======
+          std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
+              framework::OpInfoMap::Instance()
+                  .Get(op_desc.Type())
+                  .GradOpMaker()(
+                      op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
           std::transform(
               grad_op_descs.begin(),
@@ -1354,12 +1470,20 @@ All parameter, weight, gradient are variables in Paddle.
       R"DOC(
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
+<<<<<<< HEAD
 
+=======
+              
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             Args:
                    program (ProgramDesc): The original program.
 
              Returns:
+<<<<<<< HEAD
                    tuple(ProgramDesc, map<int, int>): The first part is
+=======
+                   tuple(ProgramDesc, map<int, int>): The first part is 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    the pruned program desc, and the second part is a map
                    which contains the id pair of pruned block and corresponding
                    origin block.
@@ -1404,10 +1528,13 @@ All parameter, weight, gradient are variables in Paddle.
                         paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetZeroAllocator(place)
                             .get());
+<<<<<<< HEAD
                     context->SetHostZeroAllocator(
                         paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetZeroAllocator(paddle::platform::CPUPlace())
                             .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     return context;
                   })
       .def_static(
@@ -1432,10 +1559,13 @@ All parameter, weight, gradient are variables in Paddle.
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(place)
           .get());
+<<<<<<< HEAD
       context->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(paddle::platform::CPUPlace())
           .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       return context;
 #endif
           })
@@ -1497,10 +1627,13 @@ All parameter, weight, gradient are variables in Paddle.
         paddle::memory::allocation::AllocatorFacade::Instance()
         .GetZeroAllocator(place)
         .get());
+<<<<<<< HEAD
       context->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
         .GetZeroAllocator(paddle::platform::CPUPlace())
         .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       context->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CUDAPinnedPlace())
@@ -1582,6 +1715,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return devices;
   });
+<<<<<<< HEAD
   m.def("get_custom_device_count", [](const std::string &device_type) {
     size_t device_count = 0;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -1601,6 +1735,8 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return device_count;
   });
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
@@ -1726,7 +1862,11 @@ All parameter, weight, gradient are variables in Paddle.
            [](Executor &self,
               ExecutorPrepareContext *ctx,
               Scope *scope,
+<<<<<<< HEAD
               std::map<std::string, const phi::DenseTensor *> *feed_targets,
+=======
+              std::map<std::string, const LoDTensor *> *feed_targets,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               std::map<std::string, FetchType *> *fetch_targets,
               bool create_local_scope = true,
               bool create_vars = true,
@@ -1808,11 +1948,19 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               Scope *scope,
               const std::unordered_map<std::string, py::array> &input_dict) {
+<<<<<<< HEAD
              std::vector<phi::DenseTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
                phi::DenseTensor t;
+=======
+             std::vector<framework::LoDTensor> feed_tensors;
+             std::vector<std::string> feed_names;
+
+             for (auto &item : input_dict) {
+               framework::LoDTensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
                feed_names.push_back(item.first);
@@ -1848,13 +1996,19 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+<<<<<<< HEAD
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_nccl", IsCompiledWithNCCL);
+<<<<<<< HEAD
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_mlu", IsCompiledWithMLU);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
@@ -1929,13 +2083,21 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
+<<<<<<< HEAD
             const phi::DenseTensor &,
+=======
+            const LoDTensor &,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
+<<<<<<< HEAD
             const std::vector<std::string> &,
+=======
+            const Strings &,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
@@ -1944,7 +2106,11 @@ All parameter, weight, gradient are variables in Paddle.
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
           if (data_is_lod_tensor(var)) {
+<<<<<<< HEAD
             return py::cast(PADDLE_GET(phi::DenseTensor, var));
+=======
+            return py::cast(PADDLE_GET(LoDTensor, var));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           } else {
             return py::cast(PADDLE_GET(LoDTensorArray, var));
           }
@@ -1962,7 +2128,10 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+<<<<<<< HEAD
   BindCommContextManager(&m);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   BindAutoParallel(&m);
   BindJitProperty(&m);
 
@@ -1996,7 +2165,11 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("__len__", [](LoDTensorArray &self) { return self.size(); })
       .def("__setitem__",
+<<<<<<< HEAD
            [](LoDTensorArray &self, size_t i, const phi::DenseTensor &t) {
+=======
+           [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              PADDLE_ENFORCE_LT(i,
                                self.size(),
                                platform::errors::InvalidArgument(
@@ -2007,7 +2180,11 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def(
           "append",
+<<<<<<< HEAD
           [](LoDTensorArray &self, const phi::DenseTensor &t) {
+=======
+          [](LoDTensorArray &self, const LoDTensor &t) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.emplace_back();
             self.back().ShareDataWith(t);
             self.back().set_lod(t.lod());
@@ -2015,7 +2192,11 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("tensor"),
           R"DOC(
              Append a LoDensor to LoDTensorArray.
+<<<<<<< HEAD
 
+=======
+              
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              Args:
                    tensor (LoDTensor): The LoDTensor to be appended.
 
@@ -2054,7 +2235,11 @@ All parameter, weight, gradient are variables in Paddle.
             py::list res(self.size());
             for (size_t i = 0; i < self.size(); ++i) {
               if (data_is_lod_tensor(self[i])) {
+<<<<<<< HEAD
                 auto &data = PADDLE_GET(phi::DenseTensor, self[i]);
+=======
+                auto &data = PADDLE_GET(LoDTensor, self[i]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 res[i] = py::cast(std::move(data));
               } else if (data_is_sparse_coo_tensor(self[i])) {
                 auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
@@ -2075,9 +2260,15 @@ All parameter, weight, gradient are variables in Paddle.
 
       .def(
           "append",
+<<<<<<< HEAD
           [](FetchList &self, const phi::DenseTensor &t) {
             self.emplace_back();
             auto &lod_tensor = PADDLE_GET(phi::DenseTensor, self.back());
+=======
+          [](FetchList &self, const LoDTensor &t) {
+            self.emplace_back();
+            auto &lod_tensor = PADDLE_GET(LoDTensor, self.back());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             lod_tensor.ShareDataWith(t);
             lod_tensor.set_lod(t.lod());
           },
@@ -2106,7 +2297,11 @@ All parameter, weight, gradient are variables in Paddle.
               py::list tmp(self[i].size());
               for (size_t j = 0; j < self[i].size(); ++j) {
                 if (data_is_lod_tensor(self[i][j])) {
+<<<<<<< HEAD
                   auto &var = PADDLE_GET(phi::DenseTensor, self[i][j]);
+=======
+                  auto &var = PADDLE_GET(LoDTensor, self[i][j]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   tmp[j] = py::cast(std::move(var));
                 } else {
                   auto &var = PADDLE_GET(LoDTensorArray, self[i][j]);
@@ -2176,9 +2371,13 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
+<<<<<<< HEAD
   m.def("nvprof_nvtx_push", [](const std::string &name) {
     platform::CudaNvtxRangePush(name, platform::NvtxRangeColor::Green);
   });
+=======
+  m.def("nvprof_nvtx_push", platform::CudaNvtxRangePush);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
@@ -2361,9 +2560,12 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::HostPythonNode::input_shapes)
       .def_readwrite("dtypes", &paddle::platform::HostPythonNode::dtypes)
       .def_readwrite("callstack", &paddle::platform::HostPythonNode::callstack)
+<<<<<<< HEAD
       .def_readwrite("attributes",
                      &paddle::platform::HostPythonNode::attributes)
       .def_readwrite("op_id", &paddle::platform::HostPythonNode::op_id)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def_readwrite("children_node",
                      &paddle::platform::HostPythonNode::children_node_ptrs)
       .def_readwrite("runtime_node",
@@ -2437,8 +2639,15 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
+<<<<<<< HEAD
   m.def("enable_op_info_recorder", &paddle::platform::EnableOpInfoRecorder);
   m.def("disable_op_info_recorder", &paddle::platform::DisableOpInfoRecorder);
+=======
+  m.def("enable_input_shape_recorder",
+        &paddle::platform::EnableInputShapeRecorder);
+  m.def("disable_input_shape_recorder",
+        &paddle::platform::DisableInputShapeRecorder);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
@@ -2637,6 +2846,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("update_autotune_status",
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
+<<<<<<< HEAD
   m.def("get_low_precision_op_list", [] {
     py::dict op_list;
     auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
@@ -2651,6 +2861,8 @@ All parameter, weight, gradient are variables in Paddle.
     return op_list;
   });
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   m.def("autotune_status", [] {
     py::dict res;
     phi::autotune::AutoTuneCache::Instance().UpdateStatus();
@@ -2738,6 +2950,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraphGpuWrapper(&m);
 #endif
 #endif
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_RPC)
   BindWorkerInfo(&m);
   BindFuture(&m);
@@ -2751,6 +2964,8 @@ All parameter, weight, gradient are variables in Paddle.
   GetCurrentWorkerInfo(&m);
   GetAllWorkerInfos(&m);
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 }  // namespace pybind
 }  // namespace paddle

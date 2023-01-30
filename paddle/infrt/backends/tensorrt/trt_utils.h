@@ -93,7 +93,11 @@ class TrtLogger : public nvinfer1::ILogger {
 struct Binding {
   bool is_input{false};
   nvinfer1::DataType data_type{nvinfer1::DataType::kFLOAT};
+<<<<<<< HEAD
   ::Tensor* buffer{nullptr};
+=======
+  ::phi::DenseTensor* buffer{nullptr};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::string name;
 };
 
@@ -104,7 +108,11 @@ class Bindings {
   void AddBinding(int32_t b,
                   const std::string& name,
                   bool is_input,
+<<<<<<< HEAD
                   ::Tensor* buffer,
+=======
+                  ::phi::DenseTensor* buffer,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   nvinfer1::DataType data_type) {
     while (bindings_.size() <= static_cast<size_t>(b)) {
       bindings_.emplace_back();

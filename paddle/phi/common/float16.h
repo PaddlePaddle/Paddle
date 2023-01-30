@@ -25,7 +25,10 @@
 #include <iostream>
 #include <limits>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/hostdevice.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
@@ -52,6 +55,19 @@
 
 #define CUDA_ARCH_FP16_SUPPORTED(CUDA_ARCH) (CUDA_ARCH >= 600)
 
+<<<<<<< HEAD
+=======
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+#define HOSTDEVICE __host__ __device__
+#define DEVICE __device__
+#define HOST __host__
+#else
+#define HOSTDEVICE
+#define DEVICE
+#define HOST
+#endif
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace phi {
 namespace dtype {
 

@@ -14,8 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_XPU
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <memory>
 
 #include "paddle/phi/backends/xpu/forwards.h"
@@ -28,8 +31,12 @@ namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
+<<<<<<< HEAD
 class XPUContext : public DeviceContext,
                    public TypeInfoTraits<DeviceContext, XPUContext> {
+=======
+class XPUContext : public DeviceContext {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   XPUContext();
 
@@ -46,7 +53,10 @@ class XPUContext : public DeviceContext,
   // Return bkcl context.
   xpu::BKCLContext_t bkcl_context() const;
   void SetBkclContext(xpu::BKCLContext_t context);
+<<<<<<< HEAD
   void CreateStream();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
@@ -65,9 +75,15 @@ class XPUContext : public DeviceContext,
 
   void SetL3Cache(int l3_size = 14155776);
 
+<<<<<<< HEAD
   XPUStream stream() const;
 
   static const char* name() { return "XPUContext"; }
+=======
+  void SetXPUStream(XPUStream stream);
+
+  XPUStream stream() const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   struct Impl;
@@ -83,5 +99,8 @@ using KPSContext = XPUContext;
 #endif
 
 }  // namespace phi
+<<<<<<< HEAD
 
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -13,14 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+=======
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
+<<<<<<< HEAD
 class LayerNormOneDNNHandler
     : public phi::funcs::
           OneDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
@@ -34,6 +39,20 @@ class LayerNormOneDNNHandler
                          platform::Place cpu_place)
       : phi::funcs::OneDNNHandlerNoCachingT<T,
                                             dnnl::layer_normalization_forward>(
+=======
+class LayerNormMKLDNNHandler
+    : public platform::
+          MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
+ public:
+  LayerNormMKLDNNHandler(const std::vector<int64_t>& dims,
+                         const float& epsilon,
+                         const dnnl::normalization_flags& flags,
+                         const bool& is_test,
+                         const Tensor* x,
+                         const dnnl::engine engine,
+                         platform::Place cpu_place)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             engine, cpu_place) {
     const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                        : dnnl::prop_kind::forward_training;
@@ -41,6 +60,7 @@ class LayerNormOneDNNHandler
         fwd_prop_kind, x->mem_desc(), epsilon, flags);
   }
 
+<<<<<<< HEAD
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
       const phi::DenseTensor* scale,
       const phi::DenseTensor* shift,
@@ -71,6 +91,25 @@ class LayerNormOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor* mean) {
+=======
+  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor* scale,
+                                                        const Tensor* shift) {
+    // OneDNN requires a single piece of memory for scale and shift data
+    const unsigned int C = phi::vectorize(scale->dims())[0];
+
+    auto scaleshift_memory =
+        this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
+
+    auto mem_data_handle =
+        reinterpret_cast<float*>(scaleshift_memory->get_data_handle());
+    std::copy(scale->data<float>(), scale->data<float>() + C, mem_data_handle);
+    std::copy(
+        shift->data<float>(), shift->data<float>() + C, mem_data_handle + C);
+    return scaleshift_memory;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(framework::Tensor* mean) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T* mean_data = mean->mutable_data<T>(this->place_,
                                          this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
@@ -78,7 +117,11 @@ class LayerNormOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
+<<<<<<< HEAD
       phi::DenseTensor* variance) {
+=======
+      framework::Tensor* variance) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T* variance_data = variance->mutable_data<T>(
         this->place_, this->fwd_pd_->variance_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
@@ -90,17 +133,30 @@ template <typename T>
 class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Y");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* scale = ctx.Input<Tensor>("Scale");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* out = ctx.Output<Tensor>("Y");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const float epsilon = ctx.Attr<float>("epsilon");
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     const bool is_test = ctx.Attr<bool>("is_test");
 
+<<<<<<< HEAD
     auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
+=======
+    auto& dev_ctx =
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto src_tz = phi::vectorize(x->dims());
     PADDLE_ENFORCE_EQ(begin_norm_axis,
@@ -117,21 +173,35 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       flags |= dnnl::normalization_flags::use_scale_shift;
     }
 
+<<<<<<< HEAD
     LayerNormOneDNNHandler<T> handler(
         src_tz, epsilon, flags, is_test, x, onednn_engine, ctx.GetPlace());
+=======
+    LayerNormMKLDNNHandler<T> handler(
+        src_tz, epsilon, flags, is_test, x, mkldnn_engine, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(out);
 
     auto layer_norm_p = handler.AcquireForwardPrimitive();
 
+<<<<<<< HEAD
     auto& astream = phi::OneDNNContext::tls().get_stream();
+=======
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::unordered_map<int, dnnl::memory> args = {{DNNL_ARG_SRC, *src_memory},
                                                   {DNNL_ARG_DST, *dst_memory}};
 
     if (!is_test) {
+<<<<<<< HEAD
       auto* mean = ctx.Output<phi::DenseTensor>("Mean");
       auto* var = ctx.Output<phi::DenseTensor>("Variance");
+=======
+      auto* mean = ctx.Output<Tensor>("Mean");
+      auto* var = ctx.Output<Tensor>("Variance");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       auto mean_memory = handler.AcquireMeanMemory(mean);
       auto variance_memory = handler.AcquireVarianceMemory(var);
@@ -142,7 +212,11 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     if (with_scaleshift) {
       std::shared_ptr<dnnl::memory> scaleshift_memory =
+<<<<<<< HEAD
           handler.AcquireScaleShiftMemory(scale, bias, ctx);
+=======
+          handler.AcquireScaleShiftMemory(scale, bias);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       args.insert({DNNL_ARG_SCALE_SHIFT, *scaleshift_memory});
     }
 
@@ -160,6 +234,10 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(layer_norm,
                    MKLDNN,
+<<<<<<< HEAD
                    ::phi::CPUPlace,
+=======
+                   ::paddle::platform::CPUPlace,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    ops::LayerNormMKLDNNOpKernel<float>,
                    ops::LayerNormMKLDNNOpKernel<paddle::platform::bfloat16>);

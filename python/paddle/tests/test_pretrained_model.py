@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import shutil
 import tempfile
 import unittest
@@ -22,11 +23,25 @@ import numpy as np
 import paddle
 import paddle.vision.models as models
 from paddle.static import InputSpec
+=======
+import unittest
+import tempfile
+import shutil
+import numpy as np
+
+import paddle
+from paddle.static import InputSpec
+import paddle.vision.models as models
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # test the predicted resutls of static graph and dynamic graph are equal
 # when used pretrained model
 class TestPretrainedModel(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def infer(self, arch):
         path = os.path.join(tempfile.mkdtemp(), '.cache_test_pretrained_model')
         if not os.path.exists(path):

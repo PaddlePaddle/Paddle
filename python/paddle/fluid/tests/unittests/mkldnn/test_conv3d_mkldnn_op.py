@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -27,6 +28,17 @@ from paddle.fluid.tests.unittests.test_conv3d_op import (
 
 
 class TestMKLDNN(TestConv3DOp):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from paddle.fluid.tests.unittests.test_conv3d_op import TestConv3DOp, TestCase1, TestWithGroup1, TestWithGroup2, TestWith1x1, TestWithInput1x1Filter1x1, TestConv3DOp_2
+
+
+class TestMKLDNN(TestConv3DOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -34,6 +46,10 @@ class TestMKLDNN(TestConv3DOp):
 
 
 class TestMKLDNNCase1(TestCase1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -41,6 +57,10 @@ class TestMKLDNNCase1(TestCase1):
 
 
 class TestMKLDNNGroup1(TestWithGroup1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -48,6 +68,10 @@ class TestMKLDNNGroup1(TestWithGroup1):
 
 
 class TestMKLDNNGroup2(TestWithGroup2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -55,6 +79,10 @@ class TestMKLDNNGroup2(TestWithGroup2):
 
 
 class TestMKLDNNWith1x1(TestWith1x1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -62,6 +90,10 @@ class TestMKLDNNWith1x1(TestWith1x1):
 
 
 class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -69,6 +101,10 @@ class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
 
 
 class TestConv3DOp_AsyPadding_MKLDNN(TestConv3DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -80,6 +116,10 @@ class TestConv3DOp_AsyPadding_MKLDNN(TestConv3DOp):
 
 
 class TestConv3DOp_Same_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_paddings(self):
         self.pad = [0, 0, 0]
         self.padding_algorithm = "SAME"
@@ -91,6 +131,10 @@ class TestConv3DOp_Same_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
 
 
 class TestConv3DOp_Valid_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_paddings(self):
         self.pad = [1, 1, 1]
         self.padding_algorithm = "VALID"
@@ -103,6 +147,9 @@ class TestConv3DOp_Valid_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
 
 if __name__ == '__main__':
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

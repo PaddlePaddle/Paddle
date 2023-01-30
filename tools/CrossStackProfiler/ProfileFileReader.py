@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import json
 import multiprocessing
 from multiprocessing import Process
@@ -30,6 +31,32 @@ import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 
 class profileFileReader(FileReader):
+=======
+import os
+import six
+import glob
+import json
+import logging
+import argparse
+import pandas as pd
+import multiprocessing
+from multiprocessing import Process
+
+import google.protobuf.text_format as text_format
+import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+
+from CspChromeTraceFormatter import ChromeTraceFormatter
+
+from CspFileReader import FileReader
+from CspFileReader import getLogger
+from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
+from CspFileReader import NETINFO_TRACE_NUM, DCGMINFO_TRACE_NUM, PIPELINEINFO_TRACE_NUM
+from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, FILEORGANIZEFORM_BYOTHER, FILEORGANIZEFORM
+
+
+class profileFileReader(FileReader):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _parseSingleFile(self, profile):
         with open(profile, 'rb') as f:
             profile_s = f.read()
@@ -43,18 +70,27 @@ class profileFileReader(FileReader):
 
         for fileName in taskList:
             rankId = self.getRankId(fileName)
+<<<<<<< HEAD
             profile_dict["trainerRank.%03d" % (rankId)] = self._parseSingleFile(
                 fileName
             )
             self._logger.info("I finish processing %s!" % fileName)
 
         if q is not None:
+=======
+            profile_dict["trainerRank.%03d" %
+                         (rankId)] = self._parseSingleFile(fileName)
+            self._logger.info("I finish processing %s!" % fileName)
+
+        if not q is None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             q.put(profile_dict)
 
         return profile_dict
 
     def _is_forwardBackwardInfo(self, items):
         if items["name"] == "marker/compute/MarkerCUDA":
+<<<<<<< HEAD
             if "args" in items:
                 if isinstance(items["args"], dict):
                     args = items["args"]
@@ -65,10 +101,24 @@ class profileFileReader(FileReader):
                             or args["detail_info"] == "marker_backward_B"
                             or args["detail_info"] == "marker_backward_E"
                         ):
+=======
+            if items.has_key("args"):
+                if isinstance(items["args"], dict):
+                    args = items["args"]
+                    if args.has_key("detail_info"):
+                        if args["detail_info"] == "marker_forward_B" or \
+                           args["detail_info"] == "marker_forward_E" or \
+                           args["detail_info"] == "marker_backward_B" or \
+                           args["detail_info"] == "marker_backward_E":
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             return True
         return False
 
     def _allocate_forwardBackwardInfo(self, restList, pid, tid):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def _cmp_ele(items):
             return items["ts"]
 
@@ -83,7 +133,11 @@ class profileFileReader(FileReader):
                 else:
                     lastEle["dur"] = items["ts"] - lastEle["ts"]
                     name = lastEle["args"]["detail_info"]
+<<<<<<< HEAD
                     name = name[: name.rfind('_')]
+=======
+                    name = name[:name.rfind('_')]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     name = name.split('_')[1]
                     lastEle["name"] = name
                     lastEle["args"]["detail_info"] = name
@@ -134,12 +188,20 @@ class profileFileReader(FileReader):
                     traceEventList.append(traceEvent)
 
             pipeLineList = self._allocate_forwardBackwardInfo(
+<<<<<<< HEAD
                 traceEventList, pid, tid
             )
 
             res[str(rankId)] = pipeLineList
 
         if q is not None:
+=======
+                traceEventList, pid, tid)
+
+            res[str(rankId)] = pipeLineList
+
+        if not q is None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             q.put(res)
 
         return res
@@ -148,9 +210,14 @@ class profileFileReader(FileReader):
         fileFist = self.getFileListByGroup(groupId)
 
         self._logger.info(
+<<<<<<< HEAD
             "using [%d] process to do this work, total task num is %d!"
             % (processNum, len(fileFist))
         )
+=======
+            "using [%d] process to do this work, total task num is %d!" %
+            (processNum, len(fileFist)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         processPool = []
         pidList = []
 
@@ -159,6 +226,7 @@ class profileFileReader(FileReader):
 
         taskList = self._splitTaskListForMultiProcess(fileFist, processNum)
         for task in taskList:
+<<<<<<< HEAD
             subproc = Process(
                 target=self._getPipeLineInfo,
                 args=(
@@ -166,21 +234,35 @@ class profileFileReader(FileReader):
                     q,
                 ),
             )
+=======
+            subproc = Process(target=self._getPipeLineInfo, args=(
+                task,
+                q,
+            ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)
             self._logger.info(
                 "[pipeline info]: process [%d] has been started, total task num is %d ..."
+<<<<<<< HEAD
                 % (subproc.pid, len(task))
             )
+=======
+                % (subproc.pid, len(task)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for t in processPool:
             t.join()
             pidList.remove(t.pid)
             self._logger.info(
                 "[pipeline info]: process [%d] has exited! remained %d process!"
+<<<<<<< HEAD
                 % (t.pid, len(pidList))
             )
+=======
+                % (t.pid, len(pidList)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         pipeLineInfo = {}
 
@@ -210,7 +292,11 @@ class profileFileReader(FileReader):
         initLineNum = initPid + 1
         lineDelta = len(profile_dict.keys())
         i = 0
+<<<<<<< HEAD
         for k, profile_pb in profile_dict.items():
+=======
+        for k, profile_pb in six.iteritems(profile_dict):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             lineNum = initLineNum
             for event in profile_pb.events:
                 if event.type == profiler_pb2.Event.CPU:
@@ -221,6 +307,7 @@ class profileFileReader(FileReader):
                         # -1 device id represents CUDA API(RunTime) call.(e.g. cudaLaunch, cudaMemcpy)
                         if event.device_id == -1:
                             chrome_trace.emit_pid(
+<<<<<<< HEAD
                                 "%02d_%s:cuda_api" % (lineNum, k), pid
                             )
                             lineNum = lineNum + 1
@@ -230,6 +317,14 @@ class profileFileReader(FileReader):
                                 % (lineNum, k, event.device_id),
                                 pid,
                             )
+=======
+                                "%02d_%s:cuda_api" % (lineNum, k), pid)
+                            lineNum = lineNum + 1
+                        else:
+                            chrome_trace.emit_pid(
+                                "%02d_%s:cpu:block:%d" %
+                                (lineNum, k, event.device_id), pid)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             lineNum = lineNum + 1
                 elif event.type == profiler_pb2.Event.GPUKernel:
                     if (k, event.device_id, "GPUKernel") not in devices:
@@ -239,10 +334,15 @@ class profileFileReader(FileReader):
 
                             devices[(k, event.device_id, "GPUKernel")] = pid
                             chrome_trace.emit_pid(
+<<<<<<< HEAD
                                 "%02d_%s:gpu:%d"
                                 % (lineNum, k, event.device_id),
                                 pid,
                             )
+=======
+                                "%02d_%s:gpu:%d" %
+                                (lineNum, k, event.device_id), pid)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             lineNum = lineNum + 1
 
             if not hasattr(profile_pb, "mem_events"):
@@ -256,10 +356,15 @@ class profileFileReader(FileReader):
 
                             mem_devices[(k, mevent.device_id, "GPU")] = pid
                             chrome_trace.emit_pid(
+<<<<<<< HEAD
                                 "%02d_memory usage on %s:gpu:%d"
                                 % (lineNum, k, mevent.device_id),
                                 pid,
                             )
+=======
+                                "%02d_memory usage on %s:gpu:%d" %
+                                (lineNum, k, mevent.device_id), pid)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             lineNum = lineNum + 1
                 elif mevent.place == profiler_pb2.MemEvent.CPUPlace:
                     if (k, mevent.device_id, "CPU") not in mem_devices:
@@ -268,6 +373,7 @@ class profileFileReader(FileReader):
 
                         mem_devices[(k, mevent.device_id, "CPU")] = pid
                         chrome_trace.emit_pid(
+<<<<<<< HEAD
                             "%02d_memory usage on %s:cpu:%d"
                             % (lineNum, k, mevent.device_id),
                             pid,
@@ -279,10 +385,19 @@ class profileFileReader(FileReader):
                         mevent.device_id,
                         "CUDAPinnedPlace",
                     ) not in mem_devices:
+=======
+                            "%02d_memory usage on %s:cpu:%d" %
+                            (lineNum, k, mevent.device_id), pid)
+                        lineNum = lineNum + 1
+                elif mevent.place == profiler_pb2.MemEvent.CUDAPinnedPlace:
+                    if (k, mevent.device_id,
+                            "CUDAPinnedPlace") not in mem_devices:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         if gpuId == mevent.device_id:
                             pid = initPid
                             initPid = initPid + 1
 
+<<<<<<< HEAD
                             mem_devices[
                                 (k, mevent.device_id, "CUDAPinnedPlace")
                             ] = pid
@@ -291,6 +406,13 @@ class profileFileReader(FileReader):
                                 % (lineNum, k, mevent.device_id),
                                 pid,
                             )
+=======
+                            mem_devices[(k, mevent.device_id,
+                                         "CUDAPinnedPlace")] = pid
+                            chrome_trace.emit_pid(
+                                "%02d_memory usage on %s:cudapinnedplace:%d" %
+                                (lineNum, k, mevent.device_id), pid)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             lineNum = lineNum + 1
                 if (k, 0, "CPU") not in mem_devices:
                     pid = initPid
@@ -298,8 +420,12 @@ class profileFileReader(FileReader):
 
                     mem_devices[(k, 0, "CPU")] = pid
                     chrome_trace.emit_pid(
+<<<<<<< HEAD
                         "%02d_memory usage on %s:cpu:%d" % (lineNum, k, 0), pid
                     )
+=======
+                        "%02d_memory usage on %s:cpu:%d" % (lineNum, k, 0), pid)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     lineNum = lineNum + 1
                 if (k, 0, "GPU") not in mem_devices:
                     # if gpuId == mevent.device_id:
@@ -308,8 +434,12 @@ class profileFileReader(FileReader):
 
                     mem_devices[(k, 0, "GPU")] = pid
                     chrome_trace.emit_pid(
+<<<<<<< HEAD
                         "%02d_memory usage on %s:gpu:%d" % (lineNum, k, 0), pid
                     )
+=======
+                        "%02d_memory usage on %s:gpu:%d" % (lineNum, k, 0), pid)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     lineNum = lineNum + 1
                 if (k, 0, "CUDAPinnedPlace") not in mem_devices:
                     pid = initPid
@@ -317,17 +447,26 @@ class profileFileReader(FileReader):
 
                     mem_devices[(k, 0, "CUDAPinnedPlace")] = pid
                     chrome_trace.emit_pid(
+<<<<<<< HEAD
                         "%02d_memory usage on %s:cudapinnedplace:%d"
                         % (lineNum, k, 0),
                         pid,
                     )
+=======
+                        "%02d_memory usage on %s:cudapinnedplace:%d" %
+                        (lineNum, k, 0), pid)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     lineNum = lineNum + 1
             i = i + 1
         return chrome_trace, devices, mem_devices
 
     def _allocate_events(self, profile_dict, devices, gpuId):
         chrome_trace = ChromeTraceFormatter()
+<<<<<<< HEAD
         for k, profile_pb in profile_dict.items():
+=======
+        for k, profile_pb in six.iteritems(profile_dict):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             rankId = int(k.split(".")[-1])
 
@@ -337,11 +476,15 @@ class profileFileReader(FileReader):
                 elif event.type == profiler_pb2.Event.GPUKernel:
                     type = "GPUKernel"
 
+<<<<<<< HEAD
                 if (
                     event.type == profiler_pb2.Event.GPUKernel
                     and event.device_id != gpuId
                     and rankId % self._gpuPerTrainer != gpuId
                 ):
+=======
+                if event.type == profiler_pb2.Event.GPUKernel and event.device_id != gpuId and rankId % self._gpuPerTrainer != gpuId:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     continue
 
                 pid = devices[(k, event.device_id, type)]
@@ -352,6 +495,7 @@ class profileFileReader(FileReader):
                     args['detail_info'] = event.detail_info
                 # TODO(panyx0718): Chrome tracing only handles ms. However, some
                 # ops takes micro-seconds. Hence, we keep the ns here.
+<<<<<<< HEAD
                 chrome_trace.emit_region(
                     self._align_ts(event.start_ns),
                     (event.end_ns - event.start_ns) / 1.0,
@@ -361,6 +505,12 @@ class profileFileReader(FileReader):
                     event.name,
                     args,
                 )
+=======
+                chrome_trace.emit_region(self._align_ts(event.start_ns),
+                                         (event.end_ns - event.start_ns) / 1.0,
+                                         pid, event.sub_device_id, 'Op',
+                                         event.name, args)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return chrome_trace
 
     def _allocate_memory_event(self, profile_dict, mem_devices, gpuId):
@@ -370,9 +520,15 @@ class profileFileReader(FileReader):
         place_to_str = {
             profiler_pb2.MemEvent.CPUPlace: "CPU",
             profiler_pb2.MemEvent.CUDAPlace: "GPU",
+<<<<<<< HEAD
             profiler_pb2.MemEvent.CUDAPinnedPlace: "CUDAPinnedPlace",
         }
         for k, profile_pb in profile_dict.items():
+=======
+            profiler_pb2.MemEvent.CUDAPinnedPlace: "CUDAPinnedPlace"
+        }
+        for k, profile_pb in six.iteritems(profile_dict):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             rankId = int(k.split(".")[-1])
 
             trainerId = rankId / self._gpuPerTrainer
@@ -391,10 +547,16 @@ class profileFileReader(FileReader):
                 else:
                     place = "UnDefine"
 
+<<<<<<< HEAD
                 if (
                     mevent.place == profiler_pb2.MemEvent.CUDAPlace
                     or mevent.place == profiler_pb2.MemEvent.CUDAPinnedPlace
                 ) and mevent.device_id != gpuId:
+=======
+                if (mevent.place == profiler_pb2.MemEvent.CUDAPlace
+                        or mevent.place == profiler_pb2.MemEvent.CUDAPinnedPlace
+                    ) and mevent.device_id != gpuId:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     continue
 
                 crt_info['place'] = place
@@ -417,6 +579,7 @@ class profileFileReader(FileReader):
             total_size = 0
             while i < len(mem_list):
                 total_size += mem_list[i]['size']
+<<<<<<< HEAD
                 while (
                     i < len(mem_list) - 1
                     and mem_list[i]['time'] == mem_list[i + 1]['time']
@@ -432,6 +595,17 @@ class profileFileReader(FileReader):
                     0,
                     total_size,
                 )
+=======
+                while i < len(mem_list) - 1 and mem_list[i]['time'] == mem_list[
+                        i + 1]['time']:
+                    total_size += mem_list[i + 1]['size']
+                    i += 1
+
+                chrome_trace.emit_counter("Memory", "Memory",
+                                          mem_list[i]['pid'],
+                                          self._align_ts(mem_list[i]['time']),
+                                          0, total_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 i += 1
         return chrome_trace
 
@@ -441,6 +615,7 @@ class profileFileReader(FileReader):
         for file in fileFist:
             rankId = self.getRankId(file)
             localRank = rankId % self._gpuPerTrainer
+<<<<<<< HEAD
             if (
                 localRank == gpuId
                 and (rankId / self._gpuPerTrainer) % self._groupSize
@@ -464,6 +639,23 @@ class profileFileReader(FileReader):
         trace['traceEvents'] = (
             metaTrace._metadata + eventsTrace._events + memEventsTrace._events
         )
+=======
+            if localRank == gpuId and (rankId / self._gpuPerTrainer
+                                       ) % self._groupSize < self._displaySize:
+                newFileList.append(file)
+
+        profile_dict = self._parseTask(newFileList)
+        initPid = PIPELINEINFO_TRACE_NUM + DCGMINFO_TRACE_NUM + NETINFO_TRACE_NUM
+        metaTrace, devicesPid, mem_devicesPid = self._allocate_pids(
+            profile_dict, gpuId, initPid)
+        eventsTrace = self._allocate_events(profile_dict, devicesPid, gpuId)
+        memEventsTrace = self._allocate_memory_event(profile_dict,
+                                                     mem_devicesPid, gpuId)
+
+        trace = {}
+        trace[
+            'traceEvents'] = metaTrace._metadata + eventsTrace._events + memEventsTrace._events
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dumpOpInfoDict(trace, groupId, gpuId, True)
 
         return trace
@@ -475,6 +667,7 @@ class profileFileReader(FileReader):
         pidList = []
 
         for gpuId in range(self._gpuPerTrainer):
+<<<<<<< HEAD
             subproc = Process(
                 target=self._getOPTraceInfoByGpuId,
                 args=(
@@ -482,21 +675,37 @@ class profileFileReader(FileReader):
                     gpuId,
                 ),
             )
+=======
+            subproc = Process(target=self._getOPTraceInfoByGpuId,
+                              args=(
+                                  groupId,
+                                  gpuId,
+                              ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)
             self._logger.info(
                 "[op info]: process [%d] has been started, total task num is %d ..."
+<<<<<<< HEAD
                 % (subproc.pid, 1)
             )
+=======
+                % (subproc.pid, 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for t in processPool:
             t.join()
             pidList.remove(t.pid)
             self._logger.info(
+<<<<<<< HEAD
                 "[op info]: process [%d] has exited! remained %d process!"
                 % (t.pid, len(pidList))
             )
+=======
+                "[op info]: process [%d] has exited! remained %d process!" %
+                (t.pid, len(pidList)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         opInfo = {}
 

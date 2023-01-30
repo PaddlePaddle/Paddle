@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -33,10 +34,36 @@ class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.ids_shape = 4
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+from paddle.fluid.tests.unittests.op_test import (skip_check_grad_ci,
+                                                  convert_uint16_to_float)
+from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
+    _lookup, TestLookupTableBF16Op, TestLookupTableBF16OpIds4D,
+    TestLookupTableBF16OpWIsSelectedRows,
+    TestLookupTableBF16OpWIsSelectedRows4DIds)
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+
+
+class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
+
+    def init_test(self):
+        self.op_type = "lookup_table_v2"
+        self.ids_shape = (4)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.mkldnn_data_type = "bfloat16"
 
 
 class TestLookupTableV2BF16OpIds4D(TestLookupTableBF16OpIds4D):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.ids_shape = (2, 4, 5)
@@ -44,6 +71,7 @@ class TestLookupTableV2BF16OpIds4D(TestLookupTableBF16OpIds4D):
 
 
 class TestLookupTableV2BF16OpWIsSelectedRows(
+<<<<<<< HEAD
     TestLookupTableBF16OpWIsSelectedRows
 ):
     def init_test(self):
@@ -54,12 +82,28 @@ class TestLookupTableV2BF16OpWIsSelectedRows(
 class TestLookupTableV2BF16OpWIsSelectedRows4DIds(
     TestLookupTableBF16OpWIsSelectedRows4DIds
 ):
+=======
+        TestLookupTableBF16OpWIsSelectedRows):
+
+    def init_test(self):
+        self.op_type = "lookup_table_v2"
+        self.ids_shape = (10)
+
+
+class TestLookupTableV2BF16OpWIsSelectedRows4DIds(
+        TestLookupTableBF16OpWIsSelectedRows4DIds):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.ids_shape = (3, 4, 5)
 
 
 class TestLookupTableBF16OpWithPadding(TestLookupTableV2BF16Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -69,6 +113,10 @@ class TestLookupTableBF16OpWithPadding(TestLookupTableV2BF16Op):
 
 
 class TestLookupTableBF16OpIds4DPadding(TestLookupTableV2BF16OpIds4D):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
@@ -90,9 +138,14 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.op_type = "lookup_table_v2"
         self.ids_shape = [4]
         self.w_shape = [10, 64]
+<<<<<<< HEAD
         self.ids = np.random.randint(low=0, high=9, size=self.ids_shape).astype(
             "int64"
         )
+=======
+        self.ids = np.random.randint(low=0, high=9,
+                                     size=self.ids_shape).astype("int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.flat_ids = self.ids.flatten()
         self.value = 3.0
         self.w_fp32 = np.full(self.w_shape, self.value)
@@ -102,6 +155,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.set_initializer()
 
         with fluid.program_guard(self.prog, self.startup_prog):
+<<<<<<< HEAD
             x = paddle.static.data(
                 name='x', shape=[-1] + self.ids_shape, dtype='int64'
             )
@@ -119,6 +173,21 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.result = exe.run(
             self.prog, feed={'x': self.ids}, fetch_list=['emb_weight', self.emb]
         )
+=======
+            x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
+            self.emb = fluid.input.embedding(input=x,
+                                             size=self.w_shape,
+                                             param_attr=fluid.ParamAttr(
+                                                 name="emb_weight",
+                                                 initializer=self.initializer),
+                                             is_sparse=False,
+                                             dtype="uint16")  # bfloat16
+        exe = fluid.Executor(self.place)
+        exe.run(self.startup_prog)
+        self.result = exe.run(self.prog,
+                              feed={'x': self.ids},
+                              fetch_list=['emb_weight', self.emb])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_embedding_weights(self):
         result = convert_uint16_to_float(self.result[0])

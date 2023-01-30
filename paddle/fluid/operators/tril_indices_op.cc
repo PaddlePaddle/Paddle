@@ -27,9 +27,15 @@ class TrilIndicesOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -61,9 +67,15 @@ class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   TrilIndices Operator.
 
+<<<<<<< HEAD
   The tril_indices operator returns the indices of the lower triangular part of the matrix
   whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates
   of all indices and the second row contains column coordinates. Indices are ordered based on
+=======
+  The tril_indices operator returns the indices of the lower triangular part of the matrix 
+  whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates 
+  of all indices and the second row contains column coordinates. Indices are ordered based on 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   rows and then columns. The lower triangular part of the matrix is defined as the elements on
   and below the diagonal.
 

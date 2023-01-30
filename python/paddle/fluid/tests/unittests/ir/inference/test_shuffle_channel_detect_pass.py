@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -24,6 +25,23 @@ import paddle.inference as paddle_infer
 
 
 class TestShuffleChannelDetectPass(PassAutoScanTest):
+=======
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume, reproduce_failure
+import hypothesis.strategies as st
+
+
+class TestShuffleChannelDetectPass(PassAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -46,6 +64,7 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
         def generate_reshape2_Input():
             return np.random.random(x_shape).astype(np.float32)
 
+<<<<<<< HEAD
         reshape2_op1 = OpConfig(
             "reshape2",
             inputs={
@@ -80,11 +99,42 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
             },
             shape=x_shape,
         )
+=======
+        reshape2_op1 = OpConfig("reshape2",
+                                inputs={
+                                    "X": ["reshape2_input1"],
+                                },
+                                outputs={
+                                    "Out": ["reshape2_output1"],
+                                    "XShape": ["reshape2_xshape1"]
+                                },
+                                shape=shape,
+                                input_shape=x_shape)
+        transpose2_op = OpConfig("transpose2",
+                                 inputs={
+                                     "X": ["reshape2_output1"],
+                                 },
+                                 outputs={
+                                     "Out": ["transpose2_output"],
+                                     "XShape": ["transpose2_xshape"]
+                                 },
+                                 axis=axis_v)
+        reshape2_op2 = OpConfig("reshape2",
+                                inputs={
+                                    "X": ["transpose2_output"],
+                                },
+                                outputs={
+                                    "Out": ["reshape2_output2"],
+                                    "XShape": ["reshape2_xshape2"]
+                                },
+                                shape=x_shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ops = [reshape2_op1, transpose2_op, reshape2_op2]
 
         program_config = ProgramConfig(
             ops=ops,
             inputs={
+<<<<<<< HEAD
                 "reshape2_input1": TensorConfig(
                     data_gen=partial(generate_reshape2_Input)
                 ),
@@ -92,6 +142,13 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
             weights={},
             outputs=["reshape2_output2"],
         )
+=======
+                "reshape2_input1":
+                TensorConfig(data_gen=partial(generate_reshape2_Input)),
+            },
+            weights={},
+            outputs=["reshape2_output2"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return program_config
 
     def sample_predictor_configs(self, program_config):
@@ -102,8 +159,12 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
             min_subgraph_size=1,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
+<<<<<<< HEAD
             use_calib_mode=False,
         )
+=======
+            use_calib_mode=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         yield config, ['shuffle_channel'], (1e-5, 1e-5)
 
     def test(self):

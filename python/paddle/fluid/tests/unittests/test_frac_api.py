@@ -12,14 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+<<<<<<< HEAD
+=======
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def ref_frac(x):
@@ -35,11 +46,16 @@ class TestFracAPI(unittest.TestCase):
     def setUp(self):
         self.set_dtype()
         self.x_np = np.random.uniform(-3, 3, [2, 3]).astype(self.dtype)
+<<<<<<< HEAD
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_api_static(self):
         paddle.enable_static()
@@ -50,7 +66,11 @@ class TestFracAPI(unittest.TestCase):
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             (res,) = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+=======
+            res, = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out_ref = ref_frac(self.x_np)
         np.testing.assert_allclose(out_ref, res, rtol=1e-05)
 
@@ -63,12 +83,25 @@ class TestFracAPI(unittest.TestCase):
 
     def test_api_eager(self):
         paddle.disable_static(self.place)
+<<<<<<< HEAD
         x_tensor = paddle.to_tensor(self.x_np)
         out = paddle.frac(x_tensor)
+=======
+        with _test_eager_guard():
+            x_tensor = paddle.to_tensor(self.x_np)
+            out = paddle.frac(x_tensor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out_ref = ref_frac(self.x_np)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+<<<<<<< HEAD
+=======
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_api_dygraph()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class TestFracInt32(TestFracAPI):
     """Test Frac API with data type int32"""
@@ -96,11 +129,16 @@ class TestFracError(unittest.TestCase):
 
     def setUp(self):
         self.x_np = np.random.uniform(-3, 3, [2, 3]).astype('int16')
+<<<<<<< HEAD
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static_error(self):
         paddle.enable_static()

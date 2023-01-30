@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 import unittest
 import numpy as np
@@ -23,10 +27,15 @@ paddle.enable_static()
 
 
 class TestCAllreduceOp(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_allreduce_sum_fp32(self):
+<<<<<<< HEAD
         self.check_with_place(
             "collective_allreduce_op.py", "allreduce_sum", "float32"
         )
@@ -55,6 +64,30 @@ class TestCAllreduceOp(TestDistBase):
         self.check_with_place(
             "collective_allreduce_op.py", "allreduce_sum", "uint8"
         )
+=======
+        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
+                              "float32")
+
+    def test_allreduce_sum_fp16(self):
+        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
+                              "float16")
+
+    def test_allreduce_sum_int32(self):
+        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
+                              "int32")
+
+    def test_allreduce_sum_int16(self):
+        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
+                              "int16")
+
+    def test_allreduce_sum_int8(self):
+        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
+                              "int8")
+
+    def test_allreduce_sum_uint8(self):
+        self.check_with_place("collective_allreduce_op.py", "allreduce_sum",
+                              "uint8")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -12,17 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
+=======
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestHybridPipeParallelWithVirtualStage(TestMultipleGpus):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_hybrid_parallel_pp_layer_with_virtual_stage(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_layer_with_virtual_stage.py')
 
     def test_hybrid_parallel_pp_transformer_with_virtual_stage(self):
         self.run_mnist_2gpu(
+<<<<<<< HEAD
             'hybrid_parallel_pp_transformer_with_virtual_stage.py'
         )
 
@@ -33,4 +46,15 @@ class TestHybridPipeParallelWithVirtualStage(TestMultipleGpus):
 
 
 if __name__ == "__main__":
+=======
+            'hybrid_parallel_pp_transformer_with_virtual_stage.py')
+
+    def test_hybrid_parallel_save_load_with_virtual_stage(self):
+        self.run_mnist_2gpu(
+            'hybrid_parallel_pp_save_load_with_virtual_stage.py')
+
+
+if __name__ == "__main__":
+    os.environ["FLAGS_enable_eager_mode"] = "1"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     unittest.main()

@@ -14,14 +14,20 @@
 
 import unittest
 
+<<<<<<< HEAD
 from pass_test import PassTest
 
+=======
+import numpy as np
+from pass_test import PassTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
 class SkipLayerNormFusePassTest(PassTest):
+<<<<<<< HEAD
     def setUp(self):
         paddle.enable_static()
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -33,6 +39,22 @@ class SkipLayerNormFusePassTest(PassTest):
             )
             elementwise_out = paddle.add(x=x, y=y)
             out = paddle.static.nn.layer_norm(input=elementwise_out)
+=======
+
+    def setUp(self):
+        paddle.enable_static()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            x = fluid.data(name="x",
+                           shape=[128, 768],
+                           dtype="float32",
+                           lod_level=0)
+            y = fluid.data(name="y",
+                           shape=[128, 768],
+                           dtype="float32",
+                           lod_level=0)
+            elementwise_out = fluid.layers.elementwise_add(x=x, y=y)
+            out = fluid.layers.layer_norm(input=elementwise_out)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.fetch_list = [out]
         self.pass_names = "skip_layernorm_fuse_pass"
@@ -40,7 +62,11 @@ class SkipLayerNormFusePassTest(PassTest):
         self.num_fused_ops = 1
         self.graph_attrs = {
             "embedding_eltwise_layernorm_fuse_pass_flag": True,
+<<<<<<< HEAD
             "multihead_matmul_fuse_pass_flag": True,
+=======
+            "multihead_matmul_fuse_pass_flag": True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_program(self):

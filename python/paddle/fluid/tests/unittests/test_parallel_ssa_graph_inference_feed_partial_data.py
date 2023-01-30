@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle.fluid as fluid
 
 fluid.core.globals()['FLAGS_enable_parallel_graph'] = 1
 
+=======
+import paddle.fluid as fluid
+import unittest
+
+fluid.core.globals()['FLAGS_enable_parallel_graph'] = 1
+
+from test_parallel_executor_inference_feed_partial_data import *
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     unittest.main()

@@ -433,7 +433,11 @@ void DownpourWorkerOpt::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
+<<<<<<< HEAD
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (tensor == nullptr) {
         continue;
       }

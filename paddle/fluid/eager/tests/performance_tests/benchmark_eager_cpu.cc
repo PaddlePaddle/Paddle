@@ -25,7 +25,11 @@
 #include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/tracer.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/flags.h"
+=======
+#include "paddle/fluid/platform/flags.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"

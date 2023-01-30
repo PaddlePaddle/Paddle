@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -44,19 +45,59 @@ class Optimization_ex1(paddle.nn.Layer):
             + np.random.random((4, 4)).astype(dtype) * 1j,
             stop_gradient=False,
         )
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+
+import paddle
+
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
+
+
+class Optimization_ex1(paddle.nn.Layer):
+
+    def __init__(self,
+                 shape,
+                 dtype,
+                 param_attr=paddle.nn.initializer.Uniform(low=-5., high=5.)):
+        super(Optimization_ex1, self).__init__()
+
+        self.theta0 = self.create_parameter(shape=shape,
+                                            attr=param_attr,
+                                            dtype=dtype,
+                                            is_bias=False)
+        self.theta1 = self.create_parameter(shape=shape,
+                                            attr=param_attr,
+                                            dtype=dtype,
+                                            is_bias=False)
+        self.A = paddle.to_tensor(
+            np.random.random((4, 4)).astype(dtype) +
+            np.random.random((4, 4)).astype(dtype) * 1j)
+        self.B = paddle.to_tensor(np.random.random(
+            (4, 4)).astype(dtype) + np.random.random((4, 4)).astype(dtype) * 1j,
+                                  stop_gradient=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, mode=1):
         jj = paddle.to_tensor(np.array([1j]).astype(np.complex64))
         if mode == 1:
             # run all calc in one step
             loss = paddle.sum(self.A + (self.theta0 + self.theta1 * jj)) * (
+<<<<<<< HEAD
                 paddle.sum(self.A + (self.theta0 + self.theta1 * jj)).conj()
             )
+=======
+                paddle.sum(self.A + (self.theta0 + self.theta1 * jj)).conj())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return loss.real()
         elif mode == 2:
             # run in two step
             self.theta = self.theta0 + self.theta1 * jj
             loss = paddle.sum(self.A + self.theta) * (
+<<<<<<< HEAD
                 paddle.sum(self.A + self.theta).conj()
             )
             return loss.real()
@@ -65,12 +106,24 @@ class Optimization_ex1(paddle.nn.Layer):
             loss = paddle.sum(self.A + self.B) * (
                 paddle.sum(self.A + self.B).conj()
             )
+=======
+                paddle.sum(self.A + self.theta).conj())
+            return loss.real()
+        elif mode == 3:
+            # run without param
+            loss = paddle.sum(self.A + self.B) * (paddle.sum(self.A +
+                                                             self.B).conj())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return loss.real()
         else:
             raise NotImplementedError
 
 
 class TestComplexGradAccumulated(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.devices = ['cpu']
         if core.is_compiled_with_cuda():
@@ -84,9 +137,14 @@ class TestComplexGradAccumulated(unittest.TestCase):
         paddle.set_device(device)
 
         myLayer = Optimization_ex1(self.theta_size, dtype)
+<<<<<<< HEAD
         optimizer = paddle.optimizer.SGD(
             learning_rate=self.learning_rate, parameters=myLayer.parameters()
         )
+=======
+        optimizer = paddle.optimizer.SGD(learning_rate=self.learning_rate,
+                                         parameters=myLayer.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for iter in range(self.iter):
             loss = myLayer(mode)
@@ -99,9 +157,14 @@ class TestComplexGradAccumulated(unittest.TestCase):
         paddle.set_device(device)
 
         myLayer = Optimization_ex1(self.theta_size, dtype)
+<<<<<<< HEAD
         optimizer = paddle.optimizer.SGD(
             learning_rate=self.learning_rate, parameters=myLayer.parameters()
         )
+=======
+        optimizer = paddle.optimizer.SGD(learning_rate=self.learning_rate,
+                                         parameters=myLayer.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for iter in range(self.iter):
             loss = myLayer(mode)
@@ -127,6 +190,15 @@ class TestComplexGradAccumulated(unittest.TestCase):
                 self.train(dev, dtype, 3)
                 self.train_no_clear_grad(dev, dtype, 3)
 
+<<<<<<< HEAD
+=======
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_case_one_step()
+            self.test_case_two_step()
+            self.test_case_non_param()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

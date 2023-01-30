@@ -118,10 +118,17 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
                                 const DenseTensor& out,
                                 const DenseTensor& out_grad,
                                 DenseTensor* x_grad) {
+=======
+void SoftmaxMaskFuseGradKernel(const Context& dev_ctx,
+                               const DenseTensor& out,
+                               const DenseTensor& out_grad,
+                               DenseTensor* x_grad) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* grad_x_data = dev_ctx.template Alloc<T>(x_grad);
   auto* grad_y_data = out_grad.data<T>();
   auto* softmax_rst_data = out.data<T>();
@@ -196,6 +203,10 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(fused_softmax_mask_grad,
                    GPU,
                    ALL_LAYOUT,
+<<<<<<< HEAD
                    phi::fusion::FusedSoftmaxMaskGradKernel,
+=======
+                   phi::fusion::SoftmaxMaskFuseGradKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    phi::dtype::float16) {}

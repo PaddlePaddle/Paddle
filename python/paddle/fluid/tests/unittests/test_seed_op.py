@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static as static
 
@@ -24,6 +32,10 @@ paddle.enable_static()
 
 
 class TestSeedOpFixSeed(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "seed"
         self.inputs = {}
@@ -35,6 +47,10 @@ class TestSeedOpFixSeed(OpTest):
 
 
 class TestSeedOpDiffSeed(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "seed"
         self.inputs = {}
@@ -46,6 +62,10 @@ class TestSeedOpDiffSeed(OpTest):
 
 
 class TestDropoutWithRandomSeedGenerator(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.framework.random.set_random_seed_generator('seed0', 123)
         paddle.framework.random.set_random_seed_generator('seed1', 123)
@@ -57,16 +77,24 @@ class TestDropoutWithRandomSeedGenerator(unittest.TestCase):
 
     def check_static_result(self, place):
         import paddle.distributed.fleet.meta_parallel.parallel_layers.random as random
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with static.program_guard(static.Program(), static.Program()):
             res1 = random.determinate_seed('seed0')
 
             exe = static.Executor(place)
             res_list = [res1]
             for i in range(2):
+<<<<<<< HEAD
                 (out1,) = exe.run(
                     static.default_main_program(), fetch_list=res_list
                 )
+=======
+                out1, = exe.run(static.default_main_program(),
+                                fetch_list=res_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.assertEqual(out1, np.cast['int32'](self.rng1.random()))
 
     def test_static(self):

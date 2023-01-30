@@ -14,9 +14,15 @@ limitations under the License. */
 
 #include <algorithm>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/segment_pooling.h"
@@ -60,7 +66,11 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
         }
         if (j > 0) {
           if (last_segment_id == first_segment_id) {
+<<<<<<< HEAD
             phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+=======
+            paddle::platform::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           } else {
             *(summed_ids + last_segment_id) = sum;
           }
@@ -70,7 +80,11 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
       sum += T(1);
       last_segment_id = current_segment_id;
     }
+<<<<<<< HEAD
     phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+=======
+    paddle::platform::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -111,8 +125,13 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
               last_segment_id * inner_dim_size + segment_offset;
 
           if (last_segment_id == first_segment_id) {
+<<<<<<< HEAD
             phi::CudaAtomicAdd(output + output_index,
                                sum / *(summed_ids + last_segment_id));
+=======
+            paddle::platform::CudaAtomicAdd(
+                output + output_index, sum / *(summed_ids + last_segment_id));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           } else {
             *(output + output_index) = sum / *(summed_ids + last_segment_id);
           }
@@ -123,8 +142,13 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
       last_segment_id = current_segment_id;
     }
     Index output_index = last_segment_id * inner_dim_size + segment_offset;
+<<<<<<< HEAD
     phi::CudaAtomicAdd(output + output_index,
                        sum / *(summed_ids + last_segment_id));
+=======
+    paddle::platform::CudaAtomicAdd(output + output_index,
+                                    sum / *(summed_ids + last_segment_id));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -215,7 +239,11 @@ class MaxPool {
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
   DEVICE inline T atomic(T* address, const T val) {
+<<<<<<< HEAD
     return phi::CudaAtomicMax(address, val);
+=======
+    return paddle::platform::CudaAtomicMax(address, val);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -225,7 +253,11 @@ class MinPool {
   DEVICE inline T initial() { return static_cast<T>(FLT_MAX); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y < x ? *y : x; }
   DEVICE inline T atomic(T* address, const T val) {
+<<<<<<< HEAD
     return phi::CudaAtomicMin(address, val);
+=======
+    return paddle::platform::CudaAtomicMin(address, val);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -235,7 +267,11 @@ class SumPool {
   DEVICE inline T initial() { return static_cast<T>(0); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y + x; }
   DEVICE inline T atomic(T* address, const T val) {
+<<<<<<< HEAD
     return phi::CudaAtomicAdd(address, val);
+=======
+    return paddle::platform::CudaAtomicAdd(address, val);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

@@ -36,7 +36,10 @@ USE_OP(cinn_instruction_run);
 USE_OP_ITSELF(elementwise_add);
 DECLARE_double(eager_delete_tensor_gb);
 DECLARE_bool(enable_pe_launch_cinn);
+<<<<<<< HEAD
 DECLARE_bool(enable_interpretercore_launch_cinn);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DECLARE_bool(enable_cinn_auto_tune);
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
@@ -50,7 +53,11 @@ using framework::paddle2cinn::CinnCompiler;
 
 class TestCinnLaunchOp : public ::testing::Test {
  public:
+<<<<<<< HEAD
   const char* test_op_out_name = "test_op_out";
+=======
+  const char* test_op_out_name = "add_op_out";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const char* add_op_out_name = "add_op_out";
   std::unique_ptr<framework::OperatorBase> cinn_launch_op;
   std::unique_ptr<framework::OperatorBase> elementwise_add_op;
@@ -75,6 +82,7 @@ class TestCinnLaunchOp : public ::testing::Test {
                                                 {{}});
   }
 
+<<<<<<< HEAD
   void RunAndCheck(const platform::Place& place, framework::Scope* scope) {
     // Run ops and check the computation results
     InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, scope);
@@ -84,25 +92,48 @@ class TestCinnLaunchOp : public ::testing::Test {
     cinn_launch_op->Run(*scope, place);
     CompareOpResult<float>(scope->GetVar(test_op_out_name),
                            scope->GetVar(add_op_out_name));
+=======
+  void RunAndCheck(const platform::Place& place) {
+    // Run ops and check the computation results
+    framework::Scope scope;
+    InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
+    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
+    scope.Var(add_op_out_name)->GetMutable<LoDTensor>();
+    elementwise_add_op->Run(scope, place);
+    cinn_launch_op->Run(scope, place);
+    CompareOpResult<float>(scope.GetVar(test_op_out_name),
+                           scope.GetVar(add_op_out_name));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   void TearDown() override { CinnCompiler::GetInstance()->Clear(); }
 };
 
 TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByPE) {
+<<<<<<< HEAD
   framework::Scope scope1;
   RunAndCheck(platform::CPUPlace(), &scope1);
   // the second run on the same place is to check the cache logic
   framework::Scope scope2;
   RunAndCheck(platform::CPUPlace(), &scope2);
+=======
+  RunAndCheck(platform::CPUPlace());
+  // the second run on the same place is to check the cache logic
+  RunAndCheck(platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 #ifdef PADDLE_WITH_CUDA
 TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByPE) {
+<<<<<<< HEAD
   framework::Scope scope1;
   RunAndCheck(platform::CUDAPlace(), &scope1);
   framework::Scope scope2;
   RunAndCheck(platform::CUDAPlace(), &scope2);
+=======
+  RunAndCheck(platform::CUDAPlace());
+  RunAndCheck(platform::CUDAPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 #endif
 
@@ -110,11 +141,17 @@ TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByCinnProgram) {
   // set FLAGS_enable_pe_launch_cinn=false to switch to use
   // default scheduler of CINN to execute the compiled program
   FLAGS_enable_pe_launch_cinn = false;
+<<<<<<< HEAD
   FLAGS_enable_interpretercore_launch_cinn = false;
   framework::Scope scope1;
   RunAndCheck(platform::CPUPlace(), &scope1);
   framework::Scope scope2;
   RunAndCheck(platform::CPUPlace(), &scope2);
+=======
+
+  RunAndCheck(platform::CPUPlace());
+  RunAndCheck(platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -122,11 +159,16 @@ TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByCinnProgram) {
   // set FLAGS_enable_pe_launch_cinn=false to switch to use
   // default scheduler of CINN to execute the compiled program
   FLAGS_enable_pe_launch_cinn = false;
+<<<<<<< HEAD
   FLAGS_enable_interpretercore_launch_cinn = false;
   framework::Scope scope1;
   RunAndCheck(platform::CUDAPlace(), &scope1);
   framework::Scope scope2;
   RunAndCheck(platform::CUDAPlace(), &scope2);
+=======
+  RunAndCheck(platform::CUDAPlace());
+  RunAndCheck(platform::CUDAPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 #endif
 
@@ -134,10 +176,15 @@ TEST_F(TestCinnLaunchOp, TestRunWithAutoTuneEnabled) {
   FLAGS_enable_cinn_auto_tune = true;
 
   // currently only check on cpu, will add a test for gpu after CINN ready
+<<<<<<< HEAD
   framework::Scope scope1;
   RunAndCheck(platform::CPUPlace(), &scope1);
   framework::Scope scope2;
   RunAndCheck(platform::CPUPlace(), &scope2);
+=======
+  RunAndCheck(platform::CPUPlace());
+  RunAndCheck(platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 namespace details {

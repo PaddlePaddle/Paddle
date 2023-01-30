@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -36,13 +37,34 @@ USE_OP_ITSELF(softmax);
 PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
 USE_OP_ITSELF(conv2d);
 PD_DECLARE_KERNEL(conv2d, OneDNN, ONEDNN);
+=======
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+USE_OP_ITSELF(elementwise_add);
+USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+USE_OP_ITSELF(elementwise_mul);
+USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
+USE_OP_ITSELF(relu);
+PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
+USE_OP_ITSELF(softmax);
+USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
+USE_OP_ITSELF(conv2d);
+USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
 struct InputVars {
   std::string name;
+<<<<<<< HEAD
   phi::DenseTensor *tensor;
+=======
+  framework::LoDTensor *tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class CacheTester {
@@ -50,8 +72,14 @@ class CacheTester {
   CacheTester() {
     // Clear oneDNN cache
     auto &pool = platform::DeviceContextPool::Instance();
+<<<<<<< HEAD
     phi::CPUPlace place;
     onednn_dev_ctx_ = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
+=======
+    platform::CPUPlace place;
+    onednn_dev_ctx_ =
+        dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
@@ -61,7 +89,11 @@ class CacheTester {
   }
 
  private:
+<<<<<<< HEAD
   phi::OneDNNContext *onednn_dev_ctx_;
+=======
+  platform::MKLDNNDeviceContext *onednn_dev_ctx_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename T>
@@ -83,6 +115,7 @@ void RunOperator(const platform::Place &place,
   std::string output_name = "output";
 
   std::vector<InputVars> input_names = {
+<<<<<<< HEAD
       {first_input, scope.Var(first_input)->GetMutable<phi::DenseTensor>()},
       {"x1",
        num_inputs[op_type] > 1 ? scope.Var("x1")->GetMutable<phi::DenseTensor>()
@@ -97,6 +130,26 @@ void RunOperator(const platform::Place &place,
        num_inputs[op_type] > 4 ? scope.Var("x4")->GetMutable<phi::DenseTensor>()
                                : nullptr}};
   auto *y = scope.Var(output_name)->GetMutable<phi::DenseTensor>();
+=======
+      {first_input, scope.Var(first_input)->GetMutable<framework::LoDTensor>()},
+      {"x1",
+       num_inputs[op_type] > 1
+           ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x2",
+       num_inputs[op_type] > 2
+           ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x3",
+       num_inputs[op_type] > 3
+           ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x4",
+       num_inputs[op_type] > 4
+           ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
+           : nullptr}};
+  auto *y = scope.Var(output_name)->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
@@ -139,7 +192,11 @@ void RunOperator(const platform::Place &place,
 
 TEST(test_conv2d_reuse_cache, cpu_place) {
   framework::DDim dims({1, 16, 32, 64});
+<<<<<<< HEAD
   phi::CPUPlace p;
+=======
+  platform::CPUPlace p;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal");
@@ -151,7 +208,11 @@ TEST(test_conv2d_reuse_cache, cpu_place) {
 
 TEST(test_conv2d_noreuse_cache, cpu_place) {
   framework::DDim dims({1, 16, 32, 64});
+<<<<<<< HEAD
   phi::CPUPlace p;
+=======
+  platform::CPUPlace p;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal2");

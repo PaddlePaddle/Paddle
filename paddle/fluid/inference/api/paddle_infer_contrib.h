@@ -14,7 +14,11 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle_inference_api.h"  // NOLINT
+=======
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle_infer {
 namespace contrib {

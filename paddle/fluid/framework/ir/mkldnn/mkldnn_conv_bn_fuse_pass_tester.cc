@@ -23,7 +23,11 @@
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
+=======
+#include "paddle/fluid/platform/place.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(conv2d_transpose, CPU, ALL_LAYOUT);
@@ -32,6 +36,7 @@ PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(gelu, CPU, ALL_LAYOUT);
 
 USE_OP_ITSELF(batch_norm);
+<<<<<<< HEAD
 PD_DECLARE_KERNEL(batch_norm, OneDNN, ONEDNN);
 USE_OP_ITSELF(conv2d_transpose);
 PD_DECLARE_KERNEL(conv2d_transpose, OneDNN, ONEDNN);
@@ -39,6 +44,15 @@ USE_OP_ITSELF(elementwise_add);
 PD_DECLARE_KERNEL(add_raw, OneDNN, ONEDNN);
 USE_OP_ITSELF(gelu);
 PD_DECLARE_KERNEL(gelu, OneDNN, ONEDNN);
+=======
+USE_OP_DEVICE_KERNEL(batch_norm, MKLDNN);
+USE_OP_ITSELF(conv2d_transpose);
+USE_OP_DEVICE_KERNEL(conv2d_transpose, MKLDNN);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+USE_OP_ITSELF(gelu);
+PD_DECLARE_KERNEL(gelu, OneDNN, ALL_LAYOUT);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_DECLARE_ARG_MAPPING_FN(gelu);
 
 namespace paddle {
@@ -192,10 +206,17 @@ class MKLDNNConvBatchNormPassTest {
     return prog;
   }
 
+<<<<<<< HEAD
   void FillTensorWithRandomData(phi::DenseTensor* tnsr,
                                 float lowb,
                                 float upb,
                                 phi::CPUPlace place) {
+=======
+  void FillTensorWithRandomData(Tensor* tnsr,
+                                float lowb,
+                                float upb,
+                                platform::CPUPlace place) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* ptr = tnsr->mutable_data<float>(place);
     // Initialize input data
     std::uniform_real_distribution<float> dist(static_cast<float>(lowb),
@@ -206,7 +227,11 @@ class MKLDNNConvBatchNormPassTest {
     }
   }
 
+<<<<<<< HEAD
   void CompareTensors(phi::DenseTensor* tensor1, phi::DenseTensor* tensor2) {
+=======
+  void CompareTensors(Tensor* tensor1, Tensor* tensor2) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // check dims
     for (int i = 0; i < tensor1->numel(); ++i) {
       EXPECT_NEAR(tensor1->data<float>()[i], tensor2->data<float>()[i], 1e-3);
@@ -219,7 +244,11 @@ class MKLDNNConvBatchNormPassTest {
 
     std::unique_ptr<ir::Graph> graph(new ir::Graph(base_prog));
     Scope scope;
+<<<<<<< HEAD
     auto place = phi::CPUPlace();
+=======
+    auto place = paddle::platform::CPUPlace();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     NaiveExecutor exe{place};
 
     auto pass = PassRegistry::Instance().Get(
@@ -306,7 +335,11 @@ class MKLDNNConvBatchNormPassTest {
     // Need to copy result over as the same scope is used in both executors
     // so first result will be overwritten by second
     auto* m_tensor = exe.FindTensor("m");
+<<<<<<< HEAD
     phi::DenseTensor no_ir_result;
+=======
+    Tensor no_ir_result;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TensorCopy(*m_tensor, place, &no_ir_result);
 
     graph.reset(pass->Apply(graph.release()));

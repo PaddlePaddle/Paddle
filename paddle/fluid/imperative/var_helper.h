@@ -43,6 +43,7 @@ template <typename VarType>
 const std::string& GetNameFromVar(std::shared_ptr<VarType> var);
 
 template <typename VarType>
+<<<<<<< HEAD
 bool CheckCachedKey(std::shared_ptr<VarType> tensor, const phi::KernelKey& key);
 template <typename VarType>
 void SetCachedValue(std::shared_ptr<VarType> tensor,
@@ -51,6 +52,18 @@ void SetCachedValue(std::shared_ptr<VarType> tensor,
 template <typename VarType>
 std::shared_ptr<VariableWrapper> GetCachedValue(std::shared_ptr<VarType> tensor,
                                                 const phi::KernelKey& key);
+=======
+bool CheckCachedKey(std::shared_ptr<VarType> tensor,
+                    const paddle::framework::OpKernelType& key);
+template <typename VarType>
+void SetCachedValue(std::shared_ptr<VarType> tensor,
+                    const paddle::framework::OpKernelType& key,
+                    std::shared_ptr<VarType> res);
+template <typename VarType>
+std::shared_ptr<VariableWrapper> GetCachedValue(
+    std::shared_ptr<VarType> tensor,
+    const paddle::framework::OpKernelType& key);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename VarType>
 void SetType(std::shared_ptr<VarType> var,
@@ -63,10 +76,18 @@ template <typename VarType>
 framework::proto::VarType::Type GetDataType(std::shared_ptr<VarType> var);
 
 template <typename VarType>
+<<<<<<< HEAD
 phi::DataLayout GetDataLayout(std::shared_ptr<VarType> var);
 
 template <typename VarType>
 void SetDataLayout(std::shared_ptr<VarType> var, const phi::DataLayout layout);
+=======
+paddle::experimental::DataLayout GetDataLayout(std::shared_ptr<VarType> var);
+
+template <typename VarType>
+void SetDataLayout(std::shared_ptr<VarType> var,
+                   const paddle::experimental::DataLayout layout);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename VarType>
 const std::shared_ptr<VariableWrapper>& GetVariableWrapper(

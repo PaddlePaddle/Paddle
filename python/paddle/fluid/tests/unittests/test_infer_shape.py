@@ -12,12 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid.core as core
 
 
 class TestInferShape(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_sum_op(self):
         prog = core.ProgramDesc()
         self.assertIsNotNone(prog)
@@ -27,6 +39,7 @@ class TestInferShape(unittest.TestCase):
         shape = [10, 20]
 
         # prepare input/output
+<<<<<<< HEAD
         x1 = block.var(b'x1')
         x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(shape)
@@ -35,6 +48,16 @@ class TestInferShape(unittest.TestCase):
         x2.set_shape(shape)
 
         out = block.var(b'out')
+=======
+        x1 = block.var(six.b("x1"))
+        x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x1.set_shape(shape)
+        x2 = block.var(six.b("x2"))
+        x2.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x2.set_shape(shape)
+
+        out = block.var(six.b("out"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out.set_type(core.VarDesc.VarType.LOD_TENSOR)
 
         # prepare the operator
@@ -57,6 +80,7 @@ class TestInferShape(unittest.TestCase):
         y_shape = [20, 30]
 
         # prepare input/output
+<<<<<<< HEAD
         x1 = block.var(b'x')
         x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(x_shape)
@@ -65,6 +89,16 @@ class TestInferShape(unittest.TestCase):
         x2.set_shape(y_shape)
 
         out = block.var(b'out')
+=======
+        x1 = block.var(six.b("x"))
+        x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x1.set_shape(x_shape)
+        x2 = block.var(six.b("y"))
+        x2.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x2.set_shape(y_shape)
+
+        out = block.var(six.b("out"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out.set_type(core.VarDesc.VarType.LOD_TENSOR)
 
         # prepare the operator
@@ -90,11 +124,19 @@ class TestInferShape(unittest.TestCase):
         expand_times = [3, 1]
 
         # prepare input/output
+<<<<<<< HEAD
         x1 = block.var(b'x')
         x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(shape)
 
         out = block.var(b'out')
+=======
+        x1 = block.var(six.b("x"))
+        x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x1.set_shape(shape)
+
+        out = block.var(six.b("out"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out.set_type(core.VarDesc.VarType.LOD_TENSOR)
 
         # prepare the operator

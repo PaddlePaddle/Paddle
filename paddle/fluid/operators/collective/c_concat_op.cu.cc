@@ -20,7 +20,11 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/collective/process_group.h"
+=======
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -32,8 +36,13 @@ template <typename T>
 class CConcatOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto x = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
@@ -62,7 +71,11 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
                           nranks));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
     phi::DenseTensor temp_out;
+=======
+    framework::Tensor temp_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
     temp_out.mutable_data<T>(temp_out_dims, place);
@@ -89,8 +102,13 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       const T* send_buff = x->data<T>();
       T* recv_buff = temp_out.data<T>();
       gpuStream_t stream = nullptr;
+<<<<<<< HEAD
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
+=======
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclAllGather(send_buff,
@@ -101,14 +119,22 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
                                            stream));
     }
 
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> inputs;
+=======
+    std::vector<framework::Tensor> inputs;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = x->dims().size() - 1;
     auto out_dims = x->dims();
     out_dims[out_dims.size() - 1] *= nranks;
     int rows_per_tensor = x->dims()[0];
     int offset = 0;
     for (int i = 0; i < nranks; i++) {
+<<<<<<< HEAD
       phi::DenseTensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
+=======
+      framework::Tensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       inputs.emplace_back(temp);
       offset += rows_per_tensor;
     }
@@ -134,7 +160,10 @@ REGISTER_OP_CUDA_KERNEL(c_concat,
                         ops::CConcatOpCUDAKernel<double>,
                         ops::CConcatOpCUDAKernel<int>,
                         ops::CConcatOpCUDAKernel<int64_t>,
+<<<<<<< HEAD
 #if NCCL_VERSION_CODE >= 21000
                         ops::CConcatOpCUDAKernel<plat::bfloat16>,
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         ops::CConcatOpCUDAKernel<plat::float16>);

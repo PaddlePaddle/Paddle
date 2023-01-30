@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,6 +24,15 @@ from paddle.fluid.tests.unittests.op_test import (
     OpTestTool,
     convert_float_to_uint16,
 )
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def ref_prelu(x, weight, mode):
@@ -33,6 +43,7 @@ def ref_prelu(x, weight, mode):
     elif mode == "channel":
         if len(weight.shape) > 1:
             for i in range(x.shape[1]):
+<<<<<<< HEAD
                 result[:, i] = np.where(
                     x[:, i] > 0, x[:, i], x[:, i] * weight[0, i]
                 )
@@ -41,6 +52,14 @@ def ref_prelu(x, weight, mode):
                 result[:, i] = np.where(
                     x[:, i] > 0, x[:, i], x[:, i] * weight[i]
                 )
+=======
+                result[:, i] = np.where(x[:, i] > 0, x[:, i],
+                                        x[:, i] * weight[0, i])
+        else:
+            for i in range(x.shape[1]):
+                result[:, i] = np.where(x[:, i] > 0, x[:, i],
+                                        x[:, i] * weight[i])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif mode == "element":
         result = np.where(x[:] > 0, x[:], x[:] * weight)
 
@@ -48,6 +67,10 @@ def ref_prelu(x, weight, mode):
 
 
 class TestPReluModeChannelOneDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.mode = "element"
         self.alpha = np.random.random((1, 4, 5, 5)).astype("float32")
@@ -76,6 +99,10 @@ class TestPReluModeChannelOneDNNOp(OpTest):
 
 
 class TestPReluModeAllOneDNNOp(TestPReluModeChannelOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.mode = "all"
         self.alpha = np.random.random((1, 1, 1, 1)).astype("float32")
@@ -87,12 +114,20 @@ class TestPReluModeAllOneDNNOp(TestPReluModeChannelOneDNNOp):
 
 
 class TestPReluModeElementOneDNNOp(TestPReluModeChannelOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.mode = "element"
         self.alpha = np.random.random((1, 4, 5, 5)).astype("float32")
 
 
 class TestPReluModeChannel3DOneDNNOp(TestPReluModeChannelOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.mode = "channel"
         self.x = np.random.random((1, 100, 1)).astype("float32")
@@ -100,6 +135,10 @@ class TestPReluModeChannel3DOneDNNOp(TestPReluModeChannelOneDNNOp):
 
 
 class TestPReluModeChannelAlpha1DOneDNNOp(TestPReluModeChannelOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.mode = "channel"
         self.x = np.random.random((1, 100, 1)).astype("float32")
@@ -107,6 +146,10 @@ class TestPReluModeChannelAlpha1DOneDNNOp(TestPReluModeChannelOneDNNOp):
 
 
 class TestPReluModeAllAlpha1DOneDNNOp(TestPReluModeAllOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.mode = "channel"
         self.x = np.random.random((1, 1, 100)).astype("float32")
@@ -115,6 +158,7 @@ class TestPReluModeAllAlpha1DOneDNNOp(TestPReluModeAllOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+<<<<<<< HEAD
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestPReluBF16OneDNNOp(parent):
         def set_inputs(
@@ -123,6 +167,16 @@ def create_bf16_test_class(parent):
             self.inputs = {
                 'X': convert_float_to_uint16(self.x),
                 'Alpha': convert_float_to_uint16(self.alpha),
+=======
+
+    @OpTestTool.skip_if_not_cpu_bf16()
+    class TestPReluBF16OneDNNOp(parent):
+
+        def set_inputs(self, ):
+            self.inputs = {
+                'X': convert_float_to_uint16(self.x),
+                'Alpha': convert_float_to_uint16(self.alpha)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def set_dtype_attr(self):
@@ -138,6 +192,7 @@ def create_bf16_test_class(parent):
             elif self.mode == "channel":
                 if len(self.alpha.shape) > 1:
                     for i in range(self.x.shape[1]):
+<<<<<<< HEAD
                         self.dx[:, i] = np.where(
                             self.x[:, i] > 0,
                             dout[:, i],
@@ -150,6 +205,14 @@ def create_bf16_test_class(parent):
                             dout[:, i],
                             dout[:, i] * self.alpha[i],
                         )
+=======
+                        self.dx[:, i] = np.where(self.x[:, i] > 0, dout[:, i],
+                                                 dout[:, i] * self.alpha[0, i])
+                else:
+                    for i in range(self.x.shape[1]):
+                        self.dx[:, i] = np.where(self.x[:, i] > 0, dout[:, i],
+                                                 dout[:, i] * self.alpha[i])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self.dx
             elif self.mode == "element":
                 self.dx = np.where(self.x[:] > 0, dout[:], dout[:] * self.alpha)
@@ -163,12 +226,19 @@ def create_bf16_test_class(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
+<<<<<<< HEAD
                 core.CPUPlace(),
                 ["X", "Alpha"],
                 "Out",
                 user_defined_grads=[self.dx, self.dalpha],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
             )
+=======
+                core.CPUPlace(), ["X", "Alpha"],
+                "Out",
+                user_defined_grads=[self.dx, self.dalpha],
+                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")
     TestPReluBF16OneDNNOp.__name__ = cls_name

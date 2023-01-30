@@ -151,6 +151,7 @@ class OpConverter {
               platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                               op_desc.Type()));
         }
+<<<<<<< HEAD
         // lookup_table_v2 == lookup_table
         if (op_desc.Type() == "lookup_table_v2") {
           it = Registry<OpConverter>::Global().Lookup("lookup_table");
@@ -159,6 +160,8 @@ class OpConverter {
               platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                               op_desc.Type()));
         }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (!it) {
           it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
         }
@@ -363,6 +366,7 @@ class OpConverter {
                           "check the INFO log above for more details."));
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
+<<<<<<< HEAD
 
     for (auto& output : outputs) {
       auto* var = block_desc->FindVar(output);
@@ -383,6 +387,11 @@ class OpConverter {
               << var->Proto()->type().lod_tensor().tensor().data_type() << ")";
     }
 
+=======
+    for (auto& output : outputs) {
+      engine->DeclareOutput(output);
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     engine->FreezeNetwork();
     engine->ClearWeights();
   }
@@ -520,7 +529,11 @@ class OpConverter {
 
     int data_size = std::accumulate(
         shape.d, shape.d + shape.nbDims, 1, std::multiplies<int>());
+<<<<<<< HEAD
     std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
+=======
+    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
     for (int i = 0; i < data_size; i++) {
@@ -555,7 +568,11 @@ class OpConverter {
           "supports float, half or int32_t."));
     }
 
+<<<<<<< HEAD
     std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
+=======
+    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());

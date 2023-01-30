@@ -11,11 +11,20 @@
 
 #include "paddle/fluid/operators/temporal_shift_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 __global__ void KeTemporalShiftFwNCHW(const T* input,
                                       T* output,
@@ -160,12 +169,22 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::InvalidArgument(
                           "This kernel only runs on GPU device."));
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     int t = ctx.Attr<int>("seg_num");
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
     const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    int t = ctx.Attr<int>("seg_num");
+    float shift_ratio = ctx.Attr<float>("shift_ratio");
+    const std::string data_format_str = ctx.Attr<std::string>("data_format");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_format_str);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const int nt = input->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? input->dims()[1]
@@ -212,6 +231,7 @@ template <typename T>
 class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* output_grad =
@@ -220,6 +240,15 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
     const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
+=======
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    int t = ctx.Attr<int>("seg_num");
+    float shift_ratio = ctx.Attr<float>("shift_ratio");
+    const std::string data_format_str = ctx.Attr<std::string>("data_format");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_format_str);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const int nt = output_grad->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]

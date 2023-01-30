@@ -22,10 +22,13 @@ if(NOT WITH_DISTRIBUTE)
        "test_trt_convert_preln_residual_bias")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_preln_residual_bias")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_preln_residual_bias")
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_trt_convert_preln_residual_no_bias")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_preln_residual_no_bias")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_preln_residual_no_bias")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_c_allreduce")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_c_allreduce")
@@ -35,10 +38,13 @@ endif()
 if(WIN32)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_trt_convert_fused_token_prune")
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_preln_groupnorm_act_fuse_pass")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_element_groupnorm_act_fuse_pass")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
 endif()
@@ -98,6 +104,7 @@ if(WITH_MKLDNN)
   endforeach()
 endif()
 
+<<<<<<< HEAD
 # below are cutlass unitests
 file(
   GLOB TEST_CUTLASS
@@ -111,6 +118,8 @@ if(WITH_CUTLASS)
   endforeach()
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_MKLDNN
    AND TENSORRT_FOUND
    AND WITH_GPU)
@@ -134,13 +143,20 @@ endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_subgraph_pass PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
   set_tests_properties(test_trt_activation_pass PROPERTIES TIMEOUT 250)
+=======
+  set_tests_properties(test_trt_activation_pass PROPERTIES TIMEOUT 120)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set_tests_properties(test_trt_conv_pass PROPERTIES TIMEOUT 120)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if(WITH_NV_JETSON)
     set_tests_properties(
       test_trt_pool_op
@@ -159,6 +175,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
       test_trt_pool3d_op
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT 45)
   endif()
+<<<<<<< HEAD
+=======
+  set_tests_properties(test_trt_reduce_mean_op PROPERTIES TIMEOUT 60)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set_tests_properties(test_trt_tile_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT
                                                                       100)
@@ -174,6 +194,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   if(WITH_MKLDNN
      AND TENSORRT_FOUND
      AND WITH_GPU)
+<<<<<<< HEAD
     set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
     set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                         180)
@@ -184,6 +205,11 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_reverse_roll_fuse_pass PROPERTIES TIMEOUT 120)
     set_tests_properties(test_inplace_op_pass PROPERTIES TIMEOUT 120)
 
+=======
+    set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT
+                                                                         120)
+    set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
                          PROPERTIES TIMEOUT 60)
     set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan
@@ -196,8 +222,11 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
+<<<<<<< HEAD
     set_tests_properties(test_preln_layernorm_x_fuse_pass PROPERTIES TIMEOUT
                                                                      240)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     set_tests_properties(test_trt_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT
                                                                        240)
     set_tests_properties(test_trt_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT
@@ -221,10 +250,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_map_matmul_v2_to_mul_pass PROPERTIES TIMEOUT
                                                                      120)
       set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
       set_tests_properties(test_element_groupnorm_act_fuse_pass
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_preln_groupnorm_act_fuse_pass PROPERTIES TIMEOUT
                                                                          120)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     endif()
   endif()
 
@@ -232,7 +264,11 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_mkldnn_conv_elementwise_add_fuse_pass
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
     set_tests_properties(test_onednn_reshape_transpose_matmul_fuse_pass
+=======
+    set_tests_properties(test_mkldnn_reshape_transpose_matmul_fuse_pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          PROPERTIES TIMEOUT 100)
     set_tests_properties(test_mkldnn_mish_op PROPERTIES TIMEOUT 300)
     set_tests_properties(test_mkldnn_conv3d_op PROPERTIES TIMEOUT 300)
@@ -240,7 +276,11 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_conv_act_mkldnn_fuse_pass PROPERTIES TIMEOUT 120)
     set_tests_properties(test_conv_transpose_eltwiseadd_bn_fuse_pass
                          PROPERTIES TIMEOUT 250)
+<<<<<<< HEAD
     set_tests_properties(test_onednn_matmul_transpose_reshape_fuse_pass
+=======
+    set_tests_properties(test_mkldnn_matmul_transpose_reshape_fuse_pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          PROPERTIES TIMEOUT 100)
     set_tests_properties(test_conv_transpose_bn_fuse_pass PROPERTIES TIMEOUT
                                                                      300)
@@ -248,7 +288,11 @@ if(WITH_GPU AND TENSORRT_FOUND)
                          PROPERTIES TIMEOUT 300)
     set_tests_properties(test_mkldnn_conv_hard_swish_fuse_pass
                          PROPERTIES TIMEOUT 300)
+<<<<<<< HEAD
     set_tests_properties(test_onednn_batch_norm_act_fuse_pass PROPERTIES TIMEOUT
+=======
+    set_tests_properties(test_mkldnn_batch_norm_act_fuse_pass PROPERTIES TIMEOUT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                                          100)
     set_tests_properties(test_mkldnn_matmul_v2_transpose_reshape_fuse_pass
                          PROPERTIES TIMEOUT 100)
@@ -257,9 +301,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_conv_eltwiseadd_bn_fuse_pass PROPERTIES TIMEOUT
                                                                       300)
     set_tests_properties(test_mkldnn_conv_mish_fuse_pass PROPERTIES TIMEOUT 300)
+<<<<<<< HEAD
     set_tests_properties(test_onednn_fc_activation_fuse_pass PROPERTIES TIMEOUT
                                                                         300)
     set_tests_properties(test_onednn_fc_elementwise_add_fuse_pass
+=======
+    set_tests_properties(test_mkldnn_fc_mish_fuse_pass PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_mkldnn_fc_elementwise_add_fuse_pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass
                          PROPERTIES TIMEOUT 60)

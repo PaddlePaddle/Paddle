@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
@@ -21,6 +22,18 @@ import paddle.fluid.core as core
 
 
 class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
+=======
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
+
+
+class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_customed_config(self):
         self.build_strategy.enable_auto_fusion = True
 

@@ -18,8 +18,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/type_defs.h"
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace platform {
 
@@ -149,8 +152,11 @@ struct OperatorSupplementEvent {
           input_shapes,
       const std::map<std::string, std::vector<std::string>>& dtypes,
       const std::string& callstack,
+<<<<<<< HEAD
       const framework::AttributeMap& attributes,
       uint64_t op_id,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       uint64_t process_id,
       uint64_t thread_id)
       : timestamp_ns(timestamp_ns),
@@ -158,8 +164,11 @@ struct OperatorSupplementEvent {
         input_shapes(input_shapes),
         dtypes(dtypes),
         callstack(callstack),
+<<<<<<< HEAD
         attributes(attributes),
         op_id(op_id),
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         process_id(process_id),
         thread_id(thread_id) {}
   // timestamp of the record
@@ -171,10 +180,13 @@ struct OperatorSupplementEvent {
   std::map<std::string, std::vector<std::string>> dtypes;
   // call stack
   std::string callstack;
+<<<<<<< HEAD
   // op attributes
   framework::AttributeMap attributes;
   // op id
   uint64_t op_id;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // process id of the record
   uint64_t process_id;
   // thread id of the record

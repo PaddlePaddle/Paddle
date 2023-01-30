@@ -12,16 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
 
+=======
+import tempfile
+import unittest
+import os
+import sys
+import shutil
+import subprocess
+from paddle.distributed.fleet.launch_utils import run_with_coverage
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.auto_parallel.converter import Converter
 
 
 class TestConverter(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_converter(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "converter.py")
@@ -32,6 +46,7 @@ class TestConverter(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         cmd = (
             [sys.executable, "-u"]
             + coverage_args
@@ -45,6 +60,12 @@ class TestConverter(unittest.TestCase):
                 launch_model_path,
             ]
         )
+=======
+        cmd = [sys.executable, "-u"] + coverage_args + [
+            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
+            tmp_dir.name, launch_model_path
+        ]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         process = subprocess.Popen(cmd)
         process.wait()
@@ -66,7 +87,11 @@ class TestConverter(unittest.TestCase):
             'tmp_0': {
                 "process_shape": [1],
                 "process_group": [0],
+<<<<<<< HEAD
                 "dims_mapping": [-1],
+=======
+                "dims_mapping": [-1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
         }
         with self.assertRaises(TypeError):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 from functools import partial
@@ -25,6 +26,20 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertSliceTest(TrtLayerAutoScanTest):
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+import os
+
+
+class TrtConvertSliceTest(TrtLayerAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -37,6 +52,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                         for num_layers in [1, 2]:
                             for is_bidirec in [True, False]:
                                 dics = []
+<<<<<<< HEAD
                                 dics.append(
                                     {
                                         "hidden_size": hidden_size,
@@ -118,18 +134,82 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                         "output_dim_idx": 1,
                                     }
                                 )
+=======
+                                dics.append({
+                                    "hidden_size": hidden_size,
+                                    "input_size": input_size,
+                                    "num_layers": num_layers,
+                                    "mode": "LSTM",
+                                    "is_bidirec": is_bidirec,
+                                    "is_test": True,
+                                    "dropout_prob": 0.0,
+                                    # for my convience
+                                    "batch": batch,
+                                    "seq_len": seq_len,
+                                })
+
+                                K = 1
+                                if (dics[0]["is_bidirec"]):
+                                    K = 2
+
+                                def generate_input1():
+                                    return np.random.random([
+                                        batch, seq_len, input_size
+                                    ]).astype(np.float32) * 2 - 1
+
+                                # initial input -> hidden
+                                def generate_w0():
+                                    return np.random.random([
+                                        4 * hidden_size, input_size
+                                    ]).astype(np.float32) * 2 - 1
+
+                                # prev layer's output -> hidden
+                                def generate_w1():
+                                    return np.random.random([
+                                        4 * hidden_size, K * hidden_size
+                                    ]).astype(np.float32) * 2 - 1
+
+                                #
+                                def generate_w2():
+                                    return np.random.random([
+                                        4 * hidden_size, hidden_size
+                                    ]).astype(np.float32) * 2 - 1
+
+                                def generate_b():
+                                    return np.random.random([
+                                        4 * hidden_size
+                                    ]).astype(np.float32) * 2 - 1
+
+                                dics.append({
+                                    "dtype":
+                                    5,
+                                    "input_dim_idx":
+                                    0,
+                                    "str_value":
+                                    "0.0",
+                                    "shape": [K * num_layers, -1, hidden_size],
+                                    "output_dim_idx":
+                                    1,
+                                })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                 dics.append({"axis": [1, 0, 2]})
                                 # set  weights
                                 WeightList = [
                                     "weight" + str(i)
+<<<<<<< HEAD
                                     for i in range(
                                         4 * K * dics[0]["num_layers"]
                                     )
+=======
+                                    for i in range(4 * K *
+                                                   dics[0]["num_layers"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                 ]
                                 weights = {}
                                 for i in range((int)(len(WeightList) / 2)):
                                     # mean this weight : input->hidden
                                     # input has 2 case: initial input input_size, K * hidden form the prev layer.
+<<<<<<< HEAD
                                     if i % 2 == 0:
                                         if i <= K:
                                             weights[
@@ -174,22 +254,81 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                             "Out": ["rnn_input_data"]
                                         },
                                         "op_attrs": dics[2],
+=======
+                                    if (i % 2 == 0):
+                                        if (i <= K):
+                                            weights[
+                                                WeightList[i]] = TensorConfig(
+                                                    data_gen=partial(
+                                                        generate_w0))
+                                        else:
+                                            weights[
+                                                WeightList[i]] = TensorConfig(
+                                                    data_gen=partial(
+                                                        generate_w1))
+                                    # mean this weight : hidden->hidden
+                                    if (i % 2 == 1):
+                                        weights[WeightList[i]] = TensorConfig(
+                                            data_gen=partial(generate_w2))
+                                for i in range((int)(len(WeightList) / 2),
+                                               len(WeightList)):
+                                    weights[WeightList[i]] = TensorConfig(
+                                        data_gen=partial(generate_b))
+                                ops_config = [
+                                    {
+                                        "op_type":
+                                        "fill_constant_batch_size_like",
+                                        "op_inputs": {
+                                            "Input": ["input_data"]
+                                        },
+                                        "op_outputs": {
+                                            "Out": ["prestate1"]
+                                        },
+                                        "op_attrs": dics[1]
+                                    },
+                                    {
+                                        "op_type":
+                                        "fill_constant_batch_size_like",
+                                        "op_inputs": {
+                                            "Input": ["input_data"]
+                                        },
+                                        "op_outputs": {
+                                            "Out": ["prestate2"]
+                                        },
+                                        "op_attrs": dics[1]
+                                    },
+                                    {
+                                        "op_type": "transpose2",
+                                        "op_inputs": {
+                                            "X": ["input_data"]
+                                        },
+                                        "op_outputs": {
+                                            "Out": ["rnn_input_data"]
+                                        },
+                                        "op_attrs": dics[2]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                     },
                                     {
                                         "op_type": "rnn",
                                         "op_inputs": {
                                             "Input": ["rnn_input_data"],
                                             # prev_c, prev_h
+<<<<<<< HEAD
                                             "PreState": [
                                                 "prestate1",
                                                 "prestate2",
                                             ],
+=======
+                                            "PreState":
+                                            ["prestate1", "prestate2"],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                             "WeightList": WeightList,
                                         },
                                         "op_outputs": {
                                             "Out": ["rnn_output_data"],
                                             "State": [
                                                 "state_output_data0",
+<<<<<<< HEAD
                                                 "state_output_data1",
                                             ],
                                             "Reserve": ["reserve_data"],
@@ -199,6 +338,16 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                         },
                                         "op_attrs": dics[0],
                                     },
+=======
+                                                "state_output_data1"
+                                            ],
+                                            "Reserve": ["reserve_data"],
+                                            "DropoutState":
+                                            ["DropoutState_data"]
+                                        },
+                                        "op_attrs": dics[0]
+                                    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                 ]
                                 ops = self.generate_op_config(ops_config)
 
@@ -206,18 +355,30 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                     ops=ops,
                                     weights=weights,
                                     inputs={
+<<<<<<< HEAD
                                         "input_data": TensorConfig(
                                             data_gen=partial(generate_input1)
                                         )
                                     },
                                     outputs=["rnn_output_data"],
                                 )
+=======
+                                        "input_data":
+                                        TensorConfig(
+                                            data_gen=partial(generate_input1))
+                                    },
+                                    outputs=["rnn_output_data"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
@@ -257,7 +418,11 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         # The output has diff between gpu and trt in PR-CI-Windows-Inference
         tol_fp32 = 1e-5
         tol_half = 1e-2
+<<<<<<< HEAD
         if os.name == 'nt':
+=======
+        if (os.name == 'nt'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             tol_fp32 = 1e-2
             tol_half = 1e-1
 
@@ -265,12 +430,19 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), tol_fp32
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), tol_half
+=======
+            attrs, True), tol_fp32
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), tol_half
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test(self):
         self.run_test()

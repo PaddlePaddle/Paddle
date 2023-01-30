@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from .. import core
 from ..framework import (
     Variable,
@@ -19,6 +20,12 @@ from ..framework import (
     _varbase_creator,
     in_dygraph_mode,
 )
+=======
+from __future__ import print_function
+
+from .. import core
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 from .. import framework
@@ -74,6 +81,7 @@ def monkey_patch_math_varbase():
 
     @no_grad
     def create_tensor(value, dtype, shape):
+<<<<<<< HEAD
         if framework.global_var._in_eager_mode_:
             out = _C_ops.full(
                 shape, value, dtype, framework._current_expected_place()
@@ -91,11 +99,25 @@ def monkey_patch_math_varbase():
                 'force_cpu',
                 False,
             )
+=======
+        if framework._in_eager_mode_:
+            out = _C_ops.full(shape, value, dtype,
+                              framework._current_expected_place())
+        else:
+            out = _varbase_creator(dtype=dtype)
+            out = _legacy_C_ops.fill_constant(out, 'dtype', dtype, 'shape',
+                                              shape, 'value', value,
+                                              'force_cpu', False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out.stop_gradient = True
         return out
 
     def create_scalar(value, dtype):
+<<<<<<< HEAD
         return create_tensor(value, dtype, shape=[])
+=======
+        return create_tensor(value, dtype, shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def astype(self, dtype):
         """
@@ -122,22 +144,37 @@ def monkey_patch_math_varbase():
         """
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
+<<<<<<< HEAD
+=======
+
+        if _in_legacy_dygraph():
+            return _legacy_C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype',
+                                      dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return _C_ops.cast(self, dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
         if framework.in_dygraph_mode():
             return _C_ops.scale(var, float(scale), bias, True)
+<<<<<<< HEAD
         else:
             return _legacy_C_ops.scale(var, 'scale', scale, 'bias', bias)
+=======
+        return _legacy_C_ops.scale(var, 'scale', scale, 'bias', bias)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
 
     def _float_(var):
         numel = np.prod(var.shape)
+<<<<<<< HEAD
         assert (
             numel == 1
         ), "only one element variable can be converted to float."
+=======
+        assert numel == 1, "only one element variable can be converted to float."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
         return float(var.numpy().flatten()[0])
@@ -157,7 +194,10 @@ def monkey_patch_math_varbase():
         return int(var.numpy().flatten()[0])
 
     def _len_(var):
+<<<<<<< HEAD
         assert var.ndim > 0, "len() of a 0D tensor is wrong"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if var.type == core.VarDesc.VarType.VOCAB:
             return len(var.value().get_map_tensor())
         elif var.type == core.VarDesc.VarType.STRINGS:
@@ -167,9 +207,13 @@ def monkey_patch_math_varbase():
 
     def _index_(var):
         numel = np.prod(var.shape)
+<<<<<<< HEAD
         assert (
             numel == 1
         ), "only one element variable can be converted to python index."
+=======
+        assert numel == 1, "only one element variable can be converted to python index."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
         return int(var.numpy().flatten()[0])
@@ -189,7 +233,14 @@ def monkey_patch_math_varbase():
         perm = []
         for i in range(len(var.shape)):
             perm.insert(0, i)
+<<<<<<< HEAD
         out = _C_ops.transpose(var, perm)
+=======
+        if _in_legacy_dygraph():
+            out, _ = _legacy_C_ops.transpose2(var, 'axis', perm)
+        else:
+            out = _C_ops.transpose(var, perm)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return out
 
     def _scalar_add_(var, value):
@@ -208,6 +259,7 @@ def monkey_patch_math_varbase():
         return _scalar_elementwise_op_(var, 1.0 / value, 0.0)
 
     # for binary operator such as elementwise, compare
+<<<<<<< HEAD
     def _binary_creator_(
         method_name,
         op_type,
@@ -215,6 +267,14 @@ def monkey_patch_math_varbase():
         scalar_method=None,
         call_final_api=False,
     ):
+=======
+    def _binary_creator_(method_name,
+                         op_type,
+                         reverse=False,
+                         scalar_method=None,
+                         call_final_api=False):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def __impl__(self, other_var):
             # 1. scalar exists cases
             # we need combine the tensor.dtype and scalar.dtype, cast correct object
@@ -237,9 +297,14 @@ def monkey_patch_math_varbase():
                 # so the calculation result here and the calculation result of numpy are
                 # different after 6 decimal point. If necessary, we can also use float64 here.
                 # torch's behavior here is consistent with ours
+<<<<<<< HEAD
                 if (
                     op_type == "divide" or op_type == "elementwise_div"
                 ) and self.dtype in _supported_int_dtype_:
+=======
+                if (op_type == "divide" or op_type == "elementwise_div"
+                    ) and self.dtype in _supported_int_dtype_:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
@@ -251,13 +316,18 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
+<<<<<<< HEAD
             if framework.global_var._in_eager_mode_:
+=======
+            if framework._in_eager_mode_:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 other_var_should_be = core.eager.Tensor
             else:
                 other_var_should_be = core.VarBase
             if not isinstance(other_var, other_var_should_be):
                 if isinstance(other_var, complex):
                     import paddle
+<<<<<<< HEAD
 
                     other_var = paddle.to_tensor(other_var, dtype='complex64')
                 else:
@@ -270,17 +340,35 @@ def monkey_patch_math_varbase():
                         other_var = create_scalar(
                             value=other_var, dtype=lhs_dtype
                         )
+=======
+                    other_var = paddle.to_tensor(other_var, dtype='complex64')
+                else:
+                    if reverse:
+                        other_var = create_tensor(other_var,
+                                                  dtype=lhs_dtype,
+                                                  shape=self.shape)
+                    else:
+                        # add fill_op
+                        other_var = create_scalar(value=other_var,
+                                                  dtype=lhs_dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # 3. promote types or unify right var type to left var
             rhs_dtype = other_var.dtype
             if lhs_dtype != rhs_dtype:
                 if method_name in _supported_promote_complex_types_ and (
+<<<<<<< HEAD
                     lhs_dtype in _complex_dtypes or rhs_dtype in _complex_dtypes
                 ):
+=======
+                        lhs_dtype in _complex_dtypes
+                        or rhs_dtype in _complex_dtypes):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     # only when lhs_dtype or rhs_dtype is complex type,
                     # the dtype will promote, in other cases, directly
                     # use lhs_dtype, this is consistent will original rule
                     promote_dtype = core._promote_types_if_complex_exists(
+<<<<<<< HEAD
                         lhs_dtype, rhs_dtype
                     )
                     self = (
@@ -299,6 +387,17 @@ def monkey_patch_math_varbase():
                             lhs_dtype, rhs_dtype, lhs_dtype
                         )
                     )
+=======
+                        lhs_dtype, rhs_dtype)
+                    self = self if lhs_dtype == promote_dtype else astype(
+                        self, promote_dtype)
+                    other_var = other_var if rhs_dtype == promote_dtype else astype(
+                        other_var, promote_dtype)
+                else:
+                    warnings.warn(
+                        'The dtype of left and right variables are not the same, left dtype is {}, but right dtype is {}, the right dtype will convert to {}'
+                        .format(lhs_dtype, rhs_dtype, lhs_dtype))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     other_var = astype(other_var, lhs_dtype)
 
             if reverse:
@@ -306,9 +405,14 @@ def monkey_patch_math_varbase():
                 self = other_var
                 other_var = tmp
 
+<<<<<<< HEAD
             if (
                 op_type == "divide" or op_type == "elementwise_div"
             ) and self.dtype in _supported_int_dtype_:
+=======
+            if (op_type == "divide" or op_type == "elementwise_div"
+                ) and self.dtype in _supported_int_dtype_:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self = astype(self, 'float32')
                 other_var = astype(other_var, 'float32')
 
@@ -341,9 +445,13 @@ def monkey_patch_math_varbase():
 
         Returns:
             Tensor
+<<<<<<< HEAD
         """.format(
             comment
         )
+=======
+        """.format(comment)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         __impl__.__name__ = method_name
         return __impl__
 
@@ -360,6 +468,7 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
+<<<<<<< HEAD
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),
@@ -481,12 +590,109 @@ def monkey_patch_math_varbase():
         '__rpow__',
         '__eq__',
         '__ne__',
+=======
+        ('__add__', _binary_creator_('__add__', 'add', False, _scalar_add_,
+                                     True)) if framework._in_eager_mode_ else
+        ('__add__',
+         _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
+        ##  a+b == b+a. Do not need to reverse explicitly
+        ('__radd__',
+         _binary_creator_('__radd__', 'add', False, _scalar_add_, True))
+        if framework._in_eager_mode_ else
+        ('__radd__',
+         _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
+        ('__sub__',
+         _binary_creator_('__sub__', 'subtract', False, _scalar_sub_, True))
+        if framework._in_eager_mode_ else
+        ('__sub__',
+         _binary_creator_('__sub__', 'elementwise_sub', False, _scalar_sub_)),
+        ('__rsub__',
+         _binary_creator_('__rsub__', 'subtract', True, _scalar_rsub_, True))
+        if framework._in_eager_mode_ else
+        ('__rsub__',
+         _binary_creator_('__rsub__', 'elementwise_sub', True, _scalar_rsub_)),
+        ('__mul__',
+         _binary_creator_('__mul__', 'multiply', False, _scalar_mul_, True))
+        if framework._in_eager_mode_ else
+        ('__mul__',
+         _binary_creator_('__mul__', 'elementwise_mul', False, _scalar_mul_)),
+        ## a*b == b*a. Do not need to reverse explicitly
+        ('__rmul__',
+         _binary_creator_('__rmul__', 'multiply', False, _scalar_mul_, True))
+        if framework._in_eager_mode_ else
+        ('__rmul__',
+         _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__div__',
+         _binary_creator_('__div__', 'divide', False, _scalar_div_, True))
+        if framework._in_eager_mode_ else
+        ('__div__',
+         _binary_creator_('__div__', 'elementwise_div', False, _scalar_div_)),
+        ('__truediv__',
+         _binary_creator_('__truediv__', 'divide', False, _scalar_div_, True))
+        if framework._in_eager_mode_ else
+        ('__truediv__',
+         _binary_creator_('__truediv__', 'elementwise_div', False,
+                          _scalar_div_)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'divide', True, None, True))
+        if framework._in_eager_mode_ else
+        ('__rdiv__',
+         _binary_creator_('__rdiv__', 'elementwise_div', True, None)),
+        ('__rtruediv__',
+         _binary_creator_('rtruediv__', 'divide', True, None, True))
+        if framework._in_eager_mode_ else
+        ('__rtruediv__',
+         _binary_creator_('rtruediv__', 'elementwise_div', True, None)),
+        ('__pow__', _binary_creator_('__pow__', 'pow', False, _C_ops.pow, True))
+        if framework._in_eager_mode_ else
+        ('__pow__',
+         _binary_creator_('__pow__', 'elementwise_pow', False, None)),
+        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
+                                      None)),
+        ('__floordiv__',
+         _binary_creator_('__floordiv__', 'floor_divide', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__floordiv__',
+         _binary_creator_('__floordiv__', 'elementwise_floordiv', False, None)),
+        ('__mod__', _binary_creator_('__mod__', 'remainder', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__mod__',
+         _binary_creator_('__mod__', 'elementwise_mod', False, None)),
+        ('__matmul__',
+         _binary_creator_('__matmul__', "matmul", False, None, True))
+        if framework._in_eager_mode_ else
+        ('__matmul__',
+         _binary_creator_('__matmul__', "matmul_v2", False, None)),
+        ## for logical compare
+        ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
+        ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
+        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
+        ('__le__', _binary_creator_('__le__', 'less_equal', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
+        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None,
+                                    True)) if framework._in_eager_mode_ else
+        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None,
+                                    True)) if framework._in_eager_mode_ else
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
+        ('__array_ufunc__', None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ]
 
     global _already_patch_varbase
     global _already_patch_eager_tensor
 
+<<<<<<< HEAD
     if framework.global_var._in_eager_mode_:
+=======
+    if framework._in_eager_mode_:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         local_already_patch = _already_patch_eager_tensor
         _already_patch_eager_tensor = True
         local_tensor = core.eager.Tensor
@@ -496,6 +702,7 @@ def monkey_patch_math_varbase():
         local_tensor = core.VarBase
 
     if not local_already_patch:
+<<<<<<< HEAD
         if framework.global_var._in_eager_mode_:
             for method_name in eager_cpp_level_patch:
                 method_impl = getattr(local_tensor, method_name, None)
@@ -527,3 +734,20 @@ def monkey_patch_math_varbase():
             impl = getattr(paddle.tensor, origin_method, None)
             if impl:
                 setattr(local_tensor, magic_method, impl)
+=======
+        for method in varbase_methods:
+            method_name = method[0]
+            method_impl = method[1]
+            setattr(local_tensor, method_name, method_impl)
+    else:
+        import paddle.tensor
+        # Tensor method from module paddle.tensor
+        for method_name in paddle.tensor.tensor_method_func:
+            if hasattr(local_tensor, method_name): continue
+            method_impl = getattr(paddle.tensor, method_name, None)
+            if method_impl: setattr(local_tensor, method_name, method_impl)
+
+        for magic_method, origin_method in paddle.tensor.magic_method_func:
+            impl = getattr(paddle.tensor, origin_method, None)
+            if impl: setattr(local_tensor, magic_method, impl)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

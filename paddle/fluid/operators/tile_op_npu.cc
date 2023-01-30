@@ -18,13 +18,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 class TileNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
+=======
+    auto rank = context.Input<Tensor>("X")->dims().size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_GE(
         rank,
         1,
@@ -63,7 +71,11 @@ class TileNPUKernel : public framework::OpKernel<T> {
 
  protected:
   void Tile(const framework::ExecutionContext& context) const {
+<<<<<<< HEAD
     auto* in0 = context.Input<phi::DenseTensor>("X");
+=======
+    auto* in0 = context.Input<framework::Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto in_dims = in0->dims();
     auto repeat_times = get_repeat_times(context);
@@ -92,7 +104,11 @@ class TileNPUKernel : public framework::OpKernel<T> {
             "'repeat_times' for tile op must match after promotion.",
             vec_in_dims.size(),
             repeat_times.size()));
+<<<<<<< HEAD
     auto* out0 = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* out0 = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     framework::DDim new_in_dims = phi::make_ddim(vec_in_dims);
     framework::DDim out_dims(new_in_dims);

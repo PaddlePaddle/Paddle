@@ -30,7 +30,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/barrier.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
@@ -51,15 +54,19 @@ template <typename KeyType,
           typename GradType,
           typename GPUAccessor>
 class HeterComm {
+<<<<<<< HEAD
   using HeterCommType = HeterComm<KeyType, ValType, GradType, GPUAccessor>;
   static const int COPY_KEY = 0x01;
   static const int COPY_VAL = 0x02;
   static const int COPY_ALL = COPY_KEY | COPY_VAL;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
   HeterComm(size_t capacity,
             std::shared_ptr<HeterPsResource> resource,
+<<<<<<< HEAD
             const GPUAccessor& gpu_accessor);
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
@@ -79,12 +86,31 @@ class HeterComm {
                     KeyType* d_merged_keys,
                     uint32_t* d_restore_idx,
                     StreamType stream);
+=======
+            GPUAccessor& gpu_accessor);
+  virtual ~HeterComm();
+  HeterComm(const HeterComm&) = delete;
+  HeterComm& operator=(const HeterComm&) = delete;
+
+  void merge_keys(int gpu_num,
+                  const KeyType* d_keys,
+                  size_t len,
+                  KeyType* d_sorted_keys,
+                  KeyType* d_merged_keys,
+                  uint32_t* d_restore_idx,
+                  size_t& uniq_len);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void dynamic_merge_grad(int gpu_num,
                           KeyType* d_keys,
                           float* d_grads,
                           size_t len,
+<<<<<<< HEAD
                           int& uniq_len,        // NOLINT
                           size_t& segment_len,  // NOLINT
+=======
+                          int& uniq_len,
+                          size_t& segment_len,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           bool enable_segment_merge_grad);
   void segment_merge_grad(int gpu_num,
                           KeyType* d_keys,
@@ -93,7 +119,11 @@ class HeterComm {
                           size_t len,
                           const uint32_t* d_fea_num_info,
                           size_t uniq_len,
+<<<<<<< HEAD
                           size_t& segment_len);  // NOLINT
+=======
+                          size_t& segment_len);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void build_ps(int num,
                 KeyType* h_keys,
                 ValType* h_vals,
@@ -112,11 +142,16 @@ class HeterComm {
                   GradType* d_grads,
                   size_t len,
                   int& uniq_len);  // NOLINT
+<<<<<<< HEAD
   void dynamic_merge_grad(int gpu_num,
                           KeyType* d_keys,
                           float* d_grads,
                           size_t len,
                           int& uniq_len);  // NOLINT
+=======
+  void dynamic_merge_grad(
+      int gpu_num, KeyType* d_keys, float* d_grads, size_t len, int& uniq_len);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void pull_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
   void build_ps(int num,
                 KeyType* h_keys,
@@ -181,12 +216,19 @@ class HeterComm {
 
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
+<<<<<<< HEAD
                               int comm_size,
                               int rank_id) {
     nccl_inner_comms_ = inner_comms;
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
     rank_id_ = rank_id;
+=======
+                              int comm_size) {
+    nccl_inner_comms_ = inner_comms;
+    nccl_inter_comms_ = inter_comms;
+    node_size_ = comm_size;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
@@ -197,13 +239,21 @@ class HeterComm {
 #endif
 
   bool need_transfer(int send_id, int receive_id) {
+<<<<<<< HEAD
     return ((send_id / 4 != receive_id / 4) &&
             (send_id + 4) % device_num_ != receive_id);
+=======
+    return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   // void dump_to_cpu(int index);
 
+<<<<<<< HEAD
   int get_transfer_devid(int send_id) { return (send_id + 4) % device_num_; }
+=======
+  int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void end_pass();
 #if defined(PADDLE_WITH_CUDA)
@@ -217,6 +267,7 @@ class HeterComm {
                              uint32_t* d_sorted_idx,
                              uint32_t* d_offset,
                              uint32_t* d_merged_cnts,
+<<<<<<< HEAD
                              bool filter_zero,
                              cudaStream_t stream = 0);
 #endif
@@ -228,6 +279,10 @@ class HeterComm {
                           T* right,
                           int gpu_num,
                           StreamType stream);
+=======
+                             bool filter_zero);
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   struct Node {
     ppStream in_stream;
@@ -249,6 +304,7 @@ class HeterComm {
     int step;
     CopyTask(Path* path_, int step_) : path(path_), step(step_) {}
   };
+<<<<<<< HEAD
   // inner card
   struct InnerResource {
     uint32_t* d_idx = nullptr;
@@ -367,6 +423,33 @@ class HeterComm {
       d_merged_trans_vals =
           alloc_cache<char>(fea_num * 2 * value_bytes, trans_vals_buff);
       d_merged_push_trans_vals = &d_merged_trans_vals[fea_num * value_bytes];
+=======
+
+  struct LocalStorage {
+    LocalStorage() {}
+    void init(int size, int dev_id) {
+      place_ = platform::CUDAPlace(dev_id);
+      alloc(size, true);
+    }
+
+    void alloc(size_t size, bool force = false) {
+      if (force || size > all_keys_mem->size()) {
+        all_keys_mem.reset();
+        all_grads_mem.reset();
+        all_keys_mem = memory::Alloc(place_, size * sizeof(KeyType));
+        all_grads_mem = memory::Alloc(place_, size * sizeof(GradType));
+        all_keys = reinterpret_cast<KeyType*>(all_keys_mem->ptr());
+        all_grads = reinterpret_cast<GradType*>(all_grads_mem->ptr());
+      }
+      if (force || size > local_keys_mem->size()) {
+        local_keys_mem.reset();
+        local_grads_mem.reset();
+        local_keys_mem = memory::Alloc(place_, size * sizeof(KeyType));
+        local_grads_mem = memory::Alloc(place_, size * sizeof(GradType));
+        local_keys = reinterpret_cast<KeyType*>(local_keys_mem->ptr());
+        local_grads = reinterpret_cast<GradType*>(local_grads_mem->ptr());
+      }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
 #if defined(PADDLE_WITH_CUDA)
@@ -375,6 +458,7 @@ class HeterComm {
 #elif defined(PADDLE_WITH_XPU_KP)
     platform::XPUPlace place_;
 #endif
+<<<<<<< HEAD
     std::shared_ptr<memory::Allocation> all_keys_mem = nullptr;
     std::shared_ptr<memory::Allocation> all_grads_mem = nullptr;
 
@@ -421,6 +505,18 @@ class HeterComm {
     platform::Timer inner_barrier_;
     platform::Timer node_span_;
     platform::Timer node_barrier_;
+=======
+    std::shared_ptr<memory::Allocation> all_keys_mem;
+    std::shared_ptr<memory::Allocation> all_grads_mem;
+
+    KeyType* all_keys;
+    GradType* all_grads;
+
+    std::shared_ptr<memory::Allocation> local_keys_mem;
+    std::shared_ptr<memory::Allocation> local_grads_mem;
+    KeyType* local_keys;
+    GradType* local_grads;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   };
 
   void init_path();
@@ -456,11 +552,14 @@ class HeterComm {
                       int end_index,
                       size_t keylen,
                       size_t vallen);
+<<<<<<< HEAD
   void create_tmp_storage(void*& dest,  // NOLINT
                           int start_index,
                           int end_index,
                           size_t vallen);
   void destroy_tmp_storage(void*& p, int start_index, int end_index);  // NOLINT
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index,
                     int gpu_num,
@@ -488,6 +587,7 @@ class HeterComm {
                    size_t val_size);
 
  protected:
+<<<<<<< HEAD
   void pull_merge_sparse(const int gpu_id,
                          KeyType* d_keys,
                          float* d_vals,
@@ -642,6 +742,10 @@ class HeterComm {
                                         const cudaStream_t& stream);
   // debug time
   void print_debug_time(const int& gpu_id, bool force = false);
+=======
+  void pull_merge_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+  void pull_normal_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   using Table = HashTable<KeyType, ValType>;
   using PtrTable = HashTable<KeyType, float*>;
@@ -655,6 +759,7 @@ class HeterComm {
 
   GPUAccessor gpu_accessor_;
 
+<<<<<<< HEAD
  protected:
   int topo_aware_{0};
   std::vector<LocalStorage> storage_;
@@ -676,13 +781,27 @@ class HeterComm {
 
 #if defined(PADDLE_WITH_CUDA)
   GpuRDMAChecker* rdma_checker_ = nullptr;
+=======
+ private:
+  int topo_aware_{0};
+  std::vector<LocalStorage> storage_;
+  DynamicGradMerger merger_;
+  int feanum_{1800 * 2048};
+  int multi_node_{0};
+  int node_size_;
+
+#if defined(PADDLE_WITH_CUDA)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int multi_mf_dim_{8};
   int max_mf_dim_ = 8;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
+<<<<<<< HEAD
   int64_t start_time_ = 0;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // end namespace framework

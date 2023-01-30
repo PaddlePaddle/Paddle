@@ -172,6 +172,10 @@ bool MetaTensor::is_dense() const { return DenseTensor::classof(tensor_); }
 bool MetaTensor::is_selected_rows() const {
   return SelectedRows::classof(tensor_);
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool MetaTensor::is_tensor_array() const { return false; }
 
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {

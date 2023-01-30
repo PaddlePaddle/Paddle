@@ -20,7 +20,11 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+<<<<<<< HEAD
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -146,6 +150,7 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
                                      float shift,
                                      std::string shift_attr_name) const {
   auto inputs = op->inputs;
+<<<<<<< HEAD
   auto var_names = op->Op()->Inputs().at(input_name);
   std::vector<std::string> unique_var_names;
   for (unsigned i = 0; i < var_names.size(); i++)
@@ -154,6 +159,8 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
                   var_names[i]) == unique_var_names.end())
       unique_var_names.push_back(var_names[i]);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto output = op->outputs[0];
   PADDLE_ENFORCE_GE(inputs.size(),
                     1,
@@ -171,6 +178,10 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
   // create a quantize op desc prototype
   OpDesc q_desc;
   q_desc.SetType("quantize");
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<Node*> quantize_out_nodes(inputs.size());
   std::vector<std::string> quantize_out_node_names(inputs.size());
 
@@ -178,6 +189,7 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
   unsigned max = are_inputs_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_out * max;
 
+<<<<<<< HEAD
   for (size_t var_id = 0; var_id < unique_var_names.size(); var_id++) {
     auto index = -1;
     for (size_t it = 0; it < inputs.size(); it++) {
@@ -204,10 +216,24 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
     q_desc.SetInput("Input", std::vector<std::string>({input->Name()}));
     q_desc.SetOutput(
         "Output", std::vector<std::string>({quantize_out_node_names[var_id]}));
+=======
+  for (size_t i = 0; i < inputs.size(); i++) {
+    // Create quantize output variable
+    VarDesc quantize_out_desc(patterns::PDNodeName("quantize", "out"));
+    quantize_out_nodes[i] = g->CreateVarNode(&quantize_out_desc);
+    quantize_out_node_names[i] = quantize_out_nodes[i]->Name();
+
+    q_desc.SetAttr("Scale", scale);
+    q_desc.SetAttr("Shift", shift);
+    q_desc.SetInput("Input", std::vector<std::string>({inputs[i]->Name()}));
+    q_desc.SetOutput("Output",
+                     std::vector<std::string>({quantize_out_node_names[i]}));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     q_desc.SetAttr("is_negative_input", !are_inputs_unsigned);
     auto quantize_op = g->CreateOpNode(&q_desc);  // OpDesc will be copied.
 
     // link quantize op
+<<<<<<< HEAD
     UnlinkNodes(input, op);
     IR_NODE_LINK_TO(input, quantize_op);
     IR_NODE_LINK_TO(quantize_op, quantize_out_nodes[var_id]);
@@ -224,6 +250,12 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
       quantize_out_node_names[i] = quantize_out_nodes[id]->Name();
       IR_NODE_LINK_TO(quantize_out_nodes[id], op);
     }
+=======
+    UnlinkNodes(inputs[i], op);
+    IR_NODE_LINK_TO(inputs[i], quantize_op);
+    IR_NODE_LINK_TO(quantize_op, quantize_out_nodes[i]);
+    IR_NODE_LINK_TO(quantize_out_nodes[i], op);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   // update op's input
@@ -279,6 +311,7 @@ void CPUQuantizePass::DequantizeOutput(Graph* g,
   if (!scale_attr_name.empty()) op->Op()->SetAttr(scale_attr_name, scale);
 }
 
+<<<<<<< HEAD
 void CPUQuantizePass::DequantizeOutputs(Graph* g,
                                         Node* op,
                                         std::string output_name,
@@ -345,6 +378,8 @@ void CPUQuantizePass::DequantizeOutputs(Graph* g,
   if (!scale_attr_name.empty()) op->Op()->SetAttr(scale_attr_name, scale);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool CPUQuantizePass::AreScalesPresentForVarNames(
     std::vector<std::string> names) const {
   bool present = true;
@@ -389,7 +424,11 @@ bool CPUQuantizePass::AreScalesPresentForNodes(
   return present;
 }
 
+<<<<<<< HEAD
 std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataByName(
+=======
+std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataByName(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const std::string& name) const {
   if (var_quant_scales_->empty()) {
     auto& scales = Get<VarQuantScale>("quant_var_scales");
@@ -398,11 +437,16 @@ std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataByName(
   return var_quant_scales_->at(name);
 }
 
+<<<<<<< HEAD
 std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataForNode(
+=======
+std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataForNode(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const Node* node) const {
   return GetScaleDataByName(node->Name());
 }
 
+<<<<<<< HEAD
 phi::DenseTensor CPUQuantizePass::GetScaleTensorByName(
     const std::string& name) const {
   return GetScaleDataByName(name).second;
@@ -410,6 +454,13 @@ phi::DenseTensor CPUQuantizePass::GetScaleTensorByName(
 
 phi::DenseTensor CPUQuantizePass::GetScaleTensorForNode(
     const Node* node) const {
+=======
+LoDTensor CPUQuantizePass::GetScaleTensorByName(const std::string& name) const {
+  return GetScaleDataByName(name).second;
+}
+
+LoDTensor CPUQuantizePass::GetScaleTensorForNode(const Node* node) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return GetScaleDataForNode(node).second;
 }
 
@@ -439,6 +490,7 @@ void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
       graph, "has_quant_info", "var_quant_scales", var_quant_scales_);
 }
 
+<<<<<<< HEAD
 void CPUQuantizePass::QuantizeConv(Graph* graph,
                                    const std::string& conv_type,
                                    bool with_residual_data) const {
@@ -446,15 +498,28 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
   auto pattern = gpd.mutable_pattern();
   patterns::ConvResidual conv_pattern{pattern, name_scope_};
   conv_pattern(conv_type, with_residual_data);
+=======
+void CPUQuantizePass::QuantizeConv(
+    Graph* graph,
+    bool with_residual_data,
+    std::vector<std::string>* changed_weight) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::ConvResidual conv_pattern{pattern, name_scope_};
+  conv_pattern(with_residual_data);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int quantize_conv_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "Quantize conv2d op";
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
+<<<<<<< HEAD
     if (conv_op->Op()->Type() == "conv2d") {
       conv_op->Op()->SetType("fused_conv2d");
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // skip if should not be quantized
     if (!platform::HasOpINT8DataType(conv_op->Op())) {
@@ -520,11 +585,19 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
 
     // If the scale value of a weight is already multiplied by S8_MAX, it does
     // not need to be multiplied again
+<<<<<<< HEAD
     if (std::find(change_weight_->begin(),
                   change_weight_->end(),
                   conv_filter->Name()) == change_weight_->end()) {
       eigen_tensor *= static_cast<double>(S8_MAX);
       change_weight_->push_back(conv_filter->Name());
+=======
+    if (std::find(changed_weight->begin(),
+                  changed_weight->end(),
+                  conv_filter->Name()) == changed_weight->end()) {
+      eigen_tensor *= static_cast<double>(S8_MAX);
+      changed_weight->push_back(conv_filter->Name());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     std::vector<float> filter_scale{
@@ -566,22 +639,42 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
   AddStatis(quantize_conv_count);
 
   LogQuantizedOpsCounter(
+<<<<<<< HEAD
       conv_type,
+=======
+      "conv2d",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       quantize_conv_count,
       ((with_residual_data) ? "with residual connection" : ""));
 }
 
+<<<<<<< HEAD
 void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope_};
   fc_pattern(with_residual_data);
+=======
+void CPUQuantizePass::QuantizeFc(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::FCMKLDNN fc_pattern{pattern, name_scope_};
+  auto* fc_input = gpd.mutable_pattern()
+                       ->NewNode("fc_quantizer/input")
+                       ->AsInput()
+                       ->assert_is_op_input("fc", "Input");
+  fc_pattern(fc_input, false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int quantize_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+<<<<<<< HEAD
     VLOG(4) << "Quantize fc op " << (with_residual_data ? "with" : "without")
             << " residual data";
+=======
+    VLOG(4) << "Quantize fc op";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
 
     // skip if should not be quantized
@@ -589,7 +682,10 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
       LogQuantizationDisabled(fc);
       return;
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!fc->Op()->GetAttrIfExists<bool>("use_mkldnn")) {
       MarkAndLogCannotQuantizeOp(fc, "use_mkldnn attribute set to false");
       return;
@@ -604,6 +700,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
       return;
     }
 
+<<<<<<< HEAD
     if (with_residual_data) {
       GET_IR_NODE_FROM_SUBGRAPH(residual_data, residual_data, fc_pattern);
       if (!AreScalesPresentForNodes({residual_data})) {
@@ -624,6 +721,8 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
                     "Scale_in_eltwise");
     }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool is_input_unsigned{false};
     auto input_scale = GetScaleValueForNode(input, &is_input_unsigned);
     QuantizeInput(
@@ -654,9 +753,13 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
 
   gpd(graph, handler);
   AddStatis(quantize_fc_count);
+<<<<<<< HEAD
   LogQuantizedOpsCounter("fc",
                          quantize_fc_count,
                          with_residual_data ? "with residual connection" : "");
+=======
+  LogQuantizedOpsCounter("fc", quantize_fc_count);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void CPUQuantizePass::QuantizePool(Graph* graph) const {
@@ -858,6 +961,7 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
     bool is_output_unsigned{false};
     auto output_scale =
         GetScaleValueForNode(immutable_out, &is_output_unsigned);
+<<<<<<< HEAD
     if (immutable_type == "split") {  // ops with multiple outputs
       DequantizeOutputs(
           g, immutable_op, "Out", output_scale, is_output_unsigned);
@@ -869,6 +973,15 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
                        output_scale,
                        is_output_unsigned);
     }
+=======
+    DequantizeOutput(g,
+                     immutable_op,
+                     immutable_out,
+                     "Out",
+                     output_scale,
+                     is_output_unsigned);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ++quantize_immutable_count;
   };
 
@@ -1017,7 +1130,11 @@ void CPUQuantizePass::QuantizeElementwise(
 
     auto x_name = elementwise_op->Op()->Input("X");
     auto y_name = elementwise_op->Op()->Input("Y");
+<<<<<<< HEAD
     Node *elementwise_x{nullptr}, *elementwise_y{nullptr};
+=======
+    Node *elementwise_x, *elementwise_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for (auto& input : elementwise_op->inputs) {
       if (input->Name() == x_name[0]) elementwise_x = input;
@@ -1205,9 +1322,16 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
       auto* w_scale_node = g->CreateVarNode(&scale_var_desc);
 
       auto* w_scale_tensor_dst =
+<<<<<<< HEAD
           scope->Var(w_scale_node->Name())->GetMutable<phi::DenseTensor>();
       w_scale_tensor_dst->Resize(scale_tensor_src.dims());
       auto* dst_data = w_scale_tensor_dst->mutable_data<float>(phi::CPUPlace());
+=======
+          scope->Var(w_scale_node->Name())->GetMutable<LoDTensor>();
+      w_scale_tensor_dst->Resize(scale_tensor_src.dims());
+      auto* dst_data =
+          w_scale_tensor_dst->mutable_data<float>(platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       EigenVectorArrayMapFloat eigen_tensor_dst{dst_data,
                                                 w_scale_tensor_dst->numel()};
       eigen_tensor_dst =
@@ -1301,6 +1425,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
       param_scope(),
       platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
+<<<<<<< HEAD
   GetQuantInfo(graph);
   QuantizeConv(graph, "fused_conv2d", false /* with_residual_data */);
   QuantizeConv(graph, "fused_conv2d", true /* with_residual_data */);
@@ -1311,6 +1436,18 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizePriorBox(graph);
   QuantizeFc(graph, false /* with_residual_data */);
   QuantizeFc(graph, true /* with_residual_data */);
+=======
+  // Save the scale values of which weights have been processed to avoid
+  // secondary processing
+  std::vector<std::string> changed_weight = {};
+  GetQuantInfo(graph);
+  QuantizeConv(graph, false /* with_residual_data */, &changed_weight);
+  QuantizeConv(graph, true /* with_residual_data */, &changed_weight);
+  QuantizePool(graph);
+  QuantizeConcat(graph);
+  QuantizePriorBox(graph);
+  QuantizeFc(graph);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   QuantizeMatmul(graph, false /* with_residual_data */);
   QuantizeMatmul(graph, true /* with_residual_data */);
   QuantizeImmutable(graph, "reshape2", "X");
@@ -1318,7 +1455,10 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "slice", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
+<<<<<<< HEAD
   QuantizeImmutable(graph, "split", "X");
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   QuantizeElementwise(graph, "elementwise_add");
   QuantizeElementwise(graph, "elementwise_mul");
   QuantizeElementwise(graph, "elementwise_sub");

@@ -21,9 +21,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+<<<<<<< HEAD
 #include "paddle/fluid/inference/tensorrt/plugin/common/groupNormPluginCommon.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
+=======
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -34,7 +38,11 @@ class GroupNormPlugin : public PluginTensorRT {
     return getBaseSerializationSize() + SerializedSize(scale_) +
            SerializedSize(bias_) + SerializedSize(eps_) +
            SerializedSize(groups_) + SerializedSize(mean_shape_) +
+<<<<<<< HEAD
            SerializedSize(variance_shape_) + SerializedSize(with_fp16_);
+=======
+           SerializedSize(variance_shape_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     serializeBase(buffer);
@@ -44,7 +52,10 @@ class GroupNormPlugin : public PluginTensorRT {
     SerializeValue(&buffer, groups_);
     SerializeValue(&buffer, mean_shape_);
     SerializeValue(&buffer, variance_shape_);
+<<<<<<< HEAD
     SerializeValue(&buffer, with_fp16_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   GroupNormPlugin(const float* scale,
@@ -54,6 +65,7 @@ class GroupNormPlugin : public PluginTensorRT {
                   float eps,
                   int groups,
                   std::vector<int64_t> mean_shape,
+<<<<<<< HEAD
                   std::vector<int64_t> variance_shape,
                   bool with_fp16)
       : groups_(groups),
@@ -61,6 +73,13 @@ class GroupNormPlugin : public PluginTensorRT {
         mean_shape_(mean_shape),
         variance_shape_(variance_shape),
         with_fp16_(with_fp16) {
+=======
+                  std::vector<int64_t> variance_shape)
+      : groups_(groups),
+        eps_(eps),
+        mean_shape_(mean_shape),
+        variance_shape_(variance_shape) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     scale_.resize(scale_num);
     bias_.resize(bias_num);
     std::copy(scale, scale + scale_num, scale_.data());
@@ -74,11 +93,15 @@ class GroupNormPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &groups_);
     DeserializeValue(&serialData, &serialLength, &mean_shape_);
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
+<<<<<<< HEAD
     DeserializeValue(&serialData, &serialLength, &with_fp16_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   ~GroupNormPlugin() {}
   int initialize() TRT_NOEXCEPT override;
   GroupNormPlugin* clone() const TRT_NOEXCEPT override {
+<<<<<<< HEAD
     auto* ptr = new GroupNormPlugin(scale_.data(),
                                     scale_.size(),
                                     bias_.data(),
@@ -91,16 +114,29 @@ class GroupNormPlugin : public PluginTensorRT {
     ptr->scale_gpu_ = scale_gpu_;
     ptr->bias_gpu_ = bias_gpu_;
     return ptr;
+=======
+    return new GroupNormPlugin(scale_.data(),
+                               scale_.size(),
+                               bias_.data(),
+                               bias_.size(),
+                               eps_,
+                               groups_,
+                               mean_shape_,
+                               variance_shape_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "groupnorm_plugin";
   }
+<<<<<<< HEAD
   size_t getWorkspaceSize(int max_batch_size) const TRT_NOEXCEPT {
     return 3 * max_batch_size * groups_;
   }
   bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
       const TRT_NOEXCEPT override;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index,
                                      const nvinfer1::Dims* inputs,
@@ -117,6 +153,7 @@ class GroupNormPlugin : public PluginTensorRT {
 #endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
+<<<<<<< HEAD
   void terminate() TRT_NOEXCEPT override {
     if (bias_gpu_) {
       cudaFree(bias_gpu_);
@@ -127,17 +164,29 @@ class GroupNormPlugin : public PluginTensorRT {
       scale_gpu_ = nullptr;
     }
   };
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   std::vector<float> scale_;
   std::vector<float> bias_;
+<<<<<<< HEAD
   void* scale_gpu_;
   void* bias_gpu_;
+=======
+  framework::Tensor scale_t;
+  framework::Tensor bias_t;
+  framework::Tensor mean_t;
+  framework::Tensor variance_t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int groups_;
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
+<<<<<<< HEAD
   bool with_fp16_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 class GroupNormPluginCreator : public TensorRTPluginCreator {
  public:
@@ -163,6 +212,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
                          float eps,
                          int groups,
                          std::vector<int64_t> mean_shape,
+<<<<<<< HEAD
                          std::vector<int64_t> variance_shape,
                          bool with_fp16)
       : groups_(groups),
@@ -170,6 +220,13 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
         mean_shape_(mean_shape),
         variance_shape_(variance_shape),
         with_fp16_(with_fp16) {
+=======
+                         std::vector<int64_t> variance_shape)
+      : groups_(groups),
+        eps_(eps),
+        mean_shape_(mean_shape),
+        variance_shape_(variance_shape) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     scale_.resize(scale_num);
     bias_.resize(bias_num);
     std::copy(scale, scale + scale_num, scale_.data());
@@ -183,6 +240,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &groups_);
     DeserializeValue(&serialData, &serialLength, &mean_shape_);
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
+<<<<<<< HEAD
     DeserializeValue(&serialData, &serialLength, &with_fp16_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
@@ -198,19 +256,39 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     ptr->scale_gpu_ = scale_gpu_;
     ptr->bias_gpu_ = bias_gpu_;
     return ptr;
+=======
+  }
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
+    return new GroupNormPluginDynamic(scale_.data(),
+                                      scale_.size(),
+                                      bias_.data(),
+                                      bias_.size(),
+                                      eps_,
+                                      groups_,
+                                      mean_shape_,
+                                      variance_shape_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "groupnorm_plugin_dynamic";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
+<<<<<<< HEAD
   int initialize() TRT_NOEXCEPT override;
+=======
+  int initialize() TRT_NOEXCEPT override { return 0; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(scale_) + SerializedSize(bias_) +
            SerializedSize(eps_) + SerializedSize(groups_) +
+<<<<<<< HEAD
            SerializedSize(mean_shape_) + SerializedSize(variance_shape_) +
            SerializedSize(with_fp16_);
+=======
+           SerializedSize(mean_shape_) + SerializedSize(variance_shape_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, scale_);
@@ -219,6 +297,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, groups_);
     SerializeValue(&buffer, mean_shape_);
     SerializeValue(&buffer, variance_shape_);
+<<<<<<< HEAD
     SerializeValue(&buffer, with_fp16_);
   }
   nvinfer1::DimsExprs getOutputDimensions(
@@ -226,6 +305,13 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
       const nvinfer1::DimsExprs* inputs,
       int nb_inputs,
       nvinfer1::IExprBuilder& expr_builder)  // NOLINT
+=======
+  }
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -242,7 +328,11 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
                           int nbInputs,
                           const nvinfer1::PluginTensorDesc* outputs,
                           int nbOutputs) const TRT_NOEXCEPT override {
+<<<<<<< HEAD
     return 3 * inputs[0].dims.d[0] * groups_ * sizeof(float);
+=======
+    return 0;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
@@ -256,6 +346,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
       TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
+<<<<<<< HEAD
   void terminate() TRT_NOEXCEPT override {
     if (bias_gpu_) {
       cudaFree(bias_gpu_);
@@ -266,18 +357,31 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
       scale_gpu_ = nullptr;
     }
   };
+=======
+  // void terminate() TRT_NOEXCEPT override;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   std::vector<float> scale_;
   std::vector<float> bias_;
+<<<<<<< HEAD
   void* scale_gpu_ = nullptr;
   void* bias_gpu_ = nullptr;
+=======
+  framework::Tensor scale_t;
+  framework::Tensor bias_t;
+  framework::Tensor mean_t;
+  framework::Tensor variance_t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int groups_;
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
+<<<<<<< HEAD
   GroupNormNHWCParams params_;
   bool with_fp16_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 class GroupNormPluginDynamicCreator : public TensorRTPluginCreator {
  public:

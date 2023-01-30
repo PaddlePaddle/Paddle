@@ -21,13 +21,20 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #ifdef PADDLE_WITH_CUDA
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+<<<<<<< HEAD
 #include "paddle/phi/kernels/cast_kernel.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/executor.h"
@@ -269,7 +276,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (param_names_.count(x)) continue;
       runtime_input_names_.emplace_back(x);
     }
+<<<<<<< HEAD
     // calibration_mode is true represents we need to
+=======
+    // calibration_mode is ture represents we need to
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // generate the calibration table data.
     calibration_mode_ =
         (enable_int8_ && calibration_data_.size() == 0 && use_calib_mode_);
@@ -338,8 +349,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
       // get runtime input shapes.
       std::map<std::string, std::vector<int32_t>> runtime_input_shape;
       for (auto name : runtime_input_names_) {
+<<<<<<< HEAD
         auto &t =
             inference::analysis::GetFromScope<phi::DenseTensor>(scope, name);
+=======
+        auto &t = inference::analysis::GetFromScope<framework::LoDTensor>(scope,
+                                                                          name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         VLOG(4) << "trt engine runtime input name(" << name << "), dims("
                 << t.dims() << ")";
         auto t_shape = phi::vectorize<int32_t>(t.dims());
@@ -430,7 +446,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       std::unordered_map<std::string, size_t> calib_buffers;
       for (auto &x : input_names_) {
         if (param_names_.count(x)) continue;
+<<<<<<< HEAD
         auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
+=======
+        auto &t =
+            inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         calib_buffers[x] = t.memory_size();
         auto t_shape = phi::vectorize(t.dims());
         runtime_batch = t_shape[0];
@@ -456,7 +477,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     for (auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
+<<<<<<< HEAD
       auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
+=======
+      auto &t =
+          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       calib_data.emplace(x, t.data());
     }
     temp_calibrator->setBatch(calib_data);
@@ -474,7 +500,16 @@ class TensorRTEngineOp : public framework::OperatorBase {
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
+<<<<<<< HEAD
     // Get the total over all profiles
+=======
+    int num_inputs = 0;
+
+    num_inputs += runtime_input_names_.size();
+    //  const int num_bindings = num_inputs + Outputs("Ys").size();
+    //  std::vector<void *> buffers(num_bindings);
+    // This method returns the total over all profiles.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int num_bindings = engine->GetNbBindings();
     std::vector<void *> buffers(num_bindings, nullptr);
 
@@ -494,7 +529,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
 
       // convert input and copy to TRT engine's buffer
+<<<<<<< HEAD
       auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
+=======
+      auto &t =
+          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_GT(
           t.numel(),
           0,
@@ -509,8 +549,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       // check the input_tensor
       if (!platform::is_gpu_place(t.place())) {
+<<<<<<< HEAD
         phi::DenseTensor out;
         framework::TensorCopy(t, dev_place, dev_ctx, &out);
+=======
+        framework::Tensor out;
+        platform::CUDAPlace dst_place;
+        framework::TransDataDevice(t, dst_place, &out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         t.ShareDataWith(out);
       }
       auto t_shape = phi::vectorize<int64_t>(t.dims());
@@ -596,6 +642,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
+<<<<<<< HEAD
         auto int32_tensor =
             scope.FindVar(x + "_cast_to_INT32")->GetMutable<phi::DenseTensor>();
         *int32_tensor = phi::Cast<int64_t>(
@@ -604,10 +651,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
             phi::DataType::INT32);
         buffers[bind_index] =
             static_cast<void *>(int32_tensor->data<int32_t>());
+=======
+        buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       } else if (type == framework::proto::VarType::INT32) {
         buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else if (type == framework::proto::VarType::FP16) {
         buffers[bind_index] = static_cast<void *>(t.data<float16>());
+<<<<<<< HEAD
 #if IS_TRT_VERSION_GE(8400)
       } else if (type == framework::proto::VarType::BOOL) {
         buffers[bind_index] = static_cast<void *>(t.data<bool>());
@@ -616,13 +667,24 @@ class TensorRTEngineOp : public framework::OperatorBase {
         PADDLE_THROW(platform::errors::Fatal(
             "The TRT Engine OP only support "
             "float/int32_t/int64_t/float16/bool input."));
+=======
+      } else {
+        PADDLE_THROW(
+            platform::errors::Fatal("The TRT Engine OP only support "
+                                    "float/int32_t/int64_t/float16 input."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     }
 
     // Bind output tensor to TRT.
     int output_index = 0;
+<<<<<<< HEAD
     std::vector<int> origin_output_rank =
         Attr<std::vector<int>>("origin_output_rank");
+=======
+    std::vector<int> origin_output_dims =
+        Attr<std::vector<int>>("origin_output_dims");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
       const int bind_index =
@@ -643,7 +705,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
         for (; nb_dims > 0; nb_dims--) {
           // some 'x 1' of shape is normal, no need to remove it
           if (dims.d[nb_dims - 1] != 1 ||
+<<<<<<< HEAD
               nb_dims == origin_output_rank[output_index])
+=======
+              nb_dims == origin_output_dims[output_index])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             break;
         }
         for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
@@ -654,7 +720,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
           fluid_v,
           platform::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
+<<<<<<< HEAD
       auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+=======
+      auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       fluid_t->Resize(phi::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index,
@@ -701,6 +771,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
+<<<<<<< HEAD
 
     std::vector<int> origin_outputs_dtype =
         Attr<std::vector<int>>("origin_outputs_dtype");
@@ -723,6 +794,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
             phi::DataType::INT64);
       }
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,

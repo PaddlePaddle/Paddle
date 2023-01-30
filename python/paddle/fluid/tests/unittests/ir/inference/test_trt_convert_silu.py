@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -24,10 +25,27 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertSiluTest(TrtLayerAutoScanTest):
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+
+class TrtConvertSwishTest(TrtLayerAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def generate_input1(dims, attrs: List[Dict[str, Any]]):
             if dims == 1:
                 return np.ones([3]).astype(np.float32)
@@ -39,14 +57,22 @@ class TrtConvertSiluTest(TrtLayerAutoScanTest):
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
+<<<<<<< HEAD
             self.dims = dims
 
             ops_config = [
                 {
+=======
+            for beta in [1.0, 2.0, 3.0]:
+                self.dims = dims
+
+                ops_config = [{
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     "op_type": "silu",
                     "op_inputs": {
                         "X": ["input_data"],
                     },
+<<<<<<< HEAD
                     "op_outputs": {"Out": ["output_data"]},
                     "op_attrs": {},
                 }
@@ -69,6 +95,30 @@ class TrtConvertSiluTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+                    "op_outputs": {
+                        "Out": ["output_data"]
+                    },
+                    "op_attrs": {}
+                }]
+                ops = self.generate_op_config(ops_config)
+
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={},
+                    inputs={
+                        "input_data":
+                        TensorConfig(
+                            data_gen=partial(generate_input1, dims, {}))
+                    },
+                    outputs=["output_data"])
+
+                yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
@@ -113,23 +163,37 @@ class TrtConvertSiluTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), (1e-3, 1e-3)
+=======
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), (1e-3, 1e-3)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-3, 1e-3)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test(self):
         self.run_test()

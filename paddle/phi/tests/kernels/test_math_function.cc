@@ -26,9 +26,15 @@ inline phi::funcs::BlasT<phi::CPUContext, T> GetBlas(
 }
 
 TEST(math_function, gemm_notrans_cblas) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input2;
   phi::DenseTensor input3;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input2;
+  paddle::framework::Tensor input3;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int m = 2;
   int n = 3;
@@ -71,10 +77,17 @@ TEST(math_function, gemm_notrans_cblas) {
 #ifdef PADDLE_WITH_LIBXSMM
 template <typename T>
 void MklSmmCompare(int m, int n, int k) {
+<<<<<<< HEAD
   phi::DenseTensor mat_a;
   phi::DenseTensor mat_b;
   phi::DenseTensor mat_c_smm;
   phi::DenseTensor mat_c_mkl;
+=======
+  paddle::framework::Tensor mat_a;
+  paddle::framework::Tensor mat_b;
+  paddle::framework::Tensor mat_c_smm;
+  paddle::framework::Tensor mat_c_mkl;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* cpu_place = new paddle::platform::CPUPlace();
 
   T* A = mat_a.mutable_data<T>({m, k}, *cpu_place);
@@ -147,9 +160,15 @@ TEST(math_function, gemm_mkl_vs_smm) {
 #endif
 
 TEST(math_function, gemm_trans_cblas) {
+<<<<<<< HEAD
   phi::DenseTensor input1;
   phi::DenseTensor input2;
   phi::DenseTensor input3;
+=======
+  paddle::framework::Tensor input1;
+  paddle::framework::Tensor input2;
+  paddle::framework::Tensor input3;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int m = 2;
   int n = 3;
@@ -193,7 +212,11 @@ TEST(math_function, gemm_trans_cblas) {
 }
 
 TEST(math_function, zero) {
+<<<<<<< HEAD
   phi::DenseTensor tensor;
+=======
+  paddle::framework::Tensor tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* cpu_place = new paddle::platform::CPUPlace();
   float* t = tensor.mutable_data<float>({2, 2}, *cpu_place);
   phi::CPUContext context(*cpu_place);
@@ -214,9 +237,15 @@ TEST(math_function, zero) {
 
 template <typename T>
 void GemvTest(int m, int n, bool trans) {
+<<<<<<< HEAD
   phi::DenseTensor mat_a;
   phi::DenseTensor vec_b;
   phi::DenseTensor vec_c;
+=======
+  paddle::framework::Tensor mat_a;
+  paddle::framework::Tensor vec_b;
+  paddle::framework::Tensor vec_c;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* cpu_place = new paddle::platform::CPUPlace();
   int b_num = trans ? m : n;
   int c_num = trans ? n : m;
@@ -269,28 +298,48 @@ TEST(math_function, gemv) {
 }
 
 TEST(math_funciton, set_constant) {
+<<<<<<< HEAD
   phi::DenseTensor t;
+=======
+  paddle::framework::Tensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   t.Resize({10, 10});
   t.mutable_data<int>(paddle::platform::CPUPlace());
   auto* ctx = new phi::CPUContext();
   phi::funcs::set_constant(*ctx, &t, 10);
   for (int64_t i = 0; i < t.numel(); ++i) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(
         10,
         t.data<int>()[i],
         phi::errors::InvalidArgument("Each value of input tensor should be 10, "
                                      "but received %d.",
                                      t.data<int>()[i]));
+=======
+    PADDLE_ENFORCE_EQ(10,
+                      t.data<int>()[i],
+                      paddle::platform::errors::InvalidArgument(
+                          "Each value of input tensor should be 10, "
+                          "but received %d.",
+                          t.data<int>()[i]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   delete ctx;
 }
 
 template <typename T>
 void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
+<<<<<<< HEAD
   phi::DenseTensor mat_a;
   phi::DenseTensor mat_b;
   phi::DenseTensor mat_c_ref;
   phi::DenseTensor mat_c_mkl;
+=======
+  paddle::framework::Tensor mat_a;
+  paddle::framework::Tensor mat_b;
+  paddle::framework::Tensor mat_c_ref;
+  paddle::framework::Tensor mat_c_mkl;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* cpu_place = new paddle::platform::CPUPlace();
 
   T* A = mat_a.mutable_data<T>({m, k}, *cpu_place);

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 
 sys.path.append("..")
@@ -28,16 +29,37 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+import sys
+
+sys.path.append("..")
+import unittest
+import math
+import numpy as np
+import paddle.fluid.core as core
+from op_test_xpu import XPUOpTest
+import paddle
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestROIAlignOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'roi_align'
         self.use_dynamic_create_class = False
 
     class TestROIAlignOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_data(self):
             self.init_test_case()
             self.make_rois()
@@ -52,7 +74,11 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                 'pooled_height': self.pooled_height,
                 'pooled_width': self.pooled_width,
                 'sampling_ratio': self.sampling_ratio,
+<<<<<<< HEAD
                 'aligned': self.continuous_coordinate,
+=======
+                'aligned': self.continuous_coordinate
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.outputs = {'Out': self.out_data}
@@ -66,12 +92,17 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
             self.xpu_version = core.get_xpu_device_version(0)
 
             # n, c, h, w
+<<<<<<< HEAD
             self.x_dim = (
                 self.batch_size,
                 self.channels,
                 self.height,
                 self.width,
             )
+=======
+            self.x_dim = (self.batch_size, self.channels, self.height,
+                          self.width)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.spatial_scale = 1.0 / 2.0
             self.pooled_height = 2
@@ -83,6 +114,7 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                 self.continuous_coordinate = bool(np.random.randint(2))
             self.x = np.random.random(self.x_dim).astype(self.dtype)
 
+<<<<<<< HEAD
         def pre_calc(
             self,
             x_i,
@@ -107,10 +139,21 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
             bilinear_w = np.zeros(
                 [self.pooled_height, self.pooled_width, count, 4], np.float32
             )
+=======
+        def pre_calc(self, x_i, roi_xmin, roi_ymin, roi_bin_grid_h,
+                     roi_bin_grid_w, bin_size_h, bin_size_w):
+            count = roi_bin_grid_h * roi_bin_grid_w
+            bilinear_pos = np.zeros([
+                self.channels, self.pooled_height, self.pooled_width, count, 4
+            ], np.float32)
+            bilinear_w = np.zeros(
+                [self.pooled_height, self.pooled_width, count, 4], np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for ph in range(self.pooled_width):
                 for pw in range(self.pooled_height):
                     c = 0
                     for iy in range(roi_bin_grid_h):
+<<<<<<< HEAD
                         y = (
                             roi_ymin
                             + ph * bin_size_h
@@ -128,6 +171,15 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                                 or x < -1.0
                                 or x > self.width
                             ):
+=======
+                        y = roi_ymin + ph * bin_size_h + (iy + 0.5) * \
+                            bin_size_h / roi_bin_grid_h
+                        for ix in range(roi_bin_grid_w):
+                            x = roi_xmin + pw * bin_size_w + (ix + 0.5) * \
+                                bin_size_w / roi_bin_grid_w
+                            if y < -1.0 or y > self.height or \
+                                x < -1.0 or x > self.width:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                 continue
                             if y <= 0:
                                 y = 0
@@ -148,6 +200,7 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                             hy = 1 - ly
                             hx = 1 - lx
                             for ch in range(self.channels):
+<<<<<<< HEAD
                                 bilinear_pos[ch, ph, pw, c, 0] = x_i[
                                     ch, y_low, x_low
                                 ]
@@ -160,6 +213,16 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                                 bilinear_pos[ch, ph, pw, c, 3] = x_i[
                                     ch, y_high, x_high
                                 ]
+=======
+                                bilinear_pos[ch, ph, pw, c, 0] = x_i[ch, y_low,
+                                                                     x_low]
+                                bilinear_pos[ch, ph, pw, c, 1] = x_i[ch, y_low,
+                                                                     x_high]
+                                bilinear_pos[ch, ph, pw, c, 2] = x_i[ch, y_high,
+                                                                     x_low]
+                                bilinear_pos[ch, ph, pw, c, 3] = x_i[ch, y_high,
+                                                                     x_high]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             bilinear_w[ph, pw, c, 0] = hy * hx
                             bilinear_w[ph, pw, c, 1] = hy * lx
                             bilinear_w[ph, pw, c, 2] = ly * hx
@@ -169,6 +232,7 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
 
         def calc_roi_align(self):
             self.out_data = np.zeros(
+<<<<<<< HEAD
                 (
                     self.rois_num,
                     self.channels,
@@ -176,6 +240,10 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                     self.pooled_width,
                 )
             ).astype(self.dtype)
+=======
+                (self.rois_num, self.channels, self.pooled_height,
+                 self.pooled_width)).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             for i in range(self.rois_num):
                 roi = self.rois[i]
@@ -193,6 +261,7 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                     roi_height = max(roi_height, 1)
                 bin_size_h = float(roi_height) / float(self.pooled_height)
                 bin_size_w = float(roi_width) / float(self.pooled_width)
+<<<<<<< HEAD
                 roi_bin_grid_h = (
                     self.sampling_ratio
                     if self.sampling_ratio > 0
@@ -214,6 +283,17 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                     bin_size_h,
                     bin_size_w,
                 )
+=======
+                roi_bin_grid_h = self.sampling_ratio if self.sampling_ratio > 0 else \
+                                    math.ceil(roi_height / self.pooled_height)
+                roi_bin_grid_w = self.sampling_ratio if self.sampling_ratio > 0 else \
+                                    math.ceil(roi_width / self.pooled_width)
+                count = int(roi_bin_grid_h * roi_bin_grid_w)
+                pre_size = count * self.pooled_width * self.pooled_height
+                bilinear_pos, bilinear_w = self.pre_calc(
+                    x_i, roi_xmin, roi_ymin, int(roi_bin_grid_h),
+                    int(roi_bin_grid_w), bin_size_h, bin_size_w)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 for ch in range(self.channels):
                     align_per_bin = (bilinear_pos[ch] * bilinear_w).sum(axis=-1)
                     output_val = align_per_bin.mean(axis=-1)
@@ -226,6 +306,7 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                 self.rois_lod[0].append(bno + 1)
                 for i in range(bno + 1):
                     x1 = np.random.random_integers(
+<<<<<<< HEAD
                         0, self.width // self.spatial_scale - self.pooled_width
                     )
                     y1 = np.random.random_integers(
@@ -240,6 +321,19 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                         y1 + self.pooled_height,
                         self.height // self.spatial_scale,
                     )
+=======
+                        0, self.width // self.spatial_scale - self.pooled_width)
+                    y1 = np.random.random_integers(
+                        0,
+                        self.height // self.spatial_scale - self.pooled_height)
+
+                    x2 = np.random.random_integers(
+                        x1 + self.pooled_width,
+                        self.width // self.spatial_scale)
+                    y2 = np.random.random_integers(
+                        y1 + self.pooled_height,
+                        self.height // self.spatial_scale)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                     roi = [bno, x1, y1, x2, y2]
                     rois.append(roi)
@@ -263,6 +357,10 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, {'X'}, 'Out')
 
     class TestROIAlignInLodOp(TestROIAlignOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_data(self):
             self.init_test_case()
             self.make_rois()
@@ -273,7 +371,11 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
             self.inputs = {
                 'X': self.x,
                 'ROIs': (self.rois[:, 1:5], self.rois_lod),
+<<<<<<< HEAD
                 'RoisNum': np.asarray(seq_len).astype('int32'),
+=======
+                'RoisNum': np.asarray(seq_len).astype('int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.attrs = {
@@ -281,7 +383,11 @@ class XPUTestROIAlignOp(XPUOpTestWrapper):
                 'pooled_height': self.pooled_height,
                 'pooled_width': self.pooled_width,
                 'sampling_ratio': self.sampling_ratio,
+<<<<<<< HEAD
                 'aligned': self.continuous_coordinate,
+=======
+                'aligned': self.continuous_coordinate
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.outputs = {'Out': self.out_data}

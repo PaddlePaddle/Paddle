@@ -19,8 +19,13 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
+<<<<<<< HEAD
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+=======
+#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/common/complex.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 

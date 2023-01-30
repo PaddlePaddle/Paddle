@@ -20,14 +20,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class MatrixNMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
         platform::CPUPlace());
   }
@@ -86,16 +98,24 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                    "when 'use_gaussian' is enabled.")
         .SetDefault(2.);
     AddOutput("Out",
+<<<<<<< HEAD
               "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 6] "
               "represents the "
+=======
+              "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "detections. Each row has 6 values: "
               "[label, confidence, xmin, ymin, xmax, ymax]. "
               "the offsets in first dimension are called LoD, the number of "
               "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
               "no detected bbox.");
     AddOutput("Index",
+<<<<<<< HEAD
               "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 1] "
               "represents the "
+=======
+              "(LoDTensor) A 2-D LoDTensor with shape [No, 1] represents the "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "index of selected bbox. The index is the absolute index cross "
               "batches.");
     AddOutput("RoisNum", "(Tensor), Number of RoIs in each images.")
@@ -112,10 +132,17 @@ Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
+<<<<<<< HEAD
 image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image. Now this operator has one more
 output, which is RoisNum. The size of RoisNum is N, RoisNum[i] means the number of
+=======
+image, the offsets in first dimension of LoDTensor are called LoD, the number
+of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
+means there is no detected bbox for this image. Now this operator has one more
+output, which is RoisNum. The size of RoisNum is N, RoisNum[i] means the number of 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 detected bbox for this image.
 
 For more information on Matrix NMS, please refer to:

@@ -21,6 +21,7 @@
 namespace paddle {
 namespace distributed {
 
+<<<<<<< HEAD
 class MemRegion {
  public:
   MemRegion() {
@@ -56,6 +57,8 @@ class MemRegion {
   char* _buf;
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class SSDSparseTable : public MemorySparseTable {
  public:
   typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
@@ -73,34 +76,54 @@ class SSDSparseTable : public MemorySparseTable {
   int32_t Push(TableContext& context) override;
 
   int32_t PullSparse(float* pull_values, const uint64_t* keys, size_t num);
+<<<<<<< HEAD
   int32_t PullSparsePtr(int shard_id,
                         char** pull_values,
                         const uint64_t* keys,
                         size_t num,
                         uint16_t pass_id);
+=======
+  int32_t PullSparsePtr(char** pull_values, const uint64_t* keys, size_t num);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int32_t PushSparse(const uint64_t* keys, const float* values, size_t num);
   int32_t PushSparse(const uint64_t* keys, const float** values, size_t num);
 
   int32_t Flush() override { return 0; }
+<<<<<<< HEAD
   int32_t Shrink(const std::string& param) override;
   void Clear() override {
+=======
+  virtual int32_t Shrink(const std::string& param) override;
+  virtual void Clear() override {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (int i = 0; i < _real_local_shard_num; ++i) {
       _local_shards[i].clear();
     }
   }
 
+<<<<<<< HEAD
   int32_t Save(const std::string& path, const std::string& param) override;
   int32_t SaveWithString(const std::string& path, const std::string& param);
   int32_t SaveWithStringMultiOutput(const std::string& path,
                                     const std::string& param);
   int32_t SaveWithBinary(const std::string& path, const std::string& param);
   int32_t SaveCache(
+=======
+  virtual int32_t Save(const std::string& path,
+                       const std::string& param) override;
+  virtual int32_t SaveCache(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const std::string& path,
       const std::string& param,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel) override;
+<<<<<<< HEAD
   double GetCacheThreshold() override { return _local_show_threshold; }
   int64_t CacheShuffle(
+=======
+  virtual double GetCacheThreshold() override { return _local_show_threshold; }
+  virtual int64_t CacheShuffle(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const std::string& path,
       const std::string& param,
       double cache_threshold,
@@ -109,6 +132,7 @@ class SSDSparseTable : public MemorySparseTable {
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel,
       const std::vector<Table*>& table_ptrs) override;
+<<<<<<< HEAD
   // 加载path目录下数据
   int32_t Load(const std::string& path, const std::string& param) override;
   int32_t LoadWithString(size_t file_start_idx,
@@ -122,12 +146,27 @@ class SSDSparseTable : public MemorySparseTable {
 
   int32_t CacheTable(uint16_t pass_id) override;
 
+=======
+  //加载path目录下数据
+  virtual int32_t Load(const std::string& path,
+                       const std::string& param) override;
+  //加载path目录下数据[start_idx, end_idx)
+  virtual int32_t Load(size_t start_idx,
+                       size_t end_idx,
+                       const std::vector<std::string>& file_list,
+                       const std::string& param);
+  int64_t LocalSize();
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   RocksDBHandler* _db;
   int64_t _cache_tk_size;
   double _local_show_threshold{0.0};
+<<<<<<< HEAD
   std::vector<paddle::framework::Channel<std::string>> _fs_channel;
   std::mutex _table_mutex;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace distributed

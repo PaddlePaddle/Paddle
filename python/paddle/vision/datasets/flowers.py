@@ -12,16 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tarfile
 
+=======
+from __future__ import print_function
+
+import os
+import io
+import tarfile
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from PIL import Image
 
 import paddle
+<<<<<<< HEAD
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
 from paddle.utils import try_import
+=======
+from paddle.io import Dataset
+from paddle.utils import try_import
+from paddle.dataset.common import _check_exists_and_download
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -62,7 +76,11 @@ class Flowers(Dataset):
         :ref:`api_paddle_io_Dataset`. An instance of Flowers dataset.
 
     Examples:
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .. code-block:: python
 
             import itertools
@@ -107,6 +125,7 @@ class Flowers(Dataset):
                 # <class 'paddle.Tensor'> [3, 64, 96] [1]
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         data_file=None,
@@ -122,20 +141,37 @@ class Flowers(Dataset):
             'valid',
             'test',
         ], "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+=======
+    def __init__(self,
+                 data_file=None,
+                 label_file=None,
+                 setid_file=None,
+                 mode='train',
+                 transform=None,
+                 download=True,
+                 backend=None):
+        assert mode.lower() in ['train', 'valid', 'test'], \
+                "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if backend is None:
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
                 "Expected backend are one of ['pil', 'cv2'], but got {}".format(
+<<<<<<< HEAD
                     backend
                 )
             )
+=======
+                    backend))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.backend = backend
 
         flag = MODE_FLAG_MAP[mode.lower()]
 
         if not data_file:
+<<<<<<< HEAD
             assert (
                 download
             ), "data_file is not set and downloading automatically is disabled"
@@ -158,6 +194,24 @@ class Flowers(Dataset):
             setid_file = _check_exists_and_download(
                 setid_file, SETID_URL, SETID_MD5, 'flowers', download
             )
+=======
+            assert download, "data_file is not set and downloading automatically is disabled"
+            data_file = _check_exists_and_download(data_file, DATA_URL,
+                                                   DATA_MD5, 'flowers',
+                                                   download)
+
+        if not label_file:
+            assert download, "label_file is not set and downloading automatically is disabled"
+            label_file = _check_exists_and_download(label_file, LABEL_URL,
+                                                    LABEL_MD5, 'flowers',
+                                                    download)
+
+        if not setid_file:
+            assert download, "setid_file is not set and downloading automatically is disabled"
+            setid_file = _check_exists_and_download(setid_file, SETID_URL,
+                                                    SETID_MD5, 'flowers',
+                                                    download)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.transform = transform
 

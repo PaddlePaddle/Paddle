@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.framework import core, dygraph_only
 from paddle.fluid.layer_helper import LayerHelper
 
+=======
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import dygraph_only, core
+from paddle import in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .unary import cast
 
 __all__ = []
@@ -38,7 +45,11 @@ def matmul(x, y, name=None):
 
     Applies matrix multiplication of two Tensors.
 
+<<<<<<< HEAD
     The supported input/output Tensor type are as follows:
+=======
+    The supported input/output Tensor layout are as follows:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Note:
         x[SparseCsrTensor] @ y[SparseCsrTensor] -> out[SparseCsrTensor]
@@ -53,12 +64,21 @@ def matmul(x, y, name=None):
     is zero or more batch dimensions.
 
     Args:
+<<<<<<< HEAD
         x (SparseTensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
         y (SparseTensor|DenseTensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor/DenseTensor. The data type can be float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         SparseTensor|DenseTensor: Determined by `x` and `y` .
+=======
+        x (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
+        y (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor/DenseTensor. The data type can be float32 or float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Its layout is determined by that of `x` and `y` .
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
@@ -122,6 +142,7 @@ def masked_matmul(x, y, mask, name=None):
     where `*` is zero or more batch dimensions.
 
     Args:
+<<<<<<< HEAD
         x (DenseTensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
         y (DenseTensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
         mask (SparseTensor): The mask tensor, which can be SparseCooTensor/SparseCsrTensor. It specify sparse coordinates. The data type can be float32 or float64.
@@ -129,6 +150,15 @@ def masked_matmul(x, y, mask, name=None):
 
     Returns:
         SparseTensor: SparseCooTensor or SparseCsrTensor, which is same with `mask` .
+=======
+        x (Tensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
+        y (Tensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
+        mask (Tensor): The mask tensor, which can be SparseCooTensor/SparseCsrTensor. It specify sparse coordinates. The data type can be float32 or float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: SparseCoo or SparseCsr, which is determined by that of `mask` .
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
@@ -173,6 +203,7 @@ def mv(x, vec, name=None):
     The supported input/output Tensor layout are as follows:
 
     Note:
+<<<<<<< HEAD
         x[SparseCsrTensor] @ vec[DenseTensor] -> out[DenseTensor]
         x[SparseCooTensor] @ vec[DenseTensor] -> out[DenseTensor]
 
@@ -188,6 +219,23 @@ def mv(x, vec, name=None):
 
     Returns:
         DenseTensor: 1D DenseTensor whose dtype is same with input.
+=======
+        x[SparseCsrTensor] @ y[DenseTensor] -> out[SparseCsrTensor]
+        x[SparseCooTensor] @ y[DenseTensor] -> out[SparseCooTensor]
+
+    It supports backward propagation.
+
+    The shape of `x` should be `[M, N]` , and the shape of `y` should be `[N]` ,
+    and the shape of `out` will be `[M]` .
+
+    Args:
+        x (Tensor): The input 2D tensor. It must be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
+        y (Tensor): The input 1D tensor. It must be DenseTensor vector. The data type can be float32 or float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: 1D Tensor.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
@@ -195,6 +243,7 @@ def mv(x, vec, name=None):
 
             # required: gpu
             import paddle
+<<<<<<< HEAD
             paddle.seed(100)
 
             # csr @ dense -> dense
@@ -212,6 +261,27 @@ def mv(x, vec, name=None):
             out = paddle.sparse.mv(csr, vec)
             # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [-3.85499096, -2.42975140, -1.75087738])
+=======
+            from paddle.fluid.framework import _test_eager_guard
+            paddle.seed(100)
+
+            # csr @ dense -> dense
+            with _test_eager_guard():
+                crows = [0, 2, 3, 5]
+                cols = [1, 3, 2, 0, 1]
+                values = [1., 2., 3., 4., 5.]
+                dense_shape = [3, 4]
+                csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+                #        crows=[0, 2, 3, 5],
+                #        cols=[1, 3, 2, 0, 1],
+                #        values=[1., 2., 3., 4., 5.])
+                vec = paddle.randn([4])
+
+                out = paddle.sparse.mv(csr, vec)
+                # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                #        [-3.85499096, -2.42975140, -1.75087738])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
     return _C_ops.sparse_mv(x, vec)

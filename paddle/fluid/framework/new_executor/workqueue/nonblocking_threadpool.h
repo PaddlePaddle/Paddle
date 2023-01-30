@@ -37,7 +37,11 @@ class ThreadPoolTempl {
       : env_(env),
         allow_spinning_(allow_spinning),
         always_spinning_(always_spinning),
+<<<<<<< HEAD
         global_steal_partition_(EncodePartition(0, num_threads)),
+=======
+        global_steal_partition_(EncodePartition(0, num_threads_)),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         blocked_(0),
         num_tasks_(0),
         done_(false),

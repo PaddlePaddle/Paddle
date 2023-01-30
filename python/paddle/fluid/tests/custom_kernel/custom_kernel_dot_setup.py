@@ -14,7 +14,10 @@
 
 import os
 import site
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
@@ -29,7 +32,11 @@ class BuildExt(build_ext):
     def build_extensions(self):
         if '-Wstrict-prototypes' in self.compiler.compiler_so:
             self.compiler.compiler_so.remove('-Wstrict-prototypes')
+<<<<<<< HEAD
         super().build_extensions()
+=======
+        super(BuildExt, self).build_extensions()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # cc flags

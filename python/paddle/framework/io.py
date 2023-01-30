@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import collections
 import copyreg
 import os
@@ -22,11 +23,23 @@ from collections.abc import Iterable
 
 import numpy as np
 
+=======
+from __future__ import print_function
+
+import os
+import collections
+import pickle
+import warnings
+import sys
+import numpy as np
+import copyreg
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
+<<<<<<< HEAD
 from paddle.fluid.framework import (
     EagerParamBase,
     ParamBase,
@@ -53,6 +66,42 @@ from paddle.jit.translated_layer import (
     _construct_program_holders,
 )
 
+=======
+from paddle.fluid.io import (
+    _unpack_saved_dict,
+    _pack_loaded_dict,
+    _pickle_loads_mac,
+)
+from paddle.fluid.io import _legacy_save as _legacy_static_save
+from paddle.fluid.io import _open_file_buffer, _is_file_path, _is_memory_buffer
+
+from paddle.fluid.framework import (
+    Variable,
+    _varbase_creator,
+    _dygraph_tracer,
+    _non_static_mode,
+    ParamBase,
+    EagerParamBase,
+    _current_expected_place,
+    Program,
+)
+from paddle.fluid.dygraph.jit import _SaveLoadConfig
+from paddle.fluid.dygraph.io import (
+    _construct_program_holders,
+    _construct_params_and_buffers,
+)
+from paddle.fluid.dygraph.io import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    INFER_PARAMS_INFO_SUFFIX,
+)
+
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 __all__ = []
 
 
@@ -155,6 +204,10 @@ def _load_state_dict_from_save_params(model_path):
 #   - need [full filename] when loading
 #       - paddle.save
 #       - paddle.static.save
+<<<<<<< HEAD
+=======
+#       - paddle.fluid.save_dygraph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #   - need [prefix] when loading [compatible for paddle 2.x]
 #       - paddle.jit.save
 #       - paddle.static.save_inference_model
@@ -184,6 +237,10 @@ def _build_load_path_and_config(path, config):
         opti_file_path = path + ".pdopt"
         if os.path.exists(params_file_path) or os.path.exists(opti_file_path):
             error_msg += (
+<<<<<<< HEAD
+=======
+                " If you want to load the results saved by `fluid.save_dygraph`, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "please specify the full file name, not just the file name prefix. For "
                 "example, it should be written as `paddle.load('model.pdparams')` instead of "
                 "`paddle.load('model')`."
@@ -666,7 +723,10 @@ def save(obj, path, protocol=4, **configs):
 
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
             :name: code-example-1
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # example 1: dynamic graph
             import paddle
@@ -688,11 +748,15 @@ def save(obj, path, protocol=4, **configs):
             # save weight of emb
             paddle.save(emb.weight, "emb.weight.pdtensor")
 
+<<<<<<< HEAD
         .. code-block:: python
             :name: code-example-2
 
             # example 2: Save multiple state_dict at the same time
             import paddle
+=======
+            # example 2: Save multiple state_dict at the same time
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             from paddle import nn
             from paddle.optimizer import Adam
 
@@ -702,8 +766,11 @@ def save(obj, path, protocol=4, **configs):
             path = 'example/model.pdparams'
             paddle.save(obj, path)
 
+<<<<<<< HEAD
         .. code-block:: python
             :name: code-example-3
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # example 3: static graph
             import paddle
@@ -732,9 +799,12 @@ def save(obj, path, protocol=4, **configs):
             path_state_dict = 'temp/model.pdparams'
             paddle.save(prog.state_dict("param"), path_tensor)
 
+<<<<<<< HEAD
         .. code-block:: python
             :name: code-example-4
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # example 4: save program
             import paddle
 
@@ -747,8 +817,11 @@ def save(obj, path, protocol=4, **configs):
             path = "example/main_program.pdmodel"
             paddle.save(main_program, path)
 
+<<<<<<< HEAD
         .. code-block:: python
             :name: code-example-5
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # example 5: save object to memory
             from io import BytesIO
@@ -777,7 +850,11 @@ def save(obj, path, protocol=4, **configs):
         # 2. save object
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
+<<<<<<< HEAD
             os.makedirs(dirname, exist_ok=True)
+=======
+            os.makedirs(dirname)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif not _is_memory_buffer(path):
         raise ValueError(
             "only supports saving objects to file and `BytesIO`, but got {}".format(
@@ -853,7 +930,11 @@ def _legacy_save(obj, path, protocol=2):
         # 2. save object
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
+<<<<<<< HEAD
             os.makedirs(dirname, exist_ok=True)
+=======
+            os.makedirs(dirname)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if isinstance(obj, dict):
         saved_obj = _build_saved_state_dict(obj)
@@ -900,7 +981,11 @@ def load(path, **configs):
         directory, such as ``model`` and model is a directory.
 
     Note:
+<<<<<<< HEAD
         If you load ``state_dict`` from the saved result of static graph mode API such as
+=======
+        If you load ``state_dict`` from the saved result of static mode API such as
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
         the structured variable name in dynamic mode will cannot be restored.
         You need to set the argument ``use_structured_name=False`` when using
@@ -927,7 +1012,10 @@ def load(path, **configs):
 
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
             :name: code-example-1
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # example 1: dynamic graph
             import paddle
@@ -956,11 +1044,16 @@ def load(path, **configs):
             # load weight of emb
             load_weight = paddle.load("emb.weight.pdtensor")
 
+<<<<<<< HEAD
         .. code-block:: python
             :name: code-example-2
 
             # example 2: Load multiple state_dict at the same time
             import paddle
+=======
+
+            # example 2: Load multiple state_dict at the same time
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             from paddle import nn
             from paddle.optimizer import Adam
 
@@ -971,8 +1064,11 @@ def load(path, **configs):
             paddle.save(obj, path)
             obj_load = paddle.load(path)
 
+<<<<<<< HEAD
         .. code-block:: python
             :name: code-example-3
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # example 3: static graph
             import paddle
@@ -1003,8 +1099,11 @@ def load(path, **configs):
             paddle.save(prog.state_dict("param"), path_tensor)
             load_state_dict = paddle.load(path_tensor)
 
+<<<<<<< HEAD
         .. code-block:: python
             :name: code-example-4
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # example 4: load program
             import paddle
@@ -1020,8 +1119,11 @@ def load(path, **configs):
             load_main = paddle.load(path)
             print(load_main)
 
+<<<<<<< HEAD
         .. code-block:: python
             :name: code-example-5
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # example 5: save object to memory
             from io import BytesIO

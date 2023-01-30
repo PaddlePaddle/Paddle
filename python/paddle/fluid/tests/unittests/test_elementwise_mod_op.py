@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -23,6 +24,21 @@ import paddle.fluid as fluid
 
 
 class TestElementwiseModOp(OpTest):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from op_test import OpTest
+
+import random
+
+
+class TestElementwiseModOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_mkldnn = False
 
@@ -37,7 +53,11 @@ class TestElementwiseModOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+=======
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -60,6 +80,7 @@ class TestElementwiseModOp(OpTest):
         pass
 
 
+<<<<<<< HEAD
 class TestElementwiseModOp_ZeroDim1(TestElementwiseModOp):
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, []).astype(self.dtype)
@@ -82,6 +103,10 @@ class TestElementwiseModOp_ZeroDim3(TestElementwiseModOp):
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
+=======
+class TestElementwiseModOp_scalar(TestElementwiseModOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -91,6 +116,10 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFloat(TestElementwiseModOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -107,6 +136,10 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFp16(TestElementwiseModOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -123,11 +156,19 @@ class TestElementwiseModOpFp16(TestElementwiseModOp):
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestRemainderOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, y, name=None):
         return paddle.remainder(x, y, name)
 
@@ -151,7 +192,11 @@ class TestRemainderOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
             np_x = np.array([-3.3, 11.5, -2, 3.5])
+<<<<<<< HEAD
             np_y = np.array([-1.2, 2.0, 3.3, -2.3])
+=======
+            np_y = np.array([-1.2, 2., 3.3, -2.3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x = paddle.to_tensor(np_x)
             y = paddle.to_tensor(np_y)
             z = x % y
@@ -168,11 +213,19 @@ class TestRemainderOp(unittest.TestCase):
 
 
 class TestRemainderInplaceOp(TestRemainderOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, y, name=None):
         return x.remainder_(y, name)
 
 
 class TestRemainderInplaceBroadcastSuccess(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 4).astype('float')
         self.y_numpy = np.random.rand(3, 4).astype('float')
@@ -188,17 +241,29 @@ class TestRemainderInplaceBroadcastSuccess(unittest.TestCase):
         paddle.enable_static()
 
 
+<<<<<<< HEAD
 class TestRemainderInplaceBroadcastSuccess2(
     TestRemainderInplaceBroadcastSuccess
 ):
+=======
+class TestRemainderInplaceBroadcastSuccess2(TestRemainderInplaceBroadcastSuccess
+                                            ):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
         self.y_numpy = np.random.rand(3, 1).astype('float')
 
 
+<<<<<<< HEAD
 class TestRemainderInplaceBroadcastSuccess3(
     TestRemainderInplaceBroadcastSuccess
 ):
+=======
+class TestRemainderInplaceBroadcastSuccess3(TestRemainderInplaceBroadcastSuccess
+                                            ):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')

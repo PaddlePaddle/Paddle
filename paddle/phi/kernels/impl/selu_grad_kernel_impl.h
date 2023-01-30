@@ -28,7 +28,11 @@ void SeluGradKernel(const Context& dev_ctx,
   SeluGradFunctor<T> functor(
       out.data<T>(), dout.data<T>(), alpha, scale, dx_ptr);
   size_t limit = static_cast<size_t>(out.numel());
+<<<<<<< HEAD
   phi::funcs::ForRange<Context> for_range(dev_ctx, limit);
+=======
+  paddle::platform::ForRange<Context> for_range(dev_ctx, limit);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for_range(functor);
 }
 }  // namespace phi

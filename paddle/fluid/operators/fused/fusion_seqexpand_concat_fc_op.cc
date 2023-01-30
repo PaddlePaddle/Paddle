@@ -16,7 +16,11 @@ limitations under the License. */
 
 #include <string>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
@@ -102,14 +106,22 @@ void FusionSeqExpandConcatFCOp::InferShape(
   ctx->ShareLoD("X", "Out", 0);
 }
 
+<<<<<<< HEAD
 phi::KernelKey FusionSeqExpandConcatFCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                         ctx.GetPlace());
+=======
+framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void FusionSeqExpandConcatFCOpMaker::Make() {
   AddInput("X",
+<<<<<<< HEAD
            "(phi::DenseTensor) input LodDTensors, the first one must be have "
            "ref lod "
            "for sequence expand, and the rest input should have same lod.")
@@ -121,6 +133,17 @@ void FusionSeqExpandConcatFCOpMaker::Make() {
   AddOutput(
       "FCOut",
       "(phi::DenseTensor) the intermediate tensor to keep the result of fc."
+=======
+           "(LoDTensor) input LodDTensors, the first one must be have ref lod "
+           "for sequence expand, and the rest input should have same lod.")
+      .AsDuplicable();
+  AddInput("FCWeight", "(Tensor) the weights of fc.");
+  AddInput("FCBias", "(Tensor, optional) the bias of fc.").AsDispensable();
+  AddOutput("Out", "(LoDTensor) Output LodTensor.");
+  AddOutput(
+      "FCOut",
+      "(Tensor) the intermediate tensor to keep the result of fc."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "Shape is (N x D), where N is the batch size, D is the output dim of fc")
       .AsIntermediate();
   AddAttr<std::string>("fc_activation",
@@ -152,11 +175,19 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = phi::CPUContext;
+<<<<<<< HEAD
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto* w = ctx.Input<phi::DenseTensor>("FCWeight");
     auto* b = ctx.Input<phi::DenseTensor>("FCBias");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* fc_out = ctx.Output<phi::DenseTensor>("FCOut");
+=======
+    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto* w = ctx.Input<Tensor>("FCWeight");
+    auto* b = ctx.Input<Tensor>("FCBias");
+    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* fc_out = ctx.Output<Tensor>("FCOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto* ref_in = ins[0];
     auto ref_lod = ref_in->lod();
@@ -225,11 +256,19 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
 
     std::function<void(const int, const T*, T*)> fc_act;
     auto& fc_act_str = ctx.Attr<std::string>("fc_activation");
+<<<<<<< HEAD
     if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
       phi::funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;
       fc_act = act_functor(fc_act_str);
     } else {
       phi::funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;
+=======
+    if (platform::MayIUse(platform::avx)) {
+      phi::funcs::VecActivations<T, platform::avx> act_functor;
+      fc_act = act_functor(fc_act_str);
+    } else {
+      phi::funcs::VecActivations<T, platform::isa_any> act_functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       fc_act = act_functor(fc_act_str);
     }
 

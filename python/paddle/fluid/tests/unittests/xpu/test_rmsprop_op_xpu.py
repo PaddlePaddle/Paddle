@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -30,10 +31,27 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+
+import paddle
+import paddle.fluid.core as core
+
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
+<<<<<<< HEAD
 def calculate_rmsprop_by_numpy(
     param, grad, mean_square, moment, learning_rate, epsilon, decay, momentum
 ):
@@ -41,16 +59,31 @@ def calculate_rmsprop_by_numpy(
     moment_out = momentum * moment + learning_rate * grad / np.sqrt(
         mean_square_out + epsilon
     )
+=======
+def calculate_rmsprop_by_numpy(param, grad, mean_square, moment, learning_rate,
+                               epsilon, decay, momentum):
+    mean_square_out = decay * mean_square + (1 - decay) * grad * grad
+    moment_out = momentum * moment + learning_rate * grad / np.sqrt(
+        mean_square_out + epsilon)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     param_out = param - moment_out
     return param_out, mean_square_out, moment_out
 
 
 class XPUTestRMSPropOP(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'rmsprop'
         self.use_dynamic_create_class = False
 
     class TestRMSPropOPBase(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.xpu_version = core.get_xpu_device_version(0)
@@ -62,6 +95,7 @@ class XPUTestRMSPropOP(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.init_config()
 
+<<<<<<< HEAD
             self.param = np.random.uniform(-1, 1, self.input_shape).astype(
                 self.dtype
             )
@@ -81,6 +115,21 @@ class XPUTestRMSPropOP(XPUOpTestWrapper):
             self.mean_grad_out = np.random.uniform(
                 -1, 1, self.input_shape
             ).astype(self.dtype)
+=======
+            self.param = np.random.uniform(-1, 1,
+                                           self.input_shape).astype(self.dtype)
+            self.grad = np.random.uniform(-1, 1,
+                                          self.input_shape).astype(self.dtype)
+            self.mean_square = np.random.uniform(0, 1, self.input_shape).astype(
+                self.dtype)
+            self.moment = np.random.uniform(-1, 1,
+                                            self.input_shape).astype(self.dtype)
+
+            self.mean_grad = np.random.uniform(-1, 1, self.input_shape).astype(
+                self.dtype)
+            self.mean_grad_out = np.random.uniform(
+                -1, 1, self.input_shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             param_out, mean_square_out, moment_out = calculate_rmsprop_by_numpy(
                 param=self.param,
@@ -90,8 +139,12 @@ class XPUTestRMSPropOP(XPUOpTestWrapper):
                 learning_rate=self.learning_rate,
                 epsilon=self.epsilon,
                 decay=self.decay,
+<<<<<<< HEAD
                 momentum=self.momentum,
             )
+=======
+                momentum=self.momentum)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.inputs = {
                 'Param': self.param,
                 'Grad': self.grad,
@@ -106,22 +159,36 @@ class XPUTestRMSPropOP(XPUOpTestWrapper):
                 'epsilon': self.epsilon,
                 'decay': self.decay,
                 'momentum': self.momentum,
+<<<<<<< HEAD
                 'centered': False,  # TODO(houj04): when XDNN api supports 'center = True', add more test cases
+=======
+                'centered':
+                False,  # TODO(houj04): when XDNN api supports 'center = True', add more test cases
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {
                 'ParamOut': param_out,
                 'MomentOut': moment_out,
                 'MeanSquareOut': mean_square_out,
+<<<<<<< HEAD
                 'MeanGradOut': self.mean_grad_out,
+=======
+                'MeanGradOut': self.mean_grad_out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def init_dtype(self):
             self.dtype = np.float32
 
         def test_check_output(self):
+<<<<<<< HEAD
             self.check_output_with_place(
                 self.place, no_check_set=['MeanGradOut']
             )
+=======
+            self.check_output_with_place(self.place,
+                                         no_check_set=['MeanGradOut'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def init_config(self):
             self.input_shape = [864]
@@ -131,6 +198,10 @@ class XPUTestRMSPropOP(XPUOpTestWrapper):
             self.momentum = 0.1
 
     class XPUTestRMSProp1(TestRMSPropOPBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.input_shape = [2, 768]
             self.learning_rate = np.array([0.002]).astype(self.dtype)
@@ -139,6 +210,10 @@ class XPUTestRMSPropOP(XPUOpTestWrapper):
             self.momentum = 0.1
 
     class XPUTestRMSProp2(TestRMSPropOPBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.input_shape = [3, 8, 4096]
             self.learning_rate = np.array([0.005]).astype(self.dtype)
@@ -147,6 +222,10 @@ class XPUTestRMSPropOP(XPUOpTestWrapper):
             self.momentum = 0
 
     class XPUTestRMSProp3(TestRMSPropOPBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.input_shape = [1024]
             self.learning_rate = np.array([0.01]).astype(self.dtype)
@@ -155,6 +234,10 @@ class XPUTestRMSPropOP(XPUOpTestWrapper):
             self.momentum = 0.02
 
     class XPUTestRMSProp4(TestRMSPropOPBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.input_shape = [2, 2, 255]
             self.learning_rate = np.array([0.0005]).astype(self.dtype)
@@ -163,6 +246,7 @@ class XPUTestRMSPropOP(XPUOpTestWrapper):
             self.momentum = 0.002
 
 
+<<<<<<< HEAD
 class TestBase(unittest.TestCase):
     def setup(
         self, place, is_sparse, centered, size, row_num=None, epsilon=1e-6
@@ -342,6 +426,8 @@ class TestRmspropOp(TestBase):
                     )
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 support_types = get_xpu_op_support_types('rmsprop')
 for stype in support_types:
     create_test_class(globals(), XPUTestRMSPropOP, stype)

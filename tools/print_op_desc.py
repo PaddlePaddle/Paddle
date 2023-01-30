@@ -42,10 +42,17 @@ Usage:
     python print_op_desc.py > op_desc.spec
 """
 
+<<<<<<< HEAD
 import json
 
 import paddle.fluid.framework as framework
 from paddle.fluid import core
+=======
+import paddle.fluid.framework as framework
+from paddle.fluid import core
+import json
+from paddle import compat as cpt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 INPUTS = "Inputs"
 OUTPUTS = "Outputs"
@@ -64,7 +71,11 @@ QUANT = "quant"
 
 
 def get_attr_default_value(op_name):
+<<<<<<< HEAD
     return core.get_op_attrs_default_value(op_name.encode())
+=======
+    return core.get_op_attrs_default_value(cpt.to_bytes(op_name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_vars_info(op_vars_proto):
@@ -88,11 +99,16 @@ def get_attrs_info(op_proto, op_attrs_proto):
         attrs_info[attr_name] = {}
         attrs_info[attr_name][TYPE] = attr_proto.type
         attrs_info[attr_name][GENERATED] = attr_proto.generated
+<<<<<<< HEAD
         attrs_info[attr_name][DEFAULT_VALUE] = (
             attrs_default_values[attr_name]
             if attr_name in attrs_default_values
             else None
         )
+=======
+        attrs_info[attr_name][DEFAULT_VALUE] = attrs_default_values[
+            attr_name] if attr_name in attrs_default_values else None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         attrs_info[attr_name][EXTRA] = attr_proto.extra
         attrs_info[attr_name][QUANT] = attr_proto.quant
     return attrs_info

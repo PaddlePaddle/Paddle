@@ -15,7 +15,11 @@
 import paddle
 from paddle.distribution import exponential_family
 from paddle.fluid.data_feeder import check_variable_and_dtype
+<<<<<<< HEAD
 from paddle.fluid.framework import in_dygraph_mode
+=======
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -23,6 +27,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
     r"""
     Dirichlet distribution with parameter "concentration".
 
+<<<<<<< HEAD
     The Dirichlet distribution is defined over the `(k-1)-simplex` using a
     positive, lenght-k vector concentration(`k > 1`).
     The Dirichlet is identically the Beta distribution when `k = 2`.
@@ -37,18 +42,43 @@ class Dirichlet(exponential_family.ExponentialFamily):
         f(\boldsymbol X; \boldsymbol \alpha) = \frac{1}{B(\boldsymbol \alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1}
 
     where :math:`\boldsymbol \alpha = {\alpha_1,...,\alpha_k}, k \ge 2` is
+=======
+    The Dirichlet distribution is defined over the `(k-1)-simplex` using a 
+    positive, lenght-k vector concentration(`k > 1`).
+    The Dirichlet is identically the Beta distribution when `k = 2`.
+
+    For independent and identically distributed continuous random variable 
+    :math:`\boldsymbol X \in R_k` , and support 
+    :math:`\boldsymbol X \in (0,1), ||\boldsymbol X|| = 1` , 
+    The probability density function (pdf) is
+
+    .. math::
+    
+        f(\boldsymbol X; \boldsymbol \alpha) = \frac{1}{B(\boldsymbol \alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1} 
+
+    where :math:`\boldsymbol \alpha = {\alpha_1,...,\alpha_k}, k \ge 2` is 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     parameter, the normalizing constant is the multivariate beta function.
 
     .. math::
 
         B(\boldsymbol \alpha) = \frac{\prod_{i=1}^{k} \Gamma(\alpha_i)}{\Gamma(\alpha_0)}
 
+<<<<<<< HEAD
     :math:`\alpha_0=\sum_{i=1}^{k} \alpha_i` is the sum of parameters,
     :math:`\Gamma(\alpha)` is gamma function.
 
     Args:
         concentration (Tensor): "Concentration" parameter of dirichlet
             distribution, also called :math:`\alpha`. When it's over one
+=======
+    :math:`\alpha_0=\sum_{i=1}^{k} \alpha_i` is the sum of parameters, 
+    :math:`\Gamma(\alpha)` is gamma function.
+
+    Args:
+        concentration (Tensor): "Concentration" parameter of dirichlet 
+            distribution, also called :math:`\alpha`. When it's over one 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dimension, the last axis denotes the parameter of distribution,
             ``event_shape=concentration.shape[-1:]`` , axes other than last are
             condsider batch dimensions with ``batch_shape=concentration.shape[:-1]`` .
@@ -73,11 +103,19 @@ class Dirichlet(exponential_family.ExponentialFamily):
     def __init__(self, concentration):
         if concentration.dim() < 1:
             raise ValueError(
+<<<<<<< HEAD
                 "`concentration` parameter must be at least one dimensional"
             )
 
         self.concentration = concentration
         super().__init__(concentration.shape[:-1], concentration.shape[-1:])
+=======
+                "`concentration` parameter must be at least one dimensional")
+
+        self.concentration = concentration
+        super(Dirichlet, self).__init__(concentration.shape[:-1],
+                                        concentration.shape[-1:])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def mean(self):
@@ -97,8 +135,12 @@ class Dirichlet(exponential_family.ExponentialFamily):
         """
         concentration0 = self.concentration.sum(-1, keepdim=True)
         return (self.concentration * (concentration0 - self.concentration)) / (
+<<<<<<< HEAD
             concentration0.pow(2) * (concentration0 + 1)
         )
+=======
+            concentration0.pow(2) * (concentration0 + 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def sample(self, shape=()):
         """Sample from dirichlet distribution.
@@ -126,11 +168,17 @@ class Dirichlet(exponential_family.ExponentialFamily):
         Args:
             value (Tensor): Value to be evaluated.
         """
+<<<<<<< HEAD
         return (
             (paddle.log(value) * (self.concentration - 1.0)).sum(-1)
             + paddle.lgamma(self.concentration.sum(-1))
             - paddle.lgamma(self.concentration).sum(-1)
         )
+=======
+        return ((paddle.log(value) * (self.concentration - 1.0)).sum(-1) +
+                paddle.lgamma(self.concentration.sum(-1)) -
+                paddle.lgamma(self.concentration).sum(-1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def entropy(self):
         """Entropy of Dirichlet distribution.
@@ -140,6 +188,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
         """
         concentration0 = self.concentration.sum(-1)
         k = self.concentration.shape[-1]
+<<<<<<< HEAD
         return (
             paddle.lgamma(self.concentration).sum(-1)
             - paddle.lgamma(concentration0)
@@ -152,12 +201,24 @@ class Dirichlet(exponential_family.ExponentialFamily):
     @property
     def _natural_parameters(self):
         return (self.concentration,)
+=======
+        return (paddle.lgamma(self.concentration).sum(-1) -
+                paddle.lgamma(concentration0) -
+                (k - concentration0) * paddle.digamma(concentration0) -
+                ((self.concentration - 1.0) *
+                 paddle.digamma(self.concentration)).sum(-1))
+
+    @property
+    def _natural_parameters(self):
+        return (self.concentration, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _log_normalizer(self, x):
         return x.lgamma().sum(-1) - paddle.lgamma(x.sum(-1))
 
 
 def _dirichlet(concentration, name=None):
+<<<<<<< HEAD
 
     if in_dygraph_mode():
         return paddle._C_ops.dirichlet(concentration)
@@ -176,4 +237,23 @@ def _dirichlet(concentration, name=None):
             outputs={'Out': out},
             attrs={},
         )
+=======
+    op_type = 'dirichlet'
+
+    check_variable_and_dtype(concentration, 'concentration',
+                             ['float32', 'float64'], op_type)
+
+    if in_dygraph_mode():
+        return paddle._C_ops.dirichlet(concentration)
+    elif _in_legacy_dygraph():
+        return paddle._legacy_C_ops.dirichlet(concentration)
+    else:
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=concentration.dtype)
+        helper.append_op(type=op_type,
+                         inputs={"Alpha": concentration},
+                         outputs={'Out': out},
+                         attrs={})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return out

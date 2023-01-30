@@ -14,15 +14,19 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/attribute.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 // This file is to be compatible with the bad design and
 // implementation of fluid in the past
 
@@ -148,6 +152,8 @@ inline ExtraAttrPropertySet GetExtraAttrProperties(
   return ExtraAttrPropertySet();
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 struct ExtraAttrChecker {
   ExtraAttrChecker(const std::string& attr_name, T default_value)
@@ -200,6 +206,7 @@ class ExtraInfoUtils {
     return empty_extra_attrs_checker_;
   }
 
+<<<<<<< HEAD
   const std::vector<std::string>& GetExtraInputNamesMap(
       const std::string& op_type) const {
     auto iter = g_extra_input_names_map_.find(op_type);
@@ -209,6 +216,8 @@ class ExtraInfoUtils {
     return empty_extra_input_names_;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   ExtraInfoUtils();
 
@@ -221,6 +230,7 @@ class ExtraInfoUtils {
       g_extra_attrs_checker_;
   std::vector<std::function<void(framework::AttributeMap*, bool)>>
       empty_extra_attrs_checker_{};
+<<<<<<< HEAD
 
   // TODO(chenweihang): move these extra inputs into op_compat.yaml
   std::unordered_map<std::string, std::vector<std::string>>
@@ -229,6 +239,8 @@ class ExtraInfoUtils {
                                   {"conv2d_grad", {"Bias"}},
                                   {"matmul_v2", {"ResidualData"}}};
   std::vector<std::string> empty_extra_input_names_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace operators

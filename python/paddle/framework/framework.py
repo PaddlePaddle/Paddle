@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from contextlib import contextmanager
 
 import numpy as np
@@ -20,6 +21,14 @@ from paddle.fluid.framework import _dygraph_tracer
 
 # TODO: define framework api
 from paddle.fluid.layer_helper_base import LayerHelperBase
+=======
+# TODO: define framework api
+from paddle.fluid.layer_helper_base import LayerHelperBase
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.framework import _dygraph_tracer
+import numpy as np
+from contextlib import contextmanager
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -43,7 +52,10 @@ def set_default_dtype(d):
 
     """
     if isinstance(d, type):
+<<<<<<< HEAD
         # This branch is for NumPy scalar types
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if d in [np.float16, np.float32, np.float64]:
             d = d.__name__
         else:
@@ -52,11 +64,27 @@ def set_default_dtype(d):
                 ", but received %s" % d.__name__
             )
     else:
+<<<<<<< HEAD
         # This branch is for np.dtype and str
         if d in ['float16', 'float32', 'float64']:
             # NOTE(SigureMo): Since the np.dtype object is not an instance of
             # type, so it will not be handled by the previous branch. We need
             # to convert it to str here.
+=======
+        if d in [
+            'float16',
+            'float32',
+            'float64',
+            u'float16',
+            u'float32',
+            u'float64',
+        ]:
+            # this code is a little bit dangerous, since error could happen
+            # when casting no-ascii code to str in python2.
+            # but since the set itself is limited, so currently, it is good.
+            # however, jointly supporting python2 and python3, (as well as python4 maybe)
+            # may still be a long-lasting problem.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             d = str(d)
         else:
             raise TypeError(
@@ -93,9 +121,12 @@ def set_grad_enabled(mode):
     Args:
         mode(bool): whether to enable (`True`), or disable (`False`) grad.
 
+<<<<<<< HEAD
     Returns:
         None.
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
         .. code-block:: python
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import sys
 import tarfile
@@ -23,6 +24,22 @@ import numpy as np
 import paddle.fluid.incubate.fleet.utils.utils as utils
 from paddle.dataset.common import download
 from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+=======
+from __future__ import print_function
+import paddle
+import paddle.fluid as fluid
+import unittest
+import numpy as np
+import tarfile
+import tempfile
+import os
+import sys
+from paddle.dataset.common import download, DATA_HOME
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+import paddle.fluid.incubate.fleet.utils.utils as utils
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestFleetUtils(unittest.TestCase):
@@ -33,9 +50,14 @@ class TestFleetUtils(unittest.TestCase):
     train_dir = os.path.join("fleet_util_data", "train_program")
 
     def download_files(self):
+<<<<<<< HEAD
         path = download(
             self.proto_data_url, self.module_name, self.proto_data_md5
         )
+=======
+        path = download(self.proto_data_url, self.module_name,
+                        self.proto_data_md5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print('data is downloaded at ' + path)
         tar = tarfile.open(path)
         unzip_folder = tempfile.mkdtemp()
@@ -53,6 +75,7 @@ class TestFleetUtils(unittest.TestCase):
         text_program = "pruned_main_program.pbtxt"
         binary_program = "pruned_main_program.bin"
         fleet_util = FleetUtil()
+<<<<<<< HEAD
         text_to_binary = fleet_util.program_type_trans(
             program_dir, text_program, True
         )
@@ -65,10 +88,21 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(
             os.path.exists(os.path.join(program_dir, binary_to_text))
         )
+=======
+        text_to_binary = fleet_util.program_type_trans(program_dir,
+                                                       text_program, True)
+        binary_to_text = fleet_util.program_type_trans(program_dir,
+                                                       binary_program, False)
+        self.assertTrue(
+            os.path.exists(os.path.join(program_dir, text_to_binary)))
+        self.assertTrue(
+            os.path.exists(os.path.join(program_dir, binary_to_text)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_parse_program_proto(self):
         data_dir = self.download_files()
         parse_program_file_path = os.path.join(
+<<<<<<< HEAD
             data_dir, os.path.join(self.pruned_dir, "pruned_main_program.pbtxt")
         )
         is_text_parse_program = True
@@ -82,6 +116,19 @@ class TestFleetUtils(unittest.TestCase):
         vars_persistable = os.path.join(
             parse_output_dir, "vars_persistable.log"
         )
+=======
+            data_dir, os.path.join(self.pruned_dir,
+                                   "pruned_main_program.pbtxt"))
+        is_text_parse_program = True
+        parse_output_dir = os.path.join(data_dir, self.pruned_dir)
+        fleet_util = FleetUtil()
+        fleet_util.parse_program_proto(parse_program_file_path,
+                                       is_text_parse_program, parse_output_dir)
+        ops_log = os.path.join(parse_output_dir, "ops.log")
+        vars_log = os.path.join(parse_output_dir, "vars_all.log")
+        vars_persistable = os.path.join(parse_output_dir,
+                                        "vars_persistable.log")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue(os.path.exists(ops_log))
         self.assertTrue(os.path.exists(vars_log))
         self.assertTrue(os.path.exists(vars_persistable))
@@ -98,7 +145,11 @@ class TestFleetUtils(unittest.TestCase):
         feed_config.feeded_vars_types = [np.float32, np.float32]
         feed_config.feeded_vars_filelist = [
             os.path.join(data_dir, os.path.join(self.pruned_dir, "concat_1")),
+<<<<<<< HEAD
             os.path.join(data_dir, os.path.join(self.pruned_dir, "concat_2")),
+=======
+            os.path.join(data_dir, os.path.join(self.pruned_dir, "concat_2"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
         fetch_config = config()
@@ -115,9 +166,13 @@ class TestFleetUtils(unittest.TestCase):
 
         fleet_util = FleetUtil()
         # test saved var's shape
+<<<<<<< HEAD
         conf.dump_program_filename = (
             "pruned_main_program.save_var_shape_not_match"
         )
+=======
+        conf.dump_program_filename = "pruned_main_program.save_var_shape_not_match"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertRaises(Exception, fleet_util.check_vars_and_dump, conf)
 
         # test program.proto without feed_op and fetch_op
@@ -125,6 +180,7 @@ class TestFleetUtils(unittest.TestCase):
         results = fleet_util.check_vars_and_dump(conf)
         self.assertTrue(len(results) == 1)
         np.testing.assert_array_almost_equal(
+<<<<<<< HEAD
             results[0], np.array([[3.0590223e-07]], dtype=np.float32)
         )
 
@@ -132,6 +188,12 @@ class TestFleetUtils(unittest.TestCase):
         conf.dump_program_filename = (
             "pruned_main_program.feed_var_shape_not_match"
         )
+=======
+            results[0], np.array([[3.0590223e-07]], dtype=np.float32))
+
+        # test feed_var's shape
+        conf.dump_program_filename = "pruned_main_program.feed_var_shape_not_match"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertRaises(Exception, fleet_util.check_vars_and_dump, conf)
 
         # test correct case with feed_vars_filelist
@@ -139,8 +201,12 @@ class TestFleetUtils(unittest.TestCase):
         results = fleet_util.check_vars_and_dump(conf)
         self.assertTrue(len(results) == 1)
         np.testing.assert_array_almost_equal(
+<<<<<<< HEAD
             results[0], np.array([[3.0590223e-07]], dtype=np.float32)
         )
+=======
+            results[0], np.array([[3.0590223e-07]], dtype=np.float32))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # test correct case without feed_vars_filelist
         conf.feed_config.feeded_vars_filelist = None
@@ -160,17 +226,26 @@ class TestFleetUtils(unittest.TestCase):
 
         conf = config()
         conf.train_prog_path = os.path.join(
+<<<<<<< HEAD
             data_dir, os.path.join(self.train_dir, "join_main_program.pbtxt")
         )
+=======
+            data_dir, os.path.join(self.train_dir, "join_main_program.pbtxt"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         conf.is_text_train_program = True
 
         # test not match
         conf.pruned_prog_path = os.path.join(
             data_dir,
+<<<<<<< HEAD
             os.path.join(
                 self.pruned_dir, "pruned_main_program.save_var_shape_not_match"
             ),
         )
+=======
+            os.path.join(self.pruned_dir,
+                         "pruned_main_program.save_var_shape_not_match"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         conf.is_text_pruned_program = True
         conf.draw = False
         fleet_util = FleetUtil()
@@ -179,8 +254,13 @@ class TestFleetUtils(unittest.TestCase):
 
         # test match
         conf.pruned_prog_path = os.path.join(
+<<<<<<< HEAD
             data_dir, os.path.join(self.pruned_dir, "pruned_main_program.pbtxt")
         )
+=======
+            data_dir, os.path.join(self.pruned_dir,
+                                   "pruned_main_program.pbtxt"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             conf.draw = False
         else:
@@ -195,15 +275,21 @@ class TestFleetUtils(unittest.TestCase):
         else:
             data_dir = self.download_files()
             program_path = os.path.join(
+<<<<<<< HEAD
                 data_dir,
                 os.path.join(self.train_dir, "join_main_program.pbtxt"),
             )
+=======
+                data_dir, os.path.join(self.train_dir,
+                                       "join_main_program.pbtxt"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             is_text = True
             program = utils.load_program(program_path, is_text)
             output_dir = os.path.join(data_dir, self.train_dir)
             output_filename_1 = "draw_prog_1"
             output_filename_2 = "draw_prog_2"
             fleet_util = FleetUtil()
+<<<<<<< HEAD
             fleet_util.draw_from_program_file(
                 program_path, is_text, output_dir, output_filename_1
             )
@@ -228,6 +314,23 @@ class TestFleetUtils(unittest.TestCase):
                     os.path.join(output_dir, output_filename_2 + ".pdf")
                 )
             )
+=======
+            fleet_util.draw_from_program_file(program_path, is_text, output_dir,
+                                              output_filename_1)
+            fleet_util.draw_from_program(program, output_dir, output_filename_2)
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(output_dir, output_filename_1 + ".dot")))
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(output_dir, output_filename_1 + ".pdf")))
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(output_dir, output_filename_2 + ".dot")))
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(output_dir, output_filename_2 + ".pdf")))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

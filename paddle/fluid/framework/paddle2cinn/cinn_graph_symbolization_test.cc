@@ -88,7 +88,11 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
 
   std::unique_ptr<CinnGraphSymbolization> symbol_;
   std::unique_ptr<CinnGraphSymbolizationForTest> test_;
+<<<<<<< HEAD
   std::map<std::string, const phi::DenseTensor*> feed_targets_;
+=======
+  std::map<std::string, const LoDTensor*> feed_targets_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   OpMapperContext CreateNewContext() {
     return test_->CreateNewContext(builder_.get(), feed_map_);
@@ -101,7 +105,11 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
  private:
   std::unique_ptr<Graph> graph_;
   ::cinn::common::Target target_;
+<<<<<<< HEAD
   std::map<std::string, phi::DenseTensor> feed_tensors_;
+=======
+  std::map<std::string, LoDTensor> feed_tensors_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::unique_ptr<NetBuilder> builder_;
   FeedInfoMap feed_map_;
 
@@ -201,11 +209,19 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     return ::cinn::common::DefaultHostTarget();
   }
 
+<<<<<<< HEAD
   std::map<std::string, phi::DenseTensor> CreateFeedTensors() {
     std::map<std::string, phi::DenseTensor> feed_targets;
 
     auto create_tensor = []() {
       phi::DenseTensor tensor;
+=======
+  std::map<std::string, LoDTensor> CreateFeedTensors() {
+    std::map<std::string, LoDTensor> feed_targets;
+
+    auto create_tensor = []() {
+      LoDTensor tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       DDim dims = {256, 1024};
       tensor.Resize(dims);
       tensor.mutable_data(
@@ -227,9 +243,15 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     return feed_targets;
   }
 
+<<<<<<< HEAD
   std::map<std::string, const phi::DenseTensor*> ConvertFeedType(
       const std::map<std::string, phi::DenseTensor>& feed_targets) {
     std::map<std::string, const phi::DenseTensor*> res;
+=======
+  std::map<std::string, const LoDTensor*> ConvertFeedType(
+      const std::map<std::string, LoDTensor>& feed_targets) {
+    std::map<std::string, const LoDTensor*> res;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (auto& feed_pair : feed_targets) {
       res[feed_pair.first] = &feed_pair.second;
     }

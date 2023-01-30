@@ -26,9 +26,15 @@ namespace infrt {
 namespace kernel {
 
 namespace {
+<<<<<<< HEAD
 static void ElementwiseAddTest(const ::Tensor& a,
                                const ::Tensor& b,
                                ::Tensor* c);
+=======
+static void ElementwiseAddTest(const ::phi::DenseTensor& a,
+                               const ::phi::DenseTensor& b,
+                               ::phi::DenseTensor* c);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(utils, registry) {
@@ -66,9 +72,15 @@ TEST(ElementwiseAdd, launcher_registry) {
   auto fancy_allocator = std::unique_ptr<::phi::Allocator>(new FancyAllocator);
   auto* alloc = fancy_allocator.get();
 
+<<<<<<< HEAD
   ::Tensor a(alloc, meta);
   ::Tensor b(alloc, meta);
   ::Tensor c(alloc, meta);
+=======
+  ::phi::DenseTensor a(alloc, meta);
+  ::phi::DenseTensor b(alloc, meta);
+  ::phi::DenseTensor c(alloc, meta);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto place = ::phi::CPUPlace();
   float* a_data = a.mutable_data<float>(place);

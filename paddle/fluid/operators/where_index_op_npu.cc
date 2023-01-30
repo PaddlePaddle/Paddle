@@ -21,14 +21,24 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class NPUWhereIndexKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto& dev_ctx =
         context.template device_context<platform::NPUDeviceContext>();
+<<<<<<< HEAD
     auto* condition = context.Input<phi::DenseTensor>("Condition");
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* condition = context.Input<Tensor>("Condition");
+    auto* out = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto dims = condition->dims();
     const int rank = dims.size();
@@ -37,7 +47,11 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
     const aclrtStream& stream = dev_ctx.stream();
 
     // Run Cast and ReduceSum to get 0 dim of Out
+<<<<<<< HEAD
     phi::DenseTensor booled_cond;
+=======
+    Tensor booled_cond;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (framework::TransToProtoVarType(condition->dtype()) !=
         framework::proto::VarType::BOOL) {
       auto bool_type = ConvertToNpuDtype(framework::proto::VarType::BOOL);
@@ -51,7 +65,11 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
     } else {
       booled_cond.ShareDataWith(*condition);
     }
+<<<<<<< HEAD
     phi::DenseTensor casted_cond;
+=======
+    Tensor casted_cond;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::INT64);
     casted_cond.mutable_data<int64_t>(dims, place);
     const auto& cast_runner =
@@ -61,9 +79,15 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     cast_runner.Run(stream);
 
+<<<<<<< HEAD
     phi::DenseTensor sumed_true_num;
     sumed_true_num.mutable_data<int64_t>({1}, place);
     phi::DenseTensor cond_axes;
+=======
+    Tensor sumed_true_num;
+    sumed_true_num.mutable_data<int64_t>({1}, place);
+    Tensor cond_axes;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cond_axes.mutable_data<int>({dims.size()}, place);
     std::vector<int> axes_vec;
     for (int i = 0; i < dims.size(); ++i) {
@@ -76,7 +100,11 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
                                          {{"keep_dims", false}});
     sum_runner.Run(stream);
 
+<<<<<<< HEAD
     phi::DenseTensor local_true_num;
+=======
+    Tensor local_true_num;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle::framework::TensorCopySync(
         sumed_true_num, platform::CPUPlace(), &local_true_num);
     auto true_num = *local_true_num.data<int64_t>();

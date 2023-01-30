@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import re
 import unittest
 
 import paddle.dataset.imdb
+=======
+from __future__ import print_function
+
+import paddle.dataset.imdb
+import unittest
+import re
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -32,13 +40,21 @@ class TestIMDB(unittest.TestCase):
     word_idx = None
 
     def test_build_dict(self):
+<<<<<<< HEAD
         if self.word_idx is None:
+=======
+        if self.word_idx == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.word_idx = paddle.dataset.imdb.build_dict(TRAIN_PATTERN, 150)
 
         self.assertEqual(len(self.word_idx), 7036)
 
     def check_dataset(self, dataset, expected_size):
+<<<<<<< HEAD
         if self.word_idx is None:
+=======
+        if self.word_idx == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.word_idx = paddle.dataset.imdb.build_dict(TRAIN_PATTERN, 150)
 
         sum = 0

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -25,6 +26,22 @@ import paddle.nn.functional as F
 from paddle import framework
 from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 from paddle.fluid.dygraph.layers import Layer
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+import paddle
+import numpy as np
+import random
+import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
+from paddle.fluid import layers
+import paddle.nn.functional as F
+from paddle.distributed.fleet.meta_parallel import PipelineLayer, LayerDesc
+from paddle.fluid.dygraph.layers import Layer
+import paddle.nn as nn
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -44,8 +61,14 @@ dim_feedforward = 4 * d_model
 
 
 class EmbeddingNet(Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(EmbeddingNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
         self.position_embeddings = nn.Embedding(vocab_size, hidden_size)
 
@@ -57,8 +80,14 @@ class EmbeddingNet(Layer):
 
 
 class TransformerNet(Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(TransformerNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.linear2 = nn.Linear(dim_feedforward, d_model)
 
@@ -72,12 +101,20 @@ class TransformerNet(Layer):
         q = self.q_proj(x)
         k = self.k_proj(x)
         v = self.v_proj(x)
+<<<<<<< HEAD
         product = paddle.matmul(x=q, y=k, transpose_y=True)
         product = paddle.scale(product, scale=d_model**-0.5)
         weights = F.softmax(product)
 
         weights = F.dropout(weights, 0.2)
         tgt = paddle.matmul(weights, v)
+=======
+        product = layers.matmul(x=q, y=k, transpose_y=True, alpha=d_model**-0.5)
+        weights = F.softmax(product)
+
+        weights = F.dropout(weights, 0.2)
+        tgt = layers.matmul(weights, v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         residual = tgt
         tgt = self.norm1(tgt)
         tgt = residual + tgt
@@ -87,6 +124,7 @@ class TransformerNet(Layer):
 
 
 class EmbeddingPipe(EmbeddingNet):
+<<<<<<< HEAD
     def forward(self, tensors):
         if framework.in_dygraph_mode():
             stable, x = tensors
@@ -112,11 +150,35 @@ class CriterionPipe(Layer):
     def forward(self, out, label):
         if framework.in_dygraph_mode():
             out = out[-1]
+=======
+
+    def forward(self, x):
+        return super().forward(x)
+
+
+class TransformerNetPipe(TransformerNet):
+
+    def forward(self, x):
+        output = super().forward(x)
+        return output
+
+
+class CriterionPipe(Layer):
+
+    def __init__(self):
+        super(CriterionPipe, self).__init__()
+
+    def forward(self, out, label):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss = out.mean()
         return loss
 
 
 class ModelPipe(PipelineLayer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, hcg):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
@@ -125,6 +187,7 @@ class ModelPipe(PipelineLayer):
         for x in range(2):
             self.descs.append(LayerDesc(TransformerNetPipe))
 
+<<<<<<< HEAD
         super().__init__(
             layers=self.descs,
             loss_fn=CriterionPipe(),
@@ -140,6 +203,22 @@ class ModelPipe(PipelineLayer):
 
 
 class TestDistPPTraning(unittest.TestCase):
+=======
+        super().__init__(layers=self.descs,
+                         loss_fn=CriterionPipe(),
+                         topology=self.hcg.topology(),
+                         seg_method="layer:TransformerNetPipe",
+                         recompute_interval=1,
+                         recompute_ctx={
+                             "mp_group": self.hcg.get_model_parallel_group(),
+                             "offload": False,
+                             "partition": False
+                         })
+
+
+class TestDistPPTraning(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -152,7 +231,11 @@ class TestDistPPTraning(unittest.TestCase):
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,
+<<<<<<< HEAD
             "micro_batch_size": micro_batch_size,
+=======
+            "micro_batch_size": micro_batch_size
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         fleet.init(is_collective=True, strategy=strategy)
 
@@ -166,12 +249,20 @@ class TestDistPPTraning(unittest.TestCase):
         set_random_seed(1024, dp_id, rank_id)
 
         model = ModelPipe(hcg)
+<<<<<<< HEAD
         scheduler = paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[2], values=[0.001, 0.002], verbose=True
         )
         optimizer = paddle.optimizer.SGD(
             learning_rate=scheduler, parameters=model.parameters()
         )
+=======
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
+                                                       values=[0.001, 0.002],
+                                                       verbose=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
+                                         parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
@@ -180,8 +271,12 @@ class TestDistPPTraning(unittest.TestCase):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
+<<<<<<< HEAD
             input_ = (x, x) if framework.in_dygraph_mode() else x
             loss = model.train_batch([input_, x], optimizer, scheduler)
+=======
+            loss = model.train_batch([x, x], optimizer, scheduler)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # TODO(shenliang03) add utest for loss
             print("loss: ", loss)
 

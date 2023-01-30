@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 import unittest
 
@@ -24,6 +25,24 @@ import paddle.static as static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.fleet import auto
+=======
+import unittest
+import os
+import json
+import copy
+
+import paddle
+import numpy as np
+import paddle.nn as nn
+import paddle.utils as utils
+import paddle.static as static
+import paddle.nn.functional as F
+
+from paddle.distributed import fleet
+from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -32,7 +51,11 @@ hidden_size = 1024
 sequence_len = 512
 _g_process_mesh = [
     auto.ProcessMesh([0, 1], dim_names=["x"]),
+<<<<<<< HEAD
     auto.ProcessMesh([2, 3], dim_names=["x"]),
+=======
+    auto.ProcessMesh([2, 3], dim_names=["x"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]
 
 
@@ -43,18 +66,27 @@ def get_random_inputs_and_labels(input_shape, label_shape):
 
 
 def batch_generator_creator():
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __reader__():
         for _ in range(batch_size):
             batch_input, batch_label = get_random_inputs_and_labels(
                 [batch_size, sequence_len, hidden_size],
+<<<<<<< HEAD
                 [batch_size, sequence_len, 1],
             )
+=======
+                [batch_size, sequence_len, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             yield batch_input, batch_label
 
     return __reader__
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -68,20 +100,41 @@ class MLPLayer(nn.Layer):
         param_initializer = nn.initializer.Normal(
             mean=0.0, std=initializer_range
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        param_initializer = nn.initializer.Normal(mean=0.0,
+                                                  std=initializer_range)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.linear0 = nn.Linear(
             d_model,
             dim_feedforward,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
+<<<<<<< HEAD
             bias_attr=None,
         )
+=======
+            bias_attr=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear1 = nn.Linear(
             dim_feedforward,
             d_model,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
+<<<<<<< HEAD
             bias_attr=None,
         )
+=======
+            bias_attr=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, input):
         out = self.norm(input)
@@ -103,6 +156,7 @@ def get_program():
     start_program = static.Program()
     with static.program_guard(train_program, start_program):
         # input
+<<<<<<< HEAD
         input = static.data(
             name="input",
             shape=[batch_size, sequence_len, hidden_size],
@@ -119,10 +173,27 @@ def get_program():
         dataloader.set_batch_generator(
             batch_generator_creator(), places=paddle.static.cuda_places()
         )
+=======
+        input = static.data(name="input",
+                            shape=[batch_size, sequence_len, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, sequence_len, 1],
+                            dtype='float32')
+        data_holder = [input, label]
+        # dataloader
+        dataloader = paddle.io.DataLoader.from_generator(feed_list=data_holder,
+                                                         capacity=4 *
+                                                         batch_size,
+                                                         iterable=False)
+        dataloader.set_batch_generator(batch_generator_creator(),
+                                       places=paddle.static.cuda_places())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # data dist_attr
         auto.shard_tensor(input, _g_process_mesh[0], ["x", None, None])
         auto.shard_tensor(label, _g_process_mesh[0], ["x", None, None])
 
+<<<<<<< HEAD
         mlp_start = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
@@ -145,11 +216,30 @@ def get_program():
             dropout_ratio=0.1,
             initializer_range=0.02,
         )
+=======
+        mlp_start = MLPLayer(hidden_size=hidden_size,
+                             intermediate_size=4 * hidden_size,
+                             dropout_ratio=0.1,
+                             initializer_range=0.02)
+        pred = mlp_start(input)
+
+        mlp_mid = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
+        pred = mlp_mid(pred)
+
+        mlp_end = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         pred = mlp_end(pred)
 
         error_cost = paddle.nn.functional.square_error_cost(pred, label)
         loss = paddle.mean(error_cost)
 
+<<<<<<< HEAD
         optimizer = paddle.optimizer.Adam(
             learning_rate=0.00001,
             beta1=0.9,
@@ -157,10 +247,18 @@ def get_program():
             epsilon=1e-08,
             grad_clip=None,
         )
+=======
+        optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                          beta1=0.9,
+                                          beta2=0.999,
+                                          epsilon=1e-08,
+                                          grad_clip=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         feed_vars = {"inputs": [input], "labels": [label]}
         fetch_vars = {"loss": [loss]}
 
+<<<<<<< HEAD
     return (
         train_program,
         start_program,
@@ -203,6 +301,32 @@ class TestDistributedContext(unittest.TestCase):
             dist=True,
             dist_mode="to_original",
         )
+=======
+    return train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars
+
+
+class TestDistributedContext(unittest.TestCase):
+
+    def test_backup_restore(self):
+        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program(
+        )
+        dist_context = DistributedContext(train_program, start_program,
+                                          optimizer, loss, feed_vars,
+                                          fetch_vars)
+        dist_context.initialize()
+
+        dist_context._backup(serial=True, dist=True)
+        dist_context._restore(serial=True,
+                              serial_mode="to_backup",
+                              dist=True,
+                              dist_mode="to_backup")
+
+        dist_context._backup(serial=True, dist=True)
+        dist_context._restore(serial=True,
+                              serial_mode="to_original",
+                              dist=True,
+                              dist_mode="to_original")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         dist_context._backup(serial=True, dist=True)
         dist_context._restore(serial=True, dist=True, dist_mode="to_default")
@@ -211,6 +335,7 @@ class TestDistributedContext(unittest.TestCase):
         dist_context._restore(serial=True, dist=True, dist_mode="to_nothing")
 
     def test_deepcopy(self):
+<<<<<<< HEAD
         (
             train_program,
             start_program,
@@ -223,11 +348,19 @@ class TestDistributedContext(unittest.TestCase):
         dist_context = DistributedContext(
             train_program, start_program, optimizer, loss, feed_vars, fetch_vars
         )
+=======
+        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program(
+        )
+        dist_context = DistributedContext(train_program, start_program,
+                                          optimizer, loss, feed_vars,
+                                          fetch_vars)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dist_context.initialize()
 
         copy_dist_context = copy.deepcopy(dist_context)
 
         copy_list = [
+<<<<<<< HEAD
             "_original_serial_main_program",
             "_original_serial_startup_program",
             "_serial_main_program",
@@ -249,6 +382,17 @@ class TestDistributedContext(unittest.TestCase):
             "_backup_serial_startup_program_stack",
             "_pass_context",
         ]
+=======
+                "_original_serial_main_program", "_original_serial_startup_program", \
+                "_serial_main_program", "_serial_startup_program", "_serial_graph", \
+                "_dist_main_programs", "_dist_startup_programs", \
+                "_serial_ordered_nodes", "_serial_ordered_tensor_nodes", \
+                "_serial_ordered_op_nodes", "_original_serial_loss", \
+                "_original_serial_feed_vars", "_original_serial_fetch_vars", \
+                "_serial_loss", "_serial_feed_vars", "_serial_fetch_vars", "_serial_optimizer", \
+                "_backup_serial_main_program_stack", "_backup_serial_startup_program_stack", \
+                "_pass_context"]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for i in range(len(copy_list)):
             copy_obj = "copy_dist_context." + copy_list[i]

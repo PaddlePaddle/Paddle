@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
 import paddle
 import paddle.nn.functional as F
@@ -23,6 +24,16 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+=======
+import paddle
+import paddle.static
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+import paddle.nn.functional as F
+
+
+class TestBase(IPUOpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -35,11 +46,19 @@ class TestBase(IPUOpTest):
         target = np.random.uniform(size=[3, 4, 2, 2])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
+<<<<<<< HEAD
             "target": target.astype(np.float32),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "target": target.astype(np.float16),
+=======
+            "target": target.astype(np.float32)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "target": target.astype(np.float16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_feed_attr(self):
@@ -53,12 +72,21 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
         target = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="float32")
+        target = paddle.static.data(name=self.feed_list[1],
+                                    shape=self.feed_shape[1],
+                                    dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = F.binary_cross_entropy(x, target, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -74,6 +102,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             'reduction': 'sum',
@@ -81,6 +113,10 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             'reduction': 'none',

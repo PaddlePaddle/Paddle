@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 
@@ -46,27 +50,47 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
 
 
 class TestGroupNormOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
             def test_x_type():
                 input = np.random.random(2, 100, 3, 5).astype('float32')
                 groups = 2
+<<<<<<< HEAD
                 paddle.static.nn.group_norm(input, groups)
+=======
+                fluid.layers.group_norm(input, groups)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_dtype():
+<<<<<<< HEAD
                 x2 = paddle.static.data(
                     name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
                 )
                 groups = 2
                 paddle.static.nn.group_norm(x2, groups)
+=======
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[2, 100, 3, 5],
+                                       dtype='int32')
+                groups = 2
+                fluid.layers.group_norm(x2, groups)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_x_dtype)
 
 
 class TestGroupNormOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = 'group_norm'
@@ -87,6 +111,7 @@ class TestGroupNormOp(OpTest):
             input = np.transpose(input, (0, 2, 3, 1))
         scale = np.random.random([self.shape[1]]).astype(self.dtype)
         bias = np.random.random([self.shape[1]]).astype(self.dtype)
+<<<<<<< HEAD
         output, mean, var = group_norm_naive(
             input,
             scale,
@@ -95,11 +120,21 @@ class TestGroupNormOp(OpTest):
             self.attrs['groups'],
             self.data_format,
         )
+=======
+        output, mean, var = group_norm_naive(input, scale, bias,
+                                             self.attrs['epsilon'],
+                                             self.attrs['groups'],
+                                             self.data_format)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(input),
             'Scale': OpTest.np_dtype_to_fluid_dtype(scale),
+<<<<<<< HEAD
             'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
+=======
+            'Bias': OpTest.np_dtype_to_fluid_dtype(bias)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
         self.attrs['data_layout'] = self.data_format
@@ -122,6 +157,7 @@ class TestGroupNormOp(OpTest):
         output_names = 'Y'
         no_grad_set = set()
         cpu_place = fluid.CPUPlace()
+<<<<<<< HEAD
         cpu_grads = self._get_gradient(
             inputs_to_check, cpu_place, output_names, no_grad_set
         )
@@ -136,51 +172,93 @@ class TestGroupNormOp(OpTest):
             self.max_relative_error,
             "Gradient Check between places",
         )
+=======
+        cpu_grads = self._get_gradient(inputs_to_check, cpu_place, output_names,
+                                       no_grad_set)
+        npu_grads = self._get_gradient(inputs_to_check, self.place,
+                                       output_names, no_grad_set)
+
+        self._assert_is_close(cpu_grads, npu_grads, inputs_to_check,
+                              self.max_relative_error,
+                              "Gradient Check between places")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_test_case(self):
         pass
 
 
 class TestGroupNormOp1(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['groups'] = 1
 
 
 class TestGroupNormOp2(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['groups'] = 4
 
 
 class TestGroupNormOpBigEps1(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.attrs['epsilon'] = 0.5
 
 
 class TestGroupNormOpBigEps2(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.attrs['epsilon'] = 0.5
 
 
 class TestGroupNormOpBigEps3(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
 
 
 class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.data_format = "NHWC"
 
 
 class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.data_format = "NHWC"
 
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.attrs['epsilon'] = 0.5
@@ -188,6 +266,10 @@ class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
 
 
 class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.attrs['epsilon'] = 0.5
@@ -195,17 +277,29 @@ class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
 
 
 class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
 
 
 class TestGroupNormOpFP16(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestGroupNormOpFP16_With_NHWC(TestGroupNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -219,9 +313,15 @@ class TestGroupNormException(unittest.TestCase):
         data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
 
         def attr_data_format():
+<<<<<<< HEAD
             out = paddle.static.nn.group_norm(
                 input=data, groups=2, data_layout="NDHW"
             )
+=======
+            out = fluid.layers.group_norm(input=data,
+                                          groups=2,
+                                          data_layout="NDHW")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, attr_data_format)
 

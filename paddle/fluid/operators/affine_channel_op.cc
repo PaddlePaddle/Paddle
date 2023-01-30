@@ -70,12 +70,21 @@ class AffineChannelOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto scale_dims = ctx->GetInputDim("Scale");
     auto b_dims = ctx->GetInputDim("Bias");
+<<<<<<< HEAD
     const phi::DataLayout data_layout =
         phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
     const int64_t C =
         (data_layout == phi::DataLayout::kNCHW ? x_dims[1]
                                                : x_dims[x_dims.size() - 1]);
+=======
+    const framework::DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
+
+    const int64_t C = (data_layout == framework::DataLayout::kNCHW
+                           ? x_dims[1]
+                           : x_dims[x_dims.size() - 1]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ(
         scale_dims.size(),
@@ -145,11 +154,19 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -188,6 +205,7 @@ template <typename DeviceContext, typename T>
 class AffineChannelKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
@@ -201,6 +219,22 @@ class AffineChannelKernel : public framework::OpKernel<T> {
     auto dims = x->dims();
     int N = dims[0];
     int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* scale = ctx.Input<framework::Tensor>("Scale");
+    auto* bias = ctx.Input<framework::Tensor>("Bias");
+
+    auto* y = ctx.Output<framework::Tensor>("Out");
+    y->mutable_data<T>(ctx.GetPlace());
+
+    const framework::DataLayout layout =
+        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+
+    auto dims = x->dims();
+    int N = dims[0];
+    int C = layout == framework::DataLayout::kNCHW ? dims[1]
+                                                   : dims[dims.size() - 1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int HxW = x->numel() / N / C;
 
     auto* scale_d = scale->data<T>();
@@ -210,7 +244,11 @@ class AffineChannelKernel : public framework::OpKernel<T> {
 
     auto* x_d = x->data<T>();
     auto* y_d = y->data<T>();
+<<<<<<< HEAD
     if (layout == phi::DataLayout::kNCHW) {
+=======
+    if (layout == framework::DataLayout::kNCHW) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int stride = C * HxW;
       for (int i = 0; i < N; i++) {
         ConstEigenArrayMap<T> x_e(x_d, HxW, C);
@@ -232,6 +270,7 @@ template <typename DeviceContext, typename T>
 class AffineChannelGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
     auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -247,6 +286,24 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
     auto dims = x->dims();
     int N = dims[0];
     int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* scale = ctx.Input<framework::Tensor>("Scale");
+    auto* dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+
+    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dscale =
+        ctx.Output<framework::Tensor>(framework::GradVarName("Scale"));
+    auto* dbias = ctx.Output<framework::Tensor>(framework::GradVarName("Bias"));
+
+    const framework::DataLayout layout =
+        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+
+    auto dims = x->dims();
+    int N = dims[0];
+    int C = layout == framework::DataLayout::kNCHW ? dims[1]
+                                                   : dims[dims.size() - 1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int HxW = x->numel() / N / C;
 
     auto* dy_d = dy->data<T>();
@@ -259,7 +316,11 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
     EigenVectorArrayMap<T> dscale_e(dscale_d, C);
     EigenVectorArrayMap<T> dbias_e(dbias_d, C);
 
+<<<<<<< HEAD
     if (layout == phi::DataLayout::kNCHW) {
+=======
+    if (layout == framework::DataLayout::kNCHW) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // compute dscale and dbias
       int stride = C * HxW;
       auto* original_dy_d = dy_d;

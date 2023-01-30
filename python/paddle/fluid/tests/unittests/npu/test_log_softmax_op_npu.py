@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -29,6 +33,10 @@ paddle.enable_static()
 
 
 class TestLogSoftmaxNPUOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -38,7 +46,11 @@ class TestLogSoftmaxNPUOp(OpTest):
         self.axis = -1
         self.set_attrs()
         self.set_dtype()
+<<<<<<< HEAD
         x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+=======
+        x = np.random.uniform(0.1, 1., self.shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
         self.inputs = {'X': x}
@@ -63,6 +75,7 @@ class TestLogSoftmaxNPUOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place,
                 ['X'],
@@ -78,6 +91,20 @@ class TestLogSoftmaxNPUOp(OpTest):
 
 def test_class(op_type, typename):
     class TestLogSoftmaxShape(TestLogSoftmaxNPUOp):
+=======
+            self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                       user_defined_grads=[self.x_grad],
+                                       max_relative_error=0.02)
+        else:
+            self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                       user_defined_grads=[self.x_grad])
+
+
+def test_class(op_type, typename):
+
+    class TestLogSoftmaxShape(TestLogSoftmaxNPUOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [12, 10]
 
@@ -90,7 +117,13 @@ def test_class(op_type, typename):
 
 
 def test_class2(op_type, typename):
+<<<<<<< HEAD
     class TestLogSoftmaxAxis(TestLogSoftmaxNPUOp):
+=======
+
+    class TestLogSoftmaxAxis(TestLogSoftmaxNPUOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.axis = 0
 
@@ -109,6 +142,7 @@ for _typename in {np.float32, np.float16}:
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(np.float32)
@@ -117,6 +151,15 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
             if paddle.fluid.core.is_compiled_with_npu()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1., 1., self.x_shape).astype(np.float32)
+        self.place = paddle.NPUPlace(0) \
+            if paddle.fluid.core.is_compiled_with_npu() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_api(self, axis=-1):
         ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
@@ -143,6 +186,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
 
 
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
@@ -151,6 +195,15 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             if paddle.fluid.core.is_compiled_with_npu()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.place = paddle.NPUPlace(0) \
+            if paddle.fluid.core.is_compiled_with_npu() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_api(self, axis=-1, dtype=None):
         x = self.x.copy()

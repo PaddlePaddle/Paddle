@@ -60,7 +60,11 @@ struct PullSparseValue {
                std::vector<int>* offset_shard) const {
     offset_shard->reserve(numel_ / shard_num + 1);
     for (int x = 0; x < numel_; ++x) {
+<<<<<<< HEAD
       if (static_cast<int>(feasigns_[x] % shard_num) == shard_id) {
+=======
+      if (int(feasigns_[x] % shard_num) == shard_id) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         offset_shard->push_back(x);
       }
     }

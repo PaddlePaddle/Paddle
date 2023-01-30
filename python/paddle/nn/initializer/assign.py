@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from ...fluid.data_feeder import check_type
 from ...fluid.initializer import NumpyArrayInitializer
 
@@ -39,7 +42,11 @@ class Assign(NumpyArrayInitializer):
             # numpy array
             data_1 = paddle.ones(shape=[1, 2], dtype='float32')
             weight_attr_1 = paddle.framework.ParamAttr(
+<<<<<<< HEAD
                 name="linear_weight_1",
+=======
+                name="linear_weight_1", 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 initializer=paddle.nn.initializer.Assign(np.array([2, 2])))
             bias_attr_1 = paddle.framework.ParamAttr(
                 name="linear_bias_1",
@@ -84,6 +91,7 @@ class Assign(NumpyArrayInitializer):
 
     def __init__(self, value, name=None):
         import numpy
+<<<<<<< HEAD
 
         check_type(
             value,
@@ -100,3 +108,17 @@ class Assign(NumpyArrayInitializer):
             value = value.numpy()
 
         super().__init__(value)
+=======
+        check_type(value, 'value',
+                   (numpy.ndarray, list, tuple, paddle.static.Variable),
+                   'Assign')
+
+        if (isinstance(value, (list, tuple))):
+            value = numpy.array(value)
+
+        # TODO: value is already is a tensor, accounting efficiency maybe it does not need to convert tensor to numpy data and then initialized.
+        if (isinstance(value, paddle.static.Variable)):
+            value = value.numpy()
+
+        super(Assign, self).__init__(value)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

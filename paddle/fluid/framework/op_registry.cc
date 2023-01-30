@@ -125,6 +125,7 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
 }
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
+<<<<<<< HEAD
   auto op = CreateOp(op_desc.Type(),
                      op_desc.Inputs(),
                      op_desc.Outputs(),
@@ -132,6 +133,13 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
                      op_desc.GetRuntimeAttrMap());
   op->SetId(op_desc.Id());
   return op;
+=======
+  return CreateOp(op_desc.Type(),
+                  op_desc.Inputs(),
+                  op_desc.Outputs(),
+                  op_desc.GetAttrMap(),
+                  op_desc.GetRuntimeAttrMap());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace framework

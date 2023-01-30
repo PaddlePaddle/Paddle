@@ -19,6 +19,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace dynload = platform::dynload;
 
 template <typename T>
@@ -162,11 +166,19 @@ struct NormConvolutionArgs {
   std::vector<int> paddings;
   std::vector<int> dilations;
 
+<<<<<<< HEAD
   phi::backends::gpu::TensorDescriptor in_desc;
   phi::backends::gpu::FilterDescriptor filter_desc;
   phi::backends::gpu::TensorDescriptor out_desc;
   phi::backends::gpu::TensorDescriptor out_stats_desc;
   phi::backends::gpu::ConvolutionDescriptor conv_desc;
+=======
+  platform::TensorDescriptor in_desc;
+  platform::FilterDescriptor filter_desc;
+  platform::TensorDescriptor out_desc;
+  platform::TensorDescriptor out_stats_desc;
+  platform::ConvolutionDescriptor conv_desc;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   bool is_support;
 };
@@ -194,11 +206,19 @@ class CudnnNormConvolution {
   ~CudnnNormConvolution() {}
 
   void Forward(const phi::GPUContext &ctx,
+<<<<<<< HEAD
                const phi::DenseTensor &input,
                const phi::DenseTensor &filter,
                phi::DenseTensor *output,
                phi::DenseTensor *sum,
                phi::DenseTensor *sum_of_squares) {
+=======
+               const Tensor &input,
+               const Tensor &filter,
+               Tensor *output,
+               Tensor *sum,
+               Tensor *sum_of_squares) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto cudnn_handle = ctx.cudnn_handle();
 
     CudnnFusionOp *fwd_op = GetForwardOp(ctx);
@@ -313,11 +333,19 @@ class CudnnNormConvolutionGrad {
   ~CudnnNormConvolutionGrad() {}
 
   void Backward(const phi::GPUContext &ctx,
+<<<<<<< HEAD
                 const phi::DenseTensor &input,
                 const phi::DenseTensor &filter,
                 const phi::DenseTensor &output_grad,
                 phi::DenseTensor *input_grad,
                 phi::DenseTensor *filter_grad,
+=======
+                const Tensor &input,
+                const Tensor &filter,
+                const Tensor &output_grad,
+                Tensor *input_grad,
+                Tensor *filter_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 bool use_addto = false) {
     T *input_ptr = const_cast<T *>(input.data<T>());
     T *filter_ptr = const_cast<T *>(filter.data<T>());

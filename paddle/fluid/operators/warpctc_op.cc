@@ -28,10 +28,22 @@ class WarpCTCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
+        ctx.GetPlace(),
+        layout_,
+        library_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -39,8 +51,13 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Logits",
+<<<<<<< HEAD
              "(2-D phi::DenseTensor<float>) or (3-D phi::DenseTensor<float>), "
              "the unscaled probabilities of variable-length sequences."
+=======
+             "(2-D LoDTensor<float>) or (3-D Tensor<float>), the "
+             "unscaled probabilities of variable-length sequences."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "When is a 2-D Tensor with LoD information, "
              "it's shape is [Lp, num_classes + 1], "
              "where Lp is the sum of all input sequences' length "
@@ -51,7 +68,11 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
              "where max_logit_length is the length of the longest "
              "logit sequence.");
     AddInput("Label",
+<<<<<<< HEAD
              "(2-D phi::DenseTensor<int>), the "
+=======
+             "(2-D LoDTensor<int>) or (2-D Tensor<int>), the "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "ground truth of variable-length sequence. "
              "When it is a 2-D Tensor with LoD information, "
              "it is of the shape [Lg, 1], where Lg is th sum of "
@@ -141,11 +162,19 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Loss")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

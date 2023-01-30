@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import tempfile
 import unittest
 
@@ -24,12 +25,29 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.autograd import PyLayer
 from paddle.static import InputSpec
+=======
+
+os.environ['FLAGS_enable_eager_mode'] = '1'
+
+import unittest
+import paddle
+import paddle.fluid as fluid
+import numpy as np
+import six
+import cv2
+import tempfile
+from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
+import paddle.nn as nn
+from paddle.static import InputSpec
+from paddle.autograd import PyLayer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
 
 class SimpleConv(fluid.dygraph.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         num_channels,
@@ -49,12 +67,33 @@ class SimpleConv(fluid.dygraph.Layer):
             groups=groups,
             bias_attr=None,
         )
+=======
+
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 groups=1,
+                 act=None):
+        super(SimpleConv, self).__init__()
+        self._conv = fluid.dygraph.Conv2D(num_channels=num_channels,
+                                          num_filters=num_filters,
+                                          filter_size=filter_size,
+                                          stride=stride,
+                                          padding=(filter_size - 1) // 2,
+                                          groups=groups,
+                                          act=None,
+                                          bias_attr=None,
+                                          use_cudnn=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, inputs):
         return self._conv(inputs)
 
 
 class TestAutoCast(unittest.TestCase):
+<<<<<<< HEAD
     def amp_guard_white_op(self):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
@@ -64,6 +103,18 @@ class TestAutoCast(unittest.TestCase):
                 out_fp16 = conv2d(data)
 
             with paddle.amp.amp_guard(False):
+=======
+
+    def amp_guard_white_op(self):
+        data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        with fluid.dygraph.guard():
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard(True):
+                out_fp16 = conv2d(data)
+
+            with fluid.dygraph.amp_guard(False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 out_fp32 = conv2d(data)
 
         self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
@@ -77,7 +128,11 @@ class TestAutoCast(unittest.TestCase):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
+<<<<<<< HEAD
             with paddle.amp.amp_guard(True):
+=======
+            with fluid.dygraph.amp_guard(True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 out_fp32 = paddle.mean(data)
 
         self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
@@ -89,6 +144,7 @@ class TestAutoCast(unittest.TestCase):
     def custom_op_list(self):
         with fluid.dygraph.guard():
             tracer = fluid.framework._dygraph_tracer()
+<<<<<<< HEAD
             base_white_list = paddle.amp.WHITE_LIST
             base_black_list = paddle.amp.BLACK_LIST
             with paddle.amp.amp_guard(
@@ -122,6 +178,34 @@ class TestAutoCast(unittest.TestCase):
                     set(black_list)
                     == (set(base_black_list) - {"log"}) | {"conv2d"}
                 )
+=======
+            base_white_list = fluid.dygraph.amp.auto_cast.WHITE_LIST
+            base_black_list = fluid.dygraph.amp.auto_cast.BLACK_LIST
+            with fluid.dygraph.amp_guard(custom_white_list=["log"],
+                                         custom_black_list=["conv2d"]):
+                white_list, black_list = tracer._get_amp_op_list()
+                self.assertTrue(
+                    set(white_list) == (set(base_white_list) | {"log"}) -
+                    {"conv2d"})
+
+                self.assertTrue(
+                    set(black_list) == (set(base_black_list) - {"log"})
+                    | {"conv2d"})
+
+            base_white_list = fluid.dygraph.amp.auto_cast.PURE_FP16_WHITE_LIST
+            base_black_list = fluid.dygraph.amp.auto_cast.PURE_FP16_BLACK_LIST
+            with fluid.dygraph.amp_guard(custom_white_list=["log"],
+                                         custom_black_list=["conv2d"],
+                                         level='O2'):
+                white_list, black_list = tracer._get_amp_op_list()
+                self.assertTrue(
+                    set(white_list) == (set(base_white_list) | {"log"}) -
+                    {"conv2d"})
+
+                self.assertTrue(
+                    set(black_list) == (set(base_black_list) - {"log"})
+                    | {"conv2d"})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_custom_op_list(self):
         self.custom_op_list()
@@ -131,6 +215,7 @@ class TestAutoCast(unittest.TestCase):
 
         def func():
             with fluid.dygraph.guard():
+<<<<<<< HEAD
                 model = SimpleConv(
                     num_channels=3,
                     num_filters=64,
@@ -141,6 +226,15 @@ class TestAutoCast(unittest.TestCase):
                 with paddle.amp.amp_guard(
                     custom_white_list=["conv2d"], custom_black_list=["conv2d"]
                 ):
+=======
+                model = SimpleConv(num_channels=3,
+                                   num_filters=64,
+                                   filter_size=7,
+                                   stride=2,
+                                   act='relu')
+                with fluid.dygraph.amp_guard(custom_white_list=["conv2d"],
+                                             custom_black_list=["conv2d"]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     inp = fluid.dygraph.to_variable(inp_np)
                     out = model(inp)
 
@@ -152,6 +246,7 @@ class TestAutoCast(unittest.TestCase):
     def amp_guard_upsupported_fp16_op(self):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             data = fluid.dygraph.to_variable(data)
             with paddle.amp.amp_guard(True):
@@ -165,26 +260,61 @@ class TestAutoCast(unittest.TestCase):
                 out_purefp16_fp32 = paddle.expand_as(
                     out_purefp16_fp16, out_purefp16_fp16
                 )  # expand_as_v2 has no fp16 kernel
+=======
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard(True):
+                out_amp_fp16 = conv2d(data)
+                out_amp_fp32 = paddle.expand_as(
+                    out_amp_fp16,
+                    out_amp_fp16)  # expand_as_v2 has no fp16 kernel
+
+            with fluid.dygraph.amp_guard(True, level='O2'):
+                out_purefp16_fp16 = conv2d(data)
+                out_purefp16_fp32 = paddle.expand_as(
+                    out_purefp16_fp16,
+                    out_purefp16_fp16)  # expand_as_v2 has no fp16 kernel
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
         self.assertTrue(out_amp_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
         self.assertTrue(out_amp_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
         self.assertTrue(
+<<<<<<< HEAD
             out_purefp16_fp16.dtype == fluid.core.VarDesc.VarType.FP16
         )
         self.assertTrue(
             out_purefp16_fp32.dtype == fluid.core.VarDesc.VarType.FP32
         )
+=======
+            out_purefp16_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
+        self.assertTrue(
+            out_purefp16_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_amp_guard_upsupported_fp16_op(self):
         self.amp_guard_upsupported_fp16_op()
 
     def mode_exception(self):
+<<<<<<< HEAD
         def func():
             data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
             with fluid.dygraph.guard():
                 conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
                 data = fluid.dygraph.to_variable(data)
                 with paddle.amp.amp_guard(level='O'):
+=======
+
+        def func():
+            data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+            with fluid.dygraph.guard():
+                conv2d = fluid.dygraph.Conv2D(3,
+                                              2,
+                                              3,
+                                              bias_attr=False,
+                                              act=None)
+                data = fluid.dygraph.to_variable(data)
+                with fluid.dygraph.amp_guard(level='O'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     out = conv2d(data)
 
         self.assertRaises(ValueError, func)
@@ -194,6 +324,7 @@ class TestAutoCast(unittest.TestCase):
 
 
 class TestAmpScaler(unittest.TestCase):
+<<<<<<< HEAD
     def scale(self):
         with fluid.dygraph.guard():
             data = paddle.rand([10, 1024])
@@ -202,6 +333,17 @@ class TestAmpScaler(unittest.TestCase):
             self.assertEqual(
                 np.array_equal(scaled_data.numpy(), data.numpy() * 1024), True
             )
+=======
+
+    def scale(self):
+        with fluid.dygraph.guard():
+            data = paddle.rand([10, 1024])
+            scaler = paddle.fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+            scaled_data = scaler.scale(data)
+            self.assertEqual(
+                np.array_equal(scaled_data.numpy(),
+                               data.numpy() * 1024), True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_scale(self):
         self.scale()
@@ -213,6 +355,7 @@ class TestAmpScaler(unittest.TestCase):
             paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
             with fluid.dygraph.guard():
+<<<<<<< HEAD
                 model = SimpleConv(
                     num_channels=3,
                     num_filters=64,
@@ -224,6 +367,16 @@ class TestAmpScaler(unittest.TestCase):
                     learning_rate=0.01, parameter_list=model.parameters()
                 )
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
+=======
+                model = SimpleConv(num_channels=3,
+                                   num_filters=64,
+                                   filter_size=7,
+                                   stride=2,
+                                   act='relu')
+                optimizer = fluid.optimizer.SGDOptimizer(
+                    learning_rate=0.01, parameter_list=model.parameters())
+                scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 data = fluid.dygraph.to_variable(inp_np)
 
                 out = model(data)
@@ -233,8 +386,12 @@ class TestAmpScaler(unittest.TestCase):
                     scaled_loss = scaler.scale(loss)
                     scaled_loss.backward()
                     optimize_ops, params_grads = scaler.minimize(
+<<<<<<< HEAD
                         optimizer, scaled_loss
                     )
+=======
+                        optimizer, scaled_loss)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 else:
                     print('use no scaler')
                     loss.backward()
@@ -244,6 +401,7 @@ class TestAmpScaler(unittest.TestCase):
         outs_with_scaler = run_simple_conv(inp_np, use_scaler=True)
         outs_no_scaler = run_simple_conv(inp_np, use_scaler=False)
 
+<<<<<<< HEAD
         self.assertEqual(
             outs_with_scaler[0], []
         )  # optimize_ops is [] in dygraph mode
@@ -263,6 +421,21 @@ class TestAmpScaler(unittest.TestCase):
                 outs_no_scaler[1][i][0].numpy(),
                 rtol=1e-05,
             )
+=======
+        self.assertEqual(outs_with_scaler[0],
+                         [])  # optimize_ops is [] in dygraph mode
+        self.assertEqual(outs_no_scaler[0],
+                         [])  # optimize_ops is [] in dygraph mode
+        for i in range(len(outs_with_scaler[1])):
+            # check each grad
+            np.testing.assert_allclose(outs_with_scaler[1][i][1].numpy(),
+                                       outs_no_scaler[1][i][1].numpy(),
+                                       rtol=1e-05)
+            # check each parameter
+            np.testing.assert_allclose(outs_with_scaler[1][i][0].numpy(),
+                                       outs_no_scaler[1][i][0].numpy(),
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_minimize(self):
         self.minimize()
@@ -274,6 +447,7 @@ class TestAmpScaler(unittest.TestCase):
             paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
             with fluid.dygraph.guard():
+<<<<<<< HEAD
                 model = SimpleConv(
                     num_channels=3,
                     num_filters=64,
@@ -284,6 +458,15 @@ class TestAmpScaler(unittest.TestCase):
                 optimizer = paddle.optimizer.SGD(
                     learning_rate=0.01, parameters=model.parameters()
                 )
+=======
+                model = SimpleConv(num_channels=3,
+                                   num_filters=64,
+                                   filter_size=7,
+                                   stride=2,
+                                   act='relu')
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                                 parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
                 data = fluid.dygraph.to_variable(inp_np)
 
@@ -306,11 +489,17 @@ class TestAmpScaler(unittest.TestCase):
 
         for i in range(len(outs_with_scaler)):
             # check each parameter
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 outs_with_scaler[i].numpy(),
                 outs_no_scaler[i].numpy(),
                 rtol=1e-05,
             )
+=======
+            np.testing.assert_allclose(outs_with_scaler[i].numpy(),
+                                       outs_no_scaler[i].numpy(),
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_step(self):
         self.step()
@@ -319,6 +508,7 @@ class TestAmpScaler(unittest.TestCase):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
         inp_np[0][1][2][3] = np.nan
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             model = SimpleConv(
                 num_channels=3,
                 num_filters=64,
@@ -326,13 +516,25 @@ class TestAmpScaler(unittest.TestCase):
                 stride=2,
                 act='relu',
             )
+=======
+            model = SimpleConv(num_channels=3,
+                               num_filters=64,
+                               filter_size=7,
+                               stride=2,
+                               act='relu')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             params_init = {}
             for param in model.parameters():
                 params_init[param.name] = param.numpy()
             optimizer = fluid.optimizer.SGDOptimizer(
+<<<<<<< HEAD
                 learning_rate=0.01, parameter_list=model.parameters()
             )
             scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
+=======
+                learning_rate=0.01, parameter_list=model.parameters())
+            scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data = fluid.dygraph.to_variable(inp_np)
 
             out = model(data)
@@ -340,6 +542,7 @@ class TestAmpScaler(unittest.TestCase):
             scaled_loss = scaler.scale(loss)
             scaled_loss.backward()
             optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
+<<<<<<< HEAD
             self.assertEqual(scaler._found_inf.numpy() >= 1, True)
 
             for param in model.parameters():
@@ -347,16 +550,32 @@ class TestAmpScaler(unittest.TestCase):
                 np.testing.assert_array_equal(
                     param.numpy(), params_init[param.name]
                 )
+=======
+            self.assertEqual(scaler._found_inf.numpy() == 1, True)
+
+            for param in model.parameters():
+                # param not update when tensor contains nan or inf
+                np.testing.assert_array_equal(param.numpy(),
+                                              params_init[param.name])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_nan_inf(self):
         self.nan_inf()
 
     def step_update_exception(self):
+<<<<<<< HEAD
         def func1():
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
             optimizer = paddle.optimizer.SGD(
                 learning_rate=0.01, parameters=model.parameters()
             )
+=======
+
+        def func1():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             data = paddle.rand([10, 3, 32, 32])
             conv = model(data)
@@ -370,9 +589,14 @@ class TestAmpScaler(unittest.TestCase):
 
         def func2():
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+<<<<<<< HEAD
             optimizer = paddle.optimizer.SGD(
                 learning_rate=0.01, parameters=model.parameters()
             )
+=======
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             data = paddle.rand([10, 3, 32, 32])
             conv = model(data)
@@ -386,9 +610,14 @@ class TestAmpScaler(unittest.TestCase):
 
         def func3():
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+<<<<<<< HEAD
             optimizer = paddle.optimizer.SGD(
                 learning_rate=0.01, parameters=model.parameters()
             )
+=======
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             data = paddle.rand([10, 3, 32, 32])
             conv = model(data)
@@ -405,6 +634,7 @@ class TestAmpScaler(unittest.TestCase):
 
     def test_get_and_set(self):
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             scaler = paddle.amp.GradScaler(
                 enable=True,
                 init_loss_scaling=1024,
@@ -415,12 +645,26 @@ class TestAmpScaler(unittest.TestCase):
                 use_dynamic_loss_scaling=True,
             )
             self.assertEqual(scaler.is_enable(), True)
+=======
+            scaler = paddle.amp.GradScaler(enable=True,
+                                           init_loss_scaling=1024,
+                                           incr_ratio=2.0,
+                                           decr_ratio=0.5,
+                                           incr_every_n_steps=1000,
+                                           decr_every_n_nan_or_inf=2,
+                                           use_dynamic_loss_scaling=True)
+            self.assertEqual(scaler.is_enable() == True, True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(scaler.get_init_loss_scaling() == 1024, True)
             self.assertEqual(scaler.get_incr_ratio() == 2.0, True)
             self.assertEqual(scaler.get_decr_ratio() == 0.5, True)
             self.assertEqual(scaler.get_incr_every_n_steps() == 1000, True)
             self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 2, True)
+<<<<<<< HEAD
             self.assertEqual(scaler.is_use_dynamic_loss_scaling(), True)
+=======
+            self.assertEqual(scaler.is_use_dynamic_loss_scaling() == True, True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             scaler.set_decr_every_n_nan_or_inf(4)
             self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 4, True)
             scaler.set_decr_ratio(0.1)
@@ -434,6 +678,7 @@ class TestAmpScaler(unittest.TestCase):
 
     def test_state_dict_and_load_state_dict(self):
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             scaler1 = paddle.amp.GradScaler(
                 enable=True,
                 init_loss_scaling=14,
@@ -443,6 +688,15 @@ class TestAmpScaler(unittest.TestCase):
                 decr_every_n_nan_or_inf=20,
                 use_dynamic_loss_scaling=True,
             )
+=======
+            scaler1 = paddle.amp.GradScaler(enable=True,
+                                            init_loss_scaling=14,
+                                            incr_ratio=233.0,
+                                            decr_ratio=0.523,
+                                            incr_every_n_steps=1090,
+                                            decr_every_n_nan_or_inf=20,
+                                            use_dynamic_loss_scaling=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             scaler_state = scaler1.state_dict()
             scaler2 = paddle.amp.GradScaler(enable=True)
             scaler2.load_state_dict(scaler_state)
@@ -454,9 +708,16 @@ class TestAmpScaler(unittest.TestCase):
 
             scaler3 = paddle.amp.GradScaler(enable=False)
             scaler3.load_state_dict(scaler_state)
+<<<<<<< HEAD
             self.assertFalse(scaler3.is_enable())
 
     def test_state_dict_and_load_state_dict_error(self):
+=======
+            self.assertEqual(scaler3.is_enable() == False, True)
+
+    def test_state_dict_and_load_state_dict_error(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_error():
             state_empty = {}
             scaler = paddle.amp.GradScaler(enable=True)
@@ -466,6 +727,10 @@ class TestAmpScaler(unittest.TestCase):
 
 
 def reader_decorator(reader):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __reader__():
         for item in reader():
             img = np.array(item[0]).astype('float32').reshape(3, 224, 224)
@@ -476,9 +741,17 @@ def reader_decorator(reader):
 
 
 class TestGradScalerStateDict(unittest.TestCase):
+<<<<<<< HEAD
     def train_resnet(
         self, enable_amp=True, use_data_loader=True, use_save_load=True
     ):
+=======
+
+    def train_resnet(self,
+                     enable_amp=True,
+                     use_data_loader=True,
+                     use_save_load=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -488,6 +761,7 @@ class TestGradScalerStateDict(unittest.TestCase):
         paddle.framework.random._manual_program_seed(seed)
 
         resnet = ResNet(use_cudnn=True)
+<<<<<<< HEAD
         optimizer = optimizer_setting(
             train_parameters, parameter_list=resnet.parameters()
         )
@@ -495,12 +769,20 @@ class TestGradScalerStateDict(unittest.TestCase):
         train_reader = paddle.batch(
             paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size
         )
+=======
+        optimizer = optimizer_setting(train_parameters,
+                                      parameter_list=resnet.parameters())
+        np.random.seed(seed)
+        train_reader = paddle.batch(
+            paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         dy_param_init_value = {}
         for param in resnet.parameters():
             dy_param_init_value[param.name] = param.numpy()
 
         program = None
+<<<<<<< HEAD
         scaler = paddle.amp.GradScaler(
             enable=enable_amp, init_loss_scaling=2.0**10
         )
@@ -511,12 +793,26 @@ class TestGradScalerStateDict(unittest.TestCase):
                 batch_size=batch_size,
                 drop_last=True,
             )
+=======
+        scaler = paddle.amp.GradScaler(enable=enable_amp,
+                                       init_loss_scaling=2.**10)
+
+        if use_data_loader:
+            train_reader = paddle.batch(reader_decorator(
+                paddle.dataset.flowers.train(use_xmap=False)),
+                                        batch_size=batch_size,
+                                        drop_last=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             train_loader = fluid.io.DataLoader.from_generator(
                 capacity=4,
                 use_double_buffer=True,
                 iterable=True,
+<<<<<<< HEAD
                 return_list=True,
             )
+=======
+                return_list=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             train_loader.set_sample_list_generator(train_reader)
             train_reader = train_loader
 
@@ -526,6 +822,7 @@ class TestGradScalerStateDict(unittest.TestCase):
             if use_data_loader:
                 img, label = data
             else:
+<<<<<<< HEAD
                 dy_x_data = np.array(
                     [x[0].reshape(3, 224, 224) for x in data]
                 ).astype('float32')
@@ -539,6 +836,15 @@ class TestGradScalerStateDict(unittest.TestCase):
                     .astype('int64')
                     .reshape(-1, 1)
                 )
+=======
+                dy_x_data = np.array([x[0].reshape(3, 224, 224)
+                                      for x in data]).astype('float32')
+                if len(np.array([x[1]
+                                 for x in data]).astype('int64')) != batch_size:
+                    continue
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape(-1, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 img = paddle.to_tensor(dy_x_data)
                 label = paddle.to_tensor(y_data)
@@ -561,9 +867,14 @@ class TestGradScalerStateDict(unittest.TestCase):
             for param in resnet.parameters():
                 if param.trainable:
                     np_array = np.array(param._grad_ivar().value().get_tensor())
+<<<<<<< HEAD
                     dy_grad_value[
                         param.name + fluid.core.grad_var_suffix()
                     ] = np_array
+=======
+                    dy_grad_value[param.name +
+                                  fluid.core.grad_var_suffix()] = np_array
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             resnet.clear_gradients()
 
@@ -580,6 +891,7 @@ class TestGradScalerStateDict(unittest.TestCase):
         return dy_out, dy_param_value, dy_grad_value
 
     def test_with_state_dict(self):
+<<<<<<< HEAD
         def func_isinstance():
             with fluid.dygraph.guard():
                 out_use_state_dict = self.train_resnet(
@@ -592,11 +904,27 @@ class TestGradScalerStateDict(unittest.TestCase):
             np.testing.assert_allclose(
                 out_use_state_dict[0], out_no_state_dict[0], rtol=1e-05
             )
+=======
+
+        def func_isinstance():
+            with fluid.dygraph.guard():
+                out_use_state_dict = self.train_resnet(enable_amp=True,
+                                                       use_data_loader=True,
+                                                       use_save_load=True)
+                out_no_state_dict = self.train_resnet(enable_amp=True,
+                                                      use_data_loader=True,
+                                                      use_save_load=False)
+            print('save_load:', out_use_state_dict[0], out_no_state_dict[0])
+            np.testing.assert_allclose(out_use_state_dict[0],
+                                       out_no_state_dict[0],
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         func_isinstance()
 
 
 class TestAmpDecorator(unittest.TestCase):
+<<<<<<< HEAD
     def test_mode_exception(self):
         def func():
             with fluid.dygraph.guard():
@@ -605,12 +933,32 @@ class TestAmpDecorator(unittest.TestCase):
                 model, opt = paddle.amp.decorate(
                     models=model, optimizers=opt, level='O'
                 )
+=======
+
+    def test_mode_exception(self):
+
+        def func():
+            with fluid.dygraph.guard():
+                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+                opt = paddle.optimizer.SGD(parameters=model.parameters())
+                model, opt = paddle.amp.decorate(models=model,
+                                                 optimizers=opt,
+                                                 level='O')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, func)
 
     def test_input_type_exception(self):
+<<<<<<< HEAD
         def test_error_model():
             class MyModel:
+=======
+
+        def test_error_model():
+
+            class MyModel(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __init__(self):
                     print("A fake Model")
 
@@ -621,7 +969,11 @@ class TestAmpDecorator(unittest.TestCase):
         self.assertRaises(TypeError, test_error_model)
 
         def test_error_distributed_model():
+<<<<<<< HEAD
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+=======
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             model = paddle.DataParallel(model)
             with fluid.dygraph.guard():
                 model = paddle.amp.decorate(models=model, level='O2')
@@ -629,11 +981,21 @@ class TestAmpDecorator(unittest.TestCase):
         self.assertRaises(RuntimeError, test_error_distributed_model)
 
         def test_error_optimizer():
+<<<<<<< HEAD
             class MyOptimizer:
                 def __init__(self):
                     print("A fake Optimizer")
 
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+=======
+
+            class MyOptimizer(object):
+
+                def __init__(self):
+                    print("A fake Optimizer")
+
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             opt = MyOptimizer()
             with fluid.dygraph.guard():
                 paddle.amp.decorate(models=model, optimizers=opt, level='O2')
@@ -641,6 +1003,7 @@ class TestAmpDecorator(unittest.TestCase):
         self.assertRaises(TypeError, test_error_optimizer)
 
     def test_set_master_weight(self):
+<<<<<<< HEAD
         model1 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         opt1 = paddle.optimizer.Adam(
             learning_rate=0.0001,
@@ -684,17 +1047,60 @@ class TestAmpDecorator(unittest.TestCase):
             level='O2',
             master_weight=True,
         )
+=======
+        model1 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        opt1 = paddle.optimizer.Adam(learning_rate=0.0001,
+                                     parameters=model1.parameters(),
+                                     multi_precision=True)
+
+        model2 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        opt2 = paddle.optimizer.Adam(learning_rate=0.0001,
+                                     parameters=model2.parameters(),
+                                     multi_precision=False)
+
+        model1, opt1 = paddle.amp.decorate(models=model1,
+                                           optimizers=opt1,
+                                           level='O2',
+                                           master_weight=None)
+        self.assertEqual(opt1._multi_precision, True)
+
+        models, opt2 = paddle.amp.decorate(models=[model1, model2],
+                                           optimizers=opt2,
+                                           level='O2',
+                                           master_weight=None)
+        self.assertEqual(opt2._multi_precision, True)
+
+        model3 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        opt3 = paddle.optimizer.Adam(learning_rate=0.0001,
+                                     parameters=model3.parameters())
+
+        model4 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        opt4 = paddle.optimizer.Adam(learning_rate=0.0001,
+                                     parameters=model4.parameters())
+
+        model3, opts = paddle.amp.decorate(models=model3,
+                                           optimizers=[opt3, opt4],
+                                           level='O2',
+                                           master_weight=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(opts[0]._multi_precision, True)
         self.assertEqual(opts[1]._multi_precision, True)
 
         models = [model3, model4]
         optimizers = [opt3, opt4]
+<<<<<<< HEAD
         models, optimizers = paddle.amp.decorate(
             models=models,
             optimizers=optimizers,
             level='O2',
             master_weight=False,
         )
+=======
+        models, optimizers = paddle.amp.decorate(models=models,
+                                                 optimizers=optimizers,
+                                                 level='O2',
+                                                 master_weight=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(optimizers[0]._multi_precision, False)
         self.assertEqual(optimizers[1]._multi_precision, False)
 
@@ -726,6 +1132,7 @@ class TestAmpDecorator(unittest.TestCase):
 
 
 class TestStateDictHookForAMP(unittest.TestCase):
+<<<<<<< HEAD
     def test_state_dict_hook(self):
         def func_isinstance():
             paddle.seed(100)
@@ -733,6 +1140,17 @@ class TestStateDictHookForAMP(unittest.TestCase):
             model = paddle.amp.decorate(
                 models=model, level='O2', save_dtype='float32'
             )
+=======
+
+    def test_state_dict_hook(self):
+
+        def func_isinstance():
+            paddle.seed(100)
+            model = paddle.nn.Linear(2, 4)
+            model = paddle.amp.decorate(models=model,
+                                        level='O2',
+                                        save_dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             param_value_ori = {}
             for param in model.parameters():
                 param_value_ori[param.name] = param.numpy()
@@ -753,6 +1171,10 @@ class TestStateDictHookForAMP(unittest.TestCase):
 
 
 class TestPureFp16SaveLoad(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -760,6 +1182,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_save_dtype_exception(self):
+<<<<<<< HEAD
         def func():
             paddle.disable_static()
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
@@ -773,6 +1196,24 @@ class TestPureFp16SaveLoad(unittest.TestCase):
     def train_resnet(
         self, enable_amp=True, use_data_loader=True, use_save_load=True
     ):
+=======
+
+        def func():
+            paddle.disable_static()
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            opt = paddle.optimizer.SGD(parameters=model.parameters())
+            paddle.amp.decorate(models=model,
+                                optimizers=opt,
+                                level='O2',
+                                save_dtype='int')
+
+        self.assertRaises(ValueError, func)
+
+    def train_resnet(self,
+                     enable_amp=True,
+                     use_data_loader=True,
+                     use_save_load=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -782,6 +1223,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
         paddle.framework.random._manual_program_seed(seed)
 
         resnet = ResNet(use_cudnn=True)
+<<<<<<< HEAD
         optimizer = optimizer_setting(
             train_parameters, parameter_list=resnet.parameters()
         )
@@ -789,12 +1231,20 @@ class TestPureFp16SaveLoad(unittest.TestCase):
         train_reader = paddle.batch(
             paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size
         )
+=======
+        optimizer = optimizer_setting(train_parameters,
+                                      parameter_list=resnet.parameters())
+        np.random.seed(seed)
+        train_reader = paddle.batch(
+            paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         dy_param_init_value = {}
         for param in resnet.parameters():
             dy_param_init_value[param.name] = param.numpy()
 
         program = None
+<<<<<<< HEAD
         scaler = paddle.amp.GradScaler(
             enable=enable_amp, init_loss_scaling=2.0**10
         )
@@ -805,22 +1255,43 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                 batch_size=batch_size,
                 drop_last=True,
             )
+=======
+        scaler = paddle.amp.GradScaler(enable=enable_amp,
+                                       init_loss_scaling=2.**10)
+
+        if use_data_loader:
+            train_reader = paddle.batch(reader_decorator(
+                paddle.dataset.flowers.train(use_xmap=False)),
+                                        batch_size=batch_size,
+                                        drop_last=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             train_loader = fluid.io.DataLoader.from_generator(
                 capacity=4,
                 use_double_buffer=True,
                 iterable=True,
+<<<<<<< HEAD
                 return_list=True,
             )
+=======
+                return_list=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             train_loader.set_sample_list_generator(train_reader)
             train_reader = train_loader
 
         if enable_amp:
+<<<<<<< HEAD
             resnet, optimizer = paddle.amp.decorate(
                 models=resnet,
                 optimizers=optimizer,
                 level='O2',
                 save_dtype='float32',
             )
+=======
+            resnet, optimizer = paddle.amp.decorate(models=resnet,
+                                                    optimizers=optimizer,
+                                                    level='O2',
+                                                    save_dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for batch_id, data in enumerate(train_reader()):
             if batch_id >= batch_num:
@@ -828,6 +1299,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
             if use_data_loader:
                 img, label = data
             else:
+<<<<<<< HEAD
                 dy_x_data = np.array(
                     [x[0].reshape(3, 224, 224) for x in data]
                 ).astype('float32')
@@ -841,6 +1313,15 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                     .astype('int64')
                     .reshape(-1, 1)
                 )
+=======
+                dy_x_data = np.array([x[0].reshape(3, 224, 224)
+                                      for x in data]).astype('float32')
+                if len(np.array([x[1]
+                                 for x in data]).astype('int64')) != batch_size:
+                    continue
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape(-1, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 img = paddle.to_tensor(dy_x_data)
                 label = paddle.to_tensor(y_data)
@@ -864,9 +1345,14 @@ class TestPureFp16SaveLoad(unittest.TestCase):
             for param in resnet.parameters():
                 if param.trainable:
                     np_array = np.array(param._grad_ivar().value().get_tensor())
+<<<<<<< HEAD
                     dy_grad_value[
                         param.name + fluid.core.grad_var_suffix()
                     ] = np_array
+=======
+                    dy_grad_value[param.name +
+                                  fluid.core.grad_var_suffix()] = np_array
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             resnet.clear_gradients()
 
@@ -879,7 +1365,11 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                 obj = {
                     'model': resnet.state_dict(),
                     'opt': optimizer.state_dict(),
+<<<<<<< HEAD
                     'scaler': scaler.state_dict(),
+=======
+                    'scaler': scaler.state_dict()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
                 path = os.path.join(self.temp_dir.name, 'model.pdparams')
                 paddle.save(obj, path)
@@ -887,6 +1377,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                 obj_load = paddle.load(path)
                 resnet = ResNet(use_cudnn=True)
                 optimizer = optimizer_setting(
+<<<<<<< HEAD
                     train_parameters, parameter_list=resnet.parameters()
                 )
                 resnet.set_state_dict(obj_load['model'])
@@ -898,12 +1389,23 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                     level='O2',
                     save_dtype='float32',
                 )
+=======
+                    train_parameters, parameter_list=resnet.parameters())
+                resnet.set_state_dict(obj_load['model'])
+                optimizer.set_state_dict(obj_load['opt'])
+                scaler.load_state_dict(obj_load['scaler'])
+                resnet, optimizer = paddle.amp.decorate(models=resnet,
+                                                        optimizers=optimizer,
+                                                        level='O2',
+                                                        save_dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if use_data_loader:
             train_reader._reset()
         return dy_out, dy_param_value, dy_grad_value
 
     def test_with_save_load(self):
+<<<<<<< HEAD
         def func_isinstance():
             with fluid.dygraph.guard():
                 out_use_save_load = self.train_resnet(
@@ -916,11 +1418,30 @@ class TestPureFp16SaveLoad(unittest.TestCase):
             np.testing.assert_allclose(
                 out_use_save_load[0], out_no_save_load[0], rtol=1e-05
             )
+=======
+
+        def func_isinstance():
+            with fluid.dygraph.guard():
+                out_use_save_load = self.train_resnet(enable_amp=True,
+                                                      use_data_loader=True,
+                                                      use_save_load=True)
+                out_no_save_load = self.train_resnet(enable_amp=True,
+                                                     use_data_loader=True,
+                                                     use_save_load=False)
+            print('save_load:', out_use_save_load[0], out_no_save_load[0])
+            np.testing.assert_allclose(out_use_save_load[0],
+                                       out_no_save_load[0],
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         func_isinstance()
 
 
 class TestPureFp16InferenceSaveLoad(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -936,22 +1457,37 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
 
         # define a random dataset
         class RandomDataset(paddle.io.Dataset):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             def __init__(self, num_samples):
                 self.num_samples = num_samples
 
             def __getitem__(self, idx):
                 image = np.random.random([IMAGE_SIZE]).astype('float32')
+<<<<<<< HEAD
                 label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype(
                     'int64'
                 )
+=======
+                label = np.random.randint(0, CLASS_NUM - 1,
+                                          (1, )).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return image, label
 
             def __len__(self):
                 return self.num_samples
 
         class LinearNet(nn.Layer):
+<<<<<<< HEAD
             def __init__(self):
                 super().__init__()
+=======
+
+            def __init__(self):
+                super(LinearNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
             def forward(self, x):
@@ -960,12 +1496,19 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         def train(layer, loader, loss_fn, opt):
             for epoch_id in range(EPOCH_NUM):
                 for batch_id, (image, label) in enumerate(loader()):
+<<<<<<< HEAD
                     with paddle.amp.auto_cast(
                         enable=True,
                         custom_white_list=None,
                         custom_black_list=None,
                         level='O2',
                     ):
+=======
+                    with paddle.amp.auto_cast(enable=True,
+                                              custom_white_list=None,
+                                              custom_black_list=None,
+                                              level='O2'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         out = layer(image)
                         loss = loss_fn(out, label)
                     loss.backward()
@@ -974,6 +1517,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
 
         # train
         layer = LinearNet()
+<<<<<<< HEAD
         adam = paddle.optimizer.Adam(
             learning_rate=0.001,
             parameters=layer.parameters(),
@@ -991,14 +1535,35 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
             drop_last=True,
             num_workers=2,
         )
+=======
+        adam = paddle.optimizer.Adam(learning_rate=0.001,
+                                     parameters=layer.parameters(),
+                                     multi_precision=True)
+        loss_fn = nn.CrossEntropyLoss()
+        layer, adam = paddle.amp.decorate(models=layer,
+                                          optimizers=adam,
+                                          save_dtype='float32')
+        dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+        loader = paddle.io.DataLoader(dataset,
+                                      batch_size=BATCH_SIZE,
+                                      shuffle=True,
+                                      drop_last=True,
+                                      num_workers=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         train(layer, loader, loss_fn, adam)
 
         # save
         path = os.path.join(self.temp_dir.name, 'example_model/linear')
+<<<<<<< HEAD
         paddle.jit.save(
             layer, path, input_spec=[InputSpec(shape=[IMAGE_SIZE], name='x')]
         )
+=======
+        paddle.jit.save(layer,
+                        path,
+                        input_spec=[InputSpec(shape=[IMAGE_SIZE], name='x')])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # jit.load
         loaded_layer = paddle.jit.load(path)
@@ -1012,6 +1577,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         # load_inference_model
         paddle.enable_static()
         exe = paddle.static.Executor()
+<<<<<<< HEAD
         [
             inference_program,
             feed_target_names,
@@ -1023,6 +1589,14 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
             feed={feed_target_names[0]: tensor_img},
             fetch_list=fetch_targets,
         )
+=======
+        [inference_program, feed_target_names,
+         fetch_targets] = (paddle.static.load_inference_model(path, exe))
+        tensor_img = x
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: tensor_img},
+                          fetch_list=fetch_targets)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print("pred.numpy()", pred.numpy())
         print("result", results[0])
         np.testing.assert_array_equal(pred.numpy(), results[0])
@@ -1037,6 +1611,7 @@ class TestResnet2(unittest.TestCase):
     Use paddle-2.0 API
     """
 
+<<<<<<< HEAD
     def train_resnet(
         self,
         enable_amp=True,
@@ -1044,6 +1619,13 @@ class TestResnet2(unittest.TestCase):
         use_data_loader=False,
         use_param_group=False,
     ):
+=======
+    def train_resnet(self,
+                     enable_amp=True,
+                     level='O1',
+                     use_data_loader=False,
+                     use_param_group=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -1067,6 +1649,7 @@ class TestResnet2(unittest.TestCase):
             # NOTE(zhiqiu): The Membership test operations(in / not in) calls "is" and "equal",
             # see details: https://docs.python.org/3/reference/expressions.html#membership-test-operations.
             # So do not use other_params =  [p for p in resnet.parameters() if p not in conv_params]
+<<<<<<< HEAD
             optimizer = paddle.optimizer.Momentum(
                 parameters=[
                     {'params': conv_params, 'learning_rate': 0.01},
@@ -1074,19 +1657,38 @@ class TestResnet2(unittest.TestCase):
                 ],
                 multi_precision=True,
             )
+=======
+            optimizer = paddle.optimizer.Momentum(parameters=[{
+                'params':
+                conv_params,
+                'learning_rate':
+                0.01
+            }, {
+                'params':
+                other_params,
+                'learning_rate':
+                0.001
+            }],
+                                                  multi_precision=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             optimizer = paddle.optimizer.SGD(parameters=resnet.parameters())
 
         np.random.seed(seed)
         train_reader = paddle.batch(
+<<<<<<< HEAD
             paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size
         )
+=======
+            paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         dy_param_init_value = {}
         for param in resnet.parameters():
             dy_param_init_value[param.name] = param.numpy()
 
         program = None
+<<<<<<< HEAD
         scaler = paddle.amp.GradScaler(
             enable=enable_amp, init_loss_scaling=2.0**10
         )
@@ -1097,12 +1699,26 @@ class TestResnet2(unittest.TestCase):
                 batch_size=batch_size,
                 drop_last=True,
             )
+=======
+        scaler = paddle.amp.GradScaler(enable=enable_amp,
+                                       init_loss_scaling=2.**10)
+
+        if use_data_loader:
+            train_reader = paddle.batch(reader_decorator(
+                paddle.dataset.flowers.train(use_xmap=False)),
+                                        batch_size=batch_size,
+                                        drop_last=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             train_loader = fluid.io.DataLoader.from_generator(
                 capacity=4,
                 use_double_buffer=True,
                 iterable=True,
+<<<<<<< HEAD
                 return_list=True,
             )
+=======
+                return_list=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             train_loader.set_sample_list_generator(train_reader)
             train_reader = train_loader
 
@@ -1115,6 +1731,7 @@ class TestResnet2(unittest.TestCase):
             if use_data_loader:
                 img, label = data
             else:
+<<<<<<< HEAD
                 dy_x_data = np.array(
                     [x[0].reshape(3, 224, 224) for x in data]
                 ).astype('float32')
@@ -1128,6 +1745,15 @@ class TestResnet2(unittest.TestCase):
                     .astype('int64')
                     .reshape(-1, 1)
                 )
+=======
+                dy_x_data = np.array([x[0].reshape(3, 224, 224)
+                                      for x in data]).astype('float32')
+                if len(np.array([x[1]
+                                 for x in data]).astype('int64')) != batch_size:
+                    continue
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape(-1, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 img = paddle.to_tensor(dy_x_data)
                 label = paddle.to_tensor(y_data)
@@ -1152,9 +1778,14 @@ class TestResnet2(unittest.TestCase):
             for param in resnet.parameters():
                 if param.trainable:
                     np_array = np.array(param._grad_ivar().value().get_tensor())
+<<<<<<< HEAD
                     dy_grad_value[
                         param.name + fluid.core.grad_var_suffix()
                     ] = np_array
+=======
+                    dy_grad_value[param.name +
+                                  fluid.core.grad_var_suffix()] = np_array
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             resnet.clear_gradients()
 
@@ -1166,22 +1797,38 @@ class TestResnet2(unittest.TestCase):
         return dy_out, dy_param_value, dy_grad_value
 
     def test_resnet(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def func_isinstance():
             with fluid.dygraph.guard():
                 out_fp32 = self.train_resnet(enable_amp=False)
                 out_amp = self.train_resnet(enable_amp=True)
                 out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 out_fp32[0], out_amp[0], rtol=1e-05, atol=1e-05
             )
             np.testing.assert_allclose(
                 out_fp32[0], out_pure_fp16[0], rtol=1e-05, atol=0.01
             )
+=======
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         func_isinstance()
 
     def test_with_data_loader(self):
+<<<<<<< HEAD
         def func_isinstance():
             with fluid.dygraph.guard():
                 out_fp32 = self.train_resnet(
@@ -1200,10 +1847,32 @@ class TestResnet2(unittest.TestCase):
             np.testing.assert_allclose(
                 out_fp32[0], out_pure_fp16[0], rtol=1e-05, atol=0.01
             )
+=======
+
+        def func_isinstance():
+            with fluid.dygraph.guard():
+                out_fp32 = self.train_resnet(enable_amp=False,
+                                             use_data_loader=True)
+                out_amp = self.train_resnet(enable_amp=True,
+                                            use_data_loader=True)
+                out_pure_fp16 = self.train_resnet(enable_amp=True,
+                                                  use_data_loader=True,
+                                                  level='O2')
+            print(out_fp32[0], out_amp[0], out_pure_fp16[0])
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         func_isinstance()
 
     def test_param_group(self):
+<<<<<<< HEAD
         def func_isinstance():
             with fluid.dygraph.guard():
                 out_fp32 = self.train_resnet(
@@ -1225,6 +1894,30 @@ class TestResnet2(unittest.TestCase):
             np.testing.assert_allclose(
                 out_fp32[0], out_pure_fp16[0], rtol=1e-05, atol=0.01
             )
+=======
+
+        def func_isinstance():
+            with fluid.dygraph.guard():
+                out_fp32 = self.train_resnet(enable_amp=False,
+                                             use_data_loader=True,
+                                             use_param_group=True)
+                out_amp = self.train_resnet(enable_amp=True,
+                                            use_data_loader=True,
+                                            use_param_group=True)
+                out_pure_fp16 = self.train_resnet(enable_amp=True,
+                                                  use_data_loader=True,
+                                                  use_param_group=True,
+                                                  level='O2')
+            print(out_fp32[0], out_amp[0], out_pure_fp16[0])
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         func_isinstance()
 
@@ -1245,6 +1938,7 @@ class TestResnet(unittest.TestCase):
             paddle.framework.random._manual_program_seed(seed)
 
             resnet = ResNet(use_cudnn=True)
+<<<<<<< HEAD
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=resnet.parameters()
             )
@@ -1256,12 +1950,23 @@ class TestResnet(unittest.TestCase):
                 paddle.dataset.flowers.train(use_xmap=False),
                 batch_size=batch_size,
             )
+=======
+            optimizer = optimizer_setting(train_parameters,
+                                          parameter_list=resnet.parameters())
+            optimizer = paddle.optimizer.Momentum(
+                parameters=resnet.parameters(), multi_precision=True)
+            np.random.seed(seed)
+            train_reader = paddle.batch(
+                paddle.dataset.flowers.train(use_xmap=False),
+                batch_size=batch_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             dy_param_init_value = {}
             for param in resnet.parameters():
                 dy_param_init_value[param.name] = param.numpy()
 
             program = None
+<<<<<<< HEAD
             scaler = paddle.amp.AmpScaler(
                 enable=enable_amp, init_loss_scaling=2.0**10
             )
@@ -1270,10 +1975,19 @@ class TestResnet(unittest.TestCase):
                 resnet, optimizer = paddle.amp.amp_decorate(
                     models=resnet, optimizers=optimizer, level='O2'
                 )
+=======
+            scaler = paddle.fluid.dygraph.AmpScaler(enable=enable_amp,
+                                                    init_loss_scaling=2.**10)
+
+            if enable_amp and (level == 'O2'):
+                resnet, optimizer = paddle.fluid.dygraph.amp_decorate(
+                    models=resnet, optimizers=optimizer, level='O2')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             for batch_id, data in enumerate(train_reader()):
                 if batch_id >= batch_num:
                     break
+<<<<<<< HEAD
                 dy_x_data = np.array(
                     [x[0].reshape(3, 224, 224) for x in data]
                 ).astype('float32')
@@ -1296,6 +2010,23 @@ class TestResnet(unittest.TestCase):
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label, reduction='none', use_softmax=False
                 )
+=======
+                dy_x_data = np.array([x[0].reshape(3, 224, 224)
+                                      for x in data]).astype('float32')
+                if len(np.array([x[1]
+                                 for x in data]).astype('int64')) != batch_size:
+                    continue
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape(-1, 1)
+                img = fluid.dygraph.to_variable(dy_x_data)
+                label = fluid.dygraph.to_variable(y_data)
+                label.stop_gradient = True
+                with paddle.fluid.dygraph.amp_guard(enable=enable_amp,
+                                                    level=level):
+                    out = resnet(img)
+
+                loss = fluid.layers.cross_entropy(input=out, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
@@ -1309,11 +2040,17 @@ class TestResnet(unittest.TestCase):
                 for param in resnet.parameters():
                     if param.trainable:
                         np_array = np.array(
+<<<<<<< HEAD
                             param._grad_ivar().value().get_tensor()
                         )
                         dy_grad_value[
                             param.name + fluid.core.grad_var_suffix()
                         ] = np_array
+=======
+                            param._grad_ivar().value().get_tensor())
+                        dy_grad_value[param.name +
+                                      fluid.core.grad_var_suffix()] = np_array
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 resnet.clear_gradients()
 
@@ -1324,27 +2061,50 @@ class TestResnet(unittest.TestCase):
         return dy_out, dy_param_value, dy_grad_value
 
     def test_resnet(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def func_isinstance():
             out_fp32 = self.train_resnet(enable_amp=False)
             out_amp = self.train_resnet(enable_amp=True)
             out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 out_fp32[0], out_amp[0], rtol=1e-05, atol=0.01
             )
             np.testing.assert_allclose(
                 out_fp32[0], out_pure_fp16[0], rtol=1e-05, atol=0.1
             )
+=======
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         func_isinstance()
 
 
 class TestLayerNormFp16(unittest.TestCase):
+<<<<<<< HEAD
     r'''layer_norm and batch_norm support mixed inputs, i.e., only input x is fp16
+=======
+    r''' layer_norm and batch_norm support mixed inputs, i.e., only input x is fp16
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     and other params are fp32.
     '''
 
     def test_layer_norm_fp16(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def func_isinstance():
             if fluid.is_compiled_with_cuda():
                 with fluid.dygraph.guard(fluid.CUDAPlace(0)):
@@ -1354,19 +2114,28 @@ class TestLayerNormFp16(unittest.TestCase):
                         out = layer_norm(x)
 
                     self.assertTrue(
+<<<<<<< HEAD
                         out.dtype == fluid.core.VarDesc.VarType.FP16
                     )
+=======
+                        out.dtype == fluid.core.VarDesc.VarType.FP16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         func_isinstance()
 
 
 class TestBf16(unittest.TestCase):
     '''
+<<<<<<< HEAD
     test amp for BF16
+=======
+    test amp for BF16 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     '''
 
     def train(self, enable_amp=True, amp_level='O1'):
         paddle.seed(100)
+<<<<<<< HEAD
         input = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
         conv = paddle.nn.Conv2D(4, 6, (3, 3))
         if amp_level == 'O2':
@@ -1376,11 +2145,19 @@ class TestBf16(unittest.TestCase):
         with paddle.amp.auto_cast(
             enable=enable_amp, level=amp_level, dtype='bfloat16'
         ):
+=======
+        input = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+        conv = paddle.nn.Conv2D(4, 6, (3, 3))
+        with paddle.amp.auto_cast(enable=enable_amp,
+                                  level=amp_level,
+                                  dtype='bfloat16'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             output = conv(input)
         output = output.cast('float32')
         return output.numpy()
 
     def test_bf16(self):
+<<<<<<< HEAD
         def func_isinstance():
             if (
                 fluid.core.is_compiled_with_cuda()
@@ -1395,13 +2172,38 @@ class TestBf16(unittest.TestCase):
                 np.testing.assert_allclose(
                     out_fp32, out_bf16_O2, rtol=0.001, atol=0.1
                 )
+=======
+
+        def func_isinstance():
+            if fluid.core.is_compiled_with_cuda(
+            ) and fluid.core.is_bfloat16_supported(paddle.CUDAPlace(0)):
+                out_fp32 = self.train(enable_amp=False)
+                out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
+                out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
+                np.testing.assert_allclose(out_fp32,
+                                           out_bf16_O1,
+                                           rtol=0.001,
+                                           atol=0.1)
+                np.testing.assert_allclose(out_fp32,
+                                           out_bf16_O2,
+                                           rtol=0.001,
+                                           atol=0.1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         func_isinstance()
 
 
 class TestAmpWithPyLyer(unittest.TestCase):
+<<<<<<< HEAD
     def test_pylayer(self):
         class MyMM(PyLayer):
+=======
+
+    def test_pylayer(self):
+
+        class MyMM(PyLayer):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             @staticmethod
             def forward(ctx, a, b):
                 ctx.save_for_backward(a, b)
@@ -1426,7 +2228,13 @@ class TestAmpWithPyLyer(unittest.TestCase):
 
 
 class TestAmpWithHook(unittest.TestCase):
+<<<<<<< HEAD
     def test_hook_change_dtype(self):
+=======
+
+    def test_hook_change_dtype(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def func_isinstance():
             with paddle.fluid.dygraph.guard():
                 v = paddle.rand([3, 3])
@@ -1447,6 +2255,10 @@ class TestAmpWithHook(unittest.TestCase):
         func_isinstance()
 
     def test_hook_change_place(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def func_isinstance():
             with paddle.fluid.dygraph.guard():
                 v = paddle.rand([3, 3])

@@ -66,6 +66,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("sparse_multihead_matmul");
     int8_teller_set.insert("sparse_multihead_matmul");
 #endif
+<<<<<<< HEAD
 #if IS_TRT_VERSION_GE(8522)
     teller_set.insert("flash_multihead_matmul");
     int8_teller_set.insert("flash_multihead_matmul");
@@ -76,6 +77,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("round");
     int8_teller_set.insert("round");
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   bool operator()(const framework::OpDesc& desc,
@@ -89,6 +92,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
+<<<<<<< HEAD
         "relu",       "relu6",       "sigmoid",
         "elu",        "selu",        "softsign",
         "softplus",   "stanh",       "thresholded_relu",
@@ -101,6 +105,18 @@ struct SimpleOpTypeSetTeller : public Teller {
         "erf",        "floor",       "round",
         "sign",       "silu",        "logical_not",
         "reciprocal", "tanh_shrink", "logsigmoid"};
+=======
+        "relu",     "relu6", "sigmoid",
+        "elu",      "selu",  "softsign",
+        "softplus", "stanh", "thresholded_relu",
+        "exp",      "log",   "sqrt",
+        "abs",      "sin",   "cos",
+        "tan",      "tanh",  "sinh",
+        "cosh",     "asin",  "acos",
+        "atan",     "asinh", "atanh",
+        "ceil",     "floor", "erf",
+        "silu"};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -125,6 +141,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+<<<<<<< HEAD
     // In static shape in Paddle-TRT, we can't allow that one op has a
     // 1D intermediate tensor as input.
     if (!with_dynamic_shape) {
@@ -140,6 +157,26 @@ struct SimpleOpTypeSetTeller : public Teller {
               if (shape.size() == 1) return false;
             }
           }
+=======
+    // In static shape mode in TRT, we can't allow that op's input is a
+    // 1D-tensor So we filter it here. Some op like elementwise having "Y" too,
+    // but that is dealt with in the specified op, here just the common case
+    if (!with_dynamic_shape) {
+      std::string X_name;
+      auto inputs = desc.Inputs();
+      if (inputs.count("X") && !desc.Input("X").empty()) {
+        X_name = desc.Input("X")[0];
+      } else if (inputs.count("Input") && !desc.Input("Input").empty()) {
+        X_name = desc.Input("Input")[0];
+      }
+      auto* block = desc.Block();
+      if (block) {
+        auto* x_var_desc = block->FindVar(X_name);
+        // Can't get feed op's TensorDesc
+        if (op_type != "feed" && x_var_desc && !x_var_desc->Persistable()) {
+          const auto x_shape = x_var_desc->GetShape();
+          if (x_shape.size() == 1) return false;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
       }
     }
@@ -353,6 +390,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+<<<<<<< HEAD
     if (op_type == "range") {
       if (!with_dynamic_shape) {
         return false;
@@ -382,6 +420,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (op_type == "matmul_v2") {
       if (!with_dynamic_shape) {
         return false;
@@ -461,6 +501,18 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << layout_str;
         return false;
       }
+<<<<<<< HEAD
+=======
+      auto* block = desc.Block();
+      if (block == nullptr) return false;
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype != 5) {
+        VLOG(3) << "Group norm trt plugin only support float32";
+        return false;
+      }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
@@ -612,11 +664,26 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
+<<<<<<< HEAD
 #if IS_TRT_VERSION_LT(8200)
       auto index_var_name = desc.Input("Index")[0];
       auto* index_var_desc = block->FindVar(index_var_name);
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
+=======
+      auto x_var_name = desc.Input("X")[0];
+      auto index_var_name = desc.Input("Index")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* index_var_desc = block->FindVar(index_var_name);
+
+      // The index input must be int32 datatype.
+      if (index_var_desc->GetDataType() !=
+          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+        VLOG(3) << "gather_nd op Index input data type must be int32";
+        return false;
+      }
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const auto index_shape = index_var_desc->GetShape();
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() <= 2) {
@@ -630,6 +697,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << " ] not equal to x dims size [" << x_shape.size() << "]";
         return false;
       }
+<<<<<<< HEAD
 #endif
     }
 
@@ -661,6 +729,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       VLOG(3) << "take_along_axis op is only supported by trt8.2 above ";
       return false;
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     if (op_type == "anchor_generator") {
@@ -682,7 +752,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!has_attrs) return false;
     }
 
+<<<<<<< HEAD
     if (op_type == "arg_max" || op_type == "arg_min") {
+=======
+    if (op_type == "arg_max") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
                    "Variable type in arg_max.";
@@ -698,14 +772,24 @@ struct SimpleOpTypeSetTeller : public Teller {
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
                       : 3;
+<<<<<<< HEAD
       if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
+=======
+      if (axis == 0 || flatten || dtype != 2) return false;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
+<<<<<<< HEAD
       auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != phi::DataLayout::kNCHW) return false;
+=======
+      auto data_layout = framework::StringToDataLayout(
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW) return false;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -774,6 +858,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{
           "interp_method", "align_corners", "scale", "out_h", "out_w"};
+<<<<<<< HEAD
       for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
@@ -782,6 +867,16 @@ struct SimpleOpTypeSetTeller : public Teller {
             PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
         if (data_layout != phi::DataLayout::kNCHW &&
             data_layout != phi::DataLayout::kNHWC)
+=======
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) return false;
+      }
+      if (desc.HasAttr("data_layout")) {
+        auto data_layout = framework::StringToDataLayout(
+            PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
+        if (data_layout != framework::DataLayout::kNCHW &&
+            data_layout != framework::DataLayout::kNHWC)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           return false;
       }
       auto interp_method =
@@ -820,6 +915,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "scale",
                                      "out_h",
                                      "out_w"};
+<<<<<<< HEAD
       for (auto const& attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
@@ -827,10 +923,20 @@ struct SimpleOpTypeSetTeller : public Teller {
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != phi::DataLayout::kNCHW &&
           data_layout != phi::DataLayout::kNHWC)
+=======
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) return false;
+      }
+      auto data_layout = framework::StringToDataLayout(
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return false;
       auto interp_method =
           PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
+<<<<<<< HEAD
 
       auto resize_inputs = desc.Inputs();
       if (with_dynamic_shape &&
@@ -839,6 +945,8 @@ struct SimpleOpTypeSetTeller : public Teller {
         return true;
       }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto scale = PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
       auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
       auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
@@ -859,7 +967,11 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "scale",
                                      "out_h",
                                      "out_w"};
+<<<<<<< HEAD
       for (auto const& attr : attrs) {
+=======
+      for (auto const attr : attrs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (!desc.HasAttr(attr)) {
           VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
                   << attr << " and return false";
@@ -878,17 +990,29 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       if (resize_inputs.find("OutSize") != resize_inputs.end()) {
+<<<<<<< HEAD
         if (!with_dynamic_shape) {
           VLOG(3) << "Static shape don't support the OutSize for op_type "
+=======
+        if (desc.Input("OutSize").size() >= 1) {
+          VLOG(3) << "The Paddle-TRT doesn't support the OutSize for op_type "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   << op_type;
           return false;
         }
       }
 
+<<<<<<< HEAD
       auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != phi::DataLayout::kNCHW &&
           data_layout != phi::DataLayout::kNHWC) {
+=======
+      auto data_layout = framework::StringToDataLayout(
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         VLOG(3) << "The op_type " << op_type
                 << " is not NCHW or NHWC return false";
         return false;
@@ -1149,6 +1273,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       auto dtype = x_var_desc->GetDataType();
+<<<<<<< HEAD
       if (!with_dynamic_shape) {
         // At present, only support float32 or float16 into trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
@@ -1167,6 +1292,15 @@ struct SimpleOpTypeSetTeller : public Teller {
               dtype == framework::proto::VarType::INT32)) {
           return false;
         }
+=======
+      // At present, only support float32 or float16 into trt.
+      if (!(dtype == 5 || dtype == 4)) {
+        return false;
+      }
+      if (!with_dynamic_shape && x_shape.size() == 1) {
+        VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
+        return false;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     }
 
@@ -1245,6 +1379,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+<<<<<<< HEAD
     if (op_type == "fill_any_like") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the fill_any_like does not support static shape yet";
@@ -1276,6 +1411,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (op_type == "slice") {
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
@@ -1287,6 +1424,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           }
         }
       }
+<<<<<<< HEAD
       std::vector<int> axes;
       if (!desc.HasAttr("axes")) {
         VLOG(3) << "The necessary attributes of the slice operator axes "
@@ -1294,6 +1432,27 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       } else {
         axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+=======
+
+      if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
+          !desc.HasAttr("ends")) {
+        VLOG(3) << "The necessary attributes of the slice operator axes "
+                   "or starts or ends are missing.";
+        return false;
+      } else {
+        std::vector<int> axes =
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+        std::vector<int> starts =
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
+        std::vector<int> ends =
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
+
+        if (axes.size() != starts.size() || axes.size() != ends.size()) {
+          VLOG(3) << "The shape of attributes of the slice operator axes "
+                     "or starts or ends are not equal.";
+          return false;
+        }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (!with_dynamic_shape) {
           for (size_t i = 0; i < axes.size(); i++) {
             if (axes[i] == 0) {
@@ -1306,6 +1465,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       // not support following four inputs for slice in paddle-trt
       auto slice_inputs = desc.Inputs();  // its size == 5
+<<<<<<< HEAD
       if (slice_inputs.find("StartsTensor") != slice_inputs.end() &&
           desc.Input("StartsTensor").size()) {
         VLOG(3) << "The Slice has StartsTensor input.";
@@ -1342,6 +1502,16 @@ struct SimpleOpTypeSetTeller : public Teller {
                        "and ends are not equal.";
             return false;
           }
+=======
+      if (slice_inputs.find("StartsTensor") != slice_inputs.end()) {
+        if (desc.Input("StartsTensor").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("EndsTensor") != slice_inputs.end()) {
+        if (desc.Input("EndsTensor").size()) {
+          return false;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
       }
       if (slice_inputs.find("StartsTensorList") != slice_inputs.end()) {
@@ -1356,6 +1526,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+<<<<<<< HEAD
     if (op_type == "less_than" || op_type == "greater_than" ||
         op_type == "logical_or" || op_type == "logical_xor" ||
         op_type == "logical_and" || op_type == "less_equal") {
@@ -1387,6 +1558,12 @@ struct SimpleOpTypeSetTeller : public Teller {
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
         op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
+=======
+    if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
+        op_type == "elementwise_sub" || op_type == "elementwise_div" ||
+        op_type == "elementwise_pow" || op_type == "elementwise_min" ||
+        op_type == "elementwise_max") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1562,6 +1739,13 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "instance_norm") {
+<<<<<<< HEAD
+=======
+      if (with_dynamic_shape) {
+        VLOG(3) << "trt instance_norm op does not support dynamic shape ";
+        return false;
+      }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "input of instance_norm op converter should be 1, got "
                 << desc.Input("X").size();
@@ -1757,7 +1941,11 @@ struct SimpleOpTypeSetTeller : public Teller {
                                      "spatial_scale",
                                      "sampling_ratio",
                                      "aligned"};
+<<<<<<< HEAD
       for (auto const& attr : attrs) {
+=======
+      for (auto const attr : attrs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (!desc.HasAttr(attr)) return false;
       }
 
@@ -1792,6 +1980,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+<<<<<<< HEAD
     if (op_type == "where") {
 #if !IS_TRT_VERSION_GE(8400)
       VLOG(3) << "where is not supported when TensorRT < 8.4";
@@ -1842,6 +2031,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (op_type == "skip_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the skip_layernorm does not support static shape yet";
@@ -1894,6 +2085,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                               input_shape[1] == biasqk_shape[3];
         bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
                                 input_shape[1] == biasqk_shape[3];
+<<<<<<< HEAD
         is_broadcastable =
             is_broadcastable || (biasqk_shape[0] == 1 && biasqk_shape[1] == 1 &&
                                  input_shape[1] == biasqk_shape[2] &&
@@ -1953,6 +2145,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                               input_shape[1] == biasqk_shape[3];
         bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
                                 input_shape[1] == biasqk_shape[3];
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (!(has_same_shape || is_broadcastable)) {
           VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
                   << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
@@ -1963,8 +2157,15 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
+<<<<<<< HEAD
 #if !IS_TRT_VERSION_GE(8000)
         VLOG(3) << "The version of TRT must be greater than 8000";
+=======
+#if (IS_TRT_VERSION_GE(8000) && IS_TRT_VERSION_LT(8100)) || \
+    (IS_TRT_VERSION_LT(7200))
+        VLOG(3) << "There are some bugs in v8.0.* and the versions lower than "
+                   "v7.2 are not supported";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return false;
 #endif
       }
@@ -2096,11 +2297,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+<<<<<<< HEAD
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
         op_type == "reduce_max" || op_type == "reduce_min" ||
         op_type == "reduce_prod") {
+=======
+      if (x_shape.size() == 1) {
+        VLOG(3) << "clip op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+    }
+
+    if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
@@ -2284,6 +2495,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
+<<<<<<< HEAD
 
       if (in_dtype == 0 || out_dtype == 0) {
 #if IS_TRT_VERSION_GE(8400)
@@ -2293,6 +2505,20 @@ struct SimpleOpTypeSetTeller : public Teller {
           return true;
         }
 #endif
+=======
+      if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
+        VLOG(3) << "unsupport data type conversion";
+        return false;
+      }
+      if (in_dtype == 0) {
+        VLOG(3) << "do not support input data type as bool now";
+        return false;
+      }
+      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
+            (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
+        VLOG(3) << "only valid conversions are: "
+                   "(kFLOAT | kHALF | kINT32) -> (kFLOAT | kHALF | kINT32)";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return false;
       }
     }
@@ -2335,6 +2561,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 #endif
 
+<<<<<<< HEAD
     if (op_type == "equal" || op_type == "not_equal") {
 #if !IS_TRT_VERSION_GE(8000)
       VLOG(3) << "equal is not supported when TensorRT < 8.0";
@@ -2346,6 +2573,13 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "static shape yet";
         return false;
       }
+=======
+    if (op_type == "equal") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+      return false;
+#else
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
       if (axis == 0) {
         return false;
@@ -2368,6 +2602,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+<<<<<<< HEAD
     if (op_type == "preln_layernorm_shift_partition") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the layernorm_shift_partition does not support "
@@ -2432,6 +2667,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2446,7 +2683,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "matmul",
       "matmul_v2",
       "bmm",
+<<<<<<< HEAD
       "range",
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2470,6 +2710,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "acos",
       "atan",
       "asinh",
+<<<<<<< HEAD
       "acosh",
       "atanh",
       "ceil",
@@ -2480,6 +2721,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logical_not",
       "erf",
       "square",
+=======
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -2495,6 +2742,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_pow",
       "elementwise_min",
       "elementwise_max",
+<<<<<<< HEAD
       "elementwise_floordiv",
       "equal",
       "not_equal",
@@ -2506,18 +2754,27 @@ struct SimpleOpTypeSetTeller : public Teller {
       "less_equal",
       "dropout",
       "fill_any_like",
+=======
+      "equal",
+      "dropout",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "prelu",
       "conv2d_transpose",
       "depthwise_conv2d_transpose",
       "leaky_relu",
       "fc",
       "shuffle_channel",
+<<<<<<< HEAD
       "where",
       "one_hot",
       "one_hot_v2",
       "swish",
       "silu",
       "celu",
+=======
+      "swish",
+      "silu",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "split",
       "instance_norm",
       "gelu",
@@ -2532,18 +2789,29 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten",
       "gather",
       "gather_nd",
+<<<<<<< HEAD
       "group_norm",
       "yolo_box",
       "yolo_box_head",
       "arg_max",
       "arg_min",
+=======
+      "yolo_box",
+      "yolo_box_head",
+      "arg_max",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "roi_align",
       "affine_channel",
       "nearest_interp",
       "anchor_generator",
+<<<<<<< HEAD
       "reduce_max",
       "reduce_mean",
       "reduce_sum",
+=======
+      "reduce_sum",
+      "reduce_mean",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "conv3d",
       "conv3d_transpose",
       "mish",
@@ -2556,7 +2824,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "clip",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
+<<<<<<< HEAD
       "multihead_matmul_roformer",
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "skip_layernorm",
       "slice",
       "strided_slice",
@@ -2577,6 +2848,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
+<<<<<<< HEAD
       "layernorm_shift_partition",
       "reverse_roll",
       "take_along_axis",
@@ -2591,12 +2863,18 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 
+=======
+      "layernorm_shift_partition"};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
       "matmul_v2",
       "bmm",
+<<<<<<< HEAD
       "range",
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2620,6 +2898,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "acos",
       "atan",
       "asinh",
+<<<<<<< HEAD
       "acosh",
       "atanh",
       "ceil",
@@ -2630,6 +2909,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logical_not",
       "erf",
       "square",
+=======
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -2645,6 +2930,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_pow",
       "elementwise_min",
       "elementwise_max",
+<<<<<<< HEAD
       "elementwise_floordiv",
       "equal",
       "not_equal",
@@ -2656,18 +2942,27 @@ struct SimpleOpTypeSetTeller : public Teller {
       "less_equal",
       "dropout",
       "fill_any_like",
+=======
+      "equal",
+      "dropout",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "prelu",
       "conv2d_transpose",
       "depthwise_conv2d_transpose",
       "leaky_relu",
       "fc",
       "shuffle_channel",
+<<<<<<< HEAD
       "where",
       "one_hot",
       "one_hot_v2",
       "swish",
       "silu",
       "celu",
+=======
+      "swish",
+      "silu",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "split",
       "instance_norm",
       "gelu",
@@ -2685,14 +2980,22 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "yolo_box_head",
       "arg_max",
+<<<<<<< HEAD
       "arg_min",
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "roi_align",
       "affine_channel",
       "nearest_interp",
       "anchor_generator",
+<<<<<<< HEAD
       "reduce_max",
       "reduce_mean",
       "reduce_sum",
+=======
+      "reduce_sum",
+      "reduce_mean",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "conv3d",
       "conv3d_transpose",
       "mish",
@@ -2705,7 +3008,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "clip",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
+<<<<<<< HEAD
       "multihead_matmul_roformer",
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "skip_layernorm",
       "slice",
       "strided_slice",
@@ -2727,6 +3033,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "fused_token_prune",
+<<<<<<< HEAD
       "layernorm_shift_partition",
       "reverse_roll",
       "tanh_shrink",
@@ -2740,6 +3047,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "expand_v2",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
+=======
+      "layernorm_shift_partition"};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 struct GenericPluginTeller : public Teller {
@@ -2823,12 +3133,15 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
+<<<<<<< HEAD
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
        PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
            "/skip_quant_2/") ||
       desc.HasAttr("skip_quant"))
     return false;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto& default_teller = GetDefaultTeller();
   if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
     SetOpConverterType(op_type, OpConverterType::Default);

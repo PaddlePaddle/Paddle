@@ -21,11 +21,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class AllocFloatStatusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* float_status = ctx.Output<phi::DenseTensor>("FloatStatus");
+=======
+    auto* float_status = ctx.Output<framework::Tensor>("FloatStatus");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float_status->mutable_data<T>(ctx.GetPlace());
 
     const auto& runner =

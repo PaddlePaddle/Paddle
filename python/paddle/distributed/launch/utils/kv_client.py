@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import time
 
 import requests
@@ -24,6 +25,17 @@ class KVClient:
             if endpoint.startswith("http://")
             else "http://{}".format(endpoint)
         )
+=======
+import requests
+import time
+
+
+class KVClient(object):
+
+    def __init__(self, endpoint='localhost:2379'):
+        self.endpoint = endpoint if endpoint.startswith(
+            "http://") else "http://{}".format(endpoint)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def put(self, key, value):
         key = key if key.startswith('/') else "/{}".format(key)
@@ -80,7 +92,11 @@ class KVClient:
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     cli = KVClient("http://localhost:8090")
+=======
+    cli = PKVClient("http://localhost:8090")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     data = {"/workers/1": "rank1", "/workers/2": "rank2"}
     for k, v in data.items():
         cli.put(k, v)

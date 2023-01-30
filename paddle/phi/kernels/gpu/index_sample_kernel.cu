@@ -17,10 +17,17 @@
 #include <algorithm>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+=======
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -59,6 +66,7 @@ void IndexSampleKernel(const Context& ctx,
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     errors::InvalidArgument(
@@ -67,6 +75,20 @@ void IndexSampleKernel(const Context& ctx,
                         phi::DataTypeToString(index_type),
                         phi::DataTypeToString(DataType::INT32),
                         phi::DataTypeToString(DataType::INT64)));
+=======
+  PADDLE_ENFORCE_EQ(
+      index_type_match,
+      true,
+      errors::InvalidArgument(
+          "Input(Index) holds the wrong type, it holds %s, but "
+          "desires to be %s or %s",
+          paddle::framework::DataTypeToString(
+              paddle::framework::TransToProtoVarType(index_type)),
+          paddle::framework::DataTypeToString(
+              paddle::framework::TransToProtoVarType(DataType::INT32)),
+          paddle::framework::DataTypeToString(
+              paddle::framework::TransToProtoVarType((DataType::INT64)))));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const T* in_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(out);
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
@@ -76,16 +98,27 @@ void IndexSampleKernel(const Context& ctx,
   size_t input_length = input_dim[1];
   size_t index_length = index_dim[1];
 
+<<<<<<< HEAD
   auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
   int block_height =
       phi::backends::gpu::RoundToPowerOfTwo(index_length * batch_size) /
+=======
+  auto block_width = paddle::platform::RoundToPowerOfTwo(index_length);
+  block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
+  int block_height =
+      paddle::platform::RoundToPowerOfTwo(index_length * batch_size) /
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       block_width;
   block_height = MIN(block_height, PREDEFINED_BLOCK_SIZE / block_width);
   dim3 block_dim(block_width, block_height);
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
+<<<<<<< HEAD
   phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+=======
+  paddle::platform::LimitGridDim(ctx, &grid_dim);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
@@ -103,8 +136,11 @@ PD_REGISTER_KERNEL(index_sample,
                    GPU,
                    ALL_LAYOUT,
                    phi::IndexSampleKernel,
+<<<<<<< HEAD
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    int,

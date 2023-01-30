@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -27,6 +28,23 @@ from paddle.nn import Sequential
 class ReshapeHelp(Layer):
     def __init__(self, shape):
         super().__init__()
+=======
+import numpy as np
+import os
+import paddle
+from paddle.distributed import fleet
+from paddle.fluid.dygraph.container import Sequential
+import paddle.nn as nn
+from paddle.fluid.dygraph.layers import Layer
+from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+import paddle.nn.functional as F
+
+
+class ReshapeHelp(Layer):
+
+    def __init__(self, shape):
+        super(ReshapeHelp, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.shape = shape
 
     def forward(self, x):
@@ -34,8 +52,14 @@ class ReshapeHelp(Layer):
 
 
 class AlexNet(Layer):
+<<<<<<< HEAD
     def __init__(self, num_classes=10):
         super().__init__()
+=======
+
+    def __init__(self, num_classes=10):
+        super(AlexNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.features = Sequential(
             nn.Conv2D(1, 64, kernel_size=11, stride=4, padding=5),
             nn.ReLU(),
@@ -64,6 +88,10 @@ class AlexNet(Layer):
 
 
 class AlexNetPipe(AlexNet):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def to_layers(self):
         feat = [self.features[i] for i in range(len(self.features))]
         loss_fn = [self.reshape_layer, self.classifier]
@@ -72,6 +100,10 @@ class AlexNetPipe(AlexNet):
 
 
 class AlexNetPipeDesc(PipelineLayer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, num_classes=10, **kwargs):
         self.num_classes = num_classes
         decs = [
@@ -91,17 +123,31 @@ class AlexNetPipeDesc(PipelineLayer):
             LayerDesc(ReshapeHelp, shape=[-1, 256]),
             LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
         ]
+<<<<<<< HEAD
         super().__init__(layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
 
 class TestPipeLayerAPI(unittest.TestCase):
+=======
+        super(AlexNetPipeDesc, self).__init__(layers=decs,
+                                              loss_fn=nn.CrossEntropyLoss(),
+                                              **kwargs)
+
+
+class TestPipeLayerAPI(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.pipeline_parallel_size = 2
         strategy.hybrid_configs = {
             "dp_degree": 1,
             "mp_degree": 1,
+<<<<<<< HEAD
             "pp_degree": self.pipeline_parallel_size,
+=======
+            "pp_degree": self.pipeline_parallel_size
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         fleet.init(is_collective=True, strategy=strategy)
         self.hcg = fleet.get_hybrid_communicate_group()
@@ -112,11 +158,17 @@ class TestPipeLayerAPI(unittest.TestCase):
 
     def test_pipelayer_sequential(self):
         init_net = AlexNetPipe()
+<<<<<<< HEAD
         pipe_model = PipelineLayer(
             layers=init_net.to_layers(),
             num_stages=self.pipeline_parallel_size,
             loss_fn=nn.CrossEntropyLoss(),
         )
+=======
+        pipe_model = PipelineLayer(layers=init_net.to_layers(),
+                                   num_stages=self.pipeline_parallel_size,
+                                   loss_fn=nn.CrossEntropyLoss())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         stage_id = self.hcg.get_stage_id()
         init_parameters = init_net.parameters()
         pipe_parameters = pipe_model.parameters()

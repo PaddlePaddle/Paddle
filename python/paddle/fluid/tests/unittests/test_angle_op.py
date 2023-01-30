@@ -12,14 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from op_test import OpTest
 
 import paddle
+<<<<<<< HEAD
 from paddle import static
 from paddle.fluid import dygraph
+=======
+from paddle.fluid import dygraph
+from paddle import static
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -30,7 +41,11 @@ def angle_grad(x, dout):
         def angle_grad_element(xi, douti):
             if xi == 0:
                 return 0
+<<<<<<< HEAD
             rsquare = np.abs(xi) ** 2
+=======
+            rsquare = np.abs(xi)**2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return -douti * xi.imag / rsquare + 1j * douti * xi.real / rsquare
 
         return np.vectorize(angle_grad_element)(x, dout)
@@ -39,6 +54,10 @@ def angle_grad(x, dout):
 
 
 class TestAngleOpFloat(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "angle"
         self.python_api = paddle.angle
@@ -52,6 +71,7 @@ class TestAngleOpFloat(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'],
             'Out',
@@ -63,6 +83,19 @@ class TestAngleOpFloat(OpTest):
 
 
 class TestAngleOpComplex(OpTest):
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[
+                            angle_grad(self.x,
+                                       np.ones_like(self.x) / self.x.size)
+                        ],
+                        check_eager=True)
+
+
+class TestAngleOpComplex(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "angle"
         self.python_api = paddle.angle
@@ -78,6 +111,7 @@ class TestAngleOpComplex(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'],
             'Out',
@@ -89,6 +123,19 @@ class TestAngleOpComplex(OpTest):
 
 
 class TestAngleAPI(unittest.TestCase):
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[
+                            angle_grad(self.x,
+                                       np.ones_like(self.x) / self.x.size)
+                        ],
+                        check_eager=True)
+
+
+class TestAngleAPI(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x = np.random.randn(2, 3) + 1j * np.random.randn(2, 3)
         self.out = np.angle(self.x)

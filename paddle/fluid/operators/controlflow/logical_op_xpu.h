@@ -42,16 +42,27 @@ template <XpuLogicalType xpu_type, typename T>
 class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* y = context.Input<phi::DenseTensor>("Y");
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* y = context.Input<framework::Tensor>("Y");
+    auto* out = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool* out_ptr = out->mutable_data<bool>(context.GetPlace());
     const T* x_ptr = x->data<T>();
     const T* y_ptr = y->data<T>();
     auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
+<<<<<<< HEAD
     phi::DenseTensor broadcast_x;
     phi::DenseTensor broadcast_y;
+=======
+    framework::Tensor broadcast_x;
+    framework::Tensor broadcast_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool need_broad_cast = false;
     if (x->numel() != out->numel()) {
       // x need broadcast
@@ -151,7 +162,11 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
                                    XpuLogicalType2Str(xpu_type)));
 
     if (need_broad_cast && dev_ctx.x_context()->xpu_stream != nullptr) {
+<<<<<<< HEAD
       dev_ctx.Wait();
+=======
+      xpu_wait();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };
@@ -160,8 +175,13 @@ template <typename T>
 class UnaryLogicalOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (x->numel() == 0) {
       return;
     }

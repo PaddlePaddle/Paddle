@@ -16,9 +16,15 @@
 
 #include <algorithm>  // for max
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math.h"
+=======
+#include "paddle/fluid/operators/math.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -47,9 +53,16 @@ void BCELossKernel(const Context& dev_ctx,
             "Illegal input, input must be less than or equal to 1"));
     out_data[i] =
         (label_data[i] - static_cast<T>(1)) *
+<<<<<<< HEAD
             std::max(phi::funcs::real_log(static_cast<T>(1) - x_data[i]),
                      (T)(-100)) -
         label_data[i] * std::max(phi::funcs::real_log(x_data[i]), (T)(-100));
+=======
+            std::max(paddle::operators::real_log(static_cast<T>(1) - x_data[i]),
+                     (T)(-100)) -
+        label_data[i] *
+            std::max(paddle::operators::real_log(x_data[i]), (T)(-100));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

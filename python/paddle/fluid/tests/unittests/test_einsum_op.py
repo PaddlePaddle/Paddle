@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,6 +22,18 @@ import paddle
 
 
 class TestEinsumBinary(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+from op_test import OpTest
+
+
+class TestEinsumBinary(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         self.op_type = "einsum"
@@ -35,6 +48,7 @@ class TestEinsumBinary(OpTest):
         self.inputs = {"Operands": self.operands}
         self.attrs = {"equation": self.equation}
         self.outputs = {
+<<<<<<< HEAD
             'Out': out,
             "InnerCache": [
                 ('cache_' + str(i), np.array([1.0]))
@@ -44,6 +58,14 @@ class TestEinsumBinary(OpTest):
                 ('xshape_' + str(i), np.array([1.0]))
                 for i in range(len(self.operands))
             ],
+=======
+            'Out':
+            out,
+            "InnerCache": [('cache_' + str(i), np.array([1.0]))
+                           for i in range(len(self.operands))],
+            "XShape": [('xshape_' + str(i), np.array([1.0]))
+                       for i in range(len(self.operands))],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_input(self):
@@ -66,6 +88,10 @@ class TestEinsumBinary(OpTest):
 
 
 class TestEinsum1(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(20, 3, 3), (20, 3, 3)]
         self.types = [np.float64, np.float64]
@@ -73,6 +99,10 @@ class TestEinsum1(TestEinsumBinary):
 
 
 class TestEinsum2(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(20, 3, 3), (20, 3, 3)]
         self.types = [np.float64, np.float64]
@@ -80,6 +110,10 @@ class TestEinsum2(TestEinsumBinary):
 
 
 class TestEinsum3(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(10, 10), (10, 10)]
         self.types = [np.float64, np.float64]
@@ -87,6 +121,10 @@ class TestEinsum3(TestEinsumBinary):
 
 
 class TestEinsumWithReduction(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(10, 3, 5), (5, 30)]
         self.types = [np.float64, np.float64]
@@ -94,6 +132,10 @@ class TestEinsumWithReduction(TestEinsumBinary):
 
 
 class TestEinsumWithReduction1(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(10, 3, 3, 5), (10, 5, 10, 10)]
         self.types = [np.float64, np.float64]
@@ -101,6 +143,10 @@ class TestEinsumWithReduction1(TestEinsumBinary):
 
 
 class TestEinsumWithUnary(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(10, 10, 3, 5)]
         self.types = [np.float64]
@@ -108,6 +154,10 @@ class TestEinsumWithUnary(TestEinsumBinary):
 
 
 class TestEinsumWithUnary1(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(5, 10, 3, 3), (3, 6, 3, 10)]
         self.types = [np.float64, np.float64]
@@ -115,6 +165,10 @@ class TestEinsumWithUnary1(TestEinsumBinary):
 
 
 class TestEinsumWithBroadcast1(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(5, 10, 3, 3)]
         self.types = [np.float64]
@@ -122,6 +176,10 @@ class TestEinsumWithBroadcast1(TestEinsumBinary):
 
 
 class TestEinsumWithBroadcast2(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(10, 11), (3, 4, 5, 10)]
         self.types = [np.float64, np.float64]
@@ -129,6 +187,10 @@ class TestEinsumWithBroadcast2(TestEinsumBinary):
 
 
 class TestEinsumWithBroadcast3(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(10, 3, 2, 3, 4), (12, 10)]
         self.types = [np.float64, np.float64]
@@ -136,6 +198,10 @@ class TestEinsumWithBroadcast3(TestEinsumBinary):
 
 
 class TestEinsumWithBroadcast4(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(10, 3, 2, 3, 4), (12, 10)]
         self.types = [np.float64, np.float64]
@@ -143,6 +209,10 @@ class TestEinsumWithBroadcast4(TestEinsumBinary):
 
 
 class TestEinsumWithBroadcast5(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(3, 2, 2, 10), (10, 3, 2, 2)]
         self.types = [np.float64, np.float64]
@@ -150,12 +220,17 @@ class TestEinsumWithBroadcast5(TestEinsumBinary):
 
 
 class TestEinsumWithBroadcast6(TestEinsumBinary):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_mandatory(self):
         self.shapes = [(100), (100)]
         self.types = [np.float64, np.float64]
         self.equation = "i,i->"
 
 
+<<<<<<< HEAD
 class TestEinsumWithDiagonal(TestEinsumBinary):
     def set_mandatory(self):
         self.shapes = [(10, 10)]
@@ -205,5 +280,7 @@ class TestEinsumWithDiagonal8(TestEinsumBinary):
         self.equation = "ijki,jkjk->"
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

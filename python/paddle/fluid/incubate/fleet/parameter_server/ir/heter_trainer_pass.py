@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import warnings
 
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
+<<<<<<< HEAD
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import (
     find_heter_ops,
 )
@@ -39,6 +44,15 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import (
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import (
     get_vars_name_in_block,
 )
+=======
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_heter_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import union_forward_gradient_op
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import create_heter_program
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import create_trainer_program
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_block_joints
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_op_input_output
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import get_vars_name_in_block
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def split_heter_worker_ops_pass(program, config, stage_id, device):
@@ -50,8 +64,12 @@ def split_heter_worker_ops_pass(program, config, stage_id, device):
     """
     default_deveice = "cpu"
     program, heter_ops, _, program_block_ops = find_heter_ops(
+<<<<<<< HEAD
         program, default_deveice
     )
+=======
+        program, default_deveice)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if len(heter_ops) == 0:
         warnings.warn(
             "Currently running in Heter Parameter Server mode, but no OP running on heterogeneous devices, Please check your code."
@@ -61,6 +79,7 @@ def split_heter_worker_ops_pass(program, config, stage_id, device):
     program_block_ops = union_forward_gradient_op(program_block_ops)
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
     heter_program = framework.Program()
+<<<<<<< HEAD
     create_heter_program(
         program,
         config,
@@ -71,6 +90,10 @@ def split_heter_worker_ops_pass(program, config, stage_id, device):
         device,
         stage_id,
     )
+=======
+    create_heter_program(program, config, heter_program, program_block_ops,
+                         heter_ops, block_vars_detail, device, stage_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return heter_program
 
 
@@ -79,18 +102,31 @@ def split_trainer_ops_pass(program, config, default_device="cpu"):
     split cpu-trainer program from origin-program
     1. find heter op (located on different device)
     2. find input&output of every heter-block
+<<<<<<< HEAD
     3. create cpu-trainer program, add send&recv op
+=======
+    3. create cpu-trainer program, add send&recv op 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     # Todo: support user define default_device (MrChengmo)
     default_device_ = default_device
     program, heter_ops, default_ops, program_block_ops = find_heter_ops(
+<<<<<<< HEAD
         program, default_device_
     )
+=======
+        program, default_device_)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     program_block_ops = union_forward_gradient_op(program_block_ops)
 
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
     trainer_program = program.clone()
+<<<<<<< HEAD
     create_trainer_program(
         trainer_program, program, config, program_block_ops, block_vars_detail
     )
+=======
+    create_trainer_program(trainer_program, program, config, program_block_ops,
+                           block_vars_detail)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return trainer_program

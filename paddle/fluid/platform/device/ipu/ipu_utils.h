@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <popart/ndarraywrapper.hpp>
+<<<<<<< HEAD
 #include <popart/session.hpp>
 #include <popart/tensordata.hpp>
 #include <popart/tensorinfo.hpp>
@@ -23,6 +24,11 @@ limitations under the License. */
 #include <popef/Model.hpp>
 #include <popef/Reader.hpp>
 #include <popef/Types.hpp>
+=======
+#include <popart/tensordata.hpp>
+#include <popart/tensorinfo.hpp>
+#include <popart/vendored/any.hpp>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -30,6 +36,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
 using float16 = paddle::platform::float16;
+<<<<<<< HEAD
+=======
+using Tensor = paddle::framework::Tensor;
+using LoDTensor = paddle::framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using Scope = paddle::framework::Scope;
 using OpDesc = paddle::framework::OpDesc;
 using Graph = paddle::framework::ir::Graph;
@@ -44,7 +55,11 @@ namespace ipu {
 template <typename T>
 T GetSingleVarFromScope(const Scope* scope, const std::string& var_name) {
   auto var = scope->GetVar(var_name);
+<<<<<<< HEAD
   auto tensor = var->Get<phi::DenseTensor>();
+=======
+  auto tensor = var->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return tensor.data<T>()[0];
 }
 
@@ -88,10 +103,13 @@ enum ONNXDataType : int {
   BFLOAT16 = 16
 };
 
+<<<<<<< HEAD
 // TODO(czr): remove const qualifier on return value.
 const VarType::Type PopefDType2VarType(const popef::DataType type);
 const phi::DataType PopefDtype2PhiDtype(const popef::DataType type);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // VarType::Type to popart::DataType
 const popart::DataType VarType2PopartDType(const VarType::Type type);
 // phi::DataType to popart::DataType
@@ -109,10 +127,13 @@ const bool GetBoolEnv(const std::string& str);
 // Request number of ipus must be pow(2, n)
 const int RequestIpus(const int num_ipus);
 
+<<<<<<< HEAD
 // Convert popart session to popef
 std::shared_ptr<popef::Model> PopartSessionToPopefModel(
     popart::Session* session);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle

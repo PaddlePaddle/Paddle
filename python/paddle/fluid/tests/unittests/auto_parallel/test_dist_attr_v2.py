@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+<<<<<<< HEAD
 import copy
 import unittest
 
@@ -195,24 +196,49 @@ def get_program():
 
 
 class TestDistAttr(unittest.TestCase):
+=======
+import unittest
+import paddle
+import numpy as np
+import paddle.nn as nn
+import paddle.static as static
+from paddle.fluid.core import TensorDistAttr
+from paddle.fluid.core import OperatorDistAttr
+
+from paddle.distributed.auto_parallel.process_mesh_v2 import ProcessMesh
+
+paddle.enable_static()
+
+
+class TestDistAttr(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_tensor_dist_attr_ctor(self):
         train_program = static.Program()
         start_program = static.Program()
         with static.program_guard(train_program, start_program):
             input = static.data(name="input", shape=[2, 3], dtype='float32')
         dist_attr = TensorDistAttr(input.desc)
+<<<<<<< HEAD
         self.assertEqual(dist_attr.process_mesh, None)
+=======
+        self.assertEqual(dist_attr.process_mesh.empty(), True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(dist_attr.dims_mapping, [-1, -1])
         self.assertEqual(dist_attr.batch_dim, 0)
         self.assertEqual(dist_attr.dynamic_dims, [0, 0])
 
+<<<<<<< HEAD
         dist_attr.process_mesh = None
         self.assertEqual(dist_attr.process_mesh, None)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dist_attr.process_mesh = ProcessMesh([[0, 1, 2], [3, 4, 5]])
         dist_attr.dims_mapping = [0, -1]
         dist_attr.batch_dim = 1
         dist_attr.dynamic_dims = [1, 1]
+<<<<<<< HEAD
         self.assertEqual(dist_attr.dims_mapping, [0, -1])
         self.assertEqual(
             dist_attr.process_mesh, ProcessMesh([[0, 1, 2], [3, 4, 5]])
@@ -221,6 +247,14 @@ class TestDistAttr(unittest.TestCase):
         self.assertEqual(dist_attr.batch_dim, 1)
         self.assertEqual(dist_attr.dynamic_dims, [1, 1])
         self.assertTrue(dist_attr.verify(input.desc))
+=======
+        self.assertEqual(dist_attr.process_mesh,
+                         ProcessMesh([[0, 1, 2], [3, 4, 5]]))
+        self.assertEqual(dist_attr.dims_mapping, [0, -1])
+        self.assertEqual(dist_attr.batch_dim, 1)
+        self.assertEqual(dist_attr.dynamic_dims, [1, 1])
+        self.assertTrue(dist_attr.verify())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue(str(dist_attr), str(dist_attr))
 
     def test_tensor_dist_attr(self):
@@ -234,6 +268,7 @@ class TestDistAttr(unittest.TestCase):
         dist_attr.dims_mapping = [0, -1]
         dist_attr.batch_dim = 1
         dist_attr.dynamic_dims = [1, 1]
+<<<<<<< HEAD
         self.assertEqual(
             input.dist_attr.process_mesh, ProcessMesh([[0, 1, 2], [3, 4, 5]])
         )
@@ -250,6 +285,22 @@ class TestDistAttr(unittest.TestCase):
         self.assertEqual(input1.dist_attr.batch_dim, 1)
         self.assertEqual(input1.dist_attr.dynamic_dims, [1, 1])
         self.assertTrue(input1.dist_attr.verify(input.desc))
+=======
+        self.assertEqual(input.dist_attr.process_mesh,
+                         ProcessMesh([[0, 1, 2], [3, 4, 5]]))
+        self.assertEqual(input.dist_attr.dims_mapping, [0, -1])
+        self.assertEqual(input.dist_attr.batch_dim, 1)
+        self.assertEqual(input.dist_attr.dynamic_dims, [1, 1])
+        self.assertTrue(input.dist_attr.verify())
+
+        input1.dist_attr = dist_attr
+        self.assertEqual(input1.dist_attr.process_mesh,
+                         ProcessMesh([[0, 1, 2], [3, 4, 5]]))
+        self.assertEqual(input1.dist_attr.dims_mapping, [0, -1])
+        self.assertEqual(input1.dist_attr.batch_dim, 1)
+        self.assertEqual(input1.dist_attr.dynamic_dims, [1, 1])
+        self.assertTrue(input1.dist_attr.verify())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_operator_dist_attr_ctor(self):
         train_program = static.Program()
@@ -277,6 +328,7 @@ class TestDistAttr(unittest.TestCase):
         op_dist_attr.set_output_dist_attr(output.name, output_dist_attr)
         self.assertEqual(op_dist_attr.process_mesh, process_mesh)
         self.assertEqual(
+<<<<<<< HEAD
             op_dist_attr.get_input_dist_attr(input.name).process_mesh,
             process_mesh,
         )
@@ -298,11 +350,28 @@ class TestDistAttr(unittest.TestCase):
             op_dist_attr.get_output_dist_attr(output.name).dims_mapping, [0, 1]
         )
         self.assertTrue(op_dist_attr.verify(op.desc))
+=======
+            op_dist_attr.input_dist_attr(input.name).process_mesh, process_mesh)
+        self.assertEqual(
+            op_dist_attr.input_dist_attr(input1.name).process_mesh,
+            process_mesh)
+        self.assertEqual(
+            op_dist_attr.output_dist_attr(output.name).process_mesh,
+            process_mesh)
+        self.assertEqual(
+            op_dist_attr.input_dist_attr(input.name).dims_mapping, [0, -1])
+        self.assertEqual(
+            op_dist_attr.input_dist_attr(input1.name).dims_mapping, [-1, 1])
+        self.assertEqual(
+            op_dist_attr.output_dist_attr(output.name).dims_mapping, [0, 1])
+        self.assertTrue(op_dist_attr.verify())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue(str(op_dist_attr), str(op_dist_attr))
 
         op_dist_attr = OperatorDistAttr(op.desc)
         op_dist_attr.process_mesh = process_mesh
         # Set the distributed attribute of input directly
+<<<<<<< HEAD
         input_dist_attr = op_dist_attr.get_input_dist_attr(input.name)
         input_dist_attr.dims_mapping = [-1, 0]
         # Set the distributed attribute of input1 directly
@@ -310,6 +379,15 @@ class TestDistAttr(unittest.TestCase):
         input1_dist_attr.dims_mapping = [0, -1]
         # Set the distributed attribute of output directly
         output_dist_attr = op_dist_attr.get_output_dist_attr(output.name)
+=======
+        input_dist_attr = op_dist_attr.input_dist_attr(input.name)
+        input_dist_attr.dims_mapping = [-1, 0]
+        # Set the distributed attribute of input1 directly
+        input1_dist_attr = op_dist_attr.input_dist_attr(input1.name)
+        input1_dist_attr.dims_mapping = [0, -1]
+        # Set the distributed attribute of output directly
+        output_dist_attr = op_dist_attr.output_dist_attr(output.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output_dist_attr.dims_mapping = [-1, -1]
         self.assertEqual(op_dist_attr.process_mesh, process_mesh)
         self.assertEqual(input_dist_attr.process_mesh, process_mesh)
@@ -318,7 +396,11 @@ class TestDistAttr(unittest.TestCase):
         self.assertEqual(input_dist_attr.dims_mapping, [-1, 0])
         self.assertEqual(input1_dist_attr.dims_mapping, [0, -1])
         self.assertEqual(output_dist_attr.dims_mapping, [-1, -1])
+<<<<<<< HEAD
         self.assertTrue(op_dist_attr.verify(op.desc))
+=======
+        self.assertTrue(op_dist_attr.verify())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue(str(op_dist_attr), str(op_dist_attr))
 
     def test_operator_dist_attr(self):
@@ -348,6 +430,7 @@ class TestDistAttr(unittest.TestCase):
 
         self.assertEqual(op.desc.dist_attr.process_mesh, process_mesh)
         self.assertEqual(
+<<<<<<< HEAD
             op.dist_attr.get_input_dist_attr(input.name).process_mesh,
             process_mesh,
         )
@@ -369,12 +452,29 @@ class TestDistAttr(unittest.TestCase):
             op.dist_attr.get_output_dist_attr(output.name).dims_mapping, [0, 1]
         )
         self.assertTrue(op.desc.dist_attr.verify(op.desc))
+=======
+            op.dist_attr.input_dist_attr(input.name).process_mesh, process_mesh)
+        self.assertEqual(
+            op.dist_attr.input_dist_attr(input1.name).process_mesh,
+            process_mesh)
+        self.assertEqual(
+            op.dist_attr.input_dist_attr(input.name).dims_mapping, [0, -1])
+        self.assertEqual(
+            op.dist_attr.input_dist_attr(input.name).dims_mapping, [0, -1])
+        self.assertEqual(
+            op.desc.dist_attr.input_dist_attr(input1.name).dims_mapping,
+            [-1, 1])
+        self.assertEqual(
+            op.dist_attr.output_dist_attr(output.name).dims_mapping, [0, 1])
+        self.assertTrue(op.desc.dist_attr.verify())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue(str(op_dist_attr), str(op_dist_attr))
 
         op.dist_attr = OperatorDistAttr(op.desc)
         self.assertEqual(op.desc.dist_attr, OperatorDistAttr(op.desc))
 
 
+<<<<<<< HEAD
 class TestDistAttrConversion(unittest.TestCase):
     def test_dist_attr_conversion_for_program(self):
         set_default_distributed_context(DistributedContext())
@@ -450,5 +550,7 @@ class TestDistAttrConversion(unittest.TestCase):
             self.assertEqual(dist_op.dist_attr, original_dist_op.dist_attr)
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

@@ -155,7 +155,11 @@ class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
 RankLoss Operator.
 
 RankLoss operator for RankNet
+<<<<<<< HEAD
 (http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf).
+=======
+(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf). 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 RankNet is a pairwise ranking model with
 one training sample consisting of a pair of doc A and B, and the label P
 indicating that A is ranked higher than B or not:
@@ -164,8 +168,13 @@ P = {0, 1} or {0, 0.5, 1}, where 0.5 means no information about the rank of
 the input pair.
 
 The RankLoss operator takes three inputs: Left (o_i), Right (o_j) and Label
+<<<<<<< HEAD
 (P_{i,j}), which represent the output score of RankNet for the two docs and
 the label respectively, and yields the rank loss C_{i,j} using the following
+=======
+(P_{i,j}), which represent the output score of RankNet for the two docs and 
+the label respectively, and yields the rank loss C_{i,j} using the following 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 equation:
 
 $$

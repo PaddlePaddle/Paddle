@@ -18,10 +18,17 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/macros.h"  // import FLT_MAX
+=======
+#include "paddle/fluid/platform/macros.h"  // import FLT_MAX
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/hostdevice.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -92,12 +99,20 @@ class AvgPoolGrad {
  */
 HOSTDEVICE inline int AdaptStartIndex(int ph, int input_size, int output_size) {
   return static_cast<int>(
+<<<<<<< HEAD
       floor(static_cast<float>(ph * input_size) / output_size));
+=======
+      floor(static_cast<double>(ph * input_size) / output_size));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
   return static_cast<int>(
+<<<<<<< HEAD
       ceil(static_cast<float>((ph + 1) * input_size) / output_size));
+=======
+      ceil(static_cast<double>((ph + 1) * input_size) / output_size));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 /*

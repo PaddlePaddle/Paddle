@@ -32,6 +32,7 @@ class ConvBiasFusePass : public FusePassBase {
   ConvBiasFusePass();
   virtual ~ConvBiasFusePass() {}
   virtual std::string type() const { return "conv2d"; }
+<<<<<<< HEAD
   virtual std::string fused_type() const { return "fused_conv2d"; }
 
  protected:
@@ -43,6 +44,13 @@ class ConvBiasFusePass : public FusePassBase {
   const std::string name_scope_{"conv_bias_mkldnn_fuse"};
 };
 
+=======
+
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+  const std::string name_scope_{"conv_bias_mkldnn_fuse"};
+};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /*
  * Fuse the Conv3D and Elementwise_add to a Conv3DBiasOp.
  */
@@ -50,14 +58,20 @@ class Conv2DTransposeBiasFusePass : public ConvBiasFusePass {
  public:
   Conv2DTransposeBiasFusePass();
   std::string type() const override { return "conv2d_transpose"; }
+<<<<<<< HEAD
   std::string fused_type() const override { return "conv2d_transpose"; }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class Conv3DBiasFusePass : public ConvBiasFusePass {
  public:
   Conv3DBiasFusePass();
   std::string type() const override { return "conv3d"; }
+<<<<<<< HEAD
   std::string fused_type() const override { return "fused_conv3d"; }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 }  // namespace ir
 }  // namespace framework

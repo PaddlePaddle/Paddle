@@ -42,6 +42,7 @@ void EmbeddingKernel(const Context &ctx,
   auto *table = table_t->data<T>();
   auto *output = dev_ctx.template Alloc<T>(output_t);
 
+<<<<<<< HEAD
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   const int64_t *ids;
   if (ids_t->dtype() == phi::DataType::INT64) {
@@ -53,6 +54,9 @@ void EmbeddingKernel(const Context &ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     ids = reinterpret_cast<const int64_t *>(ids_tt);
   }
+=======
+  const int64_t *ids = ids_t->data<int64_t>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PADDLE_ENFORCE_EQ(
       ids_numel <= std::numeric_limits<int32_t>::max(),

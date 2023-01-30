@@ -41,10 +41,17 @@ void Compare(f::Scope *scope,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
+<<<<<<< HEAD
   auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   auto y = scope->Var("Y");
   auto tensor_y = y->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+
+  auto y = scope->Var("Y");
+  auto tensor_y = y->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<T> init_x;
   for (int64_t i = 0; i < 10 * 10; ++i) {
@@ -63,7 +70,11 @@ void Compare(f::Scope *scope,
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
+<<<<<<< HEAD
   auto tensor_out = out->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // run
   f::AttributeMap attrs;
@@ -94,6 +105,7 @@ void CompareGrad(f::Scope *scope,
                  std::string op_type) {
   // init
   auto dout = scope->Var("DOut");
+<<<<<<< HEAD
   auto tensor_dout = dout->GetMutable<phi::DenseTensor>();
   tensor_dout->Resize({2, 3, 5});
 
@@ -110,6 +122,24 @@ void CompareGrad(f::Scope *scope,
 
   auto dy = scope->Var("DY");
   auto tensor_dy = dy->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_dout = dout->GetMutable<f::LoDTensor>();
+  tensor_dout->Resize({2, 3, 5});
+
+  auto x = scope->Var("X");
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  tensor_x->Resize({2, 3, 5});
+
+  auto y = scope->Var("Y");
+  auto tensor_y = y->GetMutable<f::LoDTensor>();
+  tensor_y->Resize({1, 5});
+
+  auto dx = scope->Var("DX");
+  auto tensor_dx = dx->GetMutable<f::LoDTensor>();
+
+  auto dy = scope->Var("DY");
+  auto tensor_dy = dy->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<T> init_dout;
   for (int64_t i = 0; i < tensor_dout->numel(); ++i) {

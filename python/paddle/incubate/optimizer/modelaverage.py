@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import framework, layers
@@ -20,6 +21,18 @@ from paddle.fluid.framework import Program, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.optimizer import Optimizer
+=======
+from paddle.optimizer import Optimizer
+from paddle.fluid import core, framework, layers
+from paddle.fluid.framework import Program, Variable
+from paddle.fluid.layer_helper import LayerHelper
+import paddle
+import numpy as np
+from paddle.fluid.dygraph import base as imperative_base
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -59,7 +72,11 @@ class ModelAverage(Optimizer):
         average_window_rate (float): The calculate ratio of the window length relative to ``Parameter`` update times.
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
+<<<<<<< HEAD
             The default value is None in static graph mode, at this time all parameters will be updated.
+=======
+            The default value is None in static mode, at this time all parameters will be updated.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
         max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
         name (str, optional): Normally there is no need for user to set this property.
@@ -97,7 +114,11 @@ class ModelAverage(Optimizer):
 
         class LinearNet(nn.Layer):
             def __init__(self):
+<<<<<<< HEAD
                 super().__init__()
+=======
+                super(LinearNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
                 self.bias = self._linear.bias
 
@@ -158,7 +179,11 @@ class ModelAverage(Optimizer):
         print("\nEvaluate With Restored Paramters")
         model_average.restore()
         evaluate(layer, eval_loader, loss_fn)
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def __init__(
@@ -169,7 +194,11 @@ class ModelAverage(Optimizer):
         max_average_window=10000,
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(ModelAverage, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             learning_rate=0.0,
             parameters=parameters,
             weight_decay=None,
@@ -548,15 +577,24 @@ class ModelAverage(Optimizer):
         # backup param value to grad
         layers.assign(input=param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
+<<<<<<< HEAD
         tmp = paddle.add_n([num_accumulates, old_num_accumulates])
         sum = paddle.add_n([sum_1, sum_2, sum_3])
+=======
+        tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
+        sum = layers.sum(x=[sum_1, sum_2, sum_3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         tmp = layers.cast(
             x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )
         sum = layers.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
+<<<<<<< HEAD
         paddle.tensor.ops._elementwise_div(x=sum, y=tmp, out=param)
+=======
+        layers.ops._elementwise_div(x=sum, y=tmp, out=param)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _add_average_restore_op(self, block, param):
         param = block._clone_variable(param)

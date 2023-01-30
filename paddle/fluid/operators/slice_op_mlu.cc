@@ -12,20 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/utils.h"
+=======
+#include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/operators/slice_op.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class SliceMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto axes = ctx.Attr<std::vector<int>>("axes");
     auto starts = ctx.Attr<std::vector<int>>("starts");
@@ -35,18 +50,30 @@ class SliceMLUKernel : public framework::OpKernel<T> {
     auto infer_flags = ctx.Attr<std::vector<int>>("infer_flags");
 
     // Get the accurate attribute value of starts and ends
+<<<<<<< HEAD
     auto starts_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
       starts =
           GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
+=======
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    if (ctx.HasInput("StartsTensor")) {
+      starts = GetDataFromTensor<int>(ctx.Input<Tensor>("StartsTensor"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
+<<<<<<< HEAD
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
       ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
+=======
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    if (ctx.HasInput("EndsTensor")) {
+      ends = GetDataFromTensor<int>(ctx.Input<Tensor>("EndsTensor"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }
@@ -128,28 +155,46 @@ template <typename T>
 class SliceGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dinput =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+=======
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dinput = ctx.Output<Tensor>(framework::GradVarName("Input"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto axes = ctx.Attr<std::vector<int>>("axes");
     auto starts = ctx.Attr<std::vector<int>>("starts");
     auto ends = ctx.Attr<std::vector<int>>("ends");
 
     // Get the accurate attribute value of starts and ends
+<<<<<<< HEAD
     auto starts_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
       starts =
           GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
+=======
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    if (ctx.HasInput("StartsTensor")) {
+      starts = GetDataFromTensor<int>(ctx.Input<Tensor>("StartsTensor"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
+<<<<<<< HEAD
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
       ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
+=======
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    if (ctx.HasInput("EndsTensor")) {
+      ends = GetDataFromTensor<int>(ctx.Input<Tensor>("EndsTensor"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }

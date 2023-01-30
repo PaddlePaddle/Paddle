@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestTopKOp(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -31,7 +38,11 @@ class TestTopKOp(IPUOpTest):
         self.set_op_attrs()
 
     def set_test_op(self):
+<<<<<<< HEAD
         self.op = paddle.topk
+=======
+        self.op = paddle.fluid.layers.topk
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_data_feed(self):
         data = np.random.uniform(size=[3, 5])
@@ -50,16 +61,29 @@ class TestTopKOp(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if not self.use_k_as_const_variable:
             topk_values, topk_indices = self.op(x, **self.attrs)
         else:
             # !important, popart cannot accept non const tensor
+<<<<<<< HEAD
             K_t = paddle.fluid.layers.fill_constant(
                 shape=[1], dtype='int32', value=self.k, name="in_2"
             )
+=======
+            K_t = paddle.fluid.layers.fill_constant(shape=[1],
+                                                    dtype='int32',
+                                                    value=self.k,
+                                                    name="in_2")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             topk_values, topk_indices = self.op(x, K_t, **self.attrs)
         self.fetch_list = [topk_values.name, topk_indices.name]
 
@@ -82,12 +106,20 @@ class TestTopKOp(IPUOpTest):
 
 
 class TestCase2(TestTopKOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_op(self):
         self.op = paddle.topk
 
 
 @unittest.skip("Trying to get data as int64 but it is of type int32")
 class TestCase3(TestTopKOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.use_k_as_const_variable = True
         self.attrs = {}
@@ -96,6 +128,10 @@ class TestCase3(TestTopKOp):
 
 @unittest.skip("Trying to get data as int64 but it is of type int32")
 class TestCase4(TestCase3):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_op(self):
         self.op = paddle.topk
 

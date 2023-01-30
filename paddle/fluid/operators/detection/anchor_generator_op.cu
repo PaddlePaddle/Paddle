@@ -75,9 +75,15 @@ template <typename T>
 class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* anchors = ctx.Output<phi::DenseTensor>("Anchors");
     auto* vars = ctx.Output<phi::DenseTensor>("Variances");
+=======
+    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
+    auto* anchors = ctx.Output<paddle::framework::Tensor>("Anchors");
+    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto anchor_sizes = ctx.Attr<std::vector<float>>("anchor_sizes");
     auto aspect_ratios = ctx.Attr<std::vector<float>>("aspect_ratios");
@@ -101,6 +107,7 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
     anchors->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
 
+<<<<<<< HEAD
     phi::DenseTensor ar;
     framework::TensorFromVector(aspect_ratios, ctx.device_context(), &ar);
 
@@ -108,6 +115,15 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
     framework::TensorFromVector(anchor_sizes, ctx.device_context(), &as);
 
     phi::DenseTensor sd;
+=======
+    framework::Tensor ar;
+    framework::TensorFromVector(aspect_ratios, ctx.device_context(), &ar);
+
+    framework::Tensor as;
+    framework::TensorFromVector(anchor_sizes, ctx.device_context(), &as);
+
+    framework::Tensor sd;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorFromVector(stride, ctx.device_context(), &sd);
 
     GenAnchors<T><<<grid, block, 0, stream>>>(anchors->data<T>(),
@@ -121,7 +137,11 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
                                               width,
                                               offset);
 
+<<<<<<< HEAD
     phi::DenseTensor v;
+=======
+    framework::Tensor v;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorFromVector(variances, ctx.device_context(), &v);
     grid = (box_num * 4 + block - 1) / block;
     SetVariance<T><<<grid, block, 0, stream>>>(

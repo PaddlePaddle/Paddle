@@ -26,6 +26,10 @@ paddle.enable_static()
 
 
 class TestPnormOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -40,7 +44,11 @@ class TestPnormOp(OpTest):
             'epsilon': self.epsilon,
             'axis': self.axis,
             'keepdim': self.keepdim,
+<<<<<<< HEAD
             'porder': float(self.porder),
+=======
+            'porder': float(self.porder)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': norm}
         self.gradient = self.calc_gradient()
@@ -52,9 +60,15 @@ class TestPnormOp(OpTest):
             self.check_output_with_place(paddle.NPUPlace(0))
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             paddle.NPUPlace(0), ['X'], 'Out', user_defined_grads=self.gradient
         )
+=======
+        self.check_grad_with_place(paddle.NPUPlace(0), ['X'],
+                                   'Out',
+                                   user_defined_grads=self.gradient)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -72,7 +86,11 @@ class TestPnormOp(OpTest):
             'epsilon': self.epsilon,
             'axis': self.axis,
             'keepdim': self.keepdim,
+<<<<<<< HEAD
             'porder': float(self.porder),
+=======
+            'porder': float(self.porder)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         x = self.inputs["X"]
         porder = self.attrs["porder"]
@@ -86,11 +104,16 @@ class TestPnormOp(OpTest):
             grad[x_abs != norm] = 0.0
         else:
             norm = p_norm(x, axis=axis, porder=porder, keepdims=True)
+<<<<<<< HEAD
             grad = (
                 np.power(norm, 1 - porder)
                 * np.power(np.abs(x), porder - 1)
                 * np.sign(x)
             )
+=======
+            grad = np.power(norm, 1 - porder) * np.power(
+                np.abs(x), porder - 1) * np.sign(x)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         numel = 1
         for s in x.shape:
@@ -100,6 +123,10 @@ class TestPnormOp(OpTest):
 
 
 class TestPnormOp2(TestPnormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.shape = [3, 20, 3]
         self.axis = 2
@@ -110,6 +137,10 @@ class TestPnormOp2(TestPnormOp):
 
 
 class TestPnormOp3(TestPnormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.shape = [3, 20, 3]
         self.axis = 2
@@ -120,6 +151,10 @@ class TestPnormOp3(TestPnormOp):
 
 
 class TestPnormOp4(TestPnormOp3):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.shape = [3, 20, 3]
         self.axis = 2
@@ -130,6 +165,10 @@ class TestPnormOp4(TestPnormOp3):
 
 
 class TestPnormOp5(TestPnormOp3):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.shape = [3, 20, 3]
         self.axis = 2
@@ -140,6 +179,10 @@ class TestPnormOp5(TestPnormOp3):
 
 
 class TestPnormOp6(TestPnormOp3):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
         self.axis = 1
@@ -150,26 +193,46 @@ class TestPnormOp6(TestPnormOp3):
 
 
 class TestPnormOpfp16(TestPnormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = "float16"
 
 
 class TestPnormOp2fp16(TestPnormOp2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = "float16"
 
 
 class TestPnormOp3fp16(TestPnormOp3):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = "float16"
 
 
 class TestPnormOp4fp16(TestPnormOp4):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = "float16"
 
 
 class TestPnormOp5fp16(TestPnormOp5):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = "float16"
 

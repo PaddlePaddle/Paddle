@@ -19,6 +19,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 namespace dynload = platform::dynload;
@@ -88,12 +92,21 @@ struct ScaleBiasAddReluArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
+<<<<<<< HEAD
   phi::backends::gpu::TensorDescriptor in_desc;
   phi::backends::gpu::TensorDescriptor out_desc;
   phi::backends::gpu::TensorDescriptor equiv_scale_bias_desc;
   phi::backends::gpu::TensorDescriptor scale_bias_mean_var_desc;
   phi::backends::gpu::TensorDescriptor bitmask_desc;
   phi::backends::gpu::ActivationDescriptor activation_desc;
+=======
+  platform::TensorDescriptor in_desc;
+  platform::TensorDescriptor out_desc;
+  platform::TensorDescriptor equiv_scale_bias_desc;
+  platform::TensorDescriptor scale_bias_mean_var_desc;
+  platform::TensorDescriptor bitmask_desc;
+  platform::ActivationDescriptor activation_desc;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename T>
@@ -116,6 +129,7 @@ class CudnnScaleBiasAddRelu {
   ~CudnnScaleBiasAddRelu() {}
 
   void Forward(const phi::GPUContext &ctx,
+<<<<<<< HEAD
                const phi::DenseTensor &x,
                const phi::DenseTensor &x_scale,
                const phi::DenseTensor &x_bias,
@@ -124,6 +138,16 @@ class CudnnScaleBiasAddRelu {
                const phi::DenseTensor *z_bias,
                phi::DenseTensor *out,
                phi::DenseTensor *bitmask) {
+=======
+               const Tensor &x,
+               const Tensor &x_scale,
+               const Tensor &x_bias,
+               const Tensor *z,
+               const Tensor *z_scale,
+               const Tensor *z_bias,
+               Tensor *out,
+               Tensor *bitmask) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
     auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -171,6 +195,7 @@ class CudnnScaleBiasAddRelu {
   }
 
   void Backward(const phi::GPUContext &ctx,
+<<<<<<< HEAD
                 const phi::DenseTensor &dy,
                 const phi::DenseTensor &x,
                 const phi::DenseTensor &scale,
@@ -182,6 +207,19 @@ class CudnnScaleBiasAddRelu {
                 phi::DenseTensor *dz,
                 phi::DenseTensor *dscale,
                 phi::DenseTensor *dbias,
+=======
+                const Tensor &dy,
+                const Tensor &x,
+                const Tensor &scale,
+                const Tensor &bias,
+                const Tensor &saved_mean,
+                const Tensor &saved_invstd,
+                const Tensor *bitmask,
+                Tensor *dx,
+                Tensor *dz,
+                Tensor *dscale,
+                Tensor *dbias,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();

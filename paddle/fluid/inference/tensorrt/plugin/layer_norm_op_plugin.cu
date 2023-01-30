@@ -26,6 +26,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+<<<<<<< HEAD
 int LayerNormPlugin::initialize() TRT_NOEXCEPT {
   cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
   cudaMemcpy(bias_gpu_,
@@ -50,6 +51,9 @@ void LayerNormPlugin::terminate() TRT_NOEXCEPT {
     scale_gpu_ = nullptr;
   }
 }
+=======
+int LayerNormPlugin::initialize() TRT_NOEXCEPT { return 0; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
@@ -60,6 +64,7 @@ nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
   return output_dims;
 }
 
+<<<<<<< HEAD
 bool LayerNormPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
   if (with_fp16_) {
@@ -72,6 +77,8 @@ bool LayerNormPlugin::supportsFormat(
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 int LayerNormPlugin::enqueue(int batch_size,
                              const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
@@ -83,6 +90,11 @@ int LayerNormPlugin::enqueue(int batch_size,
 #endif
                              cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
+<<<<<<< HEAD
+=======
+  const float *input = reinterpret_cast<const float *>(inputs[0]);
+  float *output = reinterpret_cast<float *const *>(outputs)[0];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
 
@@ -125,6 +137,7 @@ int LayerNormPlugin::enqueue(int batch_size,
                         feature_size,
                         bias_.size()));
 
+<<<<<<< HEAD
   int device_id;
   cudaGetDevice(&device_id);
   mean_t.Resize(phi::make_ddim({batched_mean_shape}));
@@ -193,6 +206,42 @@ void LayerNormPluginDynamic::terminate() TRT_NOEXCEPT {
     cudaFree(scale_gpu_);
     scale_gpu_ = nullptr;
   }
+=======
+  scale_t.Resize(phi::make_ddim({feature_size}));
+  bias_t.Resize(phi::make_ddim({feature_size}));
+  mean_t.Resize(phi::make_ddim({batched_mean_shape}));
+  variance_t.Resize(phi::make_ddim({batched_variance_shape}));
+  int device_id;
+  cudaGetDevice(&device_id);
+  float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *variance_d =
+      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  cudaMemcpyAsync(scale_d,
+                  scale_.data(),
+                  sizeof(float) * feature_size,
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(bias_d,
+                  bias_.data(),
+                  sizeof(float) * feature_size,
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  phi::LayerNormDirectCUDAFunctor<float> layer_norm;
+  layer_norm(stream,
+             input,
+             input_shape,
+             bias_d,
+             scale_d,
+             output,
+             mean_d,
+             variance_d,
+             begin_norm_axis,
+             eps);
+  return cudaGetLastError() != cudaSuccess;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 nvinfer1::DimsExprs LayerNormPluginDynamic::getOutputDimensions(
@@ -221,6 +270,7 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
                                         nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
+<<<<<<< HEAD
     if (with_fp16_) {
       return ((in.type == nvinfer1::DataType::kFLOAT ||
                in.type == nvinfer1::DataType::kHALF) &&
@@ -229,6 +279,11 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
+=======
+    // TODO(Shangzhizhou) FP16 support
+    return (in.type == nvinfer1::DataType::kFLOAT) &&
+           (in.format == nvinfer1::TensorFormat::kLINEAR);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
   // output
@@ -259,11 +314,14 @@ nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
                         "The LayerNormPlugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
                      input_types[0] == nvinfer1::DataType::kHALF),
                     true,
                     platform::errors::InvalidArgument(
                         "The input type should be half or float"));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return input_types[0];
 }
 
@@ -326,6 +384,7 @@ int LayerNormPluginDynamic::enqueue(
                         "but got feature_size:%d, bias's size:%d.",
                         feature_size,
                         bias_.size()));
+<<<<<<< HEAD
 
   int device_id;
   cudaGetDevice(&device_id);
@@ -334,11 +393,16 @@ int LayerNormPluginDynamic::enqueue(
   float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+=======
+  int device_id;
+  cudaGetDevice(&device_id);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
+<<<<<<< HEAD
     phi::LayerNormDirectCUDAFunctor<float, float> layer_norm;
     layer_norm(stream,
                input,
@@ -360,6 +424,37 @@ int LayerNormPluginDynamic::enqueue(
                input_shape,
                bias_gpu_,
                scale_gpu_,
+=======
+    scale_t.Resize(phi::make_ddim({feature_size}));
+    bias_t.Resize(phi::make_ddim({feature_size}));
+    mean_t.Resize(phi::make_ddim(mean_shape_));
+    variance_t.Resize(phi::make_ddim(variance_shape_));
+
+    float *scale_d =
+        scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *variance_d =
+        variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+
+    cudaMemcpyAsync(scale_d,
+                    scale_.data(),
+                    sizeof(float) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d,
+                    bias_.data(),
+                    sizeof(float) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+
+    phi::LayerNormDirectCUDAFunctor<float> layer_norm;
+    layer_norm(stream,
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                output,
                mean_d,
                variance_d,
@@ -367,7 +462,11 @@ int LayerNormPluginDynamic::enqueue(
                eps);
   } else {
     PADDLE_THROW(platform::errors::Fatal(
+<<<<<<< HEAD
         "The LayerNorm TRT Plugin's input type should be float or half."));
+=======
+        "The LayerNorm TRT Plugin's input type should be float."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   return cudaGetLastError() != cudaSuccess;
 }

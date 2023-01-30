@@ -12,7 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
+=======
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import argparse
+import io
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import re
 import sys
 import os
@@ -66,7 +75,11 @@ RE_SHEBANG = re.compile(r"^[ \t\v]*#[ \t]?\!")
 def _check_copyright(path):
     head=[]
     try:
+<<<<<<< HEAD
         with open(path, 'r', encoding='utf-8') as f:
+=======
+        with open(path) as f:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             head = [next(f) for x in range(4)]
     except StopIteration:
         pass
@@ -78,7 +91,11 @@ def _check_copyright(path):
     return False
 
 def generate_copyright(path, comment_mark):
+<<<<<<< HEAD
     original_contents = open(path, 'r', encoding="utf-8").readlines()
+=======
+    original_contents = io.open(path, encoding="utf-8").readlines()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     head = original_contents[0:4]
 
     insert_line_no=0
@@ -101,7 +118,11 @@ def generate_copyright(path, comment_mark):
         new_contents.extend(original_contents[insert_line_no:])
     new_contents="".join(new_contents)
 
+<<<<<<< HEAD
     with open(path, 'w', encoding='utf-8') as output_file:
+=======
+    with io.open(path, 'w') as output_file:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output_file.write(new_contents)
 
 

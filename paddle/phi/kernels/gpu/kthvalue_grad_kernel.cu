@@ -14,10 +14,16 @@
 
 #include "paddle/phi/kernels/kthvalue_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
+=======
+#include "paddle/fluid/operators/top_k_function_cuda.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 static int getBlockSize(int col) {
@@ -44,6 +50,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
                         DenseTensor* d_x) {
   const auto& in_dims = x.dims();
   auto out_dims = indices.dims();
+<<<<<<< HEAD
   T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
   // For 0D Tensor
   if (in_dims.size() == 0) {
@@ -57,11 +64,23 @@ void KthvalueGradKernel(const Context& dev_ctx,
   const int64_t* indices_data = indices.data<int64_t>();
   int pre, n, post;
   phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
+=======
+  if (axis < 0) axis += in_dims.size();
+  T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
+  const T* out_grad_data = d_out.data<T>();
+  const int64_t* indices_data = indices.data<int64_t>();
+  int pre, n, post;
+  paddle::operators::GetDims(in_dims, axis, &pre, &n, &post);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int block_size = getBlockSize(post * k);
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
   int grid_size = std::min(max_blocks, pre);
+<<<<<<< HEAD
   phi::funcs::AssignGradWithAxis<T>
+=======
+  paddle::operators::AssignGradWithAxis<T>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
           out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
 }

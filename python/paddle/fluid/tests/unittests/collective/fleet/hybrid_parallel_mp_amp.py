@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from hybrid_parallel_mp_model import TestDistMPTraning
@@ -37,6 +38,35 @@ class TestMPClipGrad(TestDistMPTraning):
                 }
             ],
         )
+=======
+from __future__ import division
+from __future__ import print_function
+
+import paddle
+import numpy as np
+from hybrid_parallel_mp_model import TestDistMPTraning
+import paddle.distributed.fleet as fleet
+import unittest
+
+
+class TestMPClipGrad(TestDistMPTraning):
+
+    def build_optimizer(self, model):
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
+        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.001,
+                                                         gamma=0.999,
+                                                         verbose=True)
+        optimizer = paddle.optimizer.SGD(scheduler,
+                                         grad_clip=grad_clip,
+                                         parameters=[{
+                                             'params':
+                                             model.parameters(),
+                                             'weight_decay':
+                                             0.001,
+                                             'learning_rate':
+                                             0.1
+                                         }])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return optimizer
 
     def train_batch(self, batch, model, optimizer, is_mp):

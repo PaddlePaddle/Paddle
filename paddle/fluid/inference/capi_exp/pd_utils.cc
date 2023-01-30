@@ -11,10 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+<<<<<<< HEAD
 #include <string>
 
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/capi_exp/pd_utils.h"
+=======
+
+#include "paddle/fluid/inference/capi_exp/pd_utils.h"
+
+#include <string>
+
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/inference/capi_exp/utils_internal.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -60,7 +69,10 @@
 
 ONE_DIM_ARRAY_UTILS_FUNC_IMPL(int32_t, Int32, int)
 ONE_DIM_ARRAY_UTILS_FUNC_IMPL(size_t, Size, size_t)
+<<<<<<< HEAD
 ONE_DIM_ARRAY_UTILS_FUNC_IMPL(int64_t, Int64, int64_t)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #undef ONE_DIM_ARRAY_UTILS_FUNC_IMPL
 #undef CONVERT_ONE_DIM_ARRAY_TO_VEC
@@ -177,6 +189,7 @@ TWO_DIM_ARRAY_UTILS_FUNC_IMPL(size_t, Size, size_t)
 #undef CONVERT_VEC_TO_TWO_DIM_ARRAY
 #undef DESTROY_TWO_DIM_ARRAY
 
+<<<<<<< HEAD
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -209,6 +222,8 @@ void PD_IOInfosDestroy(__pd_take PD_IOInfos* io_infos) {
 }  // extern "C"
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle_infer {
 
 PlaceType CvtToCxxPlaceType(PD_PlaceType place_type) {

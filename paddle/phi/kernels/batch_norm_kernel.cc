@@ -22,10 +22,17 @@ namespace phi {
 template <typename T, typename Context>
 void BatchNormInferKernel(const Context& dev_ctx,
                           const DenseTensor& x,
+<<<<<<< HEAD
                           const DenseTensor& mean,
                           const DenseTensor& variance,
                           const DenseTensor& scale,
                           const DenseTensor& bias,
+=======
+                          const DenseTensor& scale,
+                          const DenseTensor& bias,
+                          const DenseTensor& mean,
+                          const DenseTensor& variance,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           float momentum,
                           float epsilon,
                           const std::string& data_layout,
@@ -39,6 +46,7 @@ void BatchNormInferKernel(const Context& dev_ctx,
   auto saved_variance = phi::EmptyLike<T, Context>(dev_ctx, *variance_out);
   BatchNormKernel<T, Context>(dev_ctx,
                               x,
+<<<<<<< HEAD
                               mean,
                               variance,
                               scale,
@@ -49,6 +57,19 @@ void BatchNormInferKernel(const Context& dev_ctx,
                               data_layout,
                               /*use_global_stats=*/false,
                               /*trainable_statistics=*/false,
+=======
+                              scale,
+                              bias,
+                              mean,
+                              variance,
+                              momentum,
+                              epsilon,
+                              data_layout,
+                              /*is_test=*/true,
+                              /*use_global_stats=*/false,
+                              /*trainable_statistics=*/false,
+                              /*fuse_with_relu=*/false,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                               y,
                               mean_out,
                               variance_out,
@@ -87,7 +108,10 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    float,
                    phi::dtype::float16) {}
 #endif
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_XPU
 PD_REGISTER_KERNEL(
     batch_norm_infer, XPU, ALL_LAYOUT, phi::BatchNormInferKernel, float) {}
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

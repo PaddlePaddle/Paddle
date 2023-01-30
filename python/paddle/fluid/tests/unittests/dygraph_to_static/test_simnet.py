@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -22,6 +23,17 @@ from simnet_dygraph_model import BOW, HingeLoss
 import paddle
 import paddle.fluid as fluid
 
+=======
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import random
+import unittest
+
+from paddle.fluid.dygraph import ProgramTranslator
+from simnet_dygraph_model import BOW, HingeLoss
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 SEED = 102
 random.seed(SEED)
 
@@ -36,6 +48,7 @@ def create_conf_dict():
 
 def parse_args():
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument(
         "--batch_size",
         type=int,
@@ -54,6 +67,24 @@ def parse_args():
         default=128,
         help="The number of samples of fake data.",
     )
+=======
+    parser.add_argument("--batch_size",
+                        type=int,
+                        default=32,
+                        help="Total examples' number in batch for training.")
+    parser.add_argument("--seq_len",
+                        type=int,
+                        default=32,
+                        help="The length of each sentence.")
+    parser.add_argument("--epoch",
+                        type=int,
+                        default=1,
+                        help="The number of training epoch.")
+    parser.add_argument("--fake_sample_size",
+                        type=int,
+                        default=128,
+                        help="The number of samples of fake data.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     args = parser.parse_args([])
     return args
 
@@ -73,7 +104,12 @@ def fake_vocabulary():
 vocab = fake_vocabulary()
 
 
+<<<<<<< HEAD
 class FakeReaderProcessor:
+=======
+class FakeReaderProcessor(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, args, vocab):
         self.vocab = vocab
         self.seq_len = args.seq_len
@@ -84,10 +120,17 @@ class FakeReaderProcessor:
             pos_title = query[:]
             neg_title = [26 - q for q in query]
             self.data_samples.append(
+<<<<<<< HEAD
                 np.array([query, pos_title, neg_title]).astype(np.int64)
             )
 
     def get_reader(self, mode, epoch=0):
+=======
+                np.array([query, pos_title, neg_title]).astype(np.int64))
+
+    def get_reader(self, mode, epoch=0):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def reader_with_pairwise():
             if mode == "train":
                 for i in range(self.sample_size):
@@ -103,7 +146,12 @@ def train(conf_dict, to_static):
     """
     train process
     """
+<<<<<<< HEAD
     paddle.jit.enable_to_static(to_static)
+=======
+    program_translator = ProgramTranslator()
+    program_translator.enable(to_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # Get device
     if fluid.is_compiled_with_cuda():
@@ -125,8 +173,12 @@ def train(conf_dict, to_static):
             beta1=0.9,
             beta2=0.999,
             epsilon=1e-08,
+<<<<<<< HEAD
             parameter_list=net.parameters(),
         )
+=======
+            parameter_list=net.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         metric = fluid.metrics.Auc(name="auc")
 
@@ -134,6 +186,7 @@ def train(conf_dict, to_static):
         losses = []
 
         train_loader = fluid.io.DataLoader.from_generator(
+<<<<<<< HEAD
             capacity=16, return_list=True, iterable=True, use_double_buffer=True
         )
         get_train_examples = simnet_process.get_reader(
@@ -147,6 +200,21 @@ def train(conf_dict, to_static):
             left = paddle.reshape(left, shape=[-1, 1])
             pos_right = paddle.reshape(pos_right, shape=[-1, 1])
             neg_right = paddle.reshape(neg_right, shape=[-1, 1])
+=======
+            capacity=16,
+            return_list=True,
+            iterable=True,
+            use_double_buffer=True)
+        get_train_examples = simnet_process.get_reader("train",
+                                                       epoch=args.epoch)
+        train_loader.set_sample_list_generator(
+            paddle.batch(get_train_examples, batch_size=args.batch_size), place)
+
+        for left, pos_right, neg_right in train_loader():
+            left = fluid.layers.reshape(left, shape=[-1, 1])
+            pos_right = fluid.layers.reshape(pos_right, shape=[-1, 1])
+            neg_right = fluid.layers.reshape(neg_right, shape=[-1, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             net.train()
             global_step += 1
             left_feat, pos_score = net(left, pos_right)
@@ -161,6 +229,10 @@ def train(conf_dict, to_static):
 
 
 class TestSimnet(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_dygraph_static_same_loss(self):
         if fluid.is_compiled_with_cuda():
             fluid.set_flags({"FLAGS_cudnn_deterministic": True})
@@ -174,4 +246,10 @@ class TestSimnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     unittest.main()
+=======
+    # switch into new eager mode
+    with fluid.framework._test_eager_guard():
+        unittest.main()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

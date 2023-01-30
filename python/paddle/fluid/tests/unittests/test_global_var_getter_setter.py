@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest as unittest
 
 import paddle.fluid as fluid
 
 
 class VarInfo:
+=======
+import paddle.fluid as fluid
+import unittest as unittest
+
+
+class VarInfo(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, var_name, var_type, writable):
         self.name = var_name
         self.type = var_type
@@ -25,6 +34,10 @@ class VarInfo:
 
 
 class TestGlobalVarGetterSetter(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         var_infos = [
             VarInfo("FLAGS_free_idle_chunk", bool, False),
@@ -37,7 +50,11 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
             self.assertTrue(var.name in g.keys())
             value1 = g[var.name]
             value2 = g.get(var.name, None)
+<<<<<<< HEAD
             self.assertIsNotNone(value1)
+=======
+            self.assertTrue(value1 is not None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(value1, value2)
             self.assertEqual(type(value1), var.type)
             self.assertEqual(type(value2), var.type)
@@ -54,8 +71,13 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
         name = "__any_non_exist_name__"
         self.assertFalse(name in g)
         self.assertFalse(name in g.keys())
+<<<<<<< HEAD
         self.assertIsNone(g.get(name, None))
         self.assertEqual(g.get(name, -1), -1)
+=======
+        self.assertTrue(g.get(name, None) is None)
+        self.assertEquals(g.get(name, -1), -1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

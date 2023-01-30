@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
@@ -30,6 +31,27 @@ class SimpleNet(Layer):
         dtype="float32",
     ):
         super().__init__()
+=======
+from __future__ import print_function
+
+import numpy as np
+import paddle
+
+from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.nn import Layer, Embedding
+
+
+class SimpleNet(Layer):
+
+    def __init__(self,
+                 hidden_size,
+                 vocab_size,
+                 num_steps=20,
+                 init_scale=0.1,
+                 is_sparse=False,
+                 dtype="float32"):
+        super(SimpleNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -39,36 +61,53 @@ class SimpleNet(Layer):
             self.hidden_size,
             sparse=is_sparse,
             weight_attr=paddle.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 )
             ),
         )
+=======
+                initializer=paddle.nn.initializer.Uniform(low=-init_scale,
+                                                          high=init_scale)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.softmax_weight = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
+<<<<<<< HEAD
                 low=-self.init_scale, high=self.init_scale
             ),
         )
+=======
+                low=-self.init_scale, high=self.init_scale))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.softmax_bias = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
+<<<<<<< HEAD
                 low=-self.init_scale, high=self.init_scale
             ),
         )
+=======
+                low=-self.init_scale, high=self.init_scale))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # add tmp var
         self.tmp = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
+<<<<<<< HEAD
                 low=-self.init_scale, high=self.init_scale
             ),
         )
+=======
+                low=-self.init_scale, high=self.init_scale))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
@@ -79,8 +118,12 @@ class SimpleNet(Layer):
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, self.vocab_size])
         loss = paddle.nn.functional.softmax_with_cross_entropy(
+<<<<<<< HEAD
             logits=projection, label=label, soft_label=False
         )
+=======
+            logits=projection, label=label, soft_label=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
@@ -98,6 +141,10 @@ init_scale = 0.1
 
 
 def fake_sample_reader():
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __reader__():
         for i in range(batch_num):
             x_data = np.arange(num_steps).astype('int64')
@@ -108,6 +155,7 @@ def fake_sample_reader():
 
 
 class TestSparseEmbeddingUnusedVars(TestParallelDyGraphRunnerBase):
+<<<<<<< HEAD
     def get_model(self):
         model = SimpleNet(
             hidden_size=hidden_size,
@@ -124,6 +172,22 @@ class TestSparseEmbeddingUnusedVars(TestParallelDyGraphRunnerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.001, parameters=model.parameters()
         )
+=======
+
+    def get_model(self):
+        model = SimpleNet(hidden_size=hidden_size,
+                          vocab_size=vocab_size,
+                          num_steps=num_steps,
+                          init_scale=init_scale,
+                          is_sparse=False)
+
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
+
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
+                                         parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return model, train_reader, optimizer
 

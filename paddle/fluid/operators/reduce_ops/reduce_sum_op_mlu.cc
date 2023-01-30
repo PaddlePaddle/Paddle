@@ -29,11 +29,17 @@ template <typename T>
 class ReduceSumGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* in = context.Input<phi::DenseTensor>("X");
     auto* out_grad =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* in_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* in = context.Input<Tensor>("X");
+    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* in_grad = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in_grad->mutable_data<T>(context.GetPlace());
 
     bool reduce_all = context.Attr<bool>("reduce_all");
@@ -52,7 +58,11 @@ class ReduceSumGradMLUKernel : public framework::OpKernel<T> {
       }
     }
 
+<<<<<<< HEAD
     phi::DenseTensor tmp_out(out_grad->dtype());
+=======
+    Tensor tmp_out(out_grad->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto tmp_output_dims = in_dims;
     for (auto d : reduce_dims) {
       tmp_output_dims[d] = 1;

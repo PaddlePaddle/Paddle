@@ -34,7 +34,11 @@ using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
 using pstring = ::phi::dtype::pstring;
 
+<<<<<<< HEAD
 // The enum value are consistent with jit/property.proto
+=======
+// The enum valuea are consistent with jit/property.proto
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 enum class DataType {
   UNDEFINED = 0,
 
@@ -98,7 +102,11 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::COMPLEX128:
       return 16;
     case DataType::PSTRING:
+<<<<<<< HEAD
       return 48;
+=======
+      return 24;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     case DataType::UNDEFINED:
       return 0;
     case DataType::NUM_DATA_TYPES:
@@ -212,6 +220,7 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
   return os;
 }
 
+<<<<<<< HEAD
 inline std::string DataTypeToString(const DataType& dtype) {
   switch (dtype) {
     case DataType::UNDEFINED:
@@ -253,13 +262,18 @@ inline std::string DataTypeToString(const DataType& dtype) {
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace experimental
 }  // namespace paddle
 
 namespace phi {
 using DataType = paddle::experimental::DataType;
+<<<<<<< HEAD
 using paddle::experimental::DataTypeToString;
 using paddle::experimental::SizeOf;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi
 
 namespace paddle {

@@ -42,8 +42,13 @@ limitations under the License. */
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
+<<<<<<< HEAD
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include "paddle/phi/core/enforce.h"
+=======
+
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -65,7 +70,11 @@ class TableContainer
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
+<<<<<<< HEAD
   explicit XPUCacheArray(int64_t capacity) : capacity_(capacity), size_(0) {
+=======
+  explicit XPUCacheArray(long long capacity) : capacity_(capacity), size_(0) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
     xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
   }
@@ -103,8 +112,13 @@ class XPUCacheArray {
   size_t size() { return size_; }
 
  private:
+<<<<<<< HEAD
   int64_t capacity_;
   int64_t size_;
+=======
+  long long capacity_;
+  long long size_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   KeyType* keys;
   ValType* vals;
 };
@@ -127,12 +141,15 @@ class HashTable {
   template <typename StreamType>
   void insert(const KeyType* d_keys,
               size_t len,
+<<<<<<< HEAD
               uint64_t* global_num,
               StreamType stream);
 
   template <typename StreamType>
   void insert(const KeyType* d_keys,
               size_t len,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               char* pool,
               size_t feature_value_size,
               size_t start_index,
@@ -149,7 +166,11 @@ class HashTable {
            char* d_vals,
            size_t len,
            StreamType stream,
+<<<<<<< HEAD
            const GPUAccessor& fv_accessor);
+=======
+           GPUAccessor& fv_accessor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void show();
 
@@ -159,9 +180,12 @@ class HashTable {
   template <typename StreamType>
   void dump_to_cpu(int devid, StreamType stream);
 
+<<<<<<< HEAD
   template <typename StreamType>
   void get_keys(KeyType* d_out, uint64_t* global_cursor, StreamType stream);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #if defined(PADDLE_WITH_CUDA)
 
   template <typename Sgd, typename StreamType>
@@ -194,7 +218,11 @@ class HashTable {
 #endif
 
   int size() { return container_->size(); }
+<<<<<<< HEAD
   thrust::pair<KeyType, ValType>* data() { return container_->data(); }
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void set_feature_value_size(size_t pull_feature_value_size,
                               size_t push_grad_value_size) {
     pull_feature_value_size_ = pull_feature_value_size;
@@ -203,6 +231,7 @@ class HashTable {
             << " push value size: " << push_grad_value_size_;
   }
 
+<<<<<<< HEAD
   int prefetch(const int dev_id, cudaStream_t stream = 0) {
     return container_->prefetch(dev_id, stream);
   }
@@ -212,6 +241,9 @@ class HashTable {
   void show_collision(int id) { return container_->print_collision(id); }
   // infer mode
   void set_mode(bool infer_mode) { infer_mode_ = infer_mode; }
+=======
+  void show_collision(int id) { return container_->print_collision(id); }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 
@@ -230,7 +262,10 @@ class HashTable {
   size_t max_mf_dim_ = 8;
   size_t pull_feature_value_size_;
   size_t push_grad_value_size_;
+<<<<<<< HEAD
   bool infer_mode_ = false;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 }  // end namespace framework
 }  // end namespace paddle

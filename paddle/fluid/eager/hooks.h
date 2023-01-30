@@ -19,7 +19,10 @@
 #include <utility>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/platform/enforce.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/api/include/tensor.h"
 namespace egr {
 
@@ -63,6 +66,7 @@ class CppVoidHook : public VoidHook {
   std::function<void()> fn_;
 };
 
+<<<<<<< HEAD
 class PyObjectHolderBase {
  public:
   virtual ~PyObjectHolderBase() = default;
@@ -128,4 +132,6 @@ class SavedTensorsHooks {
   bool is_enable_{false};
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace egr

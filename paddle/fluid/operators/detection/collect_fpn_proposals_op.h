@@ -62,6 +62,7 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto multi_layer_rois =
+<<<<<<< HEAD
         context.MultiInput<phi::DenseTensor>("MultiLevelRois");
 
     auto multi_layer_scores =
@@ -71,6 +72,17 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int num_size = multi_rois_num.size();
 
     auto* fpn_rois = context.Output<phi::DenseTensor>("FpnRois");
+=======
+        context.MultiInput<paddle::framework::LoDTensor>("MultiLevelRois");
+
+    auto multi_layer_scores =
+        context.MultiInput<paddle::framework::LoDTensor>("MultiLevelScores");
+    auto multi_rois_num =
+        context.MultiInput<framework::Tensor>("MultiLevelRoIsNum");
+    int num_size = multi_rois_num.size();
+
+    auto* fpn_rois = context.Output<paddle::framework::LoDTensor>("FpnRois");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int post_nms_topN = context.Attr<int>("post_nms_topN");
 
@@ -91,7 +103,11 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
             "is %d",
             multi_layer_rois.size(),
             multi_layer_scores.size()));
+<<<<<<< HEAD
     // Check if the lod information of two phi::DenseTensor is same
+=======
+    // Check if the lod information of two LoDTensor is same
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int num_fpn_level = multi_layer_rois.size();
     std::vector<int> integral_of_all_rois(num_fpn_level + 1, 0);
     for (int i = 0; i < num_fpn_level; ++i) {
@@ -182,7 +198,11 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
     num_per_batch.emplace_back(post_nms_topN - pre_idx);
     if (context.HasOutput("RoisNum")) {
+<<<<<<< HEAD
       auto* rois_num = context.Output<phi::DenseTensor>("RoisNum");
+=======
+      auto* rois_num = context.Output<framework::Tensor>("RoisNum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int* rois_num_data =
           rois_num->mutable_data<int>({batch_size}, context.GetPlace());
       for (int i = 0; i < batch_size; i++) {

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import warnings
 
 import paddle
@@ -20,6 +21,10 @@ import paddle.framework as framework
 
 
 class Group:
+=======
+
+class Group():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     The abstract representation of group.
     """
@@ -57,10 +62,13 @@ class Group:
         return self._world_size
 
     @property
+<<<<<<< HEAD
     def backend(self):
         return self._pg.name()
 
     @property
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def id(self):
         return self._id
 
@@ -79,15 +87,23 @@ class Group:
 
     def __repr__(self):
         debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
+<<<<<<< HEAD
             self.rank, self.nranks, self.id
         )
+=======
+            self.rank, self.nranks, self.id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         debug_str += ", ".join(map(str, self.ranks))
         debug_str += "; name: "
         debug_str += self.name if self.name else "None"
         return debug_str
 
 
+<<<<<<< HEAD
 class _GroupManager:
+=======
+class _GroupManager():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     global_group_id = 0
     group_map_by_id = {}
 
@@ -100,6 +116,7 @@ def _get_global_group():
 
 def _add_new_group(group):
     if group.id in _GroupManager.group_map_by_id:
+<<<<<<< HEAD
         raise RuntimeError(
             "The group with id {} already exist.".format(group.id)
         )
@@ -375,3 +392,8 @@ def get_backend(group=None):
 
     group = _get_global_group() if group is None else group
     return group.backend
+=======
+        raise RuntimeError("The group with id {} already exist.".format(
+            group.id))
+    _GroupManager.group_map_by_id[group.id] = group
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

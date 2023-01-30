@@ -19,6 +19,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -30,9 +36,15 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the input feature map, and "
              "W is the width.");
     AddInput("ROIs",
+<<<<<<< HEAD
              "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
+=======
+             "(LoDTensor), "
+             "ROIs (Regions of Interest) to pool over. "
+             "should be a 2-D LoDTensor of shape (num_rois, 4) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "given as [(x1, y1, x2, y2), ...]. "
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
@@ -92,13 +104,21 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
         rois_dims.size(),
         2,
         platform::errors::InvalidArgument(
+<<<<<<< HEAD
             "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
+=======
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "given as [(x1, y1, x2, y2), ...]"));
     PADDLE_ENFORCE_EQ(
         rois_dims[1],
         4,
         platform::errors::InvalidArgument(
+<<<<<<< HEAD
             "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
+=======
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "given as [(x1, y1, x2, y2), ...]"));
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -135,10 +155,18 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -160,10 +188,18 @@ class PRROIPoolGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

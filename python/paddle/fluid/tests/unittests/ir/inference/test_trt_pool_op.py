@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import itertools
 import os
 import shutil
@@ -28,6 +29,22 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTPoolTest(InferencePassTest):
+=======
+import os
+import shutil
+import unittest
+import itertools
+import numpy as np
+from inference_pass_test import InferencePassTest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.core import PassVersionChecker
+from paddle.fluid.core import AnalysisConfig
+
+
+class TensorRTPoolTest(InferencePassTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.bs = 1
         self.channel = 2
@@ -44,9 +61,15 @@ class TensorRTPoolTest(InferencePassTest):
         self.serialize = False
         self.precision = AnalysisConfig.Precision.Float32
         self.feeds = {
+<<<<<<< HEAD
             'data': np.random.random(
                 [self.bs, self.channel, self.height, self.width]
             ).astype('float32'),
+=======
+            'data':
+            np.random.random([self.bs, self.channel, self.height,
+                              self.width]).astype('float32'),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_extra_config(self):
@@ -55,6 +78,7 @@ class TensorRTPoolTest(InferencePassTest):
     def build_network(self):
         self.set_extra_config()
         self.trt_parameters = TensorRTPoolTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, self.bs, 0, self.precision, self.serialize, False
         )
 
@@ -83,6 +107,23 @@ class TensorRTPoolTest(InferencePassTest):
                 )
             out = nn.batch_norm(pool_out, is_test=True)
 
+=======
+            1 << 30, self.bs, 0, self.precision, self.serialize, False)
+
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name='data',
+                              shape=[-1, self.channel, self.height, self.width],
+                              dtype='float32')
+            pool_out = fluid.layers.pool2d(input=data,
+                                           pool_size=self.pool_size,
+                                           pool_type=self.pool_type,
+                                           pool_stride=self.pool_stride,
+                                           pool_padding=self.pool_padding,
+                                           global_pooling=self.global_pooling,
+                                           ceil_mode=self.ceil_mode,
+                                           exclusive=self.exclusive)
+            out = fluid.layers.batch_norm(pool_out, is_test=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.fetch_list = [out]
 
     def check_output(self):
@@ -95,6 +136,7 @@ class TensorRTPoolTest(InferencePassTest):
             elif self.precision == AnalysisConfig.Precision.Half:
                 atol, rtol = (1e-3, 1e-3)
             else:
+<<<<<<< HEAD
                 raise ValueError(
                     "Unsupported precision {}".format(self.precision)
                 )
@@ -102,6 +144,13 @@ class TensorRTPoolTest(InferencePassTest):
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
             )
+=======
+                raise ValueError("Unsupported precision {}".format(
+                    self.precision))
+            self.check_output_with_option(use_gpu, atol=atol, rtol=rtol)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def run_test(self):
         self.build_network()
@@ -109,12 +158,17 @@ class TensorRTPoolTest(InferencePassTest):
 
     def test(self):
         precision_options = [
+<<<<<<< HEAD
             AnalysisConfig.Precision.Float32,
             AnalysisConfig.Precision.Half,
+=======
+            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         serialize_options = [False, True]
         dynamic_shape_profile = InferencePassTest.DynamicShapeParam(
             {
+<<<<<<< HEAD
                 'data': [
                     self.bs,
                     self.channel,
@@ -137,6 +191,20 @@ class TensorRTPoolTest(InferencePassTest):
                     precision, serialize, is_dynamic
                 )
             ):
+=======
+                'data':
+                [self.bs, self.channel, self.height // 2, self.width // 2]
+            }, {'data': [self.bs, self.channel, self.height, self.width]},
+            {'data': [self.bs, self.channel, self.height, self.width]}, False)
+        dynamic_shape_options = [None, dynamic_shape_profile]
+
+        for precision, serialize, dynamic_shape in itertools.product(
+                precision_options, serialize_options, dynamic_shape_options):
+            is_dynamic = True if dynamic_shape_options is not None else False
+            with self.subTest(
+                    'Precision: {}, Serialize: {}, Dynamic: {}'.format(
+                        precision, serialize, is_dynamic)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.precision = precision
                 self.serialize = serialize
                 self.dynamic_shape = dynamic_shape
@@ -144,6 +212,10 @@ class TensorRTPoolTest(InferencePassTest):
 
 
 class TensorRTAvgPoolTest(TensorRTPoolTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_extra_config(self):
         self.pool_size = 2
         self.pool_type = 'avg'
@@ -155,6 +227,10 @@ class TensorRTAvgPoolTest(TensorRTPoolTest):
 
 
 class TensorRTAvgCeilPoolTest(TensorRTPoolTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_extra_config(self):
         self.pool_size = 2
         self.pool_type = 'avg'
@@ -166,6 +242,10 @@ class TensorRTAvgCeilPoolTest(TensorRTPoolTest):
 
 
 class TensorRTGlobalPoolTest(TensorRTPoolTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_extra_config(self):
         self.pool_size = 2
         self.pool_type = 'max'
@@ -177,6 +257,10 @@ class TensorRTGlobalPoolTest(TensorRTPoolTest):
 
 
 class TensorRTCeilPoolTest(TensorRTPoolTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_extra_config(self):
         self.pool_size = 2
         self.pool_type = 'max'
@@ -188,6 +272,10 @@ class TensorRTCeilPoolTest(TensorRTPoolTest):
 
 
 class TensorRTExclusivePoolTest(TensorRTPoolTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_extra_config(self):
         self.pool_size = 2
         self.pool_type = 'max'
@@ -199,6 +287,10 @@ class TensorRTExclusivePoolTest(TensorRTPoolTest):
 
 
 class TensorRTSamePaddingPoolTest(InferencePassTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_extra_config(self):
         self.pool_size = 2
         self.pool_type = 'max'
@@ -210,6 +302,10 @@ class TensorRTSamePaddingPoolTest(InferencePassTest):
 
 
 class TensorRTValidPaddingPoolTest(InferencePassTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_extra_config(self):
         self.pool_size = 2
         self.pool_type = 'max'

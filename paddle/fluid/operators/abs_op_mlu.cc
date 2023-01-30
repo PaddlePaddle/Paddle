@@ -18,12 +18,22 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class AbsMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     output->mutable_data<T>(ctx.GetPlace());
 
@@ -42,9 +52,15 @@ template <typename T>
 class AbsGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     dx->mutable_data<T>(ctx.GetPlace());
 
@@ -52,7 +68,11 @@ class AbsGradMLUKernel : public framework::OpKernel<T> {
     MLUCnnlOpTensorDesc mul_op_desc(
         CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
 
+<<<<<<< HEAD
     phi::DenseTensor sign_x;
+=======
+    Tensor sign_x;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sign_x.mutable_data<T>(x->dims(), ctx.GetPlace());
 
     MLUCnnl::Sign(ctx,

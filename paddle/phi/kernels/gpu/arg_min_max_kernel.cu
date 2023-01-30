@@ -28,8 +28,14 @@ namespace cub = hipcub;
 #endif
 #include <limits>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/data_type.h"
+=======
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/phi/core/ddim.h"
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace phi {
 
 namespace {  // NOLINT
@@ -208,14 +214,25 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            int dtype,
                            DenseTensor* out) {
   if (dtype < 0) {
+<<<<<<< HEAD
     phi::VisitDataTypeTiny(
         phi::DataType::INT64,
+=======
+    paddle::framework::VisitDataTypeTiny(
+        static_cast<paddle::framework::proto::VarType::Type>(
+            paddle::framework::proto::VarType::INT64),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
             dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
+<<<<<<< HEAD
   phi::VisitDataTypeTiny(
       phi::TransToPhiDataType(dtype),
+=======
+  paddle::framework::VisitDataTypeTiny(
+      static_cast<paddle::framework::proto::VarType::Type>(dtype),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
@@ -248,12 +265,19 @@ void ArgMaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(argmin,
+=======
+PD_REGISTER_KERNEL(arg_min,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
                    phi::dtype::float16,
+<<<<<<< HEAD
                    phi::dtype::bfloat16,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    int32_t,
@@ -261,12 +285,19 @@ PD_REGISTER_KERNEL(argmin,
                    int16_t,
                    uint8_t) {}
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(argmax,
+=======
+PD_REGISTER_KERNEL(arg_max,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,
                    phi::dtype::float16,
+<<<<<<< HEAD
                    phi::dtype::bfloat16,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    int32_t,

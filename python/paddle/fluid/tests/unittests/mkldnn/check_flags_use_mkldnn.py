@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 
 import numpy as np
@@ -30,6 +31,23 @@ def check():
         "check: fluid.get_flags('FLAGS_use_mkldnn')=",
         fluid.get_flags(['FLAGS_use_mkldnn']),
     )
+=======
+from __future__ import unicode_literals
+from __future__ import print_function
+
+import numpy as np
+import paddle.fluid as fluid
+import os
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import _global_flags
+
+
+def check():
+    print("check: _global_flags()['FLAGS_use_mkldnn']=",
+          _global_flags()["FLAGS_use_mkldnn"])
+    print("check: fluid.get_flags('FLAGS_use_mkldnn')=",
+          fluid.get_flags(['FLAGS_use_mkldnn']))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
     helper = LayerHelper(fluid.unique_name.generate(str("test")), act="relu")
@@ -38,7 +56,11 @@ def check():
         a = fluid.dygraph.to_variable(a_np)
         res1 = func(a)
         res2 = np.maximum(a_np, 0)
+<<<<<<< HEAD
     assert np.array_equal(res1.numpy(), res2)
+=======
+    assert (np.array_equal(res1.numpy(), res2))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

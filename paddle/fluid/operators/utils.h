@@ -22,12 +22,20 @@ namespace paddle {
 namespace operators {
 
 template <typename T = int32_t>
+<<<<<<< HEAD
 inline std::vector<T> GetDataFromTensor(const phi::DenseTensor* x) {
+=======
+inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<T> vec_new_data;
   if (framework::TransToProtoVarType(x->dtype()) ==
       framework::proto::VarType::INT32) {
     auto* data = x->data<int>();
+<<<<<<< HEAD
     phi::DenseTensor cpu_attr_tensor;
+=======
+    framework::Tensor cpu_attr_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!platform::is_cpu_place(x->place())) {
       paddle::framework::TensorCopySync(
           *x, platform::CPUPlace(), &cpu_attr_tensor);
@@ -37,7 +45,11 @@ inline std::vector<T> GetDataFromTensor(const phi::DenseTensor* x) {
   } else if (framework::TransToProtoVarType(x->dtype()) ==
              framework::proto::VarType::INT64) {
     auto* data = x->data<int64_t>();
+<<<<<<< HEAD
     phi::DenseTensor cpu_attr_tensor;
+=======
+    framework::Tensor cpu_attr_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!platform::is_cpu_place(x->place())) {
       paddle::framework::TensorCopySync(
           *x, platform::CPUPlace(), &cpu_attr_tensor);
@@ -55,7 +67,11 @@ inline std::vector<T> GetDataFromTensor(const phi::DenseTensor* x) {
 
 template <typename T = int32_t>
 inline std::vector<T> GetDataFromTensorList(
+<<<<<<< HEAD
     const std::vector<const phi::DenseTensor*>& list_tensor) {
+=======
+    const std::vector<const framework::Tensor*>& list_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<T> vec_new_data;
   for (size_t i = 0; i < list_tensor.size(); ++i) {
     auto tensor = list_tensor[i];
@@ -70,7 +86,11 @@ inline std::vector<T> GetDataFromTensorList(
     if (framework::TransToProtoVarType(tensor->dtype()) ==
         framework::proto::VarType::INT32) {
       if (!platform::is_cpu_place(tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_data.push_back(static_cast<T>(*temp.data<int>()));
       } else {
@@ -79,7 +99,11 @@ inline std::vector<T> GetDataFromTensorList(
     } else if (framework::TransToProtoVarType(tensor->dtype()) ==
                framework::proto::VarType::INT64) {
       if (!platform::is_cpu_place(tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         // NOTE: Converting int64 to int32 may cause data overflow.
         vec_new_data.push_back(static_cast<T>(*temp.data<int64_t>()));
@@ -99,13 +123,21 @@ inline std::vector<T> GetDataFromTensorList(
 inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
+<<<<<<< HEAD
     auto* shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
+=======
+    auto* shape_tensor = ctx.Input<framework::LoDTensor>("ShapeTensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto vec_shape = GetDataFromTensor<int>(shape_tensor);
     return phi::make_ddim(vec_shape);
   }
 
   // 2. shape is a list/tuple containing Tensor
+<<<<<<< HEAD
   auto shape_tensor_list = ctx.MultiInput<phi::DenseTensor>("ShapeTensorList");
+=======
+  auto shape_tensor_list = ctx.MultiInput<framework::Tensor>("ShapeTensorList");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (shape_tensor_list.size() > 0) {
     auto vec_shape = GetDataFromTensorList(shape_tensor_list);
     return phi::make_ddim(vec_shape);
@@ -117,10 +149,17 @@ inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
 }
 
 template <typename T>
+<<<<<<< HEAD
 inline T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
   if (!platform::is_cpu_place(x->place())) {
     phi::DenseTensor cpu_x;
+=======
+inline T GetValue(const framework::Tensor* x) {
+  T value = static_cast<T>(0);
+  if (!platform::is_cpu_place(x->place())) {
+    framework::Tensor cpu_x;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

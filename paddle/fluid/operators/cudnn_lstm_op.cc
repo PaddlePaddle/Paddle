@@ -95,10 +95,18 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -189,7 +197,11 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
 CUDNN LSTM implementation
 
 A four-gate Long Short-Term Memory network with no peephole connections.
+<<<<<<< HEAD
 In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1,
+=======
+In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
 
 $$ i_t = sigmoid(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i) $$
@@ -216,7 +228,11 @@ $$ h_t = o_t \\odot tanh(c_t) $$
 - $\tilde{c_t}$ is also called candidate hidden state,
   which is computed based on the current input and the previous hidden state.
 
+<<<<<<< HEAD
 Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication,
+=======
+Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 X represensts a matrix multiplication
 
 
@@ -248,11 +264,19 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
     SetOutGradDim("InitH");
     SetOutGradDim("InitC");
   }
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

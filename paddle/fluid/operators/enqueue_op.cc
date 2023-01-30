@@ -31,6 +31,10 @@ class OpBase;
 }  // namespace imperative
 }  // namespace paddle
 
+<<<<<<< HEAD
+=======
+using LoDTensor = paddle::framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using LoDTensorBlockingQueueHolder =
     paddle::operators::reader::LoDTensorBlockingQueueHolder;
 
@@ -60,7 +64,11 @@ class EnqueueOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(in_var,
                             platform::errors::NotFound(
                                 "No variable with name %s found.", var_name));
+<<<<<<< HEAD
     auto* in_tensor = in_var->GetMutable<phi::DenseTensor>();
+=======
+    auto* in_tensor = in_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
@@ -77,7 +85,11 @@ class EnqueueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("queue_name",
                          "Name of the `LoDTensorBlockingQueueHolder` variable");
     AddComment(R"DOC(
+<<<<<<< HEAD
       Enqueue operator.
+=======
+			Enqueue operator.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       )DOC");
   }
 };

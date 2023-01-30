@@ -15,7 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 
 #include "glog/logging.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/attribute.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -29,6 +32,7 @@ VarDesc::VarDesc(const VarDesc &other)
   if (other.dist_attr_) {
     dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
   }
+<<<<<<< HEAD
   need_updated_ = true;
 }
 
@@ -39,6 +43,8 @@ VarDesc::VarDesc(const proto::VarDesc &desc) : desc_(desc) {
     attrs_[attr_name] = GetAttrValue(attr);
   }
   need_updated_ = true;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 proto::VarType::Type VarDesc::GetType() const { return desc_.type().type(); }
@@ -359,6 +365,7 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
   bool valid = attr_type == proto::AttrType::INT ||
                attr_type == proto::AttrType::STRING ||
                attr_type == proto::AttrType::INTS;
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(valid,
                     true,
                     platform::errors::InvalidArgument(
@@ -368,6 +375,16 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
 
   this->attrs_[name] = v;
   need_updated_ = true;
+=======
+  PADDLE_ENFORCE_EQ(
+      valid,
+      true,
+      platform::errors::InvalidArgument("The value for attr (%s) must be "
+                                        "one of list or int or string.",
+                                        name));
+
+  this->attrs_[name] = v;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 Attribute VarDesc::GetAttr(const std::string &name) const {
@@ -379,6 +396,7 @@ Attribute VarDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
+<<<<<<< HEAD
 struct SetVarAttrDescVisitor {
   explicit SetVarAttrDescVisitor(proto::VarDesc::Attr *attr) : attr_(attr) {}
   mutable proto::VarDesc::Attr *attr_;
@@ -436,6 +454,8 @@ void VarDesc::Flush() {
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 TensorDistAttr *VarDesc::MutableDistAttr() {
   // If dist_attr_ is nullptr, construct a new one and return.
   if (dist_attr_) {
@@ -444,14 +464,20 @@ TensorDistAttr *VarDesc::MutableDistAttr() {
     dist_attr_.reset(new TensorDistAttr(*this));
     return dist_attr_.get();
   }
+<<<<<<< HEAD
   need_updated_ = true;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void VarDesc::SetDistAttr(const TensorDistAttr &dist_attr) {
   // Make sure this dist attr be created
   MutableDistAttr();
   *dist_attr_ = dist_attr;
+<<<<<<< HEAD
   need_updated_ = true;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 bool operator==(const VarDesc &left, const VarDesc &right) {

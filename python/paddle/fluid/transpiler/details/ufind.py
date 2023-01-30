@@ -12,9 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 
 class UnionFind:
     """Union-find data structure.
+=======
+from __future__ import print_function
+
+
+class UnionFind(object):
+    """ Union-find data structure.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Union-find is a data structure that keeps track of a set of elements partitioned
     into a number of disjoint (non-overlapping) subsets.

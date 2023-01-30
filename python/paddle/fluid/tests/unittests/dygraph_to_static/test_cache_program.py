@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from collections import Counter
 
@@ -25,6 +26,25 @@ from paddle.jit.dy2static import convert_to_static
 
 
 class TestCacheProgram(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from collections import Counter
+import paddle
+import paddle.fluid as fluid
+
+from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
+
+from test_fetch_feed import Pool2D, Linear
+
+
+class TestCacheProgram(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_num = 5
         self.dygraph_class = Pool2D
@@ -42,6 +62,7 @@ class TestCacheProgram(unittest.TestCase):
                 cur_out = out
                 # Check forward ops
                 prev_ops = cur_ops
+<<<<<<< HEAD
                 cur_ops = Counter(
                     [
                         op.type
@@ -59,18 +80,38 @@ class TestCacheProgram(unittest.TestCase):
                         if isinstance(cur_out, (tuple, list))
                         else cur_out.numpy()
                     )
+=======
+                cur_ops = Counter([
+                    op.type for op in fluid.default_main_program().block(0).ops
+                ])
+                if batch_id > 0:
+                    prev_out_numpy = prev_out[0].numpy() if isinstance(
+                        prev_out, (tuple, list)) else prev_out.numpy()
+                    cur_out_numpy = cur_out[0].numpy() if isinstance(
+                        cur_out, (tuple, list)) else cur_out.numpy()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     np.testing.assert_allclose(
                         prev_out_numpy,
                         cur_out_numpy,
                         rtol=1e-05,
+<<<<<<< HEAD
                         err_msg='Output in previous batch is {}\n Output in current batch is \n{}'.format(
                             prev_out_numpy, cur_out_numpy
                         ),
                     )
+=======
+                        err_msg=
+                        'Output in previous batch is {}\n Output in current batch is \n{}'
+                        .format(prev_out_numpy, cur_out_numpy))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self.assertEqual(prev_ops, cur_ops)
 
 
 class TestCacheProgram2(TestCacheProgram):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_num = 5
         self.dygraph_class = Linear
@@ -78,6 +119,10 @@ class TestCacheProgram2(TestCacheProgram):
 
 
 class TestCacheProgramWithOptimizer(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.dygraph_class = Linear
         self.data = np.random.random((4, 10)).astype('float32')
@@ -90,13 +135,22 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
         return self.train(to_static=False)
 
     def train(self, to_static=False):
+<<<<<<< HEAD
         paddle.jit.enable_to_static(to_static)
+=======
+        prog_trans = ProgramTranslator()
+        prog_trans.enable(to_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
             adam = fluid.optimizer.AdamOptimizer(
+<<<<<<< HEAD
                 learning_rate=0.001, parameter_list=dygraph_net.parameters()
             )
+=======
+                learning_rate=0.001, parameter_list=dygraph_net.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss_data = []
             for batch_id in range(self.batch_num):
                 input = fluid.dygraph.to_variable(self.data)
@@ -117,9 +171,13 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             static_loss,
             rtol=1e-05,
             err_msg='dygraph is {}\n static_res is \n{}'.format(
+<<<<<<< HEAD
                 dygraph_loss, static_loss
             ),
         )
+=======
+                dygraph_loss, static_loss))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def simple_func(x):
@@ -129,6 +187,10 @@ def simple_func(x):
 
 
 class TestConvertWithCache(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_cache(self):
         static_func = convert_to_static(simple_func)
         # Get transformed function from cache.
@@ -136,7 +198,11 @@ class TestConvertWithCache(unittest.TestCase):
         self.assertTrue(id(static_func), id(cached_func))
 
 
+<<<<<<< HEAD
 @to_static
+=======
+@declarative
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def sum_even_until_limit(max_len, limit):
     ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
     for i in range(max_len):
@@ -159,12 +225,20 @@ def sum_under_while(limit):
 
 
 class TestToOutputWithCache(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_output(self):
         with fluid.dygraph.guard():
             ret = sum_even_until_limit(80, 10)
             self.assertEqual(ret.numpy(), 30)
 
+<<<<<<< HEAD
             ret = to_static(sum_under_while)(100)
+=======
+            ret = declarative(sum_under_while)(100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(ret.numpy(), 5050)
 
 

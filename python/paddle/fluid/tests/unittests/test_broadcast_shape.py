@@ -13,16 +13,25 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
 class TestBroadcastShape(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_result(self):
         shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
         self.assertEqual(shape, [2, 3, 3])
 
         shape = paddle.broadcast_shape(
+<<<<<<< HEAD
             [-1, 1, 3], [1, 3, 1]
         )  # support compile time infershape
         self.assertEqual(shape, [-1, 3, 3])
@@ -31,6 +40,14 @@ class TestBroadcastShape(unittest.TestCase):
         self.assertRaises(
             ValueError, paddle.broadcast_shape, [2, 1, 3], [3, 3, 1]
         )
+=======
+            [-1, 1, 3], [1, 3, 1])  #support compile time infershape
+        self.assertEqual(shape, [-1, 3, 3])
+
+    def test_error(self):
+        self.assertRaises(ValueError, paddle.broadcast_shape, [2, 1, 3],
+                          [3, 3, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

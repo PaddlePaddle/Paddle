@@ -14,7 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <iostream>
+<<<<<<< HEAD
 #include <map>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <string>
 #include <typeindex>
 
@@ -110,6 +113,7 @@ inline DataType ToRealType(const DataType& type) {
           type));
   }
 }
+<<<<<<< HEAD
 
 // In some cases we need to use the conversion between phi::DataType and
 // fluid proto::VarType::Type, but can't depend on the proto::VarType::Type.
@@ -240,4 +244,6 @@ inline ncclDataType_t ToNCCLDataType(DataType type) {
 }
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

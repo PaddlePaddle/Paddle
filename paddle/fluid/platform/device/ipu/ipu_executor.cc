@@ -14,11 +14,17 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 
+<<<<<<< HEAD
 #include <chrono>
 #include <popart/devicemanager.hpp>
 #include <popdist/popdist_poplar.hpp>
 
 #include "paddle/fluid/framework/data_type_transform.h"
+=======
+#include <popart/devicemanager.hpp>
+#include <popdist/popdist_poplar.hpp>
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
@@ -30,6 +36,7 @@ namespace ipu {
 
 namespace {
 
+<<<<<<< HEAD
 model_runtime::AnchorCallbackPredicate PredFilterMain(
     const model_runtime::Session *session) {
   // Create predicates for binding Anchors from Main programs only
@@ -37,6 +44,8 @@ model_runtime::AnchorCallbackPredicate PredFilterMain(
       session->model()->metadata.programFlow());
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // Get paddle prefix and popart postfix of weight states
 // Format: {popart_postfix, paddle_prefix}
 std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
@@ -165,10 +174,13 @@ void Executor::Prepare(const std::string &proto) {
     VLOG(10) << "Setting random seed to: " << ipu_strategy_->random_seed;
     session_->setRandomSeed(ipu_strategy_->random_seed);
   }
+<<<<<<< HEAD
   enable_model_runtime_executor_ = ipu_strategy_->enable_model_runtime_executor;
   if (enable_model_runtime_executor_) {
     PreparePopefSession();
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void Executor::Run(const std::vector<const Tensor *> &inputs,
@@ -247,6 +259,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   VLOG(10) << "Running...done";
 }
 
+<<<<<<< HEAD
 void Executor::PreparePopefSession() {
   VLOG(10) << "enter Executor::PreparePopefSession";
   if (popef_session_) {
@@ -449,6 +462,8 @@ void Executor::RunPopef(const std::vector<const Tensor *> &inputs,
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void Executor::WeightsToHost() {
   if (ipu_strategy_->is_training && session_) {
     WeightsToPaddle();
@@ -531,6 +546,7 @@ void Executor::Reset() {
   Detach();
   session_.reset();
   executor_resources_.reset();
+<<<<<<< HEAD
   if (enable_model_runtime_executor_) {
     ResetPopef();
   }
@@ -557,6 +573,8 @@ void Executor::ResetPopef() {
   // reset stop back to false in case executor is reused.
   stop_.store(false);
   queue_manager_ = nullptr;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void Executor::SetWeightsIO() {
@@ -580,7 +598,11 @@ void Executor::SetWeightsIO() {
       VLOG(10) << "Connect paddle weight: " << paddle_var
                << " with popart weight: " << popart_var;
       auto var = scope_->GetVar(paddle_var);
+<<<<<<< HEAD
       auto data_ptr = var->GetMutable<phi::DenseTensor>()->data();
+=======
+      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto tensor_info = session_->getInfo(popart_var);
       executor_resources_->weights_io.insert(popart_var,
                                              {data_ptr, tensor_info});
@@ -595,7 +617,11 @@ void Executor::ConvertWeights(bool align_to_popart) {
   for (auto weight_pair : executor_resources_->weights_and_opt_state) {
     auto paddle_var = scope_->GetVar(weight_pair.second);
     auto paddle_var_dtype = PhiDType2PopartDType(
+<<<<<<< HEAD
         paddle_var->GetMutable<phi::DenseTensor>()->dtype());
+=======
+        paddle_var->GetMutable<framework::LoDTensor>()->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ((paddle_var_dtype == popart::DataType::FLOAT ||
                        paddle_var_dtype == popart::DataType::FLOAT16),
@@ -623,7 +649,11 @@ void Executor::ConvertWeights(bool align_to_popart) {
       VLOG(10) << weight_pair.first << " and " << weight_pair.second
                << " have different dtype : " << popart_var_dtype;
       auto *data_ptr =
+<<<<<<< HEAD
           paddle_var->GetMutable<phi::DenseTensor>()->data<float>();
+=======
+          paddle_var->GetMutable<framework::LoDTensor>()->data<float>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       auto num_elem = info.nelms();
       if (align_to_popart) {

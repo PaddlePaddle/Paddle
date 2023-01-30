@@ -24,7 +24,11 @@ paddle.enable_static()
 
 
 def ref_log_softmax(x):
+<<<<<<< HEAD
     shiftx = x - np.max(x)
+=======
+    shiftx = (x - np.max(x))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out = shiftx - np.log(np.exp(shiftx).sum())
     return out
 
@@ -34,14 +38,24 @@ def ref_log_softmax_grad(x, axis):
         axis += len(x.shape)
     out = np.apply_along_axis(ref_log_softmax, axis, x)
     axis_dim = x.shape[axis]
+<<<<<<< HEAD
     dout = np.full_like(x, fill_value=1.0 / x.size)
     dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
         axis_dim, axis=axis
     )
+=======
+    dout = np.full_like(x, fill_value=1. / x.size)
+    dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
+        axis_dim, axis=axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return dx
 
 
 class TestLogSoftmaxOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_mlu()
@@ -51,7 +65,11 @@ class TestLogSoftmaxOp(OpTest):
         self.axis = -1
         self.set_attrs()
 
+<<<<<<< HEAD
         x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+=======
+        x = np.random.uniform(0.1, 1., self.shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
 
@@ -70,22 +88,39 @@ class TestLogSoftmaxOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place, ['X'], ['Out'], user_defined_grads=[self.x_grad]
         )
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
+=======
+        self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                   user_defined_grads=[self.x_grad])
+
+
+class TestLogSoftmaxShape(TestLogSoftmaxOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.shape = [12, 10]
 
 
 class TestLogSoftmaxAxis(TestLogSoftmaxOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.axis = 1
 
 
 class TestLogSoftmaxOpFp16(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_mlu()
@@ -95,7 +130,11 @@ class TestLogSoftmaxOpFp16(OpTest):
         self.axis = -1
         self.set_attrs()
 
+<<<<<<< HEAD
         x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+=======
+        x = np.random.uniform(0.1, 1., self.shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
 
@@ -114,6 +153,7 @@ class TestLogSoftmaxOpFp16(OpTest):
         self.check_output_with_place(self.place, atol=1e-2)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             ['X'],
@@ -128,6 +168,19 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
         self.set_mlu()
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(np.float32)
+=======
+        self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                   user_defined_grads=[self.x_grad],
+                                   max_relative_error=0.015)
+
+
+class TestNNLogSoftmaxAPI(unittest.TestCase):
+
+    def setUp(self):
+        self.set_mlu()
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1., 1., self.x_shape).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_mlu(self):
         self.__class__.use_mlu = True
@@ -159,6 +212,10 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
 
 
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.x_shape = [2, 3, 4, 5]

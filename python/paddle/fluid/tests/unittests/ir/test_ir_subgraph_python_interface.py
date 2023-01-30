@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import paddle
 import paddle.fluid as fluid
@@ -21,11 +22,25 @@ from paddle.fluid import core
 from paddle.fluid.framework import IrGraph, Program, program_guard
 from paddle.fluid.tests.unittests.op_test import OpTestTool
 from paddle.static.quantization import QuantizationTransformPass
+=======
+import paddle
+import paddle.fluid as fluid
+import six
+
+from paddle.fluid.framework import IrGraph
+from paddle.fluid.framework import IrNode
+from paddle.fluid.tests.unittests.op_test import OpTestTool
+from paddle.fluid import core
+import paddle.fluid.layers as layers
+from paddle.fluid.framework import Program, program_guard, default_startup_program
+from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestQuantizationSubGraph(unittest.TestCase):
+<<<<<<< HEAD
     def build_graph_with_sub_graph(self):
         def linear_fc(num):
             data = paddle.static.data(
@@ -42,6 +57,20 @@ class TestQuantizationSubGraph(unittest.TestCase):
             loss = paddle.nn.functional.cross_entropy(
                 input=hidden, label=label, reduction='none', use_softmax=False
             )
+=======
+
+    def build_graph_with_sub_graph(self):
+
+        def linear_fc(num):
+            data = fluid.layers.data(name='image',
+                                     shape=[1, 32, 32],
+                                     dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            hidden = data
+            for _ in six.moves.xrange(num):
+                hidden = fluid.layers.fc(hidden, size=128, act='relu')
+            loss = fluid.layers.cross_entropy(input=hidden, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss = paddle.mean(loss)
             return loss
 
@@ -57,8 +86,13 @@ class TestQuantizationSubGraph(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+<<<<<<< HEAD
             pred = paddle.less_than(y, x)
             out = paddle.static.nn.cond(pred, true_func, false_func)
+=======
+            pred = layers.less_than(y, x)
+            out = layers.cond(pred, true_func, false_func)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         core_graph = core.Graph(main_program.desc)
         # We should create graph for test, otherwise it will throw a
@@ -66,8 +100,12 @@ class TestQuantizationSubGraph(unittest.TestCase):
         graph = IrGraph(core_graph, for_test=True)
         sub_graph = graph.get_sub_graph(0)
         all_sub_graphs = graph.all_sub_graphs(
+<<<<<<< HEAD
             for_test=True
         )  # same reason for subgraph
+=======
+            for_test=True)  # same reason for subgraph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # Should return graph and sub_graphs at the same time. If only return sub_graph, the graph will
         # be destructed and the sub_graphs will be empty.
         return graph, all_sub_graphs
@@ -79,8 +117,12 @@ class TestQuantizationSubGraph(unittest.TestCase):
             scope=fluid.global_scope(),
             place=place,
             activation_quantize_type='abs_max',
+<<<<<<< HEAD
             weight_quantize_type='range_abs_max',
         )
+=======
+            weight_quantize_type='range_abs_max')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Find_inserted_quant_op = False
         for sub_graph in sub_graphs:
             transform_pass.apply(sub_graph)
@@ -92,9 +134,14 @@ class TestQuantizationSubGraph(unittest.TestCase):
     def test_quant_sub_graphs_cpu(self):
         self.test_quant_sub_graphs(use_cuda=False)
 
+<<<<<<< HEAD
     @OpTestTool.skip_if(
         not paddle.is_compiled_with_cuda(), "Not GPU version paddle"
     )
+=======
+    @OpTestTool.skip_if(not paddle.is_compiled_with_cuda(),
+                        "Not GPU version paddle")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_quant_sub_graphs_gpu(self):
         self.test_quant_sub_graphs(use_cuda=True)
 

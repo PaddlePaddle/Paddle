@@ -16,8 +16,13 @@
 
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
+=======
+#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/phi/core/dense_tensor.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
@@ -56,7 +61,13 @@ void UnfoldGradKernel(const Context& ctx,
   DDim out_matrix_shape = make_ddim(
       {x_dims[1], kernel_sizes[0], kernel_sizes[1], out_height, out_width});
 
+<<<<<<< HEAD
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
+=======
+  paddle::operators::math::
+      Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
+          col2im;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, x_grad, static_cast<T>(0));

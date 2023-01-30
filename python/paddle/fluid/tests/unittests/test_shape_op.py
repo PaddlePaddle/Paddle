@@ -12,17 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 
 
 class TestShapeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "shape"
         self.python_api = paddle.shape
@@ -40,16 +52,28 @@ class TestShapeOp(OpTest):
 
 
 class case1(TestShapeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.shape = [2]
 
 
 class case2(TestShapeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.shape = [1, 2, 3]
 
 
 class TestShapeWithSelectedRows(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():

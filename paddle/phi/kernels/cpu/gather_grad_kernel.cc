@@ -65,10 +65,13 @@ void GatherGradKernel(const Context& dev_ctx,
       phi::funcs::ScatterAssignAdd<T, int64_t>(
           dev_ctx, out_grad, index, x_grad);
     }
+<<<<<<< HEAD
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The data type of Input(Index) of gather_grad must be int32 or int64 "
         "on CPU."));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

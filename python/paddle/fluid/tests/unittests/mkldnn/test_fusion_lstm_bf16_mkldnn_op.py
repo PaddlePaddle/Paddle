@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -28,15 +29,38 @@ from paddle.fluid.tests.unittests.test_fusion_lstm_op import (
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestFusionLSTMBF16ONEDNNOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import struct
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from paddle.fluid.tests.unittests.test_fusion_lstm_op import TestFusionLSTMOp, fc, ACTIVATION, fusion_lstm
+from paddle.fluid.tests.unittests.test_fusion_gru_op import fusion_gru
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestFusionLSTMBF16ONEDNNOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         pass
 
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
+<<<<<<< HEAD
             self.check_output(
                 check_dygraph=False, no_check_set=["Cell"], atol=2e-2
             )
+=======
+            self.check_output(check_dygraph=False,
+                              no_check_set=["Cell"],
+                              atol=2e-2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = 'fusion_lstm'
@@ -80,8 +104,13 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             b = np.random.normal(size=(1, 7 * self.D)).astype('float32')
         else:
             b = np.random.normal(size=(1, 4 * self.D)).astype('float32')
+<<<<<<< HEAD
         w_b = np.copy(b[:, 0 : 4 * self.D])
         w_c = b[:, 4 * self.D :] if self.use_peepholes else None
+=======
+        w_b = np.copy(b[:, 0:4 * self.D])
+        w_c = b[:, 4 * self.D:] if self.use_peepholes else None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         wx = np.random.normal(size=(self.M, 4 * self.D)).astype('float32')
 
@@ -89,6 +118,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         wh_bf16 = convert_float_to_uint16(wh)
 
         bx = np.random.normal(size=(1, 4 * self.D)).astype('float32')
+<<<<<<< HEAD
         b[0, 0 : 4 * self.D] += bx[0, :]
 
         hidden, c = fusion_lstm(
@@ -106,6 +136,14 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             ACTIVATION[self.act_cell],
             ACTIVATION[self.act_cand],
         )
+=======
+        b[0, 0:4 * self.D] += bx[0, :]
+
+        hidden, c = fusion_lstm(x, self.lod, wx, bx, h0, c0, wh, w_b, w_c,
+                                self.is_reverse, ACTIVATION[self.act_gate],
+                                ACTIVATION[self.act_cell],
+                                ACTIVATION[self.act_cand])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         hidden = hidden.astype('float32')
         hidden_bf16 = convert_float_to_uint16(hidden)
@@ -115,14 +153,22 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
                 'X': (x_bf16, self.lod),
                 'WeightX': wx_bf16,
                 'WeightH': wh_bf16,
+<<<<<<< HEAD
                 'Bias': b,
+=======
+                'Bias': b
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
         elif self.weights_dtype == 'fp32':
             self.inputs = {
                 'X': (x_bf16, self.lod),
                 'WeightX': wx,
                 'WeightH': wh,
+<<<<<<< HEAD
                 'Bias': b,
+=======
+                'Bias': b
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         if self.has_initial_state:
@@ -151,27 +197,46 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
 
 
 class TestFusionLSTMBF16ONEDNNPeepholesOp(TestFusionLSTMBF16ONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.use_peepholes = True
 
 
 class TestFusionLSTMBF16ONEDNNInitializedStateOp(TestFusionLSTMBF16ONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.has_initial_state = True
 
 
 class TestFusionLSTMBF16ONEDNNReverseOp(TestFusionLSTMBF16ONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestFusionLSTMBF16ONEDNNBF16WeightsOp(TestFusionLSTMBF16ONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.weights_dtype = 'bf16'
 
 
 if __name__ == "__main__":
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

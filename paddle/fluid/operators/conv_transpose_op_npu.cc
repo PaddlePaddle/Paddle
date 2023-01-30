@@ -20,15 +20,25 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
     const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
     phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
+=======
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    Tensor* output = ctx.Output<Tensor>("Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     output->mutable_data<T>(ctx.GetPlace());
     std::vector<int> output_padding =
         ctx.Attr<std::vector<int>>("output_padding");
@@ -64,7 +74,11 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides(4, 1);
     std::vector<int> dilations(4, 1);
 
+<<<<<<< HEAD
     phi::DenseTensor input_tensor, output_tensor;
+=======
+    Tensor input_tensor, output_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     input_tensor.ShareDataWith(*input);
     output_tensor.ShareDataWith(*output);
 
@@ -106,6 +120,7 @@ template <typename T>
 class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
     const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
     const phi::DenseTensor* output_grad =
@@ -114,6 +129,14 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
     phi::DenseTensor* filter_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+=======
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    const Tensor* output_grad =
+        ctx.Input<Tensor>(framework::GradVarName("Output"));
+    Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if ((!input_grad) && (!filter_grad)) return;
 
@@ -123,14 +146,23 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     const int groups = ctx.Attr<int>("groups");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
+<<<<<<< HEAD
     const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
+=======
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_format);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
     // auto out_grad_dims = output_grad->dims();
     // const int batch_size = static_cast<int>(input->dims()[0]);
 
+<<<<<<< HEAD
     const bool channel_last = (data_layout == phi::DataLayout::kNHWC);
+=======
+    const bool channel_last = (data_layout == framework::DataLayout::kNHWC);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     framework::DDim in_data_dims;
     if (channel_last) {
@@ -147,7 +179,11 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides_vec(4, 1);
     std::vector<int> dilations_vec(4, 1);
 
+<<<<<<< HEAD
     phi::DenseTensor input_tensor, output_grad_tensor;
+=======
+    Tensor input_tensor, output_grad_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     input_tensor.ShareDataWith(*input);
     output_grad_tensor.ShareDataWith(*output_grad);
     if (channel_last) {
@@ -181,7 +217,11 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     }
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
+<<<<<<< HEAD
       phi::DenseTensor input_grad_tensor;
+=======
+      Tensor input_grad_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       input_grad_tensor.ShareDataWith(*input_grad);
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNHWC);
@@ -203,9 +243,15 @@ template <typename T>
 class Conv3DTransposeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
     const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
     phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
+=======
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    Tensor* output = ctx.Output<Tensor>("Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     output->mutable_data<T>(ctx.GetPlace());
     std::vector<int> output_padding =
         ctx.Attr<std::vector<int>>("output_padding");
@@ -247,7 +293,11 @@ class Conv3DTransposeNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides(5, 1);
     std::vector<int> dilations(5, 1);
 
+<<<<<<< HEAD
     phi::DenseTensor input_tensor, output_tensor, filter_tensor;
+=======
+    Tensor input_tensor, output_tensor, filter_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     input_tensor.Resize(input->dims());
     input_tensor.ShareDataWith(*input);
     output_tensor.Resize(output->dims());

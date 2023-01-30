@@ -117,9 +117,16 @@ class CinnLaunchOp : public framework::OperatorWithKernel {
    * Of course, the data type here is also not important.
    */
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -127,18 +134,30 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(kX,
+<<<<<<< HEAD
              "(vector<phi::DenseTensor>)"
+=======
+             "(vector<LoDTensor>)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "which are the input of graph inside the CinnLaunchOp"
              "excluding kNoNeedBufferX.")
         .AsDuplicable();
     AddInput(kNoNeedBufferX,
+<<<<<<< HEAD
              "(vector<phi::DenseTensor>)"
+=======
+             "(vector<LoDTensor>)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "which are the input of graph inside the CinnLaunchOp but"
              "their buffer are not needed.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput(kOutputs,
+<<<<<<< HEAD
               "(vector<phi::DenseTensor>)"
+=======
+              "(vector<LoDTensor>)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "which are the output of graph inside the CinnLaunchOp.")
         .AsDuplicable();
     AddAttr<int64_t>(

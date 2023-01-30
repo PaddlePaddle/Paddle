@@ -13,9 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/dequantize_log_op.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/math.h"
+=======
+#include "paddle/fluid/operators/math.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/core/hostdevice.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -38,9 +44,15 @@ __global__ void KeDequantize(const T* in,
 template <typename T>
 struct DequantizeFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor* in,
                   const phi::DenseTensor* dict,
                   phi::DenseTensor* out) {
+=======
+                  const framework::Tensor* in,
+                  const framework::Tensor* dict,
+                  framework::Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const T* in_data = in->data<T>();
     const float* dict_data = dict->data<float>();
     float* out_data = out->mutable_data<float>(dev_ctx.GetPlace());

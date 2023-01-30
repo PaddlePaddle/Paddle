@@ -38,10 +38,13 @@ class TensorRTEngineTest : public ::testing::Test {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(platform::CUDAPlace(0))
             .get());
+<<<<<<< HEAD
     ctx_->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(paddle::platform::CPUPlace())
             .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(paddle::platform::CUDAPinnedPlace())
@@ -70,8 +73,13 @@ class TensorRTEngineTest : public ::testing::Test {
   }
 
  protected:
+<<<<<<< HEAD
   phi::DenseTensor input_;
   phi::DenseTensor output_;
+=======
+  framework::Tensor input_;
+  framework::Tensor output_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };

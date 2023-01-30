@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,14 @@ from op_test import OpTest
 
 import paddle
 
+=======
+import numpy as np
+import paddle
+import unittest
+
+from op_test import OpTest
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 def overlap_add(x, hop_length, axis=-1):
     assert axis in [0, -1], 'axis should be 0/-1.'
@@ -34,9 +43,14 @@ def overlap_add(x, hop_length, axis=-1):
     frame_length = x.shape[1] if axis == 0 else x.shape[-2]
 
     # Assure no gaps between frames.
+<<<<<<< HEAD
     assert (
         0 < hop_length <= frame_length
     ), f'hop_length should be in (0, frame_length({frame_length})], but got {hop_length}.'
+=======
+    assert 0 < hop_length <= frame_length, \
+        f'hop_length should be in (0, frame_length({frame_length})], but got {hop_length}.'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     seq_length = (n_frames - 1) * hop_length + frame_length
 
@@ -57,7 +71,11 @@ def overlap_add(x, hop_length, axis=-1):
     for i in range(x.shape[0]):
         for frame in range(x.shape[-1]):
             sample = frame * hop_length
+<<<<<<< HEAD
             y[i, sample : sample + frame_length] += x[i, :, frame]
+=======
+            y[i, sample:sample + frame_length] += x[i, :, frame]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if axis == 0:
         y = y.transpose((1, 0))
@@ -72,6 +90,10 @@ def overlap_add(x, hop_length, axis=-1):
 
 
 class TestOverlapAddOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "overlap_add"
         self.python_api = paddle.signal.overlap_add
@@ -102,6 +124,10 @@ class TestOverlapAddOp(OpTest):
 
 
 class TestCase1(TestOverlapAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         input_shape = (3, 50)
         input_type = 'float64'
@@ -113,6 +139,10 @@ class TestCase1(TestOverlapAddOp):
 
 
 class TestCase2(TestOverlapAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         input_shape = (2, 40, 5)
         input_type = 'float64'
@@ -124,6 +154,10 @@ class TestCase2(TestOverlapAddOp):
 
 
 class TestCase3(TestOverlapAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         input_shape = (5, 40, 2)
         input_type = 'float64'
@@ -135,6 +169,10 @@ class TestCase3(TestOverlapAddOp):
 
 
 class TestCase4(TestOverlapAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         input_shape = (3, 5, 12, 8)
         input_type = 'float64'
@@ -146,6 +184,10 @@ class TestCase4(TestOverlapAddOp):
 
 
 class TestCase5(TestOverlapAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         input_shape = (8, 12, 5, 3)
         input_type = 'float64'

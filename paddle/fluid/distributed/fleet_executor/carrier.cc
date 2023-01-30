@@ -33,7 +33,10 @@ USE_INTERCEPTOR(Source);
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
 USE_INTERCEPTOR(Sink);
+<<<<<<< HEAD
 USE_INTERCEPTOR(Cond);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 void Carrier::Init(
     int64_t rank,
@@ -72,9 +75,12 @@ void Carrier::Init(
     microbatch_scopes_[i] = &minibatch_scope_->NewScope();
     CopyParameters(i, program, inference_root_scope_vars);
   }
+<<<<<<< HEAD
   // Add source and sink interceptor id to rank
   interceptor_id_to_rank_.emplace(SOURCE_ID, rank);
   interceptor_id_to_rank_.emplace(SINK_ID, rank);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // TODO(fleet_exe dev): thread pool
   thread_num_ = 1;
@@ -97,10 +103,16 @@ void Carrier::CopyParameters(
     int microbatch_id,
     const framework::ProgramDesc& program,
     const std::vector<std::string>& inference_root_scope_vars) {
+<<<<<<< HEAD
+=======
+  auto& global_block = program.Block(0);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::map<std::string, int> inference_root_scope_var_map;
   for (auto var_name : inference_root_scope_vars) {
     inference_root_scope_var_map.insert({var_name, 1});
   }
+<<<<<<< HEAD
   for (size_t i = 0; i < program.Size(); ++i) {
     for (auto& var : program.Block(i).AllVars()) {
       std::string var_name = var->Name();
@@ -121,6 +133,25 @@ void Carrier::CopyParameters(
                 << microbatch_id << ", which pointer is " << ptr << ".";
         InitializeVariable(ptr, var->GetType());
       }
+=======
+  for (auto& var : global_block.AllVars()) {
+    std::string var_name = var->Name();
+    bool force_root = inference_root_scope_var_map.find(var_name) !=
+                      inference_root_scope_var_map.end();
+    if (force_root) {
+      VLOG(4) << var_name << " will be forced to be created in the root scope.";
+    }
+    if ((var->Persistable() || force_root) && microbatch_id == 0) {
+      auto* ptr = root_scope_->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(5) << "Create persistable var: " << var->Name()
+              << ", which pointer is " << ptr;
+    } else if (!var->Persistable()) {
+      auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
+      VLOG(5) << "Create variable " << var->Name() << " for microbatch "
+              << microbatch_id << ", which pointer is " << ptr << ".";
+      InitializeVariable(ptr, var->GetType());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }
@@ -164,10 +195,23 @@ void Carrier::Start() {
                     true,
                     platform::errors::PreconditionNotMet(
                         "Using carrier before initialized."));
+<<<<<<< HEAD
   InterceptorMessage start_msg;
   start_msg.set_dst_id(SOURCE_ID);
   start_msg.set_message_type(START);
   Send(start_msg);
+=======
+  for (int64_t id : source_interceptor_ids_) {
+    VLOG(3) << "Carrier Start is sending start to source interceptor " << id
+            << ".";
+    InterceptorMessage start_msg;
+    // source node data_is_ready is send by carrier, so set src_id=-1
+    start_msg.set_src_id(-1);
+    start_msg.set_dst_id(id);
+    start_msg.set_message_type(DATA_IS_READY);
+    Send(start_msg);
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // TODO(wangxi): async step
   Wait();
   dev_ctx_->Wait();
@@ -269,6 +313,7 @@ void Carrier::CreateInterceptors() {
 
   auto gc = GetGC(place_);
 
+<<<<<<< HEAD
   // create source and sink task node
   auto max_run_times = microbatch_scopes_.size();
   TaskNode* source = new TaskNode(
@@ -301,6 +346,8 @@ void Carrier::CreateInterceptors() {
                  InterceptorFactory::Create("Source", SOURCE_ID, source));
   SetInterceptor(SINK_ID, InterceptorFactory::Create("Sink", SINK_ID, sink));
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // create each Interceptor
   // no auto init since there is no config
   for (const auto& item : interceptor_id_to_node_) {
@@ -334,6 +381,7 @@ void Carrier::CreateInterceptors() {
     VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
             << " with type: " << task_node->type() << ".";
 
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(
         task_node->upstream().empty(),
         false,
@@ -343,6 +391,11 @@ void Carrier::CreateInterceptors() {
                       false,
                       platform::errors::PreconditionNotMet(
                           "There should not have normal nodes as sink nodes"));
+=======
+    if (task_node->upstream().empty()) {
+      source_interceptor_ids_.emplace_back(interceptor_id);
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

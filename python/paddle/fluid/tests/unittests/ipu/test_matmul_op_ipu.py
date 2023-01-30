@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -44,10 +51,15 @@ class TestBase(IPUOpTest):
         self.attrs = {
             "transpose_x": False,
             "transpose_y": False,
+<<<<<<< HEAD
+=======
+            "alpha": 1.0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
@@ -56,6 +68,16 @@ class TestBase(IPUOpTest):
         )
 
         out = paddle.matmul(x, y, **self.attrs)
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        y = paddle.static.data(name=self.feed_list[1],
+                               shape=self.feed_shape[1],
+                               dtype='float32')
+
+        out = paddle.fluid.layers.matmul(x, y, **self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -70,18 +92,34 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
+<<<<<<< HEAD
+=======
+            "alpha": 1.0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
+<<<<<<< HEAD
+=======
+            "alpha": 3.14,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_atol(self):
@@ -92,6 +130,10 @@ class TestCase2(TestBase):
 
 
 class TestCase3(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[5, 4, 3, 2])
         y = np.random.uniform(size=[5, 4, 2, 3])
@@ -101,6 +143,10 @@ class TestCase3(TestBase):
 
 
 class TestCase4(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[4, 3, 2])
         y = np.random.uniform(size=[4, 2, 3])
@@ -110,6 +156,10 @@ class TestCase4(TestBase):
 
 
 class TestCase5(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[4, 2, 3])
         y = np.random.uniform(size=[3, 2])
@@ -119,6 +169,10 @@ class TestCase5(TestBase):
 
 
 class TestCase6(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[3])
 
@@ -128,6 +182,10 @@ class TestCase6(TestBase):
 
 @unittest.skip("not supported")
 class TestCase6_2(TestCase6):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[3])
 
@@ -138,10 +196,18 @@ class TestCase6_2(TestCase6):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
+<<<<<<< HEAD
+=======
+            "alpha": 1.0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestCase7(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[1, 3, 4, 5])
         y = np.random.uniform(size=[1, 3, 4, 5])
@@ -150,6 +216,7 @@ class TestCase7(TestBase):
         self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
     def set_op_attrs(self):
+<<<<<<< HEAD
         self.attrs = {
             "transpose_x": False,
             "transpose_y": True,
@@ -157,6 +224,13 @@ class TestCase7(TestBase):
 
 
 class TestCase8(TestBase):
+=======
+        self.attrs = {"transpose_x": False, "transpose_y": True, "alpha": 0.125}
+
+
+class TestCase8(TestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[3, 1])
         y = np.random.uniform(size=[1, 2])
@@ -167,6 +241,10 @@ class TestCase8(TestBase):
 
 @unittest.skip("not supported")
 class TestCase8_2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[3])
         y = np.random.uniform(size=[2])
@@ -178,11 +256,19 @@ class TestCase8_2(TestBase):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
+<<<<<<< HEAD
+=======
+            "alpha": 1.0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 @unittest.skip("dim > 4 is not supported")
 class TestCase9(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[6, 5, 4, 2, 3])
 
@@ -191,6 +277,10 @@ class TestCase9(TestBase):
 
 
 class TestCase10(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             "transpose_y": True,
@@ -205,6 +295,10 @@ class TestCase10(TestBase):
 
 
 class TestCase11(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {
             "transpose_x": True,

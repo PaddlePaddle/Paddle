@@ -13,12 +13,22 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import paddle
 import paddle.fluid as fluid
 
 fluid.core._set_eager_deletion_mode(0.0, 0.55, True)
 
+=======
+import paddle.fluid as fluid
+import paddle
+
+fluid.core._set_eager_deletion_mode(0.0, 0.55, True)
+
+from test_parallel_executor_transformer import TestTransformer
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

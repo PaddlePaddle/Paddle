@@ -49,7 +49,11 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(2);
     AddComment(R"DOC("
      **Tdm Child**
+<<<<<<< HEAD
      According to the input node_id on the given tree, return the corresponding child node_id and
+=======
+     According to the input node_id on the given tree, return the corresponding child node_id and 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       whether child is a leaf node by LeafMask.")DOC");
   }
 };
@@ -102,10 +106,17 @@ class TDMChildOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 }  // namespace operators

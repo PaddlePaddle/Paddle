@@ -20,6 +20,10 @@
 namespace paddle {
 namespace operators {
 namespace math {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using Node = paddle::operators::math::TreeNode;
 template <typename T>
 __global__ void tree2col(const T* eta,
@@ -53,9 +57,15 @@ template <typename T>
 class Tree2ColFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& EdgeSet,
                   const phi::DenseTensor& node_features,
                   phi::DenseTensor* patch,
+=======
+                  const framework::Tensor& EdgeSet,
+                  const framework::Tensor& node_features,
+                  framework::Tensor* patch,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = context.GetPlace();
@@ -64,7 +74,11 @@ class Tree2ColFunctor<phi::GPUContext, T> {
     auto feature_dims = node_features.dims();
     phi::funcs::SetConstant<phi::GPUContext, T> constant;
 
+<<<<<<< HEAD
     phi::DenseTensor EdgeSet_cpu;
+=======
+    Tensor EdgeSet_cpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
@@ -82,7 +96,11 @@ class Tree2ColFunctor<phi::GPUContext, T> {
     }
 
     size_t patch_size = processing_list.size();
+<<<<<<< HEAD
     phi::DenseTensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
+=======
+    Tensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int* node = node_cpu.mutable_data<int>({static_cast<int64_t>(total_size)},
                                            cpu_place);
     T* eta = eta_cpu.mutable_data<T>({static_cast<int64_t>(total_size * 3)},
@@ -130,9 +148,15 @@ template <typename T>
 class Col2TreeFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& EdgeSet,
                   const phi::DenseTensor& patch_grad,
                   phi::DenseTensor* embedding_grad,
+=======
+                  const framework::Tensor& EdgeSet,
+                  const framework::Tensor& patch_grad,
+                  framework::Tensor* embedding_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = context.GetPlace();
@@ -141,7 +165,11 @@ class Col2TreeFunctor<phi::GPUContext, T> {
     auto output_dims = patch_grad.dims();
     phi::funcs::SetConstant<phi::GPUContext, T> constant;
 
+<<<<<<< HEAD
     phi::DenseTensor EdgeSet_cpu;
+=======
+    Tensor EdgeSet_cpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);
     int64_t output_size = output_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(output_size);
@@ -167,7 +195,11 @@ class Col2TreeFunctor<phi::GPUContext, T> {
       total_size += tmp.size();
     }
 
+<<<<<<< HEAD
     phi::DenseTensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
+=======
+    Tensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int* node = node_cpu.mutable_data<int>({static_cast<int64_t>(total_size)},
                                            cpu_place);
     T* eta = eta_cpu.mutable_data<T>({static_cast<int64_t>(total_size * 3)},

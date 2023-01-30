@@ -20,6 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void FMaxRawKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
@@ -43,6 +44,19 @@ template <typename T, typename Context>
 void FMinKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y,
+=======
+void FMaxKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                int axis,
+                DenseTensor* out);
+
+template <typename T, typename Context>
+void FMinKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                int axis,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 DenseTensor* out);
 
 template <typename T, typename Context>

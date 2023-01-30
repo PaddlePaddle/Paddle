@@ -12,16 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_dist_base import TestDistBase
 
+=======
+from __future__ import print_function
+import unittest
+from test_dist_base import TestDistBase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
 
 class TestDistMnistNCCL2(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -30,6 +40,7 @@ class TestDistMnistNCCL2(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+<<<<<<< HEAD
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -40,6 +51,15 @@ class TestDistMnistNCCL2(TestDistBase):
                     "FLAGS_sync_nccl_allreduce": "1",
                 },
             )
+=======
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_mnist.py",
+                                  delta=1,
+                                  need_envs={
+                                      "FLAGS_enable_parallel_graph": "1",
+                                      "FLAGS_sync_nccl_allreduce": "1"
+                                  })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

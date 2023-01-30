@@ -12,10 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 import os
 
 import paddle
+=======
+import os
+import logging
+from enum import Enum
+
+import paddle
+
+from paddle.optimizer import Optimizer
+from paddle.distributed.utils.log_utils import get_logger
+from paddle.fluid.framework import in_dygraph_mode
+
+# Old version
+from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import (
+    ShardingOptimizerStage2,
+)
+from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import (
+    ShardingStage2,
+)
+from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import (
+    ShardingStage3,
+)
+from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
+    ShardingScaler,
+)
+
+# New version
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
 )
@@ -28,8 +56,11 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+<<<<<<< HEAD
 from paddle.distributed.utils.log_utils import get_logger
 from paddle.optimizer import Optimizer
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 logger_ = get_logger(logging.WARNING)
 
@@ -45,8 +76,11 @@ def group_sharded_parallel(
     buffer_max_size=2**23,
     segment_size=2**20,
     sync_comm=False,
+<<<<<<< HEAD
     dp_group=None,
     exclude_layer=None,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ):
     """
     Use group_sharded_parallel can perform group shared configuration on the model, optimizer and GradScaler. Level has three string options, 'os', 'os_g' and 'p_g_os' corresponds to three different usage scenarios: optimizer state segmentation, optimizer state + gradient segmentation, and parameter + gradient + optimizer state segmentation.
@@ -63,8 +97,11 @@ def group_sharded_parallel(
         buffer_max_size (int, optional): The max size of the buffer used to integrate gradient in `os_g`. The larger the size, the more GPU memory will be used. Defaults to 2**23, which means that the dimension of the buffer is 2**23.
         segment_size (int, optional): The smallest size of parameter to be sharded in `p_g_os`. Defaults to 2**20, indicating that the dimension of the minimum segmented parameter is 2**20.
         sync_comm (bool, optional): Whether to use synchronous communication, only in `p_g_os` used. Defaults to False, indicating that asynchronous communication is used.
+<<<<<<< HEAD
         dp_group(Group, optional): dp communication group, support to combine stage2 or stage3 with dp hybrid communication.
         exclude_layer(list, optional): exclude some layers for slicing for sharding stage3, for example, exclude_layer=["GroupNorm", id(model.gpt.linear)], exclude_layer must contain the layers' name or one layer's id.
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         model: A wrapper for group sharded given model.
@@ -76,7 +113,11 @@ def group_sharded_parallel(
 
             # required: distributed
             import paddle
+<<<<<<< HEAD
             from paddle.nn import Linear
+=======
+            from paddle.fluid.dygraph.nn import Linear
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             from paddle.distributed import fleet
             from paddle.distributed.sharding import group_sharded_parallel
 
@@ -101,12 +142,15 @@ def group_sharded_parallel(
             optimizer.step()
             optimizer.clear_grad()
     """
+<<<<<<< HEAD
 
     device = paddle.get_device().split(":")[0]
     assert device in [
         "gpu",
         "xpu",
     ], "group_sharded_parallel only support gpu and xpu now"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # check optition type
     assert isinstance(
         model, paddle.nn.Layer
@@ -125,14 +169,19 @@ def group_sharded_parallel(
 
     params_fp16 = list(filter(check_dtype, model.parameters()))
     if scaler is None and len(params_fp16) > 0:
+<<<<<<< HEAD
         logger_.warning(
             "the input of scaler is None, please ensure the logic of your scaler outside is same as GroupShardedScaler."
         )
+=======
+        raise ValueError("Please enter the correct scaler.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # convert model/optimizer/scaler
     if level in ['os', 'os_g']:
         logger_.info("*" * 30)
         logger_.info("Sharded level os uses sharded level os_g achieved now.")
         logger_.info("*" * 30)
+<<<<<<< HEAD
         optimizer = GroupShardedOptimizerStage2(
             params=optimizer._parameter_list,
             optim=optimizer,
@@ -167,6 +216,64 @@ def group_sharded_parallel(
         raise ValueError("Please enter the correct level.")
     if isinstance(scaler, paddle.amp.GradScaler):
         scaler = GroupShardedScaler(scaler)
+=======
+        if in_dygraph_mode():
+            optimizer = GroupShardedOptimizerStage2(
+                params=optimizer._parameter_list,
+                optim=optimizer,
+                group=group,
+                offload=offload,
+            )
+            model = GroupShardedStage2(
+                model,
+                optimizer,
+                group=group,
+                sync_buffers=sync_buffers,
+                buffer_max_size=buffer_max_size,
+            )
+        else:
+            optimizer = ShardingOptimizerStage2(
+                params=model.parameters(),
+                optim=optimizer,
+                group=group,
+                offload=offload,
+            )
+            model = ShardingStage2(
+                model,
+                optimizer,
+                group=group,
+                sync_buffers=sync_buffers,
+                buffer_max_size=buffer_max_size,
+            )
+    elif level == 'p_g_os':
+        if in_dygraph_mode():
+            model = GroupShardedStage3(
+                model,
+                optimizer=optimizer,
+                group=group,
+                sync_buffers=sync_buffers,
+                segment_size=segment_size,
+                offload=offload,
+                sync_comm=sync_comm,
+            )
+        else:
+            model = ShardingStage3(
+                model,
+                optimizer=optimizer,
+                group=group,
+                sync_buffers=sync_buffers,
+                segment_size=segment_size,
+                offload=offload,
+                sync_comm=sync_comm,
+            )
+    else:
+        raise ValueError("Please enter the correct level.")
+    if isinstance(scaler, paddle.amp.GradScaler):
+        if in_dygraph_mode():
+            scaler = GroupShardedScaler(scaler)
+        else:
+            scaler = ShardingScaler(scaler)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     logger_.info("*" * 30)
     logger_.info(
         "If there is a communication hang using group sharded, please check whether the communication operations of each process are unified."
@@ -193,7 +300,11 @@ def save_group_sharded_model(model, output, optimizer=None):
 
             # required: distributed
             import paddle
+<<<<<<< HEAD
             from paddle.nn import Linear
+=======
+            from paddle.fluid.dygraph.nn import Linear
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             from paddle.distributed import fleet
             from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
 
@@ -229,9 +340,15 @@ def save_group_sharded_model(model, output, optimizer=None):
     ), "Saving directory ({}) should be a directory, not a file".format(output)
     os.makedirs(output, exist_ok=True)
     output_model = os.path.join(output, "model.pdmodel")
+<<<<<<< HEAD
     if isinstance(model, GroupShardedStage2):
         paddle.save(model._layer.state_dict(), output_model)
     elif isinstance(model, GroupShardedStage3):
+=======
+    if isinstance(model, (ShardingStage2, GroupShardedStage2)):
+        paddle.save(model._layer.state_dict(), output_model)
+    elif isinstance(model, (ShardingStage3, GroupShardedStage3)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         convert2cpu = True if model._offload else False
         model.get_all_parameters(convert2cpu=convert2cpu)
         paddle.save(model._layer.state_dict(), output_model)

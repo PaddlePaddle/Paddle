@@ -26,6 +26,7 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/collective/process_group.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
@@ -33,13 +34,27 @@ namespace cub = hipcub;
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+=======
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#endif
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 
 namespace phi {
 
 template <typename T>
+<<<<<<< HEAD
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+=======
+using CudnnDataType = paddle::platform::CudnnDataType<T>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -294,7 +309,12 @@ void SyncBatchNormGradFunctor(
     DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
+<<<<<<< HEAD
   const DataLayout layout = phi::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   const auto *d_y = &y_grad;
 
@@ -430,6 +450,7 @@ void SyncBatchNormGradFunctor(
   }
 
   if (comm) {
+<<<<<<< HEAD
     int dtype = paddle::platform::ToNCCLDataType(scale.dtype());
     // In-place operation
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -440,6 +461,19 @@ void SyncBatchNormGradFunctor(
                                     ncclSum,
                                     comm,
                                     stream));
+=======
+    int dtype = paddle::platform::ToNCCLDataType(
+        paddle::framework::TransToProtoVarType(scale.dtype()));
+    // In-place operation
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+        stats,
+        stats,
+        2 * C + 1,
+        static_cast<ncclDataType_t>(dtype),
+        ncclSum,
+        comm,
+        stream));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(3) << "Sync result using all reduce";
   }
 #endif

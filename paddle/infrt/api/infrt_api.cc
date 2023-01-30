@@ -121,11 +121,19 @@ class PredictExecutor : public MlirToRuntimeTranslator {
 
   int GetInputNum() { return inputs_.size(); }
 
+<<<<<<< HEAD
   ::Tensor* GetInput(int i) { return inputs_[i]; }
 
   int GetOutputNum() { return outputs_.size(); }
 
   ::Tensor* GetOutput(int i) { return outputs_[i]; }
+=======
+  ::phi::DenseTensor* GetInput(int i) { return inputs_[i]; }
+
+  int GetOutputNum() { return outputs_.size(); }
+
+  ::phi::DenseTensor* GetOutput(int i) { return outputs_[i]; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   void Init(::infrt::phi::DenseTensorMap&& map) {
@@ -158,10 +166,17 @@ class PredictExecutor : public MlirToRuntimeTranslator {
         AddValue(predict_func.getArgument(i), value);
       } else if (type.isa<::infrt::DenseTensorType>()) {
         // this param is an input Tensor
+<<<<<<< HEAD
         auto dht = ::Tensor();
         auto* value = new host_context::Value(std::move(dht));
         arguments_.push_back(value);
         inputs_.push_back(&(value->get<::Tensor>()));
+=======
+        auto dht = ::phi::DenseTensor();
+        auto* value = new host_context::Value(std::move(dht));
+        arguments_.push_back(value);
+        inputs_.push_back(&(value->get<::phi::DenseTensor>()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       } else {
         llvm_unreachable("The input type has not been supported by predictor.");
       }
@@ -174,12 +189,20 @@ class PredictExecutor : public MlirToRuntimeTranslator {
         auto operand = last_op.getOperand(i);
         if (operand.getType().isa<::infrt::DenseTensorType>()) {
           auto r = impl_->value_map.try_emplace(
+<<<<<<< HEAD
               operand, ValueRef(new host_context::Value(::Tensor())));
+=======
+              operand, ValueRef(new host_context::Value(::phi::DenseTensor())));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           CHECK(r.second) << "Duplicate add mlir value ["
                           << DumpToString(operand) << "]";
           auto* value = r.first->second.get();
           results_.push_back(ValueRef(value));
+<<<<<<< HEAD
           outputs_.push_back(&(value->get<::Tensor>()));
+=======
+          outputs_.push_back(&(value->get<::phi::DenseTensor>()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         } else {
           llvm_unreachable("infrt.return only supports DenseTensor now.");
         }
@@ -200,9 +223,15 @@ class PredictExecutor : public MlirToRuntimeTranslator {
  private:
   KernelRegistry* registry_{};
   MlirFunctionExecutable* function_executable_;
+<<<<<<< HEAD
   llvm::SmallVector<::Tensor*, 1> inputs_;
   llvm::SmallVector<host_context::Value*, 2> arguments_;
   llvm::SmallVector<::Tensor*, 1> outputs_;
+=======
+  llvm::SmallVector<::phi::DenseTensor*, 1> inputs_;
+  llvm::SmallVector<host_context::Value*, 2> arguments_;
+  llvm::SmallVector<::phi::DenseTensor*, 1> outputs_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   llvm::SmallVector<ValueRef, 1> results_;
 };
 
@@ -322,13 +351,21 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
 
 int InfRtPredictor::GetInputNum() { return impl_->executor->GetInputNum(); }
 
+<<<<<<< HEAD
 ::Tensor* InfRtPredictor::GetInput(int i) {
+=======
+::phi::DenseTensor* InfRtPredictor::GetInput(int i) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return impl_->executor->GetInput(i);
 }
 
 int InfRtPredictor::GetOutputNum() { return impl_->executor->GetOutputNum(); }
 
+<<<<<<< HEAD
 ::Tensor* InfRtPredictor::GetOutput(int i) {
+=======
+::phi::DenseTensor* InfRtPredictor::GetOutput(int i) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return impl_->executor->GetOutput(i);
 }
 

@@ -17,6 +17,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class DecayedAdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -31,6 +35,7 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
                    "Input",
                    "LearningRate",
                    "DecayedAdagradOp");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
                       framework::proto::VarType::LOD_TENSOR,
                       platform::errors::InvalidArgument(
@@ -45,6 +50,22 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
                           "but the received is %s",
                           ctx->Inputs("Grad").front(),
                           ctx->GetInputsVarType("Grad").front()));
+=======
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Param").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->Inputs("Param").front(),
+            ctx->GetInputsVarType("Param").front()));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Grad").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->Inputs("Grad").front(),
+            ctx->GetInputsVarType("Grad").front()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     OP_INOUT_CHECK(
         ctx->HasOutput("ParamOut"), "Output", "ParamOut", "DecayedAdagradOp");
@@ -80,10 +101,17 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("MomentOut", param_dims);
   }
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

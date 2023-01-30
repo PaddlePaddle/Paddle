@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -27,6 +28,27 @@ class TestElementWiseAddOp(unittest.TestCase):
         )
 
     def check_forward_backward(self):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+
+
+class TestElementWiseAddOp(unittest.TestCase):
+
+    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=1e-05,
+                                   atol=atol,
+                                   err_msg=msg)
+
+    def check_forward_backward(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_with_place(place):
             out_grad = np.random.random_sample(self.x.shape).astype(np.float32)
             x_grad = out_grad
@@ -49,6 +71,7 @@ class TestElementWiseAddOp(unittest.TestCase):
             with fluid.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
+<<<<<<< HEAD
                     block.create_var(
                         name=name,
                         dtype='float32',
@@ -72,6 +95,27 @@ class TestElementWiseAddOp(unittest.TestCase):
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
                     elementwise_add_op.desc, set(), []
                 )
+=======
+                    block.create_var(name=name,
+                                     dtype='float32',
+                                     shape=ground_truth[name].shape)
+                elementwise_add_op = block.append_op(type="elementwise_add",
+                                                     inputs={
+                                                         "X": block.var('x'),
+                                                         "Y": block.var('y'),
+                                                     },
+                                                     outputs={
+                                                         "Out":
+                                                         block.var('out'),
+                                                     },
+                                                     attrs={
+                                                         "axis": self.axis,
+                                                     })
+
+                # generate backward op_desc
+                grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+                    elementwise_add_op.desc, set(), [])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 grad_op_desc = grad_op_desc_list[0]
                 new_op_desc = block.desc.append_op()
                 new_op_desc.copy_from(grad_op_desc)
@@ -84,6 +128,7 @@ class TestElementWiseAddOp(unittest.TestCase):
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
                 exe = fluid.Executor(place)
+<<<<<<< HEAD
                 out = exe.run(
                     program,
                     feed={
@@ -91,13 +136,25 @@ class TestElementWiseAddOp(unittest.TestCase):
                     },
                     fetch_list=['x@GRAD', 'y@GRAD'],
                 )
+=======
+                out = exe.run(program,
+                              feed={
+                                  name: var_dict[name]
+                                  for name in ['x', 'y', 'out@GRAD']
+                              },
+                              fetch_list=['x@GRAD', 'y@GRAD'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.__assert_close(x_grad, out[0], "x@GRAD")
                 self.__assert_close(y_grad, out[1], "y@GRAD", atol=1.4)
 
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
+<<<<<<< HEAD
             "elementwise_add"
         ):
+=======
+                "elementwise_add"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             places.append(core.CUDAPlace(0))
 
         for place in places:

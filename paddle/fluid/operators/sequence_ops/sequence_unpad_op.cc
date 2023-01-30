@@ -86,10 +86,17 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -108,8 +115,13 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
       Sequence Unpad Operator
 
+<<<<<<< HEAD
       This operator removes the padding data in the input sequences and convert
       them into sequences with actual length as output, identitied by lod
+=======
+      This operator removes the padding data in the input sequences and convert 
+      them into sequences with actual length as output, identitied by lod 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       information.
 
       Example:
@@ -117,9 +129,15 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
       Given input tensor Input(X):
           X.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
                     [ 6.0,  7.0,  8.0,  9.0, 10.0],
+<<<<<<< HEAD
                     [11.0, 12.0, 13.0, 14.0, 15.0]],
 `
       in which there are 3 sequences padded to length 5, and the actual length
+=======
+                    [11.0, 12.0, 13.0, 14.0, 15.0]], 
+`     
+      in which there are 3 sequences padded to length 5, and the actual length 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       specified by Input(Length):
 
           Length.data = [2, 3, 4],
@@ -127,7 +145,11 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
       after unpadding, Output(Out) will be:
 
           Out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
+<<<<<<< HEAD
           Out.lod = [[0, 2, 5, 9]]
+=======
+          Out.lod = [[0, 2, 5, 9]]      
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     )DOC");
   }
@@ -156,11 +178,19 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import pickle
 import sys
@@ -22,11 +23,29 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 import paddle
 import paddle.distributed.utils.moe_utils as moe_utils
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import numpy as np
+import os
+import sys
+import paddle
+import paddle.fluid as fluid
+import unittest
+import paddle.fluid.layers as layers
+from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+import pickle
+import paddle.distributed.utils.moe_utils as moe_utils
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 
@@ -38,6 +57,7 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
             n_expert = 2
             world_size = 2
             tot_expert = n_expert * world_size
+<<<<<<< HEAD
             local_input_buf = paddle.static.data(
                 name="local_input_buf", shape=[-1, in_feat], dtype="float32"
             )
@@ -52,6 +72,22 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
             output = moe_utils.global_scatter(
                 local_input_buf, local_expert_count, global_expert_count
             )
+=======
+            local_input_buf = paddle.static.data(name="local_input_buf",
+                                                 shape=[-1, in_feat],
+                                                 dtype="float32")
+            local_expert_count = paddle.static.data(name="local_expert_count",
+                                                    shape=[tot_expert],
+                                                    dtype="int64")
+            global_expert_count = []
+            paddle.distributed.alltoall(
+                paddle.split(local_expert_count, 2, axis=0),
+                global_expert_count)
+            global_expert_count = paddle.concat(global_expert_count, axis=0)
+            output = moe_utils.global_scatter(local_input_buf,
+                                              local_expert_count,
+                                              global_expert_count)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return [output]
 
     def run_trainer(self, args):
@@ -65,8 +101,12 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
+<<<<<<< HEAD
                 device_id
             )  # if args.use_gpu else fluid.CPUPlace()
+=======
+                device_id)  #if args.use_gpu else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
@@ -77,6 +117,7 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
         n_expert = 2
         world_size = 2
         tot_expert = n_expert * world_size
+<<<<<<< HEAD
         local_expert_count = np.random.randint(1, 4, size=tot_expert).astype(
             "int64"
         )
@@ -84,6 +125,13 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
         local_input_buf = np.random.rand(fwd_expert_count, in_feat).astype(
             "float32"
         )
+=======
+        local_expert_count = np.random.randint(1, 4,
+                                               size=tot_expert).astype("int64")
+        fwd_expert_count = sum(local_expert_count)
+        local_input_buf = np.random.rand(fwd_expert_count,
+                                         in_feat).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if args['static_mode']:
             result = self.get_model(train_prog, startup_prog, rank)
             exe = fluid.Executor(place)
@@ -91,6 +139,7 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
             fetch_list = []
             for elem in result:
                 fetch_list.append(elem.name)
+<<<<<<< HEAD
             out = exe.run(
                 train_prog,
                 feed={
@@ -99,6 +148,14 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
                 },
                 fetch_list=fetch_list,
             )
+=======
+            out = exe.run(train_prog,
+                          feed={
+                              'local_expert_count': local_expert_count,
+                              'local_input_buf': local_input_buf
+                          },
+                          fetch_list=fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         sys.stdout.buffer.write(pickle.dumps(out))
 

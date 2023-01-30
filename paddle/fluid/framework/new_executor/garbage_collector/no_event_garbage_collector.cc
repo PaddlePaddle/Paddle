@@ -42,8 +42,13 @@ void InterpreterCoreNoEventGarbageCollector::Add(
     return;
   }
 
+<<<<<<< HEAD
   if (var->IsType<phi::DenseTensor>()) {
     Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder(), ctx);
+=======
+  if (var->IsType<LoDTensor>()) {
+    Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), ctx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (var->IsType<
                  operators::reader::
                      OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {

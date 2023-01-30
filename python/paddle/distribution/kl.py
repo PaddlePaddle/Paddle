@@ -20,11 +20,17 @@ from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
+<<<<<<< HEAD
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
 from paddle.distribution.uniform import Uniform
 from paddle.fluid.framework import _non_static_mode
+=======
+from paddle.distribution.normal import Normal
+from paddle.distribution.uniform import Uniform
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = ["register_kl", "kl_divergence"]
 
@@ -98,7 +104,11 @@ def register_kl(cls_p, cls_q):
 
 
 def _dispatch(cls_p, cls_q):
+<<<<<<< HEAD
     """Multiple dispatch into concrete implement function."""
+=======
+    """Multiple dispatch into concrete implement function"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # find all matched super class pair of p and q
     matchs = [
@@ -127,7 +137,11 @@ def _dispatch(cls_p, cls_q):
 
 
 @functools.total_ordering
+<<<<<<< HEAD
 class _Compare:
+=======
+class _Compare(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, *classes):
         self.classes = classes
 
@@ -189,11 +203,14 @@ def _kl_uniform_uniform(p, q):
     return p.kl_divergence(q)
 
 
+<<<<<<< HEAD
 @register_kl(Laplace, Laplace)
 def _kl_laplace_laplace(p, q):
     return p.kl_divergence(q)
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 @register_kl(ExponentialFamily, ExponentialFamily)
 def _kl_expfamily_expfamily(p, q):
     """Compute kl-divergence using `Bregman divergences <https://www.lix.polytechnique.fr/~nielsen/EntropyEF-ICIP2010.pdf>`_"""
@@ -234,10 +251,13 @@ def _kl_expfamily_expfamily(p, q):
     return kl
 
 
+<<<<<<< HEAD
 @register_kl(LogNormal, LogNormal)
 def _kl_lognormal_lognormal(p, q):
     return p._base.kl_divergence(q._base)
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def _sum_rightmost(value, n):
     return value.sum(list(range(-n, 0))) if n > 0 else value

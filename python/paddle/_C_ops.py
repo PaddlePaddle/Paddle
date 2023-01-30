@@ -13,6 +13,10 @@
 # limitations under the License.
 
 from paddle.fluid import core
+<<<<<<< HEAD
+=======
+from .fluid import framework
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 

@@ -73,10 +73,17 @@ void DiagGradKernel(const Context& dev_ctx,
     return std::tuple<int64_t, int64_t>{block_size, grid_size};
   };
 
+<<<<<<< HEAD
   if (dx_dims.size() <= 1) {
     auto dx_length = (dx_dims.size() == 1 ? dx_dims[0] : int64_t(1));
     auto size = (offset > 0) ? dx_length + offset : dx_length - offset;
     int dx_stride = 1;
+=======
+  if (dx_dims.size() == 1) {
+    auto dx_length = dx_dims[0];
+    auto size = (offset > 0) ? dx_length + offset : dx_length - offset;
+    int dx_stride = phi::funcs::ComputeStride(0, dx_dims);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (size > 0) {
       auto dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
       auto dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);

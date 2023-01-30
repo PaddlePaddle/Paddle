@@ -12,17 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
+=======
+from __future__ import print_function
+
+import unittest
+
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.framework as framework
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import default_startup_program
 
 
 class TestSwitch(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def check_switch(self, value):
         x = layers.fill_constant(shape=[1], dtype='float32', value=value)
         zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
@@ -30,6 +44,7 @@ class TestSwitch(unittest.TestCase):
         two_var = layers.fill_constant(shape=[1], dtype='float32', value=2.0)
         three_var = layers.fill_constant(shape=[1], dtype='float32', value=3.0)
 
+<<<<<<< HEAD
         result = paddle.static.create_global_var(
             shape=[1], value=-1.0, dtype='float32', persistable=True
         )
@@ -40,6 +55,19 @@ class TestSwitch(unittest.TestCase):
             with switch.case(paddle.less_than(x, one_var)):
                 layers.assign(one_var, result)
             with switch.case(paddle.less_than(x, two_var)):
+=======
+        result = layers.create_global_var(shape=[1],
+                                          value=-1.0,
+                                          dtype='float32',
+                                          persistable=True)
+
+        with layers.Switch() as switch:
+            with switch.case(layers.less_than(x, zero_var)):
+                layers.assign(zero_var, result)
+            with switch.case(layers.less_than(x, one_var)):
+                layers.assign(one_var, result)
+            with switch.case(layers.less_than(x, two_var)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 layers.assign(two_var, result)
             with switch.default():
                 layers.assign(three_var, result)
@@ -62,11 +90,16 @@ class TestSwitch(unittest.TestCase):
 
 
 class TestSwitchCaseError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_error(self):
         main_program = framework.Program()
         startup_program = framework.Program()
         with framework.program_guard(main_program, startup_program):
             cond = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
+<<<<<<< HEAD
             zero_var = layers.fill_constant(
                 shape=[1], dtype='float32', value=0.0
             )
@@ -74,6 +107,16 @@ class TestSwitchCaseError(unittest.TestCase):
             result = paddle.static.create_global_var(
                 shape=[1], value=-1.0, dtype='float32', persistable=True
             )
+=======
+            zero_var = layers.fill_constant(shape=[1],
+                                            dtype='float32',
+                                            value=0.0)
+
+            result = layers.create_global_var(shape=[1],
+                                              value=-1.0,
+                                              dtype='float32',
+                                              persistable=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # 1. The type of 'condition' in case must be Variable.
             def test_condition_type():

@@ -18,6 +18,12 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // ( (A.^2 * B.^2) - (A * B).^2 ) .* scalar
 class FusionSquaredMatSubOp : public framework::OperatorWithKernel {
  public:
@@ -26,7 +32,11 @@ class FusionSquaredMatSubOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override;
 };
 

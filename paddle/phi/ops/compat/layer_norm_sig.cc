@@ -19,7 +19,11 @@ namespace phi {
 KernelSignature LayerNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("layer_norm",
                          {"X", "Scale", "Bias"},
+<<<<<<< HEAD
                          {"epsilon", "begin_norm_axis"},
+=======
+                         {"epsilon", "begin_norm_axis", "is_test"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          {"Y", "Mean", "Variance"});
 }
 
@@ -27,7 +31,11 @@ KernelSignature LayerNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("layer_norm_grad",
                          {"X", "Scale", "Bias", "Mean", "Variance", "Y@GRAD"},
+<<<<<<< HEAD
                          {"epsilon", "begin_norm_axis"},
+=======
+                         {"epsilon", "begin_norm_axis", "is_test"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+<<<<<<< HEAD
 
 from paddle.fluid.layers import utils
 from paddle.nn import Layer
@@ -20,6 +21,13 @@ from paddle.nn.functional.conv import _update_padding_nd
 from paddle.nn.initializer import Normal
 
 from .. import functional as F
+=======
+from .. import functional as F
+from paddle.nn import Layer
+from paddle.nn.initializer import Normal
+from paddle.nn.functional.conv import _update_padding_nd
+from paddle.fluid.layers import utils
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -41,7 +49,11 @@ class _Conv3D(Layer):
         bias_attr=None,
         data_format="NDHWC",
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(_Conv3D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert (
             weight_attr is not False
         ), "weight_attr should not be False in Conv."
@@ -159,7 +171,11 @@ class Conv3D(_Conv3D):
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
+<<<<<<< HEAD
         kernel_size(int|list|tuple): The size of the convolving kernel.
+=======
+        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
             stride_D = stride_H = stride_W = stride. The default value is 1.
@@ -250,7 +266,11 @@ class Conv3D(_Conv3D):
         bias_attr=None,
         data_format="NDHWC",
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Conv3D, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in_channels,
             out_channels,
             kernel_size,
@@ -294,7 +314,11 @@ class SubmConv3D(_Conv3D):
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
+<<<<<<< HEAD
         kernel_size(int|list|tuple): The size of the convolving kernel.
+=======
+        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
             stride_D = stride_H = stride_W = stride. The default value is 1.
@@ -390,7 +414,11 @@ class SubmConv3D(_Conv3D):
         bias_attr=None,
         data_format="NDHWC",
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(SubmConv3D, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in_channels,
             out_channels,
             kernel_size,

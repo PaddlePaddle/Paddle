@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -21,6 +22,15 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import unittest
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
@@ -54,7 +64,10 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                                 "Indices": ["indices_data"],
                             },
                             "op_attrs": dics[0],
+<<<<<<< HEAD
                             "outputs_dtype": {"indices_data": np.int32},
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         }
                     ]
                     ops = self.generate_op_config(ops_config)
@@ -126,7 +139,11 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             attrs, False
         ), 1e-3
 
+<<<<<<< HEAD
         # for dynamic_shape
+=======
+        ## for dynamic_shape
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(

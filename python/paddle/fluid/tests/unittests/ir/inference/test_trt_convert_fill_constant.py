@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -24,6 +25,18 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import unittest
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+
+
+class TrtConvertSplitTest(TrtLayerAutoScanTest):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -38,7 +51,11 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
             return np.array([4]).astype(np.int32)
 
         for shape in [[2, 3, 4]]:
+<<<<<<< HEAD
             for num_input in [0, 1, 2]:
+=======
+            for num_input in [0, 1, 2, 3]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 for dtype in [5, 2, 3]:
                     for str_value in ["2", "23", "-1"]:
                         self.num_input = num_input

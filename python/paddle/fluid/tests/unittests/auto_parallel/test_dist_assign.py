@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 from paddle.distributed.fleet import auto
 
@@ -27,9 +30,14 @@ def make_program():
 
         x = paddle.static.data(name='x', shape=[4, 4, 8], dtype='float32')
         y = paddle.static.data(name='y', shape=[4, 4, 8], dtype='float32')
+<<<<<<< HEAD
         auto.shard_tensor(
             x, auto.ProcessMesh([0, 1], dim_names=["d"]), [None, "d", None]
         )
+=======
+        auto.shard_tensor(x, auto.ProcessMesh([0, 1], dim_names=["d"]),
+                          [None, "d", None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         z = paddle.add(x, y)
         paddle.assign(x, output=z)
@@ -39,8 +47,13 @@ def make_program():
 
 def parallelizer(program_func, rank):
     from paddle.distributed.auto_parallel.completion import Completer
+<<<<<<< HEAD
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
     from paddle.distributed.auto_parallel.partitioner import Partitioner
+=======
+    from paddle.distributed.auto_parallel.partitioner import Partitioner
+    from paddle.distributed.auto_parallel.dist_context import DistributedContext
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     main_program, start_program = program_func()
 
@@ -50,14 +63,23 @@ def parallelizer(program_func, rank):
     dist_context.block_state.parse_forward_blocks(main_program)
 
     partitioner = Partitioner(dist_context, rank)
+<<<<<<< HEAD
     dist_main_prog, _, _ = partitioner.partition(
         main_program, start_program, []
     )
+=======
+    dist_main_prog, _, _ = partitioner.partition(main_program, start_program,
+                                                 [])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return dist_main_prog, dist_context
 
 
 class TestDistAssign(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_dist_assign(self):
 
         dist_main_prog, dist_context = parallelizer(make_program, 0)
@@ -74,11 +96,17 @@ class TestDistAssign(unittest.TestCase):
                 dist_out = dist_context.get_dist_tensor_for_program(out_var)
 
                 x_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
+<<<<<<< HEAD
                     x_name
                 )
                 out_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
                     out_name
                 )
+=======
+                    x_name)
+                out_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
+                    out_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 assert x_dims_mapping == out_dims_mapping
                 assert out_dims_mapping == dist_out.dist_attr.dims_mapping

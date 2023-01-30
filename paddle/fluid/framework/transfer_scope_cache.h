@@ -39,8 +39,13 @@ static size_t CombineHash(size_t seed, size_t a) {
   return (seed ^ a) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
+<<<<<<< HEAD
 Scope* TryCreateTransferScope(const phi::KernelKey& type0,
                               const phi::KernelKey& type1,
+=======
+Scope* TryCreateTransferScope(OpKernelType type0,
+                              OpKernelType type1,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                               const Scope* scope);
 
 }  // namespace framework

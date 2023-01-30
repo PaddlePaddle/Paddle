@@ -15,13 +15,21 @@ limitations under the License. */
 #include "paddle/fluid/operators/mean_iou_op.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+using platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 __global__ void CountCUDAKernel(const int num_classes,
@@ -95,11 +103,19 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto& place = *dev_ctx.eigen_device();
     // get input and output tensor
+<<<<<<< HEAD
     auto* predictions = ctx.Input<phi::DenseTensor>("Predictions");
     auto* labels = ctx.Input<phi::DenseTensor>("Labels");
     auto* out_mean_iou = ctx.Output<phi::DenseTensor>("OutMeanIou");
     auto* out_wrong = ctx.Output<phi::DenseTensor>("OutWrong");
     auto* out_correct = ctx.Output<phi::DenseTensor>("OutCorrect");
+=======
+    auto* predictions = ctx.Input<Tensor>("Predictions");
+    auto* labels = ctx.Input<Tensor>("Labels");
+    auto* out_mean_iou = ctx.Output<Tensor>("OutMeanIou");
+    auto* out_wrong = ctx.Output<Tensor>("OutWrong");
+    auto* out_correct = ctx.Output<Tensor>("OutCorrect");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int num_classes = static_cast<int>(ctx.Attr<int>("num_classes"));
 
     // Get data ptr
@@ -128,16 +144,28 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     out_mean_iou_t.device(place) = out_mean_iou_t.constant(0.0f);
 
     // collect pre wrong, correct and mean_iou
+<<<<<<< HEAD
     auto in_mean_ious = ctx.MultiInput<phi::DenseTensor>("InMeanIou");
+=======
+    auto in_mean_ious = ctx.MultiInput<Tensor>("InMeanIou");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (int i = 0; i < in_mean_ious.size(); ++i) {
       out_mean_iou_t.device(place) +=
           EigenTensor<float, 1>::From(*in_mean_ious[i]);
     }
+<<<<<<< HEAD
     auto in_wrongs = ctx.MultiInput<phi::DenseTensor>("InWrongs");
     for (int i = 0; i < in_wrongs.size(); ++i) {
       out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
     }
     auto in_corrects = ctx.MultiInput<phi::DenseTensor>("InCorrects");
+=======
+    auto in_wrongs = ctx.MultiInput<Tensor>("InWrongs");
+    for (int i = 0; i < in_wrongs.size(); ++i) {
+      out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
+    }
+    auto in_corrects = ctx.MultiInput<Tensor>("InCorrects");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (int i = 0; i < in_corrects.size(); ++i) {
       out_correct_t.device(place) += EigenTensor<int, 1>::From(*in_corrects[i]);
     }

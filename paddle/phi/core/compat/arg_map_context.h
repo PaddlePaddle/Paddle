@@ -108,10 +108,19 @@ class ArgumentMappingContext {
   virtual bool IsDenseTensorInput(const std::string& name) const = 0;
   virtual bool IsDenseTensorInputs(const std::string& name) const = 0;
   virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
+<<<<<<< HEAD
   virtual bool IsSelectedRowsInputs(const std::string& name) const = 0;
   virtual bool IsSparseCooTensorInput(const std::string& name) const = 0;
   virtual bool IsSparseCooTensorOutput(const std::string& name) const = 0;
   virtual bool IsSparseCsrTensorInput(const std::string& name) const = 0;
+=======
+
+  virtual bool IsSparseCooTensorInput(const std::string& name) const = 0;
+  virtual bool IsSparseCsrTensorInput(const std::string& name) const = 0;
+
+  virtual bool IsSelectedRowsInputs(const std::string& name) const = 0;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // For compatibility with LoDTensorArray
   virtual bool IsDenseTensorVectorInput(const std::string& name) const = 0;
 

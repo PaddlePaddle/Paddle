@@ -162,7 +162,11 @@ namespace imperative {
 static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
                                   const paddle::platform::Place& place,
                                   float value) {
+<<<<<<< HEAD
   auto* tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* t_ptr = tensor->mutable_data<float>(place);
   std::vector<float> host_data(tensor->numel());
 
@@ -194,7 +198,11 @@ static void FluidCheckGradTensorValue(
     const std::shared_ptr<imperative::VarBase>& X,
     const paddle::platform::Place& place,
     float value) {
+<<<<<<< HEAD
   auto* grad_tensor = X->MutableGradVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto* grad_tensor = X->MutableGradVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* g_ptr = grad_tensor->mutable_data<float>(place);
   std::vector<float> g_host_data(grad_tensor->numel());
 

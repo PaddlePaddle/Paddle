@@ -23,6 +23,7 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void BatchNormCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         const DenseTensor& mean,
@@ -41,6 +42,27 @@ void BatchNormCooKernel(const Context& dev_ctx,
                         DenseTensor* saved_mean,
                         DenseTensor* saved_variance,
                         DenseTensor* reserve_space);
+=======
+void BatchNormKernel(const Context& dev_ctx,
+                     const SparseCooTensor& x,
+                     const DenseTensor& scale,
+                     const DenseTensor& bias,
+                     const DenseTensor& mean,
+                     const DenseTensor& variance,
+                     float momentum,
+                     float epsilon,
+                     const std::string& data_layout,
+                     bool is_test,
+                     bool use_global_stats,
+                     bool trainable_statistics,
+                     bool fuse_with_relu,
+                     SparseCooTensor* y,
+                     DenseTensor* mean_out,
+                     DenseTensor* variance_out,
+                     DenseTensor* saved_mean,
+                     DenseTensor* saved_variance,
+                     DenseTensor* reserve_space);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace sparse
 }  // namespace phi

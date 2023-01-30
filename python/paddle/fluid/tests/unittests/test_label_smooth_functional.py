@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -32,6 +33,26 @@ class LabelSmoothTestCase(unittest.TestCase):
         dtype="float32",
     ):
         super().__init__(methodName)
+=======
+import numpy as np
+import paddle
+from paddle import fluid, nn
+import paddle.fluid.dygraph as dg
+import paddle.nn.functional as F
+import paddle.fluid.initializer as I
+import unittest
+
+
+class LabelSmoothTestCase(unittest.TestCase):
+
+    def __init__(self,
+                 methodName='runTest',
+                 label_shape=(20, 1),
+                 prior_dist=None,
+                 epsilon=0.1,
+                 dtype="float32"):
+        super(LabelSmoothTestCase, self).__init__(methodName)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.label_shape = label_shape
         self.prior_dist = prior_dist
@@ -47,6 +68,7 @@ class LabelSmoothTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
+<<<<<<< HEAD
                 label_var = fluid.data(
                     "input", self.label_shape, dtype=self.dtype
                 )
@@ -59,6 +81,19 @@ class LabelSmoothTestCase(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+=======
+                label_var = fluid.data("input",
+                                       self.label_shape,
+                                       dtype=self.dtype)
+                y_var = fluid.layers.label_smooth(label_var,
+                                                  prior_dist=self.prior_dist,
+                                                  epsilon=self.epsilon,
+                                                  dtype=self.dtype)
+        feed_dict = {"input": self.label}
+        exe = fluid.Executor(place)
+        exe.run(start)
+        y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return y_np
 
     def functional(self, place):
@@ -67,6 +102,7 @@ class LabelSmoothTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
+<<<<<<< HEAD
                 label_var = fluid.data(
                     "input", self.label_shape, dtype=self.dtype
                 )
@@ -77,14 +113,32 @@ class LabelSmoothTestCase(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+=======
+                label_var = fluid.data("input",
+                                       self.label_shape,
+                                       dtype=self.dtype)
+                y_var = F.label_smooth(label_var,
+                                       prior_dist=self.prior_dist,
+                                       epsilon=self.epsilon)
+        feed_dict = {"input": self.label}
+        exe = fluid.Executor(place)
+        exe.run(start)
+        y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return y_np
 
     def paddle_dygraph_layer(self):
         paddle.disable_static()
         label_var = dg.to_variable(self.label)
+<<<<<<< HEAD
         y_var = F.label_smooth(
             label_var, prior_dist=self.prior_dist, epsilon=self.epsilon
         )
+=======
+        y_var = F.label_smooth(label_var,
+                               prior_dist=self.prior_dist,
+                               epsilon=self.epsilon)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         y_np = y_var.numpy()
         return y_np
 
@@ -105,6 +159,10 @@ class LabelSmoothTestCase(unittest.TestCase):
 
 
 class LabelSmoothErrorTestCase(LabelSmoothTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -115,8 +173,12 @@ class LabelSmoothErrorTestCase(LabelSmoothTestCase):
 def add_cases(suite):
     suite.addTest(LabelSmoothTestCase(methodName='runTest'))
     suite.addTest(
+<<<<<<< HEAD
         LabelSmoothTestCase(methodName='runTest', label_shape=[2, 3, 1])
     )
+=======
+        LabelSmoothTestCase(methodName='runTest', label_shape=[2, 3, 1]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def add_error_cases(suite):

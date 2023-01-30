@@ -15,19 +15,32 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/all_context.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 DECLARE_bool(new_executor_use_cuda_graph);
+=======
+#include "paddle/fluid/platform/device_context.h"
+
+DECLARE_bool(use_stream_safe_cuda_allocator);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_CUDA
+<<<<<<< HEAD
 void BeginCUDAGraphCapture(phi::GPUPlace place,
                            cudaStreamCaptureMode mode,
                            int64_t pool_id) {
   auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+=======
+void BeginCUDAGraphCapture(platform::CUDAPlace place,
+                           cudaStreamCaptureMode mode,
+                           int64_t pool_id) {
+  auto* mutable_dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 
@@ -44,10 +57,14 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   auto stream = dev_ctx->stream();
   CUDAGraph::BeginCapture(place, stream, mode);
 
+<<<<<<< HEAD
   // When using cuda graph in new executor, fast GC must be used.
   // FLAGS_use_stream_safe_cuda_allocator should be true.
   auto old_value = FLAGS_use_stream_safe_cuda_allocator &&
                    !FLAGS_new_executor_use_cuda_graph;
+=======
+  auto old_value = FLAGS_use_stream_safe_cuda_allocator;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = false;
   }
@@ -68,7 +85,11 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
 
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
   auto place = CUDAGraph::CapturingPlace();
+<<<<<<< HEAD
   auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+=======
+  auto* mutable_dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
   dev_ctx->SetCUDAGraphAllocator(nullptr);

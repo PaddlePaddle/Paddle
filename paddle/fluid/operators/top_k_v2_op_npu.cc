@@ -26,10 +26,17 @@ template <typename T>
 class TopkV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* input = context.Input<phi::DenseTensor>("X");
     auto* k_tensor = context.Input<phi::DenseTensor>("K");
     auto* out = context.Output<phi::DenseTensor>("Out");
     auto* indices = context.Output<phi::DenseTensor>("Indices");  // type: INT64
+=======
+    auto* input = context.Input<Tensor>("X");
+    auto* k_tensor = context.Input<Tensor>("K");
+    auto* out = context.Output<Tensor>("Out");
+    auto* indices = context.Output<Tensor>("Indices");  // type: INT64
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int32_t k = static_cast<int32_t>(context.Attr<int>("k"));
     int axis = static_cast<int>(context.Attr<int>("axis"));
@@ -58,7 +65,11 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     indices->mutable_data<int64_t>(context.GetPlace());
 
+<<<<<<< HEAD
     phi::DenseTensor indices_int32(experimental::DataType::INT32);
+=======
+    framework::Tensor indices_int32(experimental::DataType::INT32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     indices_int32.Resize(output_dims);
     indices_int32.mutable_data<int32_t>(context.GetPlace());
 

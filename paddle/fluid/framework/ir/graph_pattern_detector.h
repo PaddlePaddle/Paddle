@@ -526,6 +526,7 @@ struct ConvBN : public PatternBase {
   PATTERN_DECL_NODE(bn_saved_variance);
 };
 
+<<<<<<< HEAD
 struct LayerNormShiftScale : public PatternBase {
   LayerNormShiftScale(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "layer_norm_shift_scale") {}
@@ -539,6 +540,8 @@ struct LayerNormShiftScale : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_out);
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct OperatorActivation : public PatternBase {
   OperatorActivation(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "operator_activation") {}
@@ -552,6 +555,7 @@ struct OperatorActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+<<<<<<< HEAD
 struct Squeeze2Transpose2 : public PatternBase {
   Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
@@ -564,6 +568,8 @@ struct Squeeze2Transpose2 : public PatternBase {
   PATTERN_DECL_NODE(transpose2_op);
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct OperatorUnsqueeze2 : public PatternBase {
   OperatorUnsqueeze2(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "operator_unsqueeze2") {}
@@ -643,12 +649,20 @@ struct FC : public PatternBase {
 // op: fc
 // named node:
 // fc
+<<<<<<< HEAD
 // w, bias, output, residual_data
+=======
+// w, bias, output
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct FCMKLDNN : public PatternBase {
   FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_mkldnn") {}
 
+<<<<<<< HEAD
   PDNode* operator()(bool with_residual_data);
+=======
+  PDNode* operator()(PDNode* x, bool with_bias);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // declare operator node's name
   PATTERN_DECL_NODE(fc);
@@ -657,7 +671,24 @@ struct FCMKLDNN : public PatternBase {
   PATTERN_DECL_NODE(weights);
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(output);
+<<<<<<< HEAD
   PATTERN_DECL_NODE(residual_data);
+=======
+};
+
+// Squeeze2 + Transpose2
+// Forward pass
+struct Squeeze2Transpose2 : public PatternBase {
+  Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(squeeze2_op_in);
+  PATTERN_DECL_NODE(squeeze2_op);
+  PATTERN_DECL_NODE(squeeze2_op_out);
+  PATTERN_DECL_NODE(transpose2_op);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 // Embedding
@@ -928,6 +959,7 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(ele_y);
 };
 
+<<<<<<< HEAD
 // the backward of ele_add(act(x), y)
 // the act is inplace.
 // op: elementwise_add_grad + act_grad
@@ -949,6 +981,8 @@ struct ActElewiseAddInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(d_intermediate_var);
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // The following patterns are used to fuse linear and act (ReLu or GeLU)
 // formula: act(F.linear(x))
 // op: matmul_v2 + elementwise_add + act
@@ -1044,7 +1078,11 @@ struct Conv : public PatternBase {
   Conv(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "convolution") {}
 
+<<<<<<< HEAD
   PDNode* operator()(const std::string& conv_type);
+=======
+  PDNode* operator()();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);
@@ -1057,7 +1095,11 @@ struct ConvResidual : public PatternBase {
   ConvResidual(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_residual") {}
 
+<<<<<<< HEAD
   PDNode* operator()(const std::string& conv_type, bool with_residual_data);
+=======
+  PDNode* operator()(bool with_residual_data);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);
@@ -1146,7 +1188,11 @@ struct ResidualElementwise : public PatternBase {
 };
 
 // General struct for immutable ops:
+<<<<<<< HEAD
 // reshape, transpose, slice, shape, nearest-interp, split
+=======
+// reshape, transpose, slice, nearest-interp
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // Forward pass for no weights-op.
 // immutable_out is a result of the operator.
 struct Immutable : public PatternBase {
@@ -1476,8 +1522,12 @@ struct ConvElementwiseaddAct : public PatternBase {
   ConvElementwiseaddAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_elementwiseadd_act") {}
 
+<<<<<<< HEAD
   PDNode* operator()(PDNode* conv_in,
                      const std::unordered_set<std::string>& conv_act_set);
+=======
+  PDNode* operator()(PDNode* conv_in);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_out);
@@ -1497,8 +1547,12 @@ struct ConvElementwiseadd2Act : public PatternBase {
       : PatternBase(
             pattern, name_scope, "conv_elementwiseadd2_elementwiseadd_act") {}
 
+<<<<<<< HEAD
   PDNode* operator()(PDNode* conv_in,
                      const std::unordered_set<std::string>& conv_act_set);
+=======
+  PDNode* operator()(PDNode* conv_in);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_filter);
@@ -1544,9 +1598,13 @@ struct ConvAffineChannel : public PatternBase {
   ConvAffineChannel(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_affine_channel") {}
 
+<<<<<<< HEAD
   PDNode* operator()(PDNode* conv_input,
                      const std::string& conv_type,
                      bool with_eltwise_add);
+=======
+  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
@@ -1790,6 +1848,7 @@ struct DeleteWeightQuantDequantLinearOpPattern : public PatternBase {
   PATTERN_DECL_NODE(any_op2);
 };
 
+<<<<<<< HEAD
 struct DeleteWeightDequantLinearOpEncoderPattern : public PatternBase {
   DeleteWeightDequantLinearOpEncoderPattern(PDPattern* pattern,
                                             const std::string& name_scope)
@@ -1823,6 +1882,8 @@ struct DeleteWeightDequantLinearOpDecoderPattern : public PatternBase {
   PATTERN_DECL_NODE(any_op2);
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct DeleteQuantDequantLinearOpPattern : public PatternBase {
   DeleteQuantDequantLinearOpPattern(PDPattern* pattern,
                                     const std::string& name_scope)
@@ -2023,7 +2084,11 @@ struct LayerNorm : public PatternBase {
 
 //
 // \brief   Pattern looking for subgraph representing layernorm_shift_partition
+<<<<<<< HEAD
 //          operation with shift_size = 0.
+=======
+//          operation.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //
 struct LayernormShiftPartitionPattern : public PatternBase {
   LayernormShiftPartitionPattern(PDPattern* pattern,
@@ -2055,6 +2120,7 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(reshape4_out);
 };
 
+<<<<<<< HEAD
 //
 // \bref pattern looking for reverse circlic shift in window attention.
 //       The reverse circlic shift based on roll op,
@@ -2110,6 +2176,8 @@ struct MergeLayernormPattern : public PatternBase {
   PATTERN_DECL_NODE(layernorm_40_out);
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // Add support int8 flag
 struct AddSupportInt8 : public PatternBase {
   AddSupportInt8(PDPattern* pattern, const std::string& name_scope)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,6 +22,21 @@ import paddle
 
 
 class TestFillAnyOp(OpTest):
+=======
+from __future__ import print_function
+
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+import unittest
+import numpy as np
+from op_test import OpTest
+from paddle.tensor.manipulation import fill_
+
+
+class TestFillAnyOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "fill_any"
         self.dtype = 'float64'
@@ -29,11 +45,19 @@ class TestFillAnyOp(OpTest):
         self.inputs = {'X': np.random.random((20, 30)).astype(self.dtype)}
         self.attrs = {
             'value_float': float(self.value),
+<<<<<<< HEAD
             'value_int': int(self.value),
         }
         self.outputs = {
             'Out': self.value
             * np.ones_like(self.inputs["X"]).astype(self.dtype)
+=======
+            'value_int': int(self.value)
+        }
+        self.outputs = {
+            'Out':
+            self.value * np.ones_like(self.inputs["X"]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init(self):
@@ -47,29 +71,49 @@ class TestFillAnyOp(OpTest):
 
 
 class TestFillAnyOpFloat32(TestFillAnyOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.dtype = np.float32
         self.value = 0.0
 
 
 class TestFillAnyOpFloat16(TestFillAnyOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.dtype = np.float16
 
 
 class TestFillAnyOpvalue1(TestFillAnyOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.dtype = np.float32
         self.value = 111111555
 
 
 class TestFillAnyOpvalue2(TestFillAnyOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.dtype = np.float32
         self.value = 11111.1111
 
 
 class TestFillAnyInplace(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_fill_any_version(self):
         with paddle.fluid.dygraph.guard():
             var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
@@ -87,8 +131,12 @@ class TestFillAnyInplace(unittest.TestCase):
     def test_fill_any_eqaul(self):
         with paddle.fluid.dygraph.guard():
             tensor = paddle.to_tensor(
+<<<<<<< HEAD
                 np.random.random((20, 30)).astype(np.float32)
             )
+=======
+                np.random.random((20, 30)).astype(np.float32))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             target = tensor.numpy()
             target[...] = 1
 
@@ -97,7 +145,11 @@ class TestFillAnyInplace(unittest.TestCase):
 
     def test_backward(self):
         with paddle.fluid.dygraph.guard():
+<<<<<<< HEAD
             x = paddle.full([10, 10], -1.0, dtype='float32')
+=======
+            x = paddle.full([10, 10], -1., dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x.stop_gradient = False
             y = 2 * x
             y.fill_(1)

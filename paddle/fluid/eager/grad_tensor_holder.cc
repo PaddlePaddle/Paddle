@@ -99,11 +99,14 @@ void GradTensorHolder::add(size_t slot_id,
                            size_t rank,
                            const paddle::experimental::Tensor& t,
                            bool create_graph) {
+<<<<<<< HEAD
   if (!t.initialized()) {
     VLOG(3) << "No need to do accumulate for uninitialized t.";
     return;
   }  // TODO(jiabin): Remove this when we fix all kernel.
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE(slot_id < buffer_.size(),
                  paddle::platform::errors::Fatal(
                      "Invalid slot_id for GradTensorHolder::add() "

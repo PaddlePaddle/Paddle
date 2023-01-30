@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 
 
 class TestExpandAsBasic(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -41,6 +53,10 @@ class TestExpandAsBasic(OpTest):
 
 
 class TestExpandAsOpRank2(TestExpandAsBasic):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -54,6 +70,10 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
 
 
 class TestExpandAsOpRank3(TestExpandAsBasic):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -67,6 +87,10 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
 
 
 class TestExpandAsOpRank4(TestExpandAsBasic):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -98,18 +122,29 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
 
 
 class TestExpandAsV2Error(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="uint8")
             x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
             self.assertRaises(TypeError, paddle.tensor.expand_as, x1, x2)
             x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
+=======
+
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype="uint8")
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, paddle.tensor.expand_as, x1, x2)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.expand_as, x3, x2)
 
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
@@ -120,15 +155,39 @@ class TestExpandAsV2API(unittest.TestCase):
             shape=[2, 12, 14],
             dtype="float32",
         )
+=======
+
+    def test_api(self):
+        input1 = np.random.random([12, 14]).astype("float32")
+        input2 = np.random.random([2, 12, 14]).astype("float32")
+        x = fluid.layers.data(name='x',
+                              shape=[12, 14],
+                              append_batch_size=False,
+                              dtype="float32")
+
+        y = fluid.layers.data(name='target_tensor',
+                              shape=[2, 12, 14],
+                              append_batch_size=False,
+                              dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         out_1 = paddle.expand_as(x, y=y)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
+<<<<<<< HEAD
         res_1 = exe.run(
             fluid.default_main_program(),
             feed={"x": input1, "target_tensor": input2},
             fetch_list=[out_1],
         )
+=======
+        res_1 = exe.run(fluid.default_main_program(),
+                        feed={
+                            "x": input1,
+                            "target_tensor": input2
+                        },
+                        fetch_list=[out_1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 

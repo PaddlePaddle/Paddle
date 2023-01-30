@@ -86,7 +86,11 @@ Since target Y is not differentiable, calculating gradient for Y is illegal.
 The formula of modified huber loss is:
 
 $$
+<<<<<<< HEAD
 L(y, f(x)) =
+=======
+L(y, f(x)) = 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 \begin{cases}
 (\max(0, 1 - yf(x)))^2,  \text{if} \  yf(x) >= -1    \\
              -4yf(x),    \quad \text{otherwise}

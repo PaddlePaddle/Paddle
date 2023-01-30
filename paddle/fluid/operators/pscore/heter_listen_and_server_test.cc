@@ -88,6 +88,7 @@ void GetHeterListenAndServProgram(framework::ProgramDesc* program,
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
+<<<<<<< HEAD
   x_var->GetMutable<phi::DenseTensor>();
 
   auto micro_var = scope->Var("microbatch_id");
@@ -95,24 +96,45 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
 
   auto res_var = scope->Var("res");
   res_var->GetMutable<phi::DenseTensor>();
+=======
+  x_var->GetMutable<framework::LoDTensor>();
+
+  auto micro_var = scope->Var("microbatch_id");
+  micro_var->GetMutable<framework::LoDTensor>();
+
+  auto res_var = scope->Var("res");
+  res_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
                          platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
+<<<<<<< HEAD
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
+=======
+  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto micro_id_var =
+<<<<<<< HEAD
       scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
+=======
+      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* micro_id_ptr =
       micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
   micro_id_ptr[0] = 0;
 
+<<<<<<< HEAD
   auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
+=======
+  auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* res_ptr =
       res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
@@ -122,18 +144,30 @@ void InitTensorsOnClient2(framework::Scope* scope,
                           platform::CPUPlace* place,
                           int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
+<<<<<<< HEAD
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
+=======
+  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto micro_id_var =
+<<<<<<< HEAD
       scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
+=======
+      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* micro_id_ptr =
       micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
   micro_id_ptr[0] = 1;
 
+<<<<<<< HEAD
   auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
+=======
+  auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* res_ptr =
       res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;

@@ -22,7 +22,10 @@
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
@@ -75,9 +78,12 @@ class CinnLaunchContext {
   framework::ParallelExecutor* InitializePE(const platform::Place& place,
                                             framework::Scope* scope);
 
+<<<<<<< HEAD
   framework::InterpreterCore* InitializeInterpreterCore(
       const platform::Place& place, framework::Scope* scope);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // explicitly update several environment variables captured
   // by callback of execution arguments
   void UpdateCapturedEnv(const framework::Scope& scope,
@@ -89,7 +95,11 @@ class CinnLaunchContext {
   // Check the equiality in type and dimension between the tensor
   // in Paddle and the compiled tensor returned by CINN of a same variable
   void CheckTensorEquivalent(const std::string& var_name,
+<<<<<<< HEAD
                              const phi::DenseTensor& paddle_tensor);
+=======
+                             const framework::LoDTensor& paddle_tensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Return the name list of variables skipped eager deletion
   const std::vector<std::string>& GetSkipEagerVars() const {
@@ -136,7 +146,11 @@ class CinnLaunchContext {
 
   // Construct a Paddle ProgramDesc with the CINN runtime
   // instructions included in the compiled CINN Program
+<<<<<<< HEAD
   std::unique_ptr<framework::ProgramDesc> BuildCompiledProgram(
+=======
+  framework::ProgramDesc BuildCompiledProgram(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ir::Graph& graph,
       const CinnCompiledObject& compiled_obj);
 
@@ -159,16 +173,23 @@ class CinnLaunchContext {
   // the variable scope compiled from cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
 
+<<<<<<< HEAD
   std::unique_ptr<framework::ProgramDesc> runtime_program_desc_;
   std::unique_ptr<framework::InterpreterCore> interpreter_core_;
   // the name list of skip_gc_vars in runtime for InterpreterCore execution
   std::set<std::string> skip_gc_vars_;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // the ir::Graph object converted from the program compiled by CINN
   std::unique_ptr<framework::ir::Graph> runtime_graph_;
   // a ParallelExecutor to execute the runtime graph
   std::unique_ptr<framework::ParallelExecutor> parallel_executor_;
+<<<<<<< HEAD
   // the name list of skip_eager_vars in runtime for ParallelExecutor execution
+=======
+  // the name list of skip_eager_vars in runtime
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<std::string> skip_eager_vars_;
 
   // because a cinn_pod_value_t does not own a cinn_buffer_t object,
@@ -178,9 +199,12 @@ class CinnLaunchContext {
   // this map saves all execution arguments with their cinn names as key,
   // and it is passed to the Execute interface of a cinn runtime program.
   std::map<std::string, cinn_pod_value_t> name2argument_;
+<<<<<<< HEAD
   // this map saves all execution arguments with paddle variables as key,
   // this map conbine name2argument_ and paddle2cinn_varmap_
   std::map<std::string, cinn_pod_value_t> paddle2argument_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace operators::details

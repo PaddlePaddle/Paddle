@@ -16,7 +16,10 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/mode.h"
 
 namespace phi {
@@ -39,6 +42,7 @@ void ModeKernel(const Context& dev_ctx,
   T* output_data = dev_ctx.template Alloc<T>(out);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
+<<<<<<< HEAD
   // For 0D Tensor
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
@@ -46,6 +50,8 @@ void ModeKernel(const Context& dev_ctx,
     return;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));

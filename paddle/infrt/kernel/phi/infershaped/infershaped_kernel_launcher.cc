@@ -25,9 +25,15 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
   for (host_context::Value* value :
        frame->GetValues(1, frame->GetNumElements() - 1)) {
     // TODO(Superjomn) To extend this.
+<<<<<<< HEAD
     if (value->is_type<::Tensor>()) {
       values.emplace_back(
           new host_context::Value{::phi::MetaTensor{&value->get<::Tensor>()}});
+=======
+    if (value->is_type<::phi::DenseTensor>()) {
+      values.emplace_back(new host_context::Value{
+          ::phi::MetaTensor{&value->get<::phi::DenseTensor>()}});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       infershape_kernel_frame_builder.AddArgument(values.back().get());
     } else {
       infershape_kernel_frame_builder.AddArgument(value);

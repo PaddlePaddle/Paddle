@@ -17,11 +17,19 @@ limitations under the License. */
 #include <functional>
 #include <string>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/phi/backends/dynload/mklml.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
+
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/fluid/platform/dynload/mklml.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 namespace phi {
@@ -60,28 +68,49 @@ inline void vec_exp<float>(const int n, const float* x, float* y) {
       y[i] = std::exp(x[i]);
     }
   } else {
+<<<<<<< HEAD
     phi::dynload::vsExp(n, x, y);
+=======
+    paddle::platform::dynload::vsExp(n, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
 template <>
 inline void vec_exp<double>(const int n, const double* x, double* y) {
+<<<<<<< HEAD
   phi::dynload::vdExp(n, x, y);
+=======
+  paddle::platform::dynload::vdExp(n, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <>
 inline void vec_scal<float>(const int n, const float a, float* x) {
+<<<<<<< HEAD
   phi::dynload::cblas_sscal(n, a, x, 1);
+=======
+  paddle::platform::dynload::cblas_sscal(n, a, x, 1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <>
 inline void vec_scal<double>(const int n, const double a, double* x) {
+<<<<<<< HEAD
   phi::dynload::cblas_dscal(n, a, x, 1);
+=======
+  paddle::platform::dynload::cblas_dscal(n, a, x, 1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 #endif
 
 // MKL scal only support inplace, choose this if src and dst are not equal
+<<<<<<< HEAD
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_scal(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = a * x[i];
@@ -89,6 +118,7 @@ inline void vec_scal(const int n, const T a, const T* x, T* y) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_scal<float, backends::cpu::avx>(const int n,
                                                 const float a,
                                                 const float* x,
@@ -97,6 +127,16 @@ inline void vec_scal<float, backends::cpu::avx>(const int n,
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_scal<float, backends::cpu::isa_any>(n, a, x, y);
+=======
+inline void vec_scal<float, paddle::platform::avx>(const int n,
+                                                   const float a,
+                                                   const float* x,
+                                                   float* y) {
+#ifdef __AVX__
+  constexpr int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_scal<float, paddle::platform::isa_any>(n, a, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
   const int rest = n % block;
@@ -120,11 +160,16 @@ inline void vec_scal<float, backends::cpu::avx>(const int n,
     y[i] = a * x[i];
   }
 #else
+<<<<<<< HEAD
   vec_scal<float, backends::cpu::isa_any>(n, a, x, y);
+=======
+  vec_scal<float, paddle::platform::isa_any>(n, a, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_scal<float, backends::cpu::avx2>(const int n,
                                                  const float a,
                                                  const float* x,
@@ -142,6 +187,26 @@ inline void vec_scal<float, backends::cpu::avx512f>(const int n,
 }
 
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+inline void vec_scal<float, paddle::platform::avx2>(const int n,
+                                                    const float a,
+                                                    const float* x,
+                                                    float* y) {
+  vec_scal<float, paddle::platform::avx>(n, a, x, y);
+}
+
+template <>
+inline void vec_scal<float, paddle::platform::avx512f>(const int n,
+                                                       const float a,
+                                                       const float* x,
+                                                       float* y) {
+  // TODO(TJ): enable me
+  vec_scal<float, paddle::platform::avx2>(n, a, x, y);
+}
+
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_sum(const size_t n, const T* x, T* s) {
   s[0] = x[0];
   for (size_t i = 1; i < n; ++i) {
@@ -150,6 +215,7 @@ inline void vec_sum(const size_t n, const T* x, T* s) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_sum<float, backends::cpu::avx>(const size_t n,
                                                const float* x,
                                                float* s) {
@@ -157,6 +223,15 @@ inline void vec_sum<float, backends::cpu::avx>(const size_t n,
   constexpr unsigned int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_sum<float, backends::cpu::isa_any>(n, x, s);
+=======
+inline void vec_sum<float, paddle::platform::avx>(const size_t n,
+                                                  const float* x,
+                                                  float* s) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_sum<float, paddle::platform::isa_any>(n, x, s);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
 
@@ -180,11 +255,20 @@ inline void vec_sum<float, backends::cpu::avx>(const size_t n,
     s[0] += x[i];
   }
 #else
+<<<<<<< HEAD
   vec_sum<float, backends::cpu::isa_any>(n, x, s);
 #endif
 }
 
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+  vec_sum<float, paddle::platform::isa_any>(n, x, s);
+#endif
+}
+
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_mul(const size_t n, const T* x, const T* y, T* z) {
   for (size_t i = 0; i < n; ++i) {
     z[i] = x[i] * y[i];
@@ -192,6 +276,7 @@ inline void vec_mul(const size_t n, const T* x, const T* y, T* z) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_mul<float, backends::cpu::avx>(const size_t n,
                                                const float* x,
                                                const float* y,
@@ -200,6 +285,16 @@ inline void vec_mul<float, backends::cpu::avx>(const size_t n,
   constexpr unsigned int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_mul<float, backends::cpu::isa_any>(n, x, y, z);
+=======
+inline void vec_mul<float, paddle::platform::avx>(const size_t n,
+                                                  const float* x,
+                                                  const float* y,
+                                                  float* z) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_mul<float, paddle::platform::isa_any>(n, x, y, z);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
 
@@ -214,11 +309,20 @@ inline void vec_mul<float, backends::cpu::avx>(const size_t n,
     z[i] = x[i] * y[i];
   }
 #else
+<<<<<<< HEAD
   vec_mul<float, backends::cpu::isa_any>(n, x, y, z);
 #endif
 }
 
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+  vec_mul<float, paddle::platform::isa_any>(n, x, y, z);
+#endif
+}
+
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_mul_reduce(const size_t n, const T* x, const T* y, T* z) {
   z[0] = x[0] * y[0];
   for (size_t i = 1; i < n; ++i) {
@@ -227,6 +331,7 @@ inline void vec_mul_reduce(const size_t n, const T* x, const T* y, T* z) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_mul_reduce<float, backends::cpu::avx>(const size_t n,
                                                       const float* x,
                                                       const float* y,
@@ -235,6 +340,16 @@ inline void vec_mul_reduce<float, backends::cpu::avx>(const size_t n,
   constexpr unsigned int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_mul_reduce<float, backends::cpu::isa_any>(n, x, y, z);
+=======
+inline void vec_mul_reduce<float, paddle::platform::avx>(const size_t n,
+                                                         const float* x,
+                                                         const float* y,
+                                                         float* z) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_mul_reduce<float, paddle::platform::isa_any>(n, x, y, z);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
 
@@ -258,11 +373,20 @@ inline void vec_mul_reduce<float, backends::cpu::avx>(const size_t n,
     z[0] += x[i] * y[i];
   }
 #else
+<<<<<<< HEAD
   vec_mul_reduce<float, backends::cpu::isa_any>(n, x, y, z);
 #endif
 }
 
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+  vec_mul_reduce<float, paddle::platform::isa_any>(n, x, y, z);
+#endif
+}
+
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_bias_sub(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = a - x[i];
@@ -270,6 +394,7 @@ inline void vec_bias_sub(const int n, const T a, const T* x, T* y) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_bias_sub<float, backends::cpu::avx>(const int n,
                                                     const float a,
                                                     const float* x,
@@ -278,6 +403,16 @@ inline void vec_bias_sub<float, backends::cpu::avx>(const int n,
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_bias_sub<float, backends::cpu::isa_any>(n, a, x, y);
+=======
+inline void vec_bias_sub<float, paddle::platform::avx>(const int n,
+                                                       const float a,
+                                                       const float* x,
+                                                       float* y) {
+#ifdef __AVX__
+  constexpr int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_bias_sub<float, paddle::platform::isa_any>(n, a, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
   const int rest = n % block;
@@ -301,11 +436,16 @@ inline void vec_bias_sub<float, backends::cpu::avx>(const int n,
     y[i] = a - x[i];
   }
 #else
+<<<<<<< HEAD
   vec_bias_sub<float, backends::cpu::isa_any>(n, a, x, y);
+=======
+  vec_bias_sub<float, paddle::platform::isa_any>(n, a, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_bias_sub<float, backends::cpu::avx2>(const int n,
                                                      const float a,
                                                      const float* x,
@@ -324,6 +464,27 @@ inline void vec_bias_sub<float, backends::cpu::avx512f>(const int n,
 
 // out = x*y + (1-x)*z
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+inline void vec_bias_sub<float, paddle::platform::avx2>(const int n,
+                                                        const float a,
+                                                        const float* x,
+                                                        float* y) {
+  vec_bias_sub<float, paddle::platform::avx>(n, a, x, y);
+}
+
+template <>
+inline void vec_bias_sub<float, paddle::platform::avx512f>(const int n,
+                                                           const float a,
+                                                           const float* x,
+                                                           float* y) {
+  // TODO(TJ): enable me
+  vec_bias_sub<float, paddle::platform::avx2>(n, a, x, y);
+}
+
+// out = x*y + (1-x)*z
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_cross(const int n, const T* x, const T* y, const T* z, T* out) {
   for (int i = 0; i < n; ++i) {
     out[i] = x[i] * y[i] + (static_cast<T>(1) - x[i]) * z[i];
@@ -331,12 +492,20 @@ inline void vec_cross(const int n, const T* x, const T* y, const T* z, T* out) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_cross<float, backends::cpu::avx>(
+=======
+inline void vec_cross<float, paddle::platform::avx>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int n, const float* x, const float* y, const float* z, float* out) {
 #ifdef __AVX__
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
+<<<<<<< HEAD
     vec_cross<float, backends::cpu::isa_any>(n, x, y, z, out);
+=======
+    vec_cross<float, paddle::platform::isa_any>(n, x, y, z, out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
   const int rest = n % block;
@@ -362,11 +531,16 @@ inline void vec_cross<float, backends::cpu::avx>(
     out[i] = x[i] * y[i] + (1.f - x[i]) * z[i];
   }
 #else
+<<<<<<< HEAD
   vec_cross<float, backends::cpu::isa_any>(n, x, y, z, out);
+=======
+  vec_cross<float, paddle::platform::isa_any>(n, x, y, z, out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_cross<float, backends::cpu::avx2>(
     const int n, const float* x, const float* y, const float* z, float* out) {
   vec_cross<float, backends::cpu::avx>(n, x, y, z, out);
@@ -380,6 +554,22 @@ inline void vec_cross<float, backends::cpu::avx512f>(
 }
 
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+inline void vec_cross<float, paddle::platform::avx2>(
+    const int n, const float* x, const float* y, const float* z, float* out) {
+  vec_cross<float, paddle::platform::avx>(n, x, y, z, out);
+}
+
+template <>
+inline void vec_cross<float, paddle::platform::avx512f>(
+    const int n, const float* x, const float* y, const float* z, float* out) {
+  // TODO(TJ): enable me
+  vec_cross<float, paddle::platform::avx>(n, x, y, z, out);
+}
+
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_clip(const size_t n, const T a, const T* x, T* y) {
   for (size_t i = 0; i < n; ++i) {
     y[i] = x[i] < a ? a : x[i];
@@ -387,6 +577,7 @@ inline void vec_clip(const size_t n, const T a, const T* x, T* y) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_clip<float, backends::cpu::avx>(const size_t n,
                                                 const float a,
                                                 const float* x,
@@ -395,6 +586,16 @@ inline void vec_clip<float, backends::cpu::avx>(const size_t n,
   constexpr unsigned int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_clip<float, backends::cpu::isa_any>(n, a, x, y);
+=======
+inline void vec_clip<float, paddle::platform::avx>(const size_t n,
+                                                   const float a,
+                                                   const float* x,
+                                                   float* y) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_clip<float, paddle::platform::isa_any>(n, a, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
 
@@ -410,11 +611,20 @@ inline void vec_clip<float, backends::cpu::avx>(const size_t n,
     y[i] = x[i] < a ? a : x[i];
   }
 #else
+<<<<<<< HEAD
   vec_clip<float, backends::cpu::isa_any>(n, a, x, y);
 #endif
 }
 
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+  vec_clip<float, paddle::platform::isa_any>(n, a, x, y);
+#endif
+}
+
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_add_bias(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i] + a;
@@ -422,6 +632,7 @@ inline void vec_add_bias(const int n, const T a, const T* x, T* y) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_add_bias<float, backends::cpu::avx>(const int n,
                                                     const float a,
                                                     const float* x,
@@ -430,6 +641,16 @@ inline void vec_add_bias<float, backends::cpu::avx>(const int n,
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_add_bias<float, backends::cpu::isa_any>(n, a, x, y);
+=======
+inline void vec_add_bias<float, paddle::platform::avx>(const int n,
+                                                       const float a,
+                                                       const float* x,
+                                                       float* y) {
+#ifdef __AVX__
+  constexpr int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_add_bias<float, paddle::platform::isa_any>(n, a, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
   const int rest = n % block;
@@ -453,11 +674,16 @@ inline void vec_add_bias<float, backends::cpu::avx>(const int n,
     y[i] = x[i] + a;
   }
 #else
+<<<<<<< HEAD
   vec_add_bias<float, backends::cpu::isa_any>(n, a, x, y);
+=======
+  vec_add_bias<float, paddle::platform::isa_any>(n, a, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_add_bias<float, backends::cpu::avx2>(const int n,
                                                      const float a,
                                                      const float* x,
@@ -475,12 +701,37 @@ inline void vec_add_bias<float, backends::cpu::avx512f>(const int n,
 }
 
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+inline void vec_add_bias<float, paddle::platform::avx2>(const int n,
+                                                        const float a,
+                                                        const float* x,
+                                                        float* y) {
+  vec_add_bias<float, paddle::platform::avx>(n, a, x, y);
+}
+
+template <>
+inline void vec_add_bias<float, paddle::platform::avx512f>(const int n,
+                                                           const float a,
+                                                           const float* x,
+                                                           float* y) {
+  // TODO(TJ): enable me
+  vec_add_bias<float, paddle::platform::avx2>(n, a, x, y);
+}
+
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_identity(const int n, const T* x, T* y) {
   // do nothing
   return;
 }
 
+<<<<<<< HEAD
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_sigmoid(const int n, const T* x, T* y) {
   const T min = SIGMOID_THRESHOLD_MIN;
   const T max = SIGMOID_THRESHOLD_MAX;
@@ -495,6 +746,7 @@ inline void vec_sigmoid(const int n, const T* x, T* y) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_sigmoid<float, backends::cpu::avx>(const int n,
                                                    const float* x,
                                                    float* y) {
@@ -502,6 +754,15 @@ inline void vec_sigmoid<float, backends::cpu::avx>(const int n,
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
     vec_sigmoid<float, backends::cpu::isa_any>(n, x, y);
+=======
+inline void vec_sigmoid<float, paddle::platform::avx>(const int n,
+                                                      const float* x,
+                                                      float* y) {
+#ifdef __AVX__
+  constexpr int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_sigmoid<float, paddle::platform::isa_any>(n, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
   const int rest = n % block;
@@ -550,11 +811,16 @@ inline void vec_sigmoid<float, backends::cpu::avx>(const int n,
     y[i] = 1.f / (1.f + y[i]);
   }
 #else
+<<<<<<< HEAD
   vec_sigmoid<float, backends::cpu::isa_any>(n, x, y);
+=======
+  vec_sigmoid<float, paddle::platform::isa_any>(n, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_sigmoid<float, backends::cpu::avx2>(const int n,
                                                     const float* x,
                                                     float* y) {
@@ -570,6 +836,24 @@ inline void vec_sigmoid<float, backends::cpu::avx512f>(const int n,
 }
 
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+inline void vec_sigmoid<float, paddle::platform::avx2>(const int n,
+                                                       const float* x,
+                                                       float* y) {
+  vec_sigmoid<float, paddle::platform::avx>(n, x, y);
+}
+
+template <>
+inline void vec_sigmoid<float, paddle::platform::avx512f>(const int n,
+                                                          const float* x,
+                                                          float* y) {
+  // TODO(TJ): enable me
+  vec_sigmoid<float, paddle::platform::avx2>(n, x, y);
+}
+
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_tanh(const int n, const T* x, T* y) {
   vec_scal<T, isa>(n, static_cast<T>(2), x, y);
   vec_sigmoid<T, isa>(n, y, y);
@@ -578,7 +862,12 @@ inline void vec_tanh(const int n, const T* x, T* y) {
 }
 
 // TODO(TJ): make relu clip
+<<<<<<< HEAD
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void vec_relu(const int n, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i] > 0 ? x[i] : 0;
@@ -586,6 +875,7 @@ inline void vec_relu(const int n, const T* x, T* y) {
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_relu<float, backends::cpu::avx>(const int n,
                                                 const float* x,
                                                 float* y) {
@@ -593,6 +883,15 @@ inline void vec_relu<float, backends::cpu::avx>(const int n,
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block * 4) {
     vec_relu<float, backends::cpu::isa_any>(n, x, y);
+=======
+inline void vec_relu<float, paddle::platform::avx>(const int n,
+                                                   const float* x,
+                                                   float* y) {
+#ifdef __AVX__
+  constexpr int block = YMM_FLOAT_BLOCK;
+  if (n < block * 4) {
+    vec_relu<float, paddle::platform::isa_any>(n, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
 
@@ -616,11 +915,16 @@ inline void vec_relu<float, backends::cpu::avx>(const int n,
 #undef MOVE_ONE_STEP
 
 #else
+<<<<<<< HEAD
   vec_relu<float, backends::cpu::isa_any>(n, x, y);
+=======
+  vec_relu<float, paddle::platform::isa_any>(n, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
 template <>
+<<<<<<< HEAD
 inline void vec_relu<float, backends::cpu::avx2>(const int n,
                                                  const float* x,
                                                  float* y) {
@@ -633,11 +937,30 @@ inline void vec_relu<float, backends::cpu::avx512f>(const int n,
                                                     float* y) {
   // TODO(TJ): enable me
   vec_relu<float, backends::cpu::avx2>(n, x, y);
+=======
+inline void vec_relu<float, paddle::platform::avx2>(const int n,
+                                                    const float* x,
+                                                    float* y) {
+  vec_relu<float, paddle::platform::avx>(n, x, y);
+}
+
+template <>
+inline void vec_relu<float, paddle::platform::avx512f>(const int n,
+                                                       const float* x,
+                                                       float* y) {
+  // TODO(TJ): enable me
+  vec_relu<float, paddle::platform::avx2>(n, x, y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 // TODO(TJ): optimize double of sigmoid, tanh and relu if necessary
 
+<<<<<<< HEAD
 template <typename T, backends::cpu::cpu_isa_t isa = backends::cpu::isa_any>
+=======
+template <typename T,
+          paddle::platform::cpu_isa_t isa = paddle::platform::isa_any>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class VecActivations {
  public:
   std::function<void(const int, const T*, T*)> operator()(

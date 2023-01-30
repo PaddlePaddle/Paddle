@@ -24,6 +24,7 @@ cc_library(
 cc_library(
   xpu_op_list
   SRCS xpu_op_list.cc
+<<<<<<< HEAD
   DEPS gflags
        glog
        enforce
@@ -31,6 +32,9 @@ cc_library(
        device_context
        op_kernel_type
        phi_backends)
+=======
+  DEPS gflags glog enforce xpulib device_context op_kernel_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 cc_library(
   xpu_resource_pool
   SRCS xpu_resource_pool.cc

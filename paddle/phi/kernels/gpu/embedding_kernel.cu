@@ -13,12 +13,21 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_kernel.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+=======
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace phi {
 
 template <typename T, typename IdT, bool PaddingFlag>
@@ -34,6 +43,7 @@ __global__ void EmbeddingFW(T *output,
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
+<<<<<<< HEAD
     if (PaddingFlag == false || id != padding_idx) {
       PADDLE_ENFORCE(id >= 0,
                      "Id should no less than 0 but received an id value: %lld.",
@@ -44,6 +54,8 @@ __global__ void EmbeddingFW(T *output,
           N,
           id);
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += blockDim.x) {

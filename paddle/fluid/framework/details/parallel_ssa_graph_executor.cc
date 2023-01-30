@@ -270,7 +270,11 @@ FetchResultType ParallelSSAGraphExecutor::Run(
     FetchList ret;
     ret.reserve(fetch_tensors.size());
     for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
+<<<<<<< HEAD
       std::vector<const phi::DenseTensor *> lodtensor_ptrs;
+=======
+      std::vector<const LoDTensor *> lodtensor_ptrs;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       lodtensor_ptrs.reserve(place_num);
       std::vector<const LoDTensorArray *> lodtensorarray_ptrs;
       lodtensorarray_ptrs.reserve(place_num);
@@ -282,21 +286,34 @@ FetchResultType ParallelSSAGraphExecutor::Run(
             PADDLE_GET_CONST(FetchList, fetch_data[scope_idx]);
         if (data_is_lod_tensor(fetch_list[fetch_idx])) {
           lodtensor_ptrs.push_back(
+<<<<<<< HEAD
               &(PADDLE_GET_CONST(phi::DenseTensor, fetch_list[fetch_idx])));
+=======
+              &(PADDLE_GET_CONST(LoDTensor, fetch_list[fetch_idx])));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         } else {
           lodtensorarray_ptrs.push_back(
               &(PADDLE_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));
         }
       }
       if (lodtensor_ptrs.size() != 0) {
+<<<<<<< HEAD
         phi::DenseTensor var;
+=======
+        LoDTensor var;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         MergeLoDTensor(&var, lodtensor_ptrs, platform::CPUPlace());
         ret.emplace_back(var);
       } else {
         LoDTensorArray var_array(lodtensorarray_ptrs[0]->size());
         for (size_t i = 0; i < lodtensorarray_ptrs[0]->size(); ++i) {
+<<<<<<< HEAD
           phi::DenseTensor var;
           std::vector<const phi::DenseTensor *> ptrs;
+=======
+          LoDTensor var;
+          std::vector<const LoDTensor *> ptrs;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           for (size_t j = 0; j < lodtensorarray_ptrs.size(); ++j) {
             ptrs.push_back(&(lodtensorarray_ptrs[j]->at(i)));
           }
@@ -323,7 +340,11 @@ FetchResultType ParallelSSAGraphExecutor::Run(
             fetch_list[fetch_idx].size(),
             1,
             platform::errors::Fatal("Each place must have only one fetched "
+<<<<<<< HEAD
                                     "phi::DenseTensor/LoDTensorArray!"));
+=======
+                                    "LoDTensor/LoDTensorArray!"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ret.back().emplace_back(fetch_list[fetch_idx][0]);
       }
     }

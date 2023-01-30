@@ -16,6 +16,10 @@
 # See PEP 425 for exactly what these are, but an example would be:
 #   cp27-cp27mu
 
+<<<<<<< HEAD
 from wheel.pep425tags import get_abbr_impl, get_abi_tag, get_impl_ver
+=======
+from wheel.pep425tags import get_abbr_impl, get_impl_ver, get_abi_tag
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 print("{0}{1}-{2}".format(get_abbr_impl(), get_impl_ver(), get_abi_tag()))

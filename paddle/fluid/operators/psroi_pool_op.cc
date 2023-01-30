@@ -32,9 +32,15 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the input feature map, and "
              "W is the width. The data type can be float32 or float64");
     AddInput("ROIs",
+<<<<<<< HEAD
              "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
+=======
+             "(LoDTensor), "
+             "ROIs (Regions of Interest) to pool over. "
+             "should be a 2-D LoDTensor of shape (num_rois, 4) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "given as [(x1, y1, x2, y2), ...]. "
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
@@ -70,8 +76,13 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddComment(R"Doc(
 Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
+<<<<<<< HEAD
 position-sensitive average pooling on regions of interest specified by input, takes as
 input N position-sensitive score maps and a list of num_rois regions of interest.
+=======
+position-sensitive average pooling on regions of interest specified by input, takes as 
+input N position-sensitive score maps and a list of num_rois regions of interest. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 PSROIPooling for R-FCN. Please refer to https://arxiv.org/abs/1605.06409 for more details.
     )Doc");
@@ -83,10 +94,18 @@ class PSROIPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -95,10 +114,18 @@ class PSROIPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

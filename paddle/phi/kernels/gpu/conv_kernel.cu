@@ -21,6 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void ConvKernel(const Context& dev_ctx,
                 const DenseTensor& input,
                 const DenseTensor& filter,
@@ -44,6 +45,8 @@ void ConvKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void Conv3DKernel(const Context& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& filter,
@@ -53,6 +56,7 @@ void Conv3DKernel(const Context& dev_ctx,
                   int groups,
                   const std::vector<int>& dilations,
                   const std::string& data_format,
+<<<<<<< HEAD
                   DenseTensor* out) {
   ConvKernelImpl<T>(dev_ctx,
                     input,
@@ -64,6 +68,25 @@ void Conv3DKernel(const Context& dev_ctx,
                     dilations,
                     data_format,
                     out);
+=======
+                  bool use_addto,
+                  int workspace_size_MB,
+                  bool exhaustive_search,
+                  DenseTensor* out) {
+  ConvKernel<T>(dev_ctx,
+                input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                groups,
+                dilations,
+                data_format,
+                use_addto,
+                workspace_size_MB,
+                exhaustive_search,
+                out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

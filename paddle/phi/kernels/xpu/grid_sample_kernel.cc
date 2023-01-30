@@ -38,7 +38,12 @@ void GridSampleKernel(const Context& dev_ctx,
   // attrs
   // paddle.nn.functional.grid_sample(x, grid, mode='bilinear',
   // padding_mode='zeros', align_corners=True, name=None)
+<<<<<<< HEAD
   const std::string data_format = phi::DataLayoutToString(x.layout());
+=======
+  const std::string data_format =
+      paddle::framework::DataLayoutToString(x.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // attr to real param
   bool is_nearest_bool;

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -25,6 +26,22 @@ class TestRegistry(unittest.TestCase):
     @prog_scope()
     def test_registry_layer(self):
         x = paddle.static.data(name='X', shape=[-1, 10, 10], dtype='float32')
+=======
+from __future__ import print_function
+import unittest
+
+import paddle
+import paddle.fluid as fluid
+import numpy as np
+from decorator_helper import prog_scope
+
+
+class TestRegistry(unittest.TestCase):
+
+    @prog_scope()
+    def test_registry_layer(self):
+        x = fluid.layers.data(name='X', shape=[10, 10], dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output = paddle.mean(x)
 
         place = fluid.CPUPlace()

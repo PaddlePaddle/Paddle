@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,6 +23,18 @@ import paddle
 
 class TestBprLossOp1(OpTest):
     """Test BprLoss with discrete one-hot labels."""
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest, randomize_probability
+
+
+class TestBprLossOp1(OpTest):
+    """Test BprLoss with discrete one-hot labels.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "bpr_loss"
@@ -35,21 +48,32 @@ class TestBprLossOp1(OpTest):
             for j in range(class_num):
                 if j == label[i][0]:
                     continue
+<<<<<<< HEAD
                 sum += -np.log(1.0 + np.exp(X[i][j] - X[i][label[i][0]]))
+=======
+                sum += (-np.log(1.0 + np.exp(X[i][j] - X[i][label[i][0]])))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             bpr_loss_result.append(-sum / (class_num - 1))
         bpr_loss = np.asmatrix([[x] for x in bpr_loss_result], dtype="float64")
         self.inputs = {"X": X, "Label": label}
         self.outputs = {"Y": bpr_loss}
 
     def test_check_output(self):
+<<<<<<< HEAD
         paddle.enable_static()
         self.check_output()
         paddle.disable_static()
+=======
+        self.check_output()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad(self):
         self.check_grad(["X"], "Y", numeric_grad_delta=0.001)
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     paddle.enable_static()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     unittest.main()

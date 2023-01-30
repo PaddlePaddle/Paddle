@@ -16,11 +16,20 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 
 #include "paddle/fluid/operators/sequence_ops/sequence_erase_op.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+
+namespace paddle {
+namespace operators {
+using platform::PADDLE_CUDA_NUM_THREADS;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 __global__ void LabelErasedIdx(const T* in_dat,
@@ -66,8 +75,13 @@ template <typename T>
 class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* in = ctx.Input<LoDTensor>("X");
+    auto* out = ctx.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(

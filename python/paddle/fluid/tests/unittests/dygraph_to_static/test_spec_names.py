@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
@@ -21,6 +22,18 @@ from paddle.nn import Layer
 class Net(Layer):
     def __init__(self):
         super().__init__()
+=======
+import paddle
+from paddle.nn import Layer
+import numpy as np
+import unittest
+
+
+class Net(Layer):
+
+    def __init__(self):
+        super(Net, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fc = paddle.nn.Linear(16, 3)
 
     def forward(self, x, y, m, n):
@@ -36,6 +49,10 @@ class Net(Layer):
 
 
 class TestArgsSpecName(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def read_from_dataset(self):
         self.x = paddle.randn([4, 2, 8])
         self.y = paddle.randn([4, 2, 8])
@@ -97,7 +114,11 @@ class TestArgsSpecName(unittest.TestCase):
             return name_ids[name]
 
         mode = [to_idx(name) for name in in_names]
+<<<<<<< HEAD
         self.assertEqual(mode, expect_mode)
+=======
+        self.assertEquals(mode, expect_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

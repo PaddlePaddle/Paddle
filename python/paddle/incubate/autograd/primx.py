@@ -12,19 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 import typing
 from collections import OrderedDict
 
 import paddle
+=======
+from collections import OrderedDict
+
+import paddle
+from paddle import compat as cpt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid import framework as framework
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
 
+<<<<<<< HEAD
 from .composite_rules import _composite
 from .primops import add, fill_const
 from .primreg import (
     lookup_composite,
+=======
+from .primops import add, fill_const
+from .primreg import (
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     lookup_orig2prim,
     lookup_prim2orig,
     op_position_inputs,
@@ -36,7 +48,10 @@ from .utils import (
     flatten_and_remove_none,
     get_input_var_list,
     get_output_var_list,
+<<<<<<< HEAD
     prepare_python_api_arguments,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )
 
 
@@ -65,7 +80,11 @@ def topo_path(xs, ys, block=None):
     for x in xs:
         assert (
             x is None or x.block == block
+<<<<<<< HEAD
         ), 'x is not None and x.block != block'
+=======
+        ), f'x is not None and x.block != block'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         reached_vars[id(x)] = x
 
     # Reaching test, returning whether an op is reached from the given input
@@ -120,7 +139,11 @@ def output_vars_on_path(path):
     return vars
 
 
+<<<<<<< HEAD
 class VarMap:
+=======
+class VarMap(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """A general map data structure for linking variables to variables.
 
     An example is linking variables to their gradients.
@@ -185,14 +208,22 @@ class VarMap:
 
 
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
+<<<<<<< HEAD
 class Transform:
+=======
+class Transform(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """An object that maintains the state of transformations applied to a
     primitve program."""
 
     def __init__(self, block):
         assert (
             block == default_main_program().current_block()
+<<<<<<< HEAD
         ), 'only support transform on current block of main program.'
+=======
+        ), f'only support transform on current block of main program.'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.block = block
         self.vars = self.init_vars(block)
         self.var2dot = VarMap('var2dot', self.vars)
@@ -238,7 +269,11 @@ class Transform:
         block = self.block
         for var in vars_to_erase:
             name = var.name
+<<<<<<< HEAD
             block.desc._remove_var(name.encode())
+=======
+            block.desc._remove_var(cpt.to_bytes(name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             del block.vars[name]
         block._sync_with_cpp()
 
@@ -339,8 +374,13 @@ class Transform:
             the list outputs of the resulting transposed program
 
         """
+<<<<<<< HEAD
         assert all(v is not None for v in xs_dot), '`xs_dot` includes None.'
         assert all(v is not None for v in ys_dot), '`ys_dot` includes None.'
+=======
+        assert all(v is not None for v in xs_dot), f'`xs_dot` includes None.'
+        assert all(v is not None for v in ys_dot), f'`ys_dot` includes None.'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if ys_bar is None:
             ys_bar = []
@@ -543,11 +583,16 @@ def _lower(block, reverse, blacklist):
             var_name in to_bind_rev
         ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
         if var_name != to_bind_rev[var_name]:
+<<<<<<< HEAD
             block.desc._remove_var(var_name.encode())
+=======
+            block.desc._remove_var(cpt.to_bytes(var_name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             del block.vars[var_name]
     block._sync_with_cpp()
 
 
+<<<<<<< HEAD
 def _lower_composite(block, blacklist=[]):
     # Some functions which are only used in _lower.
     def bind(args, to_bind, value_table):
@@ -674,11 +719,17 @@ def _lower_composite(block, blacklist=[]):
         raise TypeError
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 @framework.static_only
 def orig2prim(block=None):
     """
     Note:
+<<<<<<< HEAD
         **This API is ONLY available in the static graph mode.**
+=======
+        **This API is ONLY available in the static mode.**
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         **Args block must be None or current block of main program.**
 
     All operators in the target block are processed as follows.
@@ -695,7 +746,11 @@ def orig2prim(block=None):
     block = default_main_program().current_block() if block is None else block
     assert (
         block == default_main_program().current_block()
+<<<<<<< HEAD
     ), 'block is neither None nor current block of main program'
+=======
+    ), f'block is neither None nor current block of main program'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     _lower(block, reverse=False, blacklist=[])
 
 
@@ -703,7 +758,11 @@ def orig2prim(block=None):
 def prim2orig(block=None, blacklist=None):
     """
     Note:
+<<<<<<< HEAD
         **ONLY available in the static graph mode.**
+=======
+        **ONLY available in the static mode.**
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         **Args block must be None or current block of main program.**
 
     All operators in the target block are processed as follows.
@@ -741,6 +800,10 @@ def prim2orig(block=None, blacklist=None):
     block = default_main_program().current_block() if block is None else block
     assert (
         block == default_main_program().current_block()
+<<<<<<< HEAD
     ), 'block is neither None nor current block of main program'
+=======
+    ), f'block is neither None nor current block of main program'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     blacklist = [] if blacklist is None else blacklist
     _lower(block, reverse=True, blacklist=blacklist)

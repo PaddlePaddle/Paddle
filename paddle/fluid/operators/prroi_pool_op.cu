@@ -17,6 +17,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
@@ -215,9 +221,15 @@ template <typename T>
 class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* in = ctx.Input<Tensor>("X");
+    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -234,14 +246,23 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     if (rois_num == 0) return;
 
     // set rois batch id
+<<<<<<< HEAD
     phi::DenseTensor rois_batch_id_list;
+=======
+    framework::Tensor rois_batch_id_list;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
     if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
+<<<<<<< HEAD
       auto* batchroinum = ctx.Input<phi::DenseTensor>("BatchRoINums");
       phi::DenseTensor batch_index_cpu;
+=======
+      auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
+      framework::Tensor batch_index_cpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopySync(
           *batchroinum, platform::CPUPlace(), &batch_index_cpu);
 
@@ -318,6 +339,7 @@ template <typename DeviceContext, typename T>
 class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Input<phi::DenseTensor>("Out");
@@ -328,6 +350,16 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* input_roi_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("ROIs"));
+=======
+    auto* in = ctx.Input<Tensor>("X");
+    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* out = ctx.Input<framework::Tensor>("Out");
+
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* input_roi_grad =
+        ctx.Output<LoDTensor>(framework::GradVarName("ROIs"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -341,14 +373,23 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 
     if (input_grad || input_roi_grad) {
       // set roi batch id
+<<<<<<< HEAD
       phi::DenseTensor rois_batch_id_list;
+=======
+      framework::Tensor rois_batch_id_list;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
       if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
+<<<<<<< HEAD
         auto* batchroinum = ctx.Input<phi::DenseTensor>("BatchRoINums");
         phi::DenseTensor batch_index_cpu;
+=======
+        auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
+        framework::Tensor batch_index_cpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::TensorCopySync(
             *batchroinum, platform::CPUPlace(), &batch_index_cpu);
 

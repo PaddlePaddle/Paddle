@@ -26,8 +26,13 @@ namespace operators {
 
 template <typename T>
 void PullSparseFunctor(const framework::ExecutionContext& ctx) {
+<<<<<<< HEAD
   auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
   auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
+=======
+  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto outputs = ctx.MultiOutput<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   uint64_t padding_id = static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
@@ -40,8 +45,14 @@ void PullSparseFunctor(const framework::ExecutionContext& ctx) {
 
 template <typename T>
 void PushSparseFunctor(const framework::ExecutionContext& ctx) {
+<<<<<<< HEAD
   auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
   auto grads = ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto grads =
+      ctx.MultiInput<framework::LoDTensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   std::string accesor = ctx.Attr<std::string>("AccessorClass");
   bool scale_sparse = ctx.Attr<bool>("ScaleSparseGrad");

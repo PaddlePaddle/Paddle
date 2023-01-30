@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+<<<<<<< HEAD
 from collections.abc import Iterable
 
 import numpy as np
@@ -23,6 +24,31 @@ from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layers import tensor
 from paddle.tensor import random
+=======
+import warnings
+
+import numpy as np
+from paddle import _C_ops, _legacy_C_ops
+from paddle.distribution import distribution
+from paddle.fluid import core
+from paddle.fluid.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+    convert_dtype,
+)
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.layers import (
+    control_flow,
+    elementwise_add,
+    elementwise_div,
+    elementwise_mul,
+    elementwise_sub,
+    nn,
+    ops,
+    tensor,
+)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class Normal(distribution.Distribution):
@@ -134,6 +160,7 @@ class Normal(distribution.Distribution):
             if self.dtype != convert_dtype(self.loc.dtype):
                 self.loc = tensor.cast(self.loc, dtype=self.dtype)
                 self.scale = tensor.cast(self.scale, dtype=self.dtype)
+<<<<<<< HEAD
         super().__init__(self.loc.shape)
 
     @property
@@ -159,12 +186,22 @@ class Normal(distribution.Distribution):
 
         Args:
             shape (Sequence[int], optional): Shape of the generated samples.
+=======
+        super(Normal, self).__init__(self.loc.shape)
+
+    def sample(self, shape, seed=0):
+        """Generate samples of the specified shape.
+
+        Args:
+            shape (list): 1D `int32`. Shape of the generated samples.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             seed (int): Python integer number.
 
         Returns:
             Tensor, A tensor with prepended dimensions shape.The data type is float32.
 
         """
+<<<<<<< HEAD
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
 
@@ -172,6 +209,12 @@ class Normal(distribution.Distribution):
             check_type(seed, 'seed', (int), 'sample')
 
         shape = list(shape)
+=======
+        if not _non_static_mode():
+            check_type(shape, 'shape', (list), 'sample')
+            check_type(seed, 'seed', (int), 'sample')
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         batch_shape = list((self.loc + self.scale).shape)
         name = self.name + '_sample'
 
@@ -180,6 +223,7 @@ class Normal(distribution.Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
             )
+<<<<<<< HEAD
             zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
 
             zero_tmp_shape = paddle.shape(zero_tmp_reshape)
@@ -217,6 +261,27 @@ class Normal(distribution.Distribution):
         eps = paddle.normal(shape=shape)
         return self.loc + eps * self.scale
 
+=======
+            zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
+            zero_tmp_shape = nn.shape(zero_tmp_reshape)
+            normal_random_tmp = nn.gaussian_random(
+                zero_tmp_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
+            )
+            output = normal_random_tmp * (zero_tmp_reshape + self.scale)
+            output = elementwise_add(output, self.loc, name=name)
+            return output
+        else:
+            output_shape = shape + batch_shape
+            output = nn.gaussian_random(
+                output_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
+            ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
+            output = elementwise_add(output, self.loc, name=name)
+            if self.all_arg_is_float:
+                return nn.reshape(output, shape, name=name)
+            else:
+                return output
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def entropy(self):
         r"""Shannon entropy in nats.
 
@@ -239,9 +304,15 @@ class Normal(distribution.Distribution):
         zero_tmp = tensor.fill_constant_batch_size_like(
             self.loc + self.scale, batch_shape, self.dtype, 0.0
         )
+<<<<<<< HEAD
         return paddle.add(
             0.5 + zero_tmp,
             0.5 * math.log(2 * math.pi) + paddle.log((self.scale + zero_tmp)),
+=======
+        return elementwise_add(
+            0.5 + zero_tmp,
+            0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             name=name,
         )
 
@@ -252,15 +323,24 @@ class Normal(distribution.Distribution):
           value (Tensor): The input tensor.
 
         Returns:
+<<<<<<< HEAD
           Tensor: log probability.The data type is same with :attr:`value` .
+=======
+          Tensor: log probability.The data type is same with value.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         """
         name = self.name + '_log_prob'
         value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
+<<<<<<< HEAD
         log_scale = paddle.log(self.scale)
         return paddle.subtract(
+=======
+        log_scale = nn.log(self.scale)
+        return elementwise_sub(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var),
             log_scale + math.log(math.sqrt(2.0 * math.pi)),
             name=name,
@@ -273,15 +353,24 @@ class Normal(distribution.Distribution):
             value (Tensor): The input tensor.
 
         Returns:
+<<<<<<< HEAD
             Tensor, probability. The data type is same with :attr:`value` .
+=======
+            Tensor, probability. The data type is same with value.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         """
         name = self.name + '_probs'
         value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
+<<<<<<< HEAD
         return paddle.divide(
             paddle.exp(
+=======
+        return elementwise_div(
+            ops.exp(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var)
             ),
             (math.sqrt(2 * math.pi) * self.scale),
@@ -329,6 +418,11 @@ class Normal(distribution.Distribution):
         var_ratio = var_ratio * var_ratio
         t1 = (self.loc - other.loc) / other.scale
         t1 = t1 * t1
+<<<<<<< HEAD
         return paddle.add(
             0.5 * var_ratio, 0.5 * (t1 - 1.0 - paddle.log(var_ratio)), name=name
+=======
+        return elementwise_add(
+            0.5 * var_ratio, 0.5 * (t1 - 1.0 - nn.log(var_ratio)), name=name
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )

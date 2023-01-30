@@ -26,7 +26,11 @@ template <typename DeviceContext, typename T>
 class ExpandNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
+=======
+    auto rank = context.Input<Tensor>("X")->dims().size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_GE(
         rank,
         1,
@@ -67,7 +71,11 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
  protected:
   template <int Rank>
   void Expand(const framework::ExecutionContext& context) const {
+<<<<<<< HEAD
     auto* in0 = context.Input<phi::DenseTensor>("X");
+=======
+    auto* in0 = context.Input<framework::LoDTensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto in_dims = in0->dims();
     auto expand_times = get_expand_times(context);
     PADDLE_ENFORCE_EQ(static_cast<size_t>(in_dims.size()),
@@ -78,7 +86,11 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
                           "of dimensions (%d) of the input.",
                           expand_times.size(),
                           static_cast<size_t>(in_dims.size())));
+<<<<<<< HEAD
     auto* out0 = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* out0 = context.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::DDim out_dims(in_dims);
 
     for (size_t i = 0; i < expand_times.size(); ++i) {

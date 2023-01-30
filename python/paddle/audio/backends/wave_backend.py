@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import wave
 from pathlib import Path
 from typing import Optional, Tuple, Union
@@ -20,6 +21,15 @@ import numpy as np
 
 import paddle
 
+=======
+import paddle
+
+import wave
+import numpy as np
+from pathlib import Path
+
+from typing import Optional, Tuple, Union
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .backend import AudioInfo
 
 
@@ -81,6 +91,7 @@ def info(filepath: str) -> AudioInfo:
     bits_per_sample = file_.getsampwidth() * 8
     encoding = "PCM_S"  # default WAV encoding, only support
     file_obj.close()
+<<<<<<< HEAD
     return AudioInfo(
         sample_rate, sample_frames, channels, bits_per_sample, encoding
     )
@@ -93,6 +104,17 @@ def load(
     normalize: bool = True,
     channels_first: bool = True,
 ) -> Tuple[paddle.Tensor, int]:
+=======
+    return AudioInfo(sample_rate, sample_frames, channels, bits_per_sample,
+                     encoding)
+
+
+def load(filepath: Union[str, Path],
+         frame_offset: int = 0,
+         num_frames: int = -1,
+         normalize: bool = True,
+         channels_first: bool = True) -> Tuple[paddle.Tensor, int]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Load audio data from file. load the audio content start form frame_offset, and get num_frames.
 
     Args:
@@ -158,7 +180,11 @@ def load(
 
     waveform = np.reshape(audio_norm, (frames, channels))
     if num_frames != -1:
+<<<<<<< HEAD
         waveform = waveform[frame_offset : frame_offset + num_frames, :]
+=======
+        waveform = waveform[frame_offset:frame_offset + num_frames, :]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     waveform = paddle.to_tensor(waveform)
     if channels_first:
         waveform = paddle.transpose(waveform, perm=[1, 0])

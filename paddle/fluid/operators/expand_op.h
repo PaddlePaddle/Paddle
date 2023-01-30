@@ -28,9 +28,15 @@ namespace operators {
 inline std::vector<int> get_expand_times(
     const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("ExpandTimes")) {
+<<<<<<< HEAD
     auto* expand_tensor = ctx.Input<phi::DenseTensor>("ExpandTimes");
     auto* expand_data = expand_tensor->data<int>();
     phi::DenseTensor cpu_expand_tensor;
+=======
+    auto* expand_tensor = ctx.Input<framework::LoDTensor>("ExpandTimes");
+    auto* expand_data = expand_tensor->data<int>();
+    framework::Tensor cpu_expand_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (platform::is_gpu_place(expand_tensor->place())) {
       paddle::framework::TensorCopySync(
           *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
@@ -56,20 +62,32 @@ inline std::vector<int> get_expand_times(
   }
 
   auto list_expand_times_tensor =
+<<<<<<< HEAD
       ctx.MultiInput<phi::DenseTensor>("expand_times_tensor");
+=======
+      ctx.MultiInput<framework::Tensor>("expand_times_tensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (list_expand_times_tensor.size() > 0) {
     // get tensor from
     std::vector<int> vec_epxand_times;
     for (size_t i = 0; i < list_expand_times_tensor.size(); ++i) {
       auto tensor = list_expand_times_tensor[i];
       if (platform::is_gpu_place(tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_times.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_XPU
       else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_times.push_back(*temp.data<int32_t>());
       }
@@ -85,6 +103,10 @@ inline std::vector<int> get_expand_times(
   }
 }
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -100,7 +122,11 @@ template <typename DeviceContext, typename T>
 class ExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
+=======
+    auto rank = context.Input<Tensor>("X")->dims().size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_GE(
         rank,
         1,
@@ -141,7 +167,11 @@ class ExpandKernel : public framework::OpKernel<T> {
  protected:
   template <int Rank>
   void Expand(const framework::ExecutionContext& context) const {
+<<<<<<< HEAD
     auto* in0 = context.Input<phi::DenseTensor>("X");
+=======
+    auto* in0 = context.Input<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto in_dims = in0->dims();
     auto expand_times = get_expand_times(context);
@@ -153,7 +183,11 @@ class ExpandKernel : public framework::OpKernel<T> {
                           "of dimensions (%d) of the input.",
                           expand_times.size(),
                           static_cast<size_t>(in_dims.size())));
+<<<<<<< HEAD
     auto* out0 = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* out0 = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     for (size_t i = 0; i < expand_times.size(); ++i) {
       bcast_dims[i] = expand_times[i];
@@ -186,7 +220,11 @@ template <typename DeviceContext, typename T>
 class ExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* in0 = context.Input<phi::DenseTensor>("X");
+=======
+    auto* in0 = context.Input<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // auto& expand_times = context.Attr<std::vector<int>>("expand_times");
     auto expand_times = get_expand_times(context);
     auto x_dims = in0->dims();
@@ -213,10 +251,15 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     }
     // no need reduce, just copy
     if (just_copy) {
+<<<<<<< HEAD
       auto* in0 =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto* out0 =
           context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+      auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       out0->mutable_data<T>(context.GetPlace());
       framework::TensorCopy(
           *in0, context.GetPlace(), context.device_context(), out0);
@@ -286,8 +329,13 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                           "reduce dimensions (%d).",
                           reduce_size,
                           reduce_dims_vec.size()));
+<<<<<<< HEAD
     auto* in0 = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
     Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;

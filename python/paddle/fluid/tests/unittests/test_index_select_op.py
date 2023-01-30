@@ -12,21 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import paddle
+import numpy as np
+import paddle.fluid.core as core
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
 class TestIndexSelectOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.python_api = paddle.index_select
         self.op_type = "index_select"
         self.init_dtype_type()
+<<<<<<< HEAD
         index_np = np.random.randint(
             low=0, high=self.x_shape[self.dim], size=self.index_size
         )
@@ -35,6 +50,16 @@ class TestIndexSelectOp(OpTest):
         self.attrs = {'dim': self.dim}
         outer_loop = np.prod(self.x_shape[: self.dim])
         x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+=======
+        index_np = np.random.randint(low=0,
+                                     high=self.x_shape[self.dim],
+                                     size=self.index_size)
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        self.inputs = {'X': x_np, 'Index': index_np}
+        self.attrs = {'dim': self.dim}
+        outer_loop = np.prod(self.x_shape[:self.dim])
+        x_reshape = [outer_loop] + list(self.x_shape[self.dim:])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -62,6 +87,10 @@ class TestIndexSelectOp(OpTest):
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.x_type = np.float32
         self.index_type = np.int32
@@ -71,6 +100,10 @@ class TestIndexSelectOpCase2(TestIndexSelectOp):
 
 
 class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         if fluid.is_compiled_with_cuda():
             fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -82,6 +115,7 @@ class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
 
 
 class TestIndexSelectAPI(unittest.TestCase):
+<<<<<<< HEAD
     def input_data(self):
         self.data_x = np.array(
             [
@@ -90,6 +124,12 @@ class TestIndexSelectAPI(unittest.TestCase):
                 [9.0, 10.0, 11.0, 12.0],
             ]
         )
+=======
+
+    def input_data(self):
+        self.data_x = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
+                                [9.0, 10.0, 11.0, 12.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
     def test_index_select_api(self):
@@ -97,6 +137,7 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 1:
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 4])
             index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index, axis=1)
@@ -109,10 +150,28 @@ class TestIndexSelectAPI(unittest.TestCase):
         expect_out = np.array(
             [[1.0, 2.0, 2.0], [5.0, 6.0, 6.0], [9.0, 10.0, 10.0]]
         )
+=======
+            x = fluid.layers.data(name='x', shape=[-1, 4])
+            index = fluid.layers.data(name='index',
+                                      shape=[3],
+                                      dtype='int32',
+                                      append_batch_size=False)
+            z = paddle.index_select(x, index, axis=1)
+            exe = fluid.Executor(fluid.CPUPlace())
+            res, = exe.run(feed={
+                'x': self.data_x,
+                'index': self.data_index
+            },
+                           fetch_list=[z.name],
+                           return_numpy=False)
+        expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
+                               [9.0, 10.0, 10.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 4])
             index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index)
@@ -125,6 +184,23 @@ class TestIndexSelectAPI(unittest.TestCase):
         expect_out = np.array(
             [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [5.0, 6.0, 7.0, 8.0]]
         )
+=======
+            x = fluid.layers.data(name='x', shape=[-1, 4])
+            index = fluid.layers.data(name='index',
+                                      shape=[3],
+                                      dtype='int32',
+                                      append_batch_size=False)
+            z = paddle.index_select(x, index)
+            exe = fluid.Executor(fluid.CPUPlace())
+            res, = exe.run(feed={
+                'x': self.data_x,
+                'index': self.data_index
+            },
+                           fetch_list=[z.name],
+                           return_numpy=False)
+        expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
+                               [5.0, 6.0, 7.0, 8.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
@@ -135,9 +211,14 @@ class TestIndexSelectAPI(unittest.TestCase):
             index = fluid.dygraph.to_variable(self.data_index)
             z = paddle.index_select(x, index)
             np_z = z.numpy()
+<<<<<<< HEAD
         expect_out = np.array(
             [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [5.0, 6.0, 7.0, 8.0]]
         )
+=======
+        expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
+                               [5.0, 6.0, 7.0, 8.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
@@ -146,9 +227,14 @@ class TestIndexSelectAPI(unittest.TestCase):
             index = fluid.dygraph.to_variable(self.data_index)
             z = paddle.index_select(x, index, axis=1)
             np_z = z.numpy()
+<<<<<<< HEAD
         expect_out = np.array(
             [[1.0, 2.0, 2.0], [5.0, 6.0, 6.0], [9.0, 10.0, 10.0]]
         )
+=======
+        expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
+                               [9.0, 10.0, 10.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 

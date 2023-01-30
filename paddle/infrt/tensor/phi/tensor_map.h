@@ -26,13 +26,22 @@ class DenseTensorMap {
   DenseTensorMap() = default;
   DenseTensorMap(DenseTensorMap&& other) : map_(std::move(other.map_)) {}
   void SetDenseTensor(const std::string& name,
+<<<<<<< HEAD
                       std::unique_ptr<::Tensor>&& tensor);
   ::Tensor* GetDenseTensor(const std::string& name) const;
+=======
+                      std::unique_ptr<::phi::DenseTensor>&& tensor);
+  ::phi::DenseTensor* GetDenseTensor(const std::string& name) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   size_t size() const;
 
  private:
   mutable std::mutex mu_;
+<<<<<<< HEAD
   std::unordered_map<std::string, std::unique_ptr<::Tensor>> map_;
+=======
+  std::unordered_map<std::string, std::unique_ptr<::phi::DenseTensor>> map_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace phi

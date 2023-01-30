@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+=======
+#Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +16,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test_xpu import XPUOpTest
@@ -28,17 +38,34 @@ from xpu.get_test_cover_info import (
 
 import paddle
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
+=======
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from op_test_xpu import XPUOpTest
+from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestEmptyOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'empty'
         self.use_dynamic_create_class = False
 
     # Situation 1: Attr(shape) is a list(without tensor)
     class TestEmptyOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "empty"
             self.init_dtype()
@@ -54,6 +81,7 @@ class XPUTestEmptyOp(XPUOpTestWrapper):
         def verify_output(self, outs):
             data_type = outs[0].dtype
             if data_type in [
+<<<<<<< HEAD
                 'float32',
                 'float64',
                 'int32',
@@ -62,12 +90,17 @@ class XPUTestEmptyOp(XPUOpTestWrapper):
                 'uint8',
                 'float16',
                 'int16',
+=======
+                    'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+                    'float16', 'int16'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]:
                 max_value = np.nanmax(outs[0])
                 min_value = np.nanmin(outs[0])
 
                 always_full_zero = max_value == 0.0 and min_value == 0.0
                 always_non_full_zero = max_value >= min_value
+<<<<<<< HEAD
                 self.assertTrue(
                     always_full_zero or always_non_full_zero,
                     'always_full_zero or always_non_full_zero.',
@@ -82,6 +115,18 @@ class XPUTestEmptyOp(XPUOpTestWrapper):
                 )
             else:
                 # pass
+=======
+                self.assertTrue(always_full_zero or always_non_full_zero,
+                                'always_full_zero or always_non_full_zero.')
+            elif data_type in ['bool']:
+                total_num = outs[0].size
+                true_num = np.sum(outs[0] == True)
+                false_num = np.sum(outs[0] == False)
+                self.assertTrue(total_num == true_num + false_num,
+                                'The value should always be True or False.')
+            else:
+                #pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.assertTrue(False, 'invalid data type')
 
         def set_shape(self):
@@ -104,30 +149,55 @@ class XPUTestEmptyOp(XPUOpTestWrapper):
             self.__class__.op_type = self.op_type
 
     class TestEmptyOpCase1(TestEmptyOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_shape(self):
             self.shape = [50]
 
     class TestEmptyOpCase2(TestEmptyOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_shape(self):
             self.shape = [1, 50, 3, 4]
 
     class TestEmptyOpCase3(TestEmptyOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_shape(self):
             self.shape = [5, 5, 5]
 
     # Situation 2: shape is a tensor
     class TestEmptyOp_ShapeTensor(TestEmptyOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_inputs(self):
             self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
 
     # Situation 3: Attr(shape) is a list(with tensor)
     class TestEmptyOp_ShapeTensorList(TestEmptyOp):
+<<<<<<< HEAD
         def set_inputs(self):
             shape_tensor_list = []
             for index, ele in enumerate(self.shape):
                 shape_tensor_list.append(
                     ("x" + str(index), np.ones((1)).astype('int32') * ele)
                 )
+=======
+
+        def set_inputs(self):
+            shape_tensor_list = []
+            for index, ele in enumerate(self.shape):
+                shape_tensor_list.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.inputs = {"ShapeTensorList": shape_tensor_list}
 

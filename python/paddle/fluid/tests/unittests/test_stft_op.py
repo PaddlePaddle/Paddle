@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,14 @@ from numpy.lib.stride_tricks import as_strided
 from op_test import OpTest
 
 import paddle
+=======
+import numpy as np
+from numpy.lib.stride_tricks import as_strided
+import paddle
+import unittest
+
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def frame_from_librosa(x, frame_length, hop_length, axis=-1):
@@ -46,14 +55,23 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
 
 def stft_np(x, window, n_fft, hop_length, **kwargs):
     frames = frame_from_librosa(x, n_fft, hop_length)
+<<<<<<< HEAD
     frames = np.multiply(frames.transpose([0, 2, 1]), window).transpose(
         [0, 2, 1]
     )
+=======
+    frames = np.multiply(frames.transpose([0, 2, 1]),
+                         window).transpose([0, 2, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     res = np.fft.rfft(frames, axis=1)
     return res
 
 
 class TestStftOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "stft"
         self.shape, self.type, self.attrs = self.initTestCase()
@@ -62,9 +80,16 @@ class TestStftOp(OpTest):
             'Window': np.hamming(self.attrs['n_fft']).astype(self.type),
         }
         self.outputs = {
+<<<<<<< HEAD
             'Out': stft_np(
                 x=self.inputs['X'], window=self.inputs['Window'], **self.attrs
             )
+=======
+            'Out':
+            stft_np(x=self.inputs['X'],
+                    window=self.inputs['Window'],
+                    **self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def initTestCase(self):

@@ -126,7 +126,11 @@ MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg1
 * ## Prepare dataset
 
 * Download and preprocess the full Pascal VOC2007 test set.
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ```bash
 cd /PATH/TO/PADDLE
 python paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py

@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 import math
 import os
 import re
+=======
+import re
+import os
+import math
+import argparse
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from threading import Thread
 
 # some particular ops
@@ -37,7 +44,11 @@ black_list = [
     'test_sync_batch_norm_op',
     # case too large
     'test_reduce_op',
+<<<<<<< HEAD
     'test_transpose_op',
+=======
+    'test_transpose_op'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]
 
 op_diff_list = [
@@ -51,6 +62,7 @@ def parse_arguments():
     :return:
     """
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument(
         '--shell_name',
         type=str,
@@ -63,6 +75,16 @@ def parse_arguments():
         default='list_op.txt',
         help='please input right name',
     )
+=======
+    parser.add_argument('--shell_name',
+                        type=str,
+                        default='get_op_list.sh',
+                        help='please input right name')
+    parser.add_argument('--op_list_file',
+                        type=str,
+                        default='list_op.txt',
+                        help='please input right name')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return parser.parse_args()
 
 
@@ -89,7 +111,11 @@ def get_prefix(line, end_char='d'):
     """
     i = 0
     prefix = ''
+<<<<<<< HEAD
     while line[i] != end_char:
+=======
+    while (line[i] != end_char):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         prefix += line[i]
         i += 1
     return prefix
@@ -120,9 +146,13 @@ def add_import_skip_return(file, pattern_import, pattern_skip, pattern_return):
             # add @skip_check_grad_ci
             match_obj = pattern_2.search(line)
             if match_obj is not None:
+<<<<<<< HEAD
                 file_data += (
                     "@skip_check_grad_ci(reason='jetson do n0t neeed this !')\n"
                 )
+=======
+                file_data += "@skip_check_grad_ci(reason='jetson do n0t neeed this !')\n"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 print("### add @skip_check_grad_ci ####")
 
             # delete test_grad_output
@@ -158,6 +188,7 @@ def set_diff_value(file, atol="1e-5", inplace_atol="1e-7"):
     """
     :param file: refer to op_test.py
     :param atol: refer to op_test.py
+<<<<<<< HEAD
     :param inplace_atol:
     :return:
     """
@@ -169,6 +200,13 @@ def set_diff_value(file, atol="1e-5", inplace_atol="1e-7"):
         + ",/g\' "
         + file
     )
+=======
+    :param inplace_atol: 
+    :return:
+    """
+    os.system("sed -i 's/self.check_output(/self\.check_output\(atol=" + atol +
+              ",inplace_atol=" + inplace_atol + ",/g\' " + file)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def change_op_file(start=0, end=0, op_list_file='list_op.txt', path='.'):
@@ -191,12 +229,20 @@ def change_op_file(start=0, end=0, op_list_file='list_op.txt', path='.'):
         file_with_path = file_path[0]
         # pattern
         pattern_import = ".*import OpTest.*"
+<<<<<<< HEAD
         pattern_skip = r"^class .*\(OpTest\):$"
         pattern_return = r"def test.*grad.*\):$"
         # change file
         add_import_skip_return(
             file_with_path, pattern_import, pattern_skip, pattern_return
         )
+=======
+        pattern_skip = "^class .*\(OpTest\):$"
+        pattern_return = "def test.*grad.*\):$"
+        # change file
+        add_import_skip_return(file_with_path, pattern_import, pattern_skip,
+                               pattern_return)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # op_diff
         if item in op_diff_list:
             set_diff_value(file_with_path)
@@ -253,7 +299,11 @@ def run_file_change(op_list_file):
     :param op_list_file:
     :return:
     """
+<<<<<<< HEAD
     if os.path.exists("flag_change_file.txt"):
+=======
+    if (os.path.exists("flag_change_file.txt")):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print(
             "-----maybe op_file has changed, so don't need to change again------"
         )
@@ -282,12 +332,18 @@ def run_test_second():
         "sed -n '/(Failed)$/p'  test_op_log.txt | awk '{print $3}' >& rerun_op.txt"
     )
     rerun_list = get_op_list('rerun_op.txt')
+<<<<<<< HEAD
     if len(rerun_list):
         print(
             "-------there are "
             + str(len(rerun_list))
             + " op(s) need to rerun!!!-------"
         )
+=======
+    if (len(rerun_list)):
+        print("-------there are " + str(len(rerun_list)) +
+              " op(s) need to rerun!!!-------")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for failed_op in rerun_list:
             os.system("ctest -R \"(" + failed_op + ")\" ")
     else:

@@ -12,20 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
+=======
+from __future__ import print_function
+
+import unittest
+
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 
 
 class TestIncrement(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.layers.fill_constant(
                 shape=[1], dtype='int64', value=5
             )
+=======
+
+    def test_api(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.layers.fill_constant(shape=[1],
+                                               dtype='int64',
+                                               value=5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.array([8], dtype='int64')
 
             output = paddle.tensor.math.increment(input, value=3)
@@ -41,6 +58,10 @@ class TestIncrement(unittest.TestCase):
 
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_increment(self):
         if fluid.core.is_compiled_with_cuda():
             paddle.enable_static()
@@ -49,7 +70,11 @@ class TestInplaceApiWithDataTransform(unittest.TestCase):
             with paddle.fluid.device_guard("cpu"):
                 x = paddle.increment(x)
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
+<<<<<<< HEAD
             (a,) = exe.run(paddle.static.default_main_program(), fetch_list=[x])
+=======
+            a, = exe.run(paddle.static.default_main_program(), fetch_list=[x])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.disable_static()
             self.assertEqual(a[0], 1)
 

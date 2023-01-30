@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from test_dist_base import TestDistBase
 
 
 class TestDistMnist2x2Lars(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False

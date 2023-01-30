@@ -48,9 +48,13 @@ It operates ``%s`` on Tensor ``X`` and ``Y`` .
         %s
 
 .. note::
+<<<<<<< HEAD
     ``paddle.%s`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
 
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
+=======
+    ``paddle.%s`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC",
                                comment.type,
                                comment.equation,
@@ -97,12 +101,20 @@ class UnaryBitwiseOp : public framework::OperatorWithKernel {
     context->ShareLoD("X", "Out");
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // BitwiseOp kernel's device type is decided by input tensor place
     kt.set_backend(
         phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    // BitwiseOp kernel's device type is decided by input tensor place
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return kt;
   }
 };
@@ -139,12 +151,20 @@ class BinaryBitwiseOp : public framework::OperatorWithKernel {
     context->ShareLoD("X", "Out");
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // BitwiseOp kernel's device type is decided by input tensor place
     kt.set_backend(
         phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    // BitwiseOp kernel's device type is decided by input tensor place
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return kt;
   }
 };

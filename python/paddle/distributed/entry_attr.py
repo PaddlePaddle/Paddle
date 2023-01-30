@@ -12,10 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 __all__ = []
 
 
 class EntryAttr:
+=======
+from __future__ import print_function
+
+__all__ = []
+
+
+class EntryAttr(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Entry Config for paddle.static.nn.sparse_embedding with Parameter Server.
 
@@ -80,7 +89,11 @@ class ProbabilityEntry(EntryAttr):
     """
 
     def __init__(self, probability):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(ProbabilityEntry, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if not isinstance(probability, float):
             raise ValueError("probability must be a float in (0,1)")
@@ -120,6 +133,7 @@ class CountFilterEntry(EntryAttr):
     """
 
     def __init__(self, count_filter):
+<<<<<<< HEAD
         super().__init__()
 
         if not isinstance(count_filter, int):
@@ -131,6 +145,17 @@ class CountFilterEntry(EntryAttr):
             raise ValueError(
                 "count_filter must be a valid integer greater or equal than 0"
             )
+=======
+        super(CountFilterEntry, self).__init__()
+
+        if not isinstance(count_filter, int):
+            raise ValueError(
+                "count_filter must be a valid integer greater than 0")
+
+        if count_filter < 0:
+            raise ValueError(
+                "count_filter must be a valid integer greater or equal than 0")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._name = "count_filter_entry"
         self._count_filter = count_filter
@@ -168,7 +193,11 @@ class ShowClickEntry(EntryAttr):
     """
 
     def __init__(self, show_name, click_name):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(ShowClickEntry, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if not isinstance(show_name, str) or not isinstance(click_name, str):
             raise ValueError("show_name click_name must be a str")

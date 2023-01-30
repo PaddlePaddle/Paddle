@@ -47,8 +47,13 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
+<<<<<<< HEAD
                             const paddle::optional<DenseTensor>& ddx,
                             const paddle::optional<DenseTensor>& ddy,
+=======
+                            const DenseTensor& ddx,
+                            const DenseTensor& ddy,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             const paddle::optional<DenseTensor>& d_dx,
                             const paddle::optional<DenseTensor>& d_dy,
                             const paddle::optional<DenseTensor>& d_ddout,

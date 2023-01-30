@@ -19,7 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/collective/process_group.h"
+=======
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
@@ -46,7 +50,11 @@ framework::DDim recv_shape_info(const platform::Place &place,
       platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
 
   // step1: recv the shape size
+<<<<<<< HEAD
   phi::DenseTensor gpu_shape_size_tensor(shape_dytpe);
+=======
+  framework::Tensor gpu_shape_size_tensor(shape_dytpe);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (!group) {
     gpu_shape_size_tensor.Resize({1});
     gpu_shape_size_tensor.mutable_data(place, shape_dytpe);
@@ -56,11 +64,19 @@ framework::DDim recv_shape_info(const platform::Place &place,
   }
 
   // copy the shape size tensor to cpu
+<<<<<<< HEAD
   phi::DenseTensor *cpu_shape_size_tensor = new phi::DenseTensor(shape_dytpe);
   cpu_shape_size_tensor->Resize({1});
   cpu_shape_size_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
   if (group) {
     std::vector<phi::DenseTensor> shape_size_tensor;
+=======
+  framework::Tensor *cpu_shape_size_tensor = new framework::Tensor(shape_dytpe);
+  cpu_shape_size_tensor->Resize({1});
+  cpu_shape_size_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
+  if (group) {
+    std::vector<framework::Tensor> shape_size_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     shape_size_tensor.emplace_back(*cpu_shape_size_tensor);
     auto shape_size_task = group->Recv(shape_size_tensor, peer);
   } else {
@@ -72,7 +88,11 @@ framework::DDim recv_shape_info(const platform::Place &place,
   VLOG(3) << "recv the shape size: " << shape_size << " from peer";
 
   // step2: recv the shape
+<<<<<<< HEAD
   phi::DenseTensor gpu_shape_tensor(shape_dytpe);
+=======
+  framework::Tensor gpu_shape_tensor(shape_dytpe);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (!group) {
     gpu_shape_tensor.Resize({shape_size});
     gpu_shape_tensor.mutable_data(place, shape_dytpe);
@@ -82,11 +102,19 @@ framework::DDim recv_shape_info(const platform::Place &place,
   }
 
   // copy the shape tensor to cpu
+<<<<<<< HEAD
   phi::DenseTensor *cpu_shape_tensor = new phi::DenseTensor(shape_dytpe);
   cpu_shape_tensor->Resize({shape_size});
   cpu_shape_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
   if (group) {
     std::vector<phi::DenseTensor> shape_tensor;
+=======
+  framework::Tensor *cpu_shape_tensor = new framework::Tensor(shape_dytpe);
+  cpu_shape_tensor->Resize({shape_size});
+  cpu_shape_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
+  if (group) {
+    std::vector<framework::Tensor> shape_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     shape_tensor.emplace_back(*cpu_shape_tensor);
     auto shape_task = group->Recv(shape_tensor, peer);
   } else {
@@ -135,7 +163,11 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       distributed::ProcessGroup *pg = map->get(rid);
       std::vector<phi::DenseTensor> out_tensor;
       auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
+<<<<<<< HEAD
       auto out = ctx.Output<phi::DenseTensor>("Out");
+=======
+      auto out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto out_dims = out->dims();
 
       if (dynamic_shape) {
@@ -157,8 +189,13 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     }
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     if (ctx.Attr<bool>("use_calc_stream")) {
+<<<<<<< HEAD
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
+=======
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       stream = comm->stream();
     }
@@ -198,7 +235,11 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     }
 
     auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
+<<<<<<< HEAD
     auto out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto out_dims = out->dims();
     auto numel = out->numel();
 
@@ -236,7 +277,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(recv_v2,
                         ops::RecvOpV2CUDAKernel<float>,
                         ops::RecvOpV2CUDAKernel<double>,
+<<<<<<< HEAD
 #if NCCL_VERSION_CODE >= 21000
+=======
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         ops::RecvOpV2CUDAKernel<plat::bfloat16>,
 #endif
                         ops::RecvOpV2CUDAKernel<int>,

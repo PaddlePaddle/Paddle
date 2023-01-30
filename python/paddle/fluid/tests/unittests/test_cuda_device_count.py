@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
 
 
 class TestDeviceCount(unittest.TestCase):
+=======
+import paddle
+import unittest
+
+
+class TestDeviceCount(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_device_count(self):
         s = paddle.device.cuda.device_count()
         self.assertIsNotNone(s)

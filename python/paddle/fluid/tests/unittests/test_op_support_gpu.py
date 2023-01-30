@@ -12,16 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid.core as core
 
 
 class TestOpSupportGPU(unittest.TestCase):
+<<<<<<< HEAD
     def test_case(self):
         self.assertEqual(
             core.is_compiled_with_cuda(), core.op_support_gpu("sum")
         )
+=======
+
+    def test_case(self):
+        self.assertEqual(core.is_compiled_with_cuda(),
+                         core.op_support_gpu("sum"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

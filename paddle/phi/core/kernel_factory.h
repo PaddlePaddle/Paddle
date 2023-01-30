@@ -14,25 +14,36 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include <map>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <ostream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/type_defs.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/utils/data_type.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
 namespace phi {
 
 using DataType = paddle::experimental::DataType;
+<<<<<<< HEAD
 
 struct OpCount {
   OpCount() {
@@ -46,6 +57,9 @@ struct OpCount {
   int fp32_called_;
   int other_called_;
 };
+=======
+using DataLayout = paddle::experimental::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 /**
  * [ Naming considerations ]
@@ -67,6 +81,7 @@ class KernelKey {
   KernelKey(Backend backend, DataLayout layout, DataType dtype)
       : backend_(backend), layout_(layout), dtype_(dtype) {}
 
+<<<<<<< HEAD
   explicit KernelKey(Place place)
       : backend_(TransToPhiBackend(place)),
         layout_(DataLayout::ALL_LAYOUT),
@@ -80,14 +95,19 @@ class KernelKey {
   explicit KernelKey(Place place, DataLayout layout, DataType dtype)
       : backend_(TransToPhiBackend(place)), layout_(layout), dtype_(dtype) {}
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   Backend backend() const { return backend_; }
   DataLayout layout() const { return layout_; }
   DataType dtype() const { return dtype_; }
 
+<<<<<<< HEAD
   void set_backend(const Backend& backend) { backend_ = backend; }
   void set_layout(const DataLayout& layout) { layout_ = layout; }
   void set_dtype(const DataType& dtype) { dtype_ = dtype; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   struct Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
     // no need to use 64 bits. If needed in the future, it can be expanded,
@@ -172,7 +192,11 @@ enum class AttributeType {
   INT_ARRAY,
   DATA_TYPE,
   DATA_LAYOUT,
+<<<<<<< HEAD
   PLACE
+=======
+  PLACE,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 struct AttributeArgDef {
@@ -305,7 +329,12 @@ class KernelFactory {
   bool HasCompatiblePhiKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
+<<<<<<< HEAD
                                         const KernelKey& kernel_key) const;
+=======
+                                        const KernelKey& kernel_key,
+                                        bool use_gpudnn = false) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;
@@ -318,19 +347,25 @@ class KernelFactory {
   const KernelArgsDef& GetFirstKernelArgsDef(
       const std::string& kernel_name) const;
 
+<<<<<<< HEAD
   void AddToLowPrecisionKernelList(
       const std::string& name,
       const paddle::experimental::DataType& kernel_key_type);
 
   std::map<const std::string, OpCount> GetLowPrecisionKernelList();
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   KernelFactory() = default;
 
   KernelNameMap kernels_;
+<<<<<<< HEAD
 
   // Get the low precision kernel list of current module.
   std::map<const std::string, OpCount> low_precision_kernels_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {

@@ -17,6 +17,10 @@ limitations under the License. */
 #include <complex>
 #include <mutex>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/complex.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 

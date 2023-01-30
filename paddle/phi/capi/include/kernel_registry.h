@@ -167,7 +167,10 @@ inline std::vector<phi::capi::DenseTensor> PD_MultiInputAt(
   for (size_t i = 0; i < list.size; ++i) {
     ret.emplace_back(data[i]);
   }
+<<<<<<< HEAD
   PD_DeletePointerList(list);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return ret;
 }
 
@@ -183,14 +186,21 @@ inline std::vector<phi::capi::DenseTensor> PD_MultiOutputAt(
   for (size_t i = 0; i < list.size; ++i) {
     ret.emplace_back(data[i]);
   }
+<<<<<<< HEAD
   PD_DeletePointerList(list);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return ret;
 }
 
 template <typename T>
 inline std::vector<T *> PD_GetPointerVector(std::vector<T> *vec) {
   std::vector<T *> ret;
+<<<<<<< HEAD
   for (auto &item : *vec) {
+=======
+  for (auto &item : vec) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ret.push_back(&item);
   }
   return ret;

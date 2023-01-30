@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # from paddle.fluid.tests.unittests.test_layer_norm_op import *
+<<<<<<< HEAD
 import unittest
 from functools import reduce
 from operator import mul
@@ -26,6 +27,19 @@ from paddle.fluid.tests.unittests.op_test import (
     OpTestTool,
     _set_use_system_allocator,
 )
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+
+from operator import mul
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle import enable_static
+from functools import reduce
+
+from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator, OpTestTool
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.random(123)
 
@@ -35,7 +49,11 @@ _set_use_system_allocator(True)
 def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
     x_shape = x.shape
     N = reduce(mul, x_shape[0:begin_norm_axis], 1)
+<<<<<<< HEAD
     D = reduce(mul, x_shape[begin_norm_axis : len(x_shape)], 1)
+=======
+    D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x.shape = [N, D]
     if scale.size == 0 and beta.size == 0:
         scale = np.ones([1, D])
@@ -46,21 +64,31 @@ def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
 
     mean = np.mean(x, axis=1)
     var = np.var(x, axis=1) + epsilon
+<<<<<<< HEAD
     output = (
         scale
         * np.divide((x - mean.reshape([N, 1])), (np.sqrt(var)).reshape([N, 1]))
         + beta
     )
+=======
+    output = scale * np.divide((x - mean.reshape([N, 1])),
+                               (np.sqrt(var)).reshape([N, 1])) + beta
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     x.shape, output.shape = x_shape, x_shape
     return output, mean, var
 
 
 class TestLayerNormMKLDNNOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.use_mkldnn = True
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             np.array(tensor), np_array, rtol=1e-05, atol=atol, err_msg=msg
         )
@@ -72,6 +100,23 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
         epsilon = 0.00001
         x_shape = shape
         D = reduce(mul, x_shape[begin_norm_axis : len(x_shape)], 1)
+=======
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=1e-05,
+                                   atol=atol,
+                                   err_msg=msg)
+
+    def check_forward(self,
+                      shape,
+                      begin_norm_axis,
+                      with_scale_bias=True,
+                      with_is_test=False):
+        # attr
+        epsilon = 0.00001
+        x_shape = shape
+        D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         scale_shape = [D]
 
         np.random.seed(123)
@@ -85,9 +130,14 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
             bias = np.array([])
 
         # reference forward & backward
+<<<<<<< HEAD
         y, mean, variance = _reference_layer_norm_naive(
             x, scale, bias, epsilon, begin_norm_axis
         )
+=======
+        y, mean, variance = _reference_layer_norm_naive(x, scale, bias, epsilon,
+                                                        begin_norm_axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         var_dict = locals()
         var_names = ['x', 'mean', 'variance', 'y']
@@ -101,9 +151,15 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
             block = program.global_block()
 
             for name in ground_truth:
+<<<<<<< HEAD
                 block.create_var(
                     name=name, dtype='float32', shape=ground_truth[name].shape
                 )
+=======
+                block.create_var(name=name,
+                                 dtype='float32',
+                                 shape=ground_truth[name].shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             inputs = {"X": block.var('x')}
             if with_scale_bias:
@@ -122,9 +178,14 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
                     "epsilon": epsilon,
                     "begin_norm_axis": begin_norm_axis,
                     "use_mkldnn": True,
+<<<<<<< HEAD
                     "is_test": with_is_test,
                 },
             )
+=======
+                    "is_test": with_is_test
+                })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = fluid.Executor(core.CPUPlace())
 
@@ -133,11 +194,18 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
                 input_list.append('scale')
                 input_list.append('bias')
 
+<<<<<<< HEAD
             out = exe.run(
                 program,
                 feed={name: var_dict[name] for name in input_list},
                 fetch_list=['y', 'mean', 'variance'],
             )
+=======
+            out = exe.run(program,
+                          feed={name: var_dict[name]
+                                for name in input_list},
+                          fetch_list=['y', 'mean', 'variance'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.__assert_close(y, out[0], "y")
             if not with_is_test:
                 self.__assert_close(mean, out[1], "mean")
@@ -151,6 +219,7 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
         self.check_forward(shape=[2, 3, 4, 5], begin_norm_axis=3)
 
     def test_check_forward_without_scale_and_bias(self):
+<<<<<<< HEAD
         self.check_forward(
             shape=[2, 3, 4, 5], begin_norm_axis=3, with_scale_bias=False
         )
@@ -159,6 +228,16 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
         self.check_forward(
             shape=[2, 3, 4, 5], begin_norm_axis=3, with_is_test=True
         )
+=======
+        self.check_forward(shape=[2, 3, 4, 5],
+                           begin_norm_axis=3,
+                           with_scale_bias=False)
+
+    def test_check_forward_with_is_test(self):
+        self.check_forward(shape=[2, 3, 4, 5],
+                           begin_norm_axis=3,
+                           with_is_test=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

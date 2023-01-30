@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import sys
+=======
+import sys
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == "__main__":
     assert len(sys.argv) == 3
@@ -23,6 +28,13 @@ if __name__ == "__main__":
     empty_files = [os.path.join(pybind_dir, "eager_legacy_op_function.cc")]
     empty_files.append(os.path.join(pybind_dir, "eager_op_function.cc"))
 
+<<<<<<< HEAD
+=======
+    for i in range(split_count):
+        empty_files.append(
+            os.path.join(pybind_dir, "op_function" + str(i + 1) + ".cc"))
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for path in empty_files:
         if not os.path.exists(path):
             open(path, 'a').close()

@@ -17,16 +17,28 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename DeviceContext, typename T>
 class ArgMinNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     int64_t axis = ctx.Attr<int64_t>("axis");
     auto dtype = ctx.Attr<int>("dtype");
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    int64_t axis = ctx.Attr<int64_t>("axis");
+    auto dtype = ctx.Attr<int>("dtype");
+
+    auto* out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<int32_t>(ctx.GetPlace());
 
     NpuOpRunner runner;

@@ -315,9 +315,15 @@ TEST(float16, conversion_on_gpu) {
 }
 
 TEST(float16, lod_tensor_on_gpu) {
+<<<<<<< HEAD
   phi::DenseTensor src_tensor;
   phi::DenseTensor gpu_tensor;
   phi::DenseTensor dst_tensor;
+=======
+  framework::LoDTensor src_tensor;
+  framework::LoDTensor gpu_tensor;
+  framework::LoDTensor dst_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   float16 *src_ptr =
       src_tensor.mutable_data<float16>(phi::make_ddim({2, 2}), CPUPlace());

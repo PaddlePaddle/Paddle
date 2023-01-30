@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -22,6 +23,17 @@ from paddle.fluid.tests.unittests.c_embedding_op_base import (
     TestCEmbeddingOpBase,
     TestCEmbeddingOpFP32,
 )
+=======
+from __future__ import print_function
+
+import numpy as np
+import unittest
+import sys
+
+sys.path.append("..")
+import paddle
+from paddle.fluid.tests.unittests.c_embedding_op_base import TestCEmbeddingCPU, TestCEmbeddingOpBase, TestCEmbeddingOpFP32
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 

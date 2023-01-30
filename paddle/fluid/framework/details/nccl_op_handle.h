@@ -66,6 +66,7 @@ class NCCLOpHandleBase : public OpHandleBase {
 #endif
     }
   }
+<<<<<<< HEAD
 
   const platform::NCCLCommunicator* GetNcclContext() const {
     return nccl_ctxs_;
@@ -92,6 +93,8 @@ class NCCLOpHandleBase : public OpHandleBase {
     return comm;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void SetRunEnv(int run_order, bool use_hierarchical_allreduce) {
     PADDLE_ENFORCE_GE(
         run_order,

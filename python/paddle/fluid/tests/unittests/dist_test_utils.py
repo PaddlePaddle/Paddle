@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import errno
 import os
+=======
+import os, errno
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def silentremove(filename):

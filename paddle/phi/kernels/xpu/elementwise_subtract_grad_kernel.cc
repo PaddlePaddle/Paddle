@@ -28,6 +28,7 @@ void SubtractGradKernel(const Context& dev_ctx,
                         DenseTensor* dx,
                         DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+<<<<<<< HEAD
 
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -44,6 +45,17 @@ void SubtractGradKernel(const Context& dev_ctx,
 
   phi::XPUElementwiseGrad<T, XPUType>(
       dev_ctx, x, y, dout, axis, dx, dy, f, false);
+=======
+  phi::XPUElementwiseGrad<T, XPUType>(dev_ctx,
+                                      x,
+                                      y,
+                                      dout,
+                                      axis,
+                                      dx,
+                                      dy,
+                                      xpu::broadcast_sub_grad<XPUType>,
+                                      false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

@@ -29,13 +29,19 @@ list(
   ${CUDNN_ROOT}
   ${CUDNN_ROOT}/lib64
   ${CUDNN_ROOT}/lib
+<<<<<<< HEAD
   ${CUDNN_ROOT}/lib/x64
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ${CUDNN_ROOT}/lib/${TARGET_ARCH}-linux-gnu
   ${CUDNN_ROOT}/local/cuda-${CUDA_VERSION}/targets/${TARGET_ARCH}-linux/lib/
   $ENV{CUDNN_ROOT}
   $ENV{CUDNN_ROOT}/lib64
   $ENV{CUDNN_ROOT}/lib
+<<<<<<< HEAD
   $ENV{CUDNN_ROOT}/lib/x64
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /usr/lib
   ${CUDA_TOOLKIT_ROOT_DIR}
   ${CUDA_TOOLKIT_ROOT_DIR}/lib/x64)

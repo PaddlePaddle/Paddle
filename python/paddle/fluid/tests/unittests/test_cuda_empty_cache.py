@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
 
 
 class TestEmptyCache(unittest.TestCase):
+=======
+import paddle
+import unittest
+
+
+class TestEmptyCache(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_empty_cache(self):
         x = paddle.randn((2, 10, 12)).astype('float32')
         del x

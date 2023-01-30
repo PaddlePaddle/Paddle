@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -23,6 +24,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+=======
+namespace paddle {
+namespace operators {
+
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class SaveCombineOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -30,6 +38,7 @@ class SaveCombineOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
@@ -43,6 +52,21 @@ class SaveCombineOp : public framework::OperatorWithKernel {
     return phi::KernelKey(tensor.place(),
                           phi::DataLayout::ALL_LAYOUT,
                           expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
+  }
+  // TODO(lujun): The override here is just to bypass transform
+  //  in operator impl, which is not elegant enough.
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -56,7 +80,11 @@ class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SaveCombine operator
 
+<<<<<<< HEAD
 This operator will serialize and write a list of input phi::DenseTensor variables
+=======
+This operator will serialize and write a list of input LoDTensor variables
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 to a file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
@@ -72,7 +100,11 @@ to a file on disk.
     AddAttr<std::string>(
         "file_path",
         "(string)"
+<<<<<<< HEAD
         "The \"file_path\" where the phi::DenseTensor variables will be saved.")
+=======
+        "The \"file_path\" where the LoDTensor variables will be saved.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .AddCustomChecker(
             [](const std::string& path) { return !path.empty(); });
     AddAttr<bool>("save_to_memory",
@@ -104,6 +136,7 @@ REGISTER_OPERATOR(save_combine,
                   ops::SaveCombineOpProtoMaker,
                   ops::SaveCombineOpInferVarType);
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(save_combine_tensor,
                    CPU,
                    ALL_LAYOUT,
@@ -123,3 +156,12 @@ PD_REGISTER_KERNEL(save_combine_vocab,
                    float,
                    double,
                    phi::dtype::bfloat16) {}
+=======
+REGISTER_OP_CPU_KERNEL(
+    save_combine,
+    ops::SaveCombineOpKernel<phi::CPUContext, float>,
+    ops::SaveCombineOpKernel<phi::CPUContext, double>,
+    ops::SaveCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int64_t>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

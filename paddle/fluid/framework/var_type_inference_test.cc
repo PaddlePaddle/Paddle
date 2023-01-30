@@ -63,7 +63,11 @@ class SumOpVarTypeInference : public VarTypeInference {
 }  // namespace framework
 }  // namespace paddle
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(fake_sum,
+=======
+REGISTER_OPERATOR(sum,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   paddle::framework::NOP,
                   paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
@@ -152,7 +156,11 @@ class TestStaticGraphVarTypeInference : public StaticGraphVarTypeInference {
 TEST(InferVarType, sum_op) {
   ProgramDesc prog;
   auto* op = prog.MutableBlock(0)->AppendOp();
+<<<<<<< HEAD
   op->SetType("fake_sum");
+=======
+  op->SetType("sum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
 

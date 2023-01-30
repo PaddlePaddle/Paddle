@@ -25,6 +25,10 @@ paddle.enable_static()
 
 
 class TestSizeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -47,42 +51,70 @@ class TestSizeOp(OpTest):
 
 
 class TestSizeOp1(TestSizeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.shape = [2]
         self.dtype = np.float64
 
 
 class TestSizeOp2(TestSizeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.shape = [2, 3]
         self.dtype = np.float32
 
 
 class TestSizeOp3(TestSizeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.shape = [2, 3, 100]
         self.dtype = np.float16
 
 
 class TestSizeOp4(TestSizeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.shape = [2**10]
         self.dtype = np.bool_
 
 
 class TestSizeOp5(TestSizeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.shape = [7, 8, 9, 10]
         self.dtype = np.int64
 
 
 class TestSizeOp6(TestSizeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.shape = []
         self.dtype = np.int64
 
 
 class TestSizeAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -100,6 +132,7 @@ class TestSizeAPI(unittest.TestCase):
             x_2 = paddle.fluid.data(shape=shape2, dtype='int32', name='x_2')
             input_1 = np.random.random(shape1).astype("int32")
             input_2 = np.random.random(shape2).astype("int32")
+<<<<<<< HEAD
             out_1 = paddle.numel(x_1)
             out_2 = paddle.numel(x_2)
             exe = paddle.static.Executor(place=self.place)
@@ -116,6 +149,22 @@ class TestSizeAPI(unittest.TestCase):
             assert np.array_equal(
                 res_2, np.array([np.size(input_2)]).astype("int64")
             )
+=======
+            out_1 = paddle.fluid.layers.size(x_1)
+            out_2 = paddle.fluid.layers.size(x_2)
+            exe = paddle.static.Executor(place=self.place)
+            res_1, res_2 = exe.run(feed={
+                "x_1": input_1,
+                "x_2": input_2,
+            },
+                                   fetch_list=[out_1, out_2])
+            assert (np.array_equal(res_1,
+                                   np.array([np.size(input_1)
+                                             ]).astype("int64")))
+            assert (np.array_equal(res_2,
+                                   np.array([np.size(input_2)
+                                             ]).astype("int64")))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_size_imperative(self):
         paddle.disable_static(self.place)
@@ -123,10 +172,17 @@ class TestSizeAPI(unittest.TestCase):
         input_2 = np.random.random([1, 4, 5]).astype("int32")
         x_1 = paddle.to_tensor(input_1)
         x_2 = paddle.to_tensor(input_2)
+<<<<<<< HEAD
         out_1 = paddle.numel(x_1)
         out_2 = paddle.numel(x_2)
         assert np.array_equal(out_1.numpy().item(0), np.size(input_1))
         assert np.array_equal(out_2.numpy().item(0), np.size(input_2))
+=======
+        out_1 = paddle.fluid.layers.size(x_1)
+        out_2 = paddle.fluid.layers.size(x_2)
+        assert (np.array_equal(out_1.numpy().item(0), np.size(input_1)))
+        assert (np.array_equal(out_2.numpy().item(0), np.size(input_2)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
 
     def test_error(self):
@@ -137,7 +193,11 @@ class TestSizeAPI(unittest.TestCase):
             def test_x_type():
                 shape = [1, 4, 5]
                 input_1 = np.random.random(shape).astype("int32")
+<<<<<<< HEAD
                 out_1 = paddle.numel(input_1)
+=======
+                out_1 = paddle.fluid.layers.size(input_1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_x_type)
 

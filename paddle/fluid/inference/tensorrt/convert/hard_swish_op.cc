@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/inference/tensorrt/plugin/hard_swish_op_plugin.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -40,6 +44,10 @@ class HardSwishOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
+<<<<<<< HEAD
+=======
+    int input_num = op_desc.Input("X").size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const float threshold =
@@ -67,6 +75,7 @@ class HardSwishOpConverter : public OpConverter {
                                nvinfer1::ElementWiseOperation::kPROD);
       layer = eltwise_layer;
     } else {
+<<<<<<< HEAD
       int32_t rank = input->getDimensions().nbDims;
       nvinfer1::Dims constant_shape;
       constant_shape.nbDims = rank;
@@ -93,6 +102,23 @@ class HardSwishOpConverter : public OpConverter {
                                    *pre_prod_with_input,
                                    *scale_data,
                                    nvinfer1::ElementWiseOperation::kDIV);
+=======
+      if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+        plugin::HardSwishPluginDynamic* plugin =
+            new plugin::HardSwishPluginDynamic(threshold, scale, offset);
+        layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
+#else
+        PADDLE_THROW(platform::errors::Fatal(
+            "You are running the TRT Dynamic Shape mode, need to confirm that "
+            "your TRT version is no less than 6.0"));
+#endif
+      } else {
+        plugin::HardSwishPlugin* plugin =
+            new plugin::HardSwishPlugin(threshold, scale, offset);
+        layer = engine_->AddPlugin(&input, input_num, plugin);
+      }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "hard_swish", {output_name}, test_mode);

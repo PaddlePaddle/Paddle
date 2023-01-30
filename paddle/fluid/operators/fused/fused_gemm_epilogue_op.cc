@@ -20,6 +20,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
  public:
@@ -144,10 +148,19 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     }
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -160,32 +173,55 @@ class FusedGemmEpilogueOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddOutput("Out", "The output tensor Out of Out = Act((X * Y) + Bias).");
     AddOutput("ReserveSpace",
+<<<<<<< HEAD
               R"DOC(Reserve GPU space to place
         auxiliary data pointer. It is used to pass auxiliary data pointer
         for fused_gemm_epilogue op. If not given (empty string), the
+=======
+              R"DOC(Reserve GPU space to place 
+        auxiliary data pointer. It is used to pass auxiliary data pointer 
+        for fused_gemm_epilogue op. If not given (empty string), the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auxiliary mode would not be enable.)DOC")
         .AsDispensable()
         .AsExtra();
 
     AddAttr<bool>(
         "trans_x",
+<<<<<<< HEAD
         R"DOC((bool, default false), Whether to transpose input tensor X
     or not. The input tensor X coulbe be more than two dimension. When
     set trans_x=true, it would fully reverse X. For instant: X with shpae
+=======
+        R"DOC((bool, default false), Whether to transpose input tensor X 
+    or not. The input tensor X coulbe be more than two dimension. When 
+    set trans_x=true, it would fully reverse X. For instant: X with shpae 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     [d0, d1, d2, d3] -> [d3, d2, d1, d0].)DOC")
         .SetDefault(false);
     AddAttr<bool>(
         "trans_y",
+<<<<<<< HEAD
         R"DOC((bool, default false), Whether to transpose input tensor Y
     or not. The input tensor Y should be two dimension. When
     set trans_y=true, it would transpose Y. For instant: Y with shpae
+=======
+        R"DOC((bool, default false), Whether to transpose input tensor Y 
+    or not. The input tensor Y should be two dimension. When 
+    set trans_y=true, it would transpose Y. For instant: Y with shpae 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     [d0, d1] -> [d1, d0].)DOC")
         .SetDefault(false);
 
     AddAttr<std::string>(
         "activation",
+<<<<<<< HEAD
         R"DOC((string, default none), The activation function. It could be
     one of {none, relu, gelu}. When none is given, Act would be null
+=======
+        R"DOC((string, default none), The activation function. It could be 
+    one of {none, relu, gelu}. When none is given, Act would be null 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     operations)DOC")
         .SetDefault("none");
 
@@ -316,10 +352,19 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     }
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -331,9 +376,15 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input tensor X of Out = (Act(X) * Y) + bias");
     AddInput("Y", "The input tensor Y of Out = (Act(X) * Y) + bias");
     AddInput("ReserveSpace",
+<<<<<<< HEAD
              R"DOC(A GPU space to fetch
         auxiliary data pointer. It is used to pass auxiliary data pointer
         for fused_gemm_epilogue_grad op. If not given (empty string), the
+=======
+             R"DOC(A GPU space to fetch 
+        auxiliary data pointer. It is used to pass auxiliary data pointer 
+        for fused_gemm_epilogue_grad op. If not given (empty string), the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auxiliary mode would not be enable.)DOC")
         .AsDispensable();
 
@@ -346,23 +397,40 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddAttr<bool>(
         "trans_x",
+<<<<<<< HEAD
         R"DOC((bool, default false), Whether to transpose input tensor X
     or not. The input tensor X coulbe be more than two dimension. When
     set trans_x=true, it would fully reverse X. For instant: X with shpae
+=======
+        R"DOC((bool, default false), Whether to transpose input tensor X 
+    or not. The input tensor X coulbe be more than two dimension. When 
+    set trans_x=true, it would fully reverse X. For instant: X with shpae 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     [d0, d1, d2, d3] -> [d3, d2, d1, d0].)DOC")
         .SetDefault(false);
     AddAttr<bool>(
         "trans_y",
+<<<<<<< HEAD
         R"DOC((bool, default false), Whether to transpose input tensor Y
     or not. The input tensor Y should be two dimension. When
     set trans_y=true, it would transpose Y. For instant: Y with shpae
+=======
+        R"DOC((bool, default false), Whether to transpose input tensor Y 
+    or not. The input tensor Y should be two dimension. When 
+    set trans_y=true, it would transpose Y. For instant: Y with shpae 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     [d0, d1] -> [d1, d0].)DOC")
         .SetDefault(false);
 
     AddAttr<std::string>(
         "activation_grad",
+<<<<<<< HEAD
         R"DOC((string, default none), The backward activation function. It could be
     one of {none, relu_grad, gelu_grad}. When none is given, The backward Act would
+=======
+        R"DOC((string, default none), The backward activation function. It could be 
+    one of {none, relu_grad, gelu_grad}. When none is given, The backward Act would 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     be null operations)DOC")
         .SetDefault("none");
 

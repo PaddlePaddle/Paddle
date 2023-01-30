@@ -12,18 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
 from test_dist_base import TestDistBase
 
 import paddle
+=======
+import unittest
+from test_dist_base import TestDistBase
+import paddle
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 flag_name = os.path.splitext(__file__)[0]
 
 
 class TestFleetMetaOptimizerAllReduceFusePrecision(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -35,14 +46,21 @@ class TestFleetMetaOptimizerAllReduceFusePrecision(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_fleet_raw_program_optimizer_fuse_allreduce.py",
                 delta=1e-5,
                 check_error_log=True,
+<<<<<<< HEAD
                 log_name=flag_name,
             )
+=======
+                log_name=flag_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

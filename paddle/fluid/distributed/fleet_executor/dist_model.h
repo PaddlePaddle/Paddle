@@ -83,10 +83,18 @@ class DistModel {
   bool FetchResults(std::vector<DistModelTensor>* output_data,
                     framework::Scope* scope);
   template <typename T>
+<<<<<<< HEAD
   bool FetchResult(const phi::DenseTensor& fetch, DistModelTensor* output_data);
 
   std::string carrier_id_;
   std::vector<phi::DenseTensor> feed_tensors_;
+=======
+  bool FetchResult(const framework::LoDTensor& fetch,
+                   DistModelTensor* output_data);
+
+  std::string carrier_id_;
+  std::vector<framework::LoDTensor> feed_tensors_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<framework::OpDesc*> feeds_;
   std::map<std::string, int64_t> feed_names_;
   std::map<int64_t, std::string> idx_to_feeds_;

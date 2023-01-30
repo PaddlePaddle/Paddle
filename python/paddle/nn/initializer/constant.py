@@ -32,6 +32,7 @@ class Constant(ConstantInitializer):
 
             data = paddle.rand([30, 10, 2], dtype='float32')
             linear = nn.Linear(2,
+<<<<<<< HEAD
                                 4,
                                 weight_attr=nn.initializer.Constant(value=2.0))
             res = linear(data)
@@ -39,10 +40,21 @@ class Constant(ConstantInitializer):
             # Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[2., 2., 2., 2.],
             #         [2., 2., 2., 2.]])
+=======
+                               4,
+                               weight_attr=nn.initializer.Constant(value=2.0))
+            res = linear(data)
+            print(linear.weight.numpy())
+            #result is [[2. 2. 2. 2.],[2. 2. 2. 2.]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
 
     def __init__(self, value=0.0):
         if value is None:
             raise ValueError("value must not be none.")
+<<<<<<< HEAD
         super().__init__(value=value, force_cpu=False)
+=======
+        super(Constant, self).__init__(value=value, force_cpu=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -25,6 +30,10 @@ paddle.enable_static()
 
 
 class BaseTestCase(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -50,6 +59,10 @@ class BaseTestCase(OpTest):
 
 # test argmin, dtype: float16
 class TestArgMinFloat16Case1(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -58,6 +71,10 @@ class TestArgMinFloat16Case1(BaseTestCase):
 
 
 class TestArgMinFloat16Case2(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -66,6 +83,10 @@ class TestArgMinFloat16Case2(BaseTestCase):
 
 
 class TestArgMinFloat16Case3(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -74,6 +95,10 @@ class TestArgMinFloat16Case3(BaseTestCase):
 
 
 class TestArgMinFloat16Case4(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -82,6 +107,10 @@ class TestArgMinFloat16Case4(BaseTestCase):
 
 
 class TestArgMinFloat16Case5(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -90,6 +119,10 @@ class TestArgMinFloat16Case5(BaseTestCase):
 
 
 class TestArgMinFloat16Case6(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -98,6 +131,10 @@ class TestArgMinFloat16Case6(BaseTestCase):
 
 
 class TestArgMinFloat16Case7(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -106,31 +143,56 @@ class TestArgMinFloat16Case7(BaseTestCase):
 
 
 class TestArgMinFloat16Case8(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (1,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dtype = 'float16'
         self.axis = 0
 
 
 class TestArgMinFloat16Case9(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (2,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (2, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dtype = 'float16'
         self.axis = 0
 
 
 class TestArgMinFloat16Case10(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (3, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dtype = 'float16'
         self.axis = 0
 
 
 # test argmin, dtype: float32
 class TestArgMinFloat32Case1(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -139,6 +201,10 @@ class TestArgMinFloat32Case1(BaseTestCase):
 
 
 class TestArgMinFloat32Case2(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -147,6 +213,10 @@ class TestArgMinFloat32Case2(BaseTestCase):
 
 
 class TestArgMinFloat32Case3(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -155,6 +225,10 @@ class TestArgMinFloat32Case3(BaseTestCase):
 
 
 class TestArgMinFloat32Case4(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -163,6 +237,10 @@ class TestArgMinFloat32Case4(BaseTestCase):
 
 
 class TestArgMinFloat32Case5(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -171,6 +249,10 @@ class TestArgMinFloat32Case5(BaseTestCase):
 
 
 class TestArgMinFloat32Case6(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -179,6 +261,10 @@ class TestArgMinFloat32Case6(BaseTestCase):
 
 
 class TestArgMinFloat32Case7(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -187,30 +273,55 @@ class TestArgMinFloat32Case7(BaseTestCase):
 
 
 class TestArgMinFloat32Case8(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (1,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dtype = 'float32'
         self.axis = 0
 
 
 class TestArgMinFloat32Case9(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (2,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (2, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dtype = 'float32'
         self.axis = 0
 
 
 class TestArgMinFloat32Case10(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (3, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dtype = 'float32'
         self.axis = 0
 
 
 class TestArgMinAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
@@ -222,6 +333,10 @@ class TestArgMinAPI(unittest.TestCase):
         self.place = [paddle.NPUPlace(0)]
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2021)
@@ -229,9 +344,15 @@ class TestArgMinAPI(unittest.TestCase):
             tensor_input = paddle.to_tensor(numpy_input)
             numpy_output = np.argmin(numpy_input, axis=self.axis)
             paddle_output = paddle.argmin(tensor_input, axis=self.axis)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )
+=======
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.enable_static()
 
         for place in self.place:
@@ -239,6 +360,10 @@ class TestArgMinAPI(unittest.TestCase):
 
 
 class TestArgMaxAPI_2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
@@ -251,11 +376,16 @@ class TestArgMaxAPI_2(unittest.TestCase):
         self.place = [paddle.NPUPlace(0)]
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2021)
             numpy_input = (np.random.random(self.dims)).astype(self.dtype)
             tensor_input = paddle.to_tensor(numpy_input)
+<<<<<<< HEAD
             numpy_output = np.argmin(numpy_input, axis=self.axis).reshape(
                 1, 4, 5
             )
@@ -265,6 +395,16 @@ class TestArgMaxAPI_2(unittest.TestCase):
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )
+=======
+            numpy_output = np.argmin(numpy_input,
+                                     axis=self.axis).reshape(1, 4, 5)
+            paddle_output = paddle.argmin(tensor_input,
+                                          axis=self.axis,
+                                          keepdim=self.keep_dims)
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 

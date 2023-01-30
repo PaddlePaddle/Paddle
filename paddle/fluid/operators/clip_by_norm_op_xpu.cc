@@ -27,12 +27,21 @@ class XPUClipByNormKernel : public framework::OpKernel<T> {
     auto max_norm = context.Attr<T>("max_norm");
     auto in_var = context.InputVar("X");
 
+<<<<<<< HEAD
     phi::DenseTensor* output = nullptr;
     const phi::DenseTensor* input = nullptr;
     if (in_var->IsType<phi::DenseTensor>()) {
       input = context.Input<phi::DenseTensor>("X");
 
       output = context.Output<phi::DenseTensor>("Out");
+=======
+    Tensor* output = nullptr;
+    const Tensor* input = nullptr;
+    if (in_var->IsType<framework::LoDTensor>()) {
+      input = context.Input<Tensor>("X");
+
+      output = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       output->mutable_data<T>(context.GetPlace());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

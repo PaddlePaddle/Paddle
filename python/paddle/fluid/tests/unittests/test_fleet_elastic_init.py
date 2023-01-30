@@ -12,14 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
+=======
+from __future__ import print_function
+
+import os
+import time
+import unittest
+import argparse
+from warnings import catch_warnings
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 from paddle.distributed.fleet.launch_utils import DistributeMode
 
 
 class TestElasticInit(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
+=======
+
+    def setUp(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"

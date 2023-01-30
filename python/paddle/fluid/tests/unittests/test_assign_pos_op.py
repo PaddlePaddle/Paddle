@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,12 +21,31 @@ import op_test
 import paddle
 import paddle.fluid.core as core
 from paddle.distributed.models.moe import utils
+=======
+from __future__ import print_function
+
+import op_test
+import numpy as np
+import unittest
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.backward import append_backward
+from paddle.distributed.models.moe import utils
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def assign_pos(x, _cum_count):
     cum_count = np.copy(_cum_count)
     x = x.reshape(-1)
+<<<<<<< HEAD
     res = np.zeros((cum_count[-1],), dtype=np.int64)
+=======
+    res = np.zeros((cum_count[-1], ), dtype=np.int64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for i, idx in enumerate(x):
         p = cum_count[idx]
         cum_count[idx] -= 1
@@ -35,7 +55,11 @@ def assign_pos(x, _cum_count):
 
 
 def count(x, upper_num):
+<<<<<<< HEAD
     res = np.zeros((upper_num,)).astype(int)
+=======
+    res = np.zeros((upper_num, )).astype(int)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for i in x.reshape(-1):
         if i >= 0 and i < len(res):
             res[i] += 1
@@ -63,16 +87,27 @@ def assert_allclose(res, out, cum_count):
 
 
 def get_redefined_allclose(cum_count):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def redefined_allclose(x, y, *args, **kwargs):
         return assert_allclose(x, y, cum_count)
 
     return redefined_allclose
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestAssignPosOpInt64(op_test.OpTest):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestAssignPosOpInt64(op_test.OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(x, 16)
@@ -81,7 +116,11 @@ class TestAssignPosOpInt64(op_test.OpTest):
         self.inputs = {
             'X': x,
             "cum_count": cum_count,
+<<<<<<< HEAD
             "eff_num_len": np.array([cum_count[-1]]),
+=======
+            "eff_num_len": np.array([cum_count[-1]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': assign_pos(x, cum_count)}
         self.cum_count = cum_count
@@ -91,10 +130,17 @@ class TestAssignPosOpInt64(op_test.OpTest):
         self.check_output_with_place(paddle.CUDAPlace(0))
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestAssignPosAPI(unittest.TestCase):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestAssignPosAPI(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(self.x, 16)
@@ -106,6 +152,7 @@ class TestAssignPosAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('x', self.x.shape, dtype="int64")
+<<<<<<< HEAD
             cum_count = paddle.fluid.data(
                 'cum_count', self.cum_count.shape, dtype="int64"
             )
@@ -118,6 +165,21 @@ class TestAssignPosAPI(unittest.TestCase):
             assert_allclose(res[0], self.out, self.cum_count)
 
     def test_api_dygraph(self):
+=======
+            cum_count = paddle.fluid.data('cum_count',
+                                          self.cum_count.shape,
+                                          dtype="int64")
+            out = utils._assign_pos(x, cum_count)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={
+                'x': self.x,
+                "cum_count": self.cum_count
+            },
+                          fetch_list=[out])
+            assert_allclose(res[0], self.out, self.cum_count)
+
+    def func_api_dygraph(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         cum_count = paddle.to_tensor(self.cum_count).astype(x.dtype)
@@ -125,6 +187,14 @@ class TestAssignPosAPI(unittest.TestCase):
         out = utils._assign_pos(x, cum_count)
         assert_allclose(out.numpy(), self.out, self.cum_count)
 
+<<<<<<< HEAD
+=======
+    def test_api_dygraph(self):
+        with _test_eager_guard():
+            self.func_api_dygraph()
+        self.func_api_dygraph()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     paddle.enable_static()

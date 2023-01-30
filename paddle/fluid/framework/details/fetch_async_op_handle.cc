@@ -45,7 +45,11 @@ void FetchAsyncOpHandle::RecordWaitEventOnCtx(
       "No nodes need to wait FetchAsyncOp. Unexpceted Error."));
 }
 
+<<<<<<< HEAD
 static void CheckTensorAttrs(const phi::DenseTensor *tensor,
+=======
+static void CheckTensorAttrs(const LoDTensor *tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                              const proto::VarType::Type &type,
                              const DataLayout &layout,
                              const DDim &dims,
@@ -78,8 +82,13 @@ static void CheckTensorAttrs(const phi::DenseTensor *tensor,
             "(th) fetched variable. Please set the "
             "parameter `return_merged = False` when you "
             "call the `Executor.run()` method.",
+<<<<<<< HEAD
             phi::DataLayoutToString(layout),
             phi::DataLayoutToString(tensor->layout()),
+=======
+            DataLayoutToString(layout),
+            DataLayoutToString(tensor->layout()),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             offset));
   }
 
@@ -130,8 +139,13 @@ static void CheckTensorAttrs(const phi::DenseTensor *tensor,
           offset));
 }
 
+<<<<<<< HEAD
 static void TransData(const phi::DenseTensor *src_item,
                       phi::DenseTensor *dst_item,
+=======
+static void TransData(const framework::Tensor *src_item,
+                      framework::Tensor *dst_item,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       const platform::DeviceContext &ctx) {
   if (src_item->IsInitialized() && src_item->numel() > 0) {
     if (platform::is_gpu_place(src_item->place())) {
@@ -145,11 +159,19 @@ static void TransData(const phi::DenseTensor *src_item,
 }
 
 void FetchAsyncOpHandle::FetchMergedLodTensor(
+<<<<<<< HEAD
     const std::vector<const phi::DenseTensor *> &src_lodtensors,
     phi::DenseTensor *dst_lodtensor) {
   // calc dst type,layout,dim,lod and calc check dim
   proto::VarType::Type new_type = proto::VarType::FP32;
   phi::DataLayout new_layout;
+=======
+    const std::vector<const LoDTensor *> &src_lodtensors,
+    LoDTensor *dst_lodtensor) {
+  // calc dst type,layout,dim,lod and calc check dim
+  proto::VarType::Type new_type = proto::VarType::FP32;
+  framework::DataLayout new_layout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   framework::DDim new_dim;
   LoD new_lod = src_lodtensors[0]->lod();
 
@@ -164,12 +186,28 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     }
   }
 
+<<<<<<< HEAD
+=======
+  bool find_first_dims = false;
+  for (auto *t : src_lodtensors) {
+    if (t->numel() && t->IsInitialized()) {
+      if (!find_first_dims) {
+        new_dim = t->dims();
+        find_first_dims = true;
+      } else {
+        new_dim[0] += t->dims()[0];
+      }
+    }
+  }
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // check src type,layout,dim,lod consistence
   for (size_t i = 1; i < src_lodtensors.size(); ++i) {
     CheckTensorAttrs(
         src_lodtensors[i], new_type, new_layout, check_dim, new_lod, offset_);
   }
 
+<<<<<<< HEAD
   auto rank = src_lodtensors[0]->dims().size();
 
   // for 0D tensor, can't concat eath tensor. So stack 0D and concat 1+D tensor
@@ -190,6 +228,8 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     }
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // set dst tensor
   dst_lodtensor->Resize(new_dim);
   dst_lodtensor->set_layout(src_lodtensors[0]->layout());
@@ -203,6 +243,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   }
 
   // slice and memcpy
+<<<<<<< HEAD
   // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat
   // them
   int begin = 0;
@@ -214,6 +255,11 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
       end = begin + src->dims()[0];
     }
 
+=======
+  int begin = 0;
+  for (auto *src : src_lodtensors) {
+    int end = begin + src->dims()[0];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (end == begin) {
       continue;
     }
@@ -245,6 +291,7 @@ void FetchAsyncOpHandle::RunImpl() {
 
   if (return_merged_) {
     auto &val = PADDLE_GET(FetchList, *data_);
+<<<<<<< HEAD
     if (src_vars[0]->IsType<phi::DenseTensor>()) {
       // to lodtensor type
       std::vector<const phi::DenseTensor *> src_lodtensors;
@@ -254,6 +301,17 @@ void FetchAsyncOpHandle::RunImpl() {
       }
 
       phi::DenseTensor dst_lodtensor;
+=======
+    if (src_vars[0]->IsType<LoDTensor>()) {
+      // to lodtensor type
+      std::vector<const LoDTensor *> src_lodtensors;
+      src_lodtensors.reserve(src_vars.size());
+      for (size_t i = 0; i < src_vars.size(); ++i) {
+        src_lodtensors.emplace_back(&src_vars[i]->Get<framework::LoDTensor>());
+      }
+
+      LoDTensor dst_lodtensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       FetchMergedLodTensor(src_lodtensors, &dst_lodtensor);
       val.at(offset_) = std::move(dst_lodtensor);
     } else {
@@ -269,7 +327,11 @@ void FetchAsyncOpHandle::RunImpl() {
       dst_lodtensor_array.resize(src_lodtensor_arrays[0]->size());
 
       for (size_t i = 0; i < dst_lodtensor_array.size(); ++i) {
+<<<<<<< HEAD
         std::vector<const phi::DenseTensor *> src_lodtensors;
+=======
+        std::vector<const LoDTensor *> src_lodtensors;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         src_lodtensors.reserve(src_lodtensor_arrays.size());
         for (size_t j = 0; j < src_lodtensor_arrays.size(); ++j) {
           src_lodtensors.emplace_back(&(*src_lodtensor_arrays[j])[i]);
@@ -284,9 +346,15 @@ void FetchAsyncOpHandle::RunImpl() {
     dst_tensors.reserve(src_vars.size());
 
     for (size_t i = 0; i < src_vars.size(); ++i) {
+<<<<<<< HEAD
       if (src_vars[i]->IsType<phi::DenseTensor>()) {
         auto &t = src_vars[i]->Get<phi::DenseTensor>();
         phi::DenseTensor item;
+=======
+      if (src_vars[i]->IsType<LoDTensor>()) {
+        auto &t = src_vars[i]->Get<framework::LoDTensor>();
+        LoDTensor item;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         TransData(&t, &item, *dev_ctxes_[t.place()]);
         dst_tensors.emplace_back(std::move(item));
       } else {

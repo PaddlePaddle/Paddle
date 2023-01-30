@@ -12,23 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
 import paddle
+=======
+import unittest
+import paddle
+import os
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.distributed.fleet as fleet
 
 paddle.enable_static()
 
 
 class TestFleetBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
+<<<<<<< HEAD
         os.environ[
             "PADDLE_PSERVERS_IP_PORT_LIST"
         ] = "127.0.0.1:36001,127.0.0.2:36001"
+=======
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
+                       "127.0.0.1:36001,127.0.0.2:36001"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_fleet_init(self):
 

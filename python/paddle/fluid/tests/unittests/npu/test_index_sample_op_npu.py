@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 import unittest
 import numpy as np
@@ -26,6 +31,10 @@ paddle.enable_static()
 
 
 class TestIndexSampleOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -34,9 +43,16 @@ class TestIndexSampleOp(OpTest):
         self.op_type = "index_sample"
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.dtype)
+<<<<<<< HEAD
         indexnp = np.random.randint(
             low=0, high=self.x_shape[1], size=self.index_shape
         ).astype(self.index_type)
+=======
+        indexnp = np.random.randint(low=0,
+                                    high=self.x_shape[1],
+                                    size=self.index_shape).astype(
+                                        self.index_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {'X': xnp, 'Index': indexnp}
         index_array = []
         for i in range(self.index_shape[0]):
@@ -63,6 +79,10 @@ class TestIndexSampleOp(OpTest):
 
 
 class TestCase1(TestIndexSampleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         """
         For one dimension input
@@ -74,6 +94,10 @@ class TestCase1(TestIndexSampleOp):
 
 
 class TestCase2(TestIndexSampleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         """
         For int64_t index type
@@ -85,6 +109,10 @@ class TestCase2(TestIndexSampleOp):
 
 
 class TestCase3(TestIndexSampleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         """
         For int index type
@@ -96,6 +124,10 @@ class TestCase3(TestIndexSampleOp):
 
 
 class TestCase4(TestIndexSampleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         """
         For int64 index type
@@ -107,6 +139,10 @@ class TestCase4(TestIndexSampleOp):
 
 
 class TestCase5(TestIndexSampleOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         """
         For float16 x type
@@ -122,6 +158,10 @@ class TestCase5(TestIndexSampleOp):
 
 
 class TestCase6(TestCase5):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         """
         For int32 x type
@@ -134,6 +174,10 @@ class TestCase6(TestCase5):
 
 
 class TestCase7(TestCase5):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         """
         For int64 x type
@@ -146,6 +190,10 @@ class TestCase7(TestCase5):
 
 
 class TestIndexSampleShape(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_shape(self):
         paddle.enable_static()
         # create x value
@@ -156,9 +204,14 @@ class TestIndexSampleShape(unittest.TestCase):
         # create index value
         index_shape = (2, 3)
         index_type = "int32"
+<<<<<<< HEAD
         index_np = np.random.randint(
             low=0, high=x_shape[1], size=index_shape
         ).astype(index_type)
+=======
+        index_np = np.random.randint(low=0, high=x_shape[1],
+                                     size=index_shape).astype(index_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         x = fluid.data(name='x', shape=[-1, 5], dtype='float32')
         index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
@@ -173,6 +226,7 @@ class TestIndexSampleShape(unittest.TestCase):
 
 
 class TestIndexSampleDynamic(unittest.TestCase):
+<<<<<<< HEAD
     def test_result(self):
         with fluid.dygraph.guard(paddle.NPUPlace(0)):
             x = paddle.to_tensor(
@@ -191,6 +245,20 @@ class TestIndexSampleDynamic(unittest.TestCase):
             except_output = np.array(
                 [[1.0, 2.0, 3.0], [6.0, 7.0, 8.0], [9.0, 9.0, 9.0]]
             )
+=======
+
+    def test_result(self):
+        with fluid.dygraph.guard(paddle.NPUPlace(0)):
+            x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
+                                  [9.0, 10.0, 11.0, 12.0]],
+                                 dtype='float32')
+            index = paddle.to_tensor([[0, 1, 2], [1, 2, 3], [0, 0, 0]],
+                                     dtype='int32')
+            out_z1 = paddle.index_sample(x, index)
+
+            except_output = np.array([[1.0, 2.0, 3.0], [6.0, 7.0, 8.0],
+                                      [9.0, 9.0, 9.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             assert out_z1.numpy().all() == except_output.all()
 
 

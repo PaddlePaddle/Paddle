@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
@@ -22,6 +23,19 @@ import paddle.nn as nn
 class Net(nn.Layer):
     def __init__(self):
         super().__init__()
+=======
+import paddle
+import paddle.nn as nn
+import paddle.distributed as dist
+
+import unittest
+
+
+class Net(nn.Layer):
+
+    def __init__(self):
+        super(Net, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.emb1 = nn.Embedding(100, 16)
         self.emb2 = nn.Embedding(100, 16)
 
@@ -53,11 +67,18 @@ def train():
 
 
 class TestParamsNoGrad(unittest.TestCase):
+<<<<<<< HEAD
     def test_two_card(self):
         if (
             paddle.is_compiled_with_cuda()
             and len(paddle.static.cuda_places()) > 1
         ):
+=======
+
+    def test_two_card(self):
+        if paddle.is_compiled_with_cuda() and len(
+                paddle.static.cuda_places()) > 1:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dist.spawn(train, nprocs=2, gpus='0,1')
 
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -20,11 +21,27 @@ import numpy as np
 import paddle
 from paddle.distributed import fleet
 from paddle.incubate.distributed.fleet import recompute_hybrid
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+
+import paddle
+from paddle.autograd import PyLayer
+from paddle.distributed.fleet.utils import recompute
+from paddle.incubate.distributed.fleet import recompute_hybrid
+import random
+from paddle.distributed import fleet
+
+import paddle.fluid.layers as layers
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_fc_block(block_idx, input_size, is_last=False):
     block_name = "block_" + str(block_idx)
     block = paddle.nn.Sequential(
+<<<<<<< HEAD
         (
             block_name + "_fc_0",
             paddle.nn.Linear(input_size, input_size, bias_attr=False),
@@ -47,10 +64,30 @@ def get_fc_block(block_idx, input_size, is_last=False):
             block_name + "_fc_2",
             paddle.nn.Linear(input_size, input_size, bias_attr=False),
         )  # add sublayer
+=======
+        (block_name + "_fc_0",
+         paddle.nn.Linear(input_size, input_size, bias_attr=False)),
+        (block_name + "_dropout", paddle.nn.Dropout(p=0.5)),
+        (block_name + "_relu_1", paddle.nn.ReLU()),
+        (block_name + "_fc_1",
+         paddle.nn.Linear(input_size, input_size, bias_attr=False)),
+        (block_name + "_relu_2", paddle.nn.ReLU()),
+    )
+    if is_last:
+        block.add_sublayer(block_name + "_fc_2",
+                           paddle.nn.Linear(input_size, 1,
+                                            bias_attr=False))  # add sublayer
+    else:
+        block.add_sublayer(block_name + "_fc_2",
+                           paddle.nn.Linear(input_size,
+                                            input_size,
+                                            bias_attr=False))  # add sublayer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return block
 
 
 class Naive_fc_net(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         input_size=10,
@@ -60,6 +97,16 @@ class Naive_fc_net(paddle.nn.Layer):
         recompute_kwargs={},
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 input_size=10,
+                 recompute_blocks=[1, 3],
+                 offload=False,
+                 partition=False,
+                 recompute_kwargs={}):
+        super(Naive_fc_net, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.recompute_blocks = recompute_blocks
         self.recompute_kwargs = recompute_kwargs
         self.offload = offload
@@ -72,11 +119,16 @@ class Naive_fc_net(paddle.nn.Layer):
         self.runfunc4 = get_fc_block(4, input_size, is_last=True)
 
         self.layers = [
+<<<<<<< HEAD
             self.runfunc0,
             self.runfunc1,
             self.runfunc2,
             self.runfunc3,
             self.runfunc4,
+=======
+            self.runfunc0, self.runfunc1, self.runfunc2, self.runfunc3,
+            self.runfunc4
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
     def forward(self, inputs):
@@ -86,18 +138,24 @@ class Naive_fc_net(paddle.nn.Layer):
                     {
                         "mp_group": fleet.fleet._hcg.get_model_parallel_group(),
                         "offload": self.offload,
+<<<<<<< HEAD
                         "partition": self.partition,
                     },
                     self.layers[i],
                     inputs,
                     **self.recompute_kwargs
                 )
+=======
+                        "partition": self.partition
+                    }, self.layers[i], inputs, **self.recompute_kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 inputs = self.layers[i](inputs)
 
         return inputs
 
 
+<<<<<<< HEAD
 def run_model(
     recompute_block=[],
     recompute_kwargs={},
@@ -106,12 +164,21 @@ def run_model(
     enable_autocast=False,
     pure_fp16=False,
 ):
+=======
+def run_model(recompute_block=[],
+              recompute_kwargs={},
+              offload=False,
+              partition=False,
+              enable_autocast=False,
+              pure_fp16=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     gen = paddle.seed(10)
     gen.manual_seed(10)
     np.random.seed(10)
     random.seed(10)
 
     batch_size, input_size = 1, 10
+<<<<<<< HEAD
     model = Naive_fc_net(
         input_size,
         recompute_blocks=recompute_block,
@@ -123,6 +190,16 @@ def run_model(
     optimizer = paddle.optimizer.SGD(
         learning_rate=0.01, parameters=model.parameters()
     )
+=======
+    model = Naive_fc_net(input_size,
+                         recompute_blocks=recompute_block,
+                         offload=offload,
+                         partition=partition,
+                         recompute_kwargs=recompute_kwargs)
+    loss_fn = paddle.nn.MSELoss(reduction='mean')
+    optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                     parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     model = fleet.distributed_model(model)
     optimizer = fleet.distributed_optimizer(optimizer)
@@ -159,6 +236,10 @@ def run_model(
 
 
 class TestPyLayer(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -172,6 +253,10 @@ class TestPyLayer(unittest.TestCase):
         fleet.init(is_collective=True, strategy=strategy)
 
     def test_base_case(self, enable_autocast=False, pure_fp16=False):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def check_identical(loss_ref, param_ref, grad_ref, loss, param, grad):
             self.assertEqual(loss_ref, loss)
             self.assertEqual(param_ref, param)
@@ -181,6 +266,7 @@ class TestPyLayer(unittest.TestCase):
         loss_ref, param_ref, grad_ref = run_model(
             recompute_block=[],
             enable_autocast=enable_autocast,
+<<<<<<< HEAD
             pure_fp16=pure_fp16,
         )
 
@@ -218,6 +304,36 @@ class TestPyLayer(unittest.TestCase):
             enable_autocast=enable_autocast,
             pure_fp16=pure_fp16,
         )
+=======
+            pure_fp16=pure_fp16)
+
+        # with recompute, offload=False, partition=False
+        loss, param, grad = run_model(recompute_block=[1, 3],
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # with recompute, offload=True, partition=False
+        loss, param, grad = run_model(recompute_block=[1, 2, 3],
+                                      offload=True,
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # with recompute, offload=False, partition=True
+        loss, param, grad = run_model(recompute_block=[1],
+                                      partition=True,
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # with recompute, offload=True, partition=True
+        loss, param, grad = run_model(recompute_block=[1, 3, 4],
+                                      offload=True,
+                                      partition=True,
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
     def test_fc_net_with_dropout(self):
@@ -233,9 +349,14 @@ class TestPyLayer(unittest.TestCase):
         paddle.set_device("gpu")
         kwargs = {"is_test": False}
         with self.assertRaises(TypeError):
+<<<<<<< HEAD
             loss_ref, param_ref, grad_ref = run_model(
                 recompute_block=[2], recompute_kwargs=kwargs
             )
+=======
+            loss_ref, param_ref, grad_ref = run_model(recompute_block=[2],
+                                                      recompute_kwargs=kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

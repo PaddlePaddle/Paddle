@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestGreaterThan(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -35,12 +42,21 @@ class TestGreaterThan(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         y = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        y = paddle.static.data(name=self.feed_list[1],
+                               shape=self.feed_shape[1],
+                               dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = self.op(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -114,21 +130,37 @@ class TestGreaterThan(IPUOpTest):
 
 
 class TestLessThan(TestGreaterThan):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_op(self):
         self.op = paddle.fluid.layers.less_than
 
 
 class TestEqual(TestGreaterThan):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_op(self):
         self.op = paddle.fluid.layers.equal
 
 
 class TestGreaterEqual(TestGreaterThan):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_op(self):
         self.op = paddle.fluid.layers.greater_equal
 
 
 class TestLessEqual(TestGreaterThan):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_test_op(self):
         self.op = paddle.fluid.layers.less_equal
 

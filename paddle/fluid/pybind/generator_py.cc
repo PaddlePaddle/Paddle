@@ -90,7 +90,10 @@ void BindGenerator(py::module* m_ptr) {
       .def("random", &framework::Generator::Random64);
   m.def("default_cpu_generator", &framework::DefaultCPUGenerator);
   m.def("default_cuda_generator", &framework::DefaultCUDAGenerator);
+<<<<<<< HEAD
   m.def("default_xpu_generator", &framework::DefaultXPUGenerator);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   m.def("set_random_seed_generator", &framework::SetRandomSeedGenerator);
   m.def("get_random_seed_generator", &framework::GetRandomSeedGenerator);
 }

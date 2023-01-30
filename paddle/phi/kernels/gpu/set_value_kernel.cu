@@ -28,7 +28,11 @@ PD_REGISTER_KERNEL(set_value,
                    int,
                    int64_t,
                    bool,
+<<<<<<< HEAD
                    phi::dtype::float16,
+=======
+                   paddle::platform::float16,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(set_value_with_tensor,
@@ -40,6 +44,10 @@ PD_REGISTER_KERNEL(set_value_with_tensor,
                    int,
                    int64_t,
                    bool,
+<<<<<<< HEAD
                    phi::dtype::float16,
+=======
+                   paddle::platform::float16,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

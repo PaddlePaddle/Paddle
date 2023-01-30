@@ -94,9 +94,14 @@ struct TensorFillVisitor {
 
 void* SelectedRowsImpl::AllocateFrom(Allocator* allocator,
                                      DataType dtype,
+<<<<<<< HEAD
                                      size_t requested_size,
                                      bool fake_alloc) {
   return value_->AllocateFrom(allocator, dtype, requested_size, fake_alloc);
+=======
+                                     size_t requested_size) {
+  return value_->AllocateFrom(allocator, dtype, requested_size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 bool SelectedRowsImpl::HasKey(int64_t key) const {
@@ -175,10 +180,17 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
                            phi::DenseTensor* value,
                            bool auto_grown,
                            bool is_test) {
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(
       value->IsInitialized(),
       true,
       phi::errors::InvalidArgument("The value tensor is not initialized."));
+=======
+  PADDLE_ENFORCE_EQ(value->IsInitialized(),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "The value tensor is not initialized."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {

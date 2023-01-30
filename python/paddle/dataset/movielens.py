@@ -22,6 +22,7 @@ set and test set into paddle reader creators.
 
 """
 
+<<<<<<< HEAD
 import functools
 import re
 import zipfile
@@ -30,17 +31,38 @@ import numpy as np
 
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
+=======
+from __future__ import print_function
+
+import numpy as np
+import zipfile
+import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
+import re
+import random
+import functools
+import six
+import paddle.compat as cpt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
+<<<<<<< HEAD
 # URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+=======
+#URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 URL = 'https://dataset.bj.bcebos.com/movielens%2Fml-1m.zip'
 MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
+<<<<<<< HEAD
 class MovieInfo:
+=======
+class MovieInfo(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Movie id, title and categories information are stored in MovieInfo.
     """
@@ -55,23 +77,36 @@ class MovieInfo:
         Get information from a movie.
         """
         return [
+<<<<<<< HEAD
             self.index,
             [CATEGORIES_DICT[c] for c in self.categories],
             [MOVIE_TITLE_DICT[w.lower()] for w in self.title.split()],
+=======
+            self.index, [CATEGORIES_DICT[c] for c in self.categories],
+            [MOVIE_TITLE_DICT[w.lower()] for w in self.title.split()]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
     def __str__(self):
         return "<MovieInfo id(%d), title(%s), categories(%s)>" % (
+<<<<<<< HEAD
             self.index,
             self.title,
             self.categories,
         )
+=======
+            self.index, self.title, self.categories)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __repr__(self):
         return self.__str__()
 
 
+<<<<<<< HEAD
 class UserInfo:
+=======
+class UserInfo(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     User id, gender, age, and job information are stored in UserInfo.
     """
@@ -90,11 +125,16 @@ class UserInfo:
 
     def __str__(self):
         return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
+<<<<<<< HEAD
             self.index,
             "M" if self.is_male else "F",
             age_table[self.age],
             self.job_id,
         )
+=======
+            self.index, "M" if self.is_male else "F", age_table[self.age],
+            self.job_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __repr__(self):
         return str(self)
@@ -119,15 +159,23 @@ def __initialize_meta_info__():
                 categories_set = set()
                 with package.open('ml-1m/movies.dat') as movie_file:
                     for i, line in enumerate(movie_file):
+<<<<<<< HEAD
                         line = line.decode(encoding='latin')
+=======
+                        line = cpt.to_text(line, encoding='latin')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         movie_id, title, categories = line.strip().split('::')
                         categories = categories.split('|')
                         for c in categories:
                             categories_set.add(c)
                         title = pattern.match(title).group(1)
                         MOVIE_INFO[int(movie_id)] = MovieInfo(
+<<<<<<< HEAD
                             index=movie_id, categories=categories, title=title
                         )
+=======
+                            index=movie_id, categories=categories, title=title)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         for w in title.split():
                             title_word_set.add(w.lower())
 
@@ -145,11 +193,20 @@ def __initialize_meta_info__():
                 USER_INFO = dict()
                 with package.open('ml-1m/users.dat') as user_file:
                     for line in user_file:
+<<<<<<< HEAD
                         line = line.decode(encoding='latin')
                         uid, gender, age, job, _ = line.strip().split("::")
                         USER_INFO[int(uid)] = UserInfo(
                             index=uid, gender=gender, age=age, job_id=job
                         )
+=======
+                        line = cpt.to_text(line, encoding='latin')
+                        uid, gender, age, job, _ = line.strip().split("::")
+                        USER_INFO[int(uid)] = UserInfo(index=uid,
+                                                       gender=gender,
+                                                       age=age,
+                                                       job_id=job)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return fn
 
 
@@ -159,7 +216,11 @@ def __reader__(rand_seed=0, test_ratio=0.1, is_test=False):
     with zipfile.ZipFile(file=fn) as package:
         with package.open('ml-1m/ratings.dat') as rating:
             for line in rating:
+<<<<<<< HEAD
                 line = line.decode(encoding='latin')
+=======
+                line = cpt.to_text(line, encoding='latin')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if (np.random.random() < test_ratio) == is_test:
                     uid, mov_id, rating, _ = line.strip().split("::")
                     uid = int(uid)
@@ -175,8 +236,12 @@ def __reader__(rand_seed=0, test_ratio=0.1, is_test=False):
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def __reader_creator__(**kwargs):
     return lambda: __reader__(**kwargs)
 
@@ -189,8 +254,12 @@ test = functools.partial(__reader_creator__, is_test=True)
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def get_movie_title_dict():
     """
     Get movie title dictionary.
@@ -210,28 +279,44 @@ def __max_index_info__(a, b):
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def max_movie_id():
     """
     Get the maximum value of movie id.
     """
     __initialize_meta_info__()
+<<<<<<< HEAD
     return functools.reduce(__max_index_info__, list(MOVIE_INFO.values())).index
+=======
+    return six.moves.reduce(__max_index_info__, list(MOVIE_INFO.values())).index
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def max_user_id():
     """
     Get the maximum value of user id.
     """
     __initialize_meta_info__()
+<<<<<<< HEAD
     return functools.reduce(__max_index_info__, list(USER_INFO.values())).index
+=======
+    return six.moves.reduce(__max_index_info__, list(USER_INFO.values())).index
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def __max_job_id_impl__(a, b):
@@ -245,24 +330,37 @@ def __max_job_id_impl__(a, b):
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def max_job_id():
     """
     Get the maximum value of job id.
     """
     __initialize_meta_info__()
+<<<<<<< HEAD
     return functools.reduce(
         __max_job_id_impl__, list(USER_INFO.values())
     ).job_id
+=======
+    return six.moves.reduce(__max_job_id_impl__,
+                            list(USER_INFO.values())).job_id
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def movie_categories():
     """
     Get movie categories dictionary.
@@ -275,8 +373,12 @@ def movie_categories():
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def user_info():
     """
     Get user info dictionary.
@@ -289,8 +391,12 @@ def user_info():
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def movie_info():
     """
     Get movie info dictionary.
@@ -312,8 +418,12 @@ def unittest():
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def fetch():
     paddle.dataset.common.download(URL, "movielens", MD5)
 

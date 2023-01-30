@@ -26,6 +26,7 @@ function(find_register FILENAME PATTERN OUTPUT)
       PARENT_SCOPE)
 endfunction()
 
+<<<<<<< HEAD
 function(find_phi_register FILENAME ADD_PATH PATTERN)
   # set op_name to OUTPUT
   set(options "")
@@ -55,6 +56,8 @@ function(find_phi_register FILENAME ADD_PATH PATTERN)
   endif()
 endfunction()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 function(op_library TARGET)
   # op_library is a function to create op library. The interface is same as
   # cc_library. But it handle split GPU/CPU code and link some common library
@@ -400,9 +403,12 @@ function(op_library TARGET)
   foreach(cc_src ${cc_srcs})
     # pybind USE_OP_ITSELF
     set(op_name "")
+<<<<<<< HEAD
     # Add PHI Kernel Registry Message
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_KERNEL")
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
@@ -440,9 +446,12 @@ function(op_library TARGET)
   # message("cu_srcs ${cu_srcs}")
   foreach(cu_src ${cu_srcs})
     set(op_name "")
+<<<<<<< HEAD
     # Add PHI Kernel Registry Message
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
@@ -546,6 +555,30 @@ function(op_library TARGET)
     # Append first implemented MKLDNN activation operator
     if(${MKLDNN_FILE} STREQUAL "activation_mkldnn_op")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")
+<<<<<<< HEAD
+=======
+    elseif(${MKLDNN_FILE} STREQUAL "conv_mkldnn_op")
+      file(APPEND ${pybind_file}
+           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);\n")
+      file(APPEND ${pybind_file}
+           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, S8);\n")
+      file(APPEND ${pybind_file}
+           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, U8);\n")
+    elseif(${MKLDNN_FILE} STREQUAL "transpose_mkldnn_op")
+      file(APPEND ${pybind_file}
+           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, FP32);\n")
+      file(APPEND ${pybind_file}
+           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, S8);\n")
+      file(APPEND ${pybind_file}
+           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, U8);\n")
+    elseif(${MKLDNN_FILE} STREQUAL "fc_mkldnn_op")
+      file(APPEND ${pybind_file}
+           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, FP32);\n")
+      file(APPEND ${pybind_file}
+           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, S8);\n")
+      file(APPEND ${pybind_file}
+           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, U8);\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else()
       foreach(mkldnn_src ${mkldnn_cc_srcs})
         set(op_name "")

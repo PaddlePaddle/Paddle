@@ -24,6 +24,7 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 template <typename T>
 typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
     const char* value_name,
@@ -33,6 +34,19 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
   //  vector<int>.
   //  at the same time, we can not use vector<bool> to hold the value, because
   //  the c++ use bit value to replace byte value.
+=======
+using Tensor = framework::Tensor;
+
+template <typename T>
+typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const char* value_name,
+    framework::Tensor* out,
+    const framework::ExecutionContext& ctx) {
+  // If attribute value dtype is vector<bool>, it will be converted to
+  // vector<int>.
+  // at the same time, we can not use vector<bool> to hold the value, because
+  // the c++ use bit value to replace byte value.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto values = ctx.Attr<std::vector<int>>(value_name);
   framework::TensorFromVector(values, ctx.device_context(), out);
 
@@ -49,7 +63,11 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
 template <typename T>
 typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
     const char* value_name,
+<<<<<<< HEAD
     phi::DenseTensor* out,
+=======
+    framework::Tensor* out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const framework::ExecutionContext& ctx) {
   auto values = ctx.Attr<std::vector<T>>(value_name);
   framework::TensorFromVector(values, ctx.device_context(), out);
@@ -60,7 +78,11 @@ class AssignValueKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto shape = ctx.Attr<std::vector<int>>("shape");
+<<<<<<< HEAD
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int dtype = ctx.Attr<int>("dtype");
     const char* value_name = nullptr;
     switch (dtype) {

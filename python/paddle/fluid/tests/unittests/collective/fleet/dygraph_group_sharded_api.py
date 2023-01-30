@@ -12,19 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import shutil
 import tempfile
 
+=======
+import time
+import shutil
+import tempfile
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+<<<<<<< HEAD
 from paddle.distributed import fleet
 from paddle.distributed.sharding import (
     group_sharded_parallel,
     save_group_sharded_model,
 )
 from paddle.nn import Linear
+=======
+from paddle.fluid.dygraph.nn import Linear
+from paddle.distributed import fleet
+from paddle.fluid.dygraph import nn
+from paddle.fluid.framework import _test_eager_guard
+from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 epoch = 10
 paddle.seed(2022)
@@ -36,8 +50,14 @@ batch_size = 100
 
 
 class MLP(fluid.Layer):
+<<<<<<< HEAD
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
         super().__init__()
+=======
+
+    def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
+        super(MLP, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
@@ -50,6 +70,7 @@ class MLP(fluid.Layer):
         return y
 
 
+<<<<<<< HEAD
 class RandomDataset(paddle.io.Dataset):
     def __init__(self, num_samples=2000, linear_size=1000):
         self.num_samples = num_samples
@@ -62,11 +83,23 @@ class RandomDataset(paddle.io.Dataset):
 
     def __len__(self):
         return self.num_samples
+=======
+def reader_decorator(linear_size=1000):
+
+    def __reader__():
+        for _ in range(100):
+            img = np.random.rand(linear_size).astype('float32')
+            label = np.ones(1).astype('int64')
+            yield img, label
+
+    return __reader__
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def optimizer_setting(model, use_multi_precision, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     optimizer = paddle.optimizer.Momentum(
+<<<<<<< HEAD
         parameters=[{"params": list(model.parameters())}]
         if opt_group
         else list(model.parameters()),
@@ -75,10 +108,20 @@ def optimizer_setting(model, use_multi_precision, opt_group=False):
         grad_clip=clip,
         multi_precision=use_multi_precision,
     )
+=======
+        parameters=[{
+            "params": list(model.parameters())
+        }] if opt_group else list(model.parameters()),
+        learning_rate=0.001,
+        weight_decay=0.00001,
+        grad_clip=clip,
+        multi_precision=use_multi_precision)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return optimizer
 
 
+<<<<<<< HEAD
 def train_mlp(
     model, shard_level, use_multi_precision, output_dir, amp_level='O1'
 ):
@@ -105,6 +148,37 @@ def train_mlp(
         drop_last=True,
         num_workers=0,
     )
+=======
+def train_mlp(model,
+              shard_level,
+              use_multi_precision,
+              output_dir,
+              amp_level='O1'):
+    group = paddle.distributed.new_group([0, 1])
+
+    optimizer = optimizer_setting(model=model,
+                                  use_multi_precision=use_multi_precision)
+    model = paddle.amp.decorate(models=model,
+                                level=amp_level,
+                                save_dtype='float32')
+    scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
+
+    model, optimizer, scaler = group_sharded_parallel(model=model,
+                                                      optimizer=optimizer,
+                                                      level=shard_level,
+                                                      scaler=scaler)
+
+    train_reader = paddle.batch(reader_decorator(),
+                                batch_size=batch_size,
+                                drop_last=True)
+
+    train_loader = paddle.io.DataLoader.from_generator(capacity=32,
+                                                       use_double_buffer=True,
+                                                       iterable=True,
+                                                       return_list=True,
+                                                       use_multiprocess=True)
+    train_loader.set_sample_list_generator(train_reader)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for eop in range(epoch):
         model.train()
@@ -114,9 +188,14 @@ def train_mlp(
             img.stop_gradient = True
             with paddle.amp.auto_cast(True, level=amp_level):
                 out = model(img)
+<<<<<<< HEAD
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label
                 )
+=======
+                loss = paddle.nn.functional.cross_entropy(input=out,
+                                                          label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
 
             if not use_multi_precision:
@@ -142,6 +221,7 @@ def test_sharding_api():
     output_dir = tempfile.mkdtemp()
 
     # fp16
+<<<<<<< HEAD
     stage2_params = train_mlp(
         mlp1,
         shard_level="os_g",
@@ -164,12 +244,31 @@ def test_sharding_api():
             rtol=1e-4,
             atol=1e-3,
         )
+=======
+    stage2_params = train_mlp(mlp1,
+                              shard_level="os_g",
+                              use_multi_precision=True,
+                              output_dir=output_dir,
+                              amp_level='O2')
+    stage3_params = train_mlp(mlp2,
+                              shard_level="p_g_os",
+                              use_multi_precision=True,
+                              output_dir=output_dir,
+                              amp_level='O2')
+
+    for i in range(len(stage3_params)):
+        np.testing.assert_allclose(stage2_params[i].numpy(),
+                                   stage3_params[i].numpy(),
+                                   rtol=1e-4,
+                                   atol=1e-3)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # AMP
     mlp3, mlp4 = MLP(), MLP()
     mlp3.set_state_dict(state_dict)
     mlp4.set_state_dict(state_dict)
 
+<<<<<<< HEAD
     stage2_params = train_mlp(
         mlp3,
         shard_level="os_g",
@@ -192,9 +291,32 @@ def test_sharding_api():
             rtol=1e-4,
             atol=1e-3,
         )
+=======
+    stage2_params = train_mlp(mlp3,
+                              shard_level="os_g",
+                              use_multi_precision=True,
+                              output_dir=output_dir,
+                              amp_level='O1')
+    stage3_params = train_mlp(mlp4,
+                              shard_level="p_g_os",
+                              use_multi_precision=True,
+                              output_dir=output_dir,
+                              amp_level='O1')
+
+    for i in range(len(stage3_params)):
+        np.testing.assert_allclose(stage2_params[i].numpy(),
+                                   stage3_params[i].numpy(),
+                                   rtol=1e-4,
+                                   atol=1e-3)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     shutil.rmtree(output_dir)
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD
+=======
+    with _test_eager_guard():
+        pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     fleet.init(is_collective=True)
     test_sharding_api()

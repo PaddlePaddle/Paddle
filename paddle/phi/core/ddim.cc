@@ -203,6 +203,7 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
 }
 
 }  // namespace phi
+<<<<<<< HEAD
 
 namespace std {
 
@@ -216,3 +217,5 @@ std::size_t hash<phi::DDim>::operator()(phi::DDim const& ddim) const {
 }
 
 }  // namespace std
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

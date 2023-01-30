@@ -36,7 +36,11 @@ class ArrayOp : public framework::OperatorBase {
     auto *i = scope.FindVar(Input("I"));
     PADDLE_ENFORCE_NOT_NULL(
         i, platform::errors::NotFound("Input(I) is not found."));
+<<<<<<< HEAD
     auto &i_tensor = i->Get<phi::DenseTensor>();
+=======
+    auto &i_tensor = i->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(i_tensor.numel(),
                       1,
                       platform::errors::InvalidArgument(
@@ -55,7 +59,11 @@ class ArrayOp : public framework::OperatorBase {
         platform::is_npu_place(i_tensor.place()) ||
         platform::is_custom_place(i_tensor.place())) {
       // FIXME: Avoid copy from GPU to CPU
+<<<<<<< HEAD
       phi::DenseTensor t;
+=======
+      framework::Tensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopy(i_tensor, platform::CPUPlace(), dev_ctx, &t);
       dev_ctx.Wait();
       offset = static_cast<size_t>(*t.data<int64_t>());

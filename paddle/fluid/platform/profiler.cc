@@ -42,9 +42,13 @@ DEFINE_bool(enable_host_event_recorder_hook,
             false,
             "enable HostEventRecorder, hook Profiler");
 
+<<<<<<< HEAD
 DEFINE_bool(enable_record_op_info,
             false,
             "enable operator supplement info recorder");
+=======
+DEFINE_bool(enable_record_input_shape, false, "enable input shape recorder");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DEFINE_bool(enable_record_memory, false, "enable memory recorder");
 
@@ -260,8 +264,12 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     const std::string &type,
     const framework::AttributeMap &attrs,
     const framework::InferShapeContext &shape_ctx,
+<<<<<<< HEAD
     const framework::RuntimeContext &ctx,
     uint64_t op_id) {
+=======
+    const framework::RuntimeContext &ctx) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
@@ -275,8 +283,21 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     dtypes[it->first] = shape_ctx.GetInputsVarType(it->first);
   }
 
+<<<<<<< HEAD
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
+=======
+  const std::vector<std::string> *callstack_ptr = nullptr;
+  std::vector<std::string> callstack;
+  auto iter = attrs.find(
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+    callstack = *callstack_ptr;
+  }
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
@@ -301,16 +322,33 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       dtypes[input_name] = shape_ctx.GetInputsVarType(input_name);
     }
   }
+<<<<<<< HEAD
   uint64_t op_id = 0;
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
+=======
+  const std::vector<std::string> *callstack_ptr = nullptr;
+  std::vector<std::string> callstack;
+  auto iter = attrs.find(
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+    callstack = *callstack_ptr;
+  }
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
     const std::string &type,
     const std::vector<std::pair<const char *, std::vector<framework::DDim>>>
+<<<<<<< HEAD
         &input_shapes,
     const framework::AttributeMap &attrs) {
+=======
+        &input_shapes) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
@@ -318,9 +356,15 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     return;
   }
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
+<<<<<<< HEAD
   uint64_t op_id = 0;
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
+=======
+  std::vector<std::string> callstack;
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 bool RecordEvent::IsEnabled() {
@@ -328,7 +372,13 @@ bool RecordEvent::IsEnabled() {
          g_state != ProfilerState::kDisabled;
 }
 
+<<<<<<< HEAD
 bool RecordOpInfoSupplement::IsEnabled() { return FLAGS_enable_record_op_info; }
+=======
+bool RecordOpInfoSupplement::IsEnabled() {
+  return FLAGS_enable_record_input_shape;
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 bool RecordMemEvent::IsEnabled() { return FLAGS_enable_record_memory; }
 
@@ -1074,9 +1124,15 @@ void DisableHostEventRecorder() {
   FLAGS_enable_host_event_recorder_hook = false;
 }
 
+<<<<<<< HEAD
 void EnableOpInfoRecorder() { FLAGS_enable_record_op_info = true; }
 
 void DisableOpInfoRecorder() { FLAGS_enable_record_op_info = false; }
+=======
+void EnableInputShapeRecorder() { FLAGS_enable_record_input_shape = true; }
+
+void DisableInputShapeRecorder() { FLAGS_enable_record_input_shape = false; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 void EnableMemoryRecorder() { FLAGS_enable_record_memory = true; }
 

@@ -16,6 +16,7 @@ math_library(pooling DEPS dense_tensor)
 math_library(segment_pooling)
 math_library(sequence2batch)
 math_library(matrix_solve DEPS dense_tensor eigen3 blas math_function)
+<<<<<<< HEAD
 math_library(cross_entropy)
 math_library(im2col)
 math_library(vol2col)
@@ -23,6 +24,8 @@ math_library(softmax DEPS math_function)
 math_library(maxouting)
 math_library(matrix_bit_code)
 math_library(sequence_scale)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 cc_library(
   phi_data_layout_transform
@@ -45,6 +48,7 @@ else()
     math_library(fft DEPS dense_tensor pocketfft)
   endif()
 endif()
+<<<<<<< HEAD
 
 if(WITH_MKLDNN)
   math_library(selected_rows_functor DEPS selected_rows_utils math_function
@@ -65,3 +69,5 @@ else()
     SRCS gather_scatter_functor.cc gather_scatter_functor.cu
     DEPS tensor)
 endif()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

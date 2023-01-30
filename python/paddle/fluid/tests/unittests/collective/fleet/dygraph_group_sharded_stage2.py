@@ -16,6 +16,7 @@
 
 import os
 import shutil
+<<<<<<< HEAD
 import tempfile
 
 import numpy as np
@@ -29,6 +30,22 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import
     GroupShardedStage2,
 )
 from paddle.nn import Linear
+=======
+import numpy as np
+import argparse
+import tempfile
+import ast
+import time
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import Linear
+from paddle.distributed import fleet
+from paddle.fluid.dygraph import nn
+from paddle.fluid.framework import _test_eager_guard
+
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 seed = 2022
 epoch = 2
@@ -39,8 +56,14 @@ paddle.seed(seed)
 
 
 class MLP(fluid.Layer):
+<<<<<<< HEAD
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
         super().__init__()
+=======
+
+    def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
+        super(MLP, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
@@ -53,6 +76,7 @@ class MLP(fluid.Layer):
         return y
 
 
+<<<<<<< HEAD
 class RandomDataset(paddle.io.Dataset):
     def __init__(self, num_samples=2000, linear_size=1000):
         self.num_samples = num_samples
@@ -65,10 +89,22 @@ class RandomDataset(paddle.io.Dataset):
 
     def __len__(self):
         return self.num_samples
+=======
+def reader_decorator(linear_size=1000):
+
+    def __reader__():
+        for _ in range(100):
+            img = np.random.rand(linear_size).astype('float32')
+            label = np.ones(1).astype('int64')
+            yield img, label
+
+    return __reader__
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+<<<<<<< HEAD
     optimizer = paddle.optimizer.AdamW(
         parameters=[
             {
@@ -82,10 +118,20 @@ def optimizer_setting(model, use_pure_fp16, opt_group=False):
         grad_clip=clip,
         multi_precision=use_pure_fp16,
     )
+=======
+    optimizer = paddle.optimizer.AdamW(parameters=[{
+        "params": model.parameters(),
+    }] if opt_group else model.parameters(),
+                                       learning_rate=0.001,
+                                       weight_decay=0.00001,
+                                       grad_clip=clip,
+                                       multi_precision=use_pure_fp16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return optimizer
 
 
+<<<<<<< HEAD
 def train_mlp(
     model,
     sharding_stage,
@@ -102,17 +148,42 @@ def train_mlp(
         optimizer = optimizer_setting(
             model=model, use_pure_fp16=use_pure_fp16, opt_group=opt_group
         )
+=======
+def train_mlp(model,
+              sharding_stage,
+              batch_size=100,
+              use_pure_fp16=False,
+              accumulate_grad=False,
+              opt_group=False,
+              save_model=False,
+              test_minimize=False):
+    if sharding_stage != "dp":
+        group = paddle.distributed.new_group([0, 1], backend="nccl")
+    if opt_group:
+        optimizer = optimizer_setting(model=model,
+                                      use_pure_fp16=use_pure_fp16,
+                                      opt_group=opt_group)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
     if sharding_stage == 2:
         optimizer = GroupShardedOptimizerStage2(
+<<<<<<< HEAD
             params=optimizer._parameter_list, optim=optimizer, group=group
         )
 
         model = GroupShardedStage2(
             model, optimizer, group=group, buffer_max_size=2**21
         )
+=======
+            params=optimizer._parameter_list, optim=optimizer, group=group)
+
+        model = GroupShardedStage2(model,
+                                   optimizer,
+                                   group=group,
+                                   buffer_max_size=2**21)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         model = paddle.DataParallel(model)
 
@@ -122,6 +193,7 @@ def train_mlp(
             optimizer.minimize()
         except:
             print(
+<<<<<<< HEAD
                 "====== Find sharding_stage2_optimizer.minimize() error ======"
             )
         return
@@ -135,6 +207,21 @@ def train_mlp(
         drop_last=True,
         num_workers=0,
     )
+=======
+                "====== Find sharding_stage2_optimizer.minimize() error ======")
+        return
+
+    train_reader = paddle.batch(reader_decorator(),
+                                batch_size=batch_size,
+                                drop_last=True)
+
+    train_loader = paddle.io.DataLoader.from_generator(capacity=32,
+                                                       use_double_buffer=True,
+                                                       iterable=True,
+                                                       return_list=True,
+                                                       use_multiprocess=True)
+    train_loader.set_sample_list_generator(train_reader)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if sharding_stage == 2:
         model.to(device="gpu")
@@ -188,6 +275,7 @@ def test_dp_stage2():
     mlp7.set_state_dict(state_dict)
 
     # DP VS stage2
+<<<<<<< HEAD
     dp_params = train_mlp(
         mlp1, sharding_stage="dp", use_pure_fp16=False, opt_group=False
     )
@@ -220,11 +308,48 @@ def test_dp_stage2():
         np.testing.assert_allclose(
             dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6
         )
+=======
+    dp_params = train_mlp(mlp1,
+                          sharding_stage="dp",
+                          use_pure_fp16=False,
+                          opt_group=False)
+    stage2_params = train_mlp(mlp2,
+                              sharding_stage=2,
+                              use_pure_fp16=False,
+                              opt_group=False)
+    for i in range(len(dp_params)):
+        np.testing.assert_allclose(dp_params[i].numpy(),
+                                   stage2_params[i].numpy(),
+                                   rtol=1e-6)
+
+    # stage2 accumulate grad
+    stage2_params = train_mlp(mlp3, sharding_stage=2, accumulate_grad=True)
+    stage2_accumulate_grad = train_mlp(mlp4,
+                                       sharding_stage=2,
+                                       batch_size=20,
+                                       accumulate_grad=True)
+    for i in range(len(stage2_params)):
+        np.testing.assert_allclose(stage2_params[i].numpy(),
+                                   stage2_accumulate_grad[i].numpy(),
+                                   rtol=1e-5,
+                                   atol=1e-5)
+
+    # stage2 param list VS param group
+    stage2_params = train_mlp(mlp5,
+                              sharding_stage=2,
+                              use_pure_fp16=False,
+                              opt_group=True)
+    for i in range(len(dp_params)):
+        np.testing.assert_allclose(dp_params[i].numpy(),
+                                   stage2_params[i].numpy(),
+                                   rtol=1e-6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # save/load model
     output_dir = tempfile.mkdtemp()
     model_file = os.path.join(output_dir, "model.pdmodel")
     optimizer_file = os.path.join(output_dir, "model.pdopt")
+<<<<<<< HEAD
     model_stage2, optimizer_stage2 = train_mlp(
         mlp6,
         sharding_stage=2,
@@ -232,6 +357,13 @@ def test_dp_stage2():
         opt_group=False,
         save_model=True,
     )
+=======
+    model_stage2, optimizer_stage2 = train_mlp(mlp6,
+                                               sharding_stage=2,
+                                               use_pure_fp16=False,
+                                               opt_group=False,
+                                               save_model=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle.save(model_stage2.state_dict(), model_file)
     paddle.save(optimizer_stage2.state_dict(), optimizer_file)
     m_state_dict = paddle.load(model_file)
@@ -246,4 +378,9 @@ def test_dp_stage2():
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     test_dp_stage2()
+=======
+    with _test_eager_guard():
+        test_dp_stage2()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

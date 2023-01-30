@@ -16,10 +16,15 @@ import typing
 import paddle
 from paddle.fluid import framework as framework
 
+<<<<<<< HEAD
 from .phi_ops_map import op_info, op_map
 
 
 class PrimOption:
+=======
+
+class PrimOption(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.enable_prim = False
 
@@ -37,7 +42,11 @@ prim_option = PrimOption()
 def prim_enabled():
     """
     Note:
+<<<<<<< HEAD
         **ONLY available in the static graph mode.**
+=======
+        **ONLY available in the static mode.**
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Shows whether the automatic differentiation mechanism based on
     automatic differential basic operators is ON. Defaults to OFF.
@@ -68,7 +77,11 @@ def prim_enabled():
 def enable_prim():
     """
     Note:
+<<<<<<< HEAD
         **ONLY available in the static graph mode.**
+=======
+        **ONLY available in the static mode.**
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Turns ON automatic differentiation mechanism based on automatic
     differential basic operators.
@@ -92,7 +105,11 @@ def enable_prim():
 def disable_prim():
     """
     Note:
+<<<<<<< HEAD
         **ONLY available in the static graph mode.**
+=======
+        **ONLY available in the static mode.**
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Turns OFF automatic differentiation mechanism based on automatic
     differential basic operators.
@@ -150,6 +167,7 @@ def get_input_var_list(op):
         ]
 
 
+<<<<<<< HEAD
 def _solve_arg(item):
     if "=" not in item:
         res = item
@@ -208,6 +226,8 @@ def prepare_python_api_arguments(op):
         return res
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def get_output_var_list(op):
     if op.output_names is None:
         return []

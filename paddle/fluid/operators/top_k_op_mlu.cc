@@ -22,6 +22,7 @@ template <typename T>
 class TopkMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto* indices = ctx.Output<phi::DenseTensor>("Indices");
@@ -29,6 +30,15 @@ class TopkMLUKernel : public framework::OpKernel<T> {
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
+=======
+    auto* input = ctx.Input<framework::LoDTensor>("X");
+    auto* output = ctx.Output<framework::LoDTensor>("Out");
+    auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+    const auto& place = ctx.GetPlace();
+
+    size_t k = static_cast<int>(ctx.Attr<int>("k"));
+    auto* k_t = ctx.Input<Tensor>("K");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (k_t) {
       auto k_t_ptr = static_cast<const void*>(k_t->data<int>());
       auto size = k_t->numel() * sizeof(int);
@@ -51,7 +61,11 @@ class TopkMLUKernel : public framework::OpKernel<T> {
     const bool sorted = true;
     const int axis = -1;
     // cnnl only support int32/int16 type of indices
+<<<<<<< HEAD
     phi::DenseTensor indices_int32(framework::TransToPhiDataType(VT::INT32));
+=======
+    framework::Tensor indices_int32(framework::TransToPhiDataType(VT::INT32));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     indices_int32.Resize(indices->dims());
     indices_int32.mutable_data<int32_t>(place);
 

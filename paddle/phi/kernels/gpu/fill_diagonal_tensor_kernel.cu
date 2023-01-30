@@ -131,7 +131,10 @@ PD_REGISTER_KERNEL(fill_diagonal_tensor,
                    int8_t,
                    uint8_t,
                    phi::dtype::float16,
+<<<<<<< HEAD
                    phi::dtype::bfloat16,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    bool) {}

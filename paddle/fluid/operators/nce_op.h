@@ -31,6 +31,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using SelectedRows = phi::SelectedRows;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
@@ -43,8 +48,13 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename DeviceContext, typename T>
 void PrepareSamples(const framework::ExecutionContext &context,
                     Sampler *sampler,
+<<<<<<< HEAD
                     phi::DenseTensor *sample_labels) {
   auto label = context.Input<phi::DenseTensor>("Label");
+=======
+                    Tensor *sample_labels) {
+  auto label = context.Input<Tensor>("Label");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const int64_t *label_data = label->data<int64_t>();
   auto label_dims = label->dims();
   // for unitest
@@ -96,10 +106,16 @@ class NCEKernel : public framework::OpKernel<T> {
         break;
       }
       case 2: {
+<<<<<<< HEAD
         auto dist_probs = context.Input<phi::DenseTensor>("CustomDistProbs");
         auto dist_alias = context.Input<phi::DenseTensor>("CustomDistAlias");
         auto dist_alias_probs =
             context.Input<phi::DenseTensor>("CustomDistAliasProbs");
+=======
+        auto dist_probs = context.Input<Tensor>("CustomDistProbs");
+        auto dist_alias = context.Input<Tensor>("CustomDistAlias");
+        auto dist_alias_probs = context.Input<Tensor>("CustomDistAliasProbs");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         PADDLE_ENFORCE_EQ(
             dist_probs->numel(),
@@ -152,6 +168,7 @@ class NCEKernel : public framework::OpKernel<T> {
     }
 
     std::vector<int64_t> sample_out_dims;
+<<<<<<< HEAD
     auto label = context.Input<phi::DenseTensor>("Label");
     phi::DenseTensor *sample_labels;
     phi::DenseTensor *sample_out;
@@ -161,6 +178,16 @@ class NCEKernel : public framework::OpKernel<T> {
       int num_true_classes = label->dims().size() == 2 ? label->dims()[1] : 1;
       sample_out_dims.push_back(
           (context.Input<phi::DenseTensor>("Input"))->dims()[0]);
+=======
+    auto label = context.Input<Tensor>("Label");
+    Tensor *sample_labels;
+    Tensor *sample_out;
+    Tensor sample_labels_tmp, sample_out_tmp;
+    if (is_test) {
+      // set dims of output(SampleOut)
+      int num_true_classes = label->dims().size() == 2 ? label->dims()[1] : 1;
+      sample_out_dims.push_back((context.Input<Tensor>("Input"))->dims()[0]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       sample_out_dims.push_back(
           (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
 
@@ -170,8 +197,13 @@ class NCEKernel : public framework::OpKernel<T> {
       sample_out = &sample_out_tmp;
       sample_out->Resize(phi::make_ddim(sample_out_dims));
     } else {
+<<<<<<< HEAD
       sample_labels = context.Output<phi::DenseTensor>("SampleLabels");
       sample_out = context.Output<phi::DenseTensor>("SampleLogits");
+=======
+      sample_labels = context.Output<Tensor>("SampleLabels");
+      sample_out = context.Output<Tensor>("SampleLogits");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     PrepareSamples<DeviceContext, T>(context, sampler, sample_labels);
@@ -189,12 +221,20 @@ class NCEKernel : public framework::OpKernel<T> {
     }
 
     T *sample_out_data = sample_out->mutable_data<T>(context.GetPlace());
+<<<<<<< HEAD
     auto sample_weight = context.Input<phi::DenseTensor>("SampleWeight");
+=======
+    auto sample_weight = context.Input<Tensor>("SampleWeight");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const T *sample_weight_data = nullptr;
     if (sample_weight != nullptr) {
       sample_weight_data = sample_weight->data<T>();
     }
+<<<<<<< HEAD
     auto out = context.Output<phi::DenseTensor>("Cost");
+=======
+    auto out = context.Output<Tensor>("Cost");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T *out_data = out->mutable_data<T>(context.GetPlace());
     int64_t num_true_class = 1;
     if (label != nullptr) {
@@ -203,7 +243,11 @@ class NCEKernel : public framework::OpKernel<T> {
     int64_t sampled_labels_num = sample_labels->dims()[1];
     //    T b = 1. / num_total_classes * num_neg_samples;
     // forward bias
+<<<<<<< HEAD
     auto bias = context.Input<phi::DenseTensor>("Bias");
+=======
+    auto bias = context.Input<Tensor>("Bias");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (bias != nullptr) {
       const T *bias_data = bias->data<T>();
       for (int64_t i = 0; i < sample_labels->numel(); ++i) {
@@ -215,11 +259,17 @@ class NCEKernel : public framework::OpKernel<T> {
       }
     }
     // forward mul
+<<<<<<< HEAD
     auto input_mat =
         EigenMatrix<T>::From(*(context.Input<phi::DenseTensor>("Input")));
 
     auto weight_mat =
         EigenMatrix<T>::From(*(context.Input<phi::DenseTensor>("Weight")));
+=======
+    auto input_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
+
+    auto weight_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (int64_t i = 0; i < sample_labels->numel(); ++i) {
       Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
           (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
@@ -249,6 +299,7 @@ template <typename DeviceContext, typename T>
 class NCEGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto d_out =
         context.Input<phi::DenseTensor>(framework::GradVarName("Cost"));
     const T *d_out_data = d_out->data<T>();
@@ -258,6 +309,16 @@ class NCEGradKernel : public framework::OpKernel<T> {
     auto sample_labels = context.Input<phi::DenseTensor>("SampleLabels");
     const int64_t *sample_labels_data = sample_labels->data<int64_t>();
     auto sample_weight = context.Input<phi::DenseTensor>("SampleWeight");
+=======
+    auto d_out = context.Input<Tensor>(framework::GradVarName("Cost"));
+    const T *d_out_data = d_out->data<T>();
+    auto label = context.Input<Tensor>("Label");
+    auto sample_out = context.Input<Tensor>("SampleLogits");
+    const T *sample_out_data = sample_out->data<T>();
+    auto sample_labels = context.Input<Tensor>("SampleLabels");
+    const int64_t *sample_labels_data = sample_labels->data<int64_t>();
+    auto sample_weight = context.Input<Tensor>("SampleWeight");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const T *sample_weight_data = nullptr;
     if (sample_weight != nullptr) {
       sample_weight_data = sample_weight->data<T>();
@@ -282,10 +343,16 @@ class NCEGradKernel : public framework::OpKernel<T> {
         break;
       }
       case 2: {
+<<<<<<< HEAD
         auto dist_probs = context.Input<phi::DenseTensor>("CustomDistProbs");
         auto dist_alias = context.Input<phi::DenseTensor>("CustomDistAlias");
         auto dist_alias_probs =
             context.Input<phi::DenseTensor>("CustomDistAliasProbs");
+=======
+        auto dist_probs = context.Input<Tensor>("CustomDistProbs");
+        auto dist_alias = context.Input<Tensor>("CustomDistAlias");
+        auto dist_alias_probs = context.Input<Tensor>("CustomDistAliasProbs");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         PADDLE_ENFORCE_EQ(
             dist_probs->numel(),
@@ -338,7 +405,11 @@ class NCEGradKernel : public framework::OpKernel<T> {
     }
 
     //    T b = 1. / num_total_classes * num_neg_samples;
+<<<<<<< HEAD
     phi::DenseTensor sample_grad;  // tmp tensor
+=======
+    Tensor sample_grad;  // tmp tensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T *sample_grad_data =
         sample_grad.mutable_data<T>(sample_labels->dims(), context.GetPlace());
     // backward cost
@@ -355,8 +426,12 @@ class NCEGradKernel : public framework::OpKernel<T> {
     }
 
     // get d_bias
+<<<<<<< HEAD
     auto d_bias =
         context.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+=======
+    auto d_bias = context.Output<Tensor>(framework::GradVarName("Bias"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (d_bias != nullptr) {
       T *d_bias_data = d_bias->mutable_data<T>(context.GetPlace());
       std::fill(d_bias_data, d_bias_data + d_bias->numel(), 0.0);
@@ -369,14 +444,22 @@ class NCEGradKernel : public framework::OpKernel<T> {
 
     if (!is_sparse) {
       // get d_w
+<<<<<<< HEAD
       auto d_w =
           context.Output<phi::DenseTensor>(framework::GradVarName("Weight"));
+=======
+      auto d_w = context.Output<Tensor>(framework::GradVarName("Weight"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (d_w != nullptr) {
         auto d_w_data = d_w->mutable_data<T>(context.GetPlace());
         std::fill(d_w_data, d_w_data + d_w->numel(), 0.0);
         auto d_w_matrix = EigenMatrix<T>::From(*d_w);
+<<<<<<< HEAD
         auto x_matrix =
             EigenMatrix<T>::From(*(context.Input<phi::DenseTensor>("Input")));
+=======
+        auto x_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for (int64_t i = 0; i < sample_labels->numel(); ++i) {
           d_w_matrix.chip(sample_labels_data[i], 0) +=
               x_matrix.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
@@ -393,15 +476,24 @@ class NCEGradKernel : public framework::OpKernel<T> {
 
       auto *table_var = context.InputVar("Weight");
       DDim table_dim;
+<<<<<<< HEAD
       if (table_var->IsType<phi::DenseTensor>()) {
         table_dim = context.Input<phi::DenseTensor>("Weight")->dims();
+=======
+      if (table_var->IsType<LoDTensor>()) {
+        table_dim = context.Input<LoDTensor>("Weight")->dims();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       } else if (table_var->IsType<phi::SelectedRows>()) {
         auto *table_t = context.Input<phi::SelectedRows>("Weight");
         table_dim = table_t->value().dims();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The parameter Weight of a NCE_OP "
+<<<<<<< HEAD
             "must be either phi::DenseTensor or SelectedRows"));
+=======
+            "must be either LoDTensor or SelectedRows"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
 
       auto d_w =
@@ -417,8 +509,12 @@ class NCEGradKernel : public framework::OpKernel<T> {
       std::fill(d_w_data, d_w_data + d_table_value->numel(), 0.0);
 
       auto d_w_matrix = EigenMatrix<T>::From(*d_table_value);
+<<<<<<< HEAD
       auto x_matrix =
           EigenMatrix<T>::From(*(context.Input<phi::DenseTensor>("Input")));
+=======
+      auto x_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_w_matrix.chip(d_w->Index(sample_labels_data[i]), 0) +=
             x_matrix.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
@@ -427,14 +523,22 @@ class NCEGradKernel : public framework::OpKernel<T> {
     }
 
     // get d_x
+<<<<<<< HEAD
     auto d_x =
         context.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+=======
+    auto d_x = context.Output<Tensor>(framework::GradVarName("Input"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (d_x != nullptr) {
       auto *d_x_data = d_x->mutable_data<T>(context.GetPlace());
       std::fill(d_x_data, d_x_data + d_x->numel(), 0.0);
       auto d_x_matrix = EigenMatrix<T>::From(*d_x);
+<<<<<<< HEAD
       auto w_matrix =
           EigenMatrix<T>::From(*(context.Input<phi::DenseTensor>("Weight")));
+=======
+      auto w_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_x_matrix.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) +=
             w_matrix.chip(sample_labels_data[i], 0) * sample_grad_data[i];

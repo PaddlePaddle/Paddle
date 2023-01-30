@@ -132,7 +132,11 @@ class AscendInstance {
           "Not support %s as tensor type.", DataTypeToString(type)));
     }
   }
+<<<<<<< HEAD
   ge::Tensor ConvertToGeTensor(const phi::DenseTensor *tensor) {
+=======
+  ge::Tensor ConvertToGeTensor(const Tensor *tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto numel = tensor->numel();
     std::vector<int64_t> vec_dim;
     auto dimen = arity(tensor->dims());
@@ -164,10 +168,17 @@ class AscendInstance {
   }
 
   void RunAscendSubgraph(int graph_idx,
+<<<<<<< HEAD
                          const std::vector<const phi::DenseTensor *> &inputs,
                          std::vector<phi::DenseTensor *> *outputs) {
     VLOG(1) << "Ascend Graph[" << graph_idx << "] is about to run.";
     // Convert paddle phi::DenseTensor to GE phi::DenseTensor
+=======
+                         const std::vector<const Tensor *> &inputs,
+                         std::vector<Tensor *> *outputs) {
+    VLOG(1) << "Ascend Graph[" << graph_idx << "] is about to run.";
+    // Convert paddle Tensor to GE Tensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<ge::Tensor> ge_inputs;
     for (const auto &e : inputs) {
       ge_inputs.push_back(ConvertToGeTensor(e));
@@ -187,8 +198,12 @@ class AscendInstance {
     for (size_t i = 0; i < ge_outputs.size(); ++i) {
       const uint8_t *ret_data = ge_outputs[i].GetData();
       size_t size = ge_outputs[i].GetSize();
+<<<<<<< HEAD
       VLOG(1) << "GE phi::DenseTensor size of the " << i << "th output var is "
               << size;
+=======
+      VLOG(1) << "GE Tensor size of the " << i << "th output var is " << size;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto *dst = (*outputs)[i]->mutable_data<uint8_t>({(int64_t)size},
                                                        platform::CPUPlace());
       memcpy(dst, ret_data, size);

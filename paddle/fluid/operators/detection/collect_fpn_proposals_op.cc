@@ -16,6 +16,11 @@ limitations under the License.*/
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class CollectFpnProposalsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -74,8 +79,13 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
             PADDLE_GET(framework::Variable *, roi_inputs[i]);
         framework::Variable *score_var =
             PADDLE_GET(framework::Variable *, score_inputs[i]);
+<<<<<<< HEAD
         auto &roi_lod = roi_var->Get<phi::DenseTensor>().lod();
         auto &score_lod = score_var->Get<phi::DenseTensor>().lod();
+=======
+        auto &roi_lod = roi_var->Get<LoDTensor>().lod();
+        auto &score_lod = score_var->Get<LoDTensor>().lod();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         PADDLE_ENFORCE_EQ(
             roi_lod,
             score_lod,
@@ -87,11 +97,19 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "MultiLevelRois");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "MultiLevelRois");
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -99,6 +117,7 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("MultiLevelRois",
+<<<<<<< HEAD
              "(phi::DenseTensor) Multiple roi phi::DenseTensors from each "
              "level in shape "
              "(N, 4), N is the number of RoIs")
@@ -106,6 +125,13 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("MultiLevelScores",
              "(phi::DenseTensor) Multiple score phi::DenseTensors from each "
              "level in shape"
+=======
+             "(LoDTensor) Multiple roi LoDTensors from each level in shape "
+             "(N, 4), N is the number of RoIs")
+        .AsDuplicable();
+    AddInput("MultiLevelScores",
+             "(LoDTensor) Multiple score LoDTensors from each level in shape"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              " (N, 1), N is the number of RoIs.")
         .AsDuplicable();
     AddInput(
@@ -115,8 +141,12 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
         "images.")
         .AsDuplicable()
         .AsDispensable();
+<<<<<<< HEAD
     AddOutput("FpnRois",
               "(phi::DenseTensor) All selected RoIs with highest scores");
+=======
+    AddOutput("FpnRois", "(LoDTensor) All selected RoIs with highest scores");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddOutput("RoisNum", "(Tensor), Number of RoIs in each images.")
         .AsDispensable();
     AddAttr<int>("post_nms_topN",
@@ -126,7 +156,11 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
 This operator concats all proposals from different images
  and different FPN levels. Then sort all of those proposals
 by objectness confidence. Select the post_nms_topN RoIs in
+<<<<<<< HEAD
  total. Finally, re-sort the RoIs in the order of batch index.
+=======
+ total. Finally, re-sort the RoIs in the order of batch index. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
   }
 };
@@ -146,7 +180,11 @@ REGISTER_OP_CPU_KERNEL(collect_fpn_proposals,
 REGISTER_OP_VERSION(collect_fpn_proposals)
     .AddCheckpoint(
         R"ROC(
+<<<<<<< HEAD
               Upgrade collect_fpn_proposals add a new input
+=======
+              Upgrade collect_fpn_proposals add a new input 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               [MultiLevelRoIsNum] and add a new output [RoisNum].)ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewInput("MultiLevelRoIsNum",

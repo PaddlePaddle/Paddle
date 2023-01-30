@@ -34,7 +34,12 @@ cc_library(
 cc_library(
   jit_function
   SRCS function.cc
+<<<<<<< HEAD
   DEPS jit_function_utils jit_interpreter_engine jit_predictor_engine)
+=======
+  DEPS jit_function_utils jit_executor_engine jit_pe_engine
+       jit_predictor_engine)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 cc_library(
   jit_layer
@@ -44,7 +49,12 @@ cc_library(
        jit_serializer_utils
        jit_compilation_unit
        jit_function_schema
+<<<<<<< HEAD
        jit_interpreter_engine
+=======
+       jit_executor_engine
+       jit_pe_engine
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
        jit_predictor_engine
        jit_function)
 
@@ -54,8 +64,12 @@ if(WITH_TESTING AND NOT WIN32)
     COMMAND
       wget -nc -q --no-check-certificate
       https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load_with_property.tar.gz
+<<<<<<< HEAD
     COMMAND tar zxf multi_program_load_with_property.tar.gz
     WORKING_DIRECTORY "${CC_TESTS_DIR}")
+=======
+    COMMAND tar zxf multi_program_load_with_property.tar.gz)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set(JIT_DEPS
       phi
       phi_api
@@ -66,12 +80,16 @@ if(WITH_TESTING AND NOT WIN32)
       feed_op
       fetch_op
       scale_op
+<<<<<<< HEAD
       transfer_layout_op
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       jit_layer)
   cc_test(
     layer_test
     SRCS layer_test.cc
     DEPS ${JIT_DEPS})
+<<<<<<< HEAD
   # add_dependencies(layer_test jit_download_program)
 
   cc_test(
@@ -81,4 +99,7 @@ if(WITH_TESTING AND NOT WIN32)
   # add_dependencies(layer_test_new jit_download_program)
   # set_tests_properties(layer_test_new PROPERTIES ENVIRONMENT
   #                                                "FLAGS_jit_engine_type=New")
+=======
+  add_dependencies(layer_test jit_download_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()

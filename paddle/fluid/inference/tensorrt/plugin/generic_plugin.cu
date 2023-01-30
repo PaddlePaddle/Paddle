@@ -30,11 +30,16 @@ namespace plugin {
 void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                                phi::KernelContext* kernel_context,
                                const phi::KernelSignature& signature,
+<<<<<<< HEAD
                                const phi::Kernel* phi_kernel) {
   if (!phi_kernel->IsValid()) {
     return;
   }
   const phi::KernelArgsDef& args_def = phi_kernel->args_def();
+=======
+                               const phi::Kernel& phi_kernel) {
+  const phi::KernelArgsDef& args_def = phi_kernel.args_def();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const auto& attr_names = signature.attr_names;
   const auto& attr_defs = args_def.attribute_defs();
 
@@ -224,34 +229,51 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
 
 GenericPlugin::GenericPlugin(
     const paddle::framework::proto::OpDesc& proto_op_desc,
+<<<<<<< HEAD
     const InputOutPutVarInfo& in_out_info,
     bool with_fp16) {
+=======
+    const InputOutPutVarInfo& in_out_info) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   proto_op_desc_ = proto_op_desc;
   op_desc_ = std::move(framework::OpDesc(proto_op_desc_, nullptr));
   proto_op_desc_.SerializeToString(&op_meta_data_);
   inputs_data_type_ = in_out_info.inputs_data_type;
   outputs_data_type_ = in_out_info.outputs_data_type;
+<<<<<<< HEAD
   with_fp16_ = with_fp16;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 GenericPlugin::GenericPlugin(
     const paddle::framework::proto::OpDesc& proto_op_desc,
     const std::vector<int>& inputs_data_type,
+<<<<<<< HEAD
     const std::vector<int>& outputs_data_type,
     bool with_fp16) {
+=======
+    const std::vector<int>& outputs_data_type) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   proto_op_desc_ = proto_op_desc;
   op_desc_ = std::move(framework::OpDesc(proto_op_desc_, nullptr));
   proto_op_desc_.SerializeToString(&op_meta_data_);
   inputs_data_type_ = inputs_data_type;
   outputs_data_type_ = outputs_data_type;
+<<<<<<< HEAD
   with_fp16_ = with_fp16;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 GenericPlugin::GenericPlugin(void const* serial_data, size_t serial_length) {
   DeserializeValue(&serial_data, &serial_length, &inputs_data_type_);
   DeserializeValue(&serial_data, &serial_length, &outputs_data_type_);
+<<<<<<< HEAD
   DeserializeValue(&serial_data, &serial_length, &with_fp16_);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::string op_meta_data((char*)(serial_data), serial_length);  // NOLINT
   op_meta_data_ = std::move(op_meta_data);
   proto_op_desc_.ParseFromString(op_meta_data_);
@@ -275,8 +297,13 @@ int GenericPlugin::getNbInputs() const TRT_NOEXCEPT {
 }
 
 nvinfer1::IPluginV2DynamicExt* GenericPlugin::clone() const TRT_NOEXCEPT {
+<<<<<<< HEAD
   nvinfer1::IPluginV2DynamicExt* plugin = new GenericPlugin(
       proto_op_desc_, inputs_data_type_, outputs_data_type_, with_fp16_);
+=======
+  nvinfer1::IPluginV2DynamicExt* plugin =
+      new GenericPlugin(proto_op_desc_, inputs_data_type_, outputs_data_type_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   plugin->initialize();
   return plugin;
 }
@@ -286,8 +313,11 @@ void GenericPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, inputs_data_type_);
   // outputs_data_type_
   SerializeValue(&buffer, outputs_data_type_);
+<<<<<<< HEAD
   // use fp16
   SerializeValue(&buffer, with_fp16_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // serialize op_meta_data_
   std::memcpy(buffer, op_meta_data_.c_str(), op_meta_data_.size());
   reinterpret_cast<char*&>(buffer) += op_meta_data_.size();
@@ -300,13 +330,18 @@ bool GenericPlugin::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   if (op_desc_.Type() == "gather_nd" || op_desc_.Type() == "yolo_box") {
     if (pos == 0)
+<<<<<<< HEAD
       return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
               (isFp16Supported() &&
                in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+=======
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
     if (pos == 1)
       return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+<<<<<<< HEAD
     // output
     if (pos == 2)
       return in_out[0].type == in_out[pos].type &&
@@ -338,6 +373,27 @@ bool GenericPlugin::supportsFormatCombination(
              in_out[pos].type == nvinfer1::DataType::kHALF)) &&
            (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR) &&
            (in_out[0].type == in_out[pos].type);
+=======
+    if (pos == 2)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+  } else if (op_desc_.Type() == "scatter_nd_add") {
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    if (pos == 2)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    if (pos == 3)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+  } else {
+    return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
+           (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -362,17 +418,36 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
         phi::DefaultKernelSignatureMap::Instance().Get(op_type);
   }
 
+<<<<<<< HEAD
+=======
+  phi::KernelKey phi_kernel_key(
+      phi::Backend::GPU, phi::DataLayout::ANY, phi::DataType::FLOAT32);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_EQ(
       phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type),
       true,
       platform::errors::Fatal("%s has no compatible phi kernel!",
                               op_type.c_str()));
 
+<<<<<<< HEAD
+=======
+  const phi::Kernel& phi_kernel = phi::KernelFactory::Instance().SelectKernel(
+      phi_kernel_signature.name, phi_kernel_key);
+  phi_kernel_ = &phi_kernel;
+
+  PADDLE_ENFORCE_EQ(phi_kernel_->IsValid(),
+                    true,
+                    platform::errors::Fatal("%s phi kernel is invalid!.",
+                                            phi_kernel_signature.name));
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
   auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
 
+<<<<<<< HEAD
   std::vector<phi::DataType> precision_types{phi::DataType::FLOAT32,
                                              phi::DataType::FLOAT16};
   for (auto& precision_type : precision_types) {
@@ -399,6 +474,13 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
                     platform::errors::Fatal("%s phi kernel is invalid!.",
                                             phi_kernel_signature.name));
 
+=======
+  if (!phi_kernel_context_) {
+    phi_kernel_context_ = new phi::KernelContext(dev_ctx);
+    BuildPhiKernelContextAttr(
+        op_desc_, phi_kernel_context_, phi_kernel_signature, phi_kernel);
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (!dense_tensor_inputs_)
     dense_tensor_inputs_ = new std::vector<phi::DenseTensor>(getNbInputs());
   if (!dense_tensor_outputs_)
@@ -430,14 +512,23 @@ void GenericPlugin::configurePlugin(
     int nb_inputs,
     const nvinfer1::DynamicPluginTensorDesc* out,
     int nb_outputs) TRT_NOEXCEPT {
+<<<<<<< HEAD
   CHECK(phi_kernels_[nvinfer1::DataType::kFLOAT]->IsValid() ||
         phi_kernels_[nvinfer1::DataType::kHALF]->IsValid());
+=======
+  CHECK(phi_kernel_context_);
+  CHECK(phi_kernel_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CHECK(nb_inputs == getNbInputs());
   CHECK(nb_outputs == getNbOutputs());
 }
 
 // Shutdown the layer. This is called when the engine is destroyed
 void GenericPlugin::terminate() TRT_NOEXCEPT {
+<<<<<<< HEAD
+=======
+  delete phi_kernel_context_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   delete dense_tensor_inputs_;
   delete dense_tensor_outputs_;
 }
@@ -451,6 +542,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
 
   // [TODO]now generic plugin do not support FP16 and INT8 precision
+<<<<<<< HEAD
   auto protoType2PhiType =
       [&](int proto_type,
           nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
@@ -487,6 +579,29 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         (data_type == nvinfer1::DataType::kHALF));
 
   phi_kernel_contexts_[data_type]->ClearInputOutput();
+=======
+  auto protoType2PhiType = [](int proto_type) -> std::pair<phi::DataType, int> {
+    if (proto_type ==
+        static_cast<int>(framework::proto::VarType_Type::VarType_Type_FP32))
+      return {phi::DataType::FLOAT32, sizeof(float)};
+    else if (proto_type ==
+                 static_cast<int>(
+                     framework::proto::VarType_Type::VarType_Type_INT64) ||
+             proto_type ==
+                 static_cast<int>(
+                     framework::proto::VarType_Type::VarType_Type_INT32))
+      return {phi::DataType::INT32, sizeof(int32_t)};
+    else if (proto_type ==
+             static_cast<int>(
+                 framework::proto::VarType_Type::VarType_Type_BOOL))
+      return {phi::DataType::BOOL, sizeof(bool)};
+    else
+      CHECK(false) << "precision is not supported";
+  };
+
+  // input
+  phi_kernel_context_->ClearInputOutput();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   for (int i = 0; i < getNbInputs(); i++) {
     auto const& input_dims = input_desc[i].dims;
@@ -498,9 +613,13 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
 
+<<<<<<< HEAD
     auto data_type_and_size =
         protoType2PhiType(inputs_data_type_[i], data_type);
 
+=======
+    auto data_type_and_size = protoType2PhiType(inputs_data_type_[i]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
                                     phi::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
@@ -509,9 +628,15 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                             place));
     (*dense_tensor_inputs_)[i] =
         std::move(phi::DenseTensor(input_alloc, input_meta));
+<<<<<<< HEAD
     phi_kernel_contexts_[data_type]->EmplaceBackInput(
         &((*dense_tensor_inputs_)[i]));
   }
+=======
+    phi_kernel_context_->EmplaceBackInput(&((*dense_tensor_inputs_)[i]));
+  }
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // output
   for (int i = 0; i < getNbOutputs(); i++) {
     auto const& output_dims = output_desc[i].dims;
@@ -524,14 +649,19 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     for (int k = 0; k < output_shape.size(); k++)
       output_numel *= output_shape[k];
 
+<<<<<<< HEAD
     auto data_type_and_size =
         protoType2PhiType(inputs_data_type_[i], data_type);
+=======
+    auto data_type_and_size = protoType2PhiType(inputs_data_type_[i]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     phi::DenseTensorMeta output_meta(data_type_and_size.first,
                                      phi::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
         new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
                             output_numel * data_type_and_size.second,
                             place));
+<<<<<<< HEAD
 
     phi::DenseTensor output_densetonsor(output_alloc, output_meta);
 
@@ -546,6 +676,18 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
 
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
+=======
+    phi::DenseTensor output_densetonsor(output_alloc, output_meta);
+    (*dense_tensor_outputs_)[i] =
+        std::move(phi::DenseTensor(output_alloc, output_meta));
+    phi_kernel_context_->EmplaceBackOutput(&((*dense_tensor_outputs_)[i]));
+  }
+
+  CHECK_EQ(phi_kernel_context_->InputsSize(), getNbInputs());
+  CHECK_EQ(phi_kernel_context_->OutputsSize(), getNbOutputs());
+
+  (*phi_kernel_)(phi_kernel_context_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   return cudaGetLastError() != cudaSuccess;
 }

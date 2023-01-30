@@ -90,7 +90,12 @@ TEST(test_prepare_op, test_prepare_op) {
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
   platform::CPUPlace place;
+<<<<<<< HEAD
   vin->MutableVar()->GetMutable<phi::DenseTensor>()->mutable_data<float>(place);
+=======
+  vin->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
+      place);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
   imperative::NameVarBaseMap ins = {x_pair};
@@ -113,7 +118,11 @@ TEST(test_prepare_op, test_prepare_op) {
                               {}));
 }
 
+<<<<<<< HEAD
 const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var);
+=======
+const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 TEST(test_prepare_op, test_get_tensor_from_var) {
   std::shared_ptr<imperative::VarBase> vout_error(
@@ -137,7 +146,11 @@ TEST(test_prepare_op, test_prepare_data) {
   std::vector<int64_t> dims = {2, 5};
 
   // prepare an cpu only input
+<<<<<<< HEAD
   auto* vin_tensor = vin->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place,
@@ -172,12 +185,20 @@ TEST(test_prepare_op, test_prepare_data) {
   PrepareData<imperative::VarBase>(
       dynamic_cast<framework::OperatorWithKernel&>(*op),
       ins,
+<<<<<<< HEAD
       prepared_op.kernel_key(),
       gpu_place);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
           vb->Var().Get<phi::DenseTensor>().place(), gpu_place));
+=======
+      prepared_op.kernel_type());
+  for (const auto& name_pair : ins) {
+    for (const auto& vb : name_pair.second) {
+      ASSERT_TRUE(platform::is_same_place(
+          vb->Var().Get<framework::LoDTensor>().place(), gpu_place));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }
@@ -195,7 +216,11 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   std::vector<int64_t> dims = {2, 5};
 
   // prepare an cpu only input
+<<<<<<< HEAD
   auto* vin_tensor = vin->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place,
@@ -230,12 +255,20 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   PrepareData<imperative::VarBase>(
       dynamic_cast<framework::OperatorWithKernel&>(*op),
       ins,
+<<<<<<< HEAD
       prepared_op.kernel_key(),
       cpu_place);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
           vb->Var().Get<phi::DenseTensor>().place(), cpu_place));
+=======
+      prepared_op.kernel_type());
+  for (const auto& name_pair : ins) {
+    for (const auto& vb : name_pair.second) {
+      ASSERT_TRUE(platform::is_same_place(
+          vb->Var().Get<framework::LoDTensor>().place(), cpu_place));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }
@@ -260,5 +293,9 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 USE_OP_ITSELF(split);
 USE_OP_ITSELF(relu);
 #ifdef PADDLE_WITH_MKLDNN
+<<<<<<< HEAD
 PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
+=======
+PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif

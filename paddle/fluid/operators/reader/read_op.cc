@@ -139,7 +139,11 @@ class ReadOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
+<<<<<<< HEAD
           scope.FindVar(out_arg_names[i])->GetMutable<phi::DenseTensor>();
+=======
+          scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (need_check_feed[i]) {
         auto in_dims = ins[i].dims();
         PADDLE_ENFORCE_EQ(
@@ -171,7 +175,11 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Reader", "(ReaderHolder) The executed reader.");
+<<<<<<< HEAD
     AddOutput("Out", "(phi::DenseTensor) The output data.").AsDuplicable();
+=======
+    AddOutput("Out", "(LoDTensor) The output data.").AsDuplicable();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<bool>(
         "throw_eof_exp",
         "If set true, an exception will be thrown when the Reader "

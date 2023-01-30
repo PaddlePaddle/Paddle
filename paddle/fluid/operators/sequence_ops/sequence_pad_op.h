@@ -24,12 +24,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using LoD = framework::LoD;
 
 template <typename DeviceContext, typename T>
 class SequencePadOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* len_t = ctx.Output<phi::DenseTensor>("Length");
@@ -42,6 +47,20 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
                           "contain LoD information."));
 
     const auto* pad_value = ctx.Input<phi::DenseTensor>("PadValue");
+=======
+    const auto* x = ctx.Input<LoDTensor>("X");
+    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* len_t = ctx.Output<LoDTensor>("Length");
+    out->mutable_data<T>(ctx.GetPlace());
+
+    PADDLE_ENFORCE_EQ(
+        x->lod().empty(),
+        false,
+        platform::errors::NotFound("Input(X) Tensor of SequencePadOp does not "
+                                   "contain LoD information."));
+
+    const auto* pad_value = ctx.Input<LoDTensor>("PadValue");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int padded_length = ctx.Attr<int>("padded_length");
 
@@ -55,7 +74,11 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
         false,
         math::kBatchLengthWidth);
 
+<<<<<<< HEAD
     phi::DenseTensor seq_len;
+=======
+    LoDTensor seq_len;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     seq_len.Resize(len_t->dims());
     int64_t* len_data = seq_len.mutable_data<int64_t>(platform::CPUPlace());
     for (size_t i = 1; i < x->lod()[0].size(); ++i) {
@@ -72,10 +95,16 @@ template <typename DeviceContext, typename T>
 class SequencePadGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (d_x) {
       const auto* d_out =
           ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    auto* d_x = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    if (d_x) {
+      const auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       d_x->mutable_data<T>(ctx.GetPlace());
 
       int padded_length = ctx.Attr<int>("padded_length");

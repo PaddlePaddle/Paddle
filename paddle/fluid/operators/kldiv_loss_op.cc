@@ -19,15 +19,27 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class KLDivLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -70,6 +82,7 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
          While :math:`x` is Input(X) and :math:`y` is Input(Target).
 
          While :attr:`reduction` is :attr:`none`, output loss is in
+<<<<<<< HEAD
          the same shape as Input(X), loss in each point is calculated
          seperately and no reduction is applied.
 
@@ -83,6 +96,21 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
          in shape of [1] and loss value is the sum value of all losses
          divided by batch size.
 
+=======
+         the same shape as Input(X), loss in each point is calculated 
+         seperately and no reduction is applied.
+         
+         While :attr:`reduction` is :attr:`mean`, output loss is in
+         shape of [1] and loss value is the mean value of all losses.
+         
+         While :attr:`reduction` is :attr:`sum`, output loss is in
+         shape of [1] and loss value is the sum value of all losses.
+         
+         While :attr:`reduction` is :attr:`batchmean`, output loss is 
+         in shape of [1] and loss value is the sum value of all losses
+         divided by batch size.
+         
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
          )DOC");
   }
 };
@@ -104,11 +132,19 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Loss")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

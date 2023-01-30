@@ -18,11 +18,19 @@ Usage:
     python check_op_register_type.py > all_kernels.txt
     python check_op_register_type.py OP_TYPE_DEV.spec OP_TYPE_PR.spec > is_valid
 """
+<<<<<<< HEAD
 import collections
 import difflib
 import re
 import sys
 
+=======
+from __future__ import print_function
+import sys
+import re
+import difflib
+import collections
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 
 INTS = set(['int', 'int64_t'])
@@ -35,21 +43,34 @@ def get_all_kernels():
     op_kernel_types = collections.defaultdict(list)
     for op_type, op_infos in all_kernels_info.items():
         is_grad_op = op_type.endswith("_grad")
+<<<<<<< HEAD
         if is_grad_op:
             continue
+=======
+        if is_grad_op: continue
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         pattern = re.compile(r'data_type\[([^\]]+)\]')
         for op_info in op_infos:
             infos = pattern.findall(op_info)
+<<<<<<< HEAD
             if infos is None or len(infos) == 0:
                 continue
+=======
+            if infos is None or len(infos) == 0: continue
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             register_type = infos[0].split(":")[-1]
             op_kernel_types[op_type].append(register_type.lower())
 
+<<<<<<< HEAD
     for (op_type, op_kernels) in sorted(
         op_kernel_types.items(), key=lambda x: x[0]
     ):
+=======
+    for (op_type, op_kernels) in sorted(op_kernel_types.items(),
+                                        key=lambda x: x[0]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print(op_type, " ".join(sorted(op_kernels)))
 
 
@@ -67,11 +88,16 @@ def print_diff(op_type, register_types):
     if len(FLOATS - register_types) == 1:
         lack_types |= FLOATS - register_types
 
+<<<<<<< HEAD
     print(
         "{} only supports [{}] now, but lacks [{}].".format(
             op_type, " ".join(register_types), " ".join(lack_types)
         )
     )
+=======
+    print("{} only supports [{}] now, but lacks [{}].".format(
+        op_type, " ".join(register_types), " ".join(lack_types)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def check_add_op_valid():
@@ -84,6 +110,7 @@ def check_add_op_valid():
     for each_diff in result:
         if each_diff[0] in ['+'] and len(each_diff) > 2:  # if change or add op
             op_info = each_diff[1:].split()
+<<<<<<< HEAD
             if len(op_info) < 2:
                 continue
             register_types = set(op_info[1:])
@@ -91,6 +118,12 @@ def check_add_op_valid():
                 len(FLOATS - register_types) == 1
                 or len(INTS - register_types) == 1
             ):
+=======
+            if len(op_info) < 2: continue
+            register_types = set(op_info[1:])
+            if len(FLOATS - register_types) == 1 or \
+                    len(INTS - register_types) == 1:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 print_diff(op_info[0], register_types)
 
 
@@ -99,8 +132,14 @@ if len(sys.argv) == 1:
 elif len(sys.argv) == 3:
     check_add_op_valid()
 else:
+<<<<<<< HEAD
     print(
         "Usage:\n"
         "\tpython check_op_register_type.py > all_kernels.txt\n"
         "\tpython check_op_register_type.py OP_TYPE_DEV.spec OP_TYPE_PR.spec > diff"
     )
+=======
+    print("Usage:\n" \
+          "\tpython check_op_register_type.py > all_kernels.txt\n" \
+          "\tpython check_op_register_type.py OP_TYPE_DEV.spec OP_TYPE_PR.spec > diff")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

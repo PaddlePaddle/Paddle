@@ -13,12 +13,28 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 from paddle.distributed.fleet.utils.fs import HDFSClient
+=======
+import paddle.fluid as fluid
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
+from paddle.fluid.incubate.checkpoint.auto_checkpoint import ExeTrainStatus
+from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
+import os
+import sys
+
+from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 
 
 class CheckpointerSaverTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7", None)
         dir_path = "./checkpointsaver_test"

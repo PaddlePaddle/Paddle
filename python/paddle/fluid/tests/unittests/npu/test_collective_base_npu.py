@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import time
@@ -26,6 +30,7 @@ from contextlib import closing
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
+<<<<<<< HEAD
 
 
 class TestCollectiveRunnerBase:
@@ -36,11 +41,25 @@ class TestCollectiveRunnerBase:
 
     def wait_server_ready(self, endpoints):
         assert not isinstance(endpoints, str)
+=======
+from six import string_types
+
+
+class TestCollectiveRunnerBase(object):
+
+    def get_model(self, train_prog, startup_prog):
+        raise NotImplementedError(
+            "get model should be implemented by child class.")
+
+    def wait_server_ready(self, endpoints):
+        assert not isinstance(endpoints, string_types)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         while True:
             all_ok = True
             not_ready_endpoints = []
             for ep in endpoints:
                 ip_port = ep.split(":")
+<<<<<<< HEAD
                 with closing(
                     socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 ) as sock:
@@ -50,6 +69,15 @@ class TestCollectiveRunnerBase:
                         sock.setsockopt(
                             socket.SOL_SOCKET, socket.SO_REUSEPORT, 1
                         )
+=======
+                with closing(socket.socket(socket.AF_INET,
+                                           socket.SOCK_STREAM)) as sock:
+                    sock.settimeout(2)
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    if hasattr(socket, 'SO_REUSEPORT'):
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT,
+                                        1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                     result = sock.connect_ex((ip_port[0], int(ip_port[1])))
                     if result != 0:
@@ -57,24 +85,38 @@ class TestCollectiveRunnerBase:
                         not_ready_endpoints.append(ep)
             if not all_ok:
                 sys.stderr.write("server not ready, wait 3 sec to retry...\n")
+<<<<<<< HEAD
                 sys.stderr.write(
                     "not ready endpoints:" + str(not_ready_endpoints) + "\n"
                 )
+=======
+                sys.stderr.write("not ready endpoints:" +
+                                 str(not_ready_endpoints) + "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 sys.stderr.flush()
                 time.sleep(3)
             else:
                 break
 
+<<<<<<< HEAD
     # endpoints should be ["ip1:port1","ip2:port2"]
 
     def initCommunicator(
         self, program, rank, nranks, wait_port, current_endpoint, endpoints
     ):
+=======
+
+#endpoints should be ["ip1:port1","ip2:port2"]
+
+    def initCommunicator(self, program, rank, nranks, wait_port,
+                         current_endpoint, endpoints):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
         if rank == 0 and wait_port:
             self.wait_server_ready(other_endpoints)
         block = program.global_block()
+<<<<<<< HEAD
         hccl_id_var = block.create_var(
             name=nameGen.generate('hccl_id'),
             persistable=True,
@@ -101,6 +143,28 @@ class TestCollectiveRunnerBase:
                 'rank_ids': nranks,
             },
         )
+=======
+        hccl_id_var = block.create_var(name=nameGen.generate('hccl_id'),
+                                       persistable=True,
+                                       type=core.VarDesc.VarType.RAW)
+        block.append_op(type='c_gen_hccl_id',
+                        inputs={},
+                        outputs={'Out': hccl_id_var},
+                        attrs={
+                            'rank': rank,
+                            'endpoint': current_endpoint,
+                            'other_endpoints': other_endpoints
+                        })
+        block.append_op(type='c_comm_init_hccl',
+                        inputs={'X': hccl_id_var},
+                        outputs={},
+                        attrs={
+                            'rank': rank,
+                            'ring_id': self.global_ring_id,
+                            'device_id': int(os.getenv("FLAGS_selected_npus")),
+                            'rank_ids': nranks
+                        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def run_trainer(self, args):
         train_prog = fluid.Program()
@@ -109,9 +173,14 @@ class TestCollectiveRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
+<<<<<<< HEAD
         self.initCommunicator(
             startup_prog, rank, nranks, True, current_endpoint, endpoints
         )
+=======
+        self.initCommunicator(startup_prog, rank, nranks, True,
+                              current_endpoint, endpoints)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.rank = rank
         result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_npus", "0"))
@@ -120,9 +189,15 @@ class TestCollectiveRunnerBase:
         exe.run(startup_prog)
         np.random.seed(os.getpid())
         indata = np.random.random((10, 1000))
+<<<<<<< HEAD
         out = exe.run(
             train_prog, feed={'tindata': indata}, fetch_list=[result.name]
         )
+=======
+        out = exe.run(train_prog,
+                      feed={'tindata': indata},
+                      fetch_list=[result.name])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sys.stdout.buffer.write(pickle.dumps(out))
 
 
@@ -138,15 +213,24 @@ def runtime_main(test_class, col_type, sub_type):
     model.run_trainer(args)
 
 
+<<<<<<< HEAD
+=======
+import paddle.compat as cpt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import socket
 from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+<<<<<<< HEAD
             self._find_free_port(),
             self._find_free_port(),
         )
@@ -157,6 +241,16 @@ class TestDistBase(unittest.TestCase):
             with closing(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             ) as s:
+=======
+            self._find_free_port(), self._find_free_port())
+        self._python_interp = sys.executable
+
+    def _find_free_port(self):
+
+        def __free_port():
+            with closing(socket.socket(socket.AF_INET,
+                                       socket.SOCK_STREAM)) as s:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 s.bind(('', 0))
                 return s.getsockname()[1]
 
@@ -169,7 +263,11 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster(self, model_file, envs):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
+<<<<<<< HEAD
         # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
+=======
+        #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         env0 = {
             "FLAGS_selected_npus": "0",
             "PADDLE_TRAINER_ID": "0",
@@ -185,7 +283,11 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w1_ep,
         }
+<<<<<<< HEAD
         # update environment
+=======
+        #update environment
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         env0.update(envs)
         env1.update(envs)
         tr_cmd = "%s %s"
@@ -193,6 +295,7 @@ class TestDistBase(unittest.TestCase):
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
+<<<<<<< HEAD
         # print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
@@ -207,6 +310,18 @@ class TestDistBase(unittest.TestCase):
             stderr=tr1_pipe,
             env=env1,
         )
+=======
+        #print(tr0_cmd)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
+
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -215,12 +330,17 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
+<<<<<<< HEAD
         return (
             pickle.loads(tr0_out),
             pickle.loads(tr1_out),
             tr0_proc.pid,
             tr1_proc.pid,
         )
+=======
+        return pickle.loads(tr0_out), pickle.loads(
+            tr1_out), tr0_proc.pid, tr1_proc.pid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_with_place(self, model_file, col_type, need_envs={}):
 

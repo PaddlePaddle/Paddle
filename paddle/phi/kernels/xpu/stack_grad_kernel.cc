@@ -28,7 +28,11 @@ void StackGradKernel(const Context& dev_ctx,
   auto outs = x_grad;
   auto dy_dims = out.dims();
 
+<<<<<<< HEAD
   if (axis < 0) axis += dy_dims.size();
+=======
+  if (axis < 0) axis += dy_dims.size() + 1;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto dy_shape = phi::vectorize<int>(dy_dims);
 
   std::vector<int> dx_dims_list(x_grad.size(), 1);

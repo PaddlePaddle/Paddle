@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -21,6 +22,17 @@ from get_gpt_model import FakeDataset, generate_model
 import paddle
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
+=======
+import unittest
+import sys
+import random
+import numpy as np
+import paddle
+
+from paddle.distributed.fleet import auto
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from get_gpt_model import generate_model, create_data_holder, FakeDataset
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -44,6 +56,10 @@ def reset_prog():
 
 
 class TestGradientMergePass(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
@@ -78,23 +94,41 @@ class TestGradientMergePass(unittest.TestCase):
             rtol=self.rtol,
             atol=self.atol,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
+<<<<<<< HEAD
                 __class__, ref_losses, check_losses, ref_losses - check_losses
             ),
         )
+=======
+                __class__, ref_losses, check_losses, ref_losses - check_losses))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_gradient_merge_pass(self):
         # dp2 training
         dp_engine = self.get_engine()
+<<<<<<< HEAD
         history = dp_engine.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
+=======
+        history = dp_engine.fit(self.dataset,
+                                3,
+                                batch_size=self.batch_size,
+                                log_freq=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dp_losses = np.array(history.history["loss"])
 
         # dp2 gradient merge training
         gm_engine = self.get_engine(True)
+<<<<<<< HEAD
         history = gm_engine.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
+=======
+        history = gm_engine.fit(self.dataset,
+                                3,
+                                batch_size=self.batch_size,
+                                log_freq=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         gm_losses = np.array(history.history["loss"])
 
         # avg_loss = 0

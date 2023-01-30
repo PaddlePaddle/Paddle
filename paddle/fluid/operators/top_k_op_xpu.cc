@@ -23,6 +23,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class TopkXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -30,15 +34,25 @@ class TopkXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get the top k elements of each row of input tensor
+<<<<<<< HEAD
     const auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto* indices = ctx.Output<phi::DenseTensor>("Indices");
+=======
+    const auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    auto* indices = ctx.Output<Tensor>("Indices");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // get k from attr
     int k = static_cast<int>(ctx.Attr<int>("k"));
 
     // get k from input tensor
+<<<<<<< HEAD
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
+=======
+    auto* k_t = ctx.Input<Tensor>("K");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (k_t) {
       memory::Copy(platform::CPUPlace(),
                    static_cast<void*>(&k),
@@ -78,11 +92,19 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
     // cast to int64 as final result
+<<<<<<< HEAD
     r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
                                     (const int32_t*)indices_int_data,
                                     indices_data,
                                     indices->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+=======
+    r = xpu::cast_v2<int32_t, int64_t>(dev_ctx.x_context(),
+                                       (const int32_t*)indices_int_data,
+                                       indices_data,
+                                       indices->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

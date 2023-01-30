@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,6 +21,18 @@ from paddle.fluid.tests.unittests.test_transpose_op import TestTransposeOp
 
 
 class TestTransposeMKLDNN(TestTransposeOp):
+=======
+from __future__ import print_function
+
+import unittest
+
+from paddle.fluid.tests.unittests.test_transpose_op import TestTransposeOp
+import numpy as np
+
+
+class TestTransposeMKLDNN(TestTransposeOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -30,7 +43,11 @@ class TestTransposeMKLDNN(TestTransposeOp):
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float32"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_op_type(self):
@@ -52,36 +69,63 @@ class TestTransposeMKLDNN(TestTransposeOp):
 
 
 class TestCase0MKLDNN(TestTransposeMKLDNN):
+<<<<<<< HEAD
     def initTestCase(self):
         self.shape = (100,)
         self.axis = (0,)
 
 
 class TestCase1a(TestTransposeMKLDNN):
+=======
+
+    def initTestCase(self):
+        self.shape = (100, )
+        self.axis = (0, )
+
+
+class TestCase1a(TestTransposeMKLDNN):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
 class TestCase1b(TestTransposeMKLDNN):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (2, 1, 0)
 
 
 class TestCase2(TestTransposeMKLDNN):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
 class TestCase3(TestTransposeMKLDNN):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
 class TestCase4(TestTransposeMKLDNN):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)

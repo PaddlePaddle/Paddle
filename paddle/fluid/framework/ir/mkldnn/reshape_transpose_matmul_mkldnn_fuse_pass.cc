@@ -14,8 +14,13 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {

@@ -26,10 +26,17 @@ KernelSignature ConcatOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature ConcatGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("AxisTensor")) {
     return KernelSignature(
+<<<<<<< HEAD
         "concat_grad", {"X", "Out@GRAD"}, {"AxisTensor"}, {"X@GRAD"});
   }
   return KernelSignature(
       "concat_grad", {"X", "Out@GRAD"}, {"axis"}, {"X@GRAD"});
+=======
+        "concat_grad", {"X", {"Out@GRAD"}}, {"AxisTensor"}, {{"X@GRAD"}});
+  }
+  return KernelSignature(
+      "concat_grad", {"X", {"Out@GRAD"}}, {"axis"}, {{"X@GRAD"}});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

@@ -21,6 +21,7 @@
 
 namespace phi {
 
+<<<<<<< HEAD
 template <typename T, typename U>
 void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
                                                   const T *input,
@@ -32,13 +33,30 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
                                                   U *variance,
                                                   int begin_norm_axis,
                                                   float eps) {
+=======
+template <typename T>
+void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
+                                               const T *input,
+                                               std::vector<int> input_shape,
+                                               const T *bias,
+                                               const T *scale,
+                                               T *output,
+                                               T *mean,
+                                               T *variance,
+                                               int begin_norm_axis,
+                                               float eps) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const auto x_dims = phi::make_ddim(input_shape);
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
+<<<<<<< HEAD
         paddle::operators::LayerNormForward<T, U, kBlockDim>
+=======
+        paddle::operators::LayerNormForward<T, T, kBlockDim>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         <<<batch_size, kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
@@ -49,11 +67,15 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
   }
 }
 
+<<<<<<< HEAD
 template class LayerNormDirectCUDAFunctor<float, float>;
 template class LayerNormDirectCUDAFunctor<double, double>;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template class LayerNormDirectCUDAFunctor<half, float>;
 #endif
+=======
+template class LayerNormDirectCUDAFunctor<float>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T, typename Context>
 void LayerNormKernel(const Context &dev_ctx,
@@ -62,6 +84,10 @@ void LayerNormKernel(const Context &dev_ctx,
                      const paddle::optional<DenseTensor> &bias_opt,
                      float epsilon,
                      int begin_norm_axis,
+<<<<<<< HEAD
+=======
+                     bool is_test,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      DenseTensor *y,
                      DenseTensor *mean,
                      DenseTensor *var) {

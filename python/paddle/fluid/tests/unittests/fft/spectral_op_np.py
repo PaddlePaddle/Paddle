@@ -13,11 +13,18 @@
 # limitations under the License.
 
 import enum
+<<<<<<< HEAD
 from functools import partial
 
 import numpy as np
 from numpy import asarray
 from numpy.fft._pocketfft import _cook_nd_args, _raw_fft, _raw_fftnd
+=======
+import numpy as np
+from functools import partial
+from numpy import asarray
+from numpy.fft._pocketfft import _raw_fft, _raw_fftnd, _get_forward_norm, _get_backward_norm, _cook_nd_args
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class NormMode(enum.Enum):
@@ -35,9 +42,14 @@ def _get_norm_mode(norm, forward):
 
 
 def _get_inv_norm(n, norm_mode):
+<<<<<<< HEAD
     assert isinstance(norm_mode, NormMode), "invalid norm_type {}".format(
         norm_mode
     )
+=======
+    assert isinstance(norm_mode,
+                      NormMode), "invalid norm_type {}".format(norm_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if norm_mode == NormMode.none:
         return 1.0
     if norm_mode == NormMode.by_sqrt_n:
@@ -71,9 +83,14 @@ def _fftc2r(a, n=None, axis=-1, norm=None, forward=None):
     if n is None:
         n = (a.shape[axis] - 1) * 2
     inv_norm = _get_inv_norm(n, norm)
+<<<<<<< HEAD
     output = _raw_fft(
         a.conj() if forward else a, n, axis, True, False, inv_norm
     )
+=======
+    output = _raw_fft(a.conj() if forward else a, n, axis, True, False,
+                      inv_norm)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return output
 
 
@@ -148,10 +165,15 @@ def _fft_fill_conj_grad(x, axes, length_to_double):
     last_fft_axis = axes[-1]
     shape = x.shape
     for multi_index in np.ndindex(*shape):
+<<<<<<< HEAD
         if (
             0 < multi_index[last_fft_axis]
             and multi_index[last_fft_axis] <= length_to_double
         ):
+=======
+        if 0 < multi_index[last_fft_axis] and multi_index[
+                last_fft_axis] <= length_to_double:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x[multi_index] *= 2
     return x
 

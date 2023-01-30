@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/generator.h"
+<<<<<<< HEAD
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
@@ -23,6 +24,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
 DECLARE_bool(use_fast_math);
+=======
+#include "paddle/fluid/operators/dropout_impl_util.h"
+#include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
+#include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
+#include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/kernels/funcs/functors.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -31,7 +39,11 @@ namespace operators {
  * Support two Dropouts in the use senarieo.
  * This warpper can be used in FFN op.
  * The DropoutParam will be used in the fused_dropout_act_bias,
+<<<<<<< HEAD
  * fused_residual_dropout_bias(pre_layer_norm=true) or
+=======
+ * fused_residual_dropout_bias(pre_layer_norm=ture) or
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  * fused_layernorm_residual_dropout_bias(pre_layer_norm=false).
  */
 struct DropoutParam {
@@ -41,7 +53,11 @@ struct DropoutParam {
   bool is_test;
   bool fix_seed;
   int increment;
+<<<<<<< HEAD
   const phi::DenseTensor* tensor_seed;
+=======
+  const framework::Tensor* tensor_seed;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int seed_val;
 
   DropoutParam() {
@@ -59,7 +75,11 @@ struct DropoutParam {
                bool is_test_,
                bool is_upscale_in_train_,
                float dropout_prob_,
+<<<<<<< HEAD
                const phi::DenseTensor* tensor_seed_,
+=======
+               const framework::Tensor* tensor_seed_,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                int seed_val_) {
     fix_seed = fix_seed_;
     seed = seed_;
@@ -98,15 +118,24 @@ struct DropoutParam {
     } else {
       str_seed = str_seed + "Seed";
     }
+<<<<<<< HEAD
     tensor_seed = context.HasInput(str_seed)
                       ? context.Input<phi::DenseTensor>(str_seed)
                       : nullptr;
+=======
+    tensor_seed =
+        context.HasInput(str_seed) ? context.Input<Tensor>(str_seed) : nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     seed_val = context.Attr<int>(pre_fix + "seed");
   }
 
   int UpdateSeedAndIncrement(const phi::GPUContext& ctx, const int offset) {
     uint64_t tmp_increment;
+<<<<<<< HEAD
     phi::funcs::GetSeedDataAndIncrement(
+=======
+    GetSeedDataAndIncrement(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ctx, tensor_seed, fix_seed, seed_val, offset, &seed, &tmp_increment);
     increment = static_cast<int>(tmp_increment);
     return increment;
@@ -154,6 +183,10 @@ class FusedDropoutHelper {
                            MaskType* mask,
                            const float quant_last_in_scale = 1.0,
                            const float* dequant_out_scale_data = nullptr,
+<<<<<<< HEAD
+=======
+                           const int quant_out_scale_offset = 0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            const float quant_next_in_scale = 1.0) {
     auto increment = GetIncrement(ctx);
     LaunchResidualDropoutBias<T, MaskType, InType, OutType>(
@@ -172,6 +205,10 @@ class FusedDropoutHelper {
         ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
+<<<<<<< HEAD
+=======
+        quant_out_scale_offset,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         quant_next_in_scale);
   }
 
@@ -210,12 +247,17 @@ class FusedDropoutHelper {
                       MaskType* mask,
                       const float quant_last_in_scale = 1.0,
                       const float* dequant_out_scale_data = nullptr,
+<<<<<<< HEAD
+=======
+                      const int quant_out_scale_offset = 0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       const float quant_next_in_scale = 1.0,
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
     auto increment = GetIncrement(ctx);
     if (act_method == "gelu") {
+<<<<<<< HEAD
       if (FLAGS_use_fast_math) {
         FastGeluFunctor<T> fast_gelu;
         LaunchDropoutActBias<T, MaskType, FastGeluFunctor<T>, InType, OutType>(
@@ -261,6 +303,30 @@ class FusedDropoutHelper {
             quant_max_bound,
             quant_min_bound);
       }
+=======
+      GeluFunctor<T> gelu;
+      LaunchDropoutActBias<T, MaskType, GeluFunctor<T>, InType, OutType>(
+          gelu,
+          dropout_param_.seed,
+          rows_,
+          cols_,
+          dropout_param_.increment,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          dropout_param_.is_test,
+          src,
+          bias,
+          out,
+          mask,
+          ctx,
+          quant_last_in_scale,
+          dequant_out_scale_data,
+          quant_out_scale_offset,
+          quant_next_in_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (act_method == "relu") {
       phi::funcs::ReluFunctor<T> relu;
       LaunchDropoutActBias<T,
@@ -282,6 +348,10 @@ class FusedDropoutHelper {
                                     ctx,
                                     quant_last_in_scale,
                                     dequant_out_scale_data,
+<<<<<<< HEAD
+=======
+                                    quant_out_scale_offset,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                     quant_next_in_scale,
                                     quant_round_type,
                                     quant_max_bound,
@@ -342,6 +412,7 @@ class FusedDropoutHelper {
   DropoutParam dropout_param_;
 };
 
+<<<<<<< HEAD
 template <typename T>
 struct DataTypeTraits {
   using DataType = T;
@@ -354,6 +425,8 @@ struct DataTypeTraits<phi::dtype::float16> {
   using DataType = half;
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T,
           typename MaskType,
           typename InType = T,
@@ -390,6 +463,7 @@ class FusedDropoutLayerNormHelper
                  OutType* out,
                  LayerNormParamType<T>* mean,
                  LayerNormParamType<T>* variance) {
+<<<<<<< HEAD
     using InDataType = typename DataTypeTraits<InType>::DataType;
     using OutDataType = typename DataTypeTraits<OutType>::DataType;
 
@@ -406,6 +480,15 @@ class FusedDropoutLayerNormHelper
                variance,
                1,
                epsilon_);
+=======
+    using U = LayerNormParamType<T>;
+    switch (GetDesiredBlockDim(this->cols_)) {
+      FIXED_BLOCK_DIM_CASE(
+          LayerNormForward<T, U, kBlockDim, false, InType, OutType>
+          <<<this->rows_, kBlockDim, 0, ctx.stream()>>>(
+              src, gamma, beta, out, mean, variance, epsilon_, this->cols_));
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   void LayerNormGrad(const phi::GPUContext& ctx,
@@ -448,6 +531,10 @@ class FusedDropoutLayerNormHelper
       LayerNormParamType<T>* variance,
       const float quant_last_in_scale = 1.0,
       const float* dequant_out_scale_data = nullptr,
+<<<<<<< HEAD
+=======
+      const int quant_out_scale_offset = 0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const float quant_next_in_scale = 1.0,
       const int quant_round_type = 1,
       const float quant_max_bound = 127.0,
@@ -487,6 +574,10 @@ class FusedDropoutLayerNormHelper
         ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
+<<<<<<< HEAD
+=======
+        quant_out_scale_offset,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         quant_next_in_scale,
         quant_round_type,
         quant_max_bound,

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -27,6 +32,10 @@ SEED = 2021
 
 
 class TestSoftmax(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -52,6 +61,10 @@ class TestSoftmax(OpTest):
 
 
 class TestSoftmaxNet(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -66,14 +79,21 @@ class TestSoftmaxNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[4, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[4, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[4, 1], dtype='int64'
             )
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[4, 1],
+                                       dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             c = paddle.multiply(a, b)
             d = paddle.sqrt(c)
 
             # 4 x 128
+<<<<<<< HEAD
             fc_1 = paddle.static.nn.fc(x=d, size=128)
             # 4 x 2
             prediction = paddle.static.nn.fc(x=fc_1, size=2)
@@ -82,6 +102,16 @@ class TestSoftmaxNet(unittest.TestCase):
             prob = paddle.nn.functional.softmax(prediction, axis=1)
 
             cost = paddle.nn.functional.cross_entropy(input=prob, label=label, reduction='none', use_softmax=False)
+=======
+            fc_1 = fluid.layers.fc(input=d, size=128)
+            # 4 x 2
+            prediction = fluid.layers.fc(input=fc_1, size=2)
+
+            # 4 x 2
+            prob = fluid.layers.softmax(prediction, axis=1)
+
+            cost = fluid.layers.cross_entropy(input=prob, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
@@ -97,6 +127,7 @@ class TestSoftmaxNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(
                 main_prog,
                 feed={"a": a_np, "b": b_np, "label": label_np},
@@ -108,6 +139,18 @@ class TestSoftmaxNet(unittest.TestCase):
                         epoch, pred_res[0], loss_res
                     )
                 )
+=======
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
+            if epoch % 10 == 0:
+                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                    epoch, pred_res[0], loss_res))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return pred_res, loss_res
 

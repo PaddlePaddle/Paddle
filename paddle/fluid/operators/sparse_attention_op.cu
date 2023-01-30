@@ -203,12 +203,17 @@ __global__ void BlockSparseSoftmaxBackward(T* dst,
   }
 }
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /*
 input: sparse C in CSR format (num_rows,num_rows)
 output: sparse C after softmax operation
 */
 template <typename DeviceContext, typename T>
 void SparseSoftmaxForward(const phi::GPUContext& ctx,
+<<<<<<< HEAD
                           const phi::DenseTensor* offset,
                           const phi::DenseTensor* columns,
                           phi::DenseTensor* input,
@@ -218,6 +223,17 @@ void SparseSoftmaxForward(const phi::GPUContext& ctx,
                           const int num_cols,
                           const phi::DenseTensor* key_padding_mask,
                           const phi::DenseTensor* attn_mask) {
+=======
+                          const Tensor* offset,
+                          const Tensor* columns,
+                          Tensor* input,
+                          Tensor* output,
+                          const int blocksize,
+                          const int num_rows,
+                          const int num_cols,
+                          const Tensor* key_padding_mask,
+                          const Tensor* attn_mask) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const int* offset_data = offset->data<int>();
   const int* columns_data = columns->data<int>();
   T* input_data = input->data<T>();
@@ -322,11 +338,19 @@ void SparseSoftmaxForward(const phi::GPUContext& ctx,
 
 template <typename DeviceContext, typename T>
 void SparseSoftmaxBackward(const phi::GPUContext& ctx,
+<<<<<<< HEAD
                            const phi::DenseTensor* offset,
                            const phi::DenseTensor* columns,
                            phi::DenseTensor* dx,
                            const phi::DenseTensor* dout,
                            const phi::DenseTensor* out,
+=======
+                           const Tensor* offset,
+                           const Tensor* columns,
+                           Tensor* dx,
+                           const Tensor* dout,
+                           const Tensor* out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            const int blocksize,
                            const int num_rows,
                            const int num_cols) {
@@ -453,11 +477,19 @@ output: sparse C in CSR format (num_rows,num_rows)
 */
 template <typename DeviceContext, typename T>
 void DotSdd(const phi::GPUContext& ctx,
+<<<<<<< HEAD
             const phi::DenseTensor* a,
             const phi::DenseTensor* b,
             const phi::DenseTensor* c_offset,
             const phi::DenseTensor* c_columns,
             phi::DenseTensor* c_value,
+=======
+            const Tensor* a,
+            const Tensor* b,
+            const Tensor* c_offset,
+            const Tensor* c_columns,
+            Tensor* c_value,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             const int num_rows,
             const int num_cols,
             const bool a_transpose,
@@ -549,11 +581,19 @@ output: dense C (num_rows,num_cols)
 */
 template <typename DeviceContext, typename T>
 void DotDsd(const phi::GPUContext& ctx,
+<<<<<<< HEAD
             const phi::DenseTensor* a_offset,
             const phi::DenseTensor* a_columns,
             const phi::DenseTensor* a_value,
             const phi::DenseTensor* b,
             phi::DenseTensor* c,
+=======
+            const Tensor* a_offset,
+            const Tensor* a_columns,
+            const Tensor* a_value,
+            const Tensor* b,
+            Tensor* c,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             const int num_rows,
             const int num_cols,
             const bool a_transpose,
@@ -640,7 +680,11 @@ void DotDsd(const phi::GPUContext& ctx,
   platform::dynload::cusparseDestroy(handle);
 }
 
+<<<<<<< HEAD
 std::vector<phi::DenseTensor> GetSplitTensor(phi::DenseTensor* input) {
+=======
+std::vector<Tensor> GetSplitTensor(Tensor* input) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto dims = input->dims();
   int batch_size = dims[0];
   int num_heads = dims[1];
@@ -657,6 +701,7 @@ template <typename DeviceContext, typename T>
 class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto query = *ctx.Input<phi::DenseTensor>("Q");
     auto key = *ctx.Input<phi::DenseTensor>("K");
     auto value = *ctx.Input<phi::DenseTensor>("V");
@@ -675,6 +720,25 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     auto* attn_mask = ctx.HasInput("AttnMask")
                           ? ctx.Input<phi::DenseTensor>("AttnMask")
                           : nullptr;
+=======
+    auto query = *ctx.Input<Tensor>("Q");
+    auto key = *ctx.Input<Tensor>("K");
+    auto value = *ctx.Input<Tensor>("V");
+    auto offset = *ctx.Input<Tensor>("Offset");
+    auto columns = *ctx.Input<Tensor>("Columns");
+    auto output_ptr = ctx.Output<Tensor>("Out");
+    output_ptr->mutable_data<T>(ctx.GetPlace());
+    auto sparse_dot_sdd_ptr = ctx.Output<Tensor>("SparseDotSdd");
+    sparse_dot_sdd_ptr->mutable_data<T>(ctx.GetPlace());
+    auto softmax_ptr = ctx.Output<Tensor>("Softmax");
+    softmax_ptr->mutable_data<T>(ctx.GetPlace());
+    // add Mask
+    auto* key_padding_mask = ctx.HasInput("KeyPaddingMask")
+                                 ? ctx.Input<Tensor>("KeyPaddingMask")
+                                 : nullptr;
+    auto* attn_mask =
+        ctx.HasInput("AttnMask") ? ctx.Input<Tensor>("AttnMask") : nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto output = *output_ptr;
     auto result_sdd = *sparse_dot_sdd_ptr;
@@ -686,6 +750,7 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     int M = query_dims[2];
     int N = query_dims[3];
 
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> query_lists = GetSplitTensor(&query);
     std::vector<phi::DenseTensor> key_lists = GetSplitTensor(&key);
     std::vector<phi::DenseTensor> value_lists = GetSplitTensor(&value);
@@ -696,6 +761,16 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     std::vector<phi::DenseTensor> result_softmax_lists =
         GetSplitTensor(&result_softmax);
     std::vector<phi::DenseTensor> output_lists = GetSplitTensor(&output);
+=======
+    std::vector<Tensor> query_lists = GetSplitTensor(&query);
+    std::vector<Tensor> key_lists = GetSplitTensor(&key);
+    std::vector<Tensor> value_lists = GetSplitTensor(&value);
+    std::vector<Tensor> offset_lists = GetSplitTensor(&offset);
+    std::vector<Tensor> columns_lists = GetSplitTensor(&columns);
+    std::vector<Tensor> result_sdd_lists = GetSplitTensor(&result_sdd);
+    std::vector<Tensor> result_softmax_lists = GetSplitTensor(&result_softmax);
+    std::vector<Tensor> output_lists = GetSplitTensor(&output);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const auto& dev_ctx = ctx.cuda_device_context();
     const int iter_num = batch_size * num_heads;
@@ -777,6 +852,7 @@ template <typename DeviceContext, typename T>
 class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto query = *ctx.Input<phi::DenseTensor>("Q");
     auto key = *ctx.Input<phi::DenseTensor>("K");
     auto value = *ctx.Input<phi::DenseTensor>("V");
@@ -790,6 +866,19 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
     auto* dkey_ptr = ctx.Output<phi::DenseTensor>(framework::GradVarName("K"));
     auto* dvalue_ptr =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("V"));
+=======
+    auto query = *ctx.Input<Tensor>("Q");
+    auto key = *ctx.Input<Tensor>("K");
+    auto value = *ctx.Input<Tensor>("V");
+    auto offset = *ctx.Input<Tensor>("Offset");
+    auto columns = *ctx.Input<Tensor>("Columns");
+    auto sparse_dot_sdd = *ctx.Input<Tensor>("SparseDotSdd");
+    auto softmax = *ctx.Input<Tensor>("Softmax");
+    auto dout = *ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dquery_ptr = ctx.Output<Tensor>(framework::GradVarName("Q"));
+    auto* dkey_ptr = ctx.Output<Tensor>(framework::GradVarName("K"));
+    auto* dvalue_ptr = ctx.Output<Tensor>(framework::GradVarName("V"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dquery_ptr->mutable_data<T>(ctx.GetPlace());
     dkey_ptr->mutable_data<T>(ctx.GetPlace());
     dvalue_ptr->mutable_data<T>(ctx.GetPlace());
@@ -803,6 +892,7 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
     int M = query_dims[2];
     int N = query_dims[3];
 
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> query_lists = GetSplitTensor(&query);
     std::vector<phi::DenseTensor> key_lists = GetSplitTensor(&key);
     std::vector<phi::DenseTensor> value_lists = GetSplitTensor(&value);
@@ -815,6 +905,19 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
     std::vector<phi::DenseTensor> dquery_lists = GetSplitTensor(&dquery);
     std::vector<phi::DenseTensor> dkey_lists = GetSplitTensor(&dkey);
     std::vector<phi::DenseTensor> dvalue_lists = GetSplitTensor(&dvalue);
+=======
+    std::vector<Tensor> query_lists = GetSplitTensor(&query);
+    std::vector<Tensor> key_lists = GetSplitTensor(&key);
+    std::vector<Tensor> value_lists = GetSplitTensor(&value);
+    std::vector<Tensor> offset_lists = GetSplitTensor(&offset);
+    std::vector<Tensor> columns_lists = GetSplitTensor(&columns);
+    std::vector<Tensor> sparse_dot_sdd_lists = GetSplitTensor(&sparse_dot_sdd);
+    std::vector<Tensor> softmax_lists = GetSplitTensor(&softmax);
+    std::vector<Tensor> dout_lists = GetSplitTensor(&dout);
+    std::vector<Tensor> dquery_lists = GetSplitTensor(&dquery);
+    std::vector<Tensor> dkey_lists = GetSplitTensor(&dkey);
+    std::vector<Tensor> dvalue_lists = GetSplitTensor(&dvalue);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const int iter_num = batch_size * num_heads;
     const auto& dev_ctx = ctx.cuda_device_context();
@@ -833,7 +936,11 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
 
       // dSoftmax = dOut * transpose(Value)
       int nnz_num = columns_lists[i].numel();
+<<<<<<< HEAD
       phi::DenseTensor dsoftmax;
+=======
+      Tensor dsoftmax;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       dsoftmax.Resize({nnz_num});
       dsoftmax.mutable_data<T>(ctx.GetPlace());
       DotSdd<DeviceContext, T>(dev_ctx,
@@ -848,7 +955,11 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
                                true);
 
       // dSparseDotSdd = dSoftmax * softmax'(SparseDotSdd)
+<<<<<<< HEAD
       phi::DenseTensor dsparse_dot_sdd;
+=======
+      Tensor dsparse_dot_sdd;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       dsparse_dot_sdd.Resize({nnz_num});
       dsparse_dot_sdd.mutable_data<T>(ctx.GetPlace());
       SparseSoftmaxBackward<DeviceContext, T>(dev_ctx,

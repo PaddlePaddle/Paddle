@@ -12,4 +12,10 @@ endforeach()
 set_tests_properties(test_word2vec_book PROPERTIES TIMEOUT 120)
 set_tests_properties(test_recognize_digits PROPERTIES TIMEOUT 120)
 set_tests_properties(test_image_classification PROPERTIES TIMEOUT 200)
+<<<<<<< HEAD
+=======
+set_tests_properties(test_label_semantic_roles PROPERTIES TIMEOUT 240)
+set_tests_properties(test_machine_translation PROPERTIES TIMEOUT 120)
+set_tests_properties(test_rnn_encoder_decoder PROPERTIES TIMEOUT 120)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 set_tests_properties(test_fit_a_line PROPERTIES TIMEOUT 120)

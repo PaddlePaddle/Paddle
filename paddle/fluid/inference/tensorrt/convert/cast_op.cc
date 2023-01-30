@@ -42,11 +42,15 @@ class CastOpConverter : public OpConverter {
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
 
     switch (out_dtype) {
+<<<<<<< HEAD
       case 0:  // BOOL = 0
         layer->setOutputType(0, nvinfer1::DataType::kBOOL);
         break;
       case 2:  // INT32 = 2
       case 3:  // INT64 = 3 there is no int64 in tensorrt subgraph
+=======
+      case 2:  // INT32 = 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         layer->setOutputType(0, nvinfer1::DataType::kINT32);
         break;
       case 4:  // FP16 = 4

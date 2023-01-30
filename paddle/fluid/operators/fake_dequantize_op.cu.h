@@ -33,10 +33,17 @@ __global__ void KeDequantize(
 template <typename T>
 struct DequantizeFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor* in,
                   const phi::DenseTensor* scale,
                   T max_range,
                   phi::DenseTensor* out) {
+=======
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  T max_range,
+                  framework::Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const T* in_data = in->data<T>();
     const T* scale_factor = scale->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
@@ -102,13 +109,22 @@ __global__ void DequantizeTwoScale(const T* in,
 template <typename T>
 struct ChannelDequantizeFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor* in,
                   const phi::DenseTensor** scales,
+=======
+                  const framework::Tensor* in,
+                  const framework::Tensor** scales,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const int scale_num,
                   T max_range,
                   const int quant_axis,
                   const int x_num_col_dims,
+<<<<<<< HEAD
                   phi::DenseTensor* out) {
+=======
+                  framework::Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import abc
 import functools
 import multiprocessing
@@ -24,6 +25,26 @@ import time
 from paddle.fluid import core
 
 from .log_util import logger
+=======
+import os
+import sys
+import subprocess
+import multiprocessing
+from datetime import datetime
+
+import re
+import copy
+import errno
+import time
+import logging
+import six
+import abc
+import paddle.fluid as fluid
+from paddle.fluid import core
+import functools
+
+import shutil
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -48,7 +69,12 @@ class FSShellCmdAborted(ExecuteError):
     pass
 
 
+<<<<<<< HEAD
 class FS:
+=======
+class FS(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @abc.abstractmethod
     def ls_dir(self, fs_path):
         raise NotImplementedError
@@ -124,14 +150,22 @@ class LocalFS(FS):
     """
 
     def ls_dir(self, fs_path):
+<<<<<<< HEAD
         """
+=======
+        """	
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         List directorys and files under `fs_path` .
 
         Args:
             fs_path(str): The local file path.
 
         Returns:
+<<<<<<< HEAD
             Tuple: Return a 2-tuple, the first is a list of all its subdirectories,
+=======
+            Tuple: Return a 2-tuple, the first is a list of all its subdirectories, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             and the second is a list of all its subfiles, e.g. ([subdirname1, subdirname1, ...], [filename1, filename2, ...]).
 
         Examples:
@@ -172,8 +206,12 @@ class LocalFS(FS):
                 client.delete("test_mkdirs")
         """
         assert not os.path.isfile(fs_path), "{} is already a file".format(
+<<<<<<< HEAD
             fs_path
         )
+=======
+            fs_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.system("mkdir -p {}".format(fs_path))
 
     def rename(self, fs_src_path, fs_dst_path):
@@ -284,7 +322,11 @@ class LocalFS(FS):
             fs_path(str): The local file path.
 
         Returns:
+<<<<<<< HEAD
             Bool: Wheter it's a file or directory, return true if the path exists,
+=======
+            Bool: Wheter it's a file or directory, return true if the path exists, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             otherwise return false.
 
         Examples:
@@ -353,7 +395,11 @@ class LocalFS(FS):
         return self.rename(src_path, dst_path)
 
     def list_dirs(self, fs_path):
+<<<<<<< HEAD
         """
+=======
+        """	
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Only list directorys under `fs_path` .
 
         Args:
@@ -381,7 +427,13 @@ class LocalFS(FS):
 
 
 def _handle_errors(max_time_out=None):
+<<<<<<< HEAD
     def decorator(f):
+=======
+
+    def decorator(f):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         @functools.wraps(f)
         def handler(*args, **kwargs):
             o = args[0]
@@ -400,20 +452,32 @@ def _handle_errors(max_time_out=None):
                 # important: only ExecuteError need to retry
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
+<<<<<<< HEAD
                         raise FSTimeOut(
                             "args:{} timeout:{}".format(
                                 args, time.time() - start
                             )
                         )
+=======
+                        raise FSTimeOut("args:{} timeout:{}".format(
+                            args,
+                            time.time() - start))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                     time.sleep(inter)
 
                 if time.time() - last_print_time > 30:
+<<<<<<< HEAD
                     print(
                         "hadoop operator timeout:args:{} timeout:{}".format(
                             args, time.time() - start
                         )
                     )
+=======
+                    print("hadoop operator timeout:args:{} timeout:{}".format(
+                        args,
+                        time.time() - start))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     last_print_time = time.time()
 
         return handler
@@ -426,7 +490,11 @@ class HDFSClient(FS):
     A tool of HDFS.
 
     Args:
+<<<<<<< HEAD
         hadoop_home(str): Hadoop home.
+=======
+        hadoop_home(str): Hadoop home. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         configs(dict): Hadoop config. It is a dictionary and needs to contain the
             keys: "fs.default.name" and "hadoop.job.ugi".
 
@@ -447,12 +515,20 @@ class HDFSClient(FS):
     """
 
     def __init__(
+<<<<<<< HEAD
         self,
         hadoop_home,
         configs,
         time_out=5 * 60 * 1000,  # ms
         sleep_inter=1000,
     ):  # ms
+=======
+            self,
+            hadoop_home,
+            configs,
+            time_out=5 * 60 * 1000,  # ms
+            sleep_inter=1000):  # ms
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.pre_commands = []
         hadoop_bin = '%s/bin/hadoop' % hadoop_home
         self.pre_commands.append(hadoop_bin)
@@ -460,7 +536,11 @@ class HDFSClient(FS):
         self.pre_commands.append(dfs)
 
         if configs:
+<<<<<<< HEAD
             for k, v in configs.items():
+=======
+            for k, v in six.iteritems(configs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 config_command = '-D%s=%s' % (k, v)
                 self.pre_commands.append(config_command)
 
@@ -468,8 +548,12 @@ class HDFSClient(FS):
         self._sleep_inter = sleep_inter
         self._base_cmd = " ".join(self.pre_commands)
         self._bd_err_re = re.compile(
+<<<<<<< HEAD
             r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:'
         )
+=======
+            r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _run_cmd(self, cmd, redirect_stderr=False, retry_times=5):
         exe_cmd = "{} -{}".format(self._base_cmd, cmd)
@@ -489,7 +573,11 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def list_dirs(self, fs_path):
+<<<<<<< HEAD
         """
+=======
+        """	
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Only list directorys under `fs_path` .
 
         Args:
@@ -521,14 +609,22 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def ls_dir(self, fs_path):
+<<<<<<< HEAD
         """
+=======
+        """	
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         List directorys and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
 
         Returns:
+<<<<<<< HEAD
             Tuple: Return a 2-tuple, the first element is the list of all its subdirectories,
+=======
+            Tuple: Return a 2-tuple, the first element is the list of all its subdirectories, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             and the second one is the list of all its subfiles, e.g. ([subdirname1, subdirname1, ...], [filename1, filename2, ...]).
 
         Examples:
@@ -576,7 +672,11 @@ class HDFSClient(FS):
     def _test_match(self, lines):
         for l in lines:
             m = self._bd_err_re.match(l)
+<<<<<<< HEAD
             if m is not None:
+=======
+            if m != None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return m
 
         return None
@@ -613,8 +713,13 @@ class HDFSClient(FS):
         return self._is_dir(fs_path)
 
     def _is_dir(self, fs_path):
+<<<<<<< HEAD
         cmd = "test -d {}".format(fs_path)
         ret, lines = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
+=======
+        cmd = "test -d {}".format(fs_path, redirect_stderr=True)
+        ret, lines = self._run_cmd(cmd, retry_times=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if ret:
             # other error
             if self._test_match(lines):
@@ -777,9 +882,14 @@ class HDFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
+<<<<<<< HEAD
             p = multiprocessing.Process(
                 target=__subprocess_upload, args=(fs_path, process_datas)
             )
+=======
+            p = multiprocessing.Process(target=__subprocess_upload,
+                                        args=(fs_path, process_datas))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             procs.append(p)
             p.start()
 
@@ -848,9 +958,14 @@ class HDFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
+<<<<<<< HEAD
             p = multiprocessing.Process(
                 target=__subprocess_download, args=(local_path, process_datas)
             )
+=======
+            p = multiprocessing.Process(target=__subprocess_download,
+                                        args=(local_path, process_datas))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             procs.append(p)
             p.start()
 
@@ -923,7 +1038,11 @@ class HDFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
+<<<<<<< HEAD
             test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+=======
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         Examples:
 
@@ -946,8 +1065,12 @@ class HDFSClient(FS):
         if test_exists:
             if not self.is_exist(fs_src_path):
                 raise FSFileNotExistsError(
+<<<<<<< HEAD
                     "{} is not exists".format(fs_src_path)
                 )
+=======
+                    "{} is not exists".format(fs_src_path))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))
@@ -963,7 +1086,12 @@ class HDFSClient(FS):
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
+<<<<<<< HEAD
             if not self.is_exist(fs_src_path) and self.is_exist(fs_dst_path):
+=======
+            if not self.is_exist(fs_src_path) and \
+                    self.is_exist(fs_dst_path):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return
             raise e
 
@@ -1111,7 +1239,11 @@ class HDFSClient(FS):
         trainer_files = [[]] * trainers
         begin = 0
         for i in range(trainers):
+<<<<<<< HEAD
             trainer_files[i] = files[begin : begin + blocks[i]]
+=======
+            trainer_files[i] = files[begin:begin + blocks[i]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             begin += blocks[i]
 
         return trainer_files[trainer_id]
@@ -1129,6 +1261,7 @@ class HDFSClient(FS):
 
         file_list = []
 
+<<<<<<< HEAD
         # concat filelist can speed up 'hadoop ls'
         str_concat = ""
         for path in path_list:
@@ -1138,6 +1271,15 @@ class HDFSClient(FS):
         )
         ret, lines = self._run_cmd(cmd)
         if len(lines) == 0:
+=======
+        #concat filelist can speed up 'hadoop ls'
+        str_concat = ""
+        for path in path_list:
+            str_concat += path + " "
+        cmd = "ls " + str_concat + " | awk '{if ($8 != \"\") {print $5\" \"$8 }}'"
+        ret, lines = self._run_cmd(cmd)
+        if (len(lines) == 0):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             logger.warning("list_files empty, path[%s]" % path_list)
             return []
         for line in lines:
@@ -1165,7 +1307,14 @@ class AFSClient(FS):
             client.ls_dir("hdfs:/test_hdfs_client")
     """
 
+<<<<<<< HEAD
     def __init__(self, time_out=5 * 60 * 1000, sleep_inter=1000):  # ms  # ms
+=======
+    def __init__(
+            self,
+            time_out=5 * 60 * 1000,  # ms
+            sleep_inter=1000):  # ms
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._fs = core.AfsWrapper()
         self._time_out = time_out
 
@@ -1173,7 +1322,11 @@ class AFSClient(FS):
         self._fs.init(fs_name, fs_user, fs_passwd, fs_conf)
 
     def list_dirs(self, fs_path):
+<<<<<<< HEAD
         """
+=======
+        """	
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Only list directorys under `fs_path` .
 
         Args:
@@ -1199,14 +1352,22 @@ class AFSClient(FS):
         return dirs
 
     def ls_dir(self, fs_path):
+<<<<<<< HEAD
         """
+=======
+        """	
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         List directorys and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
 
         Returns:
+<<<<<<< HEAD
             Tuple: Return a 2-tuple, the first element is the list of all its subdirectories,
+=======
+            Tuple: Return a 2-tuple, the first element is the list of all its subdirectories, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             and the second one is the list of all its subfiles, e.g. ([subdirname1, subdirname1, ...], [filename1, filename2, ...]).
 
         Examples:
@@ -1399,9 +1560,14 @@ class AFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
+<<<<<<< HEAD
             p = multiprocessing.Process(
                 target=__subprocess_download, args=(local_path, process_datas)
             )
+=======
+            p = multiprocessing.Process(target=__subprocess_download,
+                                        args=(local_path, process_datas))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             procs.append(p)
             p.start()
 
@@ -1438,7 +1604,11 @@ class AFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
+<<<<<<< HEAD
             test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+=======
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         Examples:
 
@@ -1456,8 +1626,12 @@ class AFSClient(FS):
         if test_exists:
             if not self.is_exist(fs_src_path):
                 raise FSFileNotExistsError(
+<<<<<<< HEAD
                     "{} is not exists".format(fs_src_path)
                 )
+=======
+                    "{} is not exists".format(fs_src_path))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))
@@ -1561,7 +1735,11 @@ class AFSClient(FS):
         trainer_files = [[]] * trainers
         begin = 0
         for i in range(trainers):
+<<<<<<< HEAD
             trainer_files[i] = files[begin : begin + blocks[i]]
+=======
+            trainer_files[i] = files[begin:begin + blocks[i]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             begin += blocks[i]
 
         return trainer_files[trainer_id]

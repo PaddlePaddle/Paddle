@@ -20,7 +20,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_info.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace platform {
@@ -82,7 +85,12 @@ size_t GpuInitAllocSize();
 //! Get the re-allocation size of current GPU device.
 size_t GpuReallocSize();
 
+<<<<<<< HEAD
 using phi::backends::gpu::GpuMinChunkSize;
+=======
+//! Get the minimum chunk size for GPU buddy allocator.
+size_t GpuMinChunkSize();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 //! Get the maximum chunk size for GPU buddy allocator.
 size_t GpuMaxChunkSize();
@@ -140,8 +148,13 @@ gpuError_t GpuGetLastError();
 CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
                               size_t size,
                               const CUmemAllocationProp *prop,
+<<<<<<< HEAD
                               unsigned long long flags,  // NOLINT
                               int dev_id);
+=======
+                              unsigned long long flags,
+                              int dev_id);  // NOLINT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 //! cuMemRelease with recorded info
 CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,

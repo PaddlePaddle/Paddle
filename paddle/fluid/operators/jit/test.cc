@@ -19,8 +19,13 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/jit/kernels.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/place.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DEFINE_double(acc, 1e-5, "Test accuracy threshold.");
 
@@ -437,7 +442,11 @@ void TestKernelNCHW16CMulNC() {
   EXPECT_TRUE(tgt != nullptr);
 
   if (std::is_same<T, float>::value &&
+<<<<<<< HEAD
       phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
+=======
+      paddle::platform::MayIUse(paddle::platform::avx512f)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     EXPECT_TRUE(jitcode != nullptr);
   }
   for (int ni = 0; ni < n; ni++) {
@@ -1393,7 +1402,11 @@ TEST(JITKernel_helper, pack_weights) {
   }
   int block = 0;
   std::vector<int> groups;
+<<<<<<< HEAD
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
+=======
+  if (paddle::platform::MayIUse(paddle::platform::avx512f)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     block = ZMM_FLOAT_BLOCK;
     groups.push_back(30);
   } else {

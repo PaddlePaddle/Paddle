@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -45,14 +52,24 @@ class TestBase(IPUOpTest):
             "is_sparse": False,
             "is_distributed": False,
             "padding_idx": -1,
+<<<<<<< HEAD
             "dtype": 'float32',
+=======
+            "dtype": 'float32'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='int64'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = paddle.fluid.layers.embedding(x, **self.attrs)
         if self.is_training:
             loss = paddle.mean(out)
@@ -76,6 +93,10 @@ class TestBase(IPUOpTest):
 
 
 class TestTrainCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_atol(self):
         self.atol = 1e-7
         self.rtol = 1e-6

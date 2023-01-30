@@ -113,27 +113,47 @@ template <>
 struct CBlas<float> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_sgemm(args...);
+=======
+    paddle::platform::dynload::cblas_sgemm(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static float *GEMM_ALLOC(ARGS... args) {
+<<<<<<< HEAD
     return phi::dynload::cblas_sgemm_alloc(args...);
+=======
+    return paddle::platform::dynload::cblas_sgemm_alloc(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_PACK(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_sgemm_pack(args...);
+=======
+    paddle::platform::dynload::cblas_sgemm_pack(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_COMPUTE(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_sgemm_compute(args...);
+=======
+    paddle::platform::dynload::cblas_sgemm_compute(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_FREE(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_sgemm_free(args...);
+=======
+    paddle::platform::dynload::cblas_sgemm_free(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
 #ifdef PADDLE_WITH_LIBXSMM
@@ -145,93 +165,165 @@ struct CBlas<float> {
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_saxpy(args...);
+=======
+    paddle::platform::dynload::cblas_saxpy(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_scopy(args...);
+=======
+    paddle::platform::dynload::cblas_scopy(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_sgemv(args...);
+=======
+    paddle::platform::dynload::cblas_sgemv(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static float DOT(ARGS... args) {
+<<<<<<< HEAD
     return phi::dynload::cblas_sdot(args...);
+=======
+    return paddle::platform::dynload::cblas_sdot(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_sscal(args...);
+=======
+    paddle::platform::dynload::cblas_sscal(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static float ASUM(ARGS... args) {
+<<<<<<< HEAD
     return phi::dynload::cblas_sasum(args...);
+=======
+    return paddle::platform::dynload::cblas_sasum(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_BATCH(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_sgemm_batch(args...);
+=======
+    paddle::platform::dynload::cblas_sgemm_batch(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VADD(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vsAdd(args...);
+=======
+    paddle::platform::dynload::vsAdd(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VSUB(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vsSub(args...);
+=======
+    paddle::platform::dynload::vsSub(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VMUL(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vsMul(args...);
+=======
+    paddle::platform::dynload::vsMul(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VDIV(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vsDiv(args...);
+=======
+    paddle::platform::dynload::vsDiv(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VEXP(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vsExp(args...);
+=======
+    paddle::platform::dynload::vsExp(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VSQUARE(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vsSqr(args...);
+=======
+    paddle::platform::dynload::vsSqr(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VPOW(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vsPowx(args...);
+=======
+    paddle::platform::dynload::vsPowx(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VINV(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vsInv(args...);
+=======
+    paddle::platform::dynload::vsInv(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VMERF(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vmsErf(args...);
+=======
+    paddle::platform::dynload::vmsErf(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 #if !defined(_WIN32)
   template <typename... ARGS>
   static void CSRMM(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::mkl_scsrmm(args...);
+=======
+    paddle::platform::dynload::mkl_scsrmm(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 #endif
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_strsm(args...);
+=======
+    paddle::platform::dynload::cblas_strsm(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -239,27 +331,47 @@ template <>
 struct CBlas<double> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_dgemm(args...);
+=======
+    paddle::platform::dynload::cblas_dgemm(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static double *GEMM_ALLOC(ARGS... args) {
+<<<<<<< HEAD
     return phi::dynload::cblas_dgemm_alloc(args...);
+=======
+    return paddle::platform::dynload::cblas_dgemm_alloc(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_PACK(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_dgemm_pack(args...);
+=======
+    paddle::platform::dynload::cblas_dgemm_pack(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_COMPUTE(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_dgemm_compute(args...);
+=======
+    paddle::platform::dynload::cblas_dgemm_compute(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_FREE(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_dgemm_free(args...);
+=======
+    paddle::platform::dynload::cblas_dgemm_free(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
 #ifdef PADDLE_WITH_LIBXSMM
@@ -271,93 +383,165 @@ struct CBlas<double> {
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_daxpy(args...);
+=======
+    paddle::platform::dynload::cblas_daxpy(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_dcopy(args...);
+=======
+    paddle::platform::dynload::cblas_dcopy(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_dgemv(args...);
+=======
+    paddle::platform::dynload::cblas_dgemv(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static double DOT(ARGS... args) {
+<<<<<<< HEAD
     return phi::dynload::cblas_ddot(args...);
+=======
+    return paddle::platform::dynload::cblas_ddot(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_dscal(args...);
+=======
+    paddle::platform::dynload::cblas_dscal(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static double ASUM(ARGS... args) {
+<<<<<<< HEAD
     return phi::dynload::cblas_dasum(args...);
+=======
+    return paddle::platform::dynload::cblas_dasum(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_BATCH(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_dgemm_batch(args...);
+=======
+    paddle::platform::dynload::cblas_dgemm_batch(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VADD(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vdAdd(args...);
+=======
+    paddle::platform::dynload::vdAdd(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VSUB(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vdSub(args...);
+=======
+    paddle::platform::dynload::vdSub(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VMUL(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vdMul(args...);
+=======
+    paddle::platform::dynload::vdMul(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VDIV(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vdDiv(args...);
+=======
+    paddle::platform::dynload::vdDiv(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VEXP(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vdExp(args...);
+=======
+    paddle::platform::dynload::vdExp(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VSQUARE(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vdSqr(args...);
+=======
+    paddle::platform::dynload::vdSqr(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VPOW(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vdPowx(args...);
+=======
+    paddle::platform::dynload::vdPowx(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VINV(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vdInv(args...);
+=======
+    paddle::platform::dynload::vdInv(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VMERF(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vmdErf(args...);
+=======
+    paddle::platform::dynload::vmdErf(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 #if !defined(_WIN32)
   template <typename... ARGS>
   static void CSRMM(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::mkl_dcsrmm(args...);
+=======
+    paddle::platform::dynload::mkl_dcsrmm(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 #endif
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_dtrsm(args...);
+=======
+    paddle::platform::dynload::cblas_dtrsm(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -370,12 +554,20 @@ struct CBlas<phi::dtype::complex<float>> {
                    const int incX,
                    phi::dtype::complex<float> *Y,
                    const int incY) {
+<<<<<<< HEAD
     phi::dynload::cblas_caxpy(n, &alpha, X, incX, Y, incY);
+=======
+    paddle::platform::dynload::cblas_caxpy(n, &alpha, X, incX, Y, incY);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_ccopy(args...);
+=======
+    paddle::platform::dynload::cblas_ccopy(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   // the libmklml_intel.so paddle used has no vcAdd, vcSub,
@@ -384,22 +576,38 @@ struct CBlas<phi::dtype::complex<float>> {
   /*
   template <typename... ARGS>
   static void VADD(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vcAdd(args...);
+=======
+    paddle::platform::dynload::vcAdd(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VSUB(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vcSub(args...);
+=======
+    paddle::platform::dynload::vcSub(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VMUL(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vcMul(args...);
+=======
+    paddle::platform::dynload::vcMul(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VDIV(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vcDiv(args...);
+=======
+    paddle::platform::dynload::vcDiv(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   */
 
@@ -458,7 +666,11 @@ struct CBlas<phi::dtype::complex<float>> {
     const void *a_ = (const void *)(A);
     const void *x_ = (const void *)(X);
     void *y_ = static_cast<void *>(Y);
+<<<<<<< HEAD
     phi::dynload::cblas_cgemv(
+=======
+    paddle::platform::dynload::cblas_cgemv(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         layout, trans, M, N, &alpha, a_, lda, x_, incx, &beta, y_, incy);
   }
 
@@ -480,6 +692,7 @@ struct CBlas<phi::dtype::complex<float>> {
     const void *a_ = (const void *)(A);
     const void *b_ = (const void *)(B);
     void *c_ = static_cast<void *>(C);
+<<<<<<< HEAD
     phi::dynload::cblas_cgemm(layout,
                               trans_a,
                               trans_b,
@@ -494,6 +707,22 @@ struct CBlas<phi::dtype::complex<float>> {
                               &beta,
                               c_,
                               ldc);
+=======
+    paddle::platform::dynload::cblas_cgemm(layout,
+                                           trans_a,
+                                           trans_b,
+                                           M,
+                                           N,
+                                           K,
+                                           &alpha,
+                                           a_,
+                                           lda,
+                                           b_,
+                                           ldb,
+                                           &beta,
+                                           c_,
+                                           ldc);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   static void TRSM(CBLAS_LAYOUT layout,
@@ -510,7 +739,11 @@ struct CBlas<phi::dtype::complex<float>> {
                    int ldb) {
     const void *a_ = (const void *)(A);
     void *b_ = static_cast<void *>(B);
+<<<<<<< HEAD
     phi::dynload::cblas_ctrsm(
+=======
+    paddle::platform::dynload::cblas_ctrsm(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         layout, side, uplo, trans_a, diag, M, N, &alpha, a_, lda, b_, ldb);
   }
 
@@ -535,6 +768,7 @@ struct CBlas<phi::dtype::complex<float>> {
     const void **B_void = (const void **)(&(*B));
     void **C_void = reinterpret_cast<void **>(C);
 
+<<<<<<< HEAD
     phi::dynload::cblas_cgemm_batch(layout,
                                     trans_a,
                                     trans_b,
@@ -551,11 +785,33 @@ struct CBlas<phi::dtype::complex<float>> {
                                     ldc,
                                     group_count,
                                     group_size);
+=======
+    paddle::platform::dynload::cblas_cgemm_batch(layout,
+                                                 trans_a,
+                                                 trans_b,
+                                                 M,
+                                                 N,
+                                                 K,
+                                                 alpha,
+                                                 A_void,
+                                                 lda,
+                                                 B_void,
+                                                 ldb,
+                                                 beta,
+                                                 C_void,
+                                                 ldc,
+                                                 group_count,
+                                                 group_size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_cgemm_batch(args...);
+=======
+    paddle::platform::dynload::cblas_cgemm_batch(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -568,12 +824,20 @@ struct CBlas<phi::dtype::complex<double>> {
                    const int incX,
                    phi::dtype::complex<double> *Y,
                    const int incY) {
+<<<<<<< HEAD
     phi::dynload::cblas_zaxpy(n, &alpha, X, incX, Y, incY);
+=======
+    paddle::platform::dynload::cblas_zaxpy(n, &alpha, X, incX, Y, incY);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_zcopy(args...);
+=======
+    paddle::platform::dynload::cblas_zcopy(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   // the libmklml_intel.so paddle used has no vzAdd, vzSub,
@@ -582,22 +846,38 @@ struct CBlas<phi::dtype::complex<double>> {
   /*
   template <typename... ARGS>
   static void VADD(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vzAdd(args...);
+=======
+    paddle::platform::dynload::vzAdd(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VSUB(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vzSub(args...);
+=======
+    paddle::platform::dynload::vzSub(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VMUL(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vzMul(args...);
+=======
+    paddle::platform::dynload::vzMul(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void VDIV(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::vzDiv(args...);
+=======
+    paddle::platform::dynload::vzDiv(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   */
 
@@ -656,7 +936,11 @@ struct CBlas<phi::dtype::complex<double>> {
     const void *a_ = (const void *)(A);
     const void *x_ = (const void *)(X);
     void *y_ = static_cast<void *>(Y);
+<<<<<<< HEAD
     phi::dynload::cblas_zgemv(
+=======
+    paddle::platform::dynload::cblas_zgemv(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         layout, trans, M, N, &alpha, a_, lda, x_, incx, &beta, y_, incy);
   }
 
@@ -678,6 +962,7 @@ struct CBlas<phi::dtype::complex<double>> {
     const void *a_ = (const void *)(A);
     const void *b_ = (const void *)(B);
     void *c_ = static_cast<void *>(C);
+<<<<<<< HEAD
     phi::dynload::cblas_zgemm(layout,
                               trans_a,
                               trans_b,
@@ -692,6 +977,22 @@ struct CBlas<phi::dtype::complex<double>> {
                               &beta,
                               c_,
                               ldc);
+=======
+    paddle::platform::dynload::cblas_zgemm(layout,
+                                           trans_a,
+                                           trans_b,
+                                           M,
+                                           N,
+                                           K,
+                                           &alpha,
+                                           a_,
+                                           lda,
+                                           b_,
+                                           ldb,
+                                           &beta,
+                                           c_,
+                                           ldc);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   static void TRSM(CBLAS_LAYOUT layout,
@@ -708,7 +1009,11 @@ struct CBlas<phi::dtype::complex<double>> {
                    int ldb) {
     const void *a_ = (const void *)(A);
     void *b_ = static_cast<void *>(B);
+<<<<<<< HEAD
     phi::dynload::cblas_ztrsm(
+=======
+    paddle::platform::dynload::cblas_ztrsm(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         layout, side, uplo, trans_a, diag, M, N, &alpha, a_, lda, b_, ldb);
   }
 
@@ -733,6 +1038,7 @@ struct CBlas<phi::dtype::complex<double>> {
     const void **B_void = (const void **)(&(*B));
     void **C_void = reinterpret_cast<void **>(C);
 
+<<<<<<< HEAD
     phi::dynload::cblas_zgemm_batch(layout,
                                     trans_a,
                                     trans_b,
@@ -749,11 +1055,33 @@ struct CBlas<phi::dtype::complex<double>> {
                                     ldc,
                                     group_count,
                                     group_size);
+=======
+    paddle::platform::dynload::cblas_zgemm_batch(layout,
+                                                 trans_a,
+                                                 trans_b,
+                                                 M,
+                                                 N,
+                                                 K,
+                                                 alpha,
+                                                 A_void,
+                                                 lda,
+                                                 B_void,
+                                                 ldb,
+                                                 beta,
+                                                 C_void,
+                                                 ldc,
+                                                 group_count,
+                                                 group_size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
+<<<<<<< HEAD
     phi::dynload::cblas_zgemm_batch(args...);
+=======
+    paddle::platform::dynload::cblas_zgemm_batch(args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

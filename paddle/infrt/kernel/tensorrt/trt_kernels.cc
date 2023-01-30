@@ -69,7 +69,11 @@ namespace tensorrt {
   auto& region = operation.getRegion(0);
   auto& block = region.getBlocks().front();
 
+<<<<<<< HEAD
   std::unordered_map<std::string, ::Tensor*> trt_bind_inputs;
+=======
+  std::unordered_map<std::string, ::phi::DenseTensor*> trt_bind_inputs;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ValueToITensorMap value_to_trt_tensor_map;
   ValueToTensorMap value_to_tensor_map;
 
@@ -80,7 +84,11 @@ namespace tensorrt {
     const std::string input_name = "input_" + std::to_string(idx);
     auto* v = symbol_table->GetValue(std::to_string(idx));
     CHECK_NOTNULL(v);
+<<<<<<< HEAD
     auto* t = &v->get<::Tensor>();
+=======
+    auto* t = &v->get<::phi::DenseTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     value_to_tensor_map[operand] = t;
 
     // TODO(wilber): get input info from mlir.
@@ -186,10 +194,17 @@ void PrintTrtLayer(backends::tensorrt::TrtEngine* engine) {
   engine->GetEngineInfo();
 }
 
+<<<<<<< HEAD
 std::vector<::Tensor*> TrtEngineCompute(backends::tensorrt::TrtEngine* engine,
                                         const ::phi::GPUContext& context) {
   engine->Run(context);
   std::vector<::Tensor*> res;
+=======
+std::vector<::phi::DenseTensor*> TrtEngineCompute(
+    backends::tensorrt::TrtEngine* engine, const ::phi::GPUContext& context) {
+  engine->Run(context);
+  std::vector<::phi::DenseTensor*> res;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (size_t i = 0; i < engine->GetOutputNum(); ++i) {
     res.push_back(engine->GetOutput("output_" + std::to_string(i)));
   }

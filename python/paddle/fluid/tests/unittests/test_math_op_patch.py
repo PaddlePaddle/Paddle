@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy
@@ -23,12 +24,30 @@ import paddle.fluid as fluid
 
 
 class TestMathOpPatches(unittest.TestCase):
+=======
+from __future__ import print_function, division
+
+import unittest
+from decorator_helper import prog_scope
+import paddle
+import paddle.fluid as fluid
+import numpy
+import numpy as np
+
+
+class TestMathOpPatches(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
 
     @prog_scope()
     def test_add_scalar(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = a + 10
         ab = fluid.layers.concat(input=[a, b], axis=1)
         c = ab + 10
@@ -37,9 +56,15 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         b_np, c_np, d_np = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b, c, d]
         )
+=======
+        b_np, c_np, d_np = exe.run(fluid.default_main_program(),
+                                   feed={"a": a_np},
+                                   fetch_list=[b, c, d])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(a_np + 10, b_np, rtol=1e-05)
         ab_np = np.concatenate([a_np, b_np], axis=1)
         np.testing.assert_allclose(ab_np + 10, c_np, rtol=1e-05)
@@ -48,23 +73,38 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_radd_scalar(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = 10 + a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
+=======
+        b_np = exe.run(fluid.default_main_program(),
+                       feed={"a": a_np},
+                       fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(a_np + 10, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_sub_scalar(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = a - 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
@@ -73,164 +113,302 @@ class TestMathOpPatches(unittest.TestCase):
     @prog_scope()
     def test_rsub_scalar(self):
         a = paddle.static.data(name="a", shape=[-1, 1])
+=======
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+        np.testing.assert_allclose(a_np - 10, b_np, rtol=1e-05)
+
+    @prog_scope()
+    def test_radd_scalar(self):
+        a = fluid.layers.data(name="a", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = 10 - a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
+=======
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(10 - a_np, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_mul_scalar(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = a * 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
+=======
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(a_np * 10, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_rmul_scalar(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = 10 * a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
+=======
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(10 * a_np, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_div_scalar(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = a / 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
+=======
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(a_np / 10, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_rdiv_scalar(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = 10 / a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32') + 1e-2
 
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
+=======
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(10 / a_np, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_div_two_tensor(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
         b = paddle.static.data(name="b", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+        b = fluid.layers.data(name="b", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         c = a / b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
         b_np = np.random.random(size=[10, 1]).astype('float32') + 1e-2
+<<<<<<< HEAD
         (c_np,) = exe.run(
             fluid.default_main_program(),
             feed={"a": a_np, 'b': b_np},
             fetch_list=[c],
         )
+=======
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(a_np / b_np, c_np, rtol=1e-05)
 
     @prog_scope()
     def test_mul_two_tensor(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
         b = paddle.static.data(name="b", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+        b = fluid.layers.data(name="b", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         c = a * b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
         b_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         (c_np,) = exe.run(
             fluid.default_main_program(),
             feed={"a": a_np, 'b': b_np},
             fetch_list=[c],
         )
+=======
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(a_np * b_np, c_np, rtol=1e-05)
 
     @prog_scope()
     def test_add_two_tensor(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
         b = paddle.static.data(name="b", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+        b = fluid.layers.data(name="b", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         c = a + b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
         b_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         (c_np,) = exe.run(
             fluid.default_main_program(),
             feed={"a": a_np, 'b': b_np},
             fetch_list=[c],
         )
+=======
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(a_np + b_np, c_np, rtol=1e-05)
 
     @prog_scope()
     def test_sub_two_tensor(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1])
         b = paddle.static.data(name="b", shape=[-1, 1])
+=======
+        a = fluid.layers.data(name="a", shape=[1])
+        b = fluid.layers.data(name="b", shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         c = a - b
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
         b_np = np.random.random(size=[10, 1]).astype('float32')
+<<<<<<< HEAD
         (c_np,) = exe.run(
             fluid.default_main_program(),
             feed={"a": a_np, 'b': b_np},
             fetch_list=[c],
         )
+=======
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(a_np - b_np, c_np, rtol=1e-05)
 
     @prog_scope()
     def test_integer_div(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1], dtype='int64')
+=======
+        a = fluid.layers.data(name="a", shape=[1], dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = a / 7
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.array([3, 4, 10, 14, 9, 18]).astype('int64')
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
+=======
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         b_np_actual = (a_np / 7).astype('float32')
         np.testing.assert_allclose(b_np, b_np_actual, rtol=1e-05)
 
     @prog_scope()
     def test_equal(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
         b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
         c = a == b
+=======
+        a = fluid.layers.data(name="a", shape=[1], dtype='float32')
+        b = fluid.layers.data(name="b", shape=[1], dtype='float32')
+        c = (a == b)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float32')
         b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float32')
 
+<<<<<<< HEAD
         (c_np,) = exe.run(
             fluid.default_main_program(),
             feed={"a": a_np, "b": b_np},
             fetch_list=[c],
         )
+=======
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            "b": b_np
+                        },
+                        fetch_list=[c])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np.testing.assert_array_equal(c_np, a_np == b_np)
         self.assertEqual(c.dtype, fluid.core.VarDesc.VarType.BOOL)
 
     @prog_scope()
     def test_equal_and_cond(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
         a.desc.set_need_check_feed(False)
         b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
@@ -249,35 +427,75 @@ class TestMathOpPatches(unittest.TestCase):
             feed={"a": a_np, "b": b_np},
             fetch_list=[c],
         )
+=======
+        a = fluid.layers.data(name="a", shape=[1], dtype='float32')
+        b = fluid.layers.data(name="b", shape=[1], dtype='float32')
+
+        one = fluid.layers.ones(shape=[1], dtype='int32')
+        zero = fluid.layers.zeros(shape=[1], dtype='int32')
+        cond = (one == zero)
+        c = fluid.layers.cond(cond, lambda: a + b, lambda: a - b)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float')
+        b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float')
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            "b": b_np
+                        },
+                        fetch_list=[c])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np.testing.assert_array_equal(c_np, a_np - b_np)
 
     @prog_scope()
     def test_neg(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 10, 1], dtype='float32')
         a.desc.set_need_check_feed(False)
+=======
+        a = fluid.layers.data(name="a", shape=[10, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = -a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float32')
 
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
+=======
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(-a_np, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_astype(self):
+<<<<<<< HEAD
         a = paddle.static.data(name="a", shape=[-1, 10, 1])
         a.desc.set_need_check_feed(False)
+=======
+        a = fluid.layers.data(name="a", shape=[10, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = a.astype('float32')
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float64')
 
+<<<<<<< HEAD
         (b_np,) = exe.run(
             fluid.default_main_program(), feed={"a": a_np}, fetch_list=[b]
         )
+=======
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(a_np.astype('float32'), b_np, rtol=1e-05)
 
     def test_bitwise_and(self):
@@ -290,11 +508,20 @@ class TestMathOpPatches(unittest.TestCase):
         z = x & y
 
         exe = fluid.Executor()
+<<<<<<< HEAD
         out = exe.run(
             fluid.default_main_program(),
             feed={"x": x_np, "y": y_np},
             fetch_list=[z],
         )
+=======
+        out = exe.run(fluid.default_main_program(),
+                      feed={
+                          "x": x_np,
+                          "y": y_np
+                      },
+                      fetch_list=[z])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
@@ -308,11 +535,20 @@ class TestMathOpPatches(unittest.TestCase):
         z = x | y
 
         exe = fluid.Executor()
+<<<<<<< HEAD
         out = exe.run(
             fluid.default_main_program(),
             feed={"x": x_np, "y": y_np},
             fetch_list=[z],
         )
+=======
+        out = exe.run(fluid.default_main_program(),
+                      feed={
+                          "x": x_np,
+                          "y": y_np
+                      },
+                      fetch_list=[z])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
@@ -326,11 +562,20 @@ class TestMathOpPatches(unittest.TestCase):
         z = x ^ y
 
         exe = fluid.Executor()
+<<<<<<< HEAD
         out = exe.run(
             fluid.default_main_program(),
             feed={"x": x_np, "y": y_np},
             fetch_list=[z],
         )
+=======
+        out = exe.run(fluid.default_main_program(),
+                      feed={
+                          "x": x_np,
+                          "y": y_np
+                      },
+                      fetch_list=[z])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
@@ -342,9 +587,15 @@ class TestMathOpPatches(unittest.TestCase):
         z = ~x
 
         exe = fluid.Executor()
+<<<<<<< HEAD
         out = exe.run(
             fluid.default_main_program(), feed={"x": x_np}, fetch_list=[z]
         )
+=======
+        out = exe.run(fluid.default_main_program(),
+                      feed={"x": x_np},
+                      fetch_list=[z])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
@@ -356,9 +607,15 @@ class TestMathOpPatches(unittest.TestCase):
         z = x.T
 
         exe = fluid.Executor()
+<<<<<<< HEAD
         out = exe.run(
             fluid.default_main_program(), feed={"x": x_np}, fetch_list=[z]
         )
+=======
+        out = exe.run(fluid.default_main_program(),
+                      feed={"x": x_np},
+                      fetch_list=[z])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
@@ -377,6 +634,7 @@ class TestMathOpPatches(unittest.TestCase):
         b_np = np.random.uniform(-1, 1, size=[3, 5]).astype('float32')
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
+<<<<<<< HEAD
         (c_np,) = exe.run(
             paddle.static.default_main_program(),
             feed={"a": a_np, "b": b_np},
@@ -487,5 +745,16 @@ class TestDygraphMathOpPatches(unittest.TestCase):
         paddle.enable_static()
 
 
+=======
+        c_np, = exe.run(paddle.static.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            "b": b_np
+                        },
+                        fetch_list=[c])
+        np.testing.assert_allclose(a_np @ b_np, c_np, rtol=1e-05)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     unittest.main()

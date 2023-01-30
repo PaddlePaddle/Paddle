@@ -19,6 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void EinsumInferKernel(const Context& dev_ctx,
                        const std::vector<const DenseTensor*>& inputs,
                        const std::string& equation,
@@ -31,5 +32,19 @@ void EinsumKernel(const Context& dev_ctx,
                   DenseTensor* out,
                   std::vector<DenseTensor*> inner_cache,
                   std::vector<DenseTensor*> xshape);
+=======
+void EinsumKernel(const Context& dev_ctx,
+                  const std::vector<const DenseTensor*>& inputs,
+                  const std::string& equation,
+                  DenseTensor* out);
+
+template <typename T, typename Context>
+void EinsumKernelRaw(const Context& dev_ctx,
+                     const std::vector<const DenseTensor*>& inputs,
+                     const std::string& equation,
+                     DenseTensor* out,
+                     std::vector<DenseTensor*> inner_cache,
+                     std::vector<DenseTensor*> xshape);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace phi

@@ -16,7 +16,10 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -31,6 +34,7 @@ void SoftmaxKernel(const Context& dev_ctx,
 
   // allocate memory on device.
   dev_ctx.template Alloc<T>(out);
+<<<<<<< HEAD
   // For 0-Sized Tensor
   if (out->numel() == 0) {
     return;
@@ -40,6 +44,11 @@ void SoftmaxKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, out, 1.0);
     return;
   }
+=======
+  if (out->numel() == 0) {
+    return;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<int> x_dims;
   for (int i = 0; i < rank; i++) {

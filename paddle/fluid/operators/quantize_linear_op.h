@@ -17,6 +17,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/fake_dequantize_op.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/operators/fake_quantize_op.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/common/data_type.h"
@@ -28,6 +32,7 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
+<<<<<<< HEAD
 struct DequantizeFunctor {
   void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor* in,
@@ -45,30 +50,55 @@ struct ChannelDequantizeFunctorV2 {
                   T max_range,
                   const int quant_axis,
                   phi::DenseTensor* out);
+=======
+struct ChannelDequantizeFunctorV2 {
+  void operator()(const DeviceContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor** scales,
+                  const int scale_num,
+                  T max_range,
+                  const int quant_axis,
+                  framework::Tensor* out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename DeviceContext, typename T>
 class QuantizeLinearKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* in = context.Input<phi::DenseTensor>("X");
     auto* in_scale = context.Input<phi::DenseTensor>("Scale");
 
     auto* out = context.Output<phi::DenseTensor>("Y");
+=======
+    auto* in = context.Input<framework::Tensor>("X");
+    auto* in_scale = context.Input<framework::Tensor>("Scale");
+
+    auto* out = context.Output<framework::Tensor>("Y");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(context.GetPlace());
     int bit_length = context.Attr<int>("bit_length");
     int round_type = context.Attr<int>("round_type");
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
     int quant_axis = context.Attr<int>("quant_axis");
     bool is_test = context.Attr<bool>("is_test");
+<<<<<<< HEAD
     bool only_observer = context.Attr<bool>("only_observer");
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     if (quant_axis < 0) {
       if (!is_test) {
         // training
+<<<<<<< HEAD
         auto* in_accum = context.Input<phi::DenseTensor>("InAccum");
         auto* in_state = context.Input<phi::DenseTensor>("InState");
+=======
+        auto* in_accum = context.Input<framework::Tensor>("InAccum");
+        auto* in_state = context.Input<framework::Tensor>("InState");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         phi::DenseTensor tmp_scale;
         tmp_scale.Resize(phi::make_dim(1));
         T* cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
@@ -76,9 +106,15 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
         FindAbsMaxFunctor<DeviceContext, T>()(
             dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
 
+<<<<<<< HEAD
         auto* out_state = context.Output<phi::DenseTensor>("OutState");
         auto* out_accum = context.Output<phi::DenseTensor>("OutAccum");
         auto* out_scale = context.Output<phi::DenseTensor>("OutScale");
+=======
+        auto* out_state = context.Output<framework::Tensor>("OutState");
+        auto* out_accum = context.Output<framework::Tensor>("OutAccum");
+        auto* out_scale = context.Output<framework::Tensor>("OutScale");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out_state->mutable_data<T>(context.GetPlace());
         out_accum->mutable_data<T>(context.GetPlace());
         out_scale->mutable_data<T>(context.GetPlace());
@@ -92,6 +128,7 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
                                                            out_state,
                                                            out_accum,
                                                            out_scale);
+<<<<<<< HEAD
         if (only_observer) {
           framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
         } else {
@@ -125,11 +162,31 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
           ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
               dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
         }
+=======
+        ClipAndFakeQuantFunctor<DeviceContext, T>()(
+            dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
+      } else {
+        ClipAndFakeQuantFunctor<DeviceContext, T>()(
+            dev_ctx, *in, *in_scale, bin_cnt, round_type, out);
+      }
+    } else {
+      if (!is_test) {
+        auto* out_scale = context.Output<framework::Tensor>("OutScale");
+        T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
+        FindChannelAbsMaxFunctor<DeviceContext, T>()(
+            dev_ctx, *in, quant_axis, out_scale_data);
+        ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+            dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
+      } else {
+        ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+            dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     }
   }
 };
 
+<<<<<<< HEAD
 template <typename DeviceContext, typename T>
 class DeQuantizeLinearKernel : public framework::OpKernel<T> {
  public:
@@ -137,6 +194,14 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
   void ComputeImpl(const framework::ExecutionContext& context) const {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto* in = context.Input<phi::DenseTensor>("X");
+=======
+template <typename DeviceContext, typename T, typename D>
+class DeQuantizeLinearKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto* in = context.Input<framework::Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto in_tmp = phi::Cast<T>(
         static_cast<const typename paddle::framework::ConvertToPhiContext<
@@ -144,6 +209,7 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
         *in,
         experimental::CppTypeToDataType<D>::Type());
 
+<<<<<<< HEAD
     auto* scale = context.Input<phi::DenseTensor>("Scale");
     auto* out = context.Output<phi::DenseTensor>("Y");
     int bit_length = context.Attr<int>("bit_length");
@@ -155,6 +221,13 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
       return;
     }
+=======
+    auto* scale = context.Input<framework::Tensor>("Scale");
+    auto* out = context.Output<framework::Tensor>("Y");
+    int bit_length = context.Attr<int>("bit_length");
+    auto quant_axis = context.Attr<int>("quant_axis");
+    out->mutable_data<D>(dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (quant_axis < 0) {
       float max_range = (std::pow(2, bit_length - 1) - 1);
@@ -176,6 +249,7 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
           dev_ctx, &in_tmp, scale, static_cast<D>(max_range), quant_axis, out);
     }
   }
+<<<<<<< HEAD
 
   void Compute(const framework::ExecutionContext& context) const override {
     auto* scale = context.Input<phi::DenseTensor>("Scale");
@@ -197,6 +271,8 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
         break;
     }
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace operators

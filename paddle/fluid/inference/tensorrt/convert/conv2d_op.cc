@@ -49,7 +49,11 @@ void ConvertConv2d(TensorRTEngine* engine,
       Y_v,
       platform::errors::NotFound("Can not find %s presistale var in scope.",
                                  filter_var_name));
+<<<<<<< HEAD
   auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
+=======
+  auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
@@ -118,7 +122,11 @@ void ConvertConv2d(TensorRTEngine* engine,
   bias.SetValues(nullptr);
   if (op_desc.Type() == "conv2d_fusion") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
+<<<<<<< HEAD
     auto* bias_tensor_data = bias_tensor->GetMutable<phi::DenseTensor>();
+=======
+    auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bias =
         engine->GetTrtWeight(op_desc.Input("Bias").front(), *bias_tensor_data);
   }
@@ -142,8 +150,12 @@ void ConvertConv2d(TensorRTEngine* engine,
       layer,
       platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
                               " layer failed."));
+<<<<<<< HEAD
   layer->setStrideNd(nv_strides);
 
+=======
+  layer->setStride(nv_strides);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   layer->setPrePadding(nv_pre_paddings);
   if (output_padding.size() > 0) {
     nv_post_paddings.d[0] -= output_padding[0];
@@ -190,7 +202,11 @@ class Conv2dOpConverter : public OpConverter {
             TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IConvolutionLayer* {
           auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+<<<<<<< HEAD
                                              ConvolutionNd,
+=======
+                                             Convolution,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                              *inputs,
                                              n_output,
                                              ksize,

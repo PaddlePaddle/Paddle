@@ -14,12 +14,20 @@
 
 import os
 import shlex
+<<<<<<< HEAD
 import shutil
 import sys
 import tempfile
 import unittest
 
 import paddle
+=======
+import sys
+import shutil
+import unittest
+import paddle
+import tempfile
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_test_file():
@@ -36,12 +44,19 @@ def remove_file_if_exists(file_name):
         shutil.rmtree(file_name)
 
 
+<<<<<<< HEAD
 def run_test(
     clip_after_allreduce=True,
     max_global_norm=-1.0,
     gradient_merge_steps=1,
     use_master_acc_grad=True,
 ):
+=======
+def run_test(clip_after_allreduce=True,
+             max_global_norm=-1.0,
+             gradient_merge_steps=1,
+             use_master_acc_grad=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     temp_dir = tempfile.TemporaryDirectory()
     if not paddle.is_compiled_with_cuda():
         return
@@ -69,6 +84,7 @@ def run_test(
     touch_file_env = 'SUCCESS_TOUCH_FILE'
     touch_file_name = os.path.join(
         temp_dir.name,
+<<<<<<< HEAD
         'distributed_fused_lamb_touch_file_{}'.format(os.getpid()),
     )
     os.environ[touch_file_env] = touch_file_name
@@ -76,11 +92,22 @@ def run_test(
         assert os.system(cmd) == 0 and os.path.exists(
             touch_file_name
         ), 'Test failed when {}'.format(args)
+=======
+        'distributed_fused_lamb_touch_file_{}'.format(os.getpid()))
+    os.environ[touch_file_env] = touch_file_name
+    try:
+        assert os.system(cmd) == 0 and os.path.exists(
+            touch_file_name), 'Test failed when {}'.format(args)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     finally:
         temp_dir.cleanup()
 
 
 class TestDistributedFusedLambWithClip(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_1(self):
         run_test(clip_after_allreduce=True, max_global_norm=0.01)
 

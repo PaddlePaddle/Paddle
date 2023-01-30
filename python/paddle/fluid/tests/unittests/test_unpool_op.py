@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -22,17 +23,35 @@ from test_attribute_var import UnittestBase
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import Program, core, program_guard
+=======
+from __future__ import print_function
+
+import os
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.nn.functional as F
+from paddle.fluid import Program, program_guard
+
+from test_attribute_var import UnittestBase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     input_size = x.shape
     default_size = []
     for d in range(len(kernel_size)):
+<<<<<<< HEAD
         default_size.append(
             (input_size[-len(kernel_size) + d] - 1) * stride[d]
             + kernel_size[d]
             - 2 * padding[d]
         )
+=======
+        default_size.append((input_size[-len(kernel_size) + d] - 1) *
+                            stride[d] + kernel_size[d] - 2 * padding[d])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if output_size is None:
         ret = default_size
     else:
@@ -40,6 +59,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     return ret
 
 
+<<<<<<< HEAD
 def unpool2dmax_forward_naive(
     input, indices, ksize, strides, paddings, output_size
 ):
@@ -47,6 +67,13 @@ def unpool2dmax_forward_naive(
     output_size = _unpool_output_size(
         input, ksize, strides, paddings, output_size
     )
+=======
+def unpool2dmax_forward_naive(input, indices, ksize, strides, paddings,
+                              output_size):
+    s0, s1, s2, s3 = input.shape
+    output_size = _unpool_output_size(input, ksize, strides, paddings,
+                                      output_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out_hsize = output_size[0]
     out_wsize = output_size[1]
     out = np.zeros((s0, s1, out_hsize, out_wsize))
@@ -57,11 +84,17 @@ def unpool2dmax_forward_naive(
                     index = indices[nidx, cidx, h, w]
                     hidx = (index - index % out_wsize) // out_wsize
                     widx = index % out_wsize
+<<<<<<< HEAD
                     out[nidx, cidx, hidx, widx] = input[nidx, cidx, h, w]
+=======
+                    out[nidx, cidx, hidx, widx] = \
+                            input[nidx, cidx, h, w]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return out
 
 
+<<<<<<< HEAD
 def max_unpool2d_wrapper(
     x,
     indices,
@@ -82,22 +115,52 @@ def max_unpool2d_wrapper(
         output_size=output_size,
         name=name,
     )
+=======
+def max_unpool2d_wrapper(x,
+                         indices,
+                         kernel_size,
+                         stride=None,
+                         padding=0,
+                         output_size=None,
+                         data_format="NCHW",
+                         name=None):
+    out = paddle.nn.functional.max_unpool2d(x,
+                                            indices,
+                                            kernel_size,
+                                            stride=stride,
+                                            padding=padding,
+                                            data_format=data_format,
+                                            output_size=output_size,
+                                            name=name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return out
 
 
 class TestUnpoolOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "unpool"
         self.python_api = max_unpool2d_wrapper
         self.init_test_case()
         input = np.random.randint(0, 100, self.shape)
         nsize, csize, hsize, wsize = input.shape
+<<<<<<< HEAD
         self.output_size = _unpool_output_size(
             input, self.ksize, self.strides, self.paddings, self.output_size
         )
         indices = np.random.permutation(
             np.arange(0, self.output_size[0] * self.output_size[1])
         )[: hsize * wsize]
+=======
+        self.output_size = _unpool_output_size(input, self.ksize, self.strides,
+                                               self.paddings, self.output_size)
+        indices = np.random.permutation(
+            np.arange(0, self.output_size[0] * self.output_size[1]))[:hsize *
+                                                                     wsize]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         indices = np.reshape(indices, [hsize, wsize])
         idx_list = []
         for n in range(nsize):
@@ -107,6 +170,7 @@ class TestUnpoolOp(OpTest):
             idx_list.append(c_list)
         indices = np.array(idx_list)
 
+<<<<<<< HEAD
         output = self.unpool2d_forward_naive(
             input,
             indices,
@@ -119,6 +183,14 @@ class TestUnpoolOp(OpTest):
         self.inputs = {
             'X': input.astype('float64'),
             'Indices': indices.astype('int32'),
+=======
+        output = self.unpool2d_forward_naive(input, indices, self.ksize, \
+                self.strides, self.paddings, self.output_size).astype("float64")
+
+        self.inputs = {
+            'X': input.astype('float64'),
+            'Indices': indices.astype('int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'strides': self.strides,
@@ -146,6 +218,10 @@ class TestUnpoolOp(OpTest):
 
 
 class TestUnpoolOpcase1(TestUnpoolOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
         self.unpooling_type = "max"
@@ -157,6 +233,10 @@ class TestUnpoolOpcase1(TestUnpoolOp):
 
 
 class TestUnpoolOpOutputsize(TestUnpoolOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
         self.unpooling_type = "max"
@@ -168,6 +248,10 @@ class TestUnpoolOpOutputsize(TestUnpoolOp):
 
 
 class TestUnpoolOpOutput(TestUnpoolOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
         self.unpooling_type = "max"
@@ -179,6 +263,7 @@ class TestUnpoolOpOutput(TestUnpoolOp):
 
 
 class TestUnpoolOpException(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         paddle.disable_static()
 
@@ -259,12 +344,72 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
         import paddle.fluid as fluid
         import paddle.fluid.core as core
         import paddle.nn.functional as F
+=======
+
+    def test_exception(self):
+        import paddle.nn.functional as F
+        import paddle
+
+        def indices_size_error():
+            data = paddle.randint(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(paddle.arange(0, 12), shape[1, 1, 3, 4])
+            MaxPool2D = F.maxunpool2d(data, indices, kernel_size=2, stride=2)
+
+        def indices_value_error():
+            data = paddle.randint(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
+            MaxPool2D = F.maxunpool2d(data, indices, kernel_size=2, stride=2)
+
+        def data_format_error():
+            data = paddle.randint(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
+            MaxPool2D = F.maxunpool2d(data,
+                                      indices,
+                                      kernel_size=2,
+                                      stride=2,
+                                      data_format="NHWC")
+
+        def data_outputsize_error():
+            data = paddle.randint(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
+            MaxPool2D = F.maxunpool2d(data,
+                                      indices,
+                                      kernel_size=2,
+                                      stride=2,
+                                      output_size=[5, 6, 7, 8])
+
+        def data_outputsize_error2():
+            data = paddle.randint(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
+            MaxPool2D = F.maxunpool2d(data,
+                                      indices,
+                                      kernel_size=2,
+                                      stride=2,
+                                      output_size=[100, 100])
+
+        self.assertRaises(ValueError, indices_size_error)
+        self.assertRaises(ValueError, indices_value_error)
+        self.assertRaises(ValueError, data_format_error)
+        self.assertRaises(ValueError, data_outputsize_error)
+        self.assertRaises(ValueError, data_outputsize_error2)
+
+
+class TestUnpoolOpAPI_dy(unittest.TestCase):
+
+    def test_case(self):
+        import paddle
+        import paddle.nn.functional as F
+        import paddle.fluid.core as core
+        import paddle.fluid as fluid
+        import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
         with fluid.dygraph.guard(place):
+<<<<<<< HEAD
             input_data = np.array(
                 [
                     [
@@ -289,10 +434,30 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
             expect_res = unpool2dmax_forward_naive(
                 output_np, indices_np, [2, 2], [2, 2], [0, 0], [5, 5]
             ).astype("float64")
+=======
+            input_data = np.array([[[[1, 2, 3, 4], [5, 6, 7,
+                                                    8], [9, 10, 11, 12],
+                                     [13, 14, 15, 16]]]]).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            output, indices = F.max_pool2d(input_x,
+                                           kernel_size=2,
+                                           stride=2,
+                                           return_mask=True)
+            out_pp = F.max_unpool2d(output,
+                                    indices,
+                                    kernel_size=2,
+                                    stride=2,
+                                    output_size=(5, 5))
+            output_np = output.numpy()
+            indices_np = indices.numpy()
+            expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
+                [2,2], [0,0], [5,5]).astype("float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
 class TestUnpoolOpAPI_dy2(unittest.TestCase):
+<<<<<<< HEAD
     def test_case(self):
         import numpy as np
 
@@ -300,12 +465,22 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
         import paddle.fluid as fluid
         import paddle.fluid.core as core
         import paddle.nn.functional as F
+=======
+
+    def test_case(self):
+        import paddle
+        import paddle.nn.functional as F
+        import paddle.fluid.core as core
+        import paddle.fluid as fluid
+        import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
         with fluid.dygraph.guard(place):
+<<<<<<< HEAD
             input_data = np.array(
                 [
                     [
@@ -330,22 +505,52 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
             expect_res = unpool2dmax_forward_naive(
                 output_np, indices_np, [2, 2], [2, 2], [0, 0], [5, 5]
             ).astype("float64")
+=======
+            input_data = np.array([[[[1, 2, 3, 4], [5, 6, 7,
+                                                    8], [9, 10, 11, 12],
+                                     [13, 14, 15, 16]]]]).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            output, indices = F.max_pool2d(input_x,
+                                           kernel_size=2,
+                                           stride=2,
+                                           return_mask=True)
+            out_pp = F.max_unpool2d(output,
+                                    indices,
+                                    kernel_size=2,
+                                    stride=None,
+                                    output_size=(5, 5))
+            output_np = output.numpy()
+            indices_np = indices.numpy()
+            expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
+                [2,2], [0,0], [5,5]).astype("float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
 class TestUnpoolOpAPI_dy3(unittest.TestCase):
+<<<<<<< HEAD
     def test_case(self):
         import numpy as np
 
         import paddle
         import paddle.fluid as fluid
         import paddle.fluid.core as core
+=======
+
+    def test_case(self):
+        import paddle
+        import paddle.nn.functional as F
+        import paddle.fluid.core as core
+        import paddle.fluid as fluid
+        import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
         with fluid.dygraph.guard(place):
+<<<<<<< HEAD
             input_data = np.array(
                 [
                     [
@@ -362,19 +567,34 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
             Pool2d = paddle.nn.MaxPool2D(
                 kernel_size=2, stride=2, return_mask=True
             )
+=======
+            input_data = np.array([[[[1, 2, 3, 4], [5, 6, 7,
+                                                    8], [9, 10, 11, 12],
+                                     [13, 14, 15, 16]]]]).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            Pool2d = paddle.nn.MaxPool2D(kernel_size=2,
+                                         stride=2,
+                                         return_mask=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             UnPool = paddle.nn.MaxUnPool2D(kernel_size=2, stride=2)
 
             output, indices = Pool2d(input_x)
             out_pp = UnPool(output, indices)
             output_np = output.numpy()
             indices_np = indices.numpy()
+<<<<<<< HEAD
             expect_res = unpool2dmax_forward_naive(
                 output_np, indices_np, [2, 2], [2, 2], [0, 0], [4, 4]
             ).astype("float64")
+=======
+            expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
+                [2,2], [0,0], [4,4]).astype("float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
 class TestUnpoolOpAPI_st(unittest.TestCase):
+<<<<<<< HEAD
     def test_case(self):
         import paddle
         import paddle.fluid as fluid
@@ -394,6 +614,29 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
         unpool_out = F.max_unpool2d(
             output, indices, kernel_size=2, stride=None, output_size=(5, 5)
         )
+=======
+
+    def test_case(self):
+        import paddle
+        import paddle.nn.functional as F
+        import paddle.fluid.core as core
+        import paddle.fluid as fluid
+        paddle.enable_static()
+
+        input_data = np.array([[[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12],
+                                 [13, 14, 15, 16]]]]).astype("float32")
+
+        x = fluid.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
+        output, indices = F.max_pool2d(x,
+                                       kernel_size=2,
+                                       stride=2,
+                                       return_mask=True)
+        unpool_out = F.max_unpool2d(output,
+                                    indices,
+                                    kernel_size=2,
+                                    stride=None,
+                                    output_size=(5, 5))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -401,6 +644,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
+<<<<<<< HEAD
         results = exe.run(
             paddle.fluid.default_main_program(),
             feed={"x": input_data},
@@ -418,6 +662,22 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
 
 
 class TestOutputSizeTensor(UnittestBase):
+=======
+        results = exe.run(paddle.fluid.default_main_program(),\
+                          feed={"x":input_data},
+                          fetch_list=[unpool_out],
+                          return_numpy=True)
+
+        pool_out_np = np.array([[[[6., 8.], [14., 16.]]]]).astype("float32")
+        indices_np = np.array([[[[5, 7], [13, 15]]]]).astype("int32")
+        expect_res =unpool2dmax_forward_naive(pool_out_np, indices_np, [2,2], \
+            [2,2], [0,0], [5,5]).astype("float64")
+        np.testing.assert_allclose(results[0], expect_res, rtol=1e-05)
+
+
+class TestOutputSizeTensor(UnittestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_info(self):
         self.shapes = [[1, 3, 6, 6]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
@@ -454,6 +714,7 @@ class TestOutputSizeTensor(UnittestBase):
 
     def call_func(self, x):
         output_size = [paddle.assign([7]), paddle.assign([7])]
+<<<<<<< HEAD
         pool_out, indices = F.max_pool2d(
             x, kernel_size=2, stride=2, padding=0, return_mask=True
         )
@@ -461,11 +722,28 @@ class TestOutputSizeTensor(UnittestBase):
         unpool_out = F.max_unpool2d(
             pool_out, indices, kernel_size=2, padding=0, output_size=output_size
         )
+=======
+        pool_out, indices = F.max_pool2d(x,
+                                         kernel_size=2,
+                                         stride=2,
+                                         padding=0,
+                                         return_mask=True)
+        # pool_out shape: [1, 1, 6, 6],  indices shape: [1, 1, 6, 6]
+        unpool_out = F.max_unpool2d(pool_out,
+                                    indices,
+                                    kernel_size=2,
+                                    padding=0,
+                                    output_size=output_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # unpool_out shape: [1, 1, 7, 7]
         return unpool_out
 
 
 class TestZOutputSizeTensor2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.disable_static()
 
@@ -474,6 +752,7 @@ class TestZOutputSizeTensor2(unittest.TestCase):
 
     def test_dygraph(self):
         x = paddle.randn([1, 3, 6, 6])
+<<<<<<< HEAD
         pool_out, indices = F.max_pool2d(
             x, kernel_size=2, stride=2, padding=0, return_mask=True
         )
@@ -481,10 +760,27 @@ class TestZOutputSizeTensor2(unittest.TestCase):
         unpool_out = F.max_unpool2d(
             pool_out, indices, kernel_size=2, padding=0, output_size=output_size
         )
+=======
+        pool_out, indices = F.max_pool2d(x,
+                                         kernel_size=2,
+                                         stride=2,
+                                         padding=0,
+                                         return_mask=True)
+        output_size = [paddle.assign([7]), paddle.assign([7])]
+        unpool_out = F.max_unpool2d(pool_out,
+                                    indices,
+                                    kernel_size=2,
+                                    padding=0,
+                                    output_size=output_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(unpool_out.shape, [1, 3, 7, 7])
 
 
 class TestZOutputSizeTensor3(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.disable_static()
 
@@ -493,18 +789,36 @@ class TestZOutputSizeTensor3(unittest.TestCase):
 
     def test_dygraph(self):
         x = paddle.randn([1, 3, 6, 6])
+<<<<<<< HEAD
         pool_out, indices = F.max_pool2d(
             x, kernel_size=2, stride=2, padding=0, return_mask=True
         )
+=======
+        pool_out, indices = F.max_pool2d(x,
+                                         kernel_size=2,
+                                         stride=2,
+                                         padding=0,
+                                         return_mask=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output_size = [
             paddle.assign([1]),
             paddle.assign([1]),
             paddle.assign([7]),
+<<<<<<< HEAD
             paddle.assign([7]),
         ]
         unpool_out = F.max_unpool2d(
             pool_out, indices, kernel_size=2, padding=0, output_size=output_size
         )
+=======
+            paddle.assign([7])
+        ]
+        unpool_out = F.max_unpool2d(pool_out,
+                                    indices,
+                                    kernel_size=2,
+                                    padding=0,
+                                    output_size=output_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(unpool_out.shape, [1, 3, 7, 7])
 
 

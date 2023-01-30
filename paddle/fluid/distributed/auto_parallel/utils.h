@@ -82,7 +82,11 @@ inline std::string str_join(std::map<std::string, bool> const& elements,
   for (const auto& item : elements) {
     str += item.first + ": " + std::to_string(item.second) + ",";
   }
+<<<<<<< HEAD
   return str.substr(0, str.size() - 1);
+=======
+  return str.substr(0, str.size() - 2);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 // Refer to https://stackoverflow.com/a/46931770

@@ -73,6 +73,7 @@ class DeformableConvV1OpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 **Deformable Convolution v1 Operator**
 
+<<<<<<< HEAD
 Deformable Convolution is a new method based Convolution which feature has offset
 in spatial location.
 
@@ -80,6 +81,15 @@ in spatial location.
    of channels should be double of weight size.
 
 2. Add offset to pixel to get new location and the new value which are computed
+=======
+Deformable Convolution is a new method based Convolution which feature has offset 
+in spatial location.
+
+1. Get offset of each pixel in feature map with convolution layers which number 
+   of channels should be double of weight size.
+
+2. Add offset to pixel to get new location and the new value which are computed 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    directly through bilinear interpolation with four nearest pixel.
 
 3. Get the product of pixel and weight as result
@@ -118,10 +128,18 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -171,10 +189,18 @@ class DeformableConvV1GradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 }  // namespace operators

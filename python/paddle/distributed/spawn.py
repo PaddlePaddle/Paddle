@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import multiprocessing
 import os
 import signal
@@ -40,11 +41,37 @@ from paddle.distributed.utils.launch_utils import (
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
 from paddle.framework import set_flags
+=======
+from __future__ import print_function, division
+
+import multiprocessing
+import os
+import signal
+import six
+import sys
+import warnings
+
+from paddle.distributed.utils.launch_utils import _print_arguments, _prepare_trainer_env, get_host_name_ip
+from paddle.distributed.cloud_utils import get_cluster_and_pod, _get_trainers_num
+from paddle.distributed.fleet.launch import get_cluster_from_args
+from paddle.distributed.fleet.cloud_utils import use_paddlecloud
+from paddle.distributed.fleet.launch_utils import DeviceMode, check_backend, block_windows_and_macos
+from paddle.device import get_device
+
+# deprecated module import
+from paddle.fluid import core
+from paddle.fluid.framework import _cpu_num, set_flags
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
+<<<<<<< HEAD
 class ParallelEnvArgs:
+=======
+class ParallelEnvArgs(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         # Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..
         self.cluster_node_ips = None
@@ -69,6 +96,7 @@ class ParallelEnvArgs:
         self.selected_devices = None
 
 
+<<<<<<< HEAD
 def _options_valid_check(options):
     # `print_config` keeped as a debug options, not show to users
     supported_options = [
@@ -86,6 +114,25 @@ def _options_valid_check(options):
         'cluster_node_ips',
         'node_ip',
         'use_paddlecloud',
+=======
+def _py_supported_check():
+    if not sys.version_info >= (3, 4):
+        raise RuntimeError(
+            "Use `paddle.distributed.spawn` to start parallel training "
+            "requires python version greater than 3.4, if your python "
+            "is lower than this version, please use "
+            "`paddle.distributed.launch` instead.")
+
+
+def _options_valid_check(options):
+    # `print_config` keeped as a debug options, not show to users
+    supported_options = [
+        'start_method', 'ips', 'gpus', 'xpus', 'mlus', 'print_config', 'backend'
+    ]
+    deprecated_options = [
+        'selected_devices', 'started_port', 'cluster_node_ips', 'node_ip',
+        'use_paddlecloud'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ]
     for key in options:
         if key not in supported_options:
@@ -93,6 +140,7 @@ def _options_valid_check(options):
                 warnings.warn(
                     "The config option (%s) of `paddle.distributed.spawn` is deprecated. "
                     "Please use the latest config options stated in the `spawn` API documentation."
+<<<<<<< HEAD
                     % key,
                     DeprecationWarning,
                 )
@@ -101,6 +149,13 @@ def _options_valid_check(options):
                     "The config option (%s) of `paddle.distributed.spawn` is not supported."
                     % key
                 )
+=======
+                    % key, DeprecationWarning)
+            else:
+                raise ValueError(
+                    "The config option (%s) of `paddle.distributed.spawn` is not supported."
+                    % key)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _get_default_nprocs():
@@ -115,10 +170,15 @@ def _get_default_nprocs():
         return multiprocessing.cpu_count()
     else:
         raise RuntimeError(
+<<<<<<< HEAD
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
                 device
             )
         )
+=======
+            "`paddle.distributed.spawn` does not support parallel training on device `{}` now."
+            .format(device))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _get_default_backend():
@@ -133,10 +193,15 @@ def _get_default_backend():
         return 'gloo'
     else:
         raise RuntimeError(
+<<<<<<< HEAD
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
                 device
             )
         )
+=======
+            "`paddle.distributed.spawn` does not support parallel training on device `{}` now."
+            .format(device))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _get_node_ip(ips):
@@ -188,7 +253,11 @@ def _get_subprocess_env_list(nprocs, options):
         env_devices = os.getenv("CUDA_VISIBLE_DEVICES", None)
         if env_devices is None or env_devices == "":
             env_devices_list = [
+<<<<<<< HEAD
                 str(x) for x in range(core.get_cuda_device_count())
+=======
+                str(x) for x in six.moves.range(core.get_cuda_device_count())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
         else:
             env_devices_list = env_devices.split(',')
@@ -198,18 +267,26 @@ def _get_subprocess_env_list(nprocs, options):
                     "the number of visible devices(%d) is less than the number "
                     "of spawn processes(%d), please ensure that the correct "
                     "`nprocs` argument is passed or the environment variable "
+<<<<<<< HEAD
                     "`CUDA_VISIBLE_DEVICES` is correctly configured."
                     % (len(env_devices_list), nprocs)
                 )
             args.selected_devices = ",".join(
                 [str(env_devices_list[x]) for x in range(0, nprocs)]
             )
+=======
+                    "`CUDA_VISIBLE_DEVICES` is correctly configured." %
+                    (len(env_devices_list), nprocs))
+            args.selected_devices = ",".join(
+                [str(env_devices_list[x]) for x in range(0, nprocs)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             selected_device_list = args.selected_devices.split(',')
             if len(selected_device_list) != nprocs:
                 raise ValueError(
                     "The number of selected devices(%s) is not equal to "
                     "the number of spawn processes(%d), please ensure that the "
+<<<<<<< HEAD
                     "correct `nprocs` and `gpus` arguments are passed."
                     % (len(selected_device_list), nprocs)
                 )
@@ -220,6 +297,15 @@ def _get_subprocess_env_list(nprocs, options):
                         "CUDA_VISIBLE_DEVICES (%s)."
                         % (card_id, ",".join(env_devices_list))
                     )
+=======
+                    "correct `nprocs` and `gpus` arguments are passed." %
+                    (len(selected_device_list), nprocs))
+            for card_id in selected_device_list:
+                if card_id not in env_devices_list:
+                    raise ValueError("The selected gpu card %s cannot found in "
+                                     "CUDA_VISIBLE_DEVICES (%s)." %
+                                     (card_id, ",".join(env_devices_list)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     elif options['backend'] == 'bkcl':
         args.selected_devices = options.get('xpus', None)
@@ -228,7 +314,11 @@ def _get_subprocess_env_list(nprocs, options):
         env_devices = os.getenv("XPU_VISIBLE_DEVICES", None)
         if env_devices is None or env_devices == "":
             env_devices_list = [
+<<<<<<< HEAD
                 str(x) for x in range(core.get_xpu_device_count())
+=======
+                str(x) for x in six.moves.range(core.get_xpu_device_count())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
         else:
             env_devices_list = env_devices.split(',')
@@ -238,18 +328,26 @@ def _get_subprocess_env_list(nprocs, options):
                     "the number of visible devices(%d) is less than the number "
                     "of spawn processes(%d), please ensure that the correct "
                     "`nprocs` argument is passed or the environment variable "
+<<<<<<< HEAD
                     "`XPU_VISIBLE_DEVICES` is correctly configured."
                     % (len(env_devices_list), nprocs)
                 )
             args.selected_devices = ",".join(
                 [str(env_devices_list[x]) for x in range(0, nprocs)]
             )
+=======
+                    "`XPU_VISIBLE_DEVICES` is correctly configured." %
+                    (len(env_devices_list), nprocs))
+            args.selected_devices = ",".join(
+                [str(env_devices_list[x]) for x in range(0, nprocs)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             selected_device_list = args.selected_devices.split(',')
             if len(selected_device_list) != nprocs:
                 raise ValueError(
                     "The number of selected devices(%s) is not equal to "
                     "the number of spawn processes(%d), please ensure that the "
+<<<<<<< HEAD
                     "correct `nprocs` and `xpus` arguments are passed."
                     % (len(selected_device_list), nprocs)
                 )
@@ -260,6 +358,15 @@ def _get_subprocess_env_list(nprocs, options):
                         "XPU_VISIBLE_DEVICES (%s)."
                         % (card_id, ",".join(env_devices_list))
                     )
+=======
+                    "correct `nprocs` and `xpus` arguments are passed." %
+                    (len(selected_device_list), nprocs))
+            for card_id in selected_device_list:
+                if card_id not in env_devices_list:
+                    raise ValueError("The selected xpu card %s cannot found in "
+                                     "XPU_VISIBLE_DEVICES (%s)." %
+                                     (card_id, ",".join(env_devices_list)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif options['backend'] == 'cncl':
         args.selected_devices = options.get('mlus', None)
         if args.selected_devices is None:
@@ -267,7 +374,11 @@ def _get_subprocess_env_list(nprocs, options):
         env_devices = os.getenv("MLU_VISIBLE_DEVICES", None)
         if env_devices is None or env_devices == "":
             env_devices_list = [
+<<<<<<< HEAD
                 str(x) for x in range(core.get_mlu_device_count())
+=======
+                str(x) for x in six.moves.range(core.get_mlu_device_count())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
         else:
             env_devices_list = env_devices.split(',')
@@ -277,18 +388,26 @@ def _get_subprocess_env_list(nprocs, options):
                     "the number of visible devices(%d) is less than the number "
                     "of spawn processes(%d), please ensure that the correct "
                     "`nprocs` argument is passed or the environment variable "
+<<<<<<< HEAD
                     "`MLU_VISIBLE_DEVICES` is correctly configured."
                     % (len(env_devices_list), nprocs)
                 )
             args.selected_devices = ",".join(
                 [str(env_devices_list[x]) for x in range(0, nprocs)]
             )
+=======
+                    "`MLU_VISIBLE_DEVICES` is correctly configured." %
+                    (len(env_devices_list), nprocs))
+            args.selected_devices = ",".join(
+                [str(env_devices_list[x]) for x in range(0, nprocs)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             selected_device_list = args.selected_devices.split(',')
             if len(selected_device_list) != nprocs:
                 raise ValueError(
                     "The number of selected devices(%s) is not equal to "
                     "the number of spawn processes(%d), please ensure that the "
+<<<<<<< HEAD
                     "correct `nprocs` and `mlus` arguments are passed."
                     % (len(selected_device_list), nprocs)
                 )
@@ -299,6 +418,15 @@ def _get_subprocess_env_list(nprocs, options):
                         "MLU_VISIBLE_DEVICES (%s)."
                         % (card_id, ",".join(env_devices_list))
                     )
+=======
+                    "correct `nprocs` and `mlus` arguments are passed." %
+                    (len(selected_device_list), nprocs))
+            for card_id in selected_device_list:
+                if card_id not in env_devices_list:
+                    raise ValueError("The selected mlu card %s cannot found in "
+                                     "MLU_VISIBLE_DEVICES (%s)." %
+                                     (card_id, ",".join(env_devices_list)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif options['backend'] == 'gloo':
         # TODO check gpu / xpu flag must not exist
         warnings.warn(
@@ -308,6 +436,7 @@ def _get_subprocess_env_list(nprocs, options):
         args.paddle_cpuonly = True
         args.selected_devices = None
         args.ips = args.cluster_node_ips
+<<<<<<< HEAD
         assert (
             options.get('use_paddlecloud', None) is None
         ), "CPUONLY spawn doesn't support use paddle cloud"
@@ -317,6 +446,16 @@ def _get_subprocess_env_list(nprocs, options):
         assert (
             _get_trainers_num() == 1
         ), "CPUONLY spawn doesn't support multi-trainer"
+=======
+        assert options.get(
+            'use_paddlecloud',
+            None) is None, "CPUONLY spawn doesn't support use paddle cloud"
+        assert len(
+            args.cluster_node_ips.split(',')
+        ) <= 1, "CPUONLY spawn only support single trainer, that is len(ips)=1, but got %s."
+        assert _get_trainers_num(
+        ) == 1, "CPUONLY spawn doesn't support multi-trainer"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # set other inner args
     args.node_ip = options.get('node_ip', None)
@@ -332,17 +471,26 @@ def _get_subprocess_env_list(nprocs, options):
     # get cluster and pod config
     if options['backend'] == 'gloo':
         devices_per_proc = [x for x in range(0, nprocs)]
+<<<<<<< HEAD
         cluster, pod = get_cluster_from_args(
             args, DeviceMode.CPU, devices_per_proc
         )
+=======
+        cluster, pod = get_cluster_from_args(args, DeviceMode.CPU,
+                                             devices_per_proc)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         cluster, pod = get_cluster_and_pod(args)
 
     # prepare subprocess env list
     for trainer in pod.trainers:
         processes_env_list.append(
+<<<<<<< HEAD
             _prepare_trainer_env(cluster, trainer, options['backend'])
         )
+=======
+            _prepare_trainer_env(cluster, trainer, options['backend']))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # [Debug] print config
     args.print_config = options.get('print_config', False)
@@ -376,7 +524,11 @@ def _set_trainer_env(env_dict, backend):
     elif backend == 'cncl':
         set_flags({'FLAGS_selected_mlus': env_dict['FLAGS_selected_mlus']})
     else:
+<<<<<<< HEAD
         # NOTE(xiongkun) why not raise Error ?
+=======
+        #NOTE(xiongkun) why not raise Error ?
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # So far, we added support for CPU parallel, and will be applied when paddle is not
         # compiled with cuda or xp. just do nothing.
         pass
@@ -398,13 +550,23 @@ def _func_wrapper(func, args, error_queue, return_queue, env_dict, backend):
         pass
     except Exception:
         import traceback
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         error_queue.put(traceback.format_exc())
         sys.exit(1)
 
 
+<<<<<<< HEAD
 class MultiprocessContext:
     def __init__(self, processes, error_queues, return_queues):
+=======
+class MultiprocessContext(object):
+
+    def __init__(self, processes, error_queues, return_queues):
+        _py_supported_check()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.error_queues = error_queues
         # NOTE(chenweihang): The `spawn` method is mainly used
         # to wrap the outermost execution function of the program for
@@ -414,16 +576,26 @@ class MultiprocessContext:
         self.return_queues = return_queues
         self.processes = processes
         self.sentinels = {
+<<<<<<< HEAD
             process.sentinel: index for index, process in enumerate(processes)
+=======
+            process.sentinel: index
+            for index, process in enumerate(processes)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def join(self, timeout=None):
         if len(self.sentinels) == 0:
             return True
 
+<<<<<<< HEAD
         ready = multiprocessing.connection.wait(
             self.sentinels.keys(), timeout=timeout
         )
+=======
+        ready = multiprocessing.connection.wait(self.sentinels.keys(),
+                                                timeout=timeout)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         error_index = None
         for sentinel in ready:
@@ -449,6 +621,7 @@ class MultiprocessContext:
             exitcode = self.processes[error_index].exitcode
             if exitcode < 0:
                 name = signal.Signals(-exitcode).name
+<<<<<<< HEAD
                 raise Exception(
                     "Process %d terminated with signal %s."
                     % (error_index, name)
@@ -465,6 +638,18 @@ class MultiprocessContext:
             "Process %d terminated with the following error:\n"
             "----------------------------------------------\n\n" % error_index
         )
+=======
+                raise Exception("Process %d terminated with signal %s." %
+                                (error_index, name))
+            else:
+                raise Exception("Process %d terminated with exit code %d." %
+                                (error_index, exitcode))
+
+        original_trace = self.error_queues[error_index].get()
+        msg = "\n\n----------------------------------------------\n" \
+              "Process %d terminated with the following error:\n" \
+              "----------------------------------------------\n\n" % error_index
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         msg += original_trace
         raise Exception(msg)
 
@@ -514,6 +699,11 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
+=======
+            from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
             import paddle.nn as nn
             import paddle.optimizer as opt
@@ -521,7 +711,11 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(LinearNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -588,6 +782,16 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             if __name__ == '__main__':
                 dist.spawn(train, args=(True,), nprocs=2, gpus='4,5')
     """
+<<<<<<< HEAD
+=======
+    # NOTE(chenweihang): [ why only supports python3.4+ ? ]
+    # Python supported setting the child process startup method
+    # since 3.4. The previous version can only use the default startup
+    # method, while the default startup method of Unix is fork, which
+    # cannot support CUDA runtime multi-process
+    _py_supported_check()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # Give an error hint when the users enter a configuration option
     # that does not exist
     _options_valid_check(options)
@@ -618,6 +822,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     for i in range(nprocs):
         error_queue = mp.SimpleQueue()
         return_queue = mp.SimpleQueue()
+<<<<<<< HEAD
         process = mp.Process(
             target=_func_wrapper,
             args=(
@@ -629,6 +834,11 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
                 options['backend'],
             ),
         )
+=======
+        process = mp.Process(target=_func_wrapper,
+                             args=(func, args, error_queue, return_queue,
+                                   procs_env_list[i], options['backend']))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         process.daemon = daemon
         process.start()
         error_queues.append(error_queue)

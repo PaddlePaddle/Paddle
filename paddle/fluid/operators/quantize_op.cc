@@ -15,10 +15,17 @@
 #include "paddle/fluid/operators/quantize_op.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 phi::KernelKey QuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return phi::KernelKey(
@@ -26,6 +33,18 @@ phi::KernelKey QuantOp::GetExpectedKernelType(
       phi::DataLayout::ONEDNN,
       phi::TransToPhiDataType(
           OperatorWithKernel::IndicateVarDataType(ctx, "Input")));
+=======
+framework::OpKernelType QuantOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
+  framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
+
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void QuantOpMaker::Make() {

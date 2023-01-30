@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
@@ -21,6 +22,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+=======
+#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -209,8 +217,13 @@ struct DotDoubleGradFunction {
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
+<<<<<<< HEAD
                   const paddle::optional<DenseTensor>* tensor_ddx_opt,
                   const paddle::optional<DenseTensor>* tensor_ddy_opt,
+=======
+                  const DenseTensor* tensor_ddx,
+                  const DenseTensor* tensor_ddy,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   DenseTensor* tensor_dx,
                   DenseTensor* tensor_dy,
                   DenseTensor* tensor_ddout);
@@ -222,6 +235,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
+<<<<<<< HEAD
                   const paddle::optional<DenseTensor>* tensor_ddx_opt,
                   const paddle::optional<DenseTensor>* tensor_ddy_opt,
                   DenseTensor* tensor_dx,
@@ -229,6 +243,13 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
                   DenseTensor* tensor_ddout) {
     const DenseTensor* tensor_ddx = tensor_ddx_opt->get_ptr();
     const DenseTensor* tensor_ddy = tensor_ddy_opt->get_ptr();
+=======
+                  const DenseTensor* tensor_ddx,
+                  const DenseTensor* tensor_ddy,
+                  DenseTensor* tensor_dx,
+                  DenseTensor* tensor_dy,
+                  DenseTensor* tensor_ddout) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #if defined(__NVCC__) || defined(__HIPCC__)
     if (1 == tensor_dout->dims().size()) {
       DenseTensor tensor_dout_help;
@@ -236,13 +257,18 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
       if (tensor_dx || tensor_dy) {
         tensor_dout_help = Conj<T, DeviceContext>(ctx, *tensor_dout);
       }
+<<<<<<< HEAD
       if (tensor_dx && tensor_ddy) {
         ctx.template Alloc<T>(tensor_dx);
+=======
+      if (tensor_dx) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto ddy = EigenVector<T>::Flatten(*tensor_ddy);
         Eigen::DSizes<int, 1> size(tensor_ddy->numel());
         auto dx = EigenVector<T>::Flatten(*tensor_dx);
         auto dout = EigenVector<T>::Flatten(tensor_dout_help);
         dx.device(dev) = ddy * dout.broadcast(size);
+<<<<<<< HEAD
       } else if (tensor_dx && !tensor_ddy) {
         FullLikeKernel<T, DeviceContext>(
             ctx, *tensor_x, Scalar(T(0.0, 0.0)), tensor_x->dtype(), tensor_dx);
@@ -250,11 +276,17 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
 
       if (tensor_dy && tensor_ddx) {
         ctx.template Alloc<T>(tensor_dy);
+=======
+      }
+
+      if (tensor_dy) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto ddx = EigenVector<T>::Flatten(*tensor_ddx);
         Eigen::DSizes<int, 1> size(tensor_ddx->numel());
         auto dy = EigenVector<T>::Flatten(*tensor_dy);
         auto dout = EigenVector<T>::Flatten(tensor_dout_help);
         dy.device(dev) = ddx * dout.broadcast(size);
+<<<<<<< HEAD
       } else if (tensor_dy && !tensor_ddx) {
         FullLikeKernel<T, DeviceContext>(
             ctx, *tensor_y, Scalar(T(0.0, 0.0)), tensor_y->dtype(), tensor_dy);
@@ -262,6 +294,11 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
 
       if (tensor_ddout && tensor_ddx && tensor_ddy) {
         ctx.template Alloc<T>(tensor_ddout);
+=======
+      }
+
+      if (tensor_ddout) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         DenseTensor tensor_x_help = Conj<T, DeviceContext>(ctx, *tensor_x);
         DenseTensor tensor_y_help = Conj<T, DeviceContext>(ctx, *tensor_y);
 
@@ -271,6 +308,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         auto ddy = EigenVector<T>::Flatten(*tensor_ddy);
         auto ddout = EigenVector<T>::Flatten(*tensor_ddout);
         ddout.device(dev) = (x * ddy + y * ddx).sum();
+<<<<<<< HEAD
       } else if (tensor_ddout && tensor_ddx && !tensor_ddy) {
         ctx.template Alloc<T>(tensor_ddout);
         DenseTensor tensor_y_help = Conj<T, DeviceContext>(ctx, *tensor_y);
@@ -287,12 +325,18 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         auto ddy = EigenVector<T>::Flatten(*tensor_ddy);
         auto ddout = EigenVector<T>::Flatten(*tensor_ddout);
         ddout.device(dev) = (x * ddy).sum();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     }
 #else
     const auto* data_dout = tensor_dout->data<T>();
 
+<<<<<<< HEAD
     if (tensor_dx && tensor_ddy) {
+=======
+    if (tensor_dx) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto* data_dx = ctx.template Alloc<T>(tensor_dx);
       const auto* data_ddy = tensor_ddy->data<T>();
       const DDim& dim = tensor_dx->dims();
@@ -305,12 +349,18 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         if (0 == i % step) ++s;
         data_dx[i] = T(data_dout[s].real, -data_dout[s].imag) * data_ddy[i];
       }
+<<<<<<< HEAD
     } else if (tensor_dx && !tensor_ddy) {
       FullLikeKernel<T, DeviceContext>(
           ctx, *tensor_x, Scalar(T(0.0, 0.0)), tensor_x->dtype(), tensor_dx);
     }
 
     if (tensor_dy && tensor_ddx) {
+=======
+    }
+
+    if (tensor_dy) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto* data_dy = ctx.template Alloc<T>(tensor_dy);
       const auto* data_ddx = tensor_ddx->data<T>();
       const DDim& dim = tensor_dy->dims();
@@ -323,12 +373,18 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         if (0 == i % step) ++s;
         data_dy[i] = T(data_dout[s].real, -data_dout[s].imag) * data_ddx[i];
       }
+<<<<<<< HEAD
     } else if (tensor_dy && !tensor_ddx) {
       FullLikeKernel<T, DeviceContext>(
           ctx, *tensor_y, Scalar(T(0.0, 0.0)), tensor_y->dtype(), tensor_dy);
     }
 
     if (tensor_ddout && tensor_ddx && tensor_ddy) {
+=======
+    }
+
+    if (tensor_ddout) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto* data_ddout = ctx.template Alloc<T>(tensor_ddout);
       auto* data_x = tensor_x->data<T>();
       auto* data_y = tensor_y->data<T>();
@@ -355,6 +411,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         }
         new_s = false;
       }
+<<<<<<< HEAD
     } else if (tensor_ddout && tensor_ddx && !tensor_ddy) {
       auto* data_ddout = ctx.template Alloc<T>(tensor_ddout);
       auto* data_y = tensor_y->data<T>();
@@ -401,6 +458,8 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         }
         new_s = false;
       }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 #endif
   }
@@ -412,6 +471,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
+<<<<<<< HEAD
                   const paddle::optional<DenseTensor>* tensor_ddx_opt,
                   const paddle::optional<DenseTensor>* tensor_ddy_opt,
                   DenseTensor* tensor_dx,
@@ -426,11 +486,24 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
       auto y = EigenVector<T>::Flatten(*tensor_y);
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
       if (tensor_dx && tensor_ddy) {
+=======
+                  const DenseTensor* tensor_ddx,
+                  const DenseTensor* tensor_ddy,
+                  DenseTensor* tensor_dx,
+                  DenseTensor* tensor_dy,
+                  DenseTensor* tensor_ddout) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+    if (1 == tensor_dout->dims().size()) {
+      auto& dev = *ctx.eigen_device();
+      auto dout = EigenVector<T>::Flatten(*tensor_dout);
+      if (tensor_dx) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ctx.template Alloc<T>(tensor_dx);
         auto ddy = EigenVector<T>::Flatten(*tensor_ddy);
         Eigen::DSizes<int, 1> size(tensor_ddy->numel());
         auto dx = EigenVector<T>::Flatten(*tensor_dx);
         dx.device(dev) = ddy * dout.broadcast(size);
+<<<<<<< HEAD
       } else if (tensor_dx && !tensor_ddy) {
         FullLikeKernel<T, DeviceContext>(
             ctx, *tensor_x, Scalar(0.0), tensor_x->dtype(), tensor_dx);
@@ -449,10 +522,28 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
 
       if (tensor_ddout && tensor_ddx && tensor_ddy) {
         ctx.template Alloc<T>(tensor_ddout);
+=======
+      }
+
+      if (tensor_dy) {
+        ctx.template Alloc<T>(tensor_dy);
+        auto ddx = EigenVector<T>::Flatten(*tensor_ddx);
+        Eigen::DSizes<int, 1> size(tensor_ddx->numel());
+
+        auto dy = EigenVector<T>::Flatten(*tensor_dy);
+        dy.device(dev) = ddx * dout.broadcast(size);
+      }
+
+      if (tensor_ddout) {
+        ctx.template Alloc<T>(tensor_ddout);
+        auto x = EigenVector<T>::Flatten(*tensor_x);
+        auto y = EigenVector<T>::Flatten(*tensor_y);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto ddx = EigenVector<T>::Flatten(*tensor_ddx);
         auto ddy = EigenVector<T>::Flatten(*tensor_ddy);
         auto ddout = EigenVector<T>::Flatten(*tensor_ddout);
         ddout.device(dev) = (x * ddy + y * ddx).sum();
+<<<<<<< HEAD
       } else if (tensor_ddout && tensor_ddx && !tensor_ddy) {
         ctx.template Alloc<T>(tensor_ddout);
         auto ddx = EigenVector<T>::Flatten(*tensor_ddx);
@@ -476,11 +567,27 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
       const DDim& dim = tensor_dx->dims();
       size_t N = static_cast<size_t>(product(dim));
       auto step = dim[dim.size() - 1];
+=======
+      }
+    }
+#else
+    const auto* data_dout = tensor_dout->data<T>();
+
+    if (tensor_dx) {
+      auto* data_dx = ctx.template Alloc<T>(tensor_dx);
+      const auto* data_ddy = tensor_ddy->data<T>();
+      const DDim& dim = tensor_dx->dims();
+      size_t N = static_cast<size_t>(product(dim));
+
+      auto step = dim[dim.size() - 1];
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int s = -1;
       for (size_t i = 0; i < N; ++i) {
         if (0 == i % step) ++s;
         data_dx[i] = data_dout[s] * data_ddy[i];
       }
+<<<<<<< HEAD
     } else if (tensor_dx && !tensor_ddy) {
       FullLikeKernel<T, DeviceContext>(
           ctx, *tensor_x, Scalar(0.0), tensor_x->dtype(), tensor_dx);
@@ -491,11 +598,24 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
       const DDim& dim = tensor_dy->dims();
       size_t N = static_cast<size_t>(product(dim));
       auto step = dim[dim.size() - 1];
+=======
+    }
+
+    if (tensor_dy) {
+      auto* data_dy = ctx.template Alloc<T>(tensor_dy);
+      const auto* data_ddx = tensor_ddx->data<T>();
+      const DDim& dim = tensor_dy->dims();
+      size_t N = static_cast<size_t>(product(dim));
+
+      auto step = dim[dim.size() - 1];
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int s = -1;
       for (size_t i = 0; i < N; ++i) {
         if (0 == i % step) ++s;
         data_dy[i] = data_dout[s] * data_ddx[i];
       }
+<<<<<<< HEAD
     } else if (tensor_dy) {
       FullLikeKernel<T, DeviceContext>(
           ctx, *tensor_y, Scalar(0.0), tensor_y->dtype(), tensor_dy);
@@ -503,11 +623,26 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
 
     if (tensor_ddout && tensor_ddx && tensor_ddy) {
       auto* data_ddout = ctx.template Alloc<T>(tensor_ddout);
+=======
+    }
+
+    if (tensor_ddout) {
+      auto* data_ddout = ctx.template Alloc<T>(tensor_ddout);
+      auto* data_x = tensor_x->data<T>();
+      auto* data_y = tensor_y->data<T>();
+      auto* data_ddx = tensor_ddx->data<T>();
+      auto* data_ddy = tensor_ddy->data<T>();
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const DDim& dim = tensor_dy->dims();
       size_t N = static_cast<size_t>(product(dim));
       auto step = dim[dim.size() - 1];
       int s = -1;
       bool new_s = false;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       for (size_t i = 0; i < N; ++i) {
         if (0 == i % step) {
           ++s;
@@ -520,6 +655,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
         }
         new_s = false;
       }
+<<<<<<< HEAD
     } else if (tensor_ddout && tensor_ddx && !tensor_ddy) {
       auto* data_ddout = ctx.template Alloc<T>(tensor_ddout);
       const DDim& dim = tensor_dy->dims();
@@ -558,6 +694,8 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
         }
         new_s = false;
       }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 #endif
   }
@@ -568,12 +706,21 @@ struct DotTripleGradFunction {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
+<<<<<<< HEAD
                   const DenseTensor* in_tensor_dout,
                   const paddle::optional<DenseTensor>* in_tensor_ddx_opt,
                   const paddle::optional<DenseTensor>* in_tensor_ddy_opt,
                   const paddle::optional<DenseTensor>* in_tensor_d_dx_opt,
                   const paddle::optional<DenseTensor>* in_tensor_d_dy_opt,
                   const paddle::optional<DenseTensor>* in_tensor_d_ddout_opt,
+=======
+                  const DenseTensor* in_tensor_ddx,
+                  const DenseTensor* in_tensor_ddy,
+                  const DenseTensor* in_tensor_d_dx,
+                  const DenseTensor* in_tensor_d_dy,
+                  const DenseTensor* in_tensor_dout,
+                  const DenseTensor* in_tensor_d_ddout,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   DenseTensor* out_tensor_d_x,
                   DenseTensor* out_tensor_d_y,
                   DenseTensor* out_tensor_d_dout,
@@ -588,17 +735,27 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
+<<<<<<< HEAD
                   const DenseTensor* in_tensor_dout,
                   const paddle::optional<DenseTensor>* in_tensor_ddx_opt,
                   const paddle::optional<DenseTensor>* in_tensor_ddy_opt,
                   const paddle::optional<DenseTensor>* in_tensor_d_dx_opt,
                   const paddle::optional<DenseTensor>* in_tensor_d_dy_opt,
                   const paddle::optional<DenseTensor>* in_tensor_d_ddout_opt,
+=======
+                  const DenseTensor* in_tensor_ddx,
+                  const DenseTensor* in_tensor_ddy,
+                  const DenseTensor* in_tensor_d_dx,
+                  const DenseTensor* in_tensor_d_dy,
+                  const DenseTensor* in_tensor_dout,
+                  const DenseTensor* in_tensor_d_ddout,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   DenseTensor* out_tensor_d_x,
                   DenseTensor* out_tensor_d_y,
                   DenseTensor* out_tensor_d_dout,
                   DenseTensor* out_tensor_d_ddx,
                   DenseTensor* out_tensor_d_ddy) {
+<<<<<<< HEAD
     const DenseTensor* in_tensor_ddx = in_tensor_ddx_opt->get_ptr();
     const DenseTensor* in_tensor_ddy = in_tensor_ddy_opt->get_ptr();
     const DenseTensor* in_tensor_d_dx = in_tensor_d_dx_opt->get_ptr();
@@ -965,6 +1122,181 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
                                        out_tensor_d_ddy);
     }
 
+=======
+#if defined(__NVCC__) || defined(__HIPCC__)
+    if (1 == in_tensor_d_ddout->dims().size()) {
+      DenseTensor in_tensor_d_ddout_help;
+      auto& dev = *ctx.eigen_device();
+      if (out_tensor_d_x || out_tensor_d_y) {
+        in_tensor_d_ddout_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_d_ddout);
+      }
+      if (out_tensor_d_x) {
+        auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
+        Eigen::DSizes<int, 1> size(in_tensor_ddy->numel());
+        auto d_x = EigenVector<T>::Flatten(*out_tensor_d_x);
+        auto d_ddout = EigenVector<T>::Flatten(in_tensor_d_ddout_help);
+        d_x.device(dev) = ddy * d_ddout.broadcast(size);
+      }
+
+      if (out_tensor_d_y) {
+        auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
+        Eigen::DSizes<int, 1> size(in_tensor_ddx->numel());
+        auto d_y = EigenVector<T>::Flatten(*out_tensor_d_y);
+        auto d_ddout = EigenVector<T>::Flatten(in_tensor_d_ddout_help);
+        d_y.device(dev) = ddx * d_ddout.broadcast(size);
+      }
+
+      if (out_tensor_d_dout) {
+        DenseTensor in_tensor_ddx_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_ddx);
+        DenseTensor in_tensor_ddy_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_ddy);
+
+        auto ddx = EigenVector<T>::Flatten(in_tensor_ddx_help);
+        auto ddy = EigenVector<T>::Flatten(in_tensor_ddy_help);
+        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
+        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
+        auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
+        d_dout.device(dev) = (ddx * d_dy + ddy * d_dx).sum();
+      }
+
+      if (out_tensor_d_ddx) {
+        DenseTensor in_tensor_dout_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_dout);
+        DenseTensor in_tensor_y_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_y);
+
+        auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
+        auto y = EigenVector<T>::Flatten(in_tensor_y_help);
+        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
+        auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
+        Eigen::DSizes<int, 1> size(in_tensor_y->numel());
+        d_ddx.device(dev) =
+            (dout.broadcast(size) * d_dy + y * d_ddout.broadcast(size));
+      }
+
+      if (out_tensor_d_ddy) {
+        DenseTensor in_tensor_dout_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_dout);
+        DenseTensor in_tensor_x_help =
+            Conj<T, DeviceContext>(ctx, *in_tensor_x);
+
+        auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
+        auto x = EigenVector<T>::Flatten(in_tensor_x_help);
+        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
+        auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
+        Eigen::DSizes<int, 1> size(in_tensor_x->numel());
+        d_ddy.device(dev) =
+            (dout.broadcast(size) * d_dx + x * d_ddout.broadcast(size));
+      }
+    }
+#else
+    const auto* data_d_ddout = in_tensor_d_ddout->data<T>();
+
+    if (out_tensor_d_x) {
+      auto* data_d_x = ctx.template Alloc<T>(out_tensor_d_x);
+      const auto* data_ddy = in_tensor_ddy->data<T>();
+
+      const DDim& dim = out_tensor_d_x->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) ++s;
+        data_d_x[i] = T(data_ddy[i].real, -data_ddy[i].imag) * data_d_ddout[s];
+      }
+    }
+
+    if (out_tensor_d_y) {
+      auto* data_d_y = ctx.template Alloc<T>(out_tensor_d_y);
+      const auto* data_ddx = in_tensor_ddx->data<T>();
+
+      const DDim& dim = out_tensor_d_y->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) ++s;
+        data_d_y[i] = T(data_ddx[i].real, -data_ddx[i].imag) * data_d_ddout[s];
+      }
+    }
+
+    if (out_tensor_d_dout) {
+      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
+      auto* data_ddx = in_tensor_ddx->data<T>();
+      auto* data_ddy = in_tensor_ddy->data<T>();
+      auto* data_d_dx = in_tensor_d_dx->data<T>();
+      auto* data_d_dy = in_tensor_d_dy->data<T>();
+
+      const DDim& dim = out_tensor_d_dout->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+      bool new_s = false;
+
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) {
+          ++s;
+          new_s = true;
+        }
+        if (new_s) {
+          data_d_dout[s] =
+              T(data_ddy[i].real, -data_ddy[i].imag) * data_d_dx[i] +
+              T(data_ddx[i].real, -data_ddx[i].imag) * data_d_dy[i];
+        } else {
+          data_d_dout[s] +=
+              T(data_ddy[i].real, -data_ddy[i].imag) * data_d_dx[i] +
+              T(data_ddx[i].real, -data_ddx[i].imag) * data_d_dy[i];
+        }
+        new_s = false;
+      }
+    }
+
+    if (out_tensor_d_ddx) {
+      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
+      auto* data_dout = in_tensor_dout->data<T>();
+      auto* data_d_dy = in_tensor_d_dy->data<T>();
+      auto* data_y = in_tensor_y->data<T>();
+      auto* data_d_ddout = in_tensor_d_ddout->data<T>();
+
+      const DDim& dim = out_tensor_d_ddx->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) ++s;
+        data_d_ddx[i] =
+            T(data_dout[s].real, -data_dout[s].imag) * data_d_dy[i] +
+            T(data_y[i].real, -data_y[i].imag) * data_d_ddout[s];
+      }
+    }
+
+    if (out_tensor_d_ddy) {
+      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
+      auto* data_dout = in_tensor_dout->data<T>();
+      auto* data_d_dx = in_tensor_d_dx->data<T>();
+      auto* data_x = in_tensor_x->data<T>();
+      auto* data_d_ddout = in_tensor_d_ddout->data<T>();
+
+      const DDim& dim = out_tensor_d_ddy->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) ++s;
+        data_d_ddy[i] =
+            T(data_dout[s].real, -data_dout[s].imag) * data_d_dx[i] +
+            T(data_x[i].real, -data_x[i].imag) * data_d_ddout[s];
+      }
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
   }
 };
@@ -974,17 +1306,27 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
+<<<<<<< HEAD
                   const DenseTensor* in_tensor_dout,
                   const paddle::optional<DenseTensor>* in_tensor_ddx_opt,
                   const paddle::optional<DenseTensor>* in_tensor_ddy_opt,
                   const paddle::optional<DenseTensor>* in_tensor_d_dx_opt,
                   const paddle::optional<DenseTensor>* in_tensor_d_dy_opt,
                   const paddle::optional<DenseTensor>* in_tensor_d_ddout_opt,
+=======
+                  const DenseTensor* in_tensor_ddx,
+                  const DenseTensor* in_tensor_ddy,
+                  const DenseTensor* in_tensor_d_dx,
+                  const DenseTensor* in_tensor_d_dy,
+                  const DenseTensor* in_tensor_dout,
+                  const DenseTensor* in_tensor_d_ddout,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   DenseTensor* out_tensor_d_x,
                   DenseTensor* out_tensor_d_y,
                   DenseTensor* out_tensor_d_dout,
                   DenseTensor* out_tensor_d_ddx,
                   DenseTensor* out_tensor_d_ddy) {
+<<<<<<< HEAD
     const DenseTensor* in_tensor_ddx = in_tensor_ddx_opt->get_ptr();
     const DenseTensor* in_tensor_ddy = in_tensor_ddy_opt->get_ptr();
     const DenseTensor* in_tensor_d_dx = in_tensor_d_dx_opt->get_ptr();
@@ -1316,6 +1658,161 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
                                        out_tensor_d_ddy);
     }
 
+=======
+#if defined(__NVCC__) || defined(__HIPCC__)
+    if (1 == in_tensor_d_ddout->dims().size()) {
+      auto& dev = *ctx.eigen_device();
+      auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+      if (out_tensor_d_x) {
+        ctx.template Alloc<T>(out_tensor_d_x);
+        auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
+        Eigen::DSizes<int, 1> size(in_tensor_ddy->numel());
+        auto d_x = EigenVector<T>::Flatten(*out_tensor_d_x);
+        d_x.device(dev) = ddy * d_ddout.broadcast(size);
+      }
+
+      if (out_tensor_d_y) {
+        ctx.template Alloc<T>(out_tensor_d_y);
+        auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
+        Eigen::DSizes<int, 1> size(in_tensor_ddx->numel());
+
+        auto d_y = EigenVector<T>::Flatten(*out_tensor_d_y);
+        d_y.device(dev) = ddx * d_ddout.broadcast(size);
+      }
+
+      if (out_tensor_d_dout) {
+        ctx.template Alloc<T>(out_tensor_d_dout);
+        auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
+        auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
+        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
+        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
+        auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
+        d_dout.device(dev) = (ddx * d_dy + ddy * d_dx).sum();
+      }
+
+      if (out_tensor_d_ddx) {
+        ctx.template Alloc<T>(out_tensor_d_ddx);
+        auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
+        auto y = EigenVector<T>::Flatten(*in_tensor_y);
+        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
+        auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
+        Eigen::DSizes<int, 1> size(in_tensor_y->numel());
+        d_ddx.device(dev) =
+            (dout.broadcast(size) * d_dy + y * d_ddout.broadcast(size));
+      }
+
+      if (out_tensor_d_ddy) {
+        ctx.template Alloc<T>(out_tensor_d_ddy);
+        auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
+        auto x = EigenVector<T>::Flatten(*in_tensor_x);
+        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
+        auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
+        Eigen::DSizes<int, 1> size(in_tensor_x->numel());
+        d_ddy.device(dev) =
+            (dout.broadcast(size) * d_dx + x * d_ddout.broadcast(size));
+      }
+    }
+#else
+    const auto* data_d_ddout = in_tensor_d_ddout->data<T>();
+
+    if (out_tensor_d_x) {
+      auto* data_d_x = ctx.template Alloc<T>(out_tensor_d_x);
+      const auto* data_ddy = in_tensor_ddy->data<T>();
+
+      const DDim& dim = out_tensor_d_x->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) ++s;
+        data_d_x[i] = data_ddy[i] * data_d_ddout[s];
+      }
+    }
+
+    if (out_tensor_d_y) {
+      auto* data_d_y = ctx.template Alloc<T>(out_tensor_d_y);
+      const auto* data_ddx = in_tensor_ddx->data<T>();
+
+      const DDim& dim = out_tensor_d_y->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) ++s;
+        data_d_y[i] = data_ddx[i] * data_d_ddout[s];
+      }
+    }
+
+    if (out_tensor_d_dout) {
+      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
+      auto* data_ddx = in_tensor_ddx->data<T>();
+      auto* data_ddy = in_tensor_ddy->data<T>();
+      auto* data_d_dx = in_tensor_d_dx->data<T>();
+      auto* data_d_dy = in_tensor_d_dy->data<T>();
+
+      const DDim& dim = in_tensor_ddx->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+      bool new_s = false;
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) {
+          ++s;
+          new_s = true;
+        }
+        if (new_s) {
+          data_d_dout[s] =
+              data_ddy[i] * data_d_dx[i] + data_ddx[i] * data_d_dy[i];
+        } else {
+          data_d_dout[s] +=
+              data_ddy[i] * data_d_dx[i] + data_ddx[i] * data_d_dy[i];
+        }
+        new_s = false;
+      }
+    }
+
+    if (out_tensor_d_ddx) {
+      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
+      auto* data_dout = in_tensor_dout->data<T>();
+      auto* data_d_dy = in_tensor_d_dy->data<T>();
+      auto* data_y = in_tensor_y->data<T>();
+      auto* data_d_ddout = in_tensor_d_ddout->data<T>();
+
+      const DDim& dim = out_tensor_d_ddx->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) ++s;
+        data_d_ddx[i] =
+            data_dout[s] * data_d_dy[i] + data_y[i] * data_d_ddout[s];
+      }
+    }
+
+    if (out_tensor_d_ddy) {
+      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
+      auto* data_dout = in_tensor_dout->data<T>();
+      auto* data_d_dx = in_tensor_d_dx->data<T>();
+      auto* data_x = in_tensor_x->data<T>();
+      auto* data_d_ddout = in_tensor_d_ddout->data<T>();
+
+      const DDim& dim = out_tensor_d_ddy->dims();
+      size_t N = static_cast<size_t>(product(dim));
+      auto step = dim[dim.size() - 1];
+      int s = -1;
+
+      for (size_t i = 0; i < N; ++i) {
+        if (0 == i % step) ++s;
+        data_d_ddy[i] =
+            data_dout[s] * data_d_dx[i] + data_x[i] * data_d_ddout[s];
+      }
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
   }
 };
@@ -1340,6 +1837,7 @@ template <typename T, typename Context>
 void DotDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          const DenseTensor& dout,
                          const paddle::optional<DenseTensor>& ddx,
                          const paddle::optional<DenseTensor>& ddy,
@@ -1348,23 +1846,52 @@ void DotDoubleGradKernel(const Context& dev_ctx,
                          DenseTensor* ddout) {
   DotDoubleGradFunction<Context, T>()(
       dev_ctx, &x, &y, &dout, ddx.get_ptr(), ddy.get_ptr(), dx, dy, ddout);
+=======
+                         const DenseTensor& ddx,
+                         const DenseTensor& ddy,
+                         const DenseTensor& dout,
+                         DenseTensor* dx,
+                         DenseTensor* dy,
+                         DenseTensor* ddout) {
+  if (dx) {
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (dy) {
+    dev_ctx.template Alloc<T>(dy);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+  DotDoubleGradFunction<Context, T>()(
+      dev_ctx, &x, &y, &dout, ddx, ddy, dx, dy, ddout);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T, typename Context>
 void DotTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          const DenseTensor& dout,
                          const paddle::optional<DenseTensor>& ddx,
                          const paddle::optional<DenseTensor>& ddy,
                          const paddle::optional<DenseTensor>& d_dx,
                          const paddle::optional<DenseTensor>& d_dy,
                          const paddle::optional<DenseTensor>& d_ddout,
+=======
+                         const DenseTensor& ddx,
+                         const DenseTensor& ddy,
+                         const DenseTensor& d_dx,
+                         const DenseTensor& d_dy,
+                         const DenseTensor& dout,
+                         const DenseTensor& d_ddout,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          DenseTensor* d_x,
                          DenseTensor* d_y,
                          DenseTensor* d_ddx,
                          DenseTensor* d_ddy,
                          DenseTensor* d_dout) {
+<<<<<<< HEAD
   DotTripleGradFunction<Context, T>()(dev_ctx,
                                       &x,
                                       &y,
@@ -1374,6 +1901,33 @@ void DotTripleGradKernel(const Context& dev_ctx,
                                       d_dx.get_ptr(),
                                       d_dy.get_ptr(),
                                       d_ddout.get_ptr(),
+=======
+  if (d_x) {
+    dev_ctx.template Alloc<T>(d_x);
+  }
+  if (d_y) {
+    dev_ctx.template Alloc<T>(d_y);
+  }
+  if (d_ddx) {
+    dev_ctx.template Alloc<T>(d_ddx);
+  }
+  if (d_ddy) {
+    dev_ctx.template Alloc<T>(d_ddy);
+  }
+  if (d_dout) {
+    dev_ctx.template Alloc<T>(d_dout);
+  }
+
+  DotTripleGradFunction<Context, T>()(dev_ctx,
+                                      &x,
+                                      &y,
+                                      ddx,
+                                      ddy,
+                                      d_dx,
+                                      d_dy,
+                                      dout,
+                                      d_ddout,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                       d_x,
                                       d_y,
                                       d_dout,

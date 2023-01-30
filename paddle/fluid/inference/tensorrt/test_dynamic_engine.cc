@@ -101,9 +101,15 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
   }
 
  protected:
+<<<<<<< HEAD
   phi::DenseTensor input_;
   phi::DenseTensor shape_;
   phi::DenseTensor output_;
+=======
+  framework::LoDTensor input_;
+  framework::LoDTensor shape_;
+  framework::LoDTensor output_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };
@@ -225,8 +231,13 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
   }
 
  protected:
+<<<<<<< HEAD
   phi::DenseTensor input_;
   phi::DenseTensor output_;
+=======
+  framework::Tensor input_;
+  framework::Tensor output_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };
@@ -352,16 +363,25 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
     ctx_->PartialInitWithAllocator();
 
     std::map<std::string, std::vector<int>> min_input_shape = {
+<<<<<<< HEAD
         {"attn", {4, 4}},
+=======
+        {"attn", {4, 1, 4, 4}},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         {"x", {4, 4, 1}},
         {"mask", {4, 1, 4, 4}},
         {"new_mask", {4, 1, 2, 2}}};
     std::map<std::string, std::vector<int>> max_input_shape = {
+<<<<<<< HEAD
         {"attn", {4, 4}},
+=======
+        {"attn", {4, 1, 4, 4}},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         {"x", {4, 4, 1}},
         {"mask", {4, 1, 4, 4}},
         {"new_mask", {4, 1, 2, 2}}};
     std::map<std::string, std::vector<int>> optim_input_shape = {
+<<<<<<< HEAD
         {"attn", {4, 4}},
         {"x", {4, 4, 1}},
         {"mask", {4, 1, 4, 4}},
@@ -571,6 +591,9 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
         {"new_mask", {4, 1, 2, 2}}};
     std::map<std::string, std::vector<int>> optim_input_shape = {
         {"attn", {4, 4}},
+=======
+        {"attn", {4, 1, 4, 4}},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         {"x", {4, 4, 1}},
         {"mask", {4, 1, 4, 4}},
         {"new_mask", {4, 1, 2, 2}}};
@@ -621,17 +644,30 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
   }
 
  protected:
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> inputs_;
   std::vector<phi::DenseTensor> outputs_;
+=======
+  std::vector<framework::Tensor> inputs_;
+  std::vector<framework::Tensor> outputs_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };
 
+<<<<<<< HEAD
 TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
 #if IS_TRT_VERSION_GE(8000)
   tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
   auto *attn = engine_->DeclareInput(
       "attn", nvinfer1::DataType::kHALF, nvinfer1::Dims2{-1, 4});
+=======
+TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
+#if IS_TRT_VERSION_GE(8000)
+  tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
+  auto *attn = engine_->DeclareInput(
+      "attn", nvinfer1::DataType::kHALF, nvinfer1::Dims4{-1, 1, 4, 4});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto *x = engine_->DeclareInput(
       "x", nvinfer1::DataType::kHALF, nvinfer1::Dims3{-1, 4, 1});
   auto *mask = engine_->DeclareInput(
@@ -639,7 +675,11 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   auto *new_mask = engine_->DeclareInput(
       "new_mask", nvinfer1::DataType::kHALF, nvinfer1::Dims4{-1, 1, 2, 2});
   plugin::FusedTokenPrunePluginDynamic *plugin =
+<<<<<<< HEAD
       new plugin::FusedTokenPrunePluginDynamic(/*with_fp16*/ true,
+=======
+      new plugin::FusedTokenPrunePluginDynamic(true,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                /*keep_first_token*/ false,
                                                /*keep_order*/ true,
                                                /*flag_varseqlen*/ false);
@@ -657,16 +697,29 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
 
   ASSERT_EQ(engine_->engine()->getNbBindings(), 6);
   LOG(INFO) << "create input";
+<<<<<<< HEAD
   std::vector<float16> attn_v(16);
   for (int j = 0; j < 4; ++j) {
     for (int k = 0; k < 4; ++k) {
       attn_v[j * 4 + k] = k;
+=======
+  std::vector<float16> attn_v(64);
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 4; ++j) {
+      for (int k = 0; k < 4; ++k) {
+        attn_v[i * 16 + j * 4 + k] = k;
+      }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
   std::vector<float16> x_v(16);
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 4; ++j) {
+<<<<<<< HEAD
       x_v[i * 4 + j] = 4 - j;
+=======
+      x_v[i * 4 + j] = 1;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
   std::vector<float16> mask_v(64);
@@ -715,12 +768,17 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
 
   engine_->Execute(4, &buffers, ctx_->stream());
 
+<<<<<<< HEAD
   std::vector<float> slimmed_x_v(8);
+=======
+  std::vector<float> slimmed_x_v;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<int32_t> cls_inds_v;
 
   LOG(INFO) << "GetOutput";
   GetOutput(slimmed_x_v, cls_inds_v);
 
+<<<<<<< HEAD
   // slimmed_x_v: [[4,3,2,1],[4,3,2,1],[4,3,2,1],[4,3,2,1]] ->
   // [[2,1],[2,1],[2,1],[2,1]]
 
@@ -733,6 +791,8 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   ASSERT_EQ(slimmed_x_v[6], 2);
   ASSERT_EQ(slimmed_x_v[7], 1);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ASSERT_EQ(cls_inds_v[0], 2);
   ASSERT_EQ(cls_inds_v[1], 3);
   ASSERT_EQ(cls_inds_v[2], 2);
@@ -741,7 +801,10 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   ASSERT_EQ(cls_inds_v[5], 3);
   ASSERT_EQ(cls_inds_v[6], 2);
   ASSERT_EQ(cls_inds_v[7], 3);
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   LOG(INFO) << "finish";
 #endif
 }

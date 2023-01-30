@@ -107,8 +107,11 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator();
 
 const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id = -1);
 
+<<<<<<< HEAD
 const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id = -1);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 
 const std::shared_ptr<Generator>& SetRandomSeedGenerator(

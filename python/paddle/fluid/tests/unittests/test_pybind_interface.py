@@ -12,16 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from paddle.fluid import core
+=======
+from __future__ import print_function
+import unittest
+from paddle.fluid import core
+from paddle import compat as cpt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestPybindInference(unittest.TestCase):
 
     # call get_op_attrs_default_value for c++ coverage rate
     def test_get_op_attrs_default_value(self):
+<<<<<<< HEAD
         core.get_op_attrs_default_value(b"fill_constant")
+=======
+        core.get_op_attrs_default_value(cpt.to_bytes("fill_constant"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # the default values of Op 'fill_constant'
         #

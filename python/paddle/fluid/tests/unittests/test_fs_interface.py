@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import inspect
 import unittest
 
@@ -21,6 +22,26 @@ from paddle.distributed.fleet.utils.fs import FS
 class FSTest(unittest.TestCase):
     def _test_method(self, func):
         args = inspect.getfullargspec(func).args
+=======
+import unittest
+import paddle.fluid as fluid
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
+import os
+import sys
+import inspect
+
+from paddle.distributed.fleet.utils.fs import LocalFS, FS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+
+
+class FSTest(unittest.TestCase):
+
+    def _test_method(self, func):
+        if sys.version_info[0] <= 2:
+            args = inspect.getargspec(func).args
+        else:
+            args = inspect.getfullargspec(func).args
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         a = None
         try:

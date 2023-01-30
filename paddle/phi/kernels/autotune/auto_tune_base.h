@@ -22,26 +22,45 @@
 namespace phi {
 namespace autotune {
 
+<<<<<<< HEAD
 template <typename T, typename ReturnType, typename... Args>
 class KernelCallback {
  public:
   using ReturnT = ReturnType;
   using FuncType = ReturnType (*)(Args...);
+=======
+template <typename T, typename RetureType, typename... Args>
+class KernelCallback {
+ public:
+  using ReturnT = RetureType;
+  using FuncType = RetureType (*)(Args...);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   KernelCallback() {}
   explicit KernelCallback(FuncType func_) : func(func_) {}
   virtual ~KernelCallback() {}
 
+<<<<<<< HEAD
   ReturnType Run(Args... args) { return func(args...); }
+=======
+  RetureType Run(Args... args) { return func(args...); }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   FuncType func;
 };
 
+<<<<<<< HEAD
 template <typename T, typename ReturnType, typename... Args>
 static KernelCallback<T, ReturnType, Args...> MakeCallback(
     ReturnType (*cb)(Args...)) {
   return KernelCallback<T, ReturnType, Args...>(cb);
+=======
+template <typename T, typename RetureType, typename... Args>
+static KernelCallback<T, RetureType, Args...> MakeCallback(
+    RetureType (*cb)(Args...)) {
+  return KernelCallback<T, RetureType, Args...>(cb);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T, typename KernelType>
@@ -54,11 +73,18 @@ class AutoTuneBase {
     kernels_.push_back(/*default=*/kernel);
   }
 
+<<<<<<< HEAD
   template <typename ReturnType, typename... Args>
   void AddCallBack(ReturnType (*func)(Args...)) {
     if (!is_init_) {
       std::lock_guard<std::mutex> lock(mutex_);
       kernels_.push_back(MakeCallback<T>(func));
+=======
+  void AddCallBack(KernelType kernel) {
+    if (!is_init_) {
+      std::lock_guard<std::mutex> lock(mutex_);
+      kernels_.push_back(kernel);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 
@@ -70,7 +96,11 @@ class AutoTuneBase {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
+<<<<<<< HEAD
         phi::errors::InvalidArgument(
+=======
+        paddle::platform::errors::InvalidArgument(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "kernel num must be greater than 0, now is %d", kernels_.size()));
     is_init_ = true;
 
@@ -102,7 +132,11 @@ class AutoTuneBase {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
+<<<<<<< HEAD
         phi::errors::InvalidArgument(
+=======
+        paddle::platform::errors::InvalidArgument(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "kernel num must be greater than 0, now is %d", kernels_.size()));
     size_t best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
@@ -121,9 +155,15 @@ class AutoTuneBase {
 
   template <typename Context, typename... Args>
   float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
+<<<<<<< HEAD
     // Regard 1st run as warmup, judge the compare result by the time cost
     // of rest cycles.
     constexpr int repeats = 6;
+=======
+    // Regard 1st run as warmup. Judge the result by the time cost of rest run
+    // cycles.
+    constexpr int repeats = 3;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     phi::GpuTimer timer;
     float time_cost = 0;
     const auto& stream = ctx.stream();
@@ -143,13 +183,20 @@ class AutoTuneBase {
   }
 };
 
+<<<<<<< HEAD
 template <typename T, typename ReturnType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
     ReturnType (*func)(Args...)) {
+=======
+template <typename T, typename RetureType, typename... Args>
+static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>> MakeAutoTuner(
+    RetureType (*func)(Args...)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto obj = MakeCallback<T>(func);
   return AutoTuneBase<T, decltype(obj)>(obj);
 }
 
+<<<<<<< HEAD
 template <typename T, typename ReturnType, typename... Args>
 class TransposeAutoTuner
     : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
@@ -172,6 +219,31 @@ template <typename T, typename ReturnType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>*
 MakeTransposeTuner(ReturnType (*func)(Args...)) {
   return TransposeAutoTuner<T, ReturnType, Args...>::Instance(func);
+=======
+template <typename T, typename KernelType>
+class TransposeAutoTuner : public AutoTuneBase<T, KernelType> {
+ public:
+  static AutoTuneBase<T, KernelType>* Instance(KernelType kernel) {
+    static std::unique_ptr<AutoTuneBase<T, KernelType>> instance_;
+    std::call_once(init_flag_, [&] {
+      instance_.reset(new AutoTuneBase<T, KernelType>(kernel));
+    });
+    return instance_.get();
+  }
+
+ private:
+  static std::once_flag init_flag_;
+};
+
+template <typename T, typename KernelType>
+std::once_flag TransposeAutoTuner<T, KernelType>::init_flag_;
+
+template <typename T, typename RetureType, typename... Args>
+static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>*
+MakeTransposeTuner(RetureType (*func)(Args...)) {
+  auto obj = MakeCallback<T>(func);
+  return TransposeAutoTuner<T, decltype(obj)>::Instance(obj);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace autotune

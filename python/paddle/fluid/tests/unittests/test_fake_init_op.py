@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 
 import paddle.fluid.core as core
@@ -19,14 +24,23 @@ from paddle.fluid.op import Operator
 
 
 class TestFakeInitOpSelectedRows(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def check_with_place(self, place, is_selected_rows):
         scope = core.Scope()
 
         out_var_name = 'Out'
         if is_selected_rows:
+<<<<<<< HEAD
             out_tensor = (
                 scope.var(out_var_name).get_selected_rows().get_tensor()
             )
+=======
+            out_tensor = scope.var(
+                out_var_name).get_selected_rows().get_tensor()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             out_tensor = scope.var(out_var_name).get_tensor()
 

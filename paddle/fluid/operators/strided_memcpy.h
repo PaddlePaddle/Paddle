@@ -146,9 +146,15 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
 template <typename T>
 inline void StridedMemcpyWithAxis0(
     const platform::DeviceContext& dev_ctx,
+<<<<<<< HEAD
     const phi::DenseTensor& input,
     const std::vector<const phi::DenseTensor*>& shape_refer,
     std::vector<phi::DenseTensor*>* outputs) {
+=======
+    const framework::Tensor& input,
+    const std::vector<const framework::Tensor*>& shape_refer,
+    std::vector<framework::Tensor*>* outputs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const framework::DDim in_stride = stride_numel(input.dims());
   const int axis = 0;
   size_t input_offset = 0;

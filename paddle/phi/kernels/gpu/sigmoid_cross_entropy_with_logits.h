@@ -17,13 +17,20 @@
 #include <algorithm>
 
 #include "paddle/fluid/memory/malloc.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/gpu/reduce.h"
 
 #ifdef __NVCC__

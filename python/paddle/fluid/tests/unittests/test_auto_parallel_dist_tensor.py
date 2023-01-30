@@ -15,6 +15,7 @@
 import copy
 import unittest
 
+<<<<<<< HEAD
 import test_auto_parallel_reshard
 from test_auto_parallel_reshard import mlp_forward
 
@@ -39,6 +40,29 @@ def get_dist_prog(
     loss, train_program, startup_program = mlp_forward(
         train_program, startup_program
     )
+=======
+import paddle
+from paddle.fluid import core
+from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
+from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
+from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute
+import test_auto_parallel_reshard
+from test_auto_parallel_reshard import mlp_forward
+
+
+def get_dist_prog(train_program,
+                  startup_program,
+                  dist_context,
+                  rank_id,
+                  complete_train_program=None):
+    loss, train_program, startup_program = mlp_forward(train_program,
+                                                       startup_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     fleet._user_defined_strategy = fleet.DistributedStrategy()
     fleet.user_defined_optimizer = paddle.fluid.optimizer.AdamOptimizer()
@@ -47,6 +71,7 @@ def get_dist_prog(
 
     # serial forward & backward completion
     completer = Completer(dist_context)
+<<<<<<< HEAD
     complete_train_program = (
         completer.complete_forward_annotation(train_program)
         if complete_train_program is None
@@ -89,26 +114,68 @@ class TestDistributedTensor(unittest.TestCase):
         test_auto_parallel_reshard._global_process_mesh = auto.ProcessMesh(
             mesh=[0, 1], dim_names=["x"]
         )
+=======
+    complete_train_program = completer.complete_forward_annotation(
+        train_program
+    ) if complete_train_program is None else complete_train_program
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
+
+    params_grads = parallelizer._generate_backward(complete_train_program,
+                                                   startup_program,
+                                                   loss,
+                                                   parameter_list=None,
+                                                   no_grad_set=None,
+                                                   callbacks=None)
+
+    # logical partition
+    partitioner = Partitioner(dist_context, rank_id)
+    auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads = partitioner.partition(
+        complete_train_program, startup_program, params_grads)
+
+    partitioned_optimize_ops = parallelizer._apply_optimize(
+        auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads)
+
+    return auto_parallel_main_prog, auto_parallel_startup_prog, complete_train_program
+
+
+class TestDistributedTensor(unittest.TestCase):
+
+    def test_new_local_tensor(self):
+        test_auto_parallel_reshard._global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1], dim_names=["x"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         test_auto_parallel_reshard._global_parallel_strategy = "dp"
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 0
+<<<<<<< HEAD
         (
             dist_main_prog,
             dist_startup_prog,
             complete_train_program,
         ) = get_dist_prog(train_program, startup_program, dist_context, rank_id)
+=======
+        dist_main_prog, dist_startup_prog, complete_train_program = get_dist_prog(
+            train_program, startup_program, dist_context, rank_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dist_context.dist_main_programs[rank_id] = dist_main_prog
         dist_context.dist_startup_programs[rank_id] = dist_startup_prog
         name = "layer_norm_1.tmp_2"
         dist_tensor = dist_context.get_dist_tensor_for_program(
+<<<<<<< HEAD
             complete_train_program.global_block().vars[name]
         )
         dist_tensor._dist_context = dist_context
         intermediate_var_0 = dist_tensor.new_local_tensor(
             name="intermediate_var_0"
         )
+=======
+            complete_train_program.global_block().vars[name])
+        dist_tensor._dist_context = dist_context
+        intermediate_var_0 = dist_tensor.new_local_tensor(
+            name="intermediate_var_0")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(intermediate_var_0.shape, (2, 1024))
         self.assertEqual(intermediate_var_0.name, "intermediate_var_0")
 
@@ -116,6 +183,7 @@ class TestDistributedTensor(unittest.TestCase):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
+<<<<<<< HEAD
         (
             dist_main_prog,
             dist_startup_prog,
@@ -123,27 +191,45 @@ class TestDistributedTensor(unittest.TestCase):
         ) = get_dist_prog(
             train_program, startup_program, dist_context, rank_id, None
         )
+=======
+        dist_main_prog, dist_startup_prog, complete_train_program = get_dist_prog(
+            train_program, startup_program, dist_context, rank_id, None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dist_context.dist_main_programs[rank_id] = dist_main_prog
         dist_context.dist_startup_programs[rank_id] = dist_startup_prog
         name = "layer_norm_1.tmp_2"
         dist_tensor = dist_context.get_dist_tensor_for_program(
+<<<<<<< HEAD
             complete_train_program.global_block().vars[name]
         )
         dist_tensor._dist_context = dist_context
         intermediate_var_1 = dist_tensor.new_local_tensor(
             rank=rank_id, name="intermediate_var_1"
         )
+=======
+            complete_train_program.global_block().vars[name])
+        dist_tensor._dist_context = dist_context
+        intermediate_var_1 = dist_tensor.new_local_tensor(
+            rank=rank_id, name="intermediate_var_1")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(intermediate_var_0.shape, (2, 1024))
         self.assertEqual(intermediate_var_1.name, "intermediate_var_1")
 
         name = "linear_0.w_0"
         dist_tensor = dist_context.get_dist_tensor_for_program(
+<<<<<<< HEAD
             complete_train_program.global_block().vars[name]
         )
         dist_tensor._dist_context = dist_context
         intermediate_var_1 = dist_tensor.new_local_tensor(
             rank=rank_id, name="linear_0.w_0_intermediate"
         )
+=======
+            complete_train_program.global_block().vars[name])
+        dist_tensor._dist_context = dist_context
+        intermediate_var_1 = dist_tensor.new_local_tensor(
+            rank=rank_id, name="linear_0.w_0_intermediate")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(intermediate_var_1.shape, (1024, 4096))
         self.assertEqual(intermediate_var_1.name, "linear_0.w_0_intermediate")
 
@@ -153,10 +239,14 @@ class TestDistributedTensor(unittest.TestCase):
             id(copied_dist_context),
             id(
                 copied_dist_context.get_dist_tensor_for_program(
+<<<<<<< HEAD
                     dist_tensor.serial_tensor
                 ).dist_context
             ),
         )
+=======
+                    dist_tensor.serial_tensor).dist_context))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static_method(self):
         dims_mapping = [1, 0]
@@ -168,6 +258,7 @@ class TestDistributedTensor(unittest.TestCase):
         # rank 1 [(2, 4), (0, 3)]
         # rank 4 [(2, 4), (3, 6)]
         rank = 0
+<<<<<<< HEAD
         local_sizes = DistributedTensor.get_local_sizes(
             global_sizes, dims_mapping, topology, processes
         )
@@ -207,11 +298,50 @@ class TestDistributedTensor(unittest.TestCase):
         local_shard = DistributedTensor.get_local_shard(
             global_sizes, dims_mapping, topology, processes, rank
         )
+=======
+        local_sizes = DistributedTensor.get_local_sizes(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes)
+        self.assertEqual(local_sizes, [2, 3])
+        local_offsets = DistributedTensor.get_local_offsets(
+            global_sizes, dims_mapping, topology, processes, rank)
+        self.assertEqual(local_offsets, [0, 0])
+        local_shard = DistributedTensor.get_local_shard(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank)
+        self.assertEqual(local_shard, [(0, 2), (0, 3)])
+
+        rank = 1
+        local_sizes = DistributedTensor.get_local_sizes(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes)
+        self.assertEqual(local_sizes, [2, 3])
+        local_offsets = DistributedTensor.get_local_offsets(
+            global_sizes, dims_mapping, topology, processes, rank)
+        self.assertEqual(local_offsets, [2, 0])
+        local_shard = DistributedTensor.get_local_shard(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank)
+        self.assertEqual(local_shard, [(2, 4), (0, 3)])
+
+        rank = 4
+        local_sizes = DistributedTensor.get_local_sizes(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes)
+        self.assertEqual(local_sizes, [2, 3])
+        local_offsets = DistributedTensor.get_local_offsets(
+            global_sizes, dims_mapping, topology, processes, rank)
+        self.assertEqual(local_offsets, [2, 3])
+        local_shard = DistributedTensor.get_local_shard(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(local_shard, [(2, 4), (3, 6)])
 
         # global sizes
         local_sizes = [2, 3]
         global_sizes = DistributedTensor.get_global_sizes(
+<<<<<<< HEAD
             local_sizes, dims_mapping, topology, processes
         )
         self.assertEqual(global_sizes, [6, 6])
@@ -225,6 +355,19 @@ class TestDistributedTensor(unittest.TestCase):
         serial_tensor = paddle.static.data(
             name="data", shape=[6, 6], dtype='float32'
         )
+=======
+            local_sizes, dims_mapping, topology, processes)
+        self.assertEqual(global_sizes, [6, 6])
+
+    def test_instance_method(self):
+        tensor_dist_attr = TensorDistributedAttribute()
+        tensor_dist_attr.dims_mapping = [1, 0]
+        tensor_dist_attr.process_mesh = auto.ProcessMesh(
+            mesh=[[0, 1, 2], [3, 4, 5]])
+        serial_tensor = paddle.static.data(name="data",
+                                           shape=[6, 6],
+                                           dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dist_tensor = DistributedTensor(serial_tensor, tensor_dist_attr)
 
         # rank 0 [(0, 2), (0, 3)]

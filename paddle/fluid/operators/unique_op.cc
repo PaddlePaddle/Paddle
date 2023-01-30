@@ -98,17 +98,31 @@ class UniqueOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     // Return CPUPlace when Attr("is_sorted") is false. Because it means
     // that fluid.layers.unique is called, but there is no cuda kernel.
     if (!ctx.Attr<bool>("is_sorted")) {
+<<<<<<< HEAD
       return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                             platform::CPUPlace());
     } else {
       // new version paddle.unique is called.
       return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                             ctx.GetPlace());
+=======
+      return framework::OpKernelType(
+          OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+          platform::CPUPlace());
+    } else {
+      // new version paddle.unique is called.
+      return framework::OpKernelType(
+          OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };
@@ -118,7 +132,11 @@ class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "Input tensor. It should be a 1-D tensor when Attr(is_sorted)"
+<<<<<<< HEAD
              " is false or a N-D tensor when Attr(is_sorted) is true.");
+=======
+             " is fasle or a N-D tensor when Attr(is_sorted) is true.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<int>("dtype", "data type for output index");
     AddOutput("Out", "A unique subsequence for input tensor.");
     AddOutput("Index",
@@ -152,9 +170,15 @@ class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
     1. Return a unique subsequence for 1-D input tensor, and an index tensor
+<<<<<<< HEAD
     pointing to this unique subsequence when Attr(is_sorted) is false. This
     means paddle.unique is called.
 
+=======
+    pointing to this unique subsequence when Attr(is_sorted) is false. This 
+    means paddle.unique is called.
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     2. Returns the unique elements of X in ascending order when Attr(is_sorted)
     is true. This means fluid.layers.unique is called.
 )DOC");

@@ -130,7 +130,11 @@ constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
+<<<<<<< HEAD
 constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
+=======
+constexpr DeviceType kCUSOTM_DEVICE = DeviceType::CUSTOM_DEVICE;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 using DeviceContext = phi::DeviceContext;
 
@@ -144,9 +148,13 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 
 // Graphcore IPU
 #ifdef PADDLE_WITH_IPU
+<<<<<<< HEAD
 class IPUDeviceContext
     : public DeviceContext,
       public phi::TypeInfoTraits<DeviceContext, IPUDeviceContext> {
+=======
+class IPUDeviceContext : public DeviceContext {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   IPUDeviceContext() = delete;
   explicit IPUDeviceContext(IPUPlace place);
@@ -156,8 +164,11 @@ class IPUDeviceContext
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
+<<<<<<< HEAD
   static const char* name() { return "IPUDeviceContext"; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   IPUPlace place_;
 };
@@ -183,7 +194,10 @@ class XPUDeviceContext : public phi::XPUContext {
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
   xpuStream stream() const { return XPUContext::x_context()->xpu_stream; }
+<<<<<<< HEAD
   void CreateStream() { XPUContext::CreateStream(); }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <>
@@ -193,9 +207,13 @@ struct DefaultDeviceContextType<platform::XPUPlace> {
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
+<<<<<<< HEAD
 class NPUDeviceContext
     : public DeviceContext,
       public phi::TypeInfoTraits<DeviceContext, NPUDeviceContext> {
+=======
+class NPUDeviceContext : public DeviceContext {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   explicit NPUDeviceContext(NPUPlace place);
   virtual ~NPUDeviceContext();
@@ -231,8 +249,11 @@ class NPUDeviceContext
 
   // void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
+<<<<<<< HEAD
   static const char* name() { return "NPUDeviceContext"; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   NPUPlace place_;
   aclrtContext context_;
@@ -257,9 +278,13 @@ struct DefaultDeviceContextType<platform::NPUPlace> {
 };
 
 // Currently, NPUPinnedDeviceContext is only used to data copying.
+<<<<<<< HEAD
 class NPUPinnedDeviceContext
     : public DeviceContext,
       public phi::TypeInfoTraits<DeviceContext, NPUPinnedDeviceContext> {
+=======
+class NPUPinnedDeviceContext : public DeviceContext {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   NPUPinnedDeviceContext();
   explicit NPUPinnedDeviceContext(NPUPinnedPlace place);
@@ -268,8 +293,11 @@ class NPUPinnedDeviceContext
 
   Eigen::DefaultDevice* eigen_device() const;
 
+<<<<<<< HEAD
   static const char* name() { return "NPUPinnedDeviceContext"; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   NPUPinnedPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
@@ -289,9 +317,13 @@ struct DefaultDeviceContextType<platform::CUDAPlace> {
 };
 
 // Currently, CUDAPinnedDeviceContext is only used to data copying.
+<<<<<<< HEAD
 class CUDAPinnedDeviceContext
     : public DeviceContext,
       public phi::TypeInfoTraits<DeviceContext, CUDAPinnedDeviceContext> {
+=======
+class CUDAPinnedDeviceContext : public DeviceContext {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   CUDAPinnedDeviceContext();
   explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
@@ -300,8 +332,11 @@ class CUDAPinnedDeviceContext
 
   Eigen::DefaultDevice* eigen_device() const;
 
+<<<<<<< HEAD
   static const char* name() { return "CUDAPinnedDeviceContext"; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   CUDAPinnedPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
@@ -313,6 +348,14 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 };
 #endif
 
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_MKLDNN
+using MKLDNNDeviceContextThreadLocals = phi::OneDNNContextThreadLocals;
+using MKLDNNDeviceContext = phi::OneDNNContext;
+#endif
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 class CustomDeviceContext : public phi::CustomContext {
  public:
@@ -346,12 +389,17 @@ void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
     const std::vector<platform::Place>& places,
+<<<<<<< HEAD
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
+=======
+    bool disable_setting_default_stream_for_allocator);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
+<<<<<<< HEAD
   static DeviceContextPool& Instance();
 
   /*! \brief  Create should only called by Init function */
@@ -360,6 +408,26 @@ class DeviceContextPool {
   static bool IsInitialized();
 
   static void SetPool(DeviceContextPool* dev_pool);
+=======
+  static DeviceContextPool& Instance() {
+    PADDLE_ENFORCE_NOT_NULL(pool,
+                            platform::errors::PreconditionNotMet(
+                                "Need to Create DeviceContextPool firstly!"));
+    return *pool;
+  }
+
+  /*! \brief  Create should only called by Init function */
+  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
+    if (pool == nullptr) {
+      pool = new DeviceContextPool(places);
+    }
+    return *pool;
+  }
+
+  static bool IsInitialized() { return pool != nullptr; }
+
+  static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
@@ -383,6 +451,10 @@ class DeviceContextPool {
  private:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
+<<<<<<< HEAD
+=======
+  static DeviceContextPool* pool;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
   static thread_local const std::

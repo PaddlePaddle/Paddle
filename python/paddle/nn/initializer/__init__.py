@@ -36,6 +36,7 @@ from .orthogonal import Orthogonal  # noqa: F401
 
 from .dirac import Dirac  # noqa: F401
 
+<<<<<<< HEAD
 __all__ = [  # noqa
     'Bilinear',
     'Constant',
@@ -51,4 +52,10 @@ __all__ = [  # noqa
     'Dirac',
     'set_global_initializer',
     'calculate_gain',
+=======
+__all__ = [  #noqa
+    'Bilinear', 'Constant', 'KaimingUniform', 'KaimingNormal', 'XavierNormal',
+    'XavierUniform', 'Assign', 'Normal', 'TruncatedNormal', 'Uniform',
+    'Orthogonal', 'Dirac', 'set_global_initializer', 'calculate_gain'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

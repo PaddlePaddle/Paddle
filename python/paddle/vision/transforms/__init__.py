@@ -51,7 +51,11 @@ from .functional import adjust_hue  # noqa: F401
 from .functional import normalize  # noqa: F401
 from .functional import erase  # noqa: F401
 
+<<<<<<< HEAD
 __all__ = [  # noqa
+=======
+__all__ = [  #noqa
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'BaseTransform',
     'Compose',
     'Resize',

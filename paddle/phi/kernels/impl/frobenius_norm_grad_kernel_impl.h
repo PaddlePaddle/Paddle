@@ -29,7 +29,10 @@ void FrobeniusNormGradKernel(const Context& ctx,
                              bool keep_dim,
                              bool reduce_all,
                              DenseTensor* dx) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, axis, reduce_all);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ReduceGradKernel<Context, T, funcs::FrobeniusNormGradFunctor>(
       ctx, x, out, dout, axis, keep_dim, reduce_all, dx);
 }

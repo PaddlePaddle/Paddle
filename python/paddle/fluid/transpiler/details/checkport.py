@@ -16,6 +16,10 @@ import sys
 import time
 import socket
 from contextlib import closing
+<<<<<<< HEAD
+=======
+from six import string_types
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def wait_server_ready(endpoints):
@@ -32,15 +36,24 @@ def wait_server_ready(endpoints):
 
            wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
     """
+<<<<<<< HEAD
     assert not isinstance(endpoints, str)
+=======
+    assert not isinstance(endpoints, string_types)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     while True:
         all_ok = True
         not_ready_endpoints = []
         for ep in endpoints:
             ip_port = ep.split(":")
+<<<<<<< HEAD
             with closing(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             ) as sock:
+=======
+            with closing(socket.socket(socket.AF_INET,
+                                       socket.SOCK_STREAM)) as sock:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 sock.settimeout(2)
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 if hasattr(socket, 'SO_REUSEPORT'):
@@ -52,9 +65,14 @@ def wait_server_ready(endpoints):
                     not_ready_endpoints.append(ep)
         if not all_ok:
             sys.stderr.write("server not ready, wait 3 sec to retry...\n")
+<<<<<<< HEAD
             sys.stderr.write(
                 "not ready endpoints:" + str(not_ready_endpoints) + "\n"
             )
+=======
+            sys.stderr.write("not ready endpoints:" + str(not_ready_endpoints) +
+                             "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sys.stderr.flush()
             time.sleep(3)
         else:

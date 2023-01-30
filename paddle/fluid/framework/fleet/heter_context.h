@@ -85,9 +85,13 @@ class HeterContext {
   std::vector<std::vector<std::mutex*>> dim_mutex_;
   int multi_mf_dim_ = 0;
 
+<<<<<<< HEAD
   void* sub_graph_feas = NULL;
   uint32_t shard_num_ = 37;
   uint16_t pass_id_ = 0;
+=======
+  uint32_t shard_num_ = 37;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   uint64_t size() {
     uint64_t total_size = 0;
     for (auto& keys : feature_keys_) {

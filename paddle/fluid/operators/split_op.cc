@@ -21,7 +21,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
 
+=======
+using framework::LoDTensor;
+using framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using framework::Variable;
 
 class SplitOp : public framework::OperatorWithKernel {
@@ -76,11 +81,19 @@ class SplitOp : public framework::OperatorWithKernel {
       const paddle::small_vector<framework::InferShapeVarPtr,
                                  phi::kInputSmallVectorSize>
           &sections_varptr_list = ctx->GetInputVarPtrs("SectionsTensorList");
+<<<<<<< HEAD
       std::vector<phi::DenseTensor> sections_from_tensor;
       sections_from_tensor.reserve(sections_tensor_list_size);
       for (const auto &section_varptr : sections_varptr_list) {
         Variable *var = PADDLE_GET_CONST(Variable *, section_varptr);
         sections_from_tensor.emplace_back(var->Get<phi::DenseTensor>());
+=======
+      std::vector<LoDTensor> sections_from_tensor;
+      sections_from_tensor.reserve(sections_tensor_list_size);
+      for (const auto &section_varptr : sections_varptr_list) {
+        Variable *var = PADDLE_GET_CONST(Variable *, section_varptr);
+        sections_from_tensor.emplace_back(var->Get<LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
       sections_final = std::move(phi::IntArray(sections_from_tensor));
     } else if (!ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
@@ -108,7 +121,11 @@ class SplitOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -119,6 +136,7 @@ class SplitOp : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
+<<<<<<< HEAD
       const auto x_md = ctx.Input<phi::DenseTensor>("X")->mem_desc();
       if (x_md.data.format_desc.blocking.inner_nblks == 0) {
         return phi::KernelKey(phi::Backend::ONEDNN,
@@ -141,6 +159,28 @@ class SplitOp : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+      const auto x_md = ctx.Input<Tensor>("X")->mem_desc();
+      if (x_md.data.format_desc.blocking.inner_nblks == 0)
+        return framework::OpKernelType(input_data_type,
+                                       ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -199,7 +239,11 @@ Example:
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
+<<<<<<< HEAD
         .InEnum({"float32", "bfloat16", "int8", "uint8"});
+=======
+        .InEnum({"float32", "bfloat16"});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

@@ -129,6 +129,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
+<<<<<<< HEAD
     test_collective_broadcast_object_list_api MODULES
     test_collective_broadcast_object_list_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
@@ -137,6 +138,8 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     test_collective_cpu_barrier_with_gloo MODULES
     test_collective_cpu_barrier_with_gloo ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
@@ -233,6 +236,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
+<<<<<<< HEAD
     test_collective_scatter_object_list_api MODULES
     test_collective_scatter_object_list_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
@@ -241,6 +245,8 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     test_collective_sendrecv MODULES test_collective_sendrecv ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT "300" LABELS
@@ -395,6 +401,7 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     "PADDLE_DIST_UT_PORT=21532;http_proxy=;https_proxy=")
   set_tests_properties(test_world_size_and_rank PROPERTIES TIMEOUT "120")
 endif()
+<<<<<<< HEAD
 if(WITH_MPI)
   if(LOCAL_ALL_ARCH AND (LINUX))
     bash_test_modules(
@@ -429,5 +436,7 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     "PADDLE_DIST_UT_PORT=21958;http_proxy=;https_proxy=")
   set_tests_properties(test_orthogonal_strategy PROPERTIES TIMEOUT "120")
 endif()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 add_subdirectory(fleet)
 add_subdirectory(multinode)

@@ -35,7 +35,11 @@ class CumprodOpMaker : public framework::OpProtoAndCheckerMaker {
         "（int), The dim along which the input tensors will be cumproded");
     AddComment(
         R"DOC(Cumprod operator. Return the cumprod results of the input elements along the dim.
+<<<<<<< HEAD
               For example, if input X is a tensor with rank 1 and N elements, the output will also be a tensor
+=======
+              For example, if input X is a tensor with rank 1 and N elements, the output will also be a tensor 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               with rank 1 and N elements, and elements y[i] = x[0] * x[1] * x[2] *...* x[i] (0<=i<N))DOC");
   }
 };
@@ -82,7 +86,11 @@ class CumprodGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(cumprod,
                             CumprodInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::UnchangedInferMetaCheckAxis));
+=======
+                            PD_INFER_META(phi::UnchangedInferMeta));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 REGISTER_OPERATOR(cumprod,
                   ops::CumprodOp,

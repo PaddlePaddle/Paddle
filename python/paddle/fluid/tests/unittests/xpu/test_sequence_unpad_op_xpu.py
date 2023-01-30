@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 
 import sys
 import unittest
@@ -28,16 +29,43 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import unittest
+import six
+import numpy as np
+import sys
+
+sys.path.append("..")
+
+import paddle
+import paddle.fluid as fluid
+import unittest
+import numpy as np
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from paddle.fluid.framework import Program, program_guard
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestSequenceUnpadOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'sequence_unpad'
         self.use_dynamic_create_class = False
 
     class TestSequenceUnpadOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.init_dtype()
             self.initTestCase()
@@ -65,6 +93,7 @@ class XPUTestSequenceUnpadOp(XPUOpTestWrapper):
             x = np.random.random(self.x_shape).astype(self.dtype)
             out_lod = [self.length]
 
+<<<<<<< HEAD
             out = x[0, 0 : self.length[0]]
             for i in range(1, x.shape[0]):
                 out = np.append(out, x[i, 0 : self.length[i]], axis=0)
@@ -72,37 +101,70 @@ class XPUTestSequenceUnpadOp(XPUOpTestWrapper):
             out_shape = (sum(self.length),)
             if len(self.x_shape) == 2:
                 out_shape = out_shape + (1,)
+=======
+            out = x[0, 0:self.length[0]]
+            for i in six.moves.xrange(1, x.shape[0]):
+                out = np.append(out, x[i, 0:self.length[i]], axis=0)
+
+            out_shape = (sum(self.length), )
+            if len(self.x_shape) == 2:
+                out_shape = out_shape + (1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 out_shape = out_shape + self.x_shape[2:]
 
             self.inputs = {
                 'X': x,
+<<<<<<< HEAD
                 'Length': np.array(self.length).astype('int64'),
+=======
+                'Length': np.array(self.length).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': (out.reshape(out_shape), out_lod)}
 
     class TestSequenceUnpadOp2(TestSequenceUnpadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.length = [2, 3, 4]
             self.x_shape = (3, 5, 4, 3)
 
     class TestSequenceUnpadOp3(TestSequenceUnpadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.length = [5, 2, 3, 4]
             self.x_shape = (4, 5, 3, 3, 6)
 
     class TestSequenceUnpadOp4(TestSequenceUnpadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.length = [5, 5, 5, 5]
             self.x_shape = (4, 5, 3, 3, 6)
 
     class TestSequenceUnpadOp5(TestSequenceUnpadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.length = [1, 4, 3, 1]
             self.x_shape = (4, 5, 3, 3, 6)
 
 
 class TestSequenceUnpadOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_error(self):
         """
         The type of 'x' in fluid.layers.sequence_unpad must be <class 'paddle.fluid.framework.Variable'>, but received <class 'numpy.ndarray'>.

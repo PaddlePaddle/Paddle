@@ -21,26 +21,40 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using framework::DDim;
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class BroadcastTensorsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     // Broadcast semantics enforces all input variables having the same
     // DataType/VarType
     // This condition is also checked during VarType Inference
     // Here we simply copy input type to output
+<<<<<<< HEAD
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "A Varaible list. The shape and data type of the list elements"
@@ -48,14 +62,27 @@ class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
         "or phi::DenseTensor, and data types can be: bool, float16, float32, "
         "float64, int32, "
         "int64.")
+=======
+    AddInput("X",
+             "A Varaible list. The shape and data type of the list elements"
+             "should be consistent. Variable can be multi-dimensional Tensor"
+             "or LoDTensor, and data types can be: bool, float16, float32, "
+             "float64, int32, "
+             "int64.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .AsDuplicable();
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
               "consistent with :code:`x`.")
         .AsDuplicable();
     AddComment(
+<<<<<<< HEAD
         R"DOC(This OP is used to broadcast a vector of inputs
                      with phi::DenseTensor type, following broadcast semantics.)DOC");
+=======
+        R"DOC(This OP is used to broadcast a vector of inputs 
+                     with Tensor or LoDTensor type, following broadcast semantics.)DOC");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -127,11 +154,19 @@ class BroadcastTensorsGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

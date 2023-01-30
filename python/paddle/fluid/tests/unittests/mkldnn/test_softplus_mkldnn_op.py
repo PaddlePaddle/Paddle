@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,19 +23,39 @@ from paddle.fluid.tests.unittests.op_test import (
     OpTestTool,
     convert_float_to_uint16,
 )
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.framework import _current_expected_place
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def ref_softplus(x, beta, threshold):
     x_beta = beta * x
+<<<<<<< HEAD
     out = np.select(
         [x_beta <= threshold, x_beta > threshold],
         [np.log(1 + np.exp(x_beta)) / beta, x],
     )
+=======
+    out = np.select([x_beta <= threshold, x_beta > threshold],
+                    [np.log(1 + np.exp(x_beta)) / beta, x])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return out
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestSoftplusOneDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "softplus"
         self.beta = 1
@@ -64,45 +85,78 @@ class TestSoftplusOneDNNOp(OpTest):
 
 
 class TestSoftplus4DOneDNNOp(TestSoftplusOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.x_shape = (10, 5, 4, 2)
 
 
 class TestSoftplus6DOneDNNOp(TestSoftplusOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.x_shape = (3, 2, 2, 5, 4, 2)
 
 
 class TestSoftplus6DExtendedFunctorOneDNNOp(TestSoftplusOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.x_shape = (3, 5, 2, 5, 4, 2)
         self.beta = 2.5
 
 
 class TestSoftplus3DExtendedFunctorOneDNNOp(TestSoftplusOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.x_shape = (20, 4, 2)
         self.beta = 0.4
 
 
 class TestSoftplusBF16OneDNNOp(TestSoftplusOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.uint16
 
 
 class TestSoftplus4DBF16OneDNNOp(TestSoftplus4DOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.uint16
 
 
 class TestSoftplus6DBF16OneDNNOp(TestSoftplus6DOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.uint16
 
 
 class TestSoftplus3DExtendedFunctorBF16OneDNNOp(
+<<<<<<< HEAD
     TestSoftplus3DExtendedFunctorOneDNNOp
 ):
+=======
+        TestSoftplus3DExtendedFunctorOneDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.uint16
 

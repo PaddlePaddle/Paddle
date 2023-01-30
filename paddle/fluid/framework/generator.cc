@@ -20,12 +20,16 @@ limitations under the License. */
 #include <utility>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
 #if defined(PADDLE_WITH_XPU)
 
@@ -57,6 +61,8 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
 #endif
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 

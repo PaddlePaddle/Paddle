@@ -68,8 +68,14 @@ TEST(LiteEngineOp, GetNativePrecisionType) {
 
 TEST(LiteEngineOp, GetNativeLayoutType) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+<<<<<<< HEAD
   phi::DataLayout GetNativeLayoutType(const DataLayoutType& type);
   ASSERT_EQ(GetNativeLayoutType(DataLayoutType::kNCHW), phi::DataLayout::kNCHW);
+=======
+  framework::DataLayout GetNativeLayoutType(const DataLayoutType& type);
+  ASSERT_EQ(GetNativeLayoutType(DataLayoutType::kNCHW),
+            framework::DataLayout::kNCHW);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   EXPECT_ANY_THROW(GetNativeLayoutType(DataLayoutType::kNHWC));
 }
 
@@ -103,7 +109,11 @@ TEST(LiteEngineOp, GetLiteTensorDataPtr) {
 void test_tensor_copy(const platform::DeviceContext& ctx) {
   // Create LoDTensor.
   std::vector<float> vector({1, 2, 3, 4});
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor;
+=======
+  framework::LoDTensor lod_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   framework::TensorFromVector(vector, ctx, &lod_tensor);
   framework::LoD lod({{0, 2, 4}});
   lod_tensor.Resize({4, 1});
@@ -113,7 +123,11 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
   TensorCopyAsync(&lite_api_tensor, lod_tensor, ctx);
   // Copy to LoDTensor.
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor_n;
+=======
+  framework::LoDTensor lod_tensor_n;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
@@ -128,7 +142,11 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
 
 void test_tensor_share(const platform::DeviceContext& ctx) {
   std::vector<float> vector({1, 2, 3, 4});
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor;
+=======
+  framework::LoDTensor lod_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   framework::TensorFromVector(vector, ctx, &lod_tensor);
   framework::LoD lod({{0, 2, 4}});
   lod_tensor.Resize({4, 1});
@@ -138,7 +156,11 @@ void test_tensor_share(const platform::DeviceContext& ctx) {
   paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
   TensorDataShare(&lite_api_tensor, &lod_tensor);
   // Copy to LoDTensor.
+<<<<<<< HEAD
   phi::DenseTensor lod_tensor_n;
+=======
+  framework::LoDTensor lod_tensor_n;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
   std::vector<float> result;
   paddle::framework::TensorToVector(lod_tensor_n, ctx, &result);

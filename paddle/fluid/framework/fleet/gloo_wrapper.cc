@@ -352,8 +352,12 @@ void GlooWrapper::Init() {
   }
 #endif
   is_initialized_ = true;
+<<<<<<< HEAD
   VLOG(0) << "gloo initialized done, rank=" << rank_ << ", size=" << size_
           << ", store_type=" << store_type_;
+=======
+  VLOG(3) << "gloo initialized done.";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template std::vector<int64_t> GlooWrapper::AllReduce<int64_t>(

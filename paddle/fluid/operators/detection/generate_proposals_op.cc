@@ -27,6 +27,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class GenerateProposalsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -62,11 +68,19 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Anchors"),
         ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Anchors"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -74,6 +88,7 @@ template <typename T>
 class GenerateProposalsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *scores = context.Input<phi::DenseTensor>("Scores");
     auto *bbox_deltas = context.Input<phi::DenseTensor>("BboxDeltas");
     auto *im_info = context.Input<phi::DenseTensor>("ImInfo");
@@ -89,6 +104,22 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     auto *rpn_rois = context.Output<phi::DenseTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<phi::DenseTensor>("RpnRoiProbs");
+=======
+    auto *scores = context.Input<Tensor>("Scores");
+    auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
+    auto *im_info = context.Input<Tensor>("ImInfo");
+    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"),
+                                   "Input",
+                                   "Anchors",
+                                   "GenerateProposals");
+    auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
+                                     "Input",
+                                     "Variances",
+                                     "GenerateProposals");
+
+    auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
+    auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int pre_nms_top_n = context.Attr<int>("pre_nms_topN");
     int post_nms_top_n = context.Attr<int>("post_nms_topN");
@@ -113,7 +144,11 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
                               context.GetPlace());
     rpn_roi_probs->mutable_data<T>({scores->numel(), 1}, context.GetPlace());
 
+<<<<<<< HEAD
     phi::DenseTensor bbox_deltas_swap, scores_swap;
+=======
+    Tensor bbox_deltas_swap, scores_swap;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bbox_deltas_swap.mutable_data<T>({num, h_bbox, w_bbox, c_bbox},
                                      dev_ctx.GetPlace());
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
@@ -134,14 +169,24 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     int64_t num_proposals = 0;
     for (int64_t i = 0; i < num; ++i) {
+<<<<<<< HEAD
       phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
       phi::DenseTensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
       phi::DenseTensor scores_slice = scores_swap.Slice(i, i + 1);
+=======
+      Tensor im_info_slice = im_info->Slice(i, i + 1);
+      Tensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
+      Tensor scores_slice = scores_swap.Slice(i, i + 1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       bbox_deltas_slice.Resize({h_bbox * w_bbox * c_bbox / 4, 4});
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
+<<<<<<< HEAD
       std::pair<phi::DenseTensor, phi::DenseTensor> tensor_pair =
+=======
+      std::pair<Tensor, Tensor> tensor_pair =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           ProposalForOneImage(dev_ctx,
                               im_info_slice,
                               anchors,
@@ -153,8 +198,13 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
                               nms_thresh,
                               min_size,
                               eta);
+<<<<<<< HEAD
       phi::DenseTensor &proposals = tensor_pair.first;
       phi::DenseTensor &scores = tensor_pair.second;
+=======
+      Tensor &proposals = tensor_pair.first;
+      Tensor &scores = tensor_pair.second;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       AppendProposals(rpn_rois, 4 * num_proposals, proposals);
       AppendProposals(rpn_roi_probs, num_proposals, scores);
@@ -163,7 +213,11 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       tmp_num.push_back(proposals.dims()[0]);
     }
     if (context.HasOutput("RpnRoisNum")) {
+<<<<<<< HEAD
       auto *rpn_rois_num = context.Output<phi::DenseTensor>("RpnRoisNum");
+=======
+      auto *rpn_rois_num = context.Output<Tensor>("RpnRoisNum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
       int *num_data = rpn_rois_num->data<int>();
       for (int i = 0; i < num; i++) {
@@ -177,6 +231,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     rpn_roi_probs->Resize({num_proposals, 1});
   }
 
+<<<<<<< HEAD
   std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
       const phi::CPUContext &ctx,
       const phi::DenseTensor &im_info_slice,
@@ -184,6 +239,15 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       const phi::DenseTensor &variances,
       const phi::DenseTensor &bbox_deltas_slice,  // [M, 4]
       const phi::DenseTensor &scores_slice,       // [N, 1]
+=======
+  std::pair<Tensor, Tensor> ProposalForOneImage(
+      const phi::CPUContext &ctx,
+      const Tensor &im_info_slice,
+      const Tensor &anchors,
+      const Tensor &variances,
+      const Tensor &bbox_deltas_slice,  // [M, 4]
+      const Tensor &scores_slice,       // [N, 1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int pre_nms_top_n,
       int post_nms_top_n,
       float nms_thresh,
@@ -192,7 +256,11 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     auto *scores_data = scores_slice.data<T>();
 
     // Sort index
+<<<<<<< HEAD
     phi::DenseTensor index_t;
+=======
+    Tensor index_t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     index_t.Resize({scores_slice.numel()});
     int *index = index_t.mutable_data<int>(ctx.GetPlace());
     for (int i = 0; i < scores_slice.numel(); ++i) {
@@ -210,7 +278,11 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       index_t.Resize({pre_nms_top_n});
     }
 
+<<<<<<< HEAD
     phi::DenseTensor scores_sel, bbox_sel, anchor_sel, var_sel;
+=======
+    Tensor scores_sel, bbox_sel, anchor_sel, var_sel;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     scores_sel.mutable_data<T>({index_t.numel(), 1}, ctx.GetPlace());
     bbox_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     anchor_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
@@ -221,26 +293,42 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     phi::funcs::CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
     phi::funcs::CPUGather<T>(ctx, variances, index_t, &var_sel);
 
+<<<<<<< HEAD
     phi::DenseTensor proposals;
+=======
+    Tensor proposals;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     proposals.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
 
     ClipTiledBoxes<T>(ctx, im_info_slice, proposals, &proposals, false);
 
+<<<<<<< HEAD
     phi::DenseTensor keep;
+=======
+    Tensor keep;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, true, &keep);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
       phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
       bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
       set_zero(ctx, &bbox_sel, static_cast<T>(0));
+<<<<<<< HEAD
       phi::DenseTensor scores_filter;
+=======
+      Tensor scores_filter;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
       set_zero(ctx, &scores_filter, static_cast<T>(0));
       return std::make_pair(bbox_sel, scores_filter);
     }
 
+<<<<<<< HEAD
     phi::DenseTensor scores_filter;
+=======
+    Tensor scores_filter;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bbox_sel.mutable_data<T>({keep.numel(), 4}, ctx.GetPlace());
     scores_filter.mutable_data<T>({keep.numel(), 1}, ctx.GetPlace());
     phi::funcs::CPUGather<T>(ctx, proposals, keep, &bbox_sel);
@@ -249,7 +337,11 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       return std::make_pair(bbox_sel, scores_filter);
     }
 
+<<<<<<< HEAD
     phi::DenseTensor keep_nms =
+=======
+    Tensor keep_nms =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         phi::funcs::NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
 
     if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
@@ -285,10 +377,16 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) Bounding box variances with same shape as `Anchors`.");
 
     AddOutput("RpnRois",
+<<<<<<< HEAD
               "(phi::DenseTensor), Output proposals with shape (rois_num, 4).");
     AddOutput(
         "RpnRoiProbs",
         "(phi::DenseTensor) Scores of proposals with shape (rois_num, 1).");
+=======
+              "(LoDTensor), Output proposals with shape (rois_num, 4).");
+    AddOutput("RpnRoiProbs",
+              "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddOutput("RpnRoisNum", "(Tensor), The number of Rpn RoIs in each image")
         .AsDispensable();
     AddAttr<int>("pre_nms_topN",

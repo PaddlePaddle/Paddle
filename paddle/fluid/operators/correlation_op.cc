@@ -22,6 +22,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline std::vector<int64_t> CorrelationOutputSize(int batch,
                                                   int input_height,
                                                   int input_width,
@@ -109,6 +114,7 @@ class CorrelationOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
@@ -119,6 +125,26 @@ class CorrelationOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "X and Y shoule have the same datatype"));
     return phi::KernelKey(input_data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input1");
+    PADDLE_ENFORCE_EQ(
+        input_data_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Input2")->dtype()),
+        platform::errors::InvalidArgument(
+            "X and Y shoule have the same datatype"));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -158,9 +184,15 @@ class CorrelationOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1"), ctx.GetPlace());
   }
 };

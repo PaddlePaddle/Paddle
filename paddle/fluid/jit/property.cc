@@ -97,7 +97,11 @@ std::unordered_map<std::string, std::shared_ptr<Variable>> Property::Values() {
           *var->GetMutable<int>() = static_cast<int>(GetInt64(n));
           break;
         case ValueProto::STRING:
+<<<<<<< HEAD
           *var->GetMutable<paddle::framework::String>() = GetString(n);
+=======
+          *var->GetMutable<std::string>() = GetString(n);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           break;
         case ValueProto::FLOATS:
           *var->GetMutable<std::vector<float>>() = GetFloats(n);

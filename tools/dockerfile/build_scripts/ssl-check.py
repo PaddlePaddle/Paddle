@@ -14,6 +14,7 @@
 
 # cf. https://github.com/pypa/manylinux/issues/53
 
+<<<<<<< HEAD
 import sys
 from urllib.request import urlopen
 
@@ -27,10 +28,39 @@ urlopen(GOOD_SSL)
 print("...it did, yay.")
 
 print("Connecting to %s should fail" % (BAD_SSL,))
+=======
+GOOD_SSL = "https://google.com"
+BAD_SSL = "https://self-signed.badssl.com"
+
+import sys
+
+print("Testing SSL certificate checking for Python:", sys.version)
+
+if (sys.version_info[:2] < (2, 7) or sys.version_info[:2] < (3, 4)):
+    print("This version never checks SSL certs; skipping tests")
+    sys.exit(0)
+
+if sys.version_info[0] >= 3:
+    from urllib.request import urlopen
+    EXC = OSError
+else:
+    from urllib import urlopen
+    EXC = IOError
+
+print("Connecting to %s should work" % (GOOD_SSL, ))
+urlopen(GOOD_SSL)
+print("...it did, yay.")
+
+print("Connecting to %s should fail" % (BAD_SSL, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 try:
     urlopen(BAD_SSL)
     # If we get here then we failed:
     print("...it DIDN'T!!!!!11!!1one!")
     sys.exit(1)
+<<<<<<< HEAD
 except OSError:
+=======
+except EXC:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     print("...it did, yay.")

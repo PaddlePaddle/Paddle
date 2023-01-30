@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -23,12 +24,36 @@ from paddle.fluid.tests.unittests.auto_checkpoint_utils import (
     AutoCheckpointBase,
     get_logger,
 )
+=======
+import unittest
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
+import os
+import sys
+
+from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
+from paddle.fluid.framework import program_guard
+from paddle.fluid import unique_name
+
+import numpy as np
+from paddle.io import Dataset, BatchSampler, DataLoader
+
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 logger = get_logger()
 
 
 class AutoCheckPointACLBase(AutoCheckpointBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -45,7 +70,11 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test",
+<<<<<<< HEAD
             "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
+=======
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         os.environ.update(proc_env)
 
@@ -67,6 +96,7 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
         logger.info("begin _run_normal")
 
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
+<<<<<<< HEAD
             exe, main_prog, startup_prog
         )
         for i in range(3):
@@ -79,6 +109,19 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
 
         self.assertIsNone(acp.g_acp_type)
         self.assertIsNone(acp._get_train_epoch_range())
+=======
+            exe, main_prog, startup_prog)
+        for i in range(3):
+            self.assertEqual(acp._get_train_epoch_range(), None)
+            self.assertEqual(acp.g_acp_type, None)
+            for data in data_loader():
+                self.assertEqual(acp.g_acp_type, None)
+                self.assertEqual(acp._get_train_epoch_range(), None)
+                fetch = exe.run(compiled, feed=data, fetch_list=[loss])
+
+        self.assertEqual(acp.g_acp_type, None)
+        self.assertEqual(acp._get_train_epoch_range(), None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         m1 = PaddleModel(exe, compiled)
         m1.serialize(save_dir)
@@ -93,9 +136,14 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
         logger.info("begin _not_use_train")
         exe, main_prog, startup_prog = self._generate()
 
+<<<<<<< HEAD
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
             exe, main_prog, startup_prog
         )
+=======
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         epochs = []
         for i in acp.train_epoch_range(3, 0):
@@ -114,9 +162,14 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
 
         exe, main_prog, startup_prog = self._generate()
 
+<<<<<<< HEAD
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
             exe, main_prog, startup_prog
         )
+=======
+        compiled, data_loader, optimizer, loss, image, label = \
+            self._init_env(exe, main_prog, startup_prog)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         o = None
         i = 0
@@ -135,7 +188,11 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
                     break
 
         o = acp._get_train_epoch_range()
+<<<<<<< HEAD
         assert o is None, "now train epoch must not exits now"
+=======
+        assert o == None, "now train epoch must not exits now"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if break_epoch_no is None:
             self.assertEqual(i, 2)
         else:
@@ -153,8 +210,12 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
         fs.delete(save_dir)
 
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
+<<<<<<< HEAD
             exe, main_prog, startup_prog
         )
+=======
+            exe, main_prog, startup_prog)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         o = None
         i = 0
@@ -168,7 +229,11 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
         o = acp._get_train_epoch_range()
+<<<<<<< HEAD
         self.assertTrue(o is None, "now train epoch must not exits now")
+=======
+        self.assertTrue(o == None, "now train epoch must not exits now")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(i, 2)
 
         if break_epoch_no is not None:
@@ -200,6 +265,10 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
 
 
 class AutoCheckpointTest(AutoCheckPointACLBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -216,7 +285,11 @@ class AutoCheckpointTest(AutoCheckPointACLBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_0",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_0",
+<<<<<<< HEAD
             "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
+=======
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         os.environ.update(proc_env)
 

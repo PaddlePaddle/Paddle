@@ -154,13 +154,21 @@ void DistMultiTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor *root_tensor = root_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (int j = 1; j < thread_num_; j++) {
       Scope *cur_thread_scope = workers_[j]->GetThreadScope();
       Variable *thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);
+<<<<<<< HEAD
       phi::DenseTensor *thread_tensor =
           thread_var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (root_tensor->numel() != thread_tensor->numel()) {
         continue;
       }
@@ -198,8 +206,13 @@ void DistMultiTrainer::Finalize() {
 }
 
 template <typename T>
+<<<<<<< HEAD
 void DistMultiTrainer::MergeToRootScope(phi::DenseTensor *root_tensor,
                                         phi::DenseTensor *tensor) {
+=======
+void DistMultiTrainer::MergeToRootScope(LoDTensor *root_tensor,
+                                        LoDTensor *tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   T *root_data = root_tensor->data<T>();
   T *data = tensor->data<T>();
   for (int i = 0; i < tensor->numel(); i++) {

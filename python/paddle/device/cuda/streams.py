@@ -12,5 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle.fluid.core import CUDAEvent as Event  # noqa: F401
 from paddle.fluid.core import CUDAStream as Stream  # noqa: F401
+=======
+from paddle.fluid.core import CUDAStream as Stream
+from paddle.fluid.core import CUDAEvent as Event
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

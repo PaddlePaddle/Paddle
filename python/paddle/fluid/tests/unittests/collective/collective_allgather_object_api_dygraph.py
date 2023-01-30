@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import test_collective_api_base as test_base
 
 import paddle
@@ -19,6 +20,17 @@ import paddle.fluid as fluid
 
 
 class TestCollectiveAllgatherObjectAPI(test_base.TestCollectiveAPIRunnerBase):
+=======
+from __future__ import print_function
+
+import paddle
+import paddle.fluid as fluid
+import test_collective_api_base as test_base
+
+
+class TestCollectiveAllgatherObjectAPI(test_base.TestCollectiveAPIRunnerBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 

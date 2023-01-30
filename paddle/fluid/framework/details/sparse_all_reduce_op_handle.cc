@@ -66,8 +66,12 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
         platform::errors::NotFound("Variable %s is not found in scope.",
                                    nranks_name));
 
+<<<<<<< HEAD
     float *dgc_nranks =
         nranks_var->GetMutable<phi::DenseTensor>()->data<float>();
+=======
+    float *dgc_nranks = nranks_var->GetMutable<LoDTensor>()->data<float>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     *dgc_nranks = nranks;
     VLOG(10) << "dgc_nranks=" << *dgc_nranks;
   }
@@ -98,9 +102,15 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
           in_var_handles.size(),
           out_var_handles.size()));
 
+<<<<<<< HEAD
   std::vector<const phi::DenseTensor *> ins;
   std::vector<phi::DenseTensor *> gathers;
   std::vector<phi::DenseTensor *> outs;
+=======
+  std::vector<const LoDTensor *> ins;
+  std::vector<LoDTensor *> gathers;
+  std::vector<LoDTensor *> outs;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int k = -1;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto *local_scope = local_exec_scopes_[i];
@@ -113,7 +123,11 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
         in_var,
         platform::errors::NotFound("Variable %s is not found in scope.",
                                    encode_var_name));
+<<<<<<< HEAD
     auto &in = in_var->Get<phi::DenseTensor>();
+=======
+    auto &in = in_var->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ins.emplace_back(&in);
 
     auto gather_var_name = original_name + g_dgc_gather;
@@ -122,11 +136,19 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
         gather_var,
         platform::errors::NotFound("Variable %s is not found in scope.",
                                    gather_var));
+<<<<<<< HEAD
     auto *gather = gather_var->GetMutable<phi::DenseTensor>();
     gathers.emplace_back(gather);
 
     auto *out = local_scope->FindVar(out_var_handles[i]->name())
                     ->GetMutable<phi::DenseTensor>();
+=======
+    auto *gather = gather_var->GetMutable<LoDTensor>();
+    gathers.emplace_back(gather);
+
+    auto *out = local_scope->FindVar(out_var_handles[i]->name())
+                    ->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     outs.emplace_back(out);
 
     if (k < 0) {
@@ -269,7 +291,11 @@ int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
   PADDLE_ENFORCE_NOT_NULL(var,
                           platform::errors::NotFound(
                               "Variable %s is not found in scope.", var_name));
+<<<<<<< HEAD
   auto tensor = var->Get<phi::DenseTensor>().data<float>();
+=======
+  auto tensor = var->Get<LoDTensor>().data<float>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return *tensor;
 }
 
@@ -298,8 +324,13 @@ bool SparseAllReduceOpHandle::IsEncoded() {
                           platform::errors::NotFound(
                               "Variable %s is not found in scope.", step_var));
 
+<<<<<<< HEAD
   float count = *count_var->Get<phi::DenseTensor>().data<float>();
   float step = *step_var->Get<phi::DenseTensor>().data<float>();
+=======
+  float count = *count_var->Get<LoDTensor>().data<float>();
+  float step = *step_var->Get<LoDTensor>().data<float>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (static_cast<int>(count) < static_cast<int>(step)) {
     VLOG(10) << "in all_reduce currentstep:" << count
              << " < rampup_begin_step:" << step

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -27,15 +28,37 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+
+import paddle
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestArgMax(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'arg_max'
 
     class XPUBaseTestCase(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.dims = (3, 4)
             self.axis = 1
@@ -56,41 +79,70 @@ class XPUTestArgMax(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestArgMaxCase1(XPUBaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.dims = (3, 4, 5)
             self.axis = -1
 
     class TestArgMaxCase2(XPUBaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.dims = (3, 4, 5)
             self.axis = 0
 
     class TestArgMaxCase3(XPUBaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.dims = (3, 4, 5)
             self.axis = 1
 
     class TestArgMaxCase4(XPUBaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.dims = (3, 4, 5)
             self.axis = 2
 
     class TestArgMaxCase5(XPUBaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.dims = (3, 4)
             self.axis = -1
 
     class TestArgMaxCase6(XPUBaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.dims = (3, 4)
             self.axis = 0
 
     class TestArgMaxCase7(XPUBaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.dims = (3, 4)
             self.axis = 1
 
     class TestArgMaxCase8(XPUBaseTestCase):
+<<<<<<< HEAD
         def initTestCase(self):
             self.dims = (1,)
             self.axis = 0
@@ -103,6 +155,23 @@ class XPUTestArgMax(XPUOpTestWrapper):
     class TestArgMaxCase10(XPUBaseTestCase):
         def initTestCase(self):
             self.dims = (3,)
+=======
+
+        def initTestCase(self):
+            self.dims = (1, )
+            self.axis = 0
+
+    class TestArgMaxCase9(XPUBaseTestCase):
+
+        def initTestCase(self):
+            self.dims = (2, )
+            self.axis = 0
+
+    class TestArgMaxCase10(XPUBaseTestCase):
+
+        def initTestCase(self):
+            self.dims = (3, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.axis = 0
 
 
@@ -112,6 +181,10 @@ for stype in support_types:
 
 
 class TestArgMaxAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
@@ -123,6 +196,10 @@ class TestArgMaxAPI(unittest.TestCase):
         self.place = [paddle.XPUPlace(0)]
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2021)
@@ -130,9 +207,15 @@ class TestArgMaxAPI(unittest.TestCase):
             tensor_input = paddle.to_tensor(numpy_input)
             numpy_output = np.argmax(numpy_input, axis=self.axis)
             paddle_output = paddle.argmax(tensor_input, axis=self.axis)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )
+=======
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.enable_static()
 
         for place in self.place:
@@ -140,6 +223,10 @@ class TestArgMaxAPI(unittest.TestCase):
 
 
 class TestArgMaxAPI_2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
@@ -152,11 +239,16 @@ class TestArgMaxAPI_2(unittest.TestCase):
         self.place = [paddle.XPUPlace(0)]
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2021)
             numpy_input = (np.random.random(self.dims)).astype(self.dtype)
             tensor_input = paddle.to_tensor(numpy_input)
+<<<<<<< HEAD
             numpy_output = np.argmax(numpy_input, axis=self.axis).reshape(
                 1, 4, 5
             )
@@ -166,6 +258,16 @@ class TestArgMaxAPI_2(unittest.TestCase):
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )
+=======
+            numpy_output = np.argmax(numpy_input,
+                                     axis=self.axis).reshape(1, 4, 5)
+            paddle_output = paddle.argmax(tensor_input,
+                                          axis=self.axis,
+                                          keepdim=self.keep_dims)
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 

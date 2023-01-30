@@ -17,7 +17,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/ddim.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -56,10 +59,13 @@ class Conv2DFusionOpMaker : public Conv2DOpMaker {
         "search_times",
         "The number of exhaustive search times for convolution algorithm.")
         .SetDefault(-1);
+<<<<<<< HEAD
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(true);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -72,6 +78,7 @@ class Conv2DFusionOp : public operators::ConvOp {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Conv2DFusion");
     OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "Conv2DFusion");
 
+<<<<<<< HEAD
     // In some case, attribute data_format is "AnyLayout".
     std::string data_format = ctx->Attrs().Get<std::string>("data_format");
     // MKL-DNN Kernels are using NCHW order of dims description
@@ -80,6 +87,29 @@ class Conv2DFusionOp : public operators::ConvOp {
                               (data_format == "NHWC" || data_format == "NDHWC");
     std::vector<int64_t> output_shape =
         ComputeOutputShape(ctx, data_format, channel_last);
+=======
+    auto in_dims = ctx->GetInputDim("Input");
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(),
+        4U,
+        platform::errors::InvalidArgument(
+            "The input's dimension of Operator(Conv2DFusion) is expected "
+            "to be 4. But received: input's dimension = %u, shape = [%s].",
+            in_dims.size(),
+            in_dims));
+
+    // In some case, attribute data_format is "AnyLayout".
+    std::string data_format = ctx->Attrs().Get<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format,
+        "NHWC",
+        platform::errors::PermissionDenied(
+            "Operator(Conv2DFusion) only supports data format of "
+            "channel first (NCHW) now. But received: data_format = '%s'.",
+            data_format));
+
+    std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
     ctx->ShareLoD("Input", "Output");
 
@@ -104,6 +134,7 @@ class Conv2DFusionOp : public operators::ConvOp {
       std::vector<framework::DDim> output_shapes(split_channels.size());
       for (size_t i = 0; i < split_channels.size(); ++i) {
         split_channels_sum += split_channels[i];
+<<<<<<< HEAD
         if (channel_last) {
           output_shapes[i] = phi::make_ddim({output_shape[0],
                                              output_shape[1],
@@ -129,13 +160,35 @@ class Conv2DFusionOp : public operators::ConvOp {
               "Attr(split_channels) = %d, the total output channels = %d.",
               split_channels_sum,
               output_channels));
+=======
+        output_shapes[i] = phi::make_ddim({output_shape[0],
+                                           split_channels[i],
+                                           output_shape[2],
+                                           output_shape[3]});
+      }
+      PADDLE_ENFORCE_EQ(
+          split_channels_sum,
+          output_shape[1],
+          platform::errors::InvalidArgument(
+              "The sum of Attr(split_channels) is expected to be equal to the "
+              "total output channels. But received: the sum of "
+              "Attr(split_channels) = %d, the total output channels = %d.",
+              split_channels_sum,
+              output_shape[1]));
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       ctx->SetOutputsDim("Outputs", output_shapes);
     }
   }
 
+<<<<<<< HEAD
   std::vector<int64_t> ComputeOutputShape(framework::InferShapeContext* ctx,
                                           const std::string& data_format,
                                           bool channel_last) const {
+=======
+  std::vector<int64_t> ComputeOutputShape(
+      framework::InferShapeContext* ctx) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Conv");
     OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "Conv");
 
@@ -159,6 +212,16 @@ class Conv2DFusionOp : public operators::ConvOp {
               "dilation is %d.",
               dilations[i]));
     }
+<<<<<<< HEAD
+=======
+    const std::string data_format =
+        ctx->Attrs().Get<std::string>("data_format");
+
+    // MKL-DNN Kernels are using NCHW order of dims description
+    // so we ignore data_format consideration for MKL-DNN kernel
+    const bool channel_last = (ctx->IsRunMKLDNNKernel() == false) &&
+                              (data_format == "NHWC" || data_format == "NDHWC");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ(
         in_dims.size() == 4 || in_dims.size() == 5,
@@ -194,6 +257,10 @@ class Conv2DFusionOp : public operators::ConvOp {
               strides[i]));
     }
 
+<<<<<<< HEAD
+=======
+    int in_sub_stride_size = in_dims.size() - stride_size;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
         strides.size() + 2U,
@@ -207,15 +274,23 @@ class Conv2DFusionOp : public operators::ConvOp {
             in_dims,
             strides.size(),
             phi::make_ddim(strides),
+<<<<<<< HEAD
             in_dims.size() - stride_size));
+=======
+            in_sub_stride_size));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const auto input_channels =
         channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
 
     PADDLE_ENFORCE_EQ(
         input_channels,
+<<<<<<< HEAD
         (channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1]) *
             groups,
+=======
+        filter_dims[1] * groups,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         platform::errors::InvalidArgument(
             "The number of input's channels should be equal to filter's "
             "channels "
@@ -225,7 +300,11 @@ class Conv2DFusionOp : public operators::ConvOp {
             "The error may come from wrong data_format setting.",
             input_channels,
             in_dims,
+<<<<<<< HEAD
             channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1],
+=======
+            filter_dims[1],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             filter_dims,
             groups,
             data_format));
@@ -256,6 +335,7 @@ class Conv2DFusionOp : public operators::ConvOp {
       in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     }
 
+<<<<<<< HEAD
     framework::DDim filter_data_dims;
     if (channel_last) {
       filter_data_dims =
@@ -263,6 +343,10 @@ class Conv2DFusionOp : public operators::ConvOp {
     } else {
       filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
     }
+=======
+    framework::DDim filter_data_dims =
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(
@@ -306,6 +390,7 @@ REGISTER_OPERATOR(
     ops::ConvOpInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+<<<<<<< HEAD
 
 // This op is used by cutlass, conv2d_fusion_cutlass is a intermediate op
 // produced by conv2d_fusion_layout_transfer_pass.
@@ -316,3 +401,5 @@ REGISTER_OPERATOR(
     ops::ConvOpInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
@@ -20,6 +21,18 @@ import paddle
 class TestDocString(unittest.TestCase):
     def test_layer_doc_string(self):
         print(paddle.nn.functional.dropout.__doc__)
+=======
+from __future__ import print_function
+
+import unittest
+import paddle.fluid.layers as layers
+
+
+class TestDocString(unittest.TestCase):
+
+    def test_layer_doc_string(self):
+        print(layers.dropout.__doc__)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

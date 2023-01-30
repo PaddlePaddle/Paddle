@@ -28,8 +28,13 @@ template <typename DeviceContext, typename T>
 class SppKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* in_x = context.Input<phi::DenseTensor>("X");
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int pyramid_height = context.template Attr<int>("pyramid_height");
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
@@ -48,7 +53,11 @@ class SppKernel : public framework::OpKernel<T> {
       std::vector<int> strides({kernel_size_h, kernel_size_w});
       std::vector<int> paddings({padding_h, padding_w});
       // pooling output shape
+<<<<<<< HEAD
       phi::DenseTensor out_level;
+=======
+      framework::Tensor out_level;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       std::vector<int64_t> output_shape_vec(
           {in_x->dims()[0], in_x->dims()[1], bins, bins});
       framework::DDim output_shape(phi::make_ddim(output_shape_vec));
@@ -110,12 +119,21 @@ template <typename DeviceContext, typename T>
 class SppGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* in_x = context.Input<phi::DenseTensor>("X");
     const phi::DenseTensor* out = context.Input<phi::DenseTensor>("Out");
     const phi::DenseTensor* out_grad =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     phi::DenseTensor* in_x_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
+    const framework::Tensor* out = context.Input<framework::Tensor>("Out");
+    const framework::Tensor* out_grad =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    framework::Tensor* in_x_grad =
+        context.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int pyramid_height = context.template Attr<int>("pyramid_height");
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
@@ -140,8 +158,13 @@ class SppGradKernel : public framework::OpKernel<T> {
       std::vector<int> strides({kernel_size_h, kernel_size_w});
       std::vector<int> paddings({padding_h, padding_w});
       // split out and outgrad  ...  to flatten
+<<<<<<< HEAD
       phi::DenseTensor out_level;
       phi::DenseTensor outgrad_level;
+=======
+      framework::Tensor out_level;
+      framework::Tensor outgrad_level;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int out_flatten_w = in_x->dims()[1] * bins * bins;
       std::vector<int64_t> out_flatten_shape_vec(
           {in_x->dims()[0], out_flatten_w});

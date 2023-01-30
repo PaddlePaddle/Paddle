@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 import subprocess
 import unittest
@@ -25,10 +30,14 @@ import paddle
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+<<<<<<< HEAD
 from test_uniform_random_op import (
     TestUniformRandomOp,
     TestUniformRandomOpSelectedRows,
 )
+=======
+from test_uniform_random_op import TestUniformRandomOp, TestUniformRandomOpSelectedRows
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -42,6 +51,10 @@ def output_hist(out):
 
 
 class TestMLUUniformRandomOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "uniform_random"
@@ -55,7 +68,11 @@ class TestMLUUniformRandomOp(OpTest):
             "shape": [1000, 784],
             "min": -5.0,
             "max": 10.0,
+<<<<<<< HEAD
             "seed": 10,
+=======
+            "seed": 10
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.output_hist = output_hist
 
@@ -75,6 +92,10 @@ class TestMLUUniformRandomOp(OpTest):
 
 
 class TestMLUUniformRandomOpSelectedRows(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_mlu():
@@ -89,6 +110,7 @@ class TestMLUUniformRandomOpSelectedRows(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
+<<<<<<< HEAD
         op = Operator(
             "uniform_random",
             Out="X",
@@ -97,6 +119,14 @@ class TestMLUUniformRandomOpSelectedRows(unittest.TestCase):
             max=10.0,
             seed=10,
         )
+=======
+        op = Operator("uniform_random",
+                      Out="X",
+                      shape=[1000, 784],
+                      min=-5.0,
+                      max=10.0,
+                      seed=10)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))

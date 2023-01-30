@@ -20,7 +20,11 @@ cc_library(
 
 cc_library(
   ir_pass_manager
+<<<<<<< HEAD
   SRCS ir_pass_manager.cc pass_result_info.cc
+=======
+  SRCS ir_pass_manager.cc
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   DEPS graph pass ${INFER_IR_PASSES} analysis_helper)
 
 cc_library(

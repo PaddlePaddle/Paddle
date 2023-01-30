@@ -24,13 +24,22 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 class SimilarityFocusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     phi::DenseTensor* out = context.Output<phi::DenseTensor>("Out");
     const phi::DenseTensor* x = context.Input<phi::DenseTensor>("X");
+=======
+    Tensor* out = context.Output<Tensor>("Out");
+    const Tensor* x = context.Input<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T* out_data = out->mutable_data<T>(context.GetPlace());
     const T* x_data = x->data<T>();
 

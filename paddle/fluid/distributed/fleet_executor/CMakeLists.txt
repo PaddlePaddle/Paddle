@@ -6,7 +6,11 @@ proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
 if(WITH_ARM_BRPC)
   set(BRPC_DEPS arm_brpc snappy gflags glog)
+<<<<<<< HEAD
 elseif(WITH_DISTRIBUTE)
+=======
+elseif(WITH_DISTRIBUTE AND WITH_PSCORE)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set(BRPC_DEPS
       brpc
       ssl
@@ -36,7 +40,10 @@ cc_library(
        interceptor.cc
        compute_interceptor.cc
        amplifier_interceptor.cc
+<<<<<<< HEAD
        cond_interceptor.cc
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
        source_interceptor.cc
        sink_interceptor.cc
        message_service.cc
@@ -68,8 +75,11 @@ if(WITH_DISTRIBUTE)
     amplifier_interceptor.cc PROPERTIES COMPILE_FLAGS
                                         ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
+<<<<<<< HEAD
     cond_interceptor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     source_interceptor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
     sink_interceptor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})

@@ -14,16 +14,25 @@
 
 import os
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+=======
+import random
+import numpy as np
+import paddle.fluid as fluid
+import six
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 os.environ["CPU_NUM"] = "2"
 
 
 class TestFetchUnmerged(unittest.TestCase):
+<<<<<<< HEAD
     def conv_net(self, img, label):
         conv_pool_1 = fluid.nets.simple_img_conv_pool(
             input=img,
@@ -51,18 +60,49 @@ class TestFetchUnmerged(unittest.TestCase):
         loss = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
         )
+=======
+
+    def conv_net(self, img, label):
+        conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                      filter_size=5,
+                                                      num_filters=8,
+                                                      pool_size=2,
+                                                      pool_stride=2,
+                                                      pool_type='max',
+                                                      act="relu")
+        conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+        conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                      filter_size=5,
+                                                      num_filters=16,
+                                                      pool_size=2,
+                                                      pool_stride=2,
+                                                      pool_type='avg',
+                                                      act="relu")
+        hidden = fluid.layers.fc(input=conv_pool_2, size=32, act='relu')
+        prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+        loss = fluid.layers.cross_entropy(input=prediction, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         avg_loss = paddle.mean(loss)
         return avg_loss, prediction
 
     def build_program(self, main, startup, is_test):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
+<<<<<<< HEAD
                 img = paddle.static.data(
                     name='image', shape=[-1, 1, 28, 28], dtype='float32'
                 )
                 label = paddle.static.data(
                     name='label', shape=[-1, 1], dtype='int64'
                 )
+=======
+                img = fluid.layers.data(name='image',
+                                        shape=[1, 28, 28],
+                                        dtype='float32')
+                label = fluid.layers.data(name='label',
+                                          shape=[1],
+                                          dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 loss, prediction = self.conv_net(img, label)
                 if not is_test:
                     opt = fluid.optimizer.Adam(learning_rate=0.001)
@@ -72,9 +112,14 @@ class TestFetchUnmerged(unittest.TestCase):
     def fetch_unmerged(self, use_cuda=True):
         main_program = fluid.Program()
         startup_program = fluid.Program()
+<<<<<<< HEAD
         feeds, loss, prediction = self.build_program(
             main_program, startup_program, False
         )
+=======
+        feeds, loss, prediction = self.build_program(main_program,
+                                                     startup_program, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -82,6 +127,7 @@ class TestFetchUnmerged(unittest.TestCase):
 
         build_strategy = fluid.BuildStrategy()
         binary = fluid.CompiledProgram(main_program).with_data_parallel(
+<<<<<<< HEAD
             loss_name=loss.name, build_strategy=build_strategy
         )
 
@@ -91,11 +137,21 @@ class TestFetchUnmerged(unittest.TestCase):
             paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
             batch_size=batch_size,
         )
+=======
+            loss_name=loss.name, build_strategy=build_strategy)
+
+        iters = 2
+        batch_size = 16
+        train_reader = paddle.batch(paddle.reader.shuffle(
+            paddle.dataset.mnist.train(), buf_size=500),
+                                    batch_size=batch_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
 
         device_num = fluid.core.get_cuda_device_count() if use_cuda else 2
         for _ in range(iters):
             data = next(train_reader())
+<<<<<<< HEAD
             loss_v, prediction_v = exe.run(
                 binary,
                 feed=feeder.feed(data),
@@ -117,6 +173,24 @@ class TestFetchUnmerged(unittest.TestCase):
                 return_merged=True,
             )
             self.assertEqual(np.array(loss_v).shape, (device_num,))
+=======
+            loss_v, prediction_v = exe.run(binary,
+                                           feed=feeder.feed(data),
+                                           fetch_list=[loss, prediction],
+                                           return_merged=False)
+            self.assertEqual(np.array(loss_v).shape, (device_num, 1))
+            self.assertEqual(
+                np.array(prediction_v).shape,
+                (device_num, batch_size / device_num, 10))
+
+        for _ in range(iters):
+            data = next(train_reader())
+            loss_v, prediction_v = exe.run(binary,
+                                           feed=feeder.feed(data),
+                                           fetch_list=[loss, prediction],
+                                           return_merged=True)
+            self.assertEqual(np.array(loss_v).shape, (device_num, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(np.array(prediction_v).shape, (batch_size, 10))
 
     def test_fetch_unmerged(self):

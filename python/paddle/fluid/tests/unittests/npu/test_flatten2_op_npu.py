@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import sys
 
@@ -25,6 +30,10 @@ paddle.enable_static()
 
 
 class TestFlatten2Op(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "flatten2"
@@ -34,7 +43,11 @@ class TestFlatten2Op(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.in_shape).astype("float32"),
+=======
+            "XShape": np.random.random(self.in_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_npu(self):
@@ -56,6 +69,10 @@ class TestFlatten2Op(OpTest):
 
 
 class TestFlatten2OpWithCornerAxis(TestFlatten2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.axis = 0
@@ -63,6 +80,10 @@ class TestFlatten2OpWithCornerAxis(TestFlatten2Op):
 
 
 class TestFlatten2OpWithDefaultAxis(TestFlatten2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (10, 2, 2, 3)
         self.new_shape = (10, 12)
@@ -72,6 +93,10 @@ class TestFlatten2OpWithDefaultAxis(TestFlatten2Op):
 
 
 class TestFlatten2OpSixDims(TestFlatten2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4

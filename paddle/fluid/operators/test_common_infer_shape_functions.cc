@@ -33,13 +33,22 @@ class DygraphInferShapeTest {
   void AddInput(const std::string& name, const framework::DDim& dim) {
     std::shared_ptr<imperative::VarBase> vin(
         new imperative::VarBase(false, name));
+<<<<<<< HEAD
     vin->MutableVar()->GetMutable<phi::DenseTensor>()->Resize(dim);
+=======
+    vin->MutableVar()->GetMutable<framework::LoDTensor>()->Resize(dim);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ins_[name] = {vin};
   }
   void AddOutput(const std::string& name, const framework::DDim& expected_dim) {
     std::shared_ptr<imperative::VarBase> vout(
         new imperative::VarBase(false, name));
+<<<<<<< HEAD
     vout->MutableVar()->GetMutable<phi::DenseTensor>();  // InitializeVariable
+=======
+    vout->MutableVar()
+        ->GetMutable<framework::LoDTensor>();  // InitializeVariable
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     outs_[name] = {vout};
     expected_dims_[name] = expected_dim;
   }
@@ -52,7 +61,11 @@ class DygraphInferShapeTest {
     for (const auto& pair : expected_dims_) {
       auto out = outs_[pair.first][0];
       ASSERT_EQ(pair.second,
+<<<<<<< HEAD
                 out->MutableVar()->GetMutable<phi::DenseTensor>()->dims());
+=======
+                out->MutableVar()->GetMutable<framework::LoDTensor>()->dims());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 

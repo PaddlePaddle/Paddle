@@ -79,7 +79,11 @@ class IterableDatasetWrapper {
       tensors_.emplace_back();
       for (auto &var_name : slots_) {
         auto *var = scopes_.back()->Var(var_name);
+<<<<<<< HEAD
         auto *t = var->GetMutable<phi::DenseTensor>();
+=======
+        auto *t = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         tensors_.back().emplace_back(t);
       }
     }
@@ -113,7 +117,11 @@ class IterableDatasetWrapper {
     exhaustive_num_ = 0;
   }
 
+<<<<<<< HEAD
   std::vector<std::unordered_map<std::string, phi::DenseTensor>> Next() {
+=======
+  std::vector<std::unordered_map<std::string, framework::LoDTensor>> Next() {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         is_started_,
         true,
@@ -121,7 +129,11 @@ class IterableDatasetWrapper {
             "Reader must be started when getting next batch data."));
     size_t device_num = places_.size();
 
+<<<<<<< HEAD
     std::vector<std::unordered_map<std::string, phi::DenseTensor>> result(
+=======
+    std::vector<std::unordered_map<std::string, framework::LoDTensor>> result(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         device_num);
 
     size_t read_num = 0;
@@ -175,7 +187,11 @@ class IterableDatasetWrapper {
   }
 
  private:
+<<<<<<< HEAD
   bool IsValidLoDTensor(const phi::DenseTensor &tensor) const {
+=======
+  bool IsValidLoDTensor(const framework::LoDTensor &tensor) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto &lod = tensor.lod();
     PADDLE_ENFORCE_LE(lod.size(),
                       1,
@@ -202,7 +218,11 @@ class IterableDatasetWrapper {
   size_t exhaustive_num_;
 
   std::vector<std::unique_ptr<framework::Scope>> scopes_;
+<<<<<<< HEAD
   std::vector<std::vector<phi::DenseTensor *>> tensors_;
+=======
+  std::vector<std::vector<framework::LoDTensor *>> tensors_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool is_started_{false};
 };
 
@@ -290,9 +310,12 @@ void BindDataset(py::module *m) {
       .def("get_memory_data_size",
            &framework::Dataset::GetMemoryDataSize,
            py::call_guard<py::gil_scoped_release>())
+<<<<<<< HEAD
       .def("get_epoch_finish",
            &framework::Dataset::GetEpochFinish,
            py::call_guard<py::gil_scoped_release>())
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def("get_pv_data_size",
            &framework::Dataset::GetPvDataSize,
            py::call_guard<py::gil_scoped_release>())
@@ -371,12 +394,15 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_gpu_graph_mode",
            &framework::Dataset::SetGpuGraphMode,
+<<<<<<< HEAD
            py::call_guard<py::gil_scoped_release>())
       .def("set_pass_id",
            &framework::Dataset::SetPassId,
            py::call_guard<py::gil_scoped_release>())
       .def("get_pass_id",
            &framework::Dataset::GetPassID,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")

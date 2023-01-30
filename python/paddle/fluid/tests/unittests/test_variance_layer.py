@@ -13,22 +13,34 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
+=======
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
 def ref_var(x, axis=None, unbiased=True, keepdim=False):
     ddof = 1 if unbiased else 0
     if isinstance(axis, int):
+<<<<<<< HEAD
         axis = (axis,)
+=======
+        axis = (axis, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if axis is not None:
         axis = tuple(axis)
     return np.var(x, axis=axis, ddof=ddof, keepdims=keepdim)
 
 
 class TestVarAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.dtype = 'float64'
         self.shape = [1, 3, 4, 10]
@@ -37,11 +49,17 @@ class TestVarAPI(unittest.TestCase):
         self.unbiased = True
         self.set_attrs()
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+<<<<<<< HEAD
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        self.place=paddle.CUDAPlace(0) \
+            if paddle.fluid.core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_attrs(self):
         pass
@@ -71,36 +89,64 @@ class TestVarAPI(unittest.TestCase):
 
 
 class TestVarAPI_dtype(TestVarAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.dtype = 'float32'
 
 
 class TestVarAPI_axis_int(TestVarAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.axis = 2
 
 
 class TestVarAPI_axis_list(TestVarAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.axis = [1, 2]
 
 
 class TestVarAPI_axis_tuple(TestVarAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.axis = (1, 3)
 
 
 class TestVarAPI_keepdim(TestVarAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.keepdim = False
 
 
 class TestVarAPI_unbiased(TestVarAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.unbiased = False
 
 
 class TestVarAPI_alias(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_alias(self):
         paddle.disable_static()
         x = paddle.to_tensor(np.array([10, 12], 'float32'))
@@ -113,6 +159,10 @@ class TestVarAPI_alias(unittest.TestCase):
 
 
 class TestVarError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [2, 3, 4], 'int32')

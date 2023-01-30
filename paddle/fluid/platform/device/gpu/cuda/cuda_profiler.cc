@@ -17,10 +17,16 @@
 namespace paddle {
 namespace platform {
 
+<<<<<<< HEAD
 void CudaProfilerInit(const std::string& output_file,
                       const std::string& output_mode,
                       const std::string& config_file) {
 #if CUDA_VERSION < 11000
+=======
+void CudaProfilerInit(std::string output_file,
+                      std::string output_mode,
+                      std::string config_file) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv",
                  platform::errors::InvalidArgument(
                      "Unsupported cuda profiler output mode, expect `kvp` or "
@@ -29,7 +35,10 @@ void CudaProfilerInit(const std::string& output_file,
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode));
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void CudaProfilerStart() { PADDLE_ENFORCE_GPU_SUCCESS(cudaProfilerStart()); }
@@ -37,6 +46,7 @@ void CudaProfilerStart() { PADDLE_ENFORCE_GPU_SUCCESS(cudaProfilerStart()); }
 void CudaProfilerStop() { PADDLE_ENFORCE_GPU_SUCCESS(cudaProfilerStop()); }
 
 #ifndef _WIN32
+<<<<<<< HEAD
 void CudaNvtxRangePush(const std::string& name, const NvtxRangeColor color) {
   nvtxEventAttributes_t eventAttrib;
   eventAttrib.version = NVTX_VERSION;
@@ -47,6 +57,10 @@ void CudaNvtxRangePush(const std::string& name, const NvtxRangeColor color) {
   eventAttrib.message.ascii = name.c_str();
 
   dynload::nvtxRangePushEx(&eventAttrib);
+=======
+void CudaNvtxRangePush(std::string name) {
+  dynload::nvtxRangePushA(name.c_str());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void CudaNvtxRangePop() { dynload::nvtxRangePop(); }

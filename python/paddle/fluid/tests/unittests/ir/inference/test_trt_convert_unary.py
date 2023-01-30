@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -21,28 +22,50 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import unittest
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+<<<<<<< HEAD
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8200:
             if program_config.ops[0].type == "round":
                 return False
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return True
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
+<<<<<<< HEAD
             if dims == 2:
+=======
+            if dims == 1:
+                return np.random.random([32]).astype(np.float32)
+            elif dims == 2:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return np.random.random([3, 32]).astype(np.float32)
             elif dims == 3:
                 return np.random.random([3, 32, 32]).astype(np.float32)
             else:
                 return np.random.random([batch, 3, 32, 32]).astype(np.float32)
 
+<<<<<<< HEAD
         for dims in [2, 3, 4]:
+=======
+        for dims in [1, 2, 3, 4]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for batch in [1, 4]:
                 for op_type in [
                     "exp",
@@ -58,6 +81,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "acos",
                     "atan",
                     "asinh",
+<<<<<<< HEAD
                     "acosh",
                     "atanh",
                     "ceil",
@@ -69,6 +93,13 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 ]:
                     self.dims = dims
                     self.op_type = op_type
+=======
+                    "atanh",
+                    "ceil",
+                    "floor",
+                ]:
+                    self.dims = dims
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     dics = [{}]
 
                     ops_config = [
@@ -129,6 +160,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+<<<<<<< HEAD
             ver = paddle_infer.get_trt_compile_version()
             if self.dims == 1 or (
                 self.op_type == "sign"
@@ -137,6 +169,9 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     or ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200
                 )
             ):
+=======
+            if self.dims == 1:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return 0, 3
             return 1, 2
 
@@ -149,6 +184,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
+<<<<<<< HEAD
         ), 1e-4
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -283,11 +319,17 @@ class TrtConvertLogicalNotTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
+<<<<<<< HEAD
         ), (1e-3, 1e-3)
+=======
+        ), 1e-3
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -298,6 +340,7 @@ class TrtConvertLogicalNotTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
+<<<<<<< HEAD
         ), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
@@ -305,6 +348,11 @@ class TrtConvertLogicalNotTest(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
+=======
+        ), 1e-3
+
+    def test(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.run_test()
 
 

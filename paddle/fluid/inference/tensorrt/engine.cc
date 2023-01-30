@@ -75,11 +75,16 @@ void TensorRTEngine::InitNetwork() {
   }
 
   infer_builder_config_.reset(infer_builder_->createBuilderConfig());
+<<<<<<< HEAD
+=======
+  // optim_profile_ = infer_builder_->createOptimizationProfile();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   optim_profiles_.resize(max_profile_num_);
   for (int i = 0; i < max_profile_num_; i++)
     optim_profiles_[i] = infer_builder_->createOptimizationProfile();
 }
 
+<<<<<<< HEAD
 nvinfer1::IExecutionContext *TensorRTEngine::context() {
   std::unique_lock<std::mutex> lock(mutex_);
   if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
@@ -114,11 +119,14 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
   return infer_context_[predictor_id_per_thread].get();
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void TensorRTEngine::Execute(int batch_size,
                              std::vector<void *> *buffers,
                              cudaStream_t stream) {
   freshDeviceId();
   auto infer_context = context();
+<<<<<<< HEAD
   if (context_memory_sharing_) {
     void *context_memory{nullptr};
     context_memory =
@@ -129,6 +137,8 @@ void TensorRTEngine::Execute(int batch_size,
                 phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
     infer_context->setDeviceMemory(context_memory);
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (!with_dynamic_shape()) {
     infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
@@ -148,6 +158,7 @@ void TensorRTEngine::FreezeNetwork() {
                           platform::errors::InvalidArgument(
                               "Call InitNetwork first to initialize network."));
   // build engine.
+<<<<<<< HEAD
   if (!with_dynamic_shape_) {
     infer_builder_->setMaxBatchSize(max_batch_);
   }
@@ -157,6 +168,11 @@ void TensorRTEngine::FreezeNetwork() {
 #else
   infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
 #endif
+=======
+  infer_builder_->setMaxBatchSize(max_batch_);
+  infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
@@ -209,6 +225,21 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
+<<<<<<< HEAD
+=======
+  // If model is mixed precision, then we should cast all float output to
+  // float32 precision. Otherwise, we can not confirm the output precision of
+  // the trt engine.
+  if (model_precision_ != phi::DataType::FLOAT32) {
+    for (int i = 0; i < network()->getNbOutputs(); ++i) {
+      network()->getOutput(i)->setAllowedFormats(
+          static_cast<nvinfer1::TensorFormats>(
+              1 << static_cast<int>(nvinfer1::TensorFormat::kLINEAR)));
+      network()->getOutput(i)->setType(nvinfer1::DataType::kFLOAT);
+    }
+  }
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (use_dla_) {
     if (!enable_int8 && !enable_fp16) {
       LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
@@ -338,12 +369,15 @@ void TensorRTEngine::FreezeNetwork() {
     infer_context_.clear();
     cur_profile_num_ = 0;
   }
+<<<<<<< HEAD
   // for engine context memory sharing
   if (context_memory_sharing_) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   GetEngineInfo();
 }
@@ -412,6 +446,7 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
                         name));
   network()->markOutput(*output);
 }
+<<<<<<< HEAD
 
 void TensorRTEngine::DeclareOutput(const std::string &name,
                                    nvinfer1::DataType dtype) {
@@ -420,6 +455,8 @@ void TensorRTEngine::DeclareOutput(const std::string &name,
   output->setType(dtype);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void TensorRTEngine::DeleteITensor(const std::string &name,
                                    nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE_NOT_NULL(
@@ -448,11 +485,15 @@ void TensorRTEngine::SetITensor(const std::string &name,
   itensor_map_[name] = tensor;
 }
 
+<<<<<<< HEAD
 nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name,
                                               bool scalar) {
   if (scalar) {
     return ConvertWeight2ITensor(name, true);
   }
+=======
+nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (itensor_map_.count(name)) {
     return itensor_map_[name];
   } else {
@@ -464,7 +505,11 @@ nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name,
 // For cases when input is not middle-tensor , but persistable tensor
 // you should call this.
 nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
+<<<<<<< HEAD
     const std::string &name, bool scalar) {
+=======
+    const std::string &name) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto *var_v = scope_->FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
       var_v,
@@ -472,7 +517,11 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
                                  "tensor, but there is no "
                                  "persistable variable called %s in scope.",
                                  name));
+<<<<<<< HEAD
   auto *var_t = var_v->GetMutable<phi::DenseTensor>();
+=======
+  auto *var_t = var_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto weight = this->GetTrtWeight(name, *var_t);
 
   // Now we have create weights, then we need create a itensor
@@ -490,6 +539,7 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
       trt_in_shape.d[i] = trt_in_shape.d[i + 1];
     }
   }
+<<<<<<< HEAD
   if (scalar) {
     trt_in_shape.nbDims = 0;
     trt_in_shape.d[0] = var_dims[0];
@@ -499,6 +549,11 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
   if (!scalar) {
     this->SetITensor(name, layer->getOutput(0));
   }
+=======
+  nvinfer1::ILayer *layer =
+      TRT_ENGINE_ADD_LAYER(this, Constant, trt_in_shape, weight.get());
+  this->SetITensor(name, layer->getOutput(0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return layer->getOutput(0);
 }
 
@@ -507,6 +562,7 @@ std::unordered_map<std::string, nvinfer1::ITensor *>
   return &itensor_map_;
 }
 
+<<<<<<< HEAD
 void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
   freshDeviceId();
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
@@ -556,13 +612,19 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
   GetEngineInfo();
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
   runtime_batch_ = batch_size;
 }
 
 // Note: Only for support plugin.
 TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
+<<<<<<< HEAD
     const std::string &name, const phi::DenseTensor &weight_tensor) {
+=======
+    const std::string &name, const framework::Tensor &weight_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -574,41 +636,68 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
+<<<<<<< HEAD
   weight_map[name_with_suffix].reset(new phi::DenseTensor());
+=======
+  weight_map[name_with_suffix].reset(new framework::Tensor());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
   weight.SetCount(weight_tensor.numel());
+<<<<<<< HEAD
 
   // if trt not support dtype, we need to cast to fp16.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
     phi::DenseTensor bf16_tensor;
+=======
+  weight.SetDataType(nvinfer1::DataType::kHALF);
+  // weight_tensor.dims().;
+
+  // if trt not support dtype, we need to cast to  fp16.
+  if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
+    framework::Tensor bf16_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(
         paddle::experimental::DataType::FLOAT16);
+<<<<<<< HEAD
+=======
+    weight_map[name_with_suffix]->Resize(weight_tensor.dims());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *fp16_data = weight_map[name_with_suffix]->mutable_data<float16>(
         platform::CPUPlace());
     auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp16_data[i] = static_cast<float16>(bf16_data[i]);
     }
+<<<<<<< HEAD
     weight.SetDataType(phi::DataType::FLOAT16);
     weight.SetValues(fp16_data);
   } else if (weight_tensor.dtype() == phi::DataType::FLOAT32) {
     phi::DenseTensor fp32_tensor;
+=======
+  } else if (weight_tensor.dtype() == phi::DataType::FLOAT32) {
+    framework::Tensor fp32_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     fp32_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp32_tensor);
     weight_map[name_with_suffix]->set_type(
         paddle::experimental::DataType::FLOAT16);
+<<<<<<< HEAD
+=======
+    weight_map[name_with_suffix]->Resize(weight_tensor.dims());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *fp16_data = weight_map[name_with_suffix]->mutable_data<float16>(
         platform::CPUPlace());
     auto *fp32_data = fp32_tensor.mutable_data<float>(platform::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp16_data[i] = static_cast<float16>(fp32_data[i]);
     }
+<<<<<<< HEAD
     weight.SetDataType(phi::DataType::FLOAT16);
     weight.SetValues(fp16_data);
   } else if (weight_tensor.dtype() == phi::DataType::INT64) {
@@ -632,13 +721,24 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     weight.SetDataType(weight_tensor.dtype());
     weight.SetValues(weight_map[name_with_suffix]->data());
   }
+=======
+  } else {
+    paddle::framework::TensorCopySync(
+        weight_tensor, cpu_place, weight_map[name_with_suffix].get());
+  }
+  weight.SetValues(weight_map[name_with_suffix]->data());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   name_suffix_counter += 1;
   return weight;
 }
 
 // Note: Only for support plugin.
 TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
+<<<<<<< HEAD
     const std::string &name, const phi::DenseTensor &weight_tensor) {
+=======
+    const std::string &name, const framework::Tensor &weight_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -650,41 +750,68 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
+<<<<<<< HEAD
   weight_map[name_with_suffix].reset(new phi::DenseTensor());
+=======
+  weight_map[name_with_suffix].reset(new framework::Tensor());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
   weight.SetCount(weight_tensor.numel());
+<<<<<<< HEAD
 
   // if trt not support dtype, we need to cast to fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
     phi::DenseTensor bf16_tensor;
+=======
+  weight.SetDataType(nvinfer1::DataType::kFLOAT);
+  // weight_tensor.dims().;
+
+  // if trt not support dtype, we need to cast to  fp32.
+  if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
+    framework::Tensor bf16_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(
         paddle::experimental::DataType::FLOAT32);
+<<<<<<< HEAD
+=======
+    weight_map[name_with_suffix]->Resize(weight_tensor.dims());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *fp32_data =
         weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
     auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(bf16_data[i]);
     }
+<<<<<<< HEAD
     weight.SetDataType(phi::DataType::FLOAT32);
     weight.SetValues(fp32_data);
   } else if (weight_tensor.dtype() == phi::DataType::FLOAT16) {
     phi::DenseTensor fp16_tensor;
+=======
+  } else if (weight_tensor.dtype() == phi::DataType::FLOAT16) {
+    framework::Tensor fp16_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     fp16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp16_tensor);
     weight_map[name_with_suffix]->set_type(
         paddle::experimental::DataType::FLOAT32);
+<<<<<<< HEAD
+=======
+    weight_map[name_with_suffix]->Resize(weight_tensor.dims());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *fp32_data =
         weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
     auto *fp16_data = fp16_tensor.mutable_data<float16>(platform::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(fp16_data[i]);
     }
+<<<<<<< HEAD
     weight.SetDataType(phi::DataType::FLOAT32);
     weight.SetValues(fp32_data);
   } else if (weight_tensor.dtype() == phi::DataType::INT64) {
@@ -708,12 +835,23 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     weight.SetDataType(weight_tensor.dtype());
     weight.SetValues(weight_map[name_with_suffix]->data());
   }
+=======
+  } else {
+    paddle::framework::TensorCopySync(
+        weight_tensor, cpu_place, weight_map[name_with_suffix].get());
+  }
+  weight.SetValues(weight_map[name_with_suffix]->data());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   name_suffix_counter += 1;
   return weight;
 }
 
 TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
+<<<<<<< HEAD
     const std::string &name, const phi::DenseTensor &weight_tensor) {
+=======
+    const std::string &name, const framework::Tensor &weight_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -726,18 +864,27 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
                         "twice in TRT OP converter.",
                         name_with_suffix));
 
+<<<<<<< HEAD
   if (weight_tensor.place() == PlaceType::kGPU ||
       weight_tensor.dtype() != phi::DataType::FLOAT32) {
     weight_map[name_with_suffix].reset(new phi::DenseTensor());
     weight_map[name_with_suffix]->Resize(weight_tensor.dims());
   }
+=======
+  weight_map[name_with_suffix].reset(new framework::Tensor());
+  weight_map[name_with_suffix]->Resize(weight_tensor.dims());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   TensorRTEngine::Weight weight;
   weight.SetCount(weight_tensor.numel());
 
   // if trt not support dtype, we need to cast to fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
+<<<<<<< HEAD
     phi::DenseTensor bf16_tensor;
+=======
+    framework::Tensor bf16_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
@@ -752,18 +899,28 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     weight.SetDataType(phi::DataType::FLOAT32);
     weight.SetValues(fp32_data);
   } else if (weight_tensor.dtype() == phi::DataType::INT64) {
+<<<<<<< HEAD
     phi::DenseTensor int64_tensor;
+=======
+    framework::Tensor int64_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(
         paddle::experimental::DataType::INT32);
+<<<<<<< HEAD
     auto *int32_data = weight_map[name_with_suffix]->mutable_data<int32_t>(
         platform::CPUPlace());
+=======
+    auto *int32_data =
+        weight_map[name_with_suffix]->mutable_data<int>(platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
     }
+<<<<<<< HEAD
     weight.SetDataType(phi::DataType::INT32);
     weight.SetValues(int32_data);
   } else {
@@ -776,6 +933,15 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
       weight.SetDataType(weight_tensor.dtype());
       weight.SetValues(weight_tensor.data());
     }
+=======
+    weight.SetDataType(phi::DataType::FLOAT32);
+    weight.SetValues(int32_data);
+  } else {
+    paddle::framework::TensorCopySync(
+        weight_tensor, cpu_place, weight_map[name_with_suffix].get());
+    weight.SetDataType(weight_tensor.dtype());
+    weight.SetValues(weight_map[name_with_suffix]->data());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   name_suffix_counter += 1;
@@ -825,7 +991,11 @@ void TensorRTEngine::GetEngineInfo() {
   LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
+<<<<<<< HEAD
   auto *infer_context = context();
+=======
+  auto infer_context = context();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   infer_inspector->setExecutionContext(infer_context);
   LOG(INFO) << infer_inspector->getEngineInformation(
       nvinfer1::LayerInformationFormat::kONELINE);

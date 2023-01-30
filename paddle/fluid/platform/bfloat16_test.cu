@@ -39,7 +39,11 @@ TEST(bfloat16, convert_float32_to_bfloat16_on_gpu) {
 TEST(bfloat16, assignment_operator_on_gpu) {
   // Assignment operator
   bfloat16 v_assign;
+<<<<<<< HEAD
   v_assign = bfloat16(1.0f).to_nv_bfloat16();
+=======
+  v_assign = nv_bfloat16(bfloat16(1.0f));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   EXPECT_EQ(v_assign.x, 0x3f80);
   v_assign = 0.33333;
   EXPECT_EQ(v_assign.x, 0x3eab);
@@ -54,9 +58,15 @@ TEST(bfloat16, convert_bfloat16_to_float32_on_gpu) {
 }
 
 TEST(bfloat16, lod_tensor_on_gpu) {
+<<<<<<< HEAD
   phi::DenseTensor src_tensor;
   phi::DenseTensor gpu_tensor;
   phi::DenseTensor dst_tensor;
+=======
+  framework::LoDTensor src_tensor;
+  framework::LoDTensor gpu_tensor;
+  framework::LoDTensor dst_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   bfloat16 *src_ptr =
       src_tensor.mutable_data<bfloat16>(phi::make_ddim({2, 2}), CPUPlace());

@@ -45,7 +45,11 @@ void TensorSetConstantXPU(phi::DenseTensor* tensor,
 
 template <typename T, typename Context, typename VType>
 void FullValueXPU(const Context& dev_ctx, DenseTensor* tensor, VType val) {
+<<<<<<< HEAD
   dev_ctx.template Alloc<T>(tensor);
+=======
+  tensor->mutable_data<T>(dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PD_VISIT_ALL_TYPES(tensor->dtype(), "FullValueXPU", ([&] {
                        TensorSetConstantXPU<VType, data_t>(

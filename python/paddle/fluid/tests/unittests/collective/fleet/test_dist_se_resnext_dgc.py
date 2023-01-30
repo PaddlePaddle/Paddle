@@ -12,15 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
 from test_dist_base import TestDistBase
+=======
+from __future__ import print_function
+import unittest
+from test_dist_base import TestDistBase
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistSeResnetNCCL2DGC(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -31,6 +42,7 @@ class TestDistSeResnetNCCL2DGC(TestDistBase):
     @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
         import paddle.fluid as fluid
+<<<<<<< HEAD
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -39,6 +51,13 @@ class TestDistSeResnetNCCL2DGC(TestDistBase):
                 check_error_log=True,
                 log_name=flag_name,
             )
+=======
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(os.path.abspath("../../dist_se_resnext.py"),
+                                  delta=30,
+                                  check_error_log=True,
+                                  log_name=flag_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

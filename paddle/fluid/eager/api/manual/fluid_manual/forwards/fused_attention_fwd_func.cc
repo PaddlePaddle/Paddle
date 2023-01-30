@@ -20,6 +20,11 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+<<<<<<< HEAD
+=======
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 std::tuple<paddle::experimental::Tensor,
            paddle::experimental::Tensor,
            paddle::experimental::Tensor,
@@ -572,6 +577,7 @@ fused_attention_dygraph_function(
       egr::EagerUtils::CheckAndRetainGrad(SoftmaxOut);
       grad_node->SetGradOutMeta(SoftmaxOut, 19);
 
+<<<<<<< HEAD
       if (AttnDropoutOut.initialized()) {
         auto AttnDropoutOut_accumulation_node =
             std::make_shared<egr::GradNodeAccumulation>(
@@ -583,6 +589,17 @@ fused_attention_dygraph_function(
         egr::EagerUtils::CheckAndRetainGrad(AttnDropoutOut);
         grad_node->SetGradOutMeta(AttnDropoutOut, 20);
       }
+=======
+      auto AttnDropoutOut_accumulation_node =
+          std::make_shared<egr::GradNodeAccumulation>(
+              p_autograd_AttnDropoutOut);
+      egr::EagerUtils::SetOutRankWithSlot(p_autograd_AttnDropoutOut, 0);
+      egr::EagerUtils::SetHistory(p_autograd_AttnDropoutOut,
+                                  AttnDropoutOut_accumulation_node);
+      AttnDropoutOut_accumulation_node->SetGradInMeta(AttnDropoutOut, 0);
+      egr::EagerUtils::CheckAndRetainGrad(AttnDropoutOut);
+      grad_node->SetGradOutMeta(AttnDropoutOut, 20);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       auto FMHAOut_accumulation_node =
           std::make_shared<egr::GradNodeAccumulation>(p_autograd_FMHAOut);

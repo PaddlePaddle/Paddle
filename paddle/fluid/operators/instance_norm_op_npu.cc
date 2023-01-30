@@ -18,18 +18,31 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename DeviceContext, typename T>
 class InstanceNormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto epsilon = ctx.Attr<float>("epsilon");
+<<<<<<< HEAD
     const auto* x = ctx.Input<phi::DenseTensor>("X");
     const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
     const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto* y = ctx.Output<phi::DenseTensor>("Y");
     auto* mean = ctx.Output<phi::DenseTensor>("SavedMean");
     auto* variance = ctx.Output<phi::DenseTensor>("SavedVariance");
+=======
+    const auto* x = ctx.Input<Tensor>("X");
+    const auto* scale = ctx.Input<Tensor>("Scale");
+    const auto* bias = ctx.Input<Tensor>("Bias");
+    auto* y = ctx.Output<Tensor>("Y");
+    auto* mean = ctx.Output<Tensor>("SavedMean");
+    auto* variance = ctx.Output<Tensor>("SavedVariance");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     dev_ctx.template Alloc<T>(y);
@@ -55,6 +68,7 @@ class InstanceNormNPUKernel : public framework::OpKernel<T> {
       }
     }
 
+<<<<<<< HEAD
     phi::DenseTensor tmp_x, tmp_y;
     tmp_x.ShareDataWith(*x);
 
@@ -63,6 +77,16 @@ class InstanceNormNPUKernel : public framework::OpKernel<T> {
     tmp_y.ShareDataWith(*y);
     tmp_y.Resize(phi::make_ddim(tmp_y_dims));
     tmp_y.set_layout(phi::DataLayout::NCDHW);
+=======
+    Tensor tmp_x, tmp_y;
+    tmp_x.ShareDataWith(*x);
+
+    tmp_x.Resize(phi::make_ddim(tmp_x_dims));
+    tmp_x.set_layout(paddle::framework::DataLayout::NCDHW);
+    tmp_y.ShareDataWith(*y);
+    tmp_y.Resize(phi::make_ddim(tmp_y_dims));
+    tmp_y.set_layout(paddle::framework::DataLayout::NCDHW);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     NpuOpRunner runner;
 

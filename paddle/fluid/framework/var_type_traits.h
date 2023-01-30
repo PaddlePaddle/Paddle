@@ -23,7 +23,10 @@
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/raw_tensor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
@@ -81,7 +84,11 @@ class BKCLCommunicator;
 
 namespace framework {
 class LoDRankTable;
+<<<<<<< HEAD
 class Scope;
+=======
+class ScopeBase;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class ReaderHolder;
 class Scope;
 }  // namespace framework
@@ -181,7 +188,11 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
+<<<<<<< HEAD
     phi::DenseTensor,
+=======
+    Tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     phi::SelectedRows,
     phi::SparseCooTensor,
     phi::SparseCsrTensor,
@@ -220,9 +231,13 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     float,
     Vocab,
     std::vector<int>,
+<<<<<<< HEAD
     std::vector<float>,
     std::vector<std::string>,
     RawTensor>;
+=======
+    std::vector<float>>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -245,7 +260,11 @@ struct VarTypeTrait {
 
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
+<<<<<<< HEAD
 REG_PROTO_VAR_TYPE_TRAIT(phi::DenseTensor, proto::VarType::LOD_TENSOR);
+=======
+REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 REG_PROTO_VAR_TYPE_TRAIT(phi::SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
 REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);

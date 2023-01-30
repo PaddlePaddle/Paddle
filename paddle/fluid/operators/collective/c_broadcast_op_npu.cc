@@ -27,13 +27,21 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
+<<<<<<< HEAD
     auto x = ctx.Input<phi::DenseTensor>("X");
+=======
+    auto x = ctx.Input<framework::LoDTensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
     HcclDataType dtype =
         platform::ToHCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
+<<<<<<< HEAD
     auto out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
@@ -65,10 +73,17 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     dev_ctx->Wait();
 
     if (out != x) {
+<<<<<<< HEAD
       framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
                             place,
                             *platform::DeviceContextPool::Instance().Get(place),
                             static_cast<phi::DenseTensor*>(out));
+=======
+      framework::TensorCopy(*static_cast<const framework::Tensor*>(x),
+                            place,
+                            *platform::DeviceContextPool::Instance().Get(place),
+                            static_cast<framework::Tensor*>(out));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     dev_ctx->Wait();
 

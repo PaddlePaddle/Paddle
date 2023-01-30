@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -21,11 +22,26 @@ from test_collective_multi_nodes import TestDistBase
 
 
 class TestDYgraphHybrid(TestDistBase):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_multi_nodes import TestDistBase
+
+import os
+
+
+class TestDYgraphHybrid(TestDistBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._trainers = 16
         self._init_env()
 
     def test_hybrid_dpppmp(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dygraph_hybrid_dpppmp.py", backend="nccl", need_envs=os.environ
         )
@@ -39,6 +55,21 @@ class TestDYgraphHybrid(TestDistBase):
         self.check_with_place(
             "dygraph_hybrid_fp16.py", backend="nccl", need_envs=os.environ
         )
+=======
+        self.check_with_place("dygraph_hybrid_dpppmp.py",
+                              backend="nccl",
+                              need_envs=os.environ)
+
+    def test_hybrid_recompute(self):
+        self.check_with_place("dygraph_hybrid_recompute.py",
+                              backend="nccl",
+                              need_envs=os.environ)
+
+    def test_hybrid_fp16(self):
+        self.check_with_place("dygraph_hybrid_fp16.py",
+                              backend="nccl",
+                              need_envs=os.environ)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

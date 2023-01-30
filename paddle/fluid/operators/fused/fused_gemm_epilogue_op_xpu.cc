@@ -22,6 +22,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -30,6 +35,7 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
+<<<<<<< HEAD
     const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
     const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
     const phi::DenseTensor* bias = ctx.Input<phi::DenseTensor>("Bias");
@@ -37,6 +43,14 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     phi::DenseTensor* reserve_space =
         ctx.Output<phi::DenseTensor>("ReserveSpace");
+=======
+    const Tensor* x = ctx.Input<Tensor>("X");
+    const Tensor* y = ctx.Input<Tensor>("Y");
+    const Tensor* bias = ctx.Input<Tensor>("Bias");
+
+    Tensor* out = ctx.Output<Tensor>("Out");
+    Tensor* reserve_space = ctx.Output<Tensor>("ReserveSpace");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
@@ -111,6 +125,7 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
+<<<<<<< HEAD
     const phi::DenseTensor* dout = ctx.Input<phi::DenseTensor>("DOut");
     const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
     const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
@@ -121,6 +136,17 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
     phi::DenseTensor* dx = ctx.Output<phi::DenseTensor>("DX");
     phi::DenseTensor* dy = ctx.Output<phi::DenseTensor>("DY");
     phi::DenseTensor* dbias = ctx.Output<phi::DenseTensor>("DBias");
+=======
+    const Tensor* dout = ctx.Input<Tensor>("DOut");
+    const Tensor* x = ctx.Input<Tensor>("X");
+    const Tensor* y = ctx.Input<Tensor>("Y");
+
+    const Tensor* reserve_space = ctx.Input<Tensor>("ReserveSpace");
+
+    Tensor* dx = ctx.Output<Tensor>("DX");
+    Tensor* dy = ctx.Output<Tensor>("DY");
+    Tensor* dbias = ctx.Output<Tensor>("DBias");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     std::string activation = "none";
     if (ctx.HasAttr("activation")) {

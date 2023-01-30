@@ -17,7 +17,10 @@ from .fused_transformer import fused_feedforward
 from .fused_transformer import fused_multi_transformer
 from .fused_matmul_bias import fused_matmul_bias, fused_linear
 from .fused_transformer import fused_bias_dropout_residual_layer_norm
+<<<<<<< HEAD
 from .fused_ec_moe import fused_ec_moe
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = [
     'fused_multi_head_attention',
@@ -26,5 +29,8 @@ __all__ = [
     'fused_matmul_bias',
     'fused_linear',
     'fused_bias_dropout_residual_layer_norm',
+<<<<<<< HEAD
     'fused_ec_moe',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

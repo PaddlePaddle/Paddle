@@ -15,9 +15,13 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+<<<<<<< HEAD
 #include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -33,6 +37,7 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X + Y"; }
 
   void AddInputX() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
@@ -44,6 +49,17 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
         "Y",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
         "should be int32, int64, float32, float64.");
+=======
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   std::string GetOpFuntionality() const override {
@@ -51,6 +67,7 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   }
 };
 
+<<<<<<< HEAD
 class ElementwiseAddGradCompositeOpMaker
     : public prim::GradCompositeOpMakerBase {
   using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
@@ -74,6 +91,8 @@ class ElementwiseAddGradCompositeOpMaker
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -116,6 +135,7 @@ class ElementwiseAddTripleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
+<<<<<<< HEAD
 REGISTER_OPERATOR(elementwise_add,
                   ::paddle::operators::ElementwiseOp,
                   ::paddle::operators::ElementwiseAddOpMaker,
@@ -127,6 +147,11 @@ REGISTER_OPERATOR(elementwise_add,
 
 namespace ops = paddle::operators;
 
+=======
+REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
+
+namespace ops = paddle::operators;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 REGISTER_OPERATOR(
     elementwise_add_grad,
     ops::ElementwiseOpGrad,

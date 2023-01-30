@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle.fluid.data_feeder as data_feeder
 import paddle.framework as framework
 from paddle.distributed.communication.group import (
@@ -34,12 +35,27 @@ def _reduce_in_dygraph(
     task = group.process_group.reduce(
         tensor, dst_rank_in_group, op_type, sync_op
     )
+=======
+import paddle.fluid.framework as framework
+from paddle.distributed.communication.group import _get_global_group
+from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
+
+
+def _reduce_in_dygraph(tensor, dst, op, group, sync_op, use_calc_stream):
+    op_type = _get_reduce_op(op, "reduce")
+    group = _get_global_group() if group is None else group
+    if use_calc_stream:
+        return group.process_group.reduce_on_calc_stream(tensor, dst, op_type)
+
+    task = group.process_group.reduce(tensor, dst, op_type, sync_op)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if sync_op:
         task.wait()
 
     return task
 
 
+<<<<<<< HEAD
 def _reduce_in_static_mode(
     tensor, dst_rank_in_group, op, group, sync_op, use_calc_stream
 ):
@@ -84,6 +100,14 @@ def reduce(
     sync_op=True,
     use_calc_stream=False,
 ):
+=======
+def reduce(tensor,
+           dst=0,
+           op=ReduceOp.SUM,
+           group=None,
+           sync_op=True,
+           use_calc_stream=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     Perform specific reduction (for example, sum, max) on a tensor across devices and send to the destintion device.
@@ -123,6 +147,7 @@ def reduce(
             # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
             # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
+<<<<<<< HEAD
     if _warn_cur_rank_not_in_group(group):
         return
 
@@ -144,3 +169,21 @@ def reduce(
         return _reduce_in_static_mode(
             tensor, dst, op, group, sync_op, use_calc_stream
         )
+=======
+    if group is not None and not group.is_member():
+        raise RuntimeError(
+            "The group should not be None and all ranks which invoke this operation should be the member of this group."
+        )
+
+    if not sync_op and use_calc_stream:
+        raise RuntimeError(
+            "use_calc_stream can only be true in sync op behavior.")
+
+    if framework.in_dygraph_mode():
+        return _reduce_in_dygraph(tensor, dst, op, group, sync_op,
+                                  use_calc_stream)
+
+    raise RuntimeError(
+        "paddle.distributed.stream.reduce is only supported in dygraph mode now."
+    )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

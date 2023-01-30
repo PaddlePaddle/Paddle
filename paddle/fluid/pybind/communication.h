@@ -26,7 +26,10 @@ namespace paddle {
 namespace pybind {
 
 void BindTCPStore(pybind11::module* m);
+<<<<<<< HEAD
 void BindCommContextManager(pybind11::module* m);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace pybind
 }  // namespace paddle

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -23,6 +24,18 @@ import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
 from paddle.incubate import asp as sparsity
 from paddle.incubate.asp import ASPHelper
+=======
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import unittest
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import os
+from paddle.static import sparsity
+from paddle.fluid.contrib.sparsity.asp import ASPHelper
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
@@ -34,6 +47,10 @@ paddle.enable_static()
 
 
 class TestFleetWithASPStatic(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -42,6 +59,7 @@ class TestFleetWithASPStatic(unittest.TestCase):
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
             input_x = paddle.static.data(
                 name="x", shape=[-1, 32], dtype='float32'
             )
@@ -57,6 +75,16 @@ class TestFleetWithASPStatic(unittest.TestCase):
                 reduction='none',
                 use_softmax=False,
             )
+=======
+            input_x = paddle.static.data(name="x",
+                                         shape=[-1, 32],
+                                         dtype='float32')
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+
+            fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
+            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -66,6 +94,7 @@ class TestFleetWithASPStatic(unittest.TestCase):
     def test_with_asp(self):
         fleet.init(is_collective=True)
         train_prog, startup_prog = fluid.Program(), fluid.Program()
+<<<<<<< HEAD
         avg_cost, strategy, input_x, input_y = self.net(
             train_prog, startup_prog
         )
@@ -82,6 +111,19 @@ class TestFleetWithASPStatic(unittest.TestCase):
             if paddle.fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        avg_cost, strategy, input_x, input_y = self.net(train_prog,
+                                                        startup_prog)
+
+        with fluid.program_guard(train_prog, startup_prog):
+            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
+            optimizer.minimize(avg_cost)
+
+        place = fluid.CUDAPlace(
+            0) if paddle.fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
@@ -94,6 +136,7 @@ class TestFleetWithASPStatic(unittest.TestCase):
 
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
+<<<<<<< HEAD
                 mat = np.array(
                     fluid.global_scope().find_var(param.name).get_tensor()
                 )
@@ -110,6 +153,26 @@ class TestFleetWithASPStatic(unittest.TestCase):
 
 
 class TestFleetWithASPAMPStatic(unittest.TestCase):
+=======
+                mat = np.array(fluid.global_scope().find_var(
+                    param.name).get_tensor())
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+
+
+class TestFleetWithASPAMPStatic(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -118,6 +181,7 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
             input_x = paddle.static.data(
                 name="x", shape=[-1, 32], dtype='float32'
             )
@@ -133,6 +197,16 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
                 reduction='none',
                 use_softmax=False,
             )
+=======
+            input_x = paddle.static.data(name="x",
+                                         shape=[-1, 32],
+                                         dtype='float32')
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+
+            fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
+            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -142,13 +216,19 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
     def test_with_asp_and_amp(self):
         fleet.init(is_collective=True)
         train_prog, startup_prog = fluid.Program(), fluid.Program()
+<<<<<<< HEAD
         avg_cost, strategy, input_x, input_y = self.net(
             train_prog, startup_prog
         )
+=======
+        avg_cost, strategy, input_x, input_y = self.net(train_prog,
+                                                        startup_prog)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         strategy.amp = True
 
         with fluid.program_guard(train_prog, startup_prog):
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+<<<<<<< HEAD
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )
@@ -159,6 +239,14 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
             if paddle.fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
+            optimizer.minimize(avg_cost)
+
+        place = fluid.CUDAPlace(
+            0) if paddle.fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
@@ -173,6 +261,7 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
+<<<<<<< HEAD
                 mat = np.array(
                     fluid.global_scope().find_var(param.name).get_tensor()
                 )
@@ -186,20 +275,43 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
                     self.assertTrue(
                         paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
+=======
+                mat = np.array(fluid.global_scope().find_var(
+                    param.name).get_tensor())
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_with_asp_and_pure_fp16(self):
         fleet.init(is_collective=True)
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         with paddle.static.amp.fp16_guard():
+<<<<<<< HEAD
             avg_cost, strategy, input_x, input_y = self.net(
                 train_prog, startup_prog
             )
+=======
+            avg_cost, strategy, \
+                input_x, input_y = self.net(train_prog,
+                                            startup_prog)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         strategy.amp = True
         strategy.amp_configs = {'use_pure_fp16': True}
 
         with fluid.program_guard(train_prog, startup_prog):
             with paddle.static.amp.fp16_guard():
                 optimizer = optimizer = paddle.optimizer.Momentum(
+<<<<<<< HEAD
                     learning_rate=0.01, multi_precision=True
                 )
                 optimizer = fleet.distributed_optimizer(
@@ -212,6 +324,15 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
             if paddle.fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+                    learning_rate=0.01, multi_precision=True)
+                optimizer = fleet.distributed_optimizer(optimizer,
+                                                        strategy=strategy)
+                optimizer.minimize(avg_cost)
+
+        place = fluid.CUDAPlace(
+            0) if paddle.fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
@@ -226,6 +347,7 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
+<<<<<<< HEAD
                 mat = np.array(
                     fluid.global_scope().find_var(param.name).get_tensor()
                 )
@@ -239,6 +361,22 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
                     self.assertTrue(
                         paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
+=======
+                mat = np.array(fluid.global_scope().find_var(
+                    param.name).get_tensor())
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

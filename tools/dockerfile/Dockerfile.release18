@@ -29,8 +29,13 @@ RUN apt-get update && \
 WORKDIR /usr/bin 
 COPY tools/dockerfile/build_scripts /build_scripts 
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
+<<<<<<< HEAD
 # # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
 # # So install a newer version here.
+=======
+# https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
+# So install a newer version here.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 RUN bash /build_scripts/install_patchelf.sh
 RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
 RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 

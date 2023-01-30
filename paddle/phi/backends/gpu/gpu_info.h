@@ -17,7 +17,10 @@ limitations under the License. */
 
 #include <array>
 #include <string>
+<<<<<<< HEAD
 #include <utility>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_types.h"
@@ -59,8 +62,11 @@ int GetCurrentDeviceId();
 //! Get the maximum GridDim size for GPU buddy allocator.
 std::array<int, 3> GetGpuMaxGridDimSize(int);
 
+<<<<<<< HEAD
 std::pair<int, int> GetGpuStreamPriorityRange();
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedDevices();
 
@@ -70,12 +76,15 @@ const gpuDeviceProp &GetDeviceProperties(int id);
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
 
+<<<<<<< HEAD
 //! Get the minimum chunk size for GPU buddy allocator.
 inline size_t GpuMinChunkSize() {
   // Allow to allocate the minimum chunk size is 256 bytes.
   return 1 << 8;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //! Copy memory from address src to dst asynchronously.
 void GpuMemcpyAsync(void *dst,
                     const void *src,

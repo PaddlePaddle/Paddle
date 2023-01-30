@@ -72,6 +72,7 @@ HOSTDEVICE inline Dim<sizeof...(Args)> make_dim(Args... idxes) {
 // Allows us to output a Dim
 template <int D>
 inline std::ostream& operator<<(std::ostream& os, const Dim<D>& d) {
+<<<<<<< HEAD
   if (D > 0) {
     os << d[0];
     for (int i = 1; i < D; ++i) {
@@ -81,6 +82,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dim<D>& d) {
     os << "";
   }
 
+=======
+  os << d[0];
+  for (int i = 1; i < D; ++i) {
+    os << ", " << d[i];
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return os;
 }
 

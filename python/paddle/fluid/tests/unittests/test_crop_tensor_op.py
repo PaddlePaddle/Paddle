@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 
 
 def crop(data, offsets, crop_shape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def indexOf(shape, index):
         result = []
         for dim in reversed(shape):
@@ -35,17 +47,26 @@ def crop(data, offsets, crop_shape):
         selected = True
         if len(index) == len(offsets):
             for j, offset in enumerate(offsets):
+<<<<<<< HEAD
                 selected = (
                     selected
                     and index[j] >= offset
                     and index[j] < crop_shape[j] + offset
                 )
+=======
+                selected = selected and index[j] >= offset and index[
+                    j] < crop_shape[j] + offset
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if selected:
                 result.append(value)
     return np.array(result).reshape(crop_shape)
 
 
 class TestCropTensorOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "crop_tensor"
         self.shape_by_input = False
@@ -58,7 +79,11 @@ class TestCropTensorOp(OpTest):
         if self.shape_by_input:
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
+<<<<<<< HEAD
                 'Shape': np.array(self.crop_shape).astype("int32"),
+=======
+                'Shape': np.array(self.crop_shape).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
         else:
             self.attrs['shape'] = self.crop_shape
@@ -89,13 +114,23 @@ class TestCropTensorOp(OpTest):
 
 
 class TestCase1(TestCropTensorOp):
+<<<<<<< HEAD
     def initTestCase(self):
         self.x_shape = 100
+=======
+
+    def initTestCase(self):
+        self.x_shape = (100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.crop_shape = [64]
         self.offsets = [13]
 
 
 class TestCase2(TestCropTensorOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (12, 24)
         self.crop_shape = [-1, 8]
@@ -103,6 +138,10 @@ class TestCase2(TestCropTensorOp):
 
 
 class TestCase3(TestCropTensorOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (4, 8, 16)
         self.crop_shape = [2, 2, 3]
@@ -111,6 +150,10 @@ class TestCase3(TestCropTensorOp):
 
 
 class TestCase4(TestCropTensorOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (8, 3, 6, 6)
         self.crop_shape = [-1, 3, -1, 4]
@@ -119,6 +162,10 @@ class TestCase4(TestCropTensorOp):
 
 
 class TestCase5(TestCropTensorOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 4, 5, 8, 8)
         self.crop_shape = [1, 1, 2, 4, 4]
@@ -127,6 +174,10 @@ class TestCase5(TestCropTensorOp):
 
 
 class TestCase6(TestCropTensorOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 2, 4, 4, 4, 2)
         self.crop_shape = [1, 1, 4, 2, 2, 2]
@@ -136,6 +187,10 @@ class TestCase6(TestCropTensorOp):
 
 
 class TestCropTensorOpTensorAttr(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "crop_tensor"
         self.OffsetsTensor = False
@@ -147,24 +202,40 @@ class TestCropTensorOpTensorAttr(OpTest):
         if self.ShapeTensor:
             shape_tensor = []
             for index, ele in enumerate(self.crop_shape):
+<<<<<<< HEAD
                 shape_tensor.append(
                     ("x" + str(index), np.ones((1)).astype('int32') * ele)
                 )
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
                 'ShapeTensor': shape_tensor,
+=======
+                shape_tensor.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
+            self.inputs = {
+                'X': np.random.random(self.x_shape).astype("float64"),
+                'ShapeTensor': shape_tensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.attrs['shape'] = self.shape_attr
 
         if self.OffsetsTensor:
             offsets_tensor = []
             for index, ele in enumerate(self.offsets):
+<<<<<<< HEAD
                 offsets_tensor.append(
                     ("x" + str(index), np.ones((1)).astype('int32') * ele)
                 )
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
                 'OffsetsTensor': offsets_tensor,
+=======
+                offsets_tensor.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
+            self.inputs = {
+                'X': np.random.random(self.x_shape).astype("float64"),
+                'OffsetsTensor': offsets_tensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.attrs['offsets'] = self.offsets_attr
 
@@ -190,6 +261,10 @@ class TestCropTensorOpTensorAttr(OpTest):
 
 
 class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [-1, -1, 3]
@@ -198,6 +273,10 @@ class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorOpTensorAttrCase2(TestCropTensorOpTensorAttr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (4, 8, 16, 8)
         self.crop_shape = [2, 2, 3, 4]
@@ -206,6 +285,10 @@ class TestCropTensorOpTensorAttrCase2(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorOpTensorAttrCase3(TestCropTensorOpTensorAttr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [2, 2, 3]
@@ -216,6 +299,10 @@ class TestCropTensorOpTensorAttrCase3(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [2, 2, 3]
@@ -226,6 +313,10 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorException(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_exception(self):
         input1 = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
         input2 = fluid.data(name="input2", shape=[2, 3, 6, 6], dtype="float16")
@@ -248,6 +339,7 @@ class TestCropTensorException(unittest.TestCase):
             out = paddle.crop(input1, shape=[2, 2, 3, 3], offsets=0)
 
         def attr_offsets_dtype():
+<<<<<<< HEAD
             out = paddle.crop(
                 input1, shape=[2, 2, 3, 3], offsets=[0, 1.0, 0, 0]
             )
@@ -256,6 +348,16 @@ class TestCropTensorException(unittest.TestCase):
             out = paddle.crop(
                 input1, shape=[2, 2, 3, 3], offsets=[0, -1, offset, 0]
             )
+=======
+            out = paddle.crop(input1,
+                              shape=[2, 2, 3, 3],
+                              offsets=[0, 1.0, 0, 0])
+
+        def attr_offsets_value():
+            out = paddle.crop(input1,
+                              shape=[2, 2, 3, 3],
+                              offsets=[0, -1, offset, 0])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def input_dtype():
             out = paddle.crop(input2, shape=[2, 2, 3, 3])
@@ -271,5 +373,9 @@ class TestCropTensorException(unittest.TestCase):
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD
+=======
+    import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle.enable_static()
     unittest.main()

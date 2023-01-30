@@ -34,7 +34,11 @@ struct DivScalarFunctor {
 };
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void DivScalarCooKernel(const Context& dev_ctx,
+=======
+void DivCooScalarKernel(const Context& dev_ctx,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         const SparseCooTensor& x,
                         float scalar,
                         SparseCooTensor* out) {
@@ -47,7 +51,11 @@ void DivScalarCooKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void DivScalarCsrKernel(const Context& dev_ctx,
+=======
+void DivCsrScalarKernel(const Context& dev_ctx,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         const SparseCsrTensor& x,
                         float scalar,
                         SparseCsrTensor* out) {
@@ -99,6 +107,7 @@ PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(abs, Abs)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(pow, Pow)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(scale, Scale)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(expm1, Expm1)
+<<<<<<< HEAD
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6_raw, Relu6Raw)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
@@ -107,15 +116,31 @@ PD_REGISTER_KERNEL(divide_scalar_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::DivScalarCooKernel,
+=======
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
+
+PD_REGISTER_KERNEL(divide_coo_scalar,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::DivCooScalarKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(divide_scalar_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::DivScalarCsrKernel,
+=======
+PD_REGISTER_KERNEL(divide_csr_scalar,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::DivCsrScalarKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);

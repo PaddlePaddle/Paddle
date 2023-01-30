@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import types
 import unittest
 
@@ -19,6 +20,22 @@ from paddle.jit.dy2static.utils import index_in_list, is_paddle_func
 
 
 class TestIndexInList(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import types
+import unittest
+
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
+
+from test_program_translator import get_source_code
+
+
+class TestIndexInList(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_index_in_list(self):
         list_to_test = [1, 2, 3, 4, 5]
         self.assertEqual(index_in_list(list_to_test, 4), 3)
@@ -35,7 +52,12 @@ def dyfunc_assign(input):
     [x, y] = m, n = z
 
 
+<<<<<<< HEAD
 class StaticCode:
+=======
+class StaticCode():
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def dyfunc_assign(input):
         b = 1
         a = b
@@ -50,6 +72,10 @@ class StaticCode:
 
 
 class TestIsPaddle(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def fake_module(self):
         return types.ModuleType('paddlenlp')
 

@@ -15,15 +15,26 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename DeviceContext, typename T>
 class ROIAlignNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* X = ctx.Input<phi::DenseTensor>("X");              // (B,C,H,W）
     auto* ROIs = ctx.Input<phi::DenseTensor>("ROIs");        // (N，4）
     auto* ROIsNum = ctx.Input<phi::DenseTensor>("RoisNum");  // [0 1 1 2 2 2]
     auto* Out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* X = ctx.Input<framework::Tensor>("X");              // (B,C,H,W）
+    auto* ROIs = ctx.Input<framework::Tensor>("ROIs");        // (N，4）
+    auto* ROIsNum = ctx.Input<framework::Tensor>("RoisNum");  // [0 1 1 2 2 2]
+    auto* Out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Out->mutable_data<T>(ctx.GetPlace());
 
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
@@ -53,7 +64,11 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     int dtype =
         static_cast<int>(ConvertToNpuDtype(framework::proto::VarType::FP32));
     framework::NPUAttributeMap attr_cast = {{"dst_type", dtype}};
+<<<<<<< HEAD
     phi::DenseTensor ROIsNum_fp(ROIs->dtype());
+=======
+    Tensor ROIsNum_fp(ROIs->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ROIsNum_fp.Resize(phi::make_ddim({ROIs->dims()[0], 1}));
     ROIsNum_fp.mutable_data<T>(ctx.GetPlace());
 
@@ -62,12 +77,20 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     runner_c.Run(stream);
 
     // concate to make (N, 5)
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> x_list;
+=======
+    std::vector<paddle::framework::Tensor> x_list;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_list.push_back(ROIsNum_fp);
     x_list.push_back(*ROIs);
     auto axis = 1;
     // output of concate
+<<<<<<< HEAD
     phi::DenseTensor ROIs_N5(ROIs->dtype());
+=======
+    Tensor ROIs_N5(ROIs->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ROIs_N5.Resize(phi::make_ddim({ROIs->dims()[0], 5}));
     ROIs_N5.mutable_data<T>(ctx.GetPlace());
 
@@ -94,10 +117,18 @@ template <typename T>
 class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -135,10 +166,17 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
             "ROIAlignGradNPU only support ROIs type equaled to FP32."));
 
     // Cast RoisNum to fp32 tensor
+<<<<<<< HEAD
     auto* RoisNum = ctx.Input<phi::DenseTensor>("RoisNum");
     phi::DenseTensor ROIs_N5;
     ROIs_N5.mutable_data<float>({rois_num, 5}, place);
     phi::DenseTensor ROIsNum_fp;
+=======
+    auto* RoisNum = ctx.Input<framework::Tensor>("RoisNum");
+    Tensor ROIs_N5;
+    ROIs_N5.mutable_data<float>({rois_num, 5}, place);
+    Tensor ROIsNum_fp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ROIsNum_fp.mutable_data<T>(RoisNum->dims(), place);  // shape = [rois_num]
     int nputype_fp32 =
         static_cast<int>(ConvertToNpuDtype(framework::proto::VarType::FP32));
@@ -148,7 +186,11 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     ROIsNum_fp.Resize({rois_num, 1});
 
     // Combine *ROIsNum with ROIs to get new ROIs
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> x_list;
+=======
+    std::vector<paddle::framework::Tensor> x_list;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_list.push_back(ROIsNum_fp);
     x_list.push_back(*rois);
     const auto& runner_concat = NpuOpRunner(
@@ -160,7 +202,11 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     //  function
 #if (CANN_VERSION_CODE < 504000)
     std::vector<float> vec_dlt = {0, 0, 0, -1.0f, -1.0f};
+<<<<<<< HEAD
     phi::DenseTensor tsr_dlt;
+=======
+    Tensor tsr_dlt;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tsr_dlt.mutable_data<float>({5}, place);
     framework::TensorFromVector<float>(vec_dlt, ctx.device_context(), &tsr_dlt);
     ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();

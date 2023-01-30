@@ -19,7 +19,10 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+<<<<<<< HEAD
 #include "paddle/fluid/inference/analysis/pass_result_info.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -222,6 +225,7 @@ void MakeSimpleReusePlan(
   }
 }
 
+<<<<<<< HEAD
 // Remove the inplace operation from the plan because it does not support memory
 // reuse
 void DelInplaceOpFromPlan(
@@ -267,6 +271,8 @@ void DelInplaceOpFromPlan(
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // NOTE The optimized opdesc doesn't match ir::Graph.
 void UpdateOpDescsByReuse(
     Graph* graph,
@@ -356,7 +362,11 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   // mapping table.
   if (!argument->enable_memory_optim()) return;
   // Because of pass is a singleton, graph can not be member
+<<<<<<< HEAD
   // variables，otherwise, errors will be caused under multithreading
+=======
+  // variables，otherwise，errors will be caused under multithreading
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // conditions.
   auto graph = argument->main_graph_ptr();
 
@@ -369,12 +379,16 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   CollectLifeCycle(graph, &lifecycles, sort_kind);
   CollectVarMemorySize(graph, &space_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
+<<<<<<< HEAD
   DelInplaceOpFromPlan(graph, &node2cluster, sort_kind);
 
   auto* pass_res_info = PassResultInfoForRuntime::Instance();
   pass_res_info->Set(
       argument->root_predictor_id(), "memory_optimize_pass", node2cluster);
 
+=======
+  UpdateOpDescsByReuse(graph, node2cluster, sort_kind);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return;
 }
 

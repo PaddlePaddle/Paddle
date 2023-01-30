@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,6 +24,27 @@ import paddle.distributed as dist
 class TestCollectiveBatchIsendIrecv(unittest.TestCase):
     def setUp(self):
         dist.init_parallel_env()
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+
+import paddle
+import numpy as np
+import random
+import paddle.distributed as dist
+import paddle.fluid as fluid
+import paddle.distributed.fleet as fleet
+from paddle import framework
+
+
+class TestCollectiveBatchIsendIrecv(unittest.TestCase):
+
+    def setUp(self):
+        dist.init_parallel_env()
+        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_collective_batch_isend_irecv(self):
         rank = dist.get_rank()
@@ -32,9 +54,14 @@ class TestCollectiveBatchIsendIrecv(unittest.TestCase):
         # paddle.tensor([1, 2])  # Rank-1
         recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
         send_op = dist.P2POp(dist.isend, send_t, (rank + 1) % world_size)
+<<<<<<< HEAD
         recv_op = dist.P2POp(
             dist.irecv, recv_t, (rank - 1 + world_size) % world_size
         )
+=======
+        recv_op = dist.P2POp(dist.irecv, recv_t,
+                             (rank - 1 + world_size) % world_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         tasks = dist.batch_isend_irecv([send_op, recv_op])
 
         for task in tasks:

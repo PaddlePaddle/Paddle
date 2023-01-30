@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+from __future__ import division
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from .. import core
 
 __all__ = [
+<<<<<<< HEAD
     "Sampler",
     "SequenceSampler",
     "RandomSampler",
@@ -24,6 +31,13 @@ __all__ = [
 
 
 class Sampler:
+=======
+    "Sampler", "SequenceSampler", "RandomSampler", "WeightedRandomSampler"
+]
+
+
+class Sampler(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     An abstract class to encapsulate methods and behaviors of samplers.
 
@@ -47,20 +61,34 @@ class Sampler:
         Sampler: an iterable object for sample indices iterating
 
     Examples:
+<<<<<<< HEAD
 
         .. code-block:: python
 
+=======
+        
+        .. code-block:: python
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             from paddle.io import Dataset, Sampler
 
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __len__(self):
                     return self.num_samples
 
@@ -73,7 +101,11 @@ class Sampler:
 
                 def __len__(self):
                     return len(self.data_source)
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sampler = MySampler(data_source=RandomDataset(100))
 
             for index in sampler:
@@ -110,18 +142,30 @@ class SequenceSampler(Sampler):
     Examples:
 
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             from paddle.io import Dataset, SequenceSampler
 
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __len__(self):
                     return self.num_samples
 
@@ -151,6 +195,7 @@ class RandomSampler(Sampler):
 
     Args:
         data_source(Dataset): dataset to sample, this could be an
+<<<<<<< HEAD
                 instance of :ref:`api_paddle_io_Dataset` or :ref:`api_paddle_io_IterableDataset` or other Python
                 object which implemented :code:`__len__` to get indices as the range of :code:`dataset` length. Default None.
         replacement(bool, optional): If False, sample the whole dataset, If True,
@@ -161,22 +206,46 @@ class RandomSampler(Sampler):
 
     Returns:
         RandomSampler: a Sampler yield sample index randomly.
+=======
+                instance of :code:`paddle.io.Dataset` other Python
+                object which implemented :code:`__len__`.
+        replacement(bool): If False, sample the whole dataset, If False,
+                set :attr:`num_samples` for how many sample to draw. Default False.
+        num_samples(int): set sample number to draw if :attr:`replacement`
+                is True. Default None.
+        generator(Generator): specify a generator to sample the data source. Default None
+        
+    Returns:
+        Sampler: a Sampler yield sample index randomly
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             from paddle.io import Dataset, RandomSampler
 
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __len__(self):
                     return self.num_samples
 
@@ -185,21 +254,37 @@ class RandomSampler(Sampler):
             for index in sampler:
                 print(index)
 
+<<<<<<< HEAD
     """
 
     def __init__(
         self, data_source, replacement=False, num_samples=None, generator=None
     ):
+=======
+    see `paddle.io.Sampler`
+    """
+
+    def __init__(self,
+                 data_source,
+                 replacement=False,
+                 num_samples=None,
+                 generator=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.data_source = data_source
         self.replacement = replacement
         self._num_samples = num_samples
         self.generator = generator
 
         if not isinstance(self.replacement, bool):
+<<<<<<< HEAD
             raise TypeError(
                 "expect boolean value for replacement, but got "
                 "replacement={}".format(self.replacement)
             )
+=======
+            raise TypeError("expect boolean value for replacement, but got "
+                            "replacement={}".format(self.replacement))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self._num_samples is not None and not replacement:
             raise ValueError(
@@ -207,10 +292,15 @@ class RandomSampler(Sampler):
             )
 
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
+<<<<<<< HEAD
             raise ValueError(
                 "num_samples should be a positive integer, "
                 "but got num_samples={}".format(self.num_samples)
             )
+=======
+            raise ValueError("num_samples should be a positive integer, "
+                             "but got num_samples={}".format(self.num_samples))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def num_samples(self):
@@ -229,6 +319,7 @@ class RandomSampler(Sampler):
                 yield index
         else:
             if self.replacement:
+<<<<<<< HEAD
                 for index in np.random.choice(
                     np.arange(n), self.num_samples, replace=True
                 ).tolist():
@@ -237,6 +328,15 @@ class RandomSampler(Sampler):
                 for index in np.random.choice(
                     np.arange(n), n, replace=False
                 ).tolist():
+=======
+                for index in np.random.choice(np.arange(n),
+                                              self.num_samples,
+                                              replace=True).tolist():
+                    yield index
+            else:
+                for index in np.random.choice(np.arange(n), n,
+                                              replace=False).tolist():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     yield index
 
     def __len__(self):
@@ -248,6 +348,7 @@ def _weighted_sample(weights, num_samples, replacement=True):
         weights = weights.numpy()
     if isinstance(weights, (list, tuple)):
         weights = np.array(weights)
+<<<<<<< HEAD
     assert isinstance(
         weights, np.ndarray
     ), "weights should be paddle.Tensor, numpy.ndarray, list or tuple"
@@ -264,13 +365,39 @@ def _weighted_sample(weights, num_samples, replacement=True):
             "weights positive value number should not "
             "less than num_samples when replacement=False"
         )
+=======
+    assert isinstance(weights, np.ndarray), \
+            "weights should be paddle.Tensor, numpy.ndarray, list or tuple"
+    assert len(weights.shape) <= 2, \
+            "weights should be a 1-D or 2-D array"
+    weights = weights.reshape((-1, weights.shape[-1]))
+    assert np.all(weights >= 0.), \
+            "weights should be positive value"
+    assert not np.any(weights == np.inf), \
+            "weights shoule not be INF"
+    assert not np.any(weights == np.nan), \
+            "weights shoule not be NaN"
+
+    non_zeros = np.sum(weights > 0., axis=1)
+    assert np.all(non_zeros > 0), \
+            "weights should have positive values"
+    if not replacement:
+        assert np.all(non_zeros >= num_samples), \
+            "weights positive value number should not " \
+            "less than num_samples when replacement=False"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     weights = weights / weights.sum(axis=1)
     rets = []
     for i in range(weights.shape[0]):
+<<<<<<< HEAD
         ret = np.random.choice(
             weights.shape[1], num_samples, replacement, weights[i]
         )
+=======
+        ret = np.random.choice(weights.shape[1], num_samples, replacement,
+                               weights[i])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         rets.append(ret)
     return np.array(rets)
 
@@ -286,14 +413,22 @@ class WeightedRandomSampler(Sampler):
                 should be numpy array, paddle.Tensor, list or tuple
         num_samples(int): set sample number to draw from sampler.
         replacement(bool): Whether to draw sample with replacements, default True
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         Sampler: a Sampler yield sample index randomly by given weights
 
     Examples:
 
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             from paddle.io import WeightedRandomSampler
 
             sampler = WeightedRandomSampler(weights=[0.1, 0.3, 0.5, 0.7, 0.2],
@@ -314,9 +449,14 @@ class WeightedRandomSampler(Sampler):
         self.replacement = replacement
 
     def __iter__(self):
+<<<<<<< HEAD
         idxs = _weighted_sample(
             self.weights, self.num_samples, self.replacement
         )
+=======
+        idxs = _weighted_sample(self.weights, self.num_samples,
+                                self.replacement)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return iter(idxs.reshape((-1)).tolist())
 
     def __len__(self):

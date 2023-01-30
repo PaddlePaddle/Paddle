@@ -12,14 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from collections.abc import Iterable
 
 import paddle
 from paddle.distribution import categorical, distribution
+=======
+import collections
+
+import paddle
+from paddle.distribution import categorical, distribution
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class Multinomial(distribution.Distribution):
     r"""
+<<<<<<< HEAD
     Multinomial distribution parameterized by :attr:`total_count` and
     :attr:`probs`.
 
@@ -28,6 +40,16 @@ class Multinomial(distribution.Distribution):
     of a k-sided die rolled n times. When k is 2 and n is 1, the multinomial is
     the bernoulli distribution, when k is 2 and n is grater than 1, it is the
     binomial distribution, when k is grater than 2 and n is 1, it is the
+=======
+    Multinomial distribution parameterized by :attr:`total_count` and 
+    :attr:`probs`.
+
+    In probability theory, the multinomial distribution is a generalization of 
+    the binomial distribution, it models the probability of counts for each side
+    of a k-sided die rolled n times. When k is 2 and n is 1, the multinomial is 
+    the bernoulli distribution, when k is 2 and n is grater than 1, it is the 
+    binomial distribution, when k is grater than 2 and n is 1, it is the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     categorical distribution.
 
     The probability mass function (PMF) for multinomial is
@@ -36,6 +58,7 @@ class Multinomial(distribution.Distribution):
 
         f(x_1, ..., x_k; n, p_1,...,p_k) = \frac{n!}{x_1!...x_k!}p_1^{x_1}...p_k^{x_k}
 
+<<<<<<< HEAD
     where, :math:`n` is number of trials, k is the number of categories,
     :math:`p_i` denote probability of a trial falling into each category,
     :math:`{\textstyle \sum_{i=1}^{k}p_i=1}, p_i \ge 0`, and :math:`x_i` denote
@@ -48,6 +71,20 @@ class Multinomial(distribution.Distribution):
             Probs value should between [0, 1], and sum to 1 along last axis. If
             the value over 1, it will be normalized to sum to 1 along the last
             axis.
+=======
+    where, :math:`n` is number of trials, k is the number of categories, 
+    :math:`p_i` denote probability of a trial falling into each category, 
+    :math:`{\textstyle \sum_{i=1}^{k}p_i=1}, p_i \ge 0`, and :math:`x_i` denote 
+    count of each category. 
+
+    Args:
+        total_count (int): Number of trials.
+        probs (Tensor): Probability of a trial falling into each category. Last 
+            axis of probs indexes over categories, other axes index over batches.
+            Probs value should between [0, 1], and sum to 1 along last axis. If 
+            the value over 1, it will be normalized to sum to 1 along the last 
+            axis. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
@@ -75,16 +112,26 @@ class Multinomial(distribution.Distribution):
 
         if probs.dim() < 1:
             raise ValueError(
+<<<<<<< HEAD
                 'probs parameter shoule not be none and over one dimension'
             )
+=======
+                'probs parameter shoule not be none and over one dimension')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.probs = probs / probs.sum(-1, keepdim=True)
         self.total_count = total_count
         self._categorical = categorical.Categorical(
+<<<<<<< HEAD
             logits=self._probs_to_logits(probs)
         )
 
         super().__init__(probs.shape[:-1], probs.shape[-1:])
+=======
+            logits=self._probs_to_logits(probs))
+
+        super(Multinomial, self).__init__(probs.shape[:-1], probs.shape[-1:])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def mean(self):
@@ -128,6 +175,7 @@ class Multinomial(distribution.Distribution):
             value = paddle.cast(value, self.probs.dtype)
 
         logits, value = paddle.broadcast_tensors(
+<<<<<<< HEAD
             [paddle.log(self.probs), value]
         )
         logits[(value == 0) & (paddle.isinf(logits))] = 0
@@ -137,6 +185,13 @@ class Multinomial(distribution.Distribution):
             - paddle.lgamma(value + 1).sum(-1)
             + (value * logits).sum(-1)
         )
+=======
+            [paddle.log(self.probs), value])
+        logits[(value == 0) & (paddle.isinf(logits))] = 0
+
+        return (paddle.lgamma(value.sum(-1) + 1) -
+                paddle.lgamma(value + 1).sum(-1) + (value * logits).sum(-1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def sample(self, shape=()):
         """draw sample data from multinomial distribution
@@ -147,6 +202,7 @@ class Multinomial(distribution.Distribution):
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
 
+<<<<<<< HEAD
         samples = self._categorical.sample(
             [
                 self.total_count,
@@ -158,6 +214,13 @@ class Multinomial(distribution.Distribution):
             .cast(self.probs.dtype)
             .sum(0)
         )
+=======
+        samples = self._categorical.sample([
+            self.total_count,
+        ] + list(shape))
+        return paddle.nn.functional.one_hot(samples, self.probs.shape[-1]).cast(
+            self.probs.dtype).sum(0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def entropy(self):
         """entropy of multinomial distribution
@@ -165,6 +228,7 @@ class Multinomial(distribution.Distribution):
         Returns:
             Tensor: entropy value
         """
+<<<<<<< HEAD
         n = paddle.full(
             shape=[1], fill_value=self.total_count, dtype=self.probs.dtype
         )
@@ -177,6 +241,20 @@ class Multinomial(distribution.Distribution):
         return (n * self._categorical.entropy() - paddle.lgamma(n + 1)) + (
             (binomial_pmf * paddle.lgamma(support + 1)).sum([0, -1])
         )
+=======
+        n = paddle.full(shape=[1],
+                        fill_value=self.total_count,
+                        dtype=self.probs.dtype)
+        support = paddle.arange(
+            self.total_count + 1,
+            dtype=self.probs.dtype).reshape((-1, ) +
+                                            (1, ) * len(self.probs.shape))[1:]
+
+        binomial_pmf = paddle.exp(self._binomial_logpmf(n, support))
+
+        return ((n * self._categorical.entropy() - paddle.lgamma(n + 1)) +
+                ((binomial_pmf * paddle.lgamma(support + 1)).sum([0, -1])))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _binomial_logpmf(self, count, value):
         logits = self._probs_to_logits(self.probs, is_binary=True)
@@ -185,11 +263,17 @@ class Multinomial(distribution.Distribution):
         factor_k = paddle.lgamma(value + 1)
         factor_nmk = paddle.lgamma(count - value + 1)
 
+<<<<<<< HEAD
         norm = (
             count * _clip_by_zero(logits)
             + count * paddle.log1p(paddle.exp(-paddle.abs(logits)))
             - factor_n
         )
+=======
+        norm = (count * _clip_by_zero(logits) +
+                count * paddle.log1p(paddle.exp(-paddle.abs(logits))) -
+                factor_n)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return value * logits - factor_k - factor_nmk - norm
 

@@ -12,17 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 
+=======
+import paddle
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 
 print("compile with cuda:", fluid.core.is_compiled_with_cuda())
 print("get_cuda_device_count:", fluid.core.get_cuda_device_count())
 
+<<<<<<< HEAD
 if (
     fluid.core.is_compiled_with_cuda()
     and fluid.core.get_cuda_device_count() > 0
 ):
+=======
+if fluid.core.is_compiled_with_cuda(
+) and fluid.core.get_cuda_device_count() > 0:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sys.exit(0)
 else:
     sys.exit(1)

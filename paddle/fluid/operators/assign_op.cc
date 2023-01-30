@@ -41,6 +41,7 @@ class AssignOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
@@ -51,6 +52,18 @@ class AssignOp : public framework::OperatorWithKernel {
   }
 
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext &ctx) const override {
     const framework::Variable *var = ctx.InputVar("X");
     if (var->IsType<framework::LoDTensorArray>()) {
@@ -58,6 +71,7 @@ class AssignOp : public framework::OperatorWithKernel {
       // NOTE(liym27): Support an empty tensor array as Input.
       // And set the kernel type is float.
       if (t_arr.size() == 0) {
+<<<<<<< HEAD
         return phi::KernelKey(framework::proto::VarType::FP32,
                               ctx.device_context().GetPlace());
       }
@@ -65,6 +79,16 @@ class AssignOp : public framework::OperatorWithKernel {
 
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.device_context().GetPlace());
+=======
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       ctx.device_context());
+      }
+    }
+
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -78,6 +102,7 @@ class AssignInferVarType : public framework::VarTypeInference {
 class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "(phi::DenseTensor, SelectedRows or phi::DenseTensorArray) The input "
@@ -91,6 +116,18 @@ class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(Assign Operator
 
 Out = X,  when type in [phi::DenseTensor/SelectedRows/phi::DenseTensorArray]
+=======
+    AddInput("X",
+             "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
+             "could be LoDTensor, SelectedRows or LoDTensorArray.")
+        .AsDispensable();
+    AddOutput("Out",
+              "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
+              "is the same as input X.");
+    AddComment(R"DOC(Assign Operator
+
+Out = X,  when type in [LoDTensor/SelectedRows/LoDTensorArray]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 raise error if the type is not listed above.
 )DOC");
   }

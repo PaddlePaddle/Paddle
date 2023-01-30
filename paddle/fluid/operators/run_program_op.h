@@ -48,10 +48,15 @@ using BlockDesc = framework::BlockDesc;
 using ProgramDesc = framework::ProgramDesc;
 
 using Variable = framework::Variable;
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using SelectedRows = phi::SelectedRows;
 
 namespace details {
 
+<<<<<<< HEAD
 // all input vars should be phi::DenseTensor & is initialized
 static void CheckInputVarStatus(const Variable &var,
                                 const std::string &var_name) {
@@ -66,6 +71,22 @@ static void CheckInputVarStatus(const Variable &var,
                         platform::demangle(framework::ToTypeName(var.Type()))));
   PADDLE_ENFORCE_EQ(
       var.Get<phi::DenseTensor>().IsInitialized(),
+=======
+// all input vars should be LoDTensor & is initialized
+static void CheckInputVarStatus(const Variable &var,
+                                const std::string &var_name) {
+  PADDLE_ENFORCE_EQ(
+      var.IsType<LoDTensor>(),
+      true,
+      platform::errors::InvalidArgument(
+          "The input variable %s of "
+          "RunProgram(Grad)Op holds "
+          "wrong type. Expect type is LoDTensor, but receive type is %s.",
+          var_name,
+          platform::demangle(framework::ToTypeName(var.Type()))));
+  PADDLE_ENFORCE_EQ(
+      var.Get<LoDTensor>().IsInitialized(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       true,
       platform::errors::InvalidArgument("The tensor in input variable %s of "
                                         "RunProgram(Grad)Op "
@@ -76,18 +97,31 @@ static void CheckInputVarStatus(const Variable &var,
 static void CheckOutputVarStatus(const Variable &src_var,
                                  const Variable &dst_var,
                                  const std::string &var_name) {
+<<<<<<< HEAD
   if (dst_var.IsType<phi::DenseTensor>()) {
     PADDLE_ENFORCE_EQ(
         src_var.IsType<phi::DenseTensor>(),
+=======
+  if (dst_var.IsType<LoDTensor>()) {
+    PADDLE_ENFORCE_EQ(
+        src_var.IsType<LoDTensor>(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
             "RunProgram(Grad)Op's internal scope holds "
+<<<<<<< HEAD
             "wrong type. Expect type is phi::DenseTensor, but receive type is "
             "%s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<phi::DenseTensor>().IsInitialized(),
+=======
+            "wrong type. Expect type is LoDTensor, but receive type is %s.",
+            var_name,
+            platform::demangle(framework::ToTypeName(src_var.Type()))));
+    PADDLE_ENFORCE_EQ(src_var.Get<LoDTensor>().IsInitialized(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
@@ -115,7 +149,11 @@ static void CheckOutputVarStatus(const Variable &src_var,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The RunProgram(Grad)Op only support output "
+<<<<<<< HEAD
         "variable of type phi::DenseTensor or SelectedRows, "
+=======
+        "variable of type LoDTensor or SelectedRows, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "but received variable %s's type is %s",
         var_name,
         platform::demangle(framework::ToTypeName(dst_var.Type()))));
@@ -123,12 +161,21 @@ static void CheckOutputVarStatus(const Variable &src_var,
 }
 
 static void VariableShare(const Variable &src_var, Variable *dst_var) {
+<<<<<<< HEAD
   // The previous check ensures that the variable type can only be
   // phi::DenseTensor or SelectedRows.
   if (src_var.IsType<phi::DenseTensor>()) {
     auto *lod_tensor = dst_var->GetMutable<phi::DenseTensor>();
     lod_tensor->ShareDataWith(src_var.Get<phi::DenseTensor>());
     lod_tensor->set_lod(src_var.Get<phi::DenseTensor>().lod());
+=======
+  // The previous check ensures that the variable type can only be LoDTensor or
+  // SelectedRows.
+  if (src_var.IsType<LoDTensor>()) {
+    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
+    lod_tensor->ShareDataWith(src_var.Get<LoDTensor>());
+    lod_tensor->set_lod(src_var.Get<LoDTensor>().lod());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (src_var.IsType<phi::SelectedRows>()) {
     auto *selected_rows = dst_var->GetMutable<phi::SelectedRows>();
     selected_rows->mutable_value()->ShareDataWith(
@@ -288,8 +335,13 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto *out_scope_vec = ctx.Output<StepScopeVar>("OutScope");
     std::unique_ptr<framework::Scope> inner_scope{nullptr};
     if (out_scope_vec->size() == 0) {
+<<<<<<< HEAD
       // For cuda graph under static graph mode usage.
       // For static graph mode, we cannot set value of a tensor before any run,
+=======
+      // For cuda graph under static mode usage.
+      // For static mode, we cannot set value of a tensor before any run,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // the OutScope variable passed to the op actually contains nothing.
       // Just create a tmp scope to run the program.
       PADDLE_ENFORCE_EQ(

@@ -23,7 +23,11 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 // NOTE(@xiongkun): use of IsComplex<>
+<<<<<<< HEAD
 #include "paddle/phi/core/utils/data_type.h"
+=======
+#include "paddle/fluid/framework/data_type.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 template <typename T, typename Context>
@@ -44,10 +48,13 @@ void CumprodGradKernel(const Context& dev_ctx,
   size_t mid_dim = 1;
   size_t inner_dim = 1;
   GetCumprodDimInfo(shape, dim, &outer_dim, &mid_dim, &inner_dim);
+<<<<<<< HEAD
   if (shape.size() == 0) {
     phi::Copy<Context>(dev_ctx, d_out, dev_ctx.GetPlace(), false, d_x);
     return;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   size_t numel = outer_dim * mid_dim * inner_dim;
 
   // deal with complex
@@ -55,7 +62,11 @@ void CumprodGradKernel(const Context& dev_ctx,
   const T* out_data_deal;
   Allocator::AllocationPtr x_conj;
   Allocator::AllocationPtr out_conj;
+<<<<<<< HEAD
   if (phi::IsComplexType(x.dtype())) {
+=======
+  if (paddle::framework::IsComplex<T>::value) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())
                  .Allocate(numel * sizeof(T));
     auto* x_data_conj = reinterpret_cast<T*>(x_conj->ptr());

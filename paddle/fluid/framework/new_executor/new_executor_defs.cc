@@ -19,7 +19,14 @@
 #include <unordered_map>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+=======
+#include "paddle/phi/core/utils/rw_lock.h"
+
+#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -91,12 +98,26 @@ bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
+<<<<<<< HEAD
   if (!allow_null) {
     for (auto& output : it->second) {
       if (output == nullptr) return false;
     }
   }
   return true;
+=======
+  if (allow_null) {
+    for (auto& output : it->second) {
+      if (output != nullptr) return true;
+    }
+    return false;
+  } else {
+    for (auto& output : it->second) {
+      if (output == nullptr) return false;
+    }
+    return true;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
@@ -186,6 +207,7 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
+<<<<<<< HEAD
   } else if (in_var->IsType<phi::DenseTensor>()) {
     auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
     auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
@@ -193,6 +215,15 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Currently, the input type of ShareDim only can be phi::DenseTensor "
+=======
+  } else if (in_var->IsType<framework::LoDTensor>()) {
+    auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
+    auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+    out_lod_tensor->Resize(in_lod_tensor.dims());
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Currently, the input type of ShareDim only can be LoDTensor "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "or SelectedRows."));
   }
 }
@@ -228,6 +259,7 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     }
 
     Variable* in_var = in_var_list[i];
+<<<<<<< HEAD
     if (!in_var->IsType<phi::DenseTensor>()) return;
     Variable* out_var = out_var_list[i];
     PADDLE_ENFORCE_EQ(
@@ -242,6 +274,21 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
     if (in_tensor.layout() != DataLayout::ONEDNN)
+=======
+    if (!in_var->IsType<LoDTensor>()) return;
+    Variable* out_var = out_var_list[i];
+    PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(),
+                      true,
+                      platform::errors::PreconditionNotMet(
+                          "The %d-th output of Output(%s) must be LoDTensor.",
+                          i,
+                          out_var_names[i]));
+    auto& in_tensor = in_var->Get<LoDTensor>();
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    out_tensor->set_lod(in_tensor.lod());
+#ifdef PADDLE_WITH_MKLDNN
+    if (in_tensor.layout() != DataLayout::kMKLDNN)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
       out_tensor->set_layout(in_tensor.layout());
   }
@@ -279,6 +326,7 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
                         j));
 
   Variable* in_var = in_it->second.at(i);
+<<<<<<< HEAD
   if (!in_var->IsType<phi::DenseTensor>()) return;
   Variable* out_var = out_it->second.at(j);
   PADDLE_ENFORCE_EQ(
@@ -288,11 +336,26 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
           "The %zu-th output of Output(%s) must be phi::DenseTensor.", j, out));
   auto& in_tensor = in_var->Get<phi::DenseTensor>();
   auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+=======
+  if (!in_var->IsType<LoDTensor>()) return;
+  Variable* out_var = out_it->second.at(j);
+  PADDLE_ENFORCE_EQ(
+      out_var->IsType<LoDTensor>(),
+      true,
+      platform::errors::InvalidArgument(
+          "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
+  auto& in_tensor = in_var->Get<LoDTensor>();
+  auto* out_tensor = out_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
+<<<<<<< HEAD
 // Shall we have a better method to shared info between in/out phi::DenseTensor?
+=======
+// Shall we have a better method to shared info between in/out Tensor?
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_MKLDNN
   // Fix me: ugly workaround below
   // Correct solution:
@@ -306,7 +369,11 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
   //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
   //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
   //    in Compute()
+<<<<<<< HEAD
   if (in_tensor.layout() != DataLayout::ONEDNN)
+=======
+  if (in_tensor.layout() != DataLayout::kMKLDNN)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
     out_tensor->set_layout(in_tensor.layout());
 }
@@ -335,7 +402,11 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
     auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
     return ((op_with_kernel.kernel_type()) &&
             (op_with_kernel.kernel_type()->data_layout_ ==
+<<<<<<< HEAD
              phi::DataLayout::ONEDNN));
+=======
+             framework::DataLayout::kMKLDNN));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } catch (std::bad_cast& exp) {
     return false;
   }
@@ -434,13 +505,22 @@ void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
 DDim InterpretercoreInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::InvalidArgument("Input variable is nullptr."));
+<<<<<<< HEAD
   if (var->IsType<phi::DenseTensor>()) {
     return var->Get<phi::DenseTensor>().dims();
+=======
+  if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>().dims();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (var->IsType<phi::SelectedRows>()) {
     return var->Get<phi::SelectedRows>().GetCompleteDims();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
+<<<<<<< HEAD
         "Only phi::DenseTensor or SelectedRows support 'GetDim', but input "
+=======
+        "Only LoDTensor or SelectedRows support 'GetDim', but input "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "Variable's type is %s.",
         ToTypeName(var->Type())));
   }
@@ -464,14 +544,23 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetRepeatedDims(
 }
 
 void InterpretercoreInferShapeContext::SetDim(Variable* var, const DDim& dim) {
+<<<<<<< HEAD
   if (var->IsType<phi::DenseTensor>()) {
     var->GetMutable<phi::DenseTensor>()->Resize(dim);
+=======
+  if (var->IsType<LoDTensor>()) {
+    var->GetMutable<LoDTensor>()->Resize(dim);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (var->IsType<phi::SelectedRows>()) {
     var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
+<<<<<<< HEAD
         "Variable type error, expect phi::DenseTensor or SelectedRows, but "
         "received "
+=======
+        "Variable type error, expect LoDTensor or SelectedRows, but received "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "(%s).",
         ToTypeName(var->Type())));
   }
@@ -671,16 +760,21 @@ void VariableScope::CheckExist(const std::string& name) const {
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
+<<<<<<< HEAD
     : is_artificial_(op_func_node.operator_base_->Type() == "depend"),
       id_(id),
       op_func_node_(op_func_node),
       dev_ctx_(dev_ctx) {
+=======
+    : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_GE(id,
                     0,
                     platform::errors::PreconditionNotMet(
                         "Required id >= 0, but received id = %d", id));
 }
 
+<<<<<<< HEAD
 void Instruction::WaitEvent(const Place& place) const {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place)) {
@@ -706,6 +800,9 @@ void Instruction::RecordEvent(const Place& place) const {
     event_to_record_->event_->Record(&dev_ctx_);
   }
 }
+=======
+size_t Instruction::Id() const { return id_; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 const std::map<std::string, std::vector<int>>& Instruction::Inputs() const {
   return op_func_node_.input_index;
@@ -715,6 +812,13 @@ const std::map<std::string, std::vector<int>>& Instruction::Outputs() const {
   return op_func_node_.output_index;
 }
 
+<<<<<<< HEAD
+=======
+const std::unordered_set<int>& Instruction::NoDataTransformVars() const {
+  return op_func_node_.no_data_transform_index;
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 OpKernelComputeFunc Instruction::KernelFunc() const {
   return op_func_node_.kernel_func_;
 }
@@ -737,10 +841,23 @@ OperatorBase* Instruction::OpBase() const {
   return op_base.get();
 }
 
+<<<<<<< HEAD
 void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
 
 const std::vector<size_t>& Instruction::GCCheckVars() const {
   return gc_check_vars_;
+=======
+NextInstruction& Instruction::NextInstructions() { return next_instruction_; }
+
+const NextInstruction& Instruction::NextInstructions() const {
+  return next_instruction_;
+}
+
+void Instruction::AddGCCheckVar(size_t id) { gc_check_var_list_.push_back(id); }
+
+const std::vector<size_t>& Instruction::GCCheckVars() const {
+  return gc_check_var_list_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void Instruction::ResetContext(const VariableValueMap& in_vars,
@@ -793,5 +910,28 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
+<<<<<<< HEAD
+=======
+const std::vector<EventInter>& Instruction::InputEvents() const {
+  return intput_events_;
+}
+
+const std::vector<EventInter>& Instruction::OutputEvents() const {
+  return output_events_;
+}
+
+void Instruction::AddInputEvent(size_t var_id,
+                                std::shared_ptr<platform::DeviceEvent> event,
+                                platform::DeviceType waiter_type) {
+  intput_events_.emplace_back(var_id, event, waiter_type);
+}
+
+void Instruction::AddOutputEvent(size_t var_id,
+                                 std::shared_ptr<platform::DeviceEvent> event,
+                                 platform::DeviceType waiter_type) {
+  output_events_.emplace_back(var_id, event, waiter_type);
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace framework
 }  // namespace paddle

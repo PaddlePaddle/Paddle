@@ -89,6 +89,7 @@ DEFINE_SPARSE_UNARY_KERNEL(Relu)
 DEFINE_SPARSE_UNARY_KERNEL(Abs)
 DEFINE_SPARSE_UNARY_KERNEL(Expm1)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
+<<<<<<< HEAD
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6Raw, threshold)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
 
@@ -107,6 +108,12 @@ void Relu6CsrKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+=======
+DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6, threshold)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+
+template <typename T, typename Context>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void ScaleCooKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     float scale,

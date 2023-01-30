@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import os
 
 __all__ = []
@@ -20,14 +24,22 @@ __all__ = []
 # print configuration after args are well filled in controller init
 def log(ctx):
     ctx.logger.info("-----------  Configuration  ----------------------")
+<<<<<<< HEAD
     for arg, value in sorted(vars(ctx.args).items()):
+=======
+    for arg, value in sorted(six.iteritems(vars(ctx.args))):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ctx.logger.info("%s: %s" % (arg, value))
     ctx.logger.info("--------------------------------------------------")
 
 
 def process_args(ctx):
     # reset device by args
+<<<<<<< HEAD
     # argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
+=======
+    #argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     argdev = ctx.args.devices
     if argdev:
         for d in argdev.split(','):
@@ -49,8 +61,12 @@ def collective_compatible(ctx):
         ctx.args.master = eps[0] if ':' in eps[0] else '{}:6768'.format(eps[0])
         ctx.args.nnodes = len(hosts)
         ctx.logger.info(
+<<<<<<< HEAD
             'args reset by env PADDLE_TRAINER_ENDPOINTS\n{}'.format(eps)
         )
+=======
+            'args reset by env PADDLE_TRAINER_ENDPOINTS\n{}'.format(eps))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if 'DISTRIBUTED_TRAINER_ENDPOINTS' in ctx.envs:
         eps = ctx.envs['DISTRIBUTED_TRAINER_ENDPOINTS'].split(',')
@@ -58,8 +74,12 @@ def collective_compatible(ctx):
         ctx.args.master = eps[0]
         ctx.args.nnodes = len(hosts)
         ctx.logger.info(
+<<<<<<< HEAD
             'args reset by env DISTRIBUTED_TRAINER_ENDPOINTS\n{}'.format(eps)
         )
+=======
+            'args reset by env DISTRIBUTED_TRAINER_ENDPOINTS\n{}'.format(eps))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def rewrite_host_ip(ctx):
@@ -74,6 +94,7 @@ def test_mode(ctx):
         if int(ctx.args.nnodes) < 2:
             ctx.args.nnodes = 2
         ctx.args.training_script = '{}/test.py'.format(
+<<<<<<< HEAD
             os.path.dirname(__file__)
         )
 
@@ -83,4 +104,11 @@ enabled_plugins = [
     collective_compatible,
     rewrite_host_ip,
     process_args,
+=======
+            os.path.dirname(__file__))
+
+
+enabled_plugins = [
+    test_mode, collective_compatible, rewrite_host_ip, process_args
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

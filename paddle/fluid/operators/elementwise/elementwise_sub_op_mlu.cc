@@ -20,6 +20,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class ElementwiseSubMLUKernel : public framework::OpKernel<T> {
  public:
@@ -34,11 +39,19 @@ class ElementwiseSubGradMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
 
@@ -77,7 +90,11 @@ class ElementwiseSubGradMLUKernel : public framework::OpKernel<T> {
     }
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
+<<<<<<< HEAD
       phi::DenseTensor* tmp_dout = const_cast<phi::DenseTensor*>(dout);
+=======
+      Tensor* tmp_dout = const_cast<Tensor*>(dout);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (dy->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec;
         std::vector<int> reduce_axes;

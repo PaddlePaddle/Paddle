@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import subprocess
 import sys
@@ -51,6 +52,88 @@ class TestQuantizationPass(unittest.TestCase):
         self.assertEqual(process.returncode, 0)
 
         tmp_dir.cleanup()
+=======
+import unittest
+import sys
+import random
+import numpy as np
+import paddle
+
+from paddle.distributed.fleet import auto
+from get_gpt_model import generate_model, create_data_holder, FakeDataset
+
+paddle.enable_static()
+
+
+def apply_pass():
+    dist_strategy = auto.Strategy()
+    dist_strategy.auto_mode = "semi"
+    qat = dist_strategy.qat
+    qat.enable = True
+    qat.channel_wise_abs_max = True
+    qat.weight_bits = 8
+    qat.activation_bits = 8
+    qat.not_quant_pattern = ['skip_quant']
+    return dist_strategy
+
+
+class TestQuantizationPass(unittest.TestCase):
+
+    def test_qat_pass(self):
+
+        batch_size = 8
+        batch_num = 10
+
+        strategy = apply_pass()
+        model, loss = generate_model("serial")
+        opt = paddle.optimizer.AdamW(learning_rate=0.00001)
+        engine = auto.Engine(model, loss, opt, strategy=strategy)
+        dataset = FakeDataset(batch_size * batch_num)
+        engine.fit(dataset, 3, batch_size=batch_size)
+
+        self.check_program(engine.main_program)
+
+    def check_program(self, program):
+
+        quantizable_op_and_inputs = {'matmul_v2': ['X', 'Y']}
+        quantizable_grad_op_inputs = {'matmul_v2_grad': ['X', 'Y']}
+
+        quantized_ops = set()
+        for block in program.blocks:
+            for op in block.ops:
+                is_quntized = False
+                if op.type in quantizable_op_and_inputs:
+                    for arg_name in op.input_arg_names:
+                        if ".quantized" in arg_name:
+                            is_quntized = True
+
+                if not is_quntized:
+                    continue
+
+                # check forward
+                if op.type in quantizable_op_and_inputs:
+                    for arg_name in op.input_arg_names:
+                        assert arg_name.endswith('.quantized.dequantized')
+                        quantized_ops.add(arg_name)
+
+            for op in block.ops:
+                is_quntized = False
+                if op.type in quantizable_grad_op_inputs:
+                    for pname in quantizable_grad_op_inputs[op.type]:
+                        arg_name = op.input(pname)[0]
+                        if ".quantized" in arg_name:
+                            is_quntized = True
+
+                if not is_quntized:
+                    continue
+
+                # check backward
+                if op.type in quantizable_grad_op_inputs:
+                    for pname in quantizable_grad_op_inputs[op.type]:
+                        arg_name = op.input(pname)[0]
+                        assert arg_name.endswith('.quantized.dequantized')
+                        assert arg_name in quantized_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

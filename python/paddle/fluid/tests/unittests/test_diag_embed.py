@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,6 +24,21 @@ import paddle.nn.functional as F
 
 
 class TestDiagEmbedOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle.nn.functional as F
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+import paddle.fluid.core as core
+
+
+class TestDiagEmbedOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "diag_embed"
         self.python_api = F.diag_embed
@@ -40,16 +56,29 @@ class TestDiagEmbedOp(OpTest):
 
 
 class TestDiagEmbedOpCase1(TestDiagEmbedOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.case = np.random.randn(2, 3).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -1, 'dim1': 0, 'dim2': 2}
+<<<<<<< HEAD
         self.target = np.stack(
             [np.diag(r, -1) for r in self.inputs['Input']], 1
         )
 
 
 class TestDiagEmbedAPICase(unittest.TestCase):
+=======
+        self.target = np.stack([np.diag(r, -1) for r in self.inputs['Input']],
+                               1)
+
+
+class TestDiagEmbedAPICase(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_case1(self):
         diag_embed = np.random.randn(2, 3, 4).astype('float32')
         data1 = fluid.data(name='data1', shape=[2, 3, 4], dtype='float32')
@@ -58,6 +87,7 @@ class TestDiagEmbedAPICase(unittest.TestCase):
 
         place = core.CPUPlace()
         exe = fluid.Executor(place)
+<<<<<<< HEAD
         results = exe.run(
             fluid.default_main_program(),
             feed={"data1": diag_embed},
@@ -70,6 +100,16 @@ class TestDiagEmbedAPICase(unittest.TestCase):
         target2 = np.stack(
             [np.stack([np.diag(s, 1) for s in r], 0) for r in diag_embed], 0
         )
+=======
+        results = exe.run(fluid.default_main_program(),
+                          feed={"data1": diag_embed},
+                          fetch_list=[out1, out2],
+                          return_numpy=True)
+        target1 = np.stack(
+            [np.stack([np.diag(s, 0) for s in r], 0) for r in diag_embed], 0)
+        target2 = np.stack(
+            [np.stack([np.diag(s, 1) for s in r], 0) for r in diag_embed], 0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(results[0], target1, rtol=1e-05)
         np.testing.assert_allclose(results[1], target2, rtol=1e-05)
 

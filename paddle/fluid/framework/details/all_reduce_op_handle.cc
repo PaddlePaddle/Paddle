@@ -131,7 +131,11 @@ void AllReduceOpHandle::AllReduceImpl(
         var,
         platform::errors::NotFound("Variable %s is not found in local scope.",
                                    in_var_handles[i]->name()));
+<<<<<<< HEAD
     auto &lod_tensor = var->Get<phi::DenseTensor>();
+=======
+    auto &lod_tensor = var->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (i == 0) {
       numel = static_cast<int64_t>(lod_tensor.numel());
@@ -246,9 +250,15 @@ void AllReduceOpHandle::AllReduceFunc(
   } else {  // Special handle CPU only Operator's gradient. Like CRF
     auto &trg = *local_exec_scopes_[0]
                      ->FindVar(out_var_names[0])
+<<<<<<< HEAD
                      ->GetMutable<phi::DenseTensor>();
 
     // Reduce All phi::DenseTensor to trg in CPU
+=======
+                     ->GetMutable<LoDTensor>();
+
+    // Reduce All Tensor to trg in CPU
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ReduceBufferData func(lod_tensor_data, trg.data(), numel);
     VisitDataType(framework::TransToProtoVarType(trg.dtype()), func);
 
@@ -260,7 +270,11 @@ void AllReduceOpHandle::AllReduceFunc(
       size_t size =
           numel * SizeOfType(framework::TransToProtoVarType(trg.dtype()));
       RunAndRecordEvent(p, [&trg, var, p, size] {
+<<<<<<< HEAD
         auto dst_ptr = var->GetMutable<phi::DenseTensor>()->data();
+=======
+        auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         platform::CPUPlace cpu_place;
         memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data(), size);
       });

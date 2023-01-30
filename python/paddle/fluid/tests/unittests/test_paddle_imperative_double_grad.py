@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from unittest import TestCase
 
@@ -24,6 +25,20 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 def _dygraph_guard_(func):
+=======
+import paddle.fluid as fluid
+from paddle.fluid.wrapped_decorator import wrap_decorator
+import unittest
+from unittest import TestCase
+import numpy as np
+import paddle
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+import paddle.fluid.core as core
+
+
+def _dygraph_guard_(func):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __impl__(*args, **kwargs):
         if paddle.in_dynamic_mode():
             return func(*args, **kwargs)
@@ -43,10 +58,15 @@ def random_var(size, low=-1, high=1, dtype='float32'):
 
 
 class TestDygraphDoubleGrad(TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.sort_sum_gradient = False
         self.shape = [5, 10]
 
+<<<<<<< HEAD
     def grad(
         self,
         outputs,
@@ -69,6 +89,26 @@ class TestDygraphDoubleGrad(TestCase):
 
     @dygraph_guard
     def test_exception(self):
+=======
+    def grad(self,
+             outputs,
+             inputs,
+             grad_outputs=None,
+             no_grad_vars=None,
+             retain_graph=None,
+             create_graph=False,
+             allow_unused=False):
+        return paddle.grad(outputs=outputs,
+                           inputs=inputs,
+                           grad_outputs=grad_outputs,
+                           no_grad_vars=no_grad_vars,
+                           retain_graph=retain_graph,
+                           create_graph=create_graph,
+                           allow_unused=allow_unused)
+
+    @dygraph_guard
+    def func_exception(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with self.assertRaises(AssertionError):
             self.grad(None, None)
 
@@ -87,6 +127,7 @@ class TestDygraphDoubleGrad(TestCase):
             self.grad([random_var(shape)], [1])
 
         with self.assertRaises(AssertionError):
+<<<<<<< HEAD
             self.grad(
                 [random_var(shape), random_var(shape)],
                 [random_var(shape)],
@@ -97,31 +138,62 @@ class TestDygraphDoubleGrad(TestCase):
             self.grad(
                 [random_var(shape)], [random_var(shape)], no_grad_vars=[1]
             )
+=======
+            self.grad([random_var(shape), random_var(shape)],
+                      [random_var(shape)], [random_var(shape)])
+
+        with self.assertRaises(AssertionError):
+            self.grad([random_var(shape)], [random_var(shape)],
+                      no_grad_vars=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         with self.assertRaises(AssertionError):
             self.grad([random_var(shape)], [random_var(shape)], no_grad_vars=1)
 
+<<<<<<< HEAD
     @dygraph_guard
     def test_simple_example(self):
+=======
+    def test_exception(self):
+        with _test_eager_guard():
+            self.func_exception()
+        self.func_exception()
+
+    @dygraph_guard
+    def func_simple_example(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = random_var(self.shape)
         x.stop_gradient = False
         y = x + 1
 
         for create_graph in [False, True]:
+<<<<<<< HEAD
             (dx,) = self.grad(
                 [x], [x], create_graph=create_graph, retain_graph=True
             )
+=======
+            dx, = self.grad([x], [x],
+                            create_graph=create_graph,
+                            retain_graph=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(dx.shape, x.shape)
             self.assertTrue(np.all(dx.numpy() == 1))
             self.assertNotEqual(dx.stop_gradient, create_graph)
 
+<<<<<<< HEAD
             (dx_mul_2,) = self.grad(
                 [y, x], [x], create_graph=create_graph, retain_graph=True
             )
+=======
+            dx_mul_2, = self.grad([y, x], [x],
+                                  create_graph=create_graph,
+                                  retain_graph=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(dx_mul_2.shape, x.shape)
             self.assertTrue(np.all(dx_mul_2.numpy() == 2))
             self.assertNotEqual(dx_mul_2.stop_gradient, create_graph)
 
+<<<<<<< HEAD
             (none_grad,) = self.grad(
                 [x], [y], create_graph=create_graph, allow_unused=True
             )
@@ -138,25 +210,58 @@ class TestDygraphDoubleGrad(TestCase):
 
     @dygraph_guard
     def test_none_one_initial_gradient(self):
+=======
+            none_grad, = self.grad([x], [y],
+                                   create_graph=create_graph,
+                                   allow_unused=True)
+            self.assertTrue(none_grad is None)
+
+            grad_with_none_and_not_none, = self.grad([x, y], [y],
+                                                     create_graph=create_graph)
+            self.assertTrue(grad_with_none_and_not_none.shape, x.shape)
+            self.assertTrue(np.all(grad_with_none_and_not_none.numpy() == 1))
+            self.assertNotEqual(grad_with_none_and_not_none.stop_gradient,
+                                create_graph)
+
+    def test_simple_example(self):
+        with _test_eager_guard():
+            self.func_simple_example()
+        self.func_simple_example()
+
+    @dygraph_guard
+    def func_none_one_initial_gradient(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         numel = 1
         for s in self.shape:
             numel *= s
 
         half_numel = int(numel / 2)
         half_x_positive = np.random.uniform(low=1, high=2, size=[half_numel])
+<<<<<<< HEAD
         half_x_negative = np.random.uniform(
             low=-2, high=-1, size=[numel - half_numel]
         )
         x_np = np.array(list(half_x_positive) + list(half_x_negative)).astype(
             'float32'
         )
+=======
+        half_x_negative = np.random.uniform(low=-2,
+                                            high=-1,
+                                            size=[numel - half_numel])
+        x_np = np.array(list(half_x_positive) +
+                        list(half_x_negative)).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.random.shuffle(x_np)
 
         x = fluid.dygraph.to_variable(x_np)
         x.stop_gradient = False
 
         alpha = 0.2
+<<<<<<< HEAD
         y = paddle.nn.functional.leaky_relu(x, alpha)
+=======
+        y = fluid.layers.leaky_relu(x, alpha=alpha)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         y = y * y
         z = y * y
 
@@ -164,9 +269,14 @@ class TestDygraphDoubleGrad(TestCase):
         relu_x_np = np.maximum(x_np, alpha * x_np).astype('float32')
         relu_x_grad_np = ((x_np > 0) + (x_np < 0) * alpha).astype('float32')
         dy_expected = (relu_x_np * relu_x_grad_np * 2).astype('float32')
+<<<<<<< HEAD
         dz_expected = (np.power(relu_x_np, 3) * relu_x_grad_np * 4).astype(
             'float32'
         )
+=======
+        dz_expected = (np.power(relu_x_np, 3) * relu_x_grad_np *
+                       4).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         random_grad_y = random_var(y.shape, low=1, high=2)
         random_grad_z = random_var(z.shape, low=1, high=2)
@@ -179,6 +289,7 @@ class TestDygraphDoubleGrad(TestCase):
         for grad_y in [random_grad_y]:
             for grad_z in [random_grad_z]:
                 for create_graph in [False, True]:
+<<<<<<< HEAD
                     (dx_actual,) = self.grad(
                         outputs=[y, z],
                         inputs=[x],
@@ -212,6 +323,38 @@ class TestDygraphDoubleGrad(TestCase):
                         np.testing.assert_array_equal(
                             grad_z.numpy(), original_random_grad_z
                         )
+=======
+                    dx_actual, = self.grad(outputs=[y, z],
+                                           inputs=[x],
+                                           grad_outputs=[grad_y, grad_z],
+                                           create_graph=create_graph,
+                                           retain_graph=True)
+
+                    grad_y_np = ones_grad_y if grad_y is None else grad_y.numpy(
+                    )
+                    grad_z_np = ones_grad_z if grad_z is None else grad_z.numpy(
+                    )
+
+                    dx_expected = dy_expected * grad_y_np + dz_expected * grad_z_np
+                    np.testing.assert_allclose(dx_actual.numpy(),
+                                               dx_expected,
+                                               rtol=1e-05)
+
+                    if grad_y is not None:
+                        self.assertTrue(grad_y.stop_gradient)
+                        np.testing.assert_array_equal(grad_y.numpy(),
+                                                      original_random_grad_y)
+
+                    if grad_z is not None:
+                        self.assertTrue(grad_z.stop_gradient)
+                        np.testing.assert_array_equal(grad_z.numpy(),
+                                                      original_random_grad_z)
+
+    def test_none_one_initial_gradient(self):
+        with _test_eager_guard():
+            self.func_none_one_initial_gradient()
+        self.func_none_one_initial_gradient()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @dygraph_guard
     def func_example_with_gradient_accumulation_and_create_graph(self):
@@ -220,6 +363,7 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
+<<<<<<< HEAD
         y = F.relu(x)
         z = y + 1
         w = z * z
@@ -228,11 +372,22 @@ class TestDygraphDoubleGrad(TestCase):
         del y, z, w
 
         (dx_actual,) = self.grad([w_mean], [x], create_graph=True)
+=======
+        y = fluid.layers.relu(x)
+        z = y + 1
+        w = z * z
+
+        w_mean = fluid.layers.reduce_mean(w)
+        del y, z, w
+
+        dx_actual, = self.grad([w_mean], [x], create_graph=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         del w_mean
 
         self.assertFalse(dx_actual.stop_gradient)
 
         # Theoritical result based on math calculation
+<<<<<<< HEAD
         dx_expected = (
             1.0 / float(numel) * (np.maximum(x_np, 0) + 1) * (x_np > 0) * 2
         ).astype('float32')
@@ -240,11 +395,40 @@ class TestDygraphDoubleGrad(TestCase):
 
     @dygraph_guard
     def test_example_with_gradient_accumulation_and_no_grad_vars(self):
+=======
+        dx_expected = (1.0 / float(numel) * (np.maximum(x_np, 0) + 1) *
+                       (x_np > 0) * 2).astype('float32')
+        np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
+
+        if not _in_legacy_dygraph():
+            pass
+        else:
+            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss.backward()
+
+            x_grad_actual = x.gradient()
+            x_grad_expected = (
+                2.0 / float(numel) *
+                (x_np + dx_expected *
+                 (x_np > 0) * 2 / float(numel))).astype('float32')
+            np.testing.assert_allclose(x_grad_actual,
+                                       x_grad_expected,
+                                       rtol=1e-05)
+
+    def test_example_with_gradient_accumulation_and_create_graph(self):
+        with _test_eager_guard():
+            self.func_example_with_gradient_accumulation_and_create_graph()
+        self.func_example_with_gradient_accumulation_and_create_graph()
+
+    @dygraph_guard
+    def func_example_with_gradient_accumulation_and_no_grad_vars(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
         x.stop_gradient = False
 
+<<<<<<< HEAD
         y1 = F.relu(x)
         y2 = F.relu(x)
         z = y1 + y2
@@ -256,10 +440,24 @@ class TestDygraphDoubleGrad(TestCase):
         (dx_actual,) = self.grad(
             [w_mean], [x], create_graph=True, no_grad_vars=[y2]
         )
+=======
+        y1 = fluid.layers.relu(x)
+        y2 = fluid.layers.relu(x)
+        z = y1 + y2
+        w = z * z
+
+        w_mean = fluid.layers.reduce_mean(w)
+        del y1, z, w
+
+        dx_actual, = self.grad([w_mean], [x],
+                               create_graph=True,
+                               no_grad_vars=[y2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertFalse(y2.stop_gradient)
         self.assertFalse(dx_actual.stop_gradient)
 
+<<<<<<< HEAD
         dx_expected = (
             1.0
             / float(numel)
@@ -271,11 +469,40 @@ class TestDygraphDoubleGrad(TestCase):
 
     @dygraph_guard
     def test_example_with_gradient_accumulation_and_not_create_graph(self):
+=======
+        dx_expected = (1.0 / float(numel) * (np.maximum(x_np, 0) + y2.numpy()) *
+                       (x_np > 0) * 2).astype('float32')
+        np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
+
+        if not _in_legacy_dygraph():
+            pass
+        else:
+            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss.backward()
+
+            x_grad_actual = x.gradient()
+            x_grad_expected = (
+                2.0 / float(numel) *
+                (x_np + dx_expected *
+                 (x_np > 0) * 4 / float(numel))).astype('float32')
+            np.testing.assert_allclose(x_grad_actual,
+                                       x_grad_expected,
+                                       rtol=1e-05)
+
+    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
+        with _test_eager_guard():
+            self.func_example_with_gradient_accumulation_and_no_grad_vars()
+        self.func_example_with_gradient_accumulation_and_no_grad_vars()
+
+    @dygraph_guard
+    def func_example_with_gradient_accumulation_and_not_create_graph(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
         x.stop_gradient = False
 
+<<<<<<< HEAD
         y = F.relu(x)
         z = y + 1
         w = z * z
@@ -284,10 +511,21 @@ class TestDygraphDoubleGrad(TestCase):
         del y, z, w
 
         (dx_actual,) = self.grad([w_mean], [x], create_graph=False)
+=======
+        y = fluid.layers.relu(x)
+        z = y + 1
+        w = z * z
+
+        w_mean = fluid.layers.reduce_mean(w)
+        del y, z, w
+
+        dx_actual, = self.grad([w_mean], [x], create_graph=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         del w_mean
 
         self.assertTrue(dx_actual.stop_gradient)
 
+<<<<<<< HEAD
         dx_expected = (
             1.0 / float(numel) * (np.maximum(x_np, 0) + 1) * (x_np > 0) * 2
         ).astype('float32')
@@ -296,6 +534,33 @@ class TestDygraphDoubleGrad(TestCase):
 
 
 class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
+=======
+        dx_expected = (1.0 / float(numel) * (np.maximum(x_np, 0) + 1) *
+                       (x_np > 0) * 2).astype('float32')
+
+        np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
+
+        if not _in_legacy_dygraph():
+            pass
+        else:
+            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss.backward()
+
+            x_grad_actual = x.gradient()
+            x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
+            np.testing.assert_allclose(x_grad_actual,
+                                       x_grad_expected,
+                                       rtol=1e-05)
+
+    def test_example_with_gradient_accumulation_and_not_create_graph(self):
+        with _test_eager_guard():
+            self.func_example_with_gradient_accumulation_and_not_create_graph()
+        self.func_example_with_gradient_accumulation_and_not_create_graph()
+
+
+class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.sort_sum_gradient = True
         self.shape = [5, 10]

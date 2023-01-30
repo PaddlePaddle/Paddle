@@ -15,7 +15,13 @@
 from .lookahead import LookAhead  # noqa: F401
 from .modelaverage import ModelAverage  # noqa: F401
 from .distributed_fused_lamb import DistributedFusedLamb  # noqa: F401
+<<<<<<< HEAD
 from .lbfgs import LBFGS  # noqa: F401
 from . import functional  # noqa: F401
 
 __all__ = ['LBFGS']
+=======
+from . import functional  # noqa: F401
+
+__all__ = []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

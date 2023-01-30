@@ -13,11 +13,20 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import paddle
 
 
 class TestStrategyConfig(unittest.TestCase):
+=======
+import paddle
+import os
+
+
+class TestStrategyConfig(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_amp(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.amp = True
@@ -35,7 +44,11 @@ class TestStrategyConfig(unittest.TestCase):
             "incr_every_n_steps": 1000,
             "incr_ratio": 2.0,
             "use_dynamic_loss_scaling": True,
+<<<<<<< HEAD
             "decr_ratio": 0.5,
+=======
+            "decr_ratio": 0.5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         strategy.amp_configs = configs
         self.assertEqual(strategy.amp_configs["init_loss_scaling"], 32768)
@@ -78,7 +91,11 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.hybrid_configs = {
             "dp_degree": 1,
             "mp_degree": 2,
+<<<<<<< HEAD
             "pp_degree": 4,
+=======
+            "pp_degree": 4
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.assertEqual(strategy.hybrid_configs["dp_degree"], 1)
         self.assertEqual(strategy.hybrid_configs["mp_degree"], 2)
@@ -259,6 +276,7 @@ class TestStrategyConfig(unittest.TestCase):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {}
         configs['emb'] = {
+<<<<<<< HEAD
             "table_parameters.emb.accessor.embed_sgd_param.adagrad.learning_rate": 0.05,
             "table_parameters.emb.accessor.table_accessor_save_param.num": 2,
             "table_parameters.emb.accessor.table_accessor_save_param.param": [
@@ -279,6 +297,21 @@ class TestStrategyConfig(unittest.TestCase):
             .param,
             1,
         )
+=======
+            "table_parameters.emb.accessor.embed_sgd_param.adagrad.learning_rate":
+            0.05,
+            "table_parameters.emb.accessor.table_accessor_save_param.num": 2,
+            "table_parameters.emb.accessor.table_accessor_save_param.param":
+            [1, 2]
+        }
+        strategy.sparse_table_configs = configs
+        self.assertEqual(
+            strategy.sparse_table_configs[0].accessor.embed_sgd_param.adagrad.
+            learning_rate, 0.05)
+        self.assertEqual(
+            strategy.sparse_table_configs[0].accessor.
+            table_accessor_save_param[0].param, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         strategy.adam_d2sum = True
         self.assertEqual(strategy.adam_d2sum, True)
@@ -286,7 +319,11 @@ class TestStrategyConfig(unittest.TestCase):
             "uri": "123",
             "user": "456",
             "passwd": "789",
+<<<<<<< HEAD
             "hadoop_bin": "hadoop",
+=======
+            "hadoop_bin": "hadoop"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.assertEqual(strategy.fs_client_param.user, "456")
 
@@ -296,38 +333,54 @@ class TestStrategyConfig(unittest.TestCase):
         configs['emb'] = {"sparse_optimizer": "adagrad"}
         strategy.fleet_desc_configs = configs
         self.assertEqual(
+<<<<<<< HEAD
             strategy.sparse_table_configs[
                 0
             ].accessor.embed_sgd_param.adagrad.learning_rate,
             0.05,
         )
+=======
+            strategy.sparse_table_configs[0].accessor.embed_sgd_param.adagrad.
+            learning_rate, 0.05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {}
         configs['emb'] = {"sparse_optimizer": "naive"}
         strategy.fleet_desc_configs = configs
         self.assertEqual(
+<<<<<<< HEAD
             strategy.sparse_table_configs[
                 0
             ].accessor.embed_sgd_param.naive.learning_rate,
             0.05,
         )
+=======
+            strategy.sparse_table_configs[0].accessor.embed_sgd_param.naive.
+            learning_rate, 0.05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {}
         configs['emb'] = {"sparse_optimizer": "adam"}
         strategy.fleet_desc_configs = configs
         self.assertEqual(
+<<<<<<< HEAD
             strategy.sparse_table_configs[
                 0
             ].accessor.embed_sgd_param.adam.beta1_decay_rate,
             0.9,
         )
+=======
+            strategy.sparse_table_configs[0].accessor.embed_sgd_param.adam.
+            beta1_decay_rate, 0.9)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {}
         configs['emb'] = {
             "sparse_accessor_class": "DownpourUnitAccessor",
+<<<<<<< HEAD
             "embed_sparse_optimizer": "std_adagrad",
         }
         strategy.fleet_desc_configs = configs
@@ -343,11 +396,23 @@ class TestStrategyConfig(unittest.TestCase):
             ].accessor.embed_sgd_param.adagrad.initial_range,
             0,
         )
+=======
+            "embed_sparse_optimizer": "std_adagrad"
+        }
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(
+            strategy.sparse_table_configs[0].accessor.ctr_accessor_param.
+            show_scale, False)
+        self.assertEqual(
+            strategy.sparse_table_configs[0].accessor.embed_sgd_param.adagrad.
+            initial_range, 0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {}
         configs['emb'] = {
             "sparse_accessor_class": "DownpourCtrDoubleAccessor",
+<<<<<<< HEAD
             "embed_sparse_optimizer": "std_adagrad",
         }
         strategy.fleet_desc_configs = configs
@@ -357,29 +422,50 @@ class TestStrategyConfig(unittest.TestCase):
             ].accessor.embed_sgd_param.adagrad.initial_range,
             0.0001,
         )
+=======
+            "embed_sparse_optimizer": "std_adagrad"
+        }
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(
+            strategy.sparse_table_configs[0].accessor.embed_sgd_param.adagrad.
+            initial_range, 0.0001)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {}
         configs['emb'] = {"sparse_optimizer": "shared_adam"}
         strategy.fleet_desc_configs = configs
         self.assertEqual(
+<<<<<<< HEAD
             strategy.sparse_table_configs[
                 0
             ].accessor.embed_sgd_param.adam.beta1_decay_rate,
             0.9,
         )
+=======
+            strategy.sparse_table_configs[0].accessor.embed_sgd_param.adam.
+            beta1_decay_rate, 0.9)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_trainer_desc_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {
             "dump_fields_path": "dump_data",
             "dump_fields": ["xxx", "yyy"],
+<<<<<<< HEAD
             "dump_param": ['zzz'],
         }
         strategy.trainer_desc_configs = configs
         self.assertEqual(
             strategy.trainer_desc_configs["dump_fields_path"], "dump_data"
         )
+=======
+            "dump_param": ['zzz']
+        }
+        strategy.trainer_desc_configs = configs
+        self.assertEqual(strategy.trainer_desc_configs["dump_fields_path"],
+                         "dump_data")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(len(strategy.trainer_desc_configs["dump_fields"]), 2)
         self.assertEqual(len(strategy.trainer_desc_configs["dump_param"]), 1)
 

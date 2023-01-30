@@ -22,19 +22,34 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class OneHotXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     const auto* in = context.Input<phi::DenseTensor>("X");
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    const auto* in = context.Input<LoDTensor>("X");
+    auto* out = context.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // get depth from attr
     int depth = context.Attr<int>("depth");
 
     // get depth from input tensor
     if (context.HasInput("depth_tensor")) {
+<<<<<<< HEAD
       auto* depth_tensor = context.Input<phi::DenseTensor>("depth_tensor");
+=======
+      auto* depth_tensor = context.Input<Tensor>("depth_tensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto* depth_data = depth_tensor->data<int32_t>();
       if (platform::is_xpu_place(depth_tensor->place())) {
         xpu_memcpy(static_cast<void*>(&depth),

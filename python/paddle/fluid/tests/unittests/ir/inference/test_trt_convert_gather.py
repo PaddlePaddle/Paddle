@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import List
@@ -21,6 +22,16 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import logging
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TrtConvertGatherTest(TrtLayerAutoScanTest):
@@ -87,7 +98,11 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                                         "index_data": TensorConfig(
                                             data_gen=partial(
                                                 generate_input2
+<<<<<<< HEAD
                                                 if index_type_int32
+=======
+                                                if index_type_int32 == True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                 else generate_input4,
                                                 index,
                                             )
@@ -182,7 +197,11 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             if self.input_num == 3:
                 return 0, 5
             else:
+<<<<<<< HEAD
                 if dynamic_shape and self.index_type_int32:
+=======
+                if dynamic_shape and self.index_type_int32 == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     return 1, 3
                 else:
                     return 0, 4

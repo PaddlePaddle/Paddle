@@ -17,18 +17,24 @@ limitations under the License. */
 #include <queue>
 #include <stack>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
 
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DECLARE_bool(convert_all_blocks);
 PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
                               "",
@@ -487,9 +493,12 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
     desc->SetAttr(
         "dtype",
         dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->DType());
+<<<<<<< HEAD
     desc->SetAttr(
         "value",
         dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->Coeff());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   desc->SetAttr("force_cpu", false);
@@ -506,6 +515,7 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   return desc;
 }
 
+<<<<<<< HEAD
 void ReplaceAllReduceOp(const Node &node,
                         proto::BlockDesc *block,
                         std::vector<OpDesc> *ops) {
@@ -622,6 +632,8 @@ void ReplaceAllReduceOp(const Node &node,
 #endif
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void UpdateControlOpSkipEagerDeletionVars(const Node &node,
                                           const Graph &graph,
                                           const size_t graph_idx,
@@ -651,7 +663,10 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
 }
 
 static void GetGraphOpDesc(const std::vector<Node *> &nodes,
+<<<<<<< HEAD
                            proto::BlockDesc *block,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            std::vector<OpDesc> *ops,
                            const Graph &graph,
                            const size_t graph_idx) {
@@ -671,12 +686,17 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
   for (Node *n : nodes) {
     // if node is not Op, skip
     if (!n->IsOp()) continue;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // create fill_constant op
     if (n->Name() == "scale_loss_grad") {
       VLOG(4) << "convert op node scale_loss_grad to desc fill_constant";
       ops->emplace_back();
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     } else if ((n->Name() == "allreduce" || n->Name() == "fused_all_reduce") &&
                dynamic_cast<details::NCCLOpHandleBase *>(
@@ -685,6 +705,8 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ReplaceAllReduceOp(*n, block, ops);
       VLOG(4) << n->ToString();
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (n->Op()) {
       VLOG(4) << "convert op node to desc " << n->Op()->Type();
       if (is_fused_opt(n)) {
@@ -713,7 +735,11 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
       ops->emplace_back(*n->Op());
+<<<<<<< HEAD
       VLOG(5) << n->ToString();
+=======
+      VLOG(4) << n->ToString();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     // delete no OpDesc op
   }
@@ -778,7 +804,11 @@ static void GraphToBlock(const Graph &graph,
   }
 
   std::vector<OpDesc> ops;
+<<<<<<< HEAD
   GetGraphOpDesc(nodes, block, &ops, graph, graph_idx);
+=======
+  GetGraphOpDesc(nodes, &ops, graph, graph_idx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   for (auto &op : ops) {
     RemoveControlDepInputAndOuput(&op);
@@ -840,7 +870,10 @@ void GraphToProgram(const Graph &graph,
     VLOG(8) << "Merge main programs";
     MergePrograms(program, program_descs, /*append=*/false);
   }
+<<<<<<< HEAD
   // handle startup program
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(

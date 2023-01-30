@@ -58,11 +58,14 @@ KernelSignature EmbeddingGradOpArgumentMapping(
 
 PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2, embedding);
 PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad, embedding_grad);
+<<<<<<< HEAD
 PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad, embedding_sparse_grad);
 PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad,
                              sparse_weight_embedding_grad);
 PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad,
                              sparse_weight_embedding_sparse_grad);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 PD_REGISTER_ARG_MAPPING_FN(lookup_table_v2, phi::EmbeddingOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(lookup_table_v2_grad,

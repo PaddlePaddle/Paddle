@@ -33,9 +33,15 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
+<<<<<<< HEAD
              "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to pool over. "
              "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
+=======
+             "(LoDTensor), "
+             "ROIs (Regions of Interest) to pool over. "
+             "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -104,7 +110,11 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "W is thewidth of output. ");
     AddComment(R"DOC(
 **DeformablePSROIPooling Operator**
+<<<<<<< HEAD
 DeformablePSROIPooling is a new method based Region of interest pooling
+=======
+DeformablePSROIPooling is a new method based Region of interest pooling 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 (also known as RoI pooling).
 The operator has four steps:
 
@@ -149,8 +159,12 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
         rois_dims.size(),
         2,
         platform::errors::InvalidArgument(
+<<<<<<< HEAD
             "Input(ROIs) should be a 2-D phi::DenseTensor of shape (num_rois, "
             "4) "
+=======
+            "Input(ROIs) should be a 2-D LoDTensor of shape (num_rois, 4) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "given as [[ x1, y1, x2, y2], ...]. The rank of Input(ROIs) should "
             "be 2, but received ROIs rank is:%d, ROIs shape is:[%s].",
             rois_dims.size(),
@@ -290,10 +304,18 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -337,10 +359,18 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Trans"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Trans"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

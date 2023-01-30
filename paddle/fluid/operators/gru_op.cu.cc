@@ -21,6 +21,7 @@ template <typename DeviceContext, typename T>
 class GRUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
+<<<<<<< HEAD
     using LodTensorPtr = phi::DenseTensor*;
 
     bool is_test = context.Attr<bool>("is_test");
@@ -31,14 +32,30 @@ class GRUKernel : public framework::OpKernel<T> {
     const T* weight_data = weight->data<T>();
     auto* bias = context.Input<phi::DenseTensor>("Bias");
     auto* hidden = context.Output<phi::DenseTensor>("Hidden");
+=======
+    using LodTensorPtr = LoDTensor*;
+
+    bool is_test = context.Attr<bool>("is_test");
+    bool origin_mode = context.Attr<bool>("origin_mode");
+    auto* input = context.Input<LoDTensor>("Input");
+    auto* h0 = context.Input<Tensor>("H0");
+    auto* weight = context.Input<Tensor>("Weight");
+    const T* weight_data = weight->data<T>();
+    auto* bias = context.Input<Tensor>("Bias");
+    auto* hidden = context.Output<LoDTensor>("Hidden");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     hidden->mutable_data<T>(context.GetPlace());
 
     auto input_dims = input->dims();
     auto hidden_dims = hidden->dims();
 
     LodTensorPtr batch_gate, batch_reset_hidden_prev, batch_hidden;
+<<<<<<< HEAD
     phi::DenseTensor batch_gate_tmp, batch_reset_hidden_prev_tmp,
         batch_hidden_tmp;
+=======
+    LoDTensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (is_test) {
       batch_gate = &batch_gate_tmp;
       batch_gate->Resize(input_dims);
@@ -49,10 +66,17 @@ class GRUKernel : public framework::OpKernel<T> {
       batch_hidden = &batch_hidden_tmp;
       batch_hidden->Resize(hidden_dims);
     } else {
+<<<<<<< HEAD
       batch_gate = context.Output<phi::DenseTensor>("BatchGate");
       batch_hidden = context.Output<phi::DenseTensor>("BatchHidden");
       batch_reset_hidden_prev =
           context.Output<phi::DenseTensor>("BatchResetHiddenPrev");
+=======
+      batch_gate = context.Output<LoDTensor>("BatchGate");
+      batch_hidden = context.Output<LoDTensor>("BatchHidden");
+      batch_reset_hidden_prev =
+          context.Output<LoDTensor>("BatchResetHiddenPrev");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     batch_gate->mutable_data<T>(context.GetPlace());
     batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());
@@ -73,7 +97,11 @@ class GRUKernel : public framework::OpKernel<T> {
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
+<<<<<<< HEAD
     phi::DenseTensor ordered_h0;
+=======
+    Tensor ordered_h0;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -102,10 +130,16 @@ class GRUKernel : public framework::OpKernel<T> {
       int bend = static_cast<int>(batch_starts[n + 1]);
       int cur_batch_size = bend - bstart;
 
+<<<<<<< HEAD
       phi::DenseTensor gate_t = batch_gate->Slice(bstart, bend);
       phi::DenseTensor reset_hidden_prev_t =
           batch_reset_hidden_prev->Slice(bstart, bend);
       phi::DenseTensor hidden_t = batch_hidden->Slice(bstart, bend);
+=======
+      Tensor gate_t = batch_gate->Slice(bstart, bend);
+      Tensor reset_hidden_prev_t = batch_reset_hidden_prev->Slice(bstart, bend);
+      Tensor hidden_t = batch_hidden->Slice(bstart, bend);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       gru_value.output_value = hidden_t.data<T>();
       gru_value.gate_value = gate_t.data<T>();
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();

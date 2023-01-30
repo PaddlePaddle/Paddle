@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 add_subdirectory(quantization)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 file(
   GLOB TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -68,7 +71,10 @@ set_tests_properties(test_vision_models PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+<<<<<<< HEAD
 set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_COVERAGE)
   set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
 endif()

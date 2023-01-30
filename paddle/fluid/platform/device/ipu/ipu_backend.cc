@@ -72,6 +72,7 @@ void IpuBackend::Compile(framework::ir::Graph* graph,
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
+<<<<<<< HEAD
 void IpuBackend::Run(const std::vector<const phi::DenseTensor*>& inputs,
                      const std::vector<phi::DenseTensor*>& outputs,
                      const framework::ExecutionContext& ctx) {
@@ -81,6 +82,13 @@ void IpuBackend::Run(const std::vector<const phi::DenseTensor*>& inputs,
   } else {
     executor_->Run(inputs, outputs, ctx);
   }
+=======
+void IpuBackend::Run(const std::vector<const framework::Tensor*>& inputs,
+                     const std::vector<framework::Tensor*>& outputs,
+                     const framework::ExecutionContext& ctx) {
+  timer_->Start();
+  executor_->Run(inputs, outputs, ctx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   timer_->Pause();
   VLOG(10) << "[IPU Run]: " << timer_->ElapsedMS() << " (ms)";
 }

@@ -22,6 +22,12 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -138,6 +144,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Hidden");
 }
 
+<<<<<<< HEAD
 phi::KernelKey MultiGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return phi::KernelKey(phi::Backend::ONEDNN,
@@ -153,6 +160,26 @@ void MultiGRUOpMaker::Make() {
       "variable-time length input sequence. The underlying tensor in "
       "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
       "total time steps in this mini-batch, M is the dim size of x.");
+=======
+framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library = framework::LibraryType::kMKLDNN;
+  framework::DataLayout layout = framework::DataLayout::kMKLDNN;
+
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+      ctx.GetPlace(),
+      layout,
+      library);
+}
+
+void MultiGRUOpMaker::Make() {
+  AddInput("X",
+           "(LoDTensor) the input is an LodTensor, which support "
+           "variable-time length input sequence. The underlying tensor in "
+           "this LoDTensor is a matrix with shape (T X M), where T is the "
+           "total time steps in this mini-batch, M is the dim size of x.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddInput("WeightX",
            "(MultiTensor) The FC weight with shape (M x 3D),"
            "where M is the dim size of x, D is the hidden size. ")
@@ -176,7 +203,11 @@ void MultiGRUOpMaker::Make() {
       "Only used with MKL-DNN INT8.")
       .AsDuplicable()
       .AsDispensable();
+<<<<<<< HEAD
   AddOutput("Hidden", "(phi::DenseTensor) (T x D) Same as GRUOp");
+=======
+  AddOutput("Hidden", "(LoDTensor) (T x D) Same as GRUOp");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddAttr<std::string>("activation",
                        "(string, default tanh) "
                        "The activation type used for output candidate {h}_t.")
@@ -213,7 +244,11 @@ void MultiGRUOpMaker::Make() {
       .SetDefault(false);
   AddComment(R"DOC(
 The Fusion complete GRU Operator.
+<<<<<<< HEAD
 This operator fuse the fully-connected operator into GRU,
+=======
+This operator fuse the fully-connected operator into GRU, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 more details can refer to GRU op.
 )DOC");
 }

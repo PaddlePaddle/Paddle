@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import pickle
 import socket
@@ -27,6 +28,26 @@ from paddle_bfloat import bfloat16
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+=======
+from __future__ import print_function
+import numpy as np
+import unittest
+import time
+import argparse
+import os
+import sys
+import subprocess
+import traceback
+import functools
+import pickle
+import tempfile
+from contextlib import closing
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.unique_name as nameGen
+from paddle.fluid import core
+from paddle_bfloat import bfloat16
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def create_bool_test_data(shape=None, seed=None):
@@ -58,6 +79,7 @@ def create_complex_test_data(shape=None, dtype=None, seed=None):
     return data
 
 
+<<<<<<< HEAD
 def create_pyobject_test_data(shape=None, seed=None):
     if seed:
         np.random.seed(seed)
@@ -67,6 +89,24 @@ def create_pyobject_test_data(shape=None, seed=None):
     dict_val = np.random.random(shape).tolist()
     dict_data = dict(zip(dict_key, dict_val))
     return [list_data, dict_data]
+=======
+def create_pylist_test_data(shape=None, seed=None):
+    if seed:
+        np.random.seed(seed)
+    # Generate random shape test case for xxx_object api
+    shape = np.random.randint(0, high=100, size=(2)).tolist()
+    data = np.random.random(shape).tolist()
+    return data
+
+
+def create_pydict_test_data(shape=None, seed=None):
+    if seed:
+        np.random.seed(seed)
+    key = [i for i in range(0, shape[0])]
+    value = np.random.random(shape).tolist()
+    data = dict(zip(key, value))
+    return data
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def create_test_data(shape=None, dtype=None, seed=None):
@@ -78,6 +118,7 @@ def create_test_data(shape=None, dtype=None, seed=None):
         return create_float_test_data(shape=shape, dtype=bfloat16, seed=seed)
     elif dtype == "bool":
         return create_bool_test_data(shape=shape, seed=seed)
+<<<<<<< HEAD
     elif (
         dtype == "int32"
         or dtype == "int64"
@@ -89,10 +130,21 @@ def create_test_data(shape=None, dtype=None, seed=None):
         return create_complex_test_data(shape=shape, dtype=dtype, seed=seed)
     elif dtype == "pyobject":
         return create_pyobject_test_data(shape=shape, seed=seed)
+=======
+    elif dtype == "int32" or dtype == "int64" or dtype == "int8" or dtype == "uint8":
+        return create_int_test_data(shape=shape, dtype=dtype, seed=seed)
+    elif dtype == "complex64" or dtype == "complex128":
+        return create_complex_test_data(shape=shape, dtype=dtype, seed=seed)
+    elif dtype == "pylist":
+        return create_pylist_test_data(shape=shape, seed=seed)
+    elif dtype == "pydict":
+        return create_pydict_test_data(shape=shape, seed=seed)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         raise NotImplementedError("Unsupported dtype for creating test data.")
 
 
+<<<<<<< HEAD
 class TestCollectiveAPIRunnerBase:
     def get_model(
         self, train_prog, startup_prog, rank, indata=None, dtype=None
@@ -100,6 +152,18 @@ class TestCollectiveAPIRunnerBase:
         raise NotImplementedError(
             "get model should be implemented by child class."
         )
+=======
+class TestCollectiveAPIRunnerBase(object):
+
+    def get_model(self,
+                  train_prog,
+                  startup_prog,
+                  rank,
+                  indata=None,
+                  dtype=None):
+        raise NotImplementedError(
+            "get model should be implemented by child class.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def run_trainer(self, args):
         train_prog = fluid.Program()
@@ -108,6 +172,7 @@ class TestCollectiveAPIRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
+<<<<<<< HEAD
         if args["use_comm_context"]:
             paddle.distributed.collective._init_parallel_env(args["backend"])
         else:
@@ -117,14 +182,27 @@ class TestCollectiveAPIRunnerBase:
             place = fluid.CUDAPlace(
                 device_id
             )  # if args.use_gpu else fluid.CPUPlace()
+=======
+        paddle.distributed.init_parallel_env()
+        if args['backend'] == 'nccl':
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(
+                device_id)  #if args.use_gpu else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
+<<<<<<< HEAD
         indata = create_test_data(
             shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
         )
+=======
+        indata = create_test_data(shape=(10, 1000),
+                                  dtype=args["dtype"],
+                                  seed=os.getpid())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if args['static_mode']:
             result = self.get_model(train_prog, startup_prog, rank)
             exe = fluid.Executor(place)
@@ -132,12 +210,21 @@ class TestCollectiveAPIRunnerBase:
             fetch_list = []
             for elem in result:
                 fetch_list.append(elem.name)
+<<<<<<< HEAD
             out = exe.run(
                 train_prog, feed={'tindata': indata}, fetch_list=fetch_list
             )
         else:
             out = self.get_model(train_prog, startup_prog, rank, indata)
             # print(out, sys.stderr)
+=======
+            out = exe.run(train_prog,
+                          feed={'tindata': indata},
+                          fetch_list=fetch_list)
+        else:
+            out = self.get_model(train_prog, startup_prog, rank, indata)
+            #print(out, sys.stderr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sys.stdout.buffer.write(pickle.dumps(out))
 
 
@@ -153,20 +240,38 @@ def runtime_main(test_class, col_type):
     args["path_id"] = int(os.getenv("PATH_ID"))
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
     args["dtype"] = os.getenv("DTYPE")
+<<<<<<< HEAD
     args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
     model.run_trainer(args)
 
 
 class TestDistBase(unittest.TestCase):
+=======
+    model.run_trainer(args)
+
+
+import paddle.compat as cpt
+import socket
+from contextlib import closing
+
+
+class TestDistBase(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+<<<<<<< HEAD
             self._find_free_port(),
             self._find_free_port(),
         )
         self._python_interp = sys.executable
         self._master_endpoints = "127.0.0.1:%s" % (self._find_free_port())
+=======
+            self._find_free_port(), self._find_free_port())
+        self._python_interp = sys.executable
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -175,20 +280,33 @@ class TestDistBase(unittest.TestCase):
         nccl_version_str = subprocess.check_output(
             r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
             stderr=subprocess.DEVNULL,
+<<<<<<< HEAD
             shell=True,
         ).decode('utf-8')
         self._nccl_version = (
             int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
         )
+=======
+            shell=True).decode('utf-8')
+        self._nccl_version = int("".join(
+            nccl_version_str.split("."))) if nccl_version_str else 0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
     def _find_free_port(self):
+<<<<<<< HEAD
         def __free_port():
             with closing(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             ) as s:
+=======
+
+        def __free_port():
+            with closing(socket.socket(socket.AF_INET,
+                                       socket.SOCK_STREAM)) as s:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 s.bind(('', 0))
                 return s.getsockname()[1]
 
@@ -201,15 +319,23 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster(self, model_file, envs):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
+<<<<<<< HEAD
         # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
+=======
+        #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if core.is_compiled_with_cuda():
             env0 = {
                 "FLAGS_selected_gpus": "0",
                 "PADDLE_TRAINER_ID": "0",
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+<<<<<<< HEAD
                 "PADDLE_CURRENT_ENDPOINT": w0_ep,
                 "PADDLE_MASTER": self._master_endpoints,
+=======
+                "PADDLE_CURRENT_ENDPOINT": w0_ep
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             env1 = {
@@ -217,8 +343,12 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ID": "1",
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+<<<<<<< HEAD
                 "PADDLE_CURRENT_ENDPOINT": w1_ep,
                 "PADDLE_MASTER": self._master_endpoints,
+=======
+                "PADDLE_CURRENT_ENDPOINT": w1_ep
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
         elif core.is_compiled_with_xpu():
             env0 = {
@@ -226,7 +356,11 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ID": "0",
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+<<<<<<< HEAD
                 "PADDLE_CURRENT_ENDPOINT": w0_ep,
+=======
+                "PADDLE_CURRENT_ENDPOINT": w0_ep
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             env1 = {
@@ -234,9 +368,15 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ID": "1",
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+<<<<<<< HEAD
                 "PADDLE_CURRENT_ENDPOINT": w1_ep,
             }
         # update environment
+=======
+                "PADDLE_CURRENT_ENDPOINT": w1_ep
+            }
+        #update environment
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         env0.update(envs)
         env1.update(envs)
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
@@ -245,6 +385,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
+<<<<<<< HEAD
         path0 = os.path.join(
             self.temp_dir.name, "/tmp/tr0_err_%d.log" % os.getpid()
         )
@@ -267,6 +408,24 @@ class TestDistBase(unittest.TestCase):
             stderr=tr1_pipe,
             env=env1,
         )
+=======
+        path0 = os.path.join(self.temp_dir.name,
+                             "/tmp/tr0_err_%d.log" % os.getpid())
+        path1 = os.path.join(self.temp_dir.name,
+                             "/tmp/tr1_err_%d.log" % os.getpid())
+        tr0_pipe = open(path0, "w")
+        tr1_pipe = open(path1, "w")
+        #print(tr0_cmd)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
+
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -279,6 +438,7 @@ class TestDistBase(unittest.TestCase):
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
         with open(path1, "r") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
+<<<<<<< HEAD
         return (
             pickle.loads(tr0_out),
             pickle.loads(tr1_out),
@@ -298,6 +458,21 @@ class TestDistBase(unittest.TestCase):
         eager_mode=True,
         dtype=None,
     ):
+=======
+        return pickle.loads(tr0_out), pickle.loads(
+            tr1_out), tr0_proc.pid, tr1_proc.pid
+
+    def check_with_place(self,
+                         model_file,
+                         col_type,
+                         backend="nccl",
+                         path_id="0",
+                         static_mode="1",
+                         check_error_log=False,
+                         need_envs={},
+                         eager_mode=True,
+                         dtype=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if backend == "nccl" or backend == "bkcl":
             with_gloo = '0'
         else:
@@ -311,7 +486,11 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_DISTRI_BACKEND": backend,
             "BACKEND": backend,
             "PATH_ID": path_id,
+<<<<<<< HEAD
             "DTYPE": dtype,
+=======
+            "DTYPE": dtype
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
@@ -322,12 +501,24 @@ class TestDistBase(unittest.TestCase):
 
         if os.getenv('NVIDIA_TF32_OVERRIDE', '') is not None:
             required_envs['NVIDIA_TF32_OVERRIDE'] = os.getenv(
+<<<<<<< HEAD
                 'NVIDIA_TF32_OVERRIDE', ''
             )
 
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
             model_file, required_envs
         )
+=======
+                'NVIDIA_TF32_OVERRIDE', '')
+
+        if eager_mode:
+            required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
+        else:
+            required_envs["FLAGS_enable_eager_mode"] = "%d" % 0
+
+        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
+            model_file, required_envs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         input1 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid0)
         input2 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid1)
         # cast bfloat16 to float32 for numeric comparison
@@ -340,7 +531,11 @@ class TestDistBase(unittest.TestCase):
             tr_out1 = np.vstack((tr1_out[0], tr1_out[1]))
             np.testing.assert_allclose(tr_out0, need_result, rtol=1e-05)
             np.testing.assert_allclose(tr_out1, need_result, rtol=1e-05)
+<<<<<<< HEAD
         elif col_type == "allgather_object":
+=======
+        if col_type == "allgather_object":
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             need_result = [input1, input2]
             self.assertEqual(need_result, tr0_out)
             self.assertEqual(need_result, tr1_out)
@@ -348,10 +543,13 @@ class TestDistBase(unittest.TestCase):
             need_result = input2
             np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
             np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
+<<<<<<< HEAD
         elif col_type == "broadcast_object_list":
             need_result = [input2]
             self.assertEqual(need_result, tr0_out)
             self.assertEqual(need_result, tr1_out)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif col_type == "reduce":
             need_result = input1 + input2
             # bfloat16 precision loss comes from truncating the last 16 bits of float32,
@@ -363,6 +561,7 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr0_out[0], need_result, rtol=rtol)
         elif col_type == "scatter":
             need_result = input2
+<<<<<<< HEAD
             need_result1 = need_result[0 : need_result.shape[0] // 2]
             need_result2 = need_result[need_result.shape[0] // 2 :]
             np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
@@ -377,6 +576,16 @@ class TestDistBase(unittest.TestCase):
             need_result = input1 + input2
             need_result1 = need_result[0 : need_result.shape[0] // 2]
             need_result2 = need_result[need_result.shape[0] // 2 :]
+=======
+            need_result1 = need_result[0:need_result.shape[0] // 2]
+            need_result2 = need_result[need_result.shape[0] // 2:]
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
+        elif col_type == "reduce_scatter":
+            need_result = input1 + input2
+            need_result1 = need_result[0:need_result.shape[0] // 2]
+            need_result2 = need_result[need_result.shape[0] // 2:]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if dtype == "bfloat16":
                 rtol = 8e-03
             else:
@@ -391,12 +600,23 @@ class TestDistBase(unittest.TestCase):
             else:
                 rtol = 1e-05
                 atol = 1e-05
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 tr0_out[0], need_result, rtol=rtol, atol=atol
             )
             np.testing.assert_allclose(
                 tr1_out[0], need_result, rtol=rtol, atol=atol
             )
+=======
+            np.testing.assert_allclose(tr0_out[0],
+                                       need_result,
+                                       rtol=rtol,
+                                       atol=atol)
+            np.testing.assert_allclose(tr1_out[0],
+                                       need_result,
+                                       rtol=rtol,
+                                       atol=atol)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif col_type == "parallel_embedding":
             result_data = tr0_out[0]
             np.random.seed(2020)
@@ -404,22 +624,36 @@ class TestDistBase(unittest.TestCase):
             for i in range(result_data.shape[0]):
                 for j in range(result_data.shape[1]):
                     data = result_data[i][j]
+<<<<<<< HEAD
                     np.testing.assert_allclose(
                         tr0_out[1][i][j], need_result[data], atol=1e-08
                     )
+=======
+                    assert np.allclose(tr0_out[1][i][j],
+                                       need_result[data],
+                                       atol=1e-08)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif col_type == "row_parallel_linear":
             result_data = tr0_out[0]
             np.random.seed(2020)
             weight = np.random.rand(1000, 16)
             need_result = np.matmul(input1, weight)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
+=======
+            np.testing.assert_allclose(result_data,
+                                       need_result,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif col_type == "column_parallel_linear":
             result_data = tr0_out[0]
             np.random.seed(2020)
             weight = np.random.rand(1000, 16)
             need_result = np.matmul(input1, weight)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
@@ -449,6 +683,33 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 input1, result_data, rtol=1e-05, atol=1e-05
             )
+=======
+            np.testing.assert_allclose(result_data,
+                                       need_result,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+        elif col_type == "alltoall":
+            need_result1 = np.vstack((input1[0:input1.shape[0] // 2, :],
+                                      input2[0:input2.shape[0] // 2, :]))
+            need_result2 = np.vstack((input1[input1.shape[0] // 2:, :],
+                                      input2[input2.shape[0] // 2:, :]))
+            tr0_out = np.vstack(tr0_out)
+            tr1_out = np.vstack(tr1_out)
+            np.testing.assert_allclose(tr0_out,
+                                       need_result1,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(tr1_out,
+                                       need_result2,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+        elif col_type == "sendrecv":
+            result_data = tr1_out[0]
+            np.testing.assert_allclose(input1,
+                                       result_data,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif col_type == "global_gather":
             in_feat = 2
             n_expert = 2
@@ -457,8 +718,12 @@ class TestDistBase(unittest.TestCase):
 
             np.random.seed(pid0)
             local_expert_count1 = np.random.randint(
+<<<<<<< HEAD
                 1, 4, size=tot_expert
             ).astype("int")
+=======
+                1, 4, size=tot_expert).astype("int")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expert_ptr1 = np.ones(tot_expert, dtype=np.int32)
             expert_ptr1[0] = 0
             for i in range(1, tot_expert):
@@ -466,8 +731,12 @@ class TestDistBase(unittest.TestCase):
 
             np.random.seed(pid1)
             local_expert_count2 = np.random.randint(
+<<<<<<< HEAD
                 1, 4, size=tot_expert
             ).astype("int")
+=======
+                1, 4, size=tot_expert).astype("int")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expert_ptr2 = np.ones(tot_expert, dtype=np.int32)
             expert_ptr2[0] = 0
             for i in range(1, tot_expert):
@@ -482,6 +751,7 @@ class TestDistBase(unittest.TestCase):
 
             np.random.seed(pid0)
             fwd_expert_count = sum(global_expert_count1).astype("int")
+<<<<<<< HEAD
             local_input_buf1 = np.random.rand(fwd_expert_count, in_feat).astype(
                 "float32"
             )
@@ -490,6 +760,14 @@ class TestDistBase(unittest.TestCase):
             local_input_buf2 = np.random.rand(fwd_expert_count, in_feat).astype(
                 "float32"
             )
+=======
+            local_input_buf1 = np.random.rand(fwd_expert_count,
+                                              in_feat).astype("float32")
+            np.random.seed(pid1)
+            fwd_expert_count = sum(global_expert_count2).astype("int")
+            local_input_buf2 = np.random.rand(fwd_expert_count,
+                                              in_feat).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             output1 = [[], [], [], []]
             output2 = [[], [], [], []]
             send_ptr1 = 0
@@ -499,6 +777,7 @@ class TestDistBase(unittest.TestCase):
                 for j in range(world_size):
                     idx = j * n_expert + i
                     if j == 0:
+<<<<<<< HEAD
                         output1_part1 = local_input_buf1[
                             send_ptr1 : send_ptr1 + global_expert_count1[idx], :
                         ]
@@ -514,6 +793,19 @@ class TestDistBase(unittest.TestCase):
                         output2_part2 = local_input_buf2[
                             send_ptr2 : send_ptr2 + global_expert_count2[idx]
                         ]
+=======
+                        output1_part1 = local_input_buf1[send_ptr1: \
+                            send_ptr1 + global_expert_count1[idx], :]
+                        output1_part2 = local_input_buf2[send_ptr2: \
+                            send_ptr2 + global_expert_count2[idx], :]
+                        output1[i].extend(output1_part1)
+                        output1[i + n_expert].extend(output1_part2)
+                    else:
+                        output2_part1 = local_input_buf1[send_ptr1: \
+                            send_ptr1 + global_expert_count1[idx]]
+                        output2_part2 = local_input_buf2[send_ptr2: \
+                            send_ptr2 + global_expert_count2[idx]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         output2[i].extend(output2_part1)
                         output2[i + n_expert].extend(output2_part2)
                     send_ptr1 = send_ptr1 + global_expert_count1[idx]
@@ -534,14 +826,22 @@ class TestDistBase(unittest.TestCase):
                 output1 = np.array([])
             else:
                 output1 = np.concatenate(result1, axis=0).reshape(
+<<<<<<< HEAD
                     sum(local_expert_count1), in_feat
                 )
+=======
+                    sum(local_expert_count1), in_feat)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if result2 == []:
                 output2 = np.array([])
             else:
                 output2 = np.concatenate(result2, axis=0).reshape(
+<<<<<<< HEAD
                     sum(local_expert_count2), in_feat
                 )
+=======
+                    sum(local_expert_count2), in_feat)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if tr0_out[0] is None or tr0_out[0].shape[0] == 0:
                 tr0_out[0] = np.array([])
@@ -549,6 +849,7 @@ class TestDistBase(unittest.TestCase):
             if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
                 tr1_out[0] = np.array([])
 
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 tr0_out[0], output1, rtol=1e-05, atol=1e-05
             )
@@ -562,14 +863,38 @@ class TestDistBase(unittest.TestCase):
                 np.testing.assert_allclose(
                     tr1_out[1], 2 * local_input_buf2, rtol=1e-05, atol=1e-05
                 )
+=======
+            np.testing.assert_allclose(tr0_out[0],
+                                       output1,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(tr1_out[0],
+                                       output2,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            if static_mode == 0:
+                np.testing.assert_allclose(tr0_out[1],
+                                           2 * local_input_buf1,
+                                           rtol=1e-05,
+                                           atol=1e-05)
+                np.testing.assert_allclose(tr1_out[1],
+                                           2 * local_input_buf2,
+                                           rtol=1e-05,
+                                           atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         elif col_type == "global_scatter":
             np.random.seed(pid0)
             local_expert_count1 = np.random.randint(1, 4, size=4).astype("int")
             fwd_expert_count = sum(local_expert_count1)
+<<<<<<< HEAD
             local_input_buf1 = np.random.rand(fwd_expert_count, 2).astype(
                 "float32"
             )
+=======
+            local_input_buf1 = np.random.rand(fwd_expert_count,
+                                              2).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expert_ptr1 = np.ones(4, dtype=np.int32)
             expert_ptr1[0] = 0
             for i in range(1, 4):
@@ -577,9 +902,14 @@ class TestDistBase(unittest.TestCase):
             np.random.seed(pid1)
             local_expert_count2 = np.random.randint(1, 4, size=4).astype("int")
             fwd_expert_count = sum(local_expert_count2)
+<<<<<<< HEAD
             local_input_buf2 = np.random.rand(fwd_expert_count, 2).astype(
                 "float32"
             )
+=======
+            local_input_buf2 = np.random.rand(fwd_expert_count,
+                                              2).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expert_ptr2 = np.ones(4, dtype=np.int32)
             expert_ptr2[0] = 0
             for i in range(1, 4):
@@ -592,6 +922,7 @@ class TestDistBase(unittest.TestCase):
                     idx = j * 2 + i
                     if j == 0:
                         # send data to 0 card
+<<<<<<< HEAD
                         output1.append(
                             local_input_buf1[
                                 expert_ptr1[idx] : expert_ptr1[idx]
@@ -617,6 +948,17 @@ class TestDistBase(unittest.TestCase):
                                 + local_expert_count2[idx]
                             ]
                         )
+=======
+                        output1.append(local_input_buf1[expert_ptr1[idx]: \
+                            expert_ptr1[idx]+local_expert_count1[idx]])
+                        output1.append(local_input_buf2[expert_ptr2[idx]:\
+                            expert_ptr2[idx]+local_expert_count2[idx]])
+                    else:
+                        output2.append(local_input_buf1[expert_ptr1[idx]: \
+                            expert_ptr1[idx]+local_expert_count1[idx]])
+                        output2.append(local_input_buf2[expert_ptr2[idx]:\
+                            expert_ptr2[idx]+local_expert_count2[idx]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if output1 == []:
                 output1 = np.array([])
             else:
@@ -632,6 +974,7 @@ class TestDistBase(unittest.TestCase):
             if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
                 tr1_out[0] = np.array([])
 
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 tr0_out[0], output1, rtol=1e-05, atol=1e-05
             )
@@ -645,5 +988,24 @@ class TestDistBase(unittest.TestCase):
                 np.testing.assert_allclose(
                     tr1_out[1], 2 * local_input_buf2, rtol=1e-05, atol=1e-05
                 )
+=======
+            np.testing.assert_allclose(tr0_out[0],
+                                       output1,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(tr1_out[0],
+                                       output2,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            if static_mode == 0:
+                np.testing.assert_allclose(tr0_out[1],
+                                           2 * local_input_buf1,
+                                           rtol=1e-05,
+                                           atol=1e-05)
+                np.testing.assert_allclose(tr1_out[1],
+                                           2 * local_input_buf2,
+                                           rtol=1e-05,
+                                           atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             pass

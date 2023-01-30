@@ -16,12 +16,17 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/common/data_type.h"
+=======
+#include "paddle/fluid/framework/data_type.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 namespace funcs {
 
+<<<<<<< HEAD
 using phi::To32BitIndex;
 
 template <typename DeviceContext, typename T>
@@ -29,13 +34,25 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                                                phi::DenseTensor* tensor,
                                                T num) {
   auto t = phi::EigenVector<T>::Flatten(*tensor);
+=======
+using paddle::framework::To32BitIndex;
+
+template <typename DeviceContext, typename T>
+void SetConstant<DeviceContext, T>::operator()(
+    const DeviceContext& context, paddle::framework::Tensor* tensor, T num) {
+  auto t = paddle::framework::EigenVector<T>::Flatten(*tensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
 }
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
 void SetConstant<XPUContext, T>::operator()(const XPUContext& context,
+<<<<<<< HEAD
                                             phi::DenseTensor* tensor,
+=======
+                                            paddle::framework::Tensor* tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                             T num) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
@@ -43,7 +60,11 @@ void SetConstant<XPUContext, T>::operator()(const XPUContext& context,
 template <typename T>
 void SetConstant<paddle::platform::XPUDeviceContext, T>::operator()(
     const paddle::platform::XPUDeviceContext& context,
+<<<<<<< HEAD
     phi::DenseTensor* tensor,
+=======
+    paddle::framework::Tensor* tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T num) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
@@ -53,15 +74,25 @@ void SetConstant<paddle::platform::XPUDeviceContext, T>::operator()(
 template <typename DeviceContext, typename T, int Rank>
 void Transpose<DeviceContext, T, Rank>::operator()(
     const DeviceContext& context,
+<<<<<<< HEAD
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
+=======
+    const paddle::framework::Tensor& in,
+    paddle::framework::Tensor* out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const std::vector<int>& axis) {
   Eigen::array<int, Rank> permute;
   for (int i = 0; i < Rank; i++) {
     permute[i] = axis[i];
   }
+<<<<<<< HEAD
   auto eigen_in = phi::EigenTensor<T, Rank>::From(in);
   auto eigen_out = phi::EigenTensor<T, Rank>::From(*out);
+=======
+  auto eigen_in = paddle::framework::EigenTensor<T, Rank>::From(in);
+  auto eigen_out = paddle::framework::EigenTensor<T, Rank>::From(*out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* dev = context.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
@@ -75,9 +106,16 @@ void Transpose<DeviceContext, T, Rank>::operator()(
 }
 
 template <typename DeviceContext, typename T>
+<<<<<<< HEAD
 void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                                               const phi::DenseTensor& input,
                                               phi::DenseTensor* out) {
+=======
+void ColwiseSum<DeviceContext, T>::operator()(
+    const DeviceContext& context,
+    const paddle::framework::Tensor& input,
+    paddle::framework::Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(out->numel(),
@@ -89,8 +127,13 @@ void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                         size,
                         out->numel()));
 
+<<<<<<< HEAD
   auto in = phi::EigenMatrix<T>::From(input);
   auto vec = phi::EigenVector<T>::Flatten(*out);
+=======
+  auto in = paddle::framework::EigenMatrix<T>::From(input);
+  auto vec = paddle::framework::EigenVector<T>::Flatten(*out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   vec.device(*context.eigen_device()) = in.sum(Eigen::array<int, 1>({{0}}));
 }
@@ -102,8 +145,13 @@ template <typename T>
 class ColwiseSum<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out) {
+=======
+                  const paddle::framework::Tensor& input,
+                  paddle::framework::Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto& in_dims = input.dims();
     auto height = in_dims[0];
     auto size = in_dims[1];
@@ -117,7 +165,11 @@ class ColwiseSum<phi::CPUContext, T> {
             size,
             out->numel()));
 
+<<<<<<< HEAD
     T* out_buf = context.template Alloc<T>(out);
+=======
+    T* out_buf = out->mutable_data<T>(out->place());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const T* in_buf = input.data<T>();
 
     for (size_t i = 0; i < static_cast<size_t>(height); ++i) {
@@ -133,9 +185,16 @@ class ColwiseSum<phi::CPUContext, T> {
 };
 
 template <typename DeviceContext, typename T>
+<<<<<<< HEAD
 void RowwiseMean<DeviceContext, T>::operator()(const DeviceContext& context,
                                                const phi::DenseTensor& input,
                                                phi::DenseTensor* out) {
+=======
+void RowwiseMean<DeviceContext, T>::operator()(
+    const DeviceContext& context,
+    const paddle::framework::Tensor& input,
+    paddle::framework::Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto in_dims = input.dims();
   PADDLE_ENFORCE_EQ(in_dims.size(),
                     2U,
@@ -151,8 +210,13 @@ void RowwiseMean<DeviceContext, T>::operator()(const DeviceContext& context,
                         in_dims[0],
                         out->numel()));
 
+<<<<<<< HEAD
   auto in = phi::EigenMatrix<T>::From(input);
   auto vec = phi::EigenVector<T>::Flatten(*out);
+=======
+  auto in = paddle::framework::EigenMatrix<T>::From(input);
+  auto vec = paddle::framework::EigenVector<T>::Flatten(*out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   vec.device(*context.eigen_device()) = in.mean(Eigen::array<int, 1>({{1}}));
 }
@@ -164,8 +228,13 @@ template <typename T>
 class RowwiseMean<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out) {
+=======
+                  const paddle::framework::Tensor& input,
+                  paddle::framework::Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto& in_dims = input.dims();
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
@@ -185,7 +254,11 @@ class RowwiseMean<phi::CPUContext, T> {
             height,
             out->numel()));
     auto inv_size = 1.0 / size;
+<<<<<<< HEAD
     T* out_buf = context.template Alloc<T>(out);
+=======
+    T* out_buf = out->mutable_data<T>(out->place());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const T* in_buf = input.data<T>();
 
     for (size_t i = 0; i < static_cast<size_t>(height); ++i) {
@@ -199,9 +272,16 @@ class RowwiseMean<phi::CPUContext, T> {
 };
 
 template <typename DeviceContext, typename T>
+<<<<<<< HEAD
 void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                                               const phi::DenseTensor& input,
                                               phi::DenseTensor* out) {
+=======
+void RowwiseSum<DeviceContext, T>::operator()(
+    const DeviceContext& context,
+    const paddle::framework::Tensor& input,
+    paddle::framework::Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto in_dims = input.dims();
   PADDLE_ENFORCE_EQ(in_dims.size(),
                     2U,
@@ -217,8 +297,13 @@ void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                         in_dims[0],
                         out->numel()));
 
+<<<<<<< HEAD
   auto in = phi::EigenMatrix<T>::From(input);
   auto vec = phi::EigenVector<T>::Flatten(*out);
+=======
+  auto in = paddle::framework::EigenMatrix<T>::From(input);
+  auto vec = paddle::framework::EigenVector<T>::Flatten(*out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   vec.device(*context.eigen_device()) = in.sum(Eigen::array<int, 1>({{1}}));
 }
@@ -230,8 +315,13 @@ template <typename T>
 class RowwiseSum<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out) {
+=======
+                  const paddle::framework::Tensor& input,
+                  paddle::framework::Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto& in_dims = input.dims();
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
@@ -251,7 +341,11 @@ class RowwiseSum<phi::CPUContext, T> {
             height,
             out->numel()));
 
+<<<<<<< HEAD
     T* out_buf = context.template Alloc<T>(out);
+=======
+    T* out_buf = out->mutable_data<T>(out->place());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const T* in_buf = input.data<T>();
 
     for (size_t i = 0; i < static_cast<size_t>(height); ++i) {

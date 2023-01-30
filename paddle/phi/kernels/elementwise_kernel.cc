@@ -110,6 +110,7 @@ void SubtractKernel(const Context& dev_ctx,
   SubtractRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void FMaxKernel(const Context& dev_ctx,
                 const DenseTensor& x,
@@ -126,16 +127,21 @@ void FMinKernel(const Context& dev_ctx,
   FMinRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(
     fmax, CPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(
     fmin, CPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_KERNEL(maximum,
                    CPU,
                    ALL_LAYOUT,
@@ -232,6 +238,7 @@ PD_REGISTER_KERNEL(divide,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(fmax,
                    KPS,
                    ALL_LAYOUT,
@@ -252,6 +259,8 @@ PD_REGISTER_KERNEL(fmin,
                    phi::dtype::float16,
                    int64_t) {}
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_KERNEL(maximum,
                    KPS,
                    ALL_LAYOUT,
@@ -378,16 +387,24 @@ PD_REGISTER_KERNEL(multiply,
                    ALL_LAYOUT,
                    phi::MultiplyKernel,
                    phi::dtype::float16,
+<<<<<<< HEAD
                    float,
                    int,
                    int64_t) {}
+=======
+                   float) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_KERNEL(subtract,
                    XPU,
                    ALL_LAYOUT,
                    phi::SubtractKernel,
                    float,
+<<<<<<< HEAD
                    phi::dtype::float16,
                    int64_t) {}
+=======
+                   phi::dtype::float16) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 #if defined PADDLE_WITH_XPU

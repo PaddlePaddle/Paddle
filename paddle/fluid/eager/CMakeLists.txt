@@ -13,12 +13,18 @@ set(eager_deps
     eager_nan_inf_utils
     grad_node_info
     grad_tensor_holder
+<<<<<<< HEAD
     custom_operator_node)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   set(eager_deps ${eager_deps} accumulation_node prim_utils)
 endif()
 
+=======
+    accumulation_node
+    custom_operator_node)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 set(fluid_deps
     tracer
     layer
@@ -36,10 +42,16 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
 endif()
 
 add_subdirectory(api)
+<<<<<<< HEAD
 add_subdirectory(custom_operator)
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   add_subdirectory(accumulation)
   add_subdirectory(tests)
+=======
+add_subdirectory(accumulation)
+add_subdirectory(custom_operator)
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   add_subdirectory(pylayer)
   cc_library(
     grad_tensor_holder
@@ -80,3 +92,10 @@ cc_library(
        scale_op
        autograd_meta
        hook_utils)
+<<<<<<< HEAD
+=======
+
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  add_subdirectory(tests)
+endif()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

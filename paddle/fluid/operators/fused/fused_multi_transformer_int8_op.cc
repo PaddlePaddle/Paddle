@@ -21,6 +21,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
  private:
   static constexpr const char *OpName = "FusedMultiTransformerINT8Op";
@@ -56,12 +61,15 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
     CHECK_INPUTS(FFN1Weight);
     CHECK_INPUTS(FFN2Weight);
 
+<<<<<<< HEAD
     // scale
     CHECK_INPUTS(QKVOutScale);
     CHECK_INPUTS(OutLinearOutScale);
     CHECK_INPUTS(FFN1OutScale);
     CHECK_INPUTS(FFN2OutScale);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK_OUTPUT(Out);
 
     // x: qkv's input [batch_size, seq_len, dim_embed]
@@ -166,6 +174,7 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -184,6 +193,24 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "TimeStep") {
+      VLOG(10) << "var_name:" << var_name << " need not to transform";
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -238,6 +265,7 @@ class FusedMultiTransformerINT8OpMaker
              "In order to keep consistent with the PTQ/QAT calculation logic,"
              "QKVOutScale should be max_bound * max_bound / max_range."
              "Here max_range is per-channel weight scale."
+<<<<<<< HEAD
              "The shape of QKVOutScale is [num_channels]")
         .AsDispensable()
         .AsDuplicable();
@@ -256,6 +284,22 @@ class FusedMultiTransformerINT8OpMaker
              "The definition and shape is the same as QKVOutScale")
         .AsDispensable()
         .AsDuplicable();
+=======
+             "The shape of QKVOutScale is [num_layers, num_channels]")
+        .AsDispensable();
+    AddInput("OutLinearOutScale",
+             "OutLinearOutScale is used to dequantize out_linear output tensor."
+             "The definition and shape is the same as QKVOutScale")
+        .AsDispensable();
+    AddInput("FFN1OutScale",
+             "FFN1OutScale is used to dequantize ffn1 output tensor."
+             "The definition and shape is the same as QKVOutScale")
+        .AsDispensable();
+    AddInput("FFN2OutScale",
+             "FFN2OutScale is used to dequantize ffn2 output tensor."
+             "The definition and shape is the same as QKVOutScale")
+        .AsDispensable();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     AddOutput("CacheKVOut", "The updated cache KV. Inplace with CacheKV")
         .AsDispensable()

@@ -21,8 +21,12 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Emission",
+<<<<<<< HEAD
         "(Tensor/phi::DenseTensor). For a phi::DenseTensor input, its shape is "
         "[N x D] "
+=======
+        "(Tensor/LoDTensor). For a LoDTensor input, its shape is [N x D] "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "where N is the total sequence length of the mini-batch and D is "
         "the total tag number. While for a tensor input, its shape is "
         "[B X S X D] with B the batch size and S the sequence length of each "
@@ -40,14 +44,23 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "The data type is the same as Input(Emission).");
     AddInput(
         "Label",
+<<<<<<< HEAD
         "(phi::DenseTensor). The ground truth with shape "
         "[N x 1] (for phi::DenseTensor) or [B x S] (for Tensor). This input is "
+=======
+        "(Tensor/LoDTensor). The ground truth with shape "
+        "[N x 1] (for LoDTensor) or [B x S] (for Tensor). This input is "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "optional. See more details in the operator's comments. The data type "
         "is int64.")
         .AsDispensable();
     AddOutput(
         "ViterbiPath",
+<<<<<<< HEAD
         "(phi::DenseTensor). The decoding results. What to "
+=======
+        "(Tensor/LoDTensor). The decoding results. What to "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "return changes depending on whether the Input(Label) (the ground "
         "truth) is given. See more details in the operator's comment. "
         "The data type is int64.");
@@ -59,9 +72,15 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddComment(R"DOC(
 The crf_decoding operator reads the emission feature weights and the transition
+<<<<<<< HEAD
 feature weights learned by the linear_chain_crf operator and performs decoding.
 It implements the Viterbi algorithm which is a dynamic programming algorithm
 for finding the most likely sequence of hidden states, called the Viterbi path,
+=======
+feature weights learned by the linear_chain_crf operator and performs decoding. 
+It implements the Viterbi algorithm which is a dynamic programming algorithm 
+for finding the most likely sequence of hidden states, called the Viterbi path, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 that results in a sequence of observed tags.
 
 The output of this operator changes according to whether Input(Label) is given:
@@ -69,15 +88,25 @@ The output of this operator changes according to whether Input(Label) is given:
 1. Input(Label) is given:
    This happens in training. This operator is used to co-work with the chunk_eval
    operator.
+<<<<<<< HEAD
    When Input(Label) is given, the crf_decoding operator returns tensor with the
    sampe shape as Input(Label) whose values are fixed to be 0, indicating an
    incorrect prediction, or 1 indicating a tag is correctly predicted. Such an
+=======
+   When Input(Label) is given, the crf_decoding operator returns tensor with the 
+   sampe shape as Input(Label) whose values are fixed to be 0, indicating an 
+   incorrect prediction, or 1 indicating a tag is correctly predicted. Such an 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    output is the input to chunk_eval operator.
 
 2. Input(Label) is not given:
    This is the standard decoding process.
 
+<<<<<<< HEAD
 The crf_decoding operator returns a row vector with shape [N x 1]/[B x S], here
+=======
+The crf_decoding operator returns a row vector with shape [N x 1]/[B x S], here 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 the shape depends on the inputs are LoDTensors or common tensors, whose values
 range from 0 to maximum tag number - 1, Each element indicates an index of a
 predicted tag.
@@ -202,9 +231,15 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
         platform::CPUPlace());
   }

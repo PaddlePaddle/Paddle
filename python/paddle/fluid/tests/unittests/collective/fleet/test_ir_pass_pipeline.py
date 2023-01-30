@@ -13,11 +13,18 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import test_pipeline
 
 
 class TestPipelineWithIRPass(test_pipeline.TestPipeline):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def need_envs(self):
         return {'FLAGS_apply_pass_to_program': '1'}
 

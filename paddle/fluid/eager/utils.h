@@ -257,26 +257,38 @@ class EagerUtils {
     } else {
       tensor_name_str = t.name();
     }
+<<<<<<< HEAD
     const char* TENSOR_INFO_TEMPLATE =
         "Type: %s, Dtype: %s, Place: %s, Shape: %s";
+=======
+    const char* TENSOR_INFO_TEMPLATE = "Type: %s, Dtype: %s, Place: %s";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::string tensor_info_str = "";
     if (t.defined()) {
       if (t.initialized()) {
         tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
                                                    t.dtype(),
+<<<<<<< HEAD
                                                    t.place().DebugString(),
                                                    t.dims());
+=======
+                                                   t.place().DebugString());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       } else {
         tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
                                                    "Unknown",
+<<<<<<< HEAD
                                                    "Unknown",
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                    "Unknown");
       }
     } else {
       tensor_info_str += "Unknown";
     }
+<<<<<<< HEAD
     if (VLOG_IS_ON(11)) {
       const char* TENSOR_PRINT_TEMPLATE =
           "{Name: %s, Initialized: %d, Ptr: %d "
@@ -329,6 +341,9 @@ class EagerUtils {
         }
       }
     } else if (VLOG_IS_ON(6)) {
+=======
+    if (VLOG_IS_ON(6)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const char* TENSOR_PRINT_TEMPLATE =
           "{Name: %s, Initialized: %d, Ptr: %d "
           "TensorInfo: [ %s ], ADInfo:[ %s ]}";

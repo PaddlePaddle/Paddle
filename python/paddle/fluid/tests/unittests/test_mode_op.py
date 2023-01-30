@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 
@@ -42,7 +50,11 @@ def cal_mode(a, axis, keepdim=False):
     if axis < 0:
         axis = len(a.shape) + axis
     in_dims = list(range(a.ndim))
+<<<<<<< HEAD
     a_view = np.transpose(a, in_dims[:axis] + in_dims[axis + 1 :] + [axis])
+=======
+    a_view = np.transpose(a, in_dims[:axis] + in_dims[axis + 1:] + [axis])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     inds = np.ndindex(a_view.shape[:-1])
     modes = np.empty(a_view.shape[:-1], dtype=a.dtype)
     indexes = np.empty(a_view.shape[:-1], dtype=np.int64)
@@ -57,6 +69,10 @@ def cal_mode(a, axis, keepdim=False):
 
 
 class TestModeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_args(self):
         self.axis = 1
 
@@ -82,6 +98,10 @@ class TestModeOp(OpTest):
 
 
 class TestModeOpLastdim(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_args(self):
         self.axis = -1
 
@@ -107,12 +127,20 @@ class TestModeOpLastdim(OpTest):
 
 
 class TestModeOpKernels(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.axises = [-1, 1]
         np.random.seed(666)
         self.inputs = np.ceil(np.random.rand(2, 10, 10) * 1000)
 
     def test_mode_op(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_cpu_kernel():
             paddle.set_device('cpu')
             tensor = paddle.to_tensor(self.inputs)
@@ -121,9 +149,15 @@ class TestModeOpKernels(unittest.TestCase):
                 v, inds = paddle.mode(tensor, axis)
                 np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
+<<<<<<< HEAD
                 value_expect, indice_expect = cal_mode(
                     self.inputs, axis, keepdim=True
                 )
+=======
+                value_expect, indice_expect = cal_mode(self.inputs,
+                                                       axis,
+                                                       keepdim=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 v, inds = paddle.mode(tensor, axis, keepdim=True)
                 np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
@@ -135,9 +169,15 @@ class TestModeOpKernels(unittest.TestCase):
                 v, inds = paddle.mode(tensor, axis)
                 np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
+<<<<<<< HEAD
                 value_expect, indice_expect = cal_mode(
                     self.inputs, axis, keepdim=True
                 )
+=======
+                value_expect, indice_expect = cal_mode(self.inputs,
+                                                       axis,
+                                                       keepdim=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 v, inds = paddle.mode(tensor, axis, keepdim=True)
                 np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
@@ -148,6 +188,10 @@ class TestModeOpKernels(unittest.TestCase):
 
 
 class TestModeOpErrors(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x = paddle.uniform([2, 10, 20, 25], dtype='float32')
 
@@ -158,6 +202,7 @@ class TestModeOpErrors(unittest.TestCase):
 
 
 class TestModeOpInStatic(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         np.random.seed(666)
         self.input_data = np.ceil(
@@ -172,13 +217,33 @@ class TestModeOpInStatic(unittest.TestCase):
             input_tensor = paddle.static.data(
                 name="x", shape=[2, 10, 10], dtype="float64"
             )
+=======
+
+    def setUp(self):
+        np.random.seed(666)
+        self.input_data = np.ceil(np.random.random((2, 10, 10)) * 1000,
+                                  dtype=np.float64)
+
+    def test_run_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            input_tensor = paddle.static.data(name="x",
+                                              shape=[2, 10, 10],
+                                              dtype="float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             result = paddle.mode(input_tensor, axis=1)
             expect_value = cal_mode(self.input_data, axis=1)[0]
             exe = paddle.static.Executor(paddle.CPUPlace())
+<<<<<<< HEAD
             paddle_result = exe.run(
                 feed={"x": self.input_data}, fetch_list=[result]
             )[0]
+=======
+            paddle_result = exe.run(feed={"x": self.input_data},
+                                    fetch_list=[result])[0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 

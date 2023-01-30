@@ -19,9 +19,16 @@
 namespace phi {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void FusedSoftmaxMaskKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& mask,
                             DenseTensor* out);
+=======
+void SoftmaxMaskFuseKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& mask,
+                           DenseTensor* out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace phi

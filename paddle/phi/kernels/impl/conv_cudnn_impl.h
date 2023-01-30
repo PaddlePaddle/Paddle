@@ -14,10 +14,15 @@
 
 #pragma once
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/eigen.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_HIP
+<<<<<<< HEAD
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
@@ -27,6 +32,17 @@
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/common/float16.h"
+=======
+#include "paddle/fluid/operators/conv_miopen_helper.h"
+#else
+#include "paddle/fluid/operators/conv_cudnn_helper.h"
+#endif
+
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/profiler.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/padding.h"

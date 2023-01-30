@@ -41,14 +41,24 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/graph_khop_sampler_imp.h"
 #include "paddle/fluid/operators/graph_khop_sampler_op.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/place.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 constexpr int WARP_SIZE = 32;
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 struct MaxFunctor {
   T cap;
@@ -132,7 +142,12 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
         const int num = curand(&rng) % (idx + 1);
 #endif
         if (num < k) {
+<<<<<<< HEAD
           phi::CudaAtomicMax(output_idxs + out_row_start + num, idx);
+=======
+          paddle::platform::CudaAtomicMax(output_idxs + out_row_start + num,
+                                          idx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
       }
 #ifdef PADDLE_WITH_CUDA
@@ -417,9 +432,15 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get sample neighbors operators' inputs.
+<<<<<<< HEAD
     auto* src = ctx.Input<phi::DenseTensor>("Row");
     auto* dst_count = ctx.Input<phi::DenseTensor>("Col_Ptr");
     auto* vertices = ctx.Input<phi::DenseTensor>("X");
+=======
+    auto* src = ctx.Input<Tensor>("Row");
+    auto* dst_count = ctx.Input<Tensor>("Col_Ptr");
+    auto* vertices = ctx.Input<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
 
@@ -448,7 +469,11 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
     bool is_last_layer = false, is_first_layer = true;
 
     if (return_eids) {
+<<<<<<< HEAD
       auto* src_eids = ctx.Input<phi::DenseTensor>("Eids");
+=======
+      auto* src_eids = ctx.Input<Tensor>("Eids");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const T* src_eids_data = src_eids->data<T>();
       for (int i = 0; i < num_layers; i++) {
         if (i == num_layers - 1) {
@@ -560,7 +585,11 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
                                         eids_merge_ptr);
         }
       }
+<<<<<<< HEAD
       auto* out_eids = ctx.Output<phi::DenseTensor>("Out_Eids");
+=======
+      auto* out_eids = ctx.Output<Tensor>("Out_Eids");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       out_eids->Resize({static_cast<int>(eids_merge.size())});
       T* p_out_eids = out_eids->mutable_data<T>(ctx.GetPlace());
       thrust::copy(eids_merge.begin(), eids_merge.end(), p_out_eids);
@@ -589,11 +618,19 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
                    &orig_nodes,
                    &reindex_nodes,
                    bs);
+<<<<<<< HEAD
     auto* reindex_x = ctx.Output<phi::DenseTensor>("Reindex_X");
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
     thrust::copy(reindex_nodes.begin(), reindex_nodes.end(), p_reindex_x);
 
     auto* sample_index = ctx.Output<phi::DenseTensor>("Sample_Index");
+=======
+    auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
+    T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
+    thrust::copy(reindex_nodes.begin(), reindex_nodes.end(), p_reindex_x);
+
+    auto* sample_index = ctx.Output<Tensor>("Sample_Index");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sample_index->Resize({static_cast<int>(subset.size())});
     T* p_sample_index = sample_index->mutable_data<T>(ctx.GetPlace());
     thrust::copy(subset.begin(), subset.end(), p_sample_index);  // Done!
@@ -625,8 +662,13 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
             thrust::raw_pointer_cast(dst_merge.data()));
 
     // 8. Give operator's outputs.
+<<<<<<< HEAD
     auto* out_src = ctx.Output<phi::DenseTensor>("Out_Src");
     auto* out_dst = ctx.Output<phi::DenseTensor>("Out_Dst");
+=======
+    auto* out_src = ctx.Output<Tensor>("Out_Src");
+    auto* out_dst = ctx.Output<Tensor>("Out_Dst");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out_src->Resize({static_cast<int>(src_merge.size()), 1});
     out_dst->Resize({static_cast<int>(src_merge.size()), 1});
     T* p_out_src = out_src->mutable_data<T>(ctx.GetPlace());

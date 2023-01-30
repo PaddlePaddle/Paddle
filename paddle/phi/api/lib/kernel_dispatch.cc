@@ -22,9 +22,12 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace experimental {
@@ -57,6 +60,7 @@ bool HasAllocation(const phi::TensorBase& t) {
 
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (t.place().GetType() == AllocationType::CUSTOM) {
       phi::DeviceManager::SetDevice(t.place());
@@ -67,12 +71,23 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
         static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
+=======
+    BackendSet backend_set(phi::TransToPhiBackend(t.place()));
+    switch (t.layout()) {
+      case DataLayout::ONEDNN:
+        backend_set = backend_set | BackendSet(Backend::ONEDNN);
+        break;
+      default:
+        // do nothing
+        break;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     return backend_set;
   }
   return BackendSet(Backend::UNDEFINED);
 }
 
+<<<<<<< HEAD
 std::size_t CountLeadingZeros(uint32_t val) {
 #if defined(__clang__) || defined(__GNUC__)
   return __builtin_clz(val);
@@ -85,6 +100,20 @@ std::size_t CountLeadingZeros(uint32_t val) {
   std::size_t zero_bits = 0;
   for (std::size_t shift = 32 >> 1; shift; shift >>= 1) {
     uint32_t tmp = val >> shift;
+=======
+std::size_t CountLeadingZeros(uint64_t val) {
+#if defined(__clang__) || defined(__GNUC__)
+  return __builtin_clzl(val);
+#elif defined(_MSC_VER)
+  return __lzcnt64(val);
+#else
+  if (val == 0) {
+    return 64;
+  }
+  std::size_t zero_bits = 0;
+  for (std::size_t shift = 64 >> 1; shift; shift >>= 1) {
+    uint64_t tmp = val >> shift;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (tmp) {
       val = tmp;
     } else {
@@ -131,6 +160,7 @@ Backend ParseBackend(const Place& place) {
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {
+<<<<<<< HEAD
   Backend backend_key = phi::TransToPhiBackend(tensor.place());
   if (backend_key == Backend::GPU &&
       phi::DenseTensor::classof(tensor.impl().get()) &&
@@ -138,6 +168,9 @@ Backend ParseBackend(const Tensor& tensor) {
     return Backend::GPUDNN;
   }
   return backend_key;
+=======
+  return phi::TransToPhiBackend(tensor.place());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 
@@ -29,7 +34,13 @@ paddle.enable_static()
 
 
 def create_test_padding_SAME_class(parent):
+<<<<<<< HEAD
     class TestPaddingSMAECase(parent):
+=======
+
+    class TestPaddingSMAECase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_paddings(self):
             self.pad = [0, 0, 0]
             self.padding_algorithm = "SAME"
@@ -40,7 +51,13 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
+<<<<<<< HEAD
     class TestPaddingVALIDCase(parent):
+=======
+
+    class TestPaddingVALIDCase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_paddings(self):
             self.pad = [1, 1, 1]
             self.padding_algorithm = "VALID"
@@ -51,7 +68,13 @@ def create_test_padding_VALID_class(parent):
 
 
 def create_test_channel_last_class(parent):
+<<<<<<< HEAD
     class TestChannelLastCase(parent):
+=======
+
+    class TestChannelLastCase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data_format(self):
             self.data_format = "NDHWC"
 
@@ -65,7 +88,13 @@ def create_test_channel_last_class(parent):
 
 
 def create_test_fp16_class(parent):
+<<<<<<< HEAD
     class TestFp16Case(parent):
+=======
+
+    class TestFp16Case(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -75,6 +104,10 @@ def create_test_fp16_class(parent):
 
 
 class TestConv3DOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "conv3d"
         self.set_npu()
@@ -87,7 +120,11 @@ class TestConv3DOp(OpTest):
         conv3d_param = {
             'stride': self.stride,
             'pad': self.pad,
+<<<<<<< HEAD
             'dilations': self.dilations,
+=======
+            'dilations': self.dilations
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
@@ -101,14 +138,22 @@ class TestConv3DOp(OpTest):
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
+<<<<<<< HEAD
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+=======
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
             'groups': self.groups,
             'dilations': self.dilations,
+<<<<<<< HEAD
             'data_format': self.data_format,
+=======
+            'data_format': self.data_format
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Output': output}
 
@@ -119,6 +164,7 @@ class TestConv3DOp(OpTest):
         if self.dtype == np.float16:
             return
 
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             {'Input', 'Filter'},
@@ -126,11 +172,18 @@ class TestConv3DOp(OpTest):
             max_relative_error=0.03,
             numeric_place=paddle.CPUPlace(),
         )
+=======
+        self.check_grad_with_place(self.place, {'Input', 'Filter'},
+                                   'Output',
+                                   max_relative_error=0.03,
+                                   numeric_place=paddle.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
 
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             ['Input'],
@@ -139,11 +192,19 @@ class TestConv3DOp(OpTest):
             no_grad_set=set(['Filter']),
             numeric_place=paddle.CPUPlace(),
         )
+=======
+        self.check_grad_with_place(self.place, ['Input'],
+                                   'Output',
+                                   max_relative_error=0.03,
+                                   no_grad_set=set(['Filter']),
+                                   numeric_place=paddle.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
 
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             ['Filter'],
@@ -152,6 +213,13 @@ class TestConv3DOp(OpTest):
             no_grad_set=set(['Input']),
             numeric_place=paddle.CPUPlace(),
         )
+=======
+        self.check_grad_with_place(self.place, ['Filter'],
+                                   'Output',
+                                   max_relative_error=0.03,
+                                   no_grad_set=set(['Input']),
+                                   numeric_place=paddle.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -179,6 +247,10 @@ class TestConv3DOp(OpTest):
 
 
 class TestCase1(TestConv3DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -192,6 +264,10 @@ class TestCase1(TestConv3DOp):
 
 
 class TestConv3DOp_2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "conv3d"
         self.set_npu()
@@ -207,11 +283,16 @@ class TestConv3DOp_2(OpTest):
         conv3d_param = {
             'stride': self.stride,
             'pad': self.pad,
+<<<<<<< HEAD
             'dilations': self.dilations,
+=======
+            'dilations': self.dilations
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
+<<<<<<< HEAD
         output = conv3d_forward_naive(
             input,
             filter,
@@ -224,6 +305,15 @@ class TestConv3DOp_2(OpTest):
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+=======
+        output = conv3d_forward_naive(input, filter, self.groups, conv3d_param,
+                                      self.padding_algorithm,
+                                      self.data_format).astype(self.dtype)
+
+        self.inputs = {
+            'Input': OpTest.np_dtype_to_fluid_dtype(input),
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'strides': self.stride,
@@ -231,7 +321,11 @@ class TestConv3DOp_2(OpTest):
             'padding_algorithm': self.padding_algorithm,
             'groups': self.groups,
             'dilations': self.dilations,
+<<<<<<< HEAD
             'data_format': self.data_format,
+=======
+            'data_format': self.data_format
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Output': output}
 
@@ -242,6 +336,7 @@ class TestConv3DOp_2(OpTest):
         if self.dtype == np.float16:
             return
 
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             {'Input', 'Filter'},
@@ -249,11 +344,18 @@ class TestConv3DOp_2(OpTest):
             max_relative_error=0.03,
             numeric_place=paddle.CPUPlace(),
         )
+=======
+        self.check_grad_with_place(self.place, {'Input', 'Filter'},
+                                   'Output',
+                                   max_relative_error=0.03,
+                                   numeric_place=paddle.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
 
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             ['Input'],
@@ -262,11 +364,19 @@ class TestConv3DOp_2(OpTest):
             no_grad_set=set(['Filter']),
             numeric_place=paddle.CPUPlace(),
         )
+=======
+        self.check_grad_with_place(self.place, ['Input'],
+                                   'Output',
+                                   max_relative_error=0.03,
+                                   no_grad_set=set(['Filter']),
+                                   numeric_place=paddle.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
 
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             ['Filter'],
@@ -275,6 +385,13 @@ class TestConv3DOp_2(OpTest):
             no_grad_set=set(['Input']),
             numeric_place=paddle.CPUPlace(),
         )
+=======
+        self.check_grad_with_place(self.place, ['Filter'],
+                                   'Output',
+                                   max_relative_error=0.03,
+                                   no_grad_set=set(['Input']),
+                                   numeric_place=paddle.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -308,6 +425,10 @@ class TestConv3DOp_2(OpTest):
 
 
 class TestConv3DOp_AsyPadding(TestConv3DOp_2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1, 2]
         self.input_size = [2, 3, 4, 4, 4]  # NCDHW
@@ -321,6 +442,10 @@ class TestConv3DOp_AsyPadding(TestConv3DOp_2):
 
 
 class TestConv3DOp_DiffDataInDiffDim(TestConv3DOp_2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1, 2]
         self.input_size = [2, 3, 4, 5, 5]  # NCDHW
@@ -334,6 +459,10 @@ class TestConv3DOp_DiffDataInDiffDim(TestConv3DOp_2):
 
 
 class TestCase1_AsyPadding(TestConv3DOp_2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]  # NCDHW
@@ -348,6 +477,7 @@ class TestCase1_AsyPadding(TestConv3DOp_2):
 
 # --------- test python API ---------------
 class TestConv3DAPI(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
 
         input_NDHWC = paddle.static.data(
@@ -450,11 +580,101 @@ class TestConv3DAPI_Error(unittest.TestCase):
                 use_cudnn=[0],
                 data_format="NCDHW",
             )
+=======
+
+    def test_api(self):
+
+        input_NDHWC = fluid.layers.data(name="input_NDHWC",
+                                        shape=[2, 5, 5, 5, 3],
+                                        append_batch_size=False,
+                                        dtype="float32")
+
+        input_NCDHW = fluid.layers.data(name="input_NCDHW",
+                                        shape=[2, 3, 5, 5, 3],
+                                        append_batch_size=False,
+                                        dtype="float32")
+
+        fluid.layers.conv3d(input=input_NDHWC,
+                            num_filters=3,
+                            filter_size=[3, 3, 3],
+                            stride=[1, 1, 1],
+                            padding=0,
+                            dilation=[1, 1, 1],
+                            groups=1,
+                            data_format="NCDHW")
+
+        fluid.layers.conv3d(input=input_NCDHW,
+                            num_filters=3,
+                            filter_size=[3, 3, 3],
+                            stride=[1, 1, 1],
+                            padding=[1, 2, 1, 0, 1, 0],
+                            dilation=[1, 1, 1],
+                            groups=1,
+                            data_format="NCDHW")
+
+        fluid.layers.conv3d(input=input_NCDHW,
+                            num_filters=3,
+                            filter_size=[3, 3, 3],
+                            stride=[1, 1, 1],
+                            padding=[[0, 0], [0, 0], [1, 1], [1, 1], [1, 1]],
+                            dilation=[1, 1, 1],
+                            groups=1,
+                            data_format="NCDHW")
+
+        fluid.layers.conv3d(input=input_NDHWC,
+                            num_filters=3,
+                            filter_size=[3, 3, 3],
+                            stride=[1, 1, 1],
+                            padding=[[0, 0], [1, 1], [1, 1], [1, 1], [0, 0]],
+                            dilation=[1, 1, 1],
+                            groups=1,
+                            data_format="NDHWC")
+
+        fluid.layers.conv3d(input=input_NCDHW,
+                            num_filters=3,
+                            filter_size=[3, 3, 3],
+                            stride=[1, 1, 1],
+                            padding="SAME",
+                            dilation=[1, 1, 1],
+                            groups=1,
+                            data_format="NCDHW")
+
+        fluid.layers.conv3d(input=input_NCDHW,
+                            num_filters=3,
+                            filter_size=[3, 3, 3],
+                            stride=[1, 1, 1],
+                            padding="VALID",
+                            dilation=[1, 1, 1],
+                            groups=1,
+                            data_format="NCDHW")
+
+
+class TestConv3DAPI_Error(unittest.TestCase):
+
+    def test_api(self):
+        input = fluid.layers.data(name="input",
+                                  shape=[2, 5, 5, 5, 4],
+                                  append_batch_size=False,
+                                  dtype="float32")
+
+        # ValueError: cudnn
+        def run_1():
+            fluid.layers.conv3d(input=input,
+                                num_filters=3,
+                                filter_size=3,
+                                stride=1,
+                                padding=0,
+                                dilation=1,
+                                groups=1,
+                                use_cudnn=[0],
+                                data_format="NCDHW")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, run_1)
 
         # ValueError: data_format
         def run_2():
+<<<<<<< HEAD
             paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
@@ -466,11 +686,23 @@ class TestConv3DAPI_Error(unittest.TestCase):
                 use_cudnn=False,
                 data_format="NCHWC",
             )
+=======
+            fluid.layers.conv3d(input=input,
+                                num_filters=3,
+                                filter_size=[3, 3, 3],
+                                stride=[1, 1, 1],
+                                padding=0,
+                                dilation=[1, 1, 1],
+                                groups=1,
+                                use_cudnn=False,
+                                data_format="NCHWC")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, run_2)
 
         # ValueError: padding
         def run_3():
+<<<<<<< HEAD
             paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
@@ -482,10 +714,22 @@ class TestConv3DAPI_Error(unittest.TestCase):
                 use_cudnn=False,
                 data_format="NCDHW",
             )
+=======
+            fluid.layers.conv3d(input=input,
+                                num_filters=3,
+                                filter_size=3,
+                                stride=1,
+                                padding="SAMEE",
+                                dilation=1,
+                                groups=1,
+                                use_cudnn=False,
+                                data_format="NCDHW")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, run_3)
 
         def run_4():
+<<<<<<< HEAD
             paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
@@ -497,10 +741,23 @@ class TestConv3DAPI_Error(unittest.TestCase):
                 use_cudnn=False,
                 data_format="NCDHW",
             )
+=======
+            fluid.layers.conv3d(input=input,
+                                num_filters=3,
+                                filter_size=3,
+                                stride=1,
+                                padding=[[0, 1], [0, 0], [0, 1], [0, 1], [0,
+                                                                          1]],
+                                dilation=1,
+                                groups=1,
+                                use_cudnn=False,
+                                data_format="NCDHW")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, run_4)
 
         def run_5():
+<<<<<<< HEAD
             paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
@@ -512,10 +769,23 @@ class TestConv3DAPI_Error(unittest.TestCase):
                 use_cudnn=False,
                 data_format="NDHWC",
             )
+=======
+            fluid.layers.conv3d(input=input,
+                                num_filters=3,
+                                filter_size=0,
+                                stride=0,
+                                padding=[[0, 1], [0, 1], [0, 1], [0, 1], [0,
+                                                                          1]],
+                                dilation=1,
+                                groups=1,
+                                use_cudnn=False,
+                                data_format="NDHWC")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, run_5)
 
         # ValueError: channel dimmention
+<<<<<<< HEAD
         x = paddle.static.data(
             name="x",
             shape=[2, 5, 5, 5, -1],
@@ -534,11 +804,29 @@ class TestConv3DAPI_Error(unittest.TestCase):
                 use_cudnn=False,
                 data_format="NDHWC",
             )
+=======
+        x = fluid.layers.data(name="x",
+                              shape=[2, 5, 5, 5, -1],
+                              append_batch_size=False,
+                              dtype="float32")
+
+        def run_6():
+            fluid.layers.conv3d(input=x,
+                                num_filters=3,
+                                filter_size=3,
+                                stride=1,
+                                padding=0,
+                                dilation=1,
+                                groups=1,
+                                use_cudnn=False,
+                                data_format="NDHWC")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, run_6)
 
         # ValueError: groups
         def run_7():
+<<<<<<< HEAD
             paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
@@ -550,11 +838,23 @@ class TestConv3DAPI_Error(unittest.TestCase):
                 use_cudnn=False,
                 data_format="NDHWC",
             )
+=======
+            fluid.layers.conv3d(input=input,
+                                num_filters=3,
+                                filter_size=3,
+                                stride=1,
+                                padding=0,
+                                dilation=1,
+                                groups=3,
+                                use_cudnn=False,
+                                data_format="NDHWC")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, run_7)
 
         # ValueError: filter num
         def run_8():
+<<<<<<< HEAD
             paddle.static.nn.conv3d(
                 input=input,
                 num_filters=0,
@@ -566,6 +866,17 @@ class TestConv3DAPI_Error(unittest.TestCase):
                 use_cudnn=False,
                 data_format="NDHWC",
             )
+=======
+            fluid.layers.conv3d(input=input,
+                                num_filters=0,
+                                filter_size=0,
+                                stride=0,
+                                padding=0,
+                                dilation=0,
+                                groups=1,
+                                use_cudnn=False,
+                                data_format="NDHWC")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, run_8)
 

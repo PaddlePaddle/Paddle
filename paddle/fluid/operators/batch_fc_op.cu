@@ -17,11 +17,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/batch_fc_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 const int CUDA_NUM_THREADS = 1024;
 static inline int GET_BLOCKS(const int N) {
@@ -93,10 +101,17 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     // W.dim = slot_pairs_num * in_dim * out_dim
     // b.dim = slot_pairs_num * out_dim
     // output.dim = slot_pairs_num * ins_num * out_dim
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* w = ctx.Input<phi::DenseTensor>("W");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<framework::LoDTensor>("Input");
+    auto* w = ctx.Input<Tensor>("W");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* output = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto input_dims = input->dims();
     auto w_dims = w->dims();
     auto slot_pairs_num = input_dims[0];
@@ -153,6 +168,7 @@ template <typename DeviceContext, typename T>
 class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* w = ctx.Input<phi::DenseTensor>("W");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -160,6 +176,15 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
     auto* dw = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
     auto* db = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+=======
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* w = ctx.Input<Tensor>("W");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto* dw = ctx.Output<Tensor>(framework::GradVarName("W"));
+    auto* db = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto input_dims = input->dims();
     auto w_dims = w->dims();

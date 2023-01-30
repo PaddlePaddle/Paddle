@@ -18,13 +18,23 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class SplitMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // init parameter
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
+=======
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int num = ctx.Attr<int>("num");
     std::vector<int> sections = ctx.Attr<std::vector<int>>("sections");
     int axis = ctx.Attr<int>("axis");
@@ -34,12 +44,20 @@ class SplitMLUKernel : public framework::OpKernel<T> {
 
     bool need_resize_outs_dims = false;
     if (ctx.HasInput("AxisTensor")) {
+<<<<<<< HEAD
       auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
+=======
+      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       axis = GetDataFromTensor(axis_tensor)[0];
       need_resize_outs_dims = true;
     }
     auto sections_tensor_list =
+<<<<<<< HEAD
         ctx.MultiInput<phi::DenseTensor>("SectionsTensorList");
+=======
+        ctx.MultiInput<framework::Tensor>("SectionsTensorList");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (sections_tensor_list.size() > 0) {
       sections = GetDataFromTensorList(sections_tensor_list);
       need_resize_outs_dims = true;

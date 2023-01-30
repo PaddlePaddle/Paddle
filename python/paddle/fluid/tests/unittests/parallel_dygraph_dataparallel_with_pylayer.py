@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,6 +23,20 @@ from paddle.autograd import PyLayer
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     fused_allreduce_gradients,
 )
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+
+import paddle
+import numpy as np
+import paddle.distributed as dist
+from paddle.fluid.dygraph.nn import Linear
+from paddle.autograd import PyLayer
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 batch = 5
 in_dim = 20
@@ -29,6 +44,10 @@ out_dim = 10
 
 
 class cus_tanh(PyLayer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @staticmethod
     def forward(ctx, x):
         y = paddle.tanh(x)
@@ -37,14 +56,24 @@ class cus_tanh(PyLayer):
 
     @staticmethod
     def backward(ctx, dy):
+<<<<<<< HEAD
         (y,) = ctx.saved_tensor()
+=======
+        y, = ctx.saved_tensor()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         grad = dy * (1 - paddle.square(y))
         return grad
 
 
 class SimpleNet(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self, train_id, model_id):
         super().__init__()
+=======
+
+    def __init__(self, train_id, model_id):
+        super(SimpleNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.w = self.create_parameter(shape=[in_dim, batch], dtype="float32")
         self.linear = paddle.nn.Linear(in_dim, out_dim)
         self.tanh = paddle.tanh
@@ -63,6 +92,10 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_multiple_gpus(self):
         self.trainer_id = dist.get_rank()
         dist.init_parallel_env()

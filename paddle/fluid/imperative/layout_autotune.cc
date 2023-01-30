@@ -205,7 +205,11 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
       VLOG(3) << "Tune the layout from "
               << PADDLE_GET_CONST(std::string, (*attrs)["data_format"])
               << " to "
+<<<<<<< HEAD
               << phi::DataLayoutToString(
+=======
+              << paddle::framework::DataLayoutToString(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      LayoutAutoTune::Instance().GetDesiredLayout());
     }
   }

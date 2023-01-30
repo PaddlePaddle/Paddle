@@ -19,6 +19,10 @@
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -26,7 +30,10 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 namespace sr {
@@ -214,7 +221,11 @@ void AdamwDenseParamSparseGradKernel(
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
+<<<<<<< HEAD
     phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+=======
+    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }

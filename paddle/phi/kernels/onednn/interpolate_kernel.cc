@@ -227,6 +227,7 @@ void NearestInterpKernel(
 }
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(bilinear_interp,
                    OneDNN,
                    ONEDNN,
@@ -237,6 +238,14 @@ PD_REGISTER_KERNEL(bilinear_interp,
 PD_REGISTER_KERNEL(nearest_interp,
                    OneDNN,
                    ONEDNN,
+=======
+PD_REGISTER_KERNEL(
+    bilinear_interp, OneDNN, ALL_LAYOUT, phi::BilinearInterpKernel, float) {}
+
+PD_REGISTER_KERNEL(nearest_interp,
+                   OneDNN,
+                   ALL_LAYOUT,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    phi::NearestInterpKernel,
                    float,
                    phi::dtype::bfloat16,

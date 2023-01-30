@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 import json
 import logging
@@ -29,27 +30,63 @@ from contextlib import closing
 from distutils.util import strtobool
 
 import paddle.framework as framework
+=======
+import logging
+import time
+import os
+import signal
+import copy
+import sys
+import subprocess
+import tempfile
+import shutil
+from contextlib import closing
+import multiprocessing
+import socket
+import warnings
+import six
+import struct
+import json
+
+import paddle
+import paddle.fluid as fluid
+from distutils.util import strtobool
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.utils.cpp_extension.extension_utils as utils
 
 logger = logging.getLogger("root")
 logger.propagate = False
 
 
+<<<<<<< HEAD
 class DistributeMode:
     """
     There are various mode for fleetrun, each of them is designed for different model.
     """
 
+=======
+class DistributeMode():
+    """
+    There are various mode for fleetrun, each of them is designed for different model.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     COLLECTIVE = 0
     PS = 1
     PS_HETER = 2
 
 
+<<<<<<< HEAD
 class DeviceMode:
     """
     Training devices type
     """
 
+=======
+class DeviceMode():
+    """
+    Training devices type
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     UNKNOWN = -1
     CPU = 0
     GPU = 1
@@ -60,7 +97,12 @@ class DeviceMode:
     MLU = 4
 
 
+<<<<<<< HEAD
 class Cluster:
+=======
+class Cluster(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, hdfs):
         self.job_server = None
         self.pods = []
@@ -69,11 +111,16 @@ class Cluster:
 
     def __str__(self):
         return "job_server:{} pods:{} job_stage_flag:{} hdfs:{}".format(
+<<<<<<< HEAD
             self.job_server,
             [str(pod) for pod in self.pods],
             self.job_stage_flag,
             self.hdfs,
         )
+=======
+            self.job_server, [str(pod) for pod in self.pods],
+            self.job_stage_flag, self.hdfs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __eq__(self, cluster):
         if len(self.pods) != len(cluster.pods):
@@ -119,9 +166,14 @@ class Cluster:
         r = []
         for pod in self.pods:
             ep = "{}:{}".format(pod.addr, pod.port)
+<<<<<<< HEAD
             assert (
                 pod.port is not None and pod.addr is not None
             ), "{} not a valid endpoint".format(ep)
+=======
+            assert pod.port != None and pod.addr != None, "{} not a valid endpoint".format(
+                ep)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             r.append(ep)
         return r
 
@@ -133,7 +185,12 @@ class Cluster:
         return None
 
 
+<<<<<<< HEAD
 class JobServer:
+=======
+class JobServer(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.endpoint = None
 
@@ -147,7 +204,12 @@ class JobServer:
         return not self == j
 
 
+<<<<<<< HEAD
 class Trainer:
+=======
+class Trainer(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.accelerators = []
         self.endpoint = None
@@ -156,14 +218,23 @@ class Trainer:
 
     def __str__(self):
         return "accelerator:{} endpoint:{} rank:{}".format(
+<<<<<<< HEAD
             self.accelerators, self.endpoint, self.rank
         )
+=======
+            self.accelerators, self.endpoint, self.rank)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __eq__(self, t):
         if len(self.accelerators) != len(t.accelerators):
             return False
 
+<<<<<<< HEAD
         if self.endpoint != t.endpoint or self.rank != t.rank:
+=======
+        if self.endpoint != t.endpoint or \
+                self.rank != t.rank:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
 
         for a, b in zip(self.accelerators, t.accelerators):
@@ -179,7 +250,12 @@ class Trainer:
         return self.rank
 
 
+<<<<<<< HEAD
 class Pod:
+=======
+class Pod(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.rank = None
         self.id = None
@@ -196,6 +272,7 @@ class Pod:
     def __str__(self):
         return "rank:{} id:{} addr:{} port:{} visible_accelerator:{} trainers:{} servers:{} \
             workers:{} heter_workers:{} coordinators:{}".format(
+<<<<<<< HEAD
             self.rank,
             self.id,
             self.addr,
@@ -215,20 +292,43 @@ class Pod:
             or self.addr != pod.addr
             or self.port != pod.port
         ):
+=======
+            self.rank, self.id, self.addr, self.port, self.accelerators,
+            [str(t) for t in self.trainers], [str(s) for s in self.servers],
+            [str(w)
+             for w in self.workers], [str(h) for h in self.heter_workers],
+            [str(c) for c in self.coordinators])
+
+    def __eq__(self, pod):
+        if self.rank != pod.rank or \
+                self.id != pod.id or \
+                self.addr != pod.addr or \
+                self.port != pod.port:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             logger.debug("pod {} != {}".format(self, pod))
             return False
 
         if len(self.trainers) != len(pod.trainers):
+<<<<<<< HEAD
             logger.debug(
                 "trainers {} != {}".format(self.trainers, pod.trainers)
             )
+=======
+            logger.debug("trainers {} != {}".format(self.trainers,
+                                                    pod.trainers))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
 
         for i in range(len(self.trainers)):
             if self.trainers[i] != pod.trainers[i]:
+<<<<<<< HEAD
                 logger.debug(
                     "trainer {} != {}".format(self.trainers[i], pod.trainers[i])
                 )
+=======
+                logger.debug("trainer {} != {}".format(self.trainers[i],
+                                                       pod.trainers[i]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return False
 
         if len(self.servers) != len(pod.servers):
@@ -237,9 +337,14 @@ class Pod:
 
         for i in range(len(self.servers)):
             if self.servers[i] != pod.servers[i]:
+<<<<<<< HEAD
                 logger.debug(
                     "servers {} != {}".format(self.servers[i], pod.servers[i])
                 )
+=======
+                logger.debug("servers {} != {}".format(self.servers[i],
+                                                       pod.servers[i]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return False
 
         if len(self.workers) != len(pod.workers):
@@ -248,9 +353,14 @@ class Pod:
 
         for i in range(len(self.workers)):
             if self.workers[i] != pod.workers[i]:
+<<<<<<< HEAD
                 logger.debug(
                     "workers {} != {}".format(self.workers[i], pod.workers[i])
                 )
+=======
+                logger.debug("workers {} != {}".format(self.workers[i],
+                                                       pod.workers[i]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return False
 
         return True
@@ -281,17 +391,26 @@ def get_logger(log_level=20, name="root"):
 
     log_handler = logging.StreamHandler()
     log_format = logging.Formatter(
+<<<<<<< HEAD
         '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s'
     )
+=======
+        '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     log_handler.setFormatter(log_format)
     logger.addHandler(log_handler)
 
     return logger
 
 
+<<<<<<< HEAD
 def get_cluster(
     node_ips, node_ip, trainer_endpoints, device_mode, devices_per_proc
 ):
+=======
+def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
+                devices_per_proc):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
@@ -308,11 +427,15 @@ def get_cluster(
         ), "current trainer_endpoints size should be greater equal than acclerators size."
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
+<<<<<<< HEAD
             if (
                 device_mode == DeviceMode.GPU
                 or device_mode == DeviceMode.ASCEND_NPU
                 or device_mode == DeviceMode.MLU
             ):
+=======
+            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU or device_mode == DeviceMode.MLU:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if isinstance(devices_per_proc[i], (list, tuple)):
                     trainer.accelerators.extend(devices_per_proc[i])
                     pod.accelerators.extend(devices_per_proc[i])
@@ -391,6 +514,7 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
         args = parser.parse_args()
     """
     type = strtobool if type == bool else type
+<<<<<<< HEAD
     argparser.add_argument(
         "--" + argname,
         default=default,
@@ -401,13 +525,29 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
 
 
 def find_free_ports(num):
+=======
+    argparser.add_argument("--" + argname,
+                           default=default,
+                           type=type,
+                           help=help + ' Default: %(default)s.',
+                           **kwargs)
+
+
+def find_free_ports(num):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __free_port():
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
             # Note(wangxi): Close the connection with a TCP RST instead
             # of a TCP FIN, to avoid time_wait state.
+<<<<<<< HEAD
             s.setsockopt(
                 socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0)
             )
+=======
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                         struct.pack('ii', 1, 0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             s.bind(('', 0))
             return s.getsockname()[1]
 
@@ -451,8 +591,12 @@ def pretty_print_envs(envs, header=None):
         max_k = max(max_k, len(k))
 
     h_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
+<<<<<<< HEAD
         max_k, " " * spacing, max_v
     )
+=======
+        max_k, " " * spacing, max_v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     l_format = "    " + "|{{:>{}s}}{{}}{{:^{}s}}|\n".format(max_k, max_v)
     length = max_k + max_v + spacing
 
@@ -483,7 +627,12 @@ def pretty_print_envs(envs, header=None):
     return _str
 
 
+<<<<<<< HEAD
 class TrainerProc:
+=======
+class TrainerProc(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.proc = None
         self.log_fn = None
@@ -505,9 +654,18 @@ def run_with_coverage(*args):
     return _run_with_coverage
 
 
+<<<<<<< HEAD
 def start_local_trainers(
     cluster, pod, training_script, training_script_args, log_dir=None, envs=None
 ):
+=======
+def start_local_trainers(cluster,
+                         pod,
+                         training_script,
+                         training_script_args,
+                         log_dir=None,
+                         envs=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if envs is None:
         current_env = copy.copy(os.environ.copy())
@@ -526,6 +684,7 @@ def start_local_trainers(
     procs = []
     for idx, t in enumerate(pod.trainers):
         proc_env = {
+<<<<<<< HEAD
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
@@ -535,11 +694,28 @@ def start_local_trainers(
                 [str(acc) for acc in t.accelerators]
             ),
             "PADDLE_WORLD_DEVICE_IDS": ",".join(res),
+=======
+            "PADDLE_TRAINER_ID":
+            "%d" % t.rank,
+            "PADDLE_CURRENT_ENDPOINT":
+            "%s" % t.endpoint,
+            "PADDLE_TRAINERS_NUM":
+            "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS":
+            ",".join(cluster.trainers_endpoints()),
+            "PADDLE_RANK_IN_NODE":
+            str(idx),
+            "PADDLE_LOCAL_DEVICE_IDS":
+            ",".join([str(acc) for acc in t.accelerators]),
+            "PADDLE_WORLD_DEVICE_IDS":
+            ",".join(res),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         # The following three environnement variables are used for auto mapping
         if current_env.get("PADDLE_CLUSTER_TOPO_PATH", None) is not None:
             proc_env["PADDLE_CLUSTER_TOPO_PATH"] = current_env[
+<<<<<<< HEAD
                 "PADDLE_CLUSTER_TOPO_PATH"
             ]
         if current_env.get("PADDLE_RANK_MAPPING_PATH", None) is not None:
@@ -576,10 +752,40 @@ def start_local_trainers(
             proc_env["FLAGS_selected_xpus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators]
             )
+=======
+                "PADDLE_CLUSTER_TOPO_PATH"]
+        if current_env.get("PADDLE_RANK_MAPPING_PATH", None) is not None:
+            proc_env["PADDLE_RANK_MAPPING_PATH"] = current_env[
+                "PADDLE_RANK_MAPPING_PATH"]
+        if current_env.get("PADDLE_ENABLE_AUTO_MAPPING", None) is not None:
+            proc_env["PADDLE_ENABLE_AUTO_MAPPING"] = current_env[
+                "PADDLE_ENABLE_AUTO_MAPPING"]
+
+        if len(t.accelerators) > 0 and pod.device_mode == DeviceMode.GPU:
+            proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+
+        elif len(t.accelerators
+                 ) > 0 and pod.device_mode == DeviceMode.ASCEND_NPU:
+            proc_env["FLAGS_selected_npus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+        elif len(t.accelerators) > 0 and pod.device_mode == DeviceMode.MLU:
+            proc_env["FLAGS_selected_mlus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+
+        if len(t.accelerators) > 0:
+            proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+        # to do: same code style in future
+        if fluid.core.is_compiled_with_xpu() and len(t.accelerators) > 0:
+            proc_env["FLAGS_selected_xpus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         current_env.update(proc_env)
 
         coverage_args = []
+<<<<<<< HEAD
         if (
             run_with_coverage()
             or os.environ.get("WITH_COVERAGE", "OFF") == "ON"
@@ -591,10 +797,18 @@ def start_local_trainers(
             + [training_script]
             + training_script_args
         )
+=======
+        if run_with_coverage() or os.environ.get("WITH_COVERAGE",
+                                                 "OFF") == "ON":
+            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+        cmd = [sys.executable, "-u"] + coverage_args + [training_script
+                                                        ] + training_script_args
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         logger.debug("start trainer proc{}  env:{}".format(cmd, current_env))
 
         if idx == 0:
+<<<<<<< HEAD
             logger.info(
                 "Local start {} processes. First process distributed "
                 "environment info (Only For Debug): {}".format(
@@ -607,6 +821,17 @@ def start_local_trainers(
                 "{}/endpoints.log, and detail running logs maybe found in "
                 "{}/workerlog.0".format(log_dir, log_dir)
             )
+=======
+            logger.info("Local start {} processes. First process distributed "
+                        "environment info (Only For Debug): {}".format(
+                            len(pod.trainers),
+                            pretty_print_envs(proc_env,
+                                              ("Distributed Envs", "Value"))))
+            logger.info(
+                "details about PADDLE_TRAINER_ENDPOINTS can be found in "
+                "{}/endpoints.log, and detail running logs maybe found in "
+                "{}/workerlog.0".format(log_dir, log_dir))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         fn = None
         pre_fn = None if os.name == 'nt' else os.setsid
         if log_dir is not None:
@@ -616,6 +841,7 @@ def start_local_trainers(
             with open("%s/endpoints.log" % log_dir, "w") as f:
                 f.write("PADDLE_TRAINER_ENDPOINTS: \n")
                 f.write("\n".join(cluster.trainers_endpoints()))
+<<<<<<< HEAD
             if (
                 current_env.get("PADDLE_ENABLE_AUTO_MAPPING") is not None
                 and current_env.get("PADDLE_NEED_RANK_MAPPING").lower()
@@ -627,6 +853,18 @@ def start_local_trainers(
             proc = subprocess.Popen(
                 cmd, env=current_env, stdout=fn, stderr=fn, preexec_fn=pre_fn
             )
+=======
+            if current_env.get("PADDLE_ENABLE_AUTO_MAPPING") is not None \
+                and current_env.get("PADDLE_NEED_RANK_MAPPING").lower() == "true":
+                fn = open("%s/prelaunchlog.%d" % (log_dir, idx), "a")
+            else:
+                fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
+            proc = subprocess.Popen(cmd,
+                                    env=current_env,
+                                    stdout=fn,
+                                    stderr=fn,
+                                    preexec_fn=pre_fn)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             proc = subprocess.Popen(cmd, env=current_env, preexec_fn=pre_fn)
 
@@ -653,9 +891,14 @@ def pull_worker_log(tp):
                 except UnicodeEncodeError:
                     sys.stdout.write(
                         'UnicodeEncodeError occurs at this line. '
+<<<<<<< HEAD
                         'Please refer to the original log file "%s"\n'
                         % tp.log_fn.name
                     )
+=======
+                        'Please refer to the original log file "%s"\n' %
+                        tp.log_fn.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             tp.log_offset = fin.tell()
 
 
@@ -686,18 +929,28 @@ def watch_local_trainers(procs, nranks):
         return
     except SystemExit:
         logger.error(
+<<<<<<< HEAD
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".format(
                 nranks, error_rank
             )
         )
+=======
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
+            .format(nranks, error_rank))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         terminate_local_procs(procs)
         raise
     except:
         logger.error(
+<<<<<<< HEAD
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".format(
                 nranks, error_rank
             )
         )
+=======
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
+            .format(nranks, error_rank))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         terminate_local_procs(procs)
         return
 
@@ -706,7 +959,11 @@ def watch_local_trainers(procs, nranks):
 
 def get_gpus(gpus):
     if gpus is None:
+<<<<<<< HEAD
         gpus_num = framework.core.get_cuda_device_count()
+=======
+        gpus_num = fluid.core.get_cuda_device_count()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         res_gpus = [str(x) for x in range(0, gpus_num)]
     else:
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
@@ -718,15 +975,22 @@ def get_gpus(gpus):
             # therefore gpus=0,1,2,3
             cuda_visible_devices_list = cuda_visible_devices.split(',')
             for x in gpus.split(','):
+<<<<<<< HEAD
                 assert x in cuda_visible_devices_list, (
                     "Can't find "
                     "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."
                     % (x, cuda_visible_devices)
                 )
+=======
+                assert x in cuda_visible_devices_list, "Can't find "\
+                    "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                    % (x, cuda_visible_devices)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
             ]
+<<<<<<< HEAD
             logger.info(
                 "Change selected_gpus into reletive values. --ips:{} "
                 "will change into relative_ips:{} according to your "
@@ -734,13 +998,23 @@ def get_gpus(gpus):
                     gpus, res_gpus, cuda_visible_devices_list
                 )
             )
+=======
+            logger.info("Change selected_gpus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "CUDA_VISIBLE_DEVICES:{}".format(
+                            gpus, res_gpus, cuda_visible_devices_list))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return res_gpus
 
 
 def get_xpus(xpus):
     if xpus is None:
+<<<<<<< HEAD
         xpus_num = framework.core.get_xpu_device_count()
+=======
+        xpus_num = fluid.core.get_xpu_device_count()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         res_xpus = [str(x) for x in range(0, xpus_num)]
     else:
         xpu_visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
@@ -752,16 +1026,23 @@ def get_xpus(xpus):
             # therefore xpus=0,1,2,3
             xpu_visible_devices_list = xpu_visible_devices.split(',')
             for x in xpus.split(','):
+<<<<<<< HEAD
                 assert (
                     x in xpu_visible_devices_list
                 ), "Can't find " "your xpus %s in XPU_VISIBLE_DEVICES[%s]." % (
                     x,
                     xpu_visible_devices,
                 )
+=======
+                assert x in xpu_visible_devices_list, "Can't find "\
+                    "your xpus %s in XPU_VISIBLE_DEVICES[%s]."\
+                    % (x, xpu_visible_devices)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             res_xpus = [
                 xpu_visible_devices_list.index(x.strip())
                 for x in xpus.split(',')
             ]
+<<<<<<< HEAD
             logger.info(
                 "Change selected_xpus into reletive values. --ips:{} "
                 "will change into relative_ips:{} according to your "
@@ -769,13 +1050,23 @@ def get_xpus(xpus):
                     xpus, res_xpus, xpu_visible_devices_list
                 )
             )
+=======
+            logger.info("Change selected_xpus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "XPU_VISIBLE_DEVICES:{}".format(
+                            xpus, res_xpus, xpu_visible_devices_list))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return res_xpus
 
 
 def get_npus(npus):
     if npus is None:
+<<<<<<< HEAD
         npus_num = framework.core.get_npu_device_count()
+=======
+        npus_num = fluid.core.get_npu_device_count()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         res_npus = [str(x) for x in range(0, npus_num)]
     else:
         npu_visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
@@ -787,15 +1078,22 @@ def get_npus(npus):
             # therefore npus=0,1,2,3
             npu_visible_devices_list = npu_visible_devices.split(',')
             for x in npus.split(','):
+<<<<<<< HEAD
                 assert x in npu_visible_devices_list, (
                     "Can't find "
                     "your npus %s in ASCEND_VISIBLE_DEVICES[%s]."
                     % (x, npu_visible_devices)
                 )
+=======
+                assert x in npu_visible_devices_list, "Can't find "\
+                    "your npus %s in ASCEND_VISIBLE_DEVICES[%s]."\
+                    % (x, npu_visible_devices)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             res_npus = [
                 npu_visible_devices_list.index(x.strip())
                 for x in npus.split(',')
             ]
+<<<<<<< HEAD
             logger.info(
                 "Change selected_npus into reletive values. --ips:{} "
                 "will change into relative_ips:{} according to your "
@@ -803,13 +1101,23 @@ def get_npus(npus):
                     npus, res_npus, npu_visible_devices_list
                 )
             )
+=======
+            logger.info("Change selected_npus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "ASCEND_VISIBLE_DEVICES:{}".format(
+                            npus, res_npus, npu_visible_devices_list))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return res_npus
 
 
 def get_mlus(mlus):
     if mlus is None:
+<<<<<<< HEAD
         mlus_num = framework.core.get_mlu_device_count()
+=======
+        mlus_num = fluid.core.get_mlu_device_count()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         res_mlus = [str(x) for x in range(0, mlus_num)]
     else:
         mlu_visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
@@ -821,16 +1129,23 @@ def get_mlus(mlus):
             # therefore mlus=0,1,2,3
             mlu_visible_devices_list = mlu_visible_devices.split(',')
             for x in mlus.split(','):
+<<<<<<< HEAD
                 assert (
                     x in mlu_visible_devices_list
                 ), "Can't find " "your mlus %s in MLU_VISIBLE_DEVICES[%s]." % (
                     x,
                     mlu_visible_devices,
                 )
+=======
+                assert x in mlu_visible_devices_list, "Can't find "\
+                    "your mlus %s in MLU_VISIBLE_DEVICES[%s]."\
+                    % (x, mlu_visible_devices)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             res_mlus = [
                 mlu_visible_devices_list.index(x.strip())
                 for x in mlus.split(',')
             ]
+<<<<<<< HEAD
             logger.info(
                 "Change selected_mlus into reletive values. --ips:{} "
                 "will change into relative_ips:{} according to your "
@@ -838,12 +1153,19 @@ def get_mlus(mlus):
                     mlus, res_mlus, mlu_visible_devices_list
                 )
             )
+=======
+            logger.info("Change selected_mlus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "MLU_VISIBLE_DEVICES:{}".format(
+                            mlus, res_mlus, mlu_visible_devices_list))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return res_mlus
 
 
 def get_device_mode(backend):
     if backend == 'heter':
+<<<<<<< HEAD
         if (
             framework.core.is_compiled_with_cuda()
             and framework.core.get_cuda_device_count() > 0
@@ -876,6 +1198,35 @@ def get_device_mode(backend):
         return DeviceMode.XPU
 
     if backend == 'cncl' and framework.core.get_mlu_device_count() > 0:
+=======
+        if fluid.core.is_compiled_with_cuda() and \
+            fluid.core.get_cuda_device_count() > 0:
+            print("launch train in heter mode with GPU device.")
+            return DeviceMode.GPU
+        if fluid.core.is_compiled_with_xpu() and \
+            fluid.core.get_xpu_device_count() > 0:
+            print("launch train in heter mode with XPU device.")
+            return DeviceMode.XPU
+        if fluid.core.is_compiled_with_npu() and \
+            fluid.core.get_npu_device_count() > 0:
+            print("launch train in heter mode with NPU device.")
+            return DeviceMode.ASCEND_NPU
+
+    if backend == 'hccl' and fluid.core.get_npu_device_count() > 0:
+        print("launch train in ascend npu mode!")
+        return DeviceMode.ASCEND_NPU
+
+    if backend == 'nccl' and \
+            fluid.core.get_cuda_device_count() > 0:
+        print("launch train in GPU mode!")
+        return DeviceMode.GPU
+
+    if backend == 'bkcl' and fluid.core.get_xpu_device_count() > 0:
+        print("launch train in XPU mode")
+        return DeviceMode.XPU
+
+    if backend == 'cncl' and fluid.core.get_mlu_device_count() > 0:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print("launch train in MLU mode")
         return DeviceMode.MLU
 
@@ -895,6 +1246,7 @@ def get_device_proc_info(args):
     if device_mode == DeviceMode.GPU:
         gpus = get_gpus(args.gpus)
         if args.nproc_per_node is not None:
+<<<<<<< HEAD
             assert (
                 len(gpus) % int(args.nproc_per_node)
             ) == 0, "gpus' number:{} mod args.nproc_per_node:{} must == 0".format(
@@ -903,11 +1255,21 @@ def get_device_proc_info(args):
 
             n = int(len(gpus) / int(args.nproc_per_node))
             devices_per_proc = [gpus[i : i + n] for i in range(0, len(gpus), n)]
+=======
+            assert (len(gpus) % int(args.nproc_per_node)) ==0, \
+                "gpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(gpus), args.nproc_per_node)
+
+            n = int(len(gpus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                gpus[i:i + n] for i in six.moves.range(0, len(gpus), n)
+            ]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.ASCEND_NPU:
         npus = get_npus(args.npus)
         if args.nproc_per_node is not None:
+<<<<<<< HEAD
             assert (
                 len(npus) % int(args.nproc_per_node)
             ) == 0, "npus' number:{} mod args.nproc_per_node:{} must == 0".format(
@@ -916,11 +1278,21 @@ def get_device_proc_info(args):
 
             n = int(len(npus) / int(args.nproc_per_node))
             devices_per_proc = [npus[i : i + n] for i in range(0, len(npus), n)]
+=======
+            assert (len(npus) % int(args.nproc_per_node)) ==0, \
+                "npus' number:{} mod args.nproc_per_node:{} must == 0".format(len(npus), args.nproc_per_node)
+
+            n = int(len(npus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                npus[i:i + n] for i in six.moves.range(0, len(npus), n)
+            ]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             devices_per_proc = npus
     elif device_mode == DeviceMode.XPU:
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:
+<<<<<<< HEAD
             assert (
                 len(xpus) % int(args.nproc_per_node)
             ) == 0, "xpus' number:{} mod args.nproc_per_node:{} must == 0".format(
@@ -929,11 +1301,21 @@ def get_device_proc_info(args):
 
             n = int(len(xpus) / int(args.nproc_per_node))
             devices_per_proc = [xpus[i : i + n] for i in range(0, len(xpus), n)]
+=======
+            assert (len(xpus) % int(args.nproc_per_node)) == 0, \
+                "xpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(xpus), args.nproc_per_node)
+
+            n = int(len(xpus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                xpus[i:i + n] for i in six.moves.range(0, len(xpus), n)
+            ]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             devices_per_proc = xpus
     elif device_mode == DeviceMode.MLU:
         mlus = get_mlus(args.mlus)
         if args.nproc_per_node is not None:
+<<<<<<< HEAD
             assert (
                 len(mlus) % int(args.nproc_per_node)
             ) == 0, "mlus' number:{} mod args.nproc_per_node:{} must == 0".format(
@@ -942,33 +1324,56 @@ def get_device_proc_info(args):
 
             n = int(len(mlus) / int(args.nproc_per_node))
             devices_per_proc = [mlus[i : i + n] for i in range(0, len(mlus), n)]
+=======
+            assert (len(mlus) % int(args.nproc_per_node)) ==0, \
+                "mlus' number:{} mod args.nproc_per_node:{} must == 0".format(len(mlus), args.nproc_per_node)
+
+            n = int(len(mlus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                mlus[i:i + n] for i in six.moves.range(0, len(mlus), n)
+            ]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             devices_per_proc = mlus
     elif device_mode == DeviceMode.CPU:
         if hasattr(args, "paddle_cpuonly") and args.nproc_per_node is None:
+<<<<<<< HEAD
             # NOTE (xiongkun03) set it to cpu core number
+=======
+            #NOTE (xiongkun03) set it to cpu core number
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             args.nproc_per_node = multiprocessing.cpu_count()
         if args.nproc_per_node is None:
             devices_per_proc = [0]
         else:
             devices_per_proc = [x for x in range(0, args.nproc_per_node)]
     else:
+<<<<<<< HEAD
         assert (
             False
         ), "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
             device_mode
         )
+=======
+        assert False, "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
+            device_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return (device_mode, devices_per_proc)
 
 
 def direct_start(args):
     # run ps-cpu mode on paddlecloud, using given envs
+<<<<<<< HEAD
     cmd = [
         sys.executable,
         "-u",
         args.training_script,
     ] + args.training_script_args
+=======
+    cmd = [sys.executable, "-u", args.training_script] + \
+        args.training_script_args
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     proc = subprocess.Popen(cmd)
     proc.wait()
     return
@@ -979,7 +1384,11 @@ def get_custom_endpoints(origin_endpoints, offset=0):
     origin_endpoint: ip:port
     user_define_endpoint: ip:(port+offset)
     """
+<<<<<<< HEAD
     assert origin_endpoints is not None
+=======
+    assert origin_endpoints != None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle_user_define_endpoints_list = []
     for ip_port in origin_endpoints.split(","):
         ip = ip_port.split(":")[0]
@@ -990,7 +1399,11 @@ def get_custom_endpoints(origin_endpoints, offset=0):
     return paddle_user_define_endpoints
 
 
+<<<<<<< HEAD
 # def cloud_ps_heter_env_set(args):
+=======
+#def cloud_ps_heter_env_set(args):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #    environs = {}
 #
 #    paddle_trainer_endpoints = os.getenv("TRAINER_IP_PORT_LIST", "")
@@ -1030,6 +1443,7 @@ def get_custom_endpoints(origin_endpoints, offset=0):
 #        pretty_print_envs(environs)))
 
 
+<<<<<<< HEAD
 def get_mapped_cluster_without_rank_mapping(
     node_ips, node_ip, trainer_endpoints, device_mode, node_ranks
 ):
@@ -1037,6 +1451,14 @@ def get_mapped_cluster_without_rank_mapping(
     assert (
         device_mode == DeviceMode.GPU
     ), "Only support get mapped cluster for gpu now."
+=======
+def get_mapped_cluster_without_rank_mapping(node_ips, node_ip,
+                                            trainer_endpoints, device_mode,
+                                            node_ranks):
+    assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
+    assert device_mode == DeviceMode.GPU, \
+        "Only support get mapped cluster for gpu now."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cluster = Cluster(hdfs=None)
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
@@ -1060,10 +1482,16 @@ def get_mapped_cluster_without_rank_mapping(
 
 
 def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
+<<<<<<< HEAD
     assert (
         device_mode == DeviceMode.GPU
     ), "Only support get mapped cluster for gpu now."
     gpus_num = framework.core.get_cuda_device_count()
+=======
+    assert device_mode == DeviceMode.GPU, \
+        "Only support get mapped cluster for gpu now."
+    gpus_num = fluid.core.get_cuda_device_count()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # parse ip-ranks json file
     cluster_topo = None
@@ -1084,6 +1512,7 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
         else:
             _, node_ip = get_host_name_ip()
 
+<<<<<<< HEAD
     assert (
         node_ip in node_ips
     ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
@@ -1099,6 +1528,19 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
             node_ips, node_ip, node_rank, node_ranks[node_rank]
         )
     )
+=======
+    assert node_ip in node_ips, \
+        "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    node_rank = node_ips.index(node_ip)
+
+    assert len(node_ranks) == len(node_ips), \
+        "ranks length should be equal to ips length."
+
+    logger.debug("parsed from args: node_ips:{} node_ip:{} "
+                 "node_rank:{} node_ranks:{}".format(node_ips, node_ip,
+                                                     node_rank,
+                                                     node_ranks[node_rank]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # NOTE: there are different number of global mapped ranks on each node.
     free_ports = []
@@ -1108,23 +1550,34 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
             free_ports = [
+<<<<<<< HEAD
                 x
                 for x in range(
                     start_port, start_port + len(node_ranks[node_rank])
                 )
+=======
+                x for x in range(start_port, start_port +
+                                 len(node_ranks[node_rank]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
             free_ports = [
+<<<<<<< HEAD
                 x
                 for x in range(
                     start_port, start_port + len(node_ranks[node_rank])
                 )
+=======
+                x for x in range(start_port, start_port +
+                                 len(node_ranks[node_rank]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
 
+<<<<<<< HEAD
     return get_mapped_cluster_without_rank_mapping(
         node_ips, node_ip, trainer_endpoints, device_mode, node_ranks
     )
@@ -1142,6 +1595,19 @@ def get_mapped_cluster_with_rank_mapping(
     assert (
         device_mode == DeviceMode.GPU
     ), "Only support get mapped cluster for gpu now."
+=======
+    return get_mapped_cluster_without_rank_mapping(node_ips, node_ip,
+                                                   trainer_endpoints,
+                                                   device_mode, node_ranks)
+
+
+def get_mapped_cluster_with_rank_mapping(node_ips, node_ip, trainer_endpoints,
+                                         device_mode, node_ranks,
+                                         node_rank_mappings):
+    assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
+    assert device_mode == DeviceMode.GPU, \
+        "Only support get mapped cluster for gpu now."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_relative_gpu_id(gpu_id):
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
@@ -1151,10 +1617,15 @@ def get_mapped_cluster_with_rank_mapping(
             cuda_visible_devices_list = cuda_visible_devices.split(',')
             relative_id = cuda_visible_devices_list.index(str(gpu_id))
             logger.info(
+<<<<<<< HEAD
                 "Change gpu id from {} to {} based on CUDA_VISIBLE_DEVICES {}".format(
                     gpu_id, relative_id, cuda_visible_devices_list
                 )
             )
+=======
+                "Change gpu id from {} to {} based on CUDA_VISIBLE_DEVICES {}".
+                format(gpu_id, relative_id, cuda_visible_devices_list))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return relative_id
 
     cluster = Cluster(hdfs=None)
@@ -1170,6 +1641,7 @@ def get_mapped_cluster_with_rank_mapping(
         cur_node_rank_mapping = node_rank_mappings[node_rank]
         for i in range(len(ranks_per_node)):
             trainer = Trainer()
+<<<<<<< HEAD
             local_device_ids = cur_node_rank_mapping["ranks"][
                 str(ranks_per_node[i])
             ]
@@ -1179,6 +1651,14 @@ def get_mapped_cluster_with_rank_mapping(
             trainer.accelerators.append(
                 get_relative_gpu_id(local_device_ids[0])
             )
+=======
+            local_device_ids = cur_node_rank_mapping["ranks"][str(
+                ranks_per_node[i])]
+            assert len(local_device_ids) == 1, \
+                "Only support one process to one device mapping"
+            trainer.accelerators.append(get_relative_gpu_id(
+                local_device_ids[0]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = ranks_per_node[i]
             pod.trainers.append(trainer)
@@ -1189,6 +1669,7 @@ def get_mapped_cluster_with_rank_mapping(
 
 
 def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
+<<<<<<< HEAD
     assert (
         device_mode == DeviceMode.GPU
     ), "Only support get mapped cluster for gpu now."
@@ -1198,6 +1679,15 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
     rank_mapping_path = args.rank_mapping_path or os.getenv(
         "PADDLE_RANK_MAPPING_PATH"
     )
+=======
+    assert device_mode == DeviceMode.GPU, \
+        "Only support get mapped cluster for gpu now."
+    gpus_num = fluid.core.get_cuda_device_count()
+
+    # parse ip-ranks json file
+    rank_mapping_path = args.rank_mapping_path or os.getenv(
+        "PADDLE_RANK_MAPPING_PATH")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     rank_mapping = None
     with open(rank_mapping_path, "r") as json_file:
         rank_mapping = json.load(json_file)
@@ -1224,6 +1714,7 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
         else:
             _, node_ip = get_host_name_ip()
 
+<<<<<<< HEAD
     assert (
         node_ip in node_ips
     ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
@@ -1242,6 +1733,21 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
             node_ips, node_ip, node_rank, node_ranks[node_rank]
         )
     )
+=======
+    assert node_ip in node_ips, \
+        "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    node_rank = node_ips.index(node_ip)
+
+    assert len(node_ranks[node_rank]) <= gpus_num, \
+        "number of ranks mapped to one node should not exceed the avaiable ones."
+    assert len(node_ranks) == len(node_ips), \
+        "ranks length should be equal to ips length."
+
+    logger.debug("parsed from args: node_ips:{} node_ip:{} "
+                 "node_rank:{} node_ranks:{}".format(node_ips, node_ip,
+                                                     node_rank,
+                                                     node_ranks[node_rank]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # NOTE: there are different number of global mapped ranks on each node.
     free_ports = []
@@ -1251,23 +1757,34 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
             free_ports = [
+<<<<<<< HEAD
                 x
                 for x in range(
                     start_port, start_port + len(node_ranks[node_rank])
                 )
+=======
+                x for x in range(start_port, start_port +
+                                 len(node_ranks[node_rank]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
             free_ports = [
+<<<<<<< HEAD
                 x
                 for x in range(
                     start_port, start_port + len(node_ranks[node_rank])
                 )
+=======
+                x for x in range(start_port, start_port +
+                                 len(node_ranks[node_rank]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
 
+<<<<<<< HEAD
     return get_mapped_cluster_with_rank_mapping(
         node_ips,
         node_ip,
@@ -1279,6 +1796,15 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
 
 
 class ParameterServerLauncher:
+=======
+    return get_mapped_cluster_with_rank_mapping(node_ips, node_ip,
+                                                trainer_endpoints, device_mode,
+                                                node_ranks, node_rank_mappings)
+
+
+class ParameterServerLauncher(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, args, distribute_mode):
         self.args = args
         self.distribute_mode = distribute_mode
@@ -1319,21 +1845,34 @@ class ParameterServerLauncher:
         if args.server_num:
             self.server_num = args.server_num
             if args.servers:
+<<<<<<< HEAD
                 assert (
                     len(args.servers.split(",")) == self.server_num
                 ), "The server_num and servers doesn't match. Expect servers endpoints num epual to server_num, but received servers enpoint num: {} and server_num {}".format(
                     len(args.servers.split(",")), self.server_num
                 )
+=======
+                assert len(
+                    args.servers.split(",")
+                ) == self.server_num, "The server_num and servers doesn't match. Expect servers endpoints num epual to server_num, but received servers enpoint num: {} and server_num {}".format(
+                    len(args.servers.split(",")), self.server_num)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.server_endpoints = args.servers
             else:
                 ports = get_ports(self.server_num, 0)
                 self.server_endpoints = ",".join(
+<<<<<<< HEAD
                     ["127.0.0.1:" + str(x) for x in ports]
                 )
         else:
             assert (
                 args.servers != ""
             ), "The setting of Parameter-Server must has server_num or servers."
+=======
+                    ["127.0.0.1:" + str(x) for x in ports])
+        else:
+            assert args.servers != "", "The setting of Parameter-Server must has server_num or servers."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.server_endpoints = args.servers
             self.server_num = len(self.server_endpoints.split(","))
 
@@ -1341,22 +1880,35 @@ class ParameterServerLauncher:
         if args.worker_num:
             self.worker_num = args.worker_num
             if args.workers:
+<<<<<<< HEAD
                 assert (
                     len(args.workers.split(",")) == self.worker_num
                 ), "The worker_num and workers doesn't match. Expect workers endpoints num epual to worker_num, but received workers enpoint num: {} and worker_num {}".format(
                     len(args.workers.split(",")), self.worker_num
                 )
+=======
+                assert len(
+                    args.workers.split(",")
+                ) == self.worker_num, "The worker_num and workers doesn't match. Expect workers endpoints num epual to worker_num, but received workers enpoint num: {} and worker_num {}".format(
+                    len(args.workers.split(",")), self.worker_num)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 self.worker_endpoints = args.workers
             else:
                 ports = get_ports(self.worker_num, self.server_num)
                 self.worker_endpoints = ",".join(
+<<<<<<< HEAD
                     ["127.0.0.1:" + str(x) for x in ports]
                 )
         else:
             assert (
                 args.workers != ""
             ), "The setting of Parameter-Server must has worker_num or workers."
+=======
+                    ["127.0.0.1:" + str(x) for x in ports])
+        else:
+            assert args.workers != "", "The setting of Parameter-Server must has worker_num or workers."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             worker_endpoints_ips = [
                 x.strip().split(":")[0] for x in args.workers.split(",")
             ]
@@ -1370,6 +1922,7 @@ class ParameterServerLauncher:
                 start_port = 6170
                 worker_endpoints_port = range(
                     start_port + self.server_num,
+<<<<<<< HEAD
                     start_port + self.server_num + self.worker_num,
                     1,
                 )
@@ -1384,6 +1937,15 @@ class ParameterServerLauncher:
                             )
                         )
                     )
+=======
+                    start_port + self.server_num + self.worker_num, 1)
+                # create endpoints str
+                worker_endpoints = []
+                for i in range(self.worker_num):
+                    worker_endpoints.append(":".join(
+                        (worker_endpoints_ips[i],
+                         str(worker_endpoints_port[i]))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.worker_endpoints = ",".join(worker_endpoints)
             else:
                 self.worker_endpoints = args.workers
@@ -1393,26 +1955,42 @@ class ParameterServerLauncher:
             self.with_coordinator = True
             self.coordinator_num = args.coordinator_num
             if args.coordinators:
+<<<<<<< HEAD
                 assert (
                     len(args.coordinators.split(",")) == self.coordinator_num
                 ), "The coordinator_num and coordinators doesn't match. Expect coordinators endpoints num epual to coordinator_num, but received coordinator enpoint num: {} and coordinator_num {}".format(
                     len(args.coordinators.split(",")), self.coordinator_num
                 )
+=======
+                assert len(
+                    args.coordinators.split(",")
+                ) == self.coordinator_num, "The coordinator_num and coordinators doesn't match. Expect coordinators endpoints num epual to coordinator_num, but received coordinator enpoint num: {} and coordinator_num {}".format(
+                    len(args.coordinators.split(",")), self.coordinator_num)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 self.coordinator_endpoints = args.coordinators
             else:
                 ports = get_ports(self.coordinator_num, 1)
                 self.coordinator_endpoints = ",".join(
+<<<<<<< HEAD
                     ["127.0.0.1:" + str(x) for x in ports]
                 )
+=======
+                    ["127.0.0.1:" + str(x) for x in ports])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 print(">>> use default coordinator addr(only one process)")
 
         # get heter worker envs
         if self.distribute_mode == DistributeMode.PS_HETER:
+<<<<<<< HEAD
             assert (
                 args.heter_devices != ""
             ), "The setting of Parameter-Server heter mode must has heter_devices."
             self.stage_device_map[1] = "cpu"  # for cpu trainer
+=======
+            assert args.heter_devices != "", "The setting of Parameter-Server heter mode must has heter_devices."
+            self.stage_device_map[1] = "cpu"  #  for cpu trainer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             heter_devices_list = args.heter_devices.split(";")
             for i in range(len(heter_devices_list)):
                 self.stage_device_map[i + 2] = heter_devices_list[i]
@@ -1430,14 +2008,19 @@ class ParameterServerLauncher:
                         self.stage_heter_trainer_num
                     ), "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num epual to heter_worker_num stage, but received heter_workers enpoint stage num: {} and heter_worker_num stage {}".format(
                         len(args.heter_workers.split(";")),
+<<<<<<< HEAD
                         len(self.stage_heter_trainer_num),
                     )
+=======
+                        len(self.stage_heter_trainer_num))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     heter_worker_endpoints_list = args.heter_workers.split(";")
                     self.heter_worker_endpoints = ""
                     for i in range(len(self.stage_heter_trainer_num)):
                         if self.heter_worker_endpoints != "":
                             self.heter_worker_endpoints += ","
                         heter_worker_endpoints = heter_worker_endpoints_list[
+<<<<<<< HEAD
                             i
                         ].split(",")
                         assert (
@@ -1446,6 +2029,14 @@ class ParameterServerLauncher:
                         ), "The heter trainer num in stage {} is not equal in args.heter_worker_num and args.heter_workers".format(
                             i
                         )
+=======
+                            i].split(",")
+                        assert len(
+                            heter_worker_endpoints
+                        ) == self.stage_heter_trainer_num[
+                            i], "The heter trainer num in stage {} is not equal in args.heter_worker_num and args.heter_workers".format(
+                                i)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                         heter_worker_endpoints_ips = [
                             x.strip().split(":")[0]
@@ -1460,6 +2051,7 @@ class ParameterServerLauncher:
                             # if no port value in heter_worker_endpoint, will set default port values.
                             heter_worker_endpoints_port = get_ports(
                                 len(heter_worker_endpoints_ips),
+<<<<<<< HEAD
                                 self.worker_num
                                 + self.server_num
                                 + self.heter_worker_num,
@@ -1474,14 +2066,28 @@ class ParameterServerLauncher:
                                         )
                                     )
                                 )
+=======
+                                self.worker_num + self.server_num +
+                                self.heter_worker_num)
+                            new_heter_worker_endpoints = []
+                            for j in range(len(heter_worker_endpoints_ips)):
+                                new_heter_worker_endpoints.append(":".join(
+                                    (heter_worker_endpoints_ips[j],
+                                     str(heter_worker_endpoints_port[j]))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             ip_port_list = ",".join(new_heter_worker_endpoints)
                         else:
                             ip_port_list = ",".join(heter_worker_endpoints)
 
                         self.stage_heter_map[i + 2] = ip_port_list
+<<<<<<< HEAD
                         self.stage_list.extend(
                             [i + 2] * len(ip_port_list.split(','))
                         )
+=======
+                        self.stage_list.extend([i + 2] *
+                                               len(ip_port_list.split(',')))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                         self.heter_worker_num += self.stage_heter_trainer_num[i]
                         self.heter_worker_endpoints += ip_port_list
@@ -1489,6 +2095,7 @@ class ParameterServerLauncher:
                     for i in range(len(self.stage_heter_trainer_num)):
                         heter_trainer_num = self.stage_heter_trainer_num[i]
                         ports = get_ports(
+<<<<<<< HEAD
                             heter_trainer_num,
                             self.server_num
                             + self.worker_num
@@ -1501,24 +2108,43 @@ class ParameterServerLauncher:
                         self.stage_list.extend(
                             [i + 2] * len(ip_port_list.split(','))
                         )
+=======
+                            heter_trainer_num, self.server_num +
+                            self.worker_num + self.heter_worker_num)
+                        ip_port_list = ",".join(
+                            ["127.0.0.1:" + str(x) for x in ports])
+                        self.stage_heter_map[i + 2] = ip_port_list
+                        self.stage_list.extend([i + 2] *
+                                               len(ip_port_list.split(',')))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self.heter_worker_num += heter_trainer_num
                         if self.heter_worker_endpoints != "":
                             self.heter_worker_endpoints += ","
                         self.heter_worker_endpoints += ip_port_list
             else:
+<<<<<<< HEAD
                 assert (
                     args.heter_workers != ""
                 ), "The setting of Parameter-Server heter mode must has heter_worker_num or heter_workers."
+=======
+                assert args.heter_workers != "", "The setting of Parameter-Server heter mode must has heter_worker_num or heter_workers."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.stage_heter_trainer_num = []
                 heter_worker_endpoints_list = args.heter_workers.split(";")
                 self.heter_worker_endpoints = ""
                 for i in range(len(heter_worker_endpoints_list)):
                     heter_worker_endpoints = heter_worker_endpoints_list[
+<<<<<<< HEAD
                         i
                     ].split(",")
                     self.stage_heter_trainer_num.append(
                         len(heter_worker_endpoints)
                     )
+=======
+                        i].split(",")
+                    self.stage_heter_trainer_num.append(
+                        len(heter_worker_endpoints))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     heter_worker_endpoints_ips = [
                         x.strip().split(":")[0] for x in heter_worker_endpoints
                     ]
@@ -1529,6 +2155,7 @@ class ParameterServerLauncher:
                     if 1 in heter_worker_endpoints_len:
                         # if no port value in heter_worker_endpoint, will set default port values.
                         heter_worker_endpoints_port = get_ports(
+<<<<<<< HEAD
                             len(heter_worker_endpoints_ips),
                             self.worker_num
                             + self.server_num
@@ -1545,23 +2172,43 @@ class ParameterServerLauncher:
                                     )
                                 )
                             )
+=======
+                            len(heter_worker_endpoints_ips), self.worker_num +
+                            self.server_num + self.heter_worker_num)
+
+                        new_heter_worker_endpoints = []
+                        for j in range(len(heter_worker_endpoints_ips)):
+                            new_heter_worker_endpoints.append(":".join(
+                                (heter_worker_endpoints_ips[j],
+                                 str(heter_worker_endpoints_port[j]))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         ip_port_list = ",".join(new_heter_worker_endpoints)
                     else:
                         ip_port_list = ",".join(heter_worker_endpoints)
 
                     self.stage_heter_map[i + 2] = ip_port_list
+<<<<<<< HEAD
                     self.stage_list.extend(
                         [i + 2] * len(ip_port_list.split(','))
                     )
+=======
+                    self.stage_list.extend([i + 2] *
+                                           len(ip_port_list.split(',')))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                     self.heter_worker_num += self.stage_heter_trainer_num[-1]
                     if self.heter_worker_endpoints != "":
                         self.heter_worker_endpoints += ","
                     self.heter_worker_endpoints += ip_port_list
 
+<<<<<<< HEAD
             self.stage_trainer_num = [
                 self.worker_num
             ] + self.stage_heter_trainer_num
+=======
+            self.stage_trainer_num = [self.worker_num
+                                      ] + self.stage_heter_trainer_num
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.stage_num = len(self.stage_trainer_num)
 
         # get http_port
@@ -1569,8 +2216,12 @@ class ParameterServerLauncher:
             http_port = [args.http_port]
         else:
             http_port = get_ports(
+<<<<<<< HEAD
                 1, self.server_num + self.worker_num + self.heter_worker_num
             )
+=======
+                1, self.server_num + self.worker_num + self.heter_worker_num)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         http_ip = self.server_endpoints.split(",")[0].split(":")[0]
         self.http_port = http_ip + ":" + str(http_port[0])
 
@@ -1582,7 +2233,11 @@ class ParameterServerLauncher:
             x.strip().split(":")[0] for x in self.worker_endpoints.split(",")
         ]
 
+<<<<<<< HEAD
         if self.with_coordinator:
+=======
+        if self.with_coordinator == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.coordinator_endpoints_ips = [
                 x.strip().split(":")[0]
                 for x in self.coordinator_endpoints.split(",")
@@ -1625,11 +2280,16 @@ class ParameterServerLauncher:
         else:
             self.is_local = False
             pod_ip = os.getenv("POD_IP", None)
+<<<<<<< HEAD
             if pod_ip is None:
+=======
+            if pod_ip == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 _, self.current_node_ip = get_host_name_ip()
             else:
                 self.current_node_ip = pod_ip
             if not self.distribute_mode == DistributeMode.PS_HETER:
+<<<<<<< HEAD
                 assert self.current_node_ip in self.node_ips, (
                     "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}"
                     % (self.current_node_ip, self.node_ips)
@@ -1644,6 +2304,18 @@ class ParameterServerLauncher:
 
     def start_ps(self):
         if self.current_node_ip not in self.node_ips:
+=======
+                assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
+                      % (self.current_node_ip, self.node_ips)
+        if self.current_node_ip in self.node_ips:
+            self.node_rank = self.node_ips.index(self.current_node_ip)
+            logger.debug(
+                "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".
+                format(self.node_ips, self.current_node_ip, self.node_rank))
+
+    def start_ps(self):
+        if not self.current_node_ip in self.node_ips:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return
         cluster = Cluster(hdfs=None)
         server_rank = 0
@@ -1657,20 +2329,30 @@ class ParameterServerLauncher:
             for i in range(len(self.server_endpoints_ips)):
                 if ip == self.server_endpoints_ips[i]:
                     server = Trainer()
+<<<<<<< HEAD
                     server.endpoint = "%s:%s" % (
                         ip,
                         self.server_endpoints_port[i],
                     )
+=======
+                    server.endpoint = "%s:%s" % (ip,
+                                                 self.server_endpoints_port[i])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     server.rank = server_rank
                     server_rank += 1
                     pod.servers.append(server)
             for j in range(len(self.worker_endpoints_ips)):
                 if ip == self.worker_endpoints_ips[j]:
                     worker = Trainer()
+<<<<<<< HEAD
                     worker.endpoint = "%s:%s" % (
                         ip,
                         self.worker_endpoints_port[j],
                     )
+=======
+                    worker.endpoint = "%s:%s" % (ip,
+                                                 self.worker_endpoints_port[j])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     worker.rank = worker_rank
                     worker.stage = 1
                     worker_rank += 1
@@ -1679,9 +2361,13 @@ class ParameterServerLauncher:
                 if ip == self.coordinator_endpoints_ips[m]:
                     coordinator = Trainer()
                     coordinator.endpoint = "%s:%s" % (
+<<<<<<< HEAD
                         ip,
                         self.coordinator_endpoints_port[m],
                     )
+=======
+                        ip, self.coordinator_endpoints_port[m])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     coordinator.rank = coordinator_rank
                     coordinator.stage = 1
                     coordinator_rank += 1
@@ -1691,9 +2377,13 @@ class ParameterServerLauncher:
                 if ip == self.heter_worker_endpoints_ips[k]:
                     heter_worker = Trainer()
                     heter_worker.endpoint = "%s:%s" % (
+<<<<<<< HEAD
                         ip,
                         self.heter_worker_endpoints_port[k],
                     )
+=======
+                        ip, self.heter_worker_endpoints_port[k])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     heter_worker.rank = heter_worker_rank
                     heter_worker.stage = self.stage_list[k]
                     heter_worker_rank += 1
@@ -1709,19 +2399,31 @@ class ParameterServerLauncher:
             "worker": [],
             "coordinator": [],
             "server": [],
+<<<<<<< HEAD
             "heter_worker": [],
+=======
+            "heter_worker": []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.cmds = {
             "worker": [],
             "coordinator": [],
             "server": [],
+<<<<<<< HEAD
             "heter_worker": [],
+=======
+            "heter_worker": []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.log_fns = {
             "worker": [],
             "coordinator": [],
             "server": [],
+<<<<<<< HEAD
             "heter_worker": [],
+=======
+            "heter_worker": []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.start_pod_server(self.args, pod)
@@ -1732,6 +2434,7 @@ class ParameterServerLauncher:
             self.start_pod_heter_worker(self.args, pod)
 
         logger.info(
+<<<<<<< HEAD
             "Please check servers, workers, coordinator and heter_worker logs in {}/workerlog.*, {}/serverlog.* , {}/coordinatorlog.*, and {}/heterlog.*".format(
                 self.args.log_dir,
                 self.args.log_dir,
@@ -1739,6 +2442,11 @@ class ParameterServerLauncher:
                 self.args.log_dir,
             )
         )
+=======
+            "Please check servers, workers, coordinator and heter_worker logs in {}/workerlog.*, {}/serverlog.* , {}/coordinatorlog.*, and {}/heterlog.*"
+            .format(self.args.log_dir, self.args.log_dir, self.args.log_dir,
+                    self.args.log_dir))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # 4. wait for finish training
         if len(self.procs["worker"]) > 0:
@@ -1794,7 +2502,12 @@ class ParameterServerLauncher:
                     "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                     "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
                     "PADDLE_COORDINATOR_ENDPOINTS": self.coordinator_endpoints,
+<<<<<<< HEAD
                     "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST": self.heter_worker_endpoints,
+=======
+                    "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST":
+                    self.heter_worker_endpoints,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     "PADDLE_PORT": cur_server.endpoint.split(":")[1],
                     "TRAINING_ROLE": "PSERVER",
                     "PADDLE_TRAINERS_NUM": str(self.worker_num),
@@ -1802,7 +2515,11 @@ class ParameterServerLauncher:
                     "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                     "PADDLE_GLOO_RENDEZVOUS": "3",
                     "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+<<<<<<< HEAD
                     "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port,
+=======
+                    "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
             else:
                 proc_env = {
@@ -1816,6 +2533,7 @@ class ParameterServerLauncher:
                     "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                     "PADDLE_GLOO_RENDEZVOUS": "3",
                     "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+<<<<<<< HEAD
                     "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port,
                 }
             current_env.update(proc_env)
@@ -1825,6 +2543,14 @@ class ParameterServerLauncher:
                 "-u",
                 args.training_script,
             ] + args.training_script_args
+=======
+                    "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+                }
+            current_env.update(proc_env)
+
+            cmd = [sys.executable, "-u", args.training_script
+                   ] + args.training_script_args
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.cmds["server"].append(cmd)
 
             if idx == 0:
@@ -1832,19 +2558,31 @@ class ParameterServerLauncher:
                     "Local server start {} processes. First process distributed "
                     "environment info (Only For Debug): {}".format(
                         len(pod.servers),
+<<<<<<< HEAD
                         pretty_print_envs(
                             proc_env, ("Distributed Envs", "Value")
                         ),
                     )
                 )
+=======
+                        pretty_print_envs(proc_env,
+                                          ("Distributed Envs", "Value"))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if args.log_dir is not None:
                 os.system("mkdir -p {}".format(args.log_dir))
                 fn = open("%s/serverlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["server"].append(fn)
+<<<<<<< HEAD
                 proc = subprocess.Popen(
                     cmd, env=current_env, stdout=fn, stderr=fn
                 )
+=======
+                proc = subprocess.Popen(cmd,
+                                        env=current_env,
+                                        stdout=fn,
+                                        stderr=fn)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 proc = subprocess.Popen(cmd, env=current_env)
 
@@ -1866,6 +2604,7 @@ class ParameterServerLauncher:
 
         heter_device_num = 0
         device_list = []
+<<<<<<< HEAD
         if framework.core.is_compiled_with_cuda():
             device_list = get_gpus(args.gpus)
             heter_device_num = len(device_list)
@@ -1906,6 +2645,66 @@ class ParameterServerLauncher:
                     "CUDA_VISIBLE_DEVICES": device_id,
                     "XPU_VISIBLE_DEVICES": device_id,
                     "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port,
+=======
+        if fluid.core.is_compiled_with_cuda():
+            device_list = get_gpus(args.gpus)
+            heter_device_num = len(device_list)
+        elif fluid.core.is_compiled_with_xpu():
+            heter_device_num = fluid.core.get_xpu_device_count()
+            device_list = [str(x) for x in range(0, heter_device_num)]
+
+        for idx, cur_worker in enumerate(pod.workers):
+            device_id = "0" if heter_device_num == 0 else str(
+                device_list[(idx) % heter_device_num])
+            if self.distribute_mode == DistributeMode.PS_HETER:
+                proc_env = {
+                    "PADDLE_PSERVERS_IP_PORT_LIST":
+                    self.server_endpoints,
+                    "PADDLE_TRAINER_ENDPOINTS":
+                    self.worker_endpoints,
+                    "PADDLE_TRAINERS_NUM":
+                    str(self.worker_num),
+                    "PADDLE_COORDINATOR_ENDPOINTS":
+                    self.coordinator_endpoints,
+                    "PADDLE_STAGE_TRAINERS_NUM":
+                    str(self.stage_trainer_num),
+                    "STAGE_ID":
+                    "1",
+                    "STAGE_NUM":
+                    str(self.stage_num),
+                    "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST":
+                    "",
+                    "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST":
+                    self.stage_heter_map[2],
+                    "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST":
+                    self.heter_worker_endpoints,
+                    "HETER_DEVICE_TYPE":
+                    self.stage_device_map[1],
+                    "TRAINING_ROLE":
+                    "TRAINER",
+                    "POD_IP":
+                    cur_worker.endpoint.split(":")[0],
+                    "PADDLE_PORT":
+                    cur_worker.endpoint.split(":")[1],
+                    "PADDLE_TRAINER_ID":
+                    str(cur_worker.rank),
+                    "PADDLE_WITH_GLOO":
+                    str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                    "PADDLE_GLOO_RENDEZVOUS":
+                    "3",
+                    "PADDLE_GLOO_FS_PATH":
+                    self.gloo_rendezvous_dir,
+                    "FLAGS_selected_gpus":
+                    "0",
+                    "FLAGS_selected_xpus":
+                    "0",
+                    "CUDA_VISIBLE_DEVICES":
+                    device_id,
+                    "XPU_VISIBLE_DEVICES":
+                    device_id,
+                    "PADDLE_GLOO_HTTP_ENDPOINT":
+                    self.http_port
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
             else:
                 proc_env = {
@@ -1924,6 +2723,7 @@ class ParameterServerLauncher:
                     "FLAGS_selected_xpus": "0",
                     "CUDA_VISIBLE_DEVICES": device_id,
                     "XPU_VISIBLE_DEVICES": device_id,
+<<<<<<< HEAD
                     "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port,
                 }
 
@@ -1933,6 +2733,14 @@ class ParameterServerLauncher:
                 "-u",
                 args.training_script,
             ] + args.training_script_args
+=======
+                    "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+                }
+
+            current_env.update(proc_env)
+            cmd = [sys.executable, "-u", args.training_script
+                   ] + args.training_script_args
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.cmds["worker"].append(cmd)
 
             if idx == 0:
@@ -1940,19 +2748,31 @@ class ParameterServerLauncher:
                     "Local worker start {} processes. First process distributed "
                     "environment info (Only For Debug): {}".format(
                         len(pod.workers),
+<<<<<<< HEAD
                         pretty_print_envs(
                             proc_env, ("Distributed Envs", "Value")
                         ),
                     )
                 )
+=======
+                        pretty_print_envs(proc_env,
+                                          ("Distributed Envs", "Value"))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if args.log_dir is not None:
                 os.system("mkdir -p {}".format(args.log_dir))
                 fn = open("%s/workerlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["worker"].append(fn)
+<<<<<<< HEAD
                 proc = subprocess.Popen(
                     cmd, env=current_env, stdout=fn, stderr=fn
                 )
+=======
+                proc = subprocess.Popen(cmd,
+                                        env=current_env,
+                                        stdout=fn,
+                                        stderr=fn)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 proc = subprocess.Popen(cmd, env=current_env)
 
@@ -1992,6 +2812,7 @@ class ParameterServerLauncher:
                 "FLAGS_selected_xpus": "0",
                 "CUDA_VISIBLE_DEVICES": device_id,
                 "XPU_VISIBLE_DEVICES": device_id,
+<<<<<<< HEAD
                 "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port,
             }
 
@@ -2001,6 +2822,14 @@ class ParameterServerLauncher:
                 "-u",
                 args.training_script,
             ] + args.training_script_args
+=======
+                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+            }
+
+            current_env.update(proc_env)
+            cmd = [sys.executable, "-u", args.training_script
+                   ] + args.training_script_args
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.cmds["coordinator"].append(cmd)
 
             if idx == 0:
@@ -2008,19 +2837,31 @@ class ParameterServerLauncher:
                     "Local coordinator start {} processes. First process distributed "
                     "environment info (Only For Debug): {}".format(
                         len(pod.coordinators),
+<<<<<<< HEAD
                         pretty_print_envs(
                             proc_env, ("Distributed Envs", "Value")
                         ),
                     )
                 )
+=======
+                        pretty_print_envs(proc_env,
+                                          ("Distributed Envs", "Value"))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if args.log_dir is not None:
                 os.system("mkdir -p {}".format(args.log_dir))
                 fn = open("%s/coordinator.%d" % (args.log_dir, idx), "w")
                 self.log_fns["coordinator"].append(fn)
+<<<<<<< HEAD
                 proc = subprocess.Popen(
                     cmd, env=current_env, stdout=fn, stderr=fn
                 )
+=======
+                proc = subprocess.Popen(cmd,
+                                        env=current_env,
+                                        stdout=fn,
+                                        stderr=fn)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 proc = subprocess.Popen(cmd, env=current_env)
 
@@ -2042,6 +2883,7 @@ class ParameterServerLauncher:
 
         heter_device_num = 0
         device_list = []
+<<<<<<< HEAD
         if framework.core.is_compiled_with_cuda():
             device_list = get_gpus(args.gpus)
             heter_device_num = len(device_list)
@@ -2092,6 +2934,68 @@ class ParameterServerLauncher:
                 "-u",
                 args.training_script,
             ] + args.training_script_args
+=======
+        if fluid.core.is_compiled_with_cuda():
+            device_list = get_gpus(args.gpus)
+            heter_device_num = len(device_list)
+        elif fluid.core.is_compiled_with_xpu():
+            heter_device_num = fluid.core.get_xpu_device_count()
+            device_list = [str(x) for x in range(0, heter_device_num)]
+
+        for idx, cur_heter_worker in enumerate(pod.heter_workers):
+            device_id = "0" if heter_device_num == 0 else str(
+                device_list[(idx) % heter_device_num])
+            stage_id = cur_heter_worker.stage
+            proc_env = {
+                "PADDLE_PSERVERS_IP_PORT_LIST":
+                self.server_endpoints,
+                "PADDLE_TRAINER_ENDPOINTS":
+                self.worker_endpoints,
+                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST":
+                self.stage_heter_map[stage_id + 1]
+                if stage_id <= self.stage_num - 1 else "",
+                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST":
+                self.stage_heter_map[stage_id - 1],
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST":
+                self.heter_worker_endpoints,
+                "HETER_DEVICE_TYPE":
+                self.stage_device_map[stage_id],
+                "STAGE_ID":
+                str(stage_id),
+                "STAGE_NUM":
+                str(self.stage_num),
+                "PADDLE_PORT":
+                cur_heter_worker.endpoint.split(":")[1],
+                "TRAINING_ROLE":
+                "HETER_TRAINER",
+                "PADDLE_TRAINERS_NUM":
+                str(self.worker_num),
+                "PADDLE_STAGE_TRAINERS_NUM":
+                str(self.stage_trainer_num),
+                "POD_IP":
+                cur_heter_worker.endpoint.split(":")[0],
+                "PADDLE_WITH_GLOO":
+                str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                "PADDLE_GLOO_RENDEZVOUS":
+                "3",
+                "PADDLE_GLOO_FS_PATH":
+                self.gloo_rendezvous_dir,
+                "FLAGS_selected_gpus":
+                "0",
+                "FLAGS_selected_xpus":
+                "0",
+                "CUDA_VISIBLE_DEVICES":
+                device_id,
+                "XPU_VISIBLE_DEVICES":
+                device_id,
+                "PADDLE_GLOO_HTTP_ENDPOINT":
+                self.http_port
+            }
+            current_env.update(proc_env)
+
+            cmd = [sys.executable, "-u", args.training_script
+                   ] + args.training_script_args
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.cmds["heter_worker"].append(cmd)
 
             if idx == 0:
@@ -2099,19 +3003,31 @@ class ParameterServerLauncher:
                     "Local heter_worker start {} processes. First process distributed "
                     "environment info (Only For Debug): {}".format(
                         len(pod.heter_workers),
+<<<<<<< HEAD
                         pretty_print_envs(
                             proc_env, ("Distributed Envs", "Value")
                         ),
                     )
                 )
+=======
+                        pretty_print_envs(proc_env,
+                                          ("Distributed Envs", "Value"))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if args.log_dir is not None:
                 os.system("mkdir -p {}".format(args.log_dir))
                 fn = open("%s/heterlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["heter_worker"].append(fn)
+<<<<<<< HEAD
                 proc = subprocess.Popen(
                     cmd, env=current_env, stdout=fn, stderr=fn
                 )
+=======
+                proc = subprocess.Popen(cmd,
+                                        env=current_env,
+                                        stdout=fn,
+                                        stderr=fn)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 proc = subprocess.Popen(cmd, env=current_env)
 
@@ -2128,6 +3044,7 @@ class ParameterServerLauncher:
 
 def check_backend(backend):
     if backend not in [
+<<<<<<< HEAD
         'nccl',
         'gloo',
         'bkcl',
@@ -2136,33 +3053,54 @@ def check_backend(backend):
         'hccl',
         'heter',
         'xccl',
+=======
+            'nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter', 'xccl'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ]:
         raise ValueError(
             "paddle.distributed initialize error, "
             "backend argument can only be one of "
             "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'xccl' "
+<<<<<<< HEAD
             "but got %s" % backend
         )
 
     if backend == 'nccl' and not framework.core.is_compiled_with_cuda():
+=======
+            "but got %s" % backend)
+
+    if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with cuda but you assign 'nccl' as backend."
         )
 
+<<<<<<< HEAD
     if backend == 'bkcl' and not framework.core.is_compiled_with_xpu():
+=======
+    if backend == 'bkcl' and not fluid.core.is_compiled_with_xpu():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
         )
 
+<<<<<<< HEAD
     if backend == 'hccl' and not framework.core.is_compiled_with_npu():
+=======
+    if backend == 'hccl' and not fluid.core.is_compiled_with_npu():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with npu but you assign 'hccl' as backend."
         )
 
+<<<<<<< HEAD
     if backend == 'cncl' and not framework.core.is_compiled_with_mlu():
+=======
+    if backend == 'cncl' and not fluid.core.is_compiled_with_mlu():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with mlu but you assign 'cncl' as backend."
@@ -2170,8 +3108,12 @@ def check_backend(backend):
 
 
 def block_windows_and_macos(backend):
+<<<<<<< HEAD
     if backend != 'gloo':
         return
+=======
+    if backend != 'gloo': return
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if utils.OS_NAME.startswith('darwin'):  # MACOS , block
         raise ValueError(
             "You are going to using gloo on macos, but currently is not supported"
@@ -2183,6 +3125,7 @@ def block_windows_and_macos(backend):
 
 
 def get_backend_by_compile_flag():
+<<<<<<< HEAD
     if framework.core.is_compiled_with_cuda():
         return 'nccl'
 
@@ -2193,6 +3136,18 @@ def get_backend_by_compile_flag():
         return 'hccl'
 
     if framework.core.is_compiled_with_mlu():
+=======
+    if fluid.core.is_compiled_with_cuda():
+        return 'nccl'
+
+    if fluid.core.is_compiled_with_xpu():
+        return 'bkcl'
+
+    if fluid.core.is_compiled_with_npu():
+        return 'hccl'
+
+    if fluid.core.is_compiled_with_mlu():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return 'cncl'
 
     return 'gloo'

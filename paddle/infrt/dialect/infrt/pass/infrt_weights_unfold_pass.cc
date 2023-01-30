@@ -80,7 +80,11 @@ void InfrtWeightsFoldPass::runOnFunction() {
           if (auto tensor_map_get_op =
                   llvm::dyn_cast<::infrt::phi::TensorMapGetTensorOp>(user_op)) {
             ::llvm::StringRef arg_name = tensor_map_get_op.name();
+<<<<<<< HEAD
             ::Tensor* tensor = map.GetDenseTensor(arg_name.str());
+=======
+            ::phi::DenseTensor* tensor = map.GetDenseTensor(arg_name.str());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if (tensor->dtype() != ::phi::DataType::FLOAT32) {
               CHECK(false)
                   << "the weight tensor type now only support float32.";

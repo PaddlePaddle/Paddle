@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import http.server as SimpleHTTPServer
 import json
 import threading
@@ -20,6 +21,19 @@ from multiprocessing import Process
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+=======
+from http.server import HTTPServer
+import http.server as SimpleHTTPServer
+
+from multiprocessing import Process
+
+import threading
+import json
+
+
+class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def do_GET(self):
         with self.server.kv_lock:
             ret = {}
@@ -65,9 +79,16 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return
 
 
+<<<<<<< HEAD
 class KVServer(HTTPServer):
     def __init__(self, port):
         super().__init__(('', port), KVHandler)
+=======
+class KVServer(HTTPServer, object):
+
+    def __init__(self, port):
+        super(KVServer, self).__init__(('', port), KVHandler)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.kv_lock = threading.Lock()
         self.kv = {'/healthy': b'ok'}
         self.port = port
@@ -86,7 +107,12 @@ class KVServer(HTTPServer):
         self.stopped = True
 
 
+<<<<<<< HEAD
 class PKVServer:
+=======
+class PKVServer():
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, port):
         self._server = KVServer(port)
 
@@ -109,11 +135,19 @@ class PKVServer:
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     # kv = PKVServer(8090)
+=======
+    #kv = PKVServer(8090)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     kv = KVServer(8090)
     kv.start()
     import time
 
+<<<<<<< HEAD
     # print("serve at 8090 for 600 s")
+=======
+    #print("serve at 8090 for 600 s")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     time.sleep(600)

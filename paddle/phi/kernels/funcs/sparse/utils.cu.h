@@ -26,6 +26,7 @@ __global__ void DistanceKernel(const T* start, const T* end, T* distance) {
   }
 }
 
+<<<<<<< HEAD
 inline __device__ bool SetBits(const int value, int* ptr) {
   const int index = value >> 5;
   const int mask = 1 << (value & 31);
@@ -39,6 +40,8 @@ inline __device__ bool TestBits(const int value, const int* ptr) {
   return (mask & ptr[index]) != 0;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi

@@ -24,6 +24,10 @@ namespace paddle {
 namespace framework {
 
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
+<<<<<<< HEAD
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace framework
 }  // namespace paddle

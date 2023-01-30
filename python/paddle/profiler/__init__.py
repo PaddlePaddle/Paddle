@@ -21,6 +21,7 @@ from .utils import RecordEvent, load_profiler_result
 from .profiler_statistic import SortedKeys
 
 __all__ = [
+<<<<<<< HEAD
     'ProfilerState',
     'ProfilerTarget',
     'make_scheduler',
@@ -31,4 +32,9 @@ __all__ = [
     'load_profiler_result',
     'SortedKeys',
     'SummaryView',
+=======
+    'ProfilerState', 'ProfilerTarget', 'make_scheduler',
+    'export_chrome_tracing', 'export_protobuf', 'Profiler', 'RecordEvent',
+    'load_profiler_result', 'SortedKeys', 'SummaryView'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

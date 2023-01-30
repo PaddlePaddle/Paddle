@@ -12,20 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
 from test_dist_base import TestDistBase
 
+=======
+from __future__ import print_function
+import os
+import unittest
+from test_dist_base import TestDistBase
+
+import os
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistTextClassification2x2(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._enforce_place = "CPU"
 
     def test_text_classification(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_text_classification.py",
             delta=1e-6,
@@ -35,17 +50,34 @@ class TestDistTextClassification2x2(TestDistBase):
 
 
 class TestDistTextClassification2x2Async(TestDistBase):
+=======
+        self.check_with_place("dist_text_classification.py",
+                              delta=1e-6,
+                              check_error_log=True,
+                              log_name=flag_name)
+
+
+class TestDistTextClassification2x2Async(TestDistBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = False
         self._enforce_place = "CPU"
 
     def test_se_resnext(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_text_classification.py",
             delta=100,
             check_error_log=True,
             log_name=flag_name,
         )
+=======
+        self.check_with_place("dist_text_classification.py",
+                              delta=100,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

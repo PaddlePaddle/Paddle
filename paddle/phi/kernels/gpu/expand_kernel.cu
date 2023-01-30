@@ -18,6 +18,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace phi {
@@ -78,6 +79,9 @@ void ExpandKernel(const Context& ctx,
 }
 
 }  // namespace phi
+=======
+#include "paddle/phi/kernels/impl/expand_kernel_impl.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 PD_REGISTER_KERNEL(expand,
                    GPU,
@@ -86,7 +90,10 @@ PD_REGISTER_KERNEL(expand,
                    float,
                    double,
                    phi::dtype::float16,
+<<<<<<< HEAD
                    phi::dtype::bfloat16,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    int,
                    int64_t,
                    bool) {}

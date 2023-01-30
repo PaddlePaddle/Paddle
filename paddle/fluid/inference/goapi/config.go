@@ -157,7 +157,11 @@ func (config *Config) UseFcPadding() bool {
 /// \param deviceId the GPU card to use.
 ///
 func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
+<<<<<<< HEAD
 	C.PD_ConfigEnableUseGpu(config.c, C.uint64_t(memorySize), C.int32_t(deviceId), 0)
+=======
+	C.PD_ConfigEnableUseGpu(config.c, C.uint64_t(memorySize), C.int32_t(deviceId))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 ///
@@ -199,9 +203,14 @@ func (config *Config) EnableORTOptimization() {
 /// \param autotune_file Specify the path of the autotune file. If autotune_file is specified, the algorithm specified in the file will be used and autotune will not be performed again.
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
+<<<<<<< HEAD
 /// \param enable_multi_stream Whether to enable the multi stream of xpu
 ///
 func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool, enableMultiStream bool) {
+=======
+///
+func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 	cAutotuneFile := C.CString(autotuneFile)
 	cPrecision := C.CString(precision)
 	defer func() {
@@ -209,7 +218,11 @@ func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune boo
 		C.free(unsafe.Pointer(cPrecision))
 	}()
 	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize), cvtGoBoolToPD(locked), cvtGoBoolToPD(autotune),
+<<<<<<< HEAD
 		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen), cvtGoBoolToPD(enableMultiStream))
+=======
+		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 ///

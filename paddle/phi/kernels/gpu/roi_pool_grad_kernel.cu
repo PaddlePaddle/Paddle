@@ -15,9 +15,15 @@
 #include "paddle/phi/kernels/roi_pool_grad_kernel.h"
 
 #include "paddle/fluid/memory/memory.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -63,7 +69,11 @@ __global__ void GPURoiPoolBackward(const int nthreads,
 
     int arg_max = offset_arg_max_data[ph * pooled_width + pw];
     if (arg_max != -1) {
+<<<<<<< HEAD
       phi::CudaAtomicAdd(
+=======
+      paddle::platform::CudaAtomicAdd(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           offset_input_grad + arg_max,
           static_cast<T>(offset_output_grad[ph * pooled_width + pw]));
     }

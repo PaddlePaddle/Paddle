@@ -27,7 +27,11 @@ TEST(AssignOp, AssignLoDTensor) {
   paddle::framework::Variable output;
   paddle::operators::AssignFunctor assign_functor(&output, ctx);
 
+<<<<<<< HEAD
   phi::DenseTensor input;
+=======
+  paddle::framework::LoDTensor input;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::framework::DDim in_dims = phi::make_ddim({3, 4});
   int* in_data = input.mutable_data<int>(in_dims, cpu_place);
   for (int i = 0; i < 12; ++i) {
@@ -36,7 +40,11 @@ TEST(AssignOp, AssignLoDTensor) {
 
   assign_functor(input);
 
+<<<<<<< HEAD
   auto& out_tensor = output.Get<phi::DenseTensor>();
+=======
+  auto& out_tensor = output.Get<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::framework::DDim out_dims = out_tensor.dims();
   EXPECT_EQ(in_dims, out_dims);
   auto* out_data = out_tensor.data<int>();
@@ -55,7 +63,11 @@ TEST(AssignOp, AssignLoDTensorArray) {
   paddle::framework::LoDTensorArray input;
   for (int i = 0; i < 5; ++i) {
     paddle::framework::DDim in_dims = phi::make_ddim({i + 1, i + 2});
+<<<<<<< HEAD
     phi::DenseTensor lod_tensor;
+=======
+    paddle::framework::LoDTensor lod_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* in_data = lod_tensor.mutable_data<float>(in_dims, cpu_place);
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
       in_data[j] = static_cast<float>(j);
@@ -87,7 +99,11 @@ TEST(AssignOp, AssignSelectedRows) {
   int64_t height = 10;
 
   phi::SelectedRows input(rows, height);
+<<<<<<< HEAD
   phi::DenseTensor* input_tensor = input.mutable_value();
+=======
+  paddle::framework::Tensor* input_tensor = input.mutable_value();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::framework::DDim in_dims = phi::make_ddim({3, 4});
   int* in_data = input_tensor->mutable_data<int>(in_dims, cpu_place);
@@ -104,7 +120,11 @@ TEST(AssignOp, AssignSelectedRows) {
     EXPECT_EQ(rows[i], out_rows[i]);
   }
   EXPECT_EQ(height, out_selected_row.height());
+<<<<<<< HEAD
   const phi::DenseTensor& out_tensor = out_selected_row.value();
+=======
+  const paddle::framework::Tensor& out_tensor = out_selected_row.value();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::framework::DDim out_dims = out_tensor.dims();
   EXPECT_EQ(in_dims, out_dims);
   auto* out_data = out_tensor.data<int>();

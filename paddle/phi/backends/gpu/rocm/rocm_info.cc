@@ -16,11 +16,20 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
 
 static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
 static std::vector<phi::gpuDeviceProp> g_device_props;
+=======
+// TODO(phi): remove fluid headers.
+#include "paddle/fluid/platform/enforce.h"
+
+static std::once_flag g_device_props_size_init_flag;
+static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
+static std::vector<paddle::gpuDeviceProp> g_device_props;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 namespace backends {
@@ -200,6 +209,7 @@ std::array<int, 3> GetGpuMaxGridDimSize(int id) {
   return ret;
 }
 
+<<<<<<< HEAD
 std::pair<int, int> GetGpuStreamPriorityRange() {
   int least_priority, greatest_priority;
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -207,6 +217,8 @@ std::pair<int, int> GetGpuStreamPriorityRange() {
   return std::make_pair(least_priority, greatest_priority);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 const gpuDeviceProp &GetDeviceProperties(int id) {
   std::call_once(g_device_props_size_init_flag, [&] {
     int gpu_num = 0;

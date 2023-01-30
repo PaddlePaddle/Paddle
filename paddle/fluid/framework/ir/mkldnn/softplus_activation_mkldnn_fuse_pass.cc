@@ -15,10 +15,17 @@
 #include "paddle/fluid/framework/ir/mkldnn/softplus_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -27,12 +34,16 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
+<<<<<<< HEAD
   auto act_types = GetSupportedActivations();
 
   // Currently softplus can't be fused with hard_sigmoid
   act_types.erase(
       std::remove(act_types.begin(), act_types.end(), "hard_sigmoid"),
       act_types.end());
+=======
+  auto act_types = paddle::platform::GetSupportedActivations();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   for (const auto &act_type : act_types) {
     FuseSoftplusActivation(graph, act_type);
@@ -42,7 +53,11 @@ void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
 void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
+<<<<<<< HEAD
       graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+=======
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   FusePassBase::Init("softplus_activation", graph);
 
   GraphPatternDetector gpd;
@@ -63,8 +78,39 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation, activation, softplus_activation_pattern);
 
+<<<<<<< HEAD
     SetActivationAttrs(softplus->Op(), activation->Op(), act_type);
     softplus->Op()->SetOutput("Out", {activation_out->Name()});
+=======
+    auto *softplus_op = softplus->Op();
+
+    if (softplus_op->HasAttr("use_mkldnn")) {
+      PADDLE_ENFORCE_EQ(
+          PADDLE_GET_CONST(bool, softplus_op->GetAttr("use_mkldnn")),
+          true,
+          platform::errors::PreconditionNotMet("The softplus + activation "
+                                               "fusion may happen only when "
+                                               "oneDNN library is used."));
+    }
+
+    auto *activation_op = activation->Op();
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    for (const auto &attr : attr_map) {
+      if (activation_op->HasAttr(attr.first)) {
+        softplus_op->SetAttr(attr.second, activation_op->GetAttr(attr.first));
+      }
+    }
+
+    if (act_type == "gelu" && activation_op->HasAttr("approximate") &&
+        PADDLE_GET_CONST(bool, activation_op->GetAttr("approximate")))
+      softplus_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
+    else
+      softplus_op->SetAttr("fuse_activation", act_type);
+
+    softplus_op->SetAttr("use_mkldnn", true);
+
+    softplus_op->SetOutput("Out", {activation_out->Name()});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     IR_OP_VAR_LINK(softplus, activation_out);
     GraphSafeRemoveNodes(g, {activation, softplus_out});
@@ -73,8 +119,12 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
 
   gpd(graph, handler);
   AddStatis(found_softplus_activation_count);
+<<<<<<< HEAD
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       (found_softplus_activation_count > 0))
+=======
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PrettyLogDetail("---    fused %d softplus with %s activation",
                     found_softplus_activation_count,
                     act_type);
@@ -92,6 +142,10 @@ REGISTER_PASS_CAPABILITY(softplus_activation_mkldnn_fuse_pass)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)
+<<<<<<< HEAD
+=======
+            .EQ("hard_sigmoid", 0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             .LE("hard_swish", 0)
             .LE("leaky_relu", 1)
             .LE("mish", 1)

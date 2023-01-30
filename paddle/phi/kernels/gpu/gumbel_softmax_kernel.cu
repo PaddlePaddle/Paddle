@@ -27,8 +27,13 @@
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/generator.h"
+=======
+#include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/tensor_util.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -170,3 +175,13 @@ struct GumbleNoiseGenerator<GPUContext, T> {
 
 PD_REGISTER_KERNEL(
     gumbel_softmax, GPU, ALL_LAYOUT, phi::GumbelSoftmaxKernel, float, double) {}
+<<<<<<< HEAD
+=======
+
+PD_REGISTER_KERNEL(gumbel_softmax_infer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GumbelSoftmaxInferKernel,
+                   float,
+                   double) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

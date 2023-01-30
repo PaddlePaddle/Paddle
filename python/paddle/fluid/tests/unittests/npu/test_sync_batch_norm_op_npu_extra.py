@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import paddle
@@ -26,31 +30,49 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.fluid import Program, program_guard
 
+<<<<<<< HEAD
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     _set_use_system_allocator,
 )
+=======
+from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # _set_use_system_allocator(False)
 paddle.enable_static()
 
 
 class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         with program_guard(Program(), Program()):
             my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0)
             )
+=======
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.NPUPlace(0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(TypeError, my_sync_batch_norm, x1)
 
             # the input dtype of SyncBatchNorm must be float16 or float32
             # float16 only can be set on GPU place and NPU place
+<<<<<<< HEAD
             x2 = paddle.static.data(name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32")
+=======
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
 
 
 class TestConvertSyncBatchNorm(unittest.TestCase):
+<<<<<<< HEAD
     def test_convert(self):
         with program_guard(Program(), Program()):
             compare_model = paddle.nn.Sequential(
@@ -67,10 +89,25 @@ class TestConvertSyncBatchNorm(unittest.TestCase):
                     bias_attr=fluid.ParamAttr(name='bn.bias'),
                 ),
             )
+=======
+
+    def test_convert(self):
+        with program_guard(Program(), Program()):
+            compare_model = paddle.nn.Sequential(paddle.nn.Conv2D(3, 5, 3),
+                                                 paddle.nn.BatchNorm2D(5),
+                                                 paddle.nn.BatchNorm2D(5))
+            model = paddle.nn.Sequential(
+                paddle.nn.Conv2D(3, 5, 3), paddle.nn.BatchNorm2D(5),
+                paddle.nn.BatchNorm2D(
+                    5,
+                    weight_attr=fluid.ParamAttr(name='bn.scale'),
+                    bias_attr=fluid.ParamAttr(name='bn.bias')))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             for idx, sublayer in enumerate(compare_model.sublayers()):
                 if isinstance(sublayer, paddle.nn.BatchNorm2D):
                     self.assertEqual(
+<<<<<<< HEAD
                         isinstance(model[idx], paddle.nn.SyncBatchNorm), True
                     )
 
@@ -80,6 +117,19 @@ class TestConvertSyncBatchNormCast1(unittest.TestCase):
         class Net(nn.Layer):
             def __init__(self):
                 super().__init__()
+=======
+                        isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
+
+
+class TestConvertSyncBatchNormCast1(unittest.TestCase):
+
+    def test_convert(self):
+
+        class Net(nn.Layer):
+
+            def __init__(self):
+                super(Net, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.conv1 = nn.Conv2D(3, 5, 3)
                 self.bn = []
                 bn = self.add_sublayer('bn', nn.BatchNorm2D(5))
@@ -102,6 +152,10 @@ class TestConvertSyncBatchNormCast1(unittest.TestCase):
 
 
 class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with fluid.dygraph.guard(fluid.NPUPlace(0)):
             my_sync_batch_norm = paddle.nn.SyncBatchNorm(10, data_format='CN')

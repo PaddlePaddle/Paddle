@@ -63,7 +63,11 @@ void GroupConcatSplit(Place place, size_t size) {
   vars.resize(size);
   for (size_t i = 0; i < size; ++i) {
     auto len = i + 1;
+<<<<<<< HEAD
     auto* tensor = vars[i].GetMutable<phi::DenseTensor>();
+=======
+    auto* tensor = vars[i].GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tensor->Resize({static_cast<int64_t>(len)});
     auto* data = tensor->mutable_data<T>(place);
 
@@ -84,7 +88,11 @@ void GroupConcatSplit(Place place, size_t size) {
           place, data, cpu_place, value.data(), sizeof(T) * value.size());
     }
 
+<<<<<<< HEAD
     phi::DenseTensor tmp;
+=======
+    framework::Tensor tmp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(len)});
     group.dense_tensors_.push_back(std::move(tmp));
     group.all_length_ += len;
@@ -96,14 +104,22 @@ void GroupConcatSplit(Place place, size_t size) {
   auto* dev_ctx = pool.Get(place);
 
   {  // concat
+<<<<<<< HEAD
     auto* tensor = group.dense_contents_.GetMutable<phi::DenseTensor>();
+=======
+    auto* tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tensor->Resize(phi::make_ddim({group.all_length_}))
         .mutable_data(place, framework::TransToPhiDataType(group.dtype_));
     group.ConcatTensors(*dev_ctx);
 
     group.DivNRanks(*dev_ctx, 1);
 
+<<<<<<< HEAD
     phi::DenseTensor tmp;
+=======
+    framework::Tensor tmp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorCopySync(*tensor, cpu_place, &tmp);
     auto* data = tmp.data<T>();
     size_t offset = 0;
@@ -124,7 +140,11 @@ void GroupConcatSplit(Place place, size_t size) {
     for (size_t i = 0; i < size; ++i) {
       auto len = i + 1;
       auto& tensor = group.dense_tensors_[i];
+<<<<<<< HEAD
       phi::DenseTensor tmp;
+=======
+      framework::Tensor tmp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopySync(tensor, cpu_place, &tmp);
       auto* data = tmp.data<T>();
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -22,6 +23,17 @@ import paddle.fluid.dygraph as dg
 
 
 class TestComplexTransposeLayer(unittest.TestCase):
+=======
+import paddle
+import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestComplexTransposeLayer(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -30,9 +42,15 @@ class TestComplexTransposeLayer(unittest.TestCase):
 
     def test_transpose_by_complex_api(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             data = np.random.random((2, 3, 4, 5)).astype(
                 dtype
             ) + 1j * np.random.random((2, 3, 4, 5)).astype(dtype)
+=======
+            data = np.random.random(
+                (2, 3, 4, 5)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 4, 5)).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             perm = [3, 2, 0, 1]
             np_trans = np.transpose(data, perm)
             for place in self._places:
@@ -41,6 +59,13 @@ class TestComplexTransposeLayer(unittest.TestCase):
                     trans = paddle.transpose(var, perm=perm)
                 np.testing.assert_allclose(trans.numpy(), np_trans, rtol=1e-05)
 
+<<<<<<< HEAD
+=======
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_transpose_by_complex_api()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

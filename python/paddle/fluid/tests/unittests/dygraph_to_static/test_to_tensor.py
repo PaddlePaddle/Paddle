@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy
@@ -19,6 +20,19 @@ import numpy
 import paddle
 from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
+=======
+from __future__ import print_function
+
+import numpy
+import paddle
+import unittest
+import os
+import tempfile
+import paddle.inference as paddle_infer
+from paddle.fluid.framework import program_guard, Program
+import numpy as np
+from paddle.fluid import core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def case0(x):
@@ -39,9 +53,16 @@ def case2(x):
         place = paddle.CUDAPlace(0)
     else:
         place = paddle.CPUPlace()
+<<<<<<< HEAD
     a = paddle.to_tensor(
         [1.0, 2.0, 3.0], place=place, dtype="int64", stop_gradient=False
     )
+=======
+    a = paddle.to_tensor([1.0, 2.0, 3.0],
+                         place=place,
+                         dtype="int64",
+                         stop_gradient=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return a
 
@@ -85,6 +106,10 @@ def case6(x):
 
 
 class TestToTensorReturnVal(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_to_tensor_badreturn(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
@@ -133,6 +158,10 @@ class TestToTensorReturnVal(unittest.TestCase):
 
 
 class TestStatic(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_static(self):
         paddle.enable_static()
         main_prog = Program()
@@ -143,12 +172,19 @@ class TestStatic(unittest.TestCase):
             else:
                 place = paddle.CPUPlace()
 
+<<<<<<< HEAD
             x = paddle.to_tensor(
                 paddle.randn([5, 2]),
                 dtype='float64',
                 stop_gradient=False,
                 place=place,
             )
+=======
+            x = paddle.to_tensor(paddle.randn([5, 2]),
+                                 dtype='float64',
+                                 stop_gradient=False,
+                                 place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             out = paddle.static.nn.fc(x, 1)
 

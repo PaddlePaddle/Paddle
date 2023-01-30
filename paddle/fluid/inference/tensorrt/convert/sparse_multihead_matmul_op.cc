@@ -51,10 +51,17 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
     auto bias_name = op_desc.Input("Bias").front();
 
     auto* weight_v = scope.FindVar(weight_name);
+<<<<<<< HEAD
     auto* weight_t = weight_v->GetMutable<phi::DenseTensor>();
 
     auto* bias_v = scope.FindVar(bias_name);
     auto* bias_t = bias_v->GetMutable<phi::DenseTensor>();
+=======
+    auto* weight_t = weight_v->GetMutable<framework::LoDTensor>();
+
+    auto* bias_v = scope.FindVar(bias_name);
+    auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     float* weight_data = nullptr;
     bool qkv2context_plugin_int8 = op_desc.HasAttr("qkv2context_plugin_int8");

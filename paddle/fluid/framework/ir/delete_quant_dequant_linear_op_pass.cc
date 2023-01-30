@@ -113,14 +113,20 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     std::unordered_set<const Node*> nodes2rm = {};
 
     // Get input scale from tensor
+<<<<<<< HEAD
     const phi::DenseTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())
             ->Get<phi::DenseTensor>();
+=======
+    const LoDTensor& input_scale_tensor =
+        scope->GetVar(quantize_linear_op_scale->Name())->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_cpu_place(input_scale_tensor.place()),
         true,
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
+<<<<<<< HEAD
 
     float input_scale;
     if (input_scale_tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
@@ -135,13 +141,20 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       PADDLE_THROW(platform::errors::Unimplemented("%d is not supported.",
                                                    input_scale_tensor.dtype()));
     }
+=======
+    const float* input_scale_data = input_scale_tensor.data<float>();
+    float input_scale = input_scale_data[0];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int nums_any_ops = dequantize_linear_op_out->outputs.size();
     for (int i = 0; i < nums_any_ops; ++i) {
       auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
       any_op_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
                            input_scale);
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // link x to any_op2
       any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
                                quantize_linear_op_x->Var()->Name());

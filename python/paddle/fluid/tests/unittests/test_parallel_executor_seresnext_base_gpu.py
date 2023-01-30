@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
 import seresnext_net
 from seresnext_test_base import DeviceType, TestResnetBase
+=======
+from __future__ import print_function
+import unittest
+import seresnext_net
+from seresnext_test_base import TestResnetBase, DeviceType
+from functools import partial
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestResnetGPU(TestResnetBase):

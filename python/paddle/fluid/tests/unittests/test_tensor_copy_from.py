@@ -12,15 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
+=======
+import paddle
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.core import LoDTensor as Tensor
 
 
 class TestTensorCopyFrom(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         place = paddle.CPUPlace()
         np_value = np.random.random(size=[10, 30]).astype('float32')

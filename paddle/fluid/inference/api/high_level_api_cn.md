@@ -5,7 +5,11 @@
 预测库包含:
 
 - 头文件 `paddle_inference_api.h` 定义了所有的接口
+<<<<<<< HEAD
 - 库文件 `libpaddle_inference.so/.a(Linux/Mac)` `libpaddle_inference.lib/paddle_inference.dll(Windows)`
+=======
+- 库文件 `libpaddle_inference.so/.a(Linux/Mac)` `libpaddle_inference.lib/paddle_inference.dll(Windows)` 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 下面是详细的一些 API 概念介绍
 

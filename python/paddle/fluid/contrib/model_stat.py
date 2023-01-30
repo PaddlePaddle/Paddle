@@ -39,9 +39,15 @@ from collections import OrderedDict
 def summary(main_prog):
     '''
     It can summary model's PARAMS, FLOPs until now.
+<<<<<<< HEAD
     It support common operator like conv, fc, pool, relu, sigmoid, bn etc.
     Args:
         main_prog: main program
+=======
+    It support common operator like conv, fc, pool, relu, sigmoid, bn etc. 
+    Args:
+        main_prog: main program 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         print summary on terminal
     '''
@@ -74,7 +80,11 @@ def _summary_model(block_vars, one_op):
     Returns:
         in_data_shape: one operator's input data shape
         out_data_shape: one operator's output data shape
+<<<<<<< HEAD
         params: one operator's PARAMs
+=======
+        params: one operator's PARAMs 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         flops: : one operator's FLOPs
     '''
     if one_op.type in ['conv2d', 'depthwise_conv2d']:
@@ -151,10 +161,15 @@ def _format_summary(collected_ops_list):
     _verify_dependent_package()
 
     from prettytable import PrettyTable
+<<<<<<< HEAD
 
     summary_table = PrettyTable(
         ["No.", "TYPE", "INPUT", "OUTPUT", "PARAMs", "FLOPs"]
     )
+=======
+    summary_table = PrettyTable(
+        ["No.", "TYPE", "INPUT", "OUTPUT", "PARAMs", "FLOPs"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     summary_table.align = 'r'
 
     total = {}
@@ -202,9 +217,14 @@ def _print_summary(summary_table, total):
     parmas = total['params']
     flops = total['flops']
     print(summary_table)
+<<<<<<< HEAD
     print(
         'Total PARAMs: {}({:.4f}M)'.format(sum(parmas), sum(parmas) / (10**6))
     )
+=======
+    print('Total PARAMs: {}({:.4f}M)'.format(sum(parmas),
+                                             sum(parmas) / (10**6)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     print('Total FLOPs: {}({:.2f}G)'.format(sum(flops), sum(flops) / 10**9))
     print(
         "Notice: \n now supported ops include [Conv, DepthwiseConv, FC(mul), BatchNorm, Pool, Activation(sigmoid, tanh, relu, leaky_relu, prelu)]"

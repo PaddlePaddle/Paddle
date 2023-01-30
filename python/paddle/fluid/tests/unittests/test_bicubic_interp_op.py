@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,16 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid import Program, program_guard
 from paddle.nn.functional import interpolate
 
@@ -49,6 +60,7 @@ def value_bound(input, w, h, x, y):
     return input[:, :, access_y, access_x]
 
 
+<<<<<<< HEAD
 def bicubic_interp_np(
     input,
     out_h,
@@ -58,6 +70,15 @@ def bicubic_interp_np(
     align_corners=True,
     data_layout='kNCHW',
 ):
+=======
+def bicubic_interp_np(input,
+                      out_h,
+                      out_w,
+                      out_size=None,
+                      actual_shape=None,
+                      align_corners=True,
+                      data_layout='kNCHW'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """trilinear interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
@@ -71,13 +92,21 @@ def bicubic_interp_np(
 
     ratio_h = ratio_w = 0.0
     if out_h > 1:
+<<<<<<< HEAD
         if align_corners:
+=======
+        if (align_corners):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ratio_h = (in_h - 1.0) / (out_h - 1.0)
         else:
             ratio_h = 1.0 * in_h / out_h
 
     if out_w > 1:
+<<<<<<< HEAD
         if align_corners:
+=======
+        if (align_corners):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
         else:
             ratio_w = 1.0 * in_w / out_w
@@ -85,14 +114,22 @@ def bicubic_interp_np(
     out = np.zeros((batch_size, channel, out_h, out_w))
 
     for k in range(out_h):
+<<<<<<< HEAD
         if align_corners:
+=======
+        if (align_corners):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             h = ratio_h * k
         else:
             h = ratio_h * (k + 0.5) - 0.5
         input_y = np.floor(h)
         y_t = h - input_y
         for l in range(out_w):
+<<<<<<< HEAD
             if align_corners:
+=======
+            if (align_corners):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 w = ratio_w * l
             else:
                 w = ratio_w * (l + 0.5) - 0.5
@@ -111,6 +148,7 @@ def bicubic_interp_np(
                         coefficients[ii] = cubic_interp1d(
                             input[i, j, access_y, access_x_0],
                             input[i, j, access_y, access_x_1],
+<<<<<<< HEAD
                             input[i, j, access_y, access_x_2],
                             input[i, j, access_y, access_x_3],
                             x_t,
@@ -122,12 +160,25 @@ def bicubic_interp_np(
                         coefficients[3],
                         y_t,
                     )
+=======
+                            input[i, j, access_y,
+                                  access_x_2], input[i, j, access_y,
+                                                     access_x_3], x_t)
+                    out[i, j, k,
+                        l] = cubic_interp1d(coefficients[0], coefficients[1],
+                                            coefficients[2], coefficients[3],
+                                            y_t)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if data_layout == "NHWC":
         out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
     return out.astype(input.dtype)
 
 
 class TestBicubicInterpOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
@@ -153,6 +204,7 @@ class TestBicubicInterpOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
+<<<<<<< HEAD
         output_np = bicubic_interp_np(
             input_np,
             out_h,
@@ -162,6 +214,11 @@ class TestBicubicInterpOp(OpTest):
             self.align_corners,
             self.data_layout,
         )
+=======
+        output_np = bicubic_interp_np(input_np, out_h, out_w, self.out_size,
+                                      self.actual_shape, self.align_corners,
+                                      self.data_layout)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -176,7 +233,11 @@ class TestBicubicInterpOp(OpTest):
             'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
+<<<<<<< HEAD
             'data_layout': self.data_layout,
+=======
+            'data_layout': self.data_layout
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': output_np}
 
@@ -184,73 +245,128 @@ class TestBicubicInterpOp(OpTest):
         self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'], 'Out', in_place=True, check_eager=self.check_eager
         )
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        in_place=True,
+                        check_eager=self.check_eager)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [2, 3, 5, 5]
         self.out_h = 2
         self.out_w = 2
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
 
 
 class TestBicubicInterpCase1(TestBicubicInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.align_corners = True
 
 
 class TestBicubicInterpCase2(TestBicubicInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 10
         self.out_w = 8
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.align_corners = True
 
 
 class TestBicubicInterpCase3(TestBicubicInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.align_corners = False
 
 
 class TestBicubicInterpCase4(TestBicubicInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([2, 2]).astype("int32")
         self.align_corners = True
 
 
 class TestBicubicInterpCase5(TestBicubicInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 11
         self.out_w = 11
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([6, 4]).astype("int32")
         self.align_corners = False
 
 
 class TestBicubicInterpCase6(TestBicubicInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [1, 1, 32, 64]
@@ -262,28 +378,48 @@ class TestBicubicInterpCase6(TestBicubicInterpOp):
 
 
 class TestBicubicInterpSame(TestBicubicInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
         self.out_w = 64
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.align_corners = True
 
 
 class TestBicubicInterpDataLayout(TestBicubicInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [2, 5, 5, 3]
         self.out_h = 2
         self.out_w = 2
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
         self.data_layout = "NHWC"
 
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_case(self):
         np.random.seed(200)
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
@@ -294,17 +430,23 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
 
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = (
             fluid.CUDAPlace(0)
             if fluid.core.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        place = fluid.CUDAPlace(
+            0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         with fluid.program_guard(prog, startup_prog):
 
             x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
 
             dim = fluid.data(name="dim", shape=[1], dtype="int32")
+<<<<<<< HEAD
             shape_tensor = fluid.data(
                 name="shape_tensor", shape=[2], dtype="int32"
             )
@@ -352,11 +494,62 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
             expect_res = bicubic_interp_np(
                 x_data, out_h=12, out_w=12, align_corners=False
             )
+=======
+            shape_tensor = fluid.data(name="shape_tensor",
+                                      shape=[2],
+                                      dtype="int32")
+            actual_size = fluid.data(name="actual_size",
+                                     shape=[2],
+                                     dtype="int32")
+            scale_tensor = fluid.data(name="scale_tensor",
+                                      shape=[1],
+                                      dtype="float32")
+
+            out1 = interpolate(x,
+                               size=[12, 12],
+                               mode='bicubic',
+                               align_corners=False)
+            out2 = interpolate(x,
+                               size=[12, dim],
+                               mode='bicubic',
+                               align_corners=False)
+            out3 = interpolate(x,
+                               size=shape_tensor,
+                               mode='bicubic',
+                               align_corners=False)
+            out4 = interpolate(x,
+                               size=[12, 12],
+                               mode='bicubic',
+                               align_corners=False)
+            out5 = interpolate(x,
+                               scale_factor=scale_tensor,
+                               mode='bicubic',
+                               align_corners=False)
+
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            results = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "x": x_data,
+                                  "dim": dim_data,
+                                  "shape_tensor": shape_data,
+                                  "actual_size": actual_size_data,
+                                  "scale_tensor": scale_data
+                              },
+                              fetch_list=[out1, out2, out3, out4, out5],
+                              return_numpy=True)
+
+            expect_res = bicubic_interp_np(x_data,
+                                           out_h=12,
+                                           out_w=12,
+                                           align_corners=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for res in results:
                 np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(x_data)
+<<<<<<< HEAD
             interp = interpolate(
                 x, size=[12, 12], mode='bicubic', align_corners=False
             )
@@ -364,22 +557,43 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
             expect = bicubic_interp_np(
                 x_data, out_h=12, out_w=12, align_corners=False
             )
+=======
+            interp = interpolate(x,
+                                 size=[12, 12],
+                                 mode='bicubic',
+                                 align_corners=False)
+            dy_result = interp.numpy()
+            expect = bicubic_interp_np(x_data,
+                                       out_h=12,
+                                       out_w=12,
+                                       align_corners=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(dy_result, expect, rtol=1e-05)
 
 
 class TestBicubicOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of interpoalte must be Variable.
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
+=======
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input of interpoalte must be Variable.
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(TypeError, interpolate, x1)
 
             def test_mode_type():
                 # mode must be "BILINEAR" "TRILINEAR" "NEAREST" "BICUBIC"
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
 
+<<<<<<< HEAD
                 out = interpolate(
                     x, size=[12, 12], mode='UNKONWN', align_corners=False
                 )
@@ -389,6 +603,19 @@ class TestBicubicOpError(unittest.TestCase):
                 out = interpolate(
                     x, size=[12, 12], mode='BICUBIC', align_corners=False
                 )
+=======
+                out = interpolate(x,
+                                  size=[12, 12],
+                                  mode='UNKONWN',
+                                  align_corners=False)
+
+            def test_input_shape():
+                x = fluid.data(name="x", shape=[2], dtype="float32")
+                out = interpolate(x,
+                                  size=[12, 12],
+                                  mode='BICUBIC',
+                                  align_corners=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             def test_align_corcers():
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
@@ -396,6 +623,7 @@ class TestBicubicOpError(unittest.TestCase):
 
             def test_out_shape():
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+<<<<<<< HEAD
                 out = interpolate(
                     x, size=[12], mode='bicubic', align_corners=False
                 )
@@ -420,10 +648,36 @@ class TestBicubicOpError(unittest.TestCase):
                 out = interpolate(
                     x, size=[12, 12], mode='BICUBIC', align_corners=False
                 )
+=======
+                out = interpolate(x,
+                                  size=[12],
+                                  mode='bicubic',
+                                  align_corners=False)
+
+            def test_attr_data_format():
+                # for 5-D input, data_format only can be NCDHW or NDHWC
+                input = fluid.data(name="input",
+                                   shape=[2, 3, 6, 9, 4],
+                                   dtype="float32")
+                out = interpolate(input,
+                                  size=[4, 8, 4, 5],
+                                  mode='trilinear',
+                                  data_format='NHWC')
+
+            def test_actual_shape():
+                # the actual_shape  must be Variable.
+                x = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                            [[1, 1, 1, 1]], fluid.CPUPlace())
+                out = interpolate(x,
+                                  size=[12, 12],
+                                  mode='BICUBIC',
+                                  align_corners=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             def test_scale_value():
                 # the scale must be greater than zero.
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+<<<<<<< HEAD
                 out = interpolate(
                     x,
                     size=None,
@@ -443,10 +697,28 @@ class TestBicubicOpError(unittest.TestCase):
                     mode='trilinear',
                     data_format='NDHWC',
                 )
+=======
+                out = interpolate(x,
+                                  size=None,
+                                  mode='BICUBIC',
+                                  align_corners=False,
+                                  scale_factor=-2.0)
+
+            def test_attr_5D_input():
+                # for 5-D input, data_format only can be NCDHW or NDHWC
+                input = fluid.data(name="input",
+                                   shape=[2, 3, 6, 9, 4],
+                                   dtype="float32")
+                out = interpolate(input,
+                                  size=[4, 8, 4, 5],
+                                  mode='trilinear',
+                                  data_format='NDHWC')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             def test_scale_type():
                 # the scale must be greater than zero.
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+<<<<<<< HEAD
                 scale = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
@@ -478,6 +750,33 @@ class TestBicubicOpError(unittest.TestCase):
                     align_corners=False,
                     scale_factor=None,
                 )
+=======
+                scale = fluid.create_lod_tensor(np.array([-1, 3, 5,
+                                                          5]), [[1, 1, 1, 1]],
+                                                fluid.CPUPlace())
+                out = interpolate(x,
+                                  size=None,
+                                  mode='bicubic',
+                                  align_corners=False,
+                                  scale_factor=scale)
+
+            def test_align_mode():
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                out = interpolate(x,
+                                  size=None,
+                                  mode='nearest',
+                                  align_corners=False,
+                                  align_mode=2,
+                                  scale_factor=1.0)
+
+            def test_outshape_and_scale():
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                out = interpolate(x,
+                                  size=None,
+                                  mode='bicubic',
+                                  align_corners=False,
+                                  scale_factor=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(ValueError, test_mode_type)
             self.assertRaises(ValueError, test_input_shape)

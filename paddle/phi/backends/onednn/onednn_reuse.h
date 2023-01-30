@@ -15,7 +15,10 @@ limitations under the License. */
 
 #include <algorithm>
 #include <memory>
+<<<<<<< HEAD
 #include <set>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <sstream>
 #include <string>
 #include <utility>
@@ -30,17 +33,26 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+=======
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 namespace funcs {
 
+<<<<<<< HEAD
+=======
+using user_function = std::function<std::shared_ptr<float>(const float*)>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using memory = dnnl::memory;
 
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
+<<<<<<< HEAD
 template <typename T>
 bool constexpr is_int8() {
   return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
@@ -112,6 +124,8 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T,
           typename TForward,
           typename TBackward = onednn_dummy_primitive,
@@ -391,7 +405,11 @@ class OneDNNHandlerT {
     paddle::platform::RecordEvent record_reorder(
         "int_reorder",
         paddle::platform::TracerEventType::UserDefined,
+<<<<<<< HEAD
         1,
+=======
+        2,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
@@ -444,7 +462,11 @@ class OneDNNHandlerT {
         paddle::platform::RecordEvent record_reorder(
             "int_reorder",
             paddle::platform::TracerEventType::UserDefined,
+<<<<<<< HEAD
             1,
+=======
+            2,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -470,7 +492,11 @@ class OneDNNHandlerT {
         paddle::platform::RecordEvent record_reorder(
             "int_reorder",
             paddle::platform::TracerEventType::UserDefined,
+<<<<<<< HEAD
             1,
+=======
+            2,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -658,7 +684,11 @@ class OneDNNHandlerNoCachingT {
     paddle::platform::RecordEvent record_reorder(
         "int_reorder",
         paddle::platform::TracerEventType::UserDefined,
+<<<<<<< HEAD
         1,
+=======
+        2,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
@@ -689,7 +719,11 @@ class OneDNNHandlerNoCachingT {
       paddle::platform::RecordEvent record_reorder(
           "int_reorder",
           paddle::platform::TracerEventType::UserDefined,
+<<<<<<< HEAD
           1,
+=======
+          2,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           paddle::platform::EventRole::kUniqueOp);
       reorder_p->execute(
           astream,
@@ -765,19 +799,27 @@ class SoftmaxOneDNNHandler
  public:
   SoftmaxOneDNNHandler(const dnnl::engine onednn_engine,
                        Place cpu_place,
+<<<<<<< HEAD
                        int axis,
                        const DenseTensor* x,
                        DenseTensor* out)
+=======
+                       const DenseTensor* x,
+                       int axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       : OneDNNHandlerNoCachingT<T,
                                 dnnl::softmax_forward,
                                 dnnl::softmax_backward>(onednn_engine,
                                                         cpu_place) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(
         x->dims(),
         out->dims(),
         errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int canonical_axis = funcs::CanonicalAxis(axis, x->dims().size());
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_scoring, x->mem_desc(), canonical_axis);
@@ -874,6 +916,7 @@ class ReorderOneDNNHandler {
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
       DenseTensor* output,
       const std::vector<int64_t>& dims,
+<<<<<<< HEAD
       const std::vector<int64_t>& strides,
       Place place) {
     auto dst_md = dnnl::memory::desc(dims, dtype_dst_, strides);
@@ -884,6 +927,8 @@ class ReorderOneDNNHandler {
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
       DenseTensor* output,
       const std::vector<int64_t>& dims,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const OneDNNMemoryFormat& fmt,
       Place place) {
     auto dst_md = OneDNNMemDesc(dims, dtype_dst_, fmt);
@@ -1096,6 +1141,7 @@ class BroadcastDataOneDNNHandler
 };
 
 template <typename T>
+<<<<<<< HEAD
 class PReluOneDNNHandler
     : public OneDNNHandlerNoCachingT<T,
                                      dnnl::prelu_forward,
@@ -1157,6 +1203,8 @@ class PReluOneDNNHandler
 };
 
 template <typename T>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class ReductionOneDNNHandler
     : public OneDNNHandlerNoCachingT<T, dnnl::reduction> {
  public:
@@ -1236,6 +1284,7 @@ class ClipOneDNNHandler
                                             to_void_cast<T>(input_data));
   }
 };
+<<<<<<< HEAD
 
 template <typename T>
 class BatchNormOneDNNHandler
@@ -2092,5 +2141,71 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
   }
 }
 
+=======
+template <typename T>
+class TransposeOneDNNHandler {
+ public:
+  TransposeOneDNNHandler(const OneDNNContext& dev_ctx,
+                         std::vector<int64_t>& dims,  // NOLINT
+                         std::vector<int>& axis,      // NOLINT
+                         dnnl::engine engine)
+      : dev_ctx_(dev_ctx),
+        dims_(dims),
+        axis_(axis),
+        logical_axis_(dims.size(), 0),
+        engine_(engine) {}
+
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const OneDNNMemoryFormat& fmt,
+                                                 void* ptr) {
+    // Make memory descriptor using input format, unless it
+    // cannot be trusted (nchw) then make up memory fmt manually
+    for (size_t i = 0; i < this->logical_axis_.size(); ++i) {
+      this->logical_axis_[i] = i;
+    }
+
+    auto src_md = fmt != OneDNNMemoryFormat::nchw
+                      ? OneDNNMemDesc(dims_, OneDNNGetDataType<T>(), fmt)
+                      : Axis2MemoryDesc(dims_, logical_axis_);
+    return std::make_shared<dnnl::memory>(src_md, engine_, ptr);
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(DenseTensor* output,
+                                                 Place place) {
+    auto dst_md = Axis2MemoryDesc(dims_, axis_);
+    auto dst_data = dev_ctx_.Alloc<T>(output);
+    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
+  }
+
+  std::shared_ptr<dnnl::reorder> AcquireTranspose(
+      std::shared_ptr<dnnl::memory> dst_memory_p,
+      std::shared_ptr<dnnl::memory> src_memory_p) {
+    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
+  }
+
+ protected:
+  dnnl::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
+                                     std::vector<int>& axis          // NOLINT
+  ) {
+    size_t ndims = axis.size();
+
+    std::vector<int64_t> strides(ndims);
+    unsigned int total_stride = 1;
+    for (int i = ndims - 1; i >= 0; --i) {
+      strides[axis[i]] = total_stride;
+      total_stride *= nchw_tz[axis[i]];
+    }
+    dnnl::memory::desc mem_d(nchw_tz, OneDNNGetDataType<T>(), strides);
+
+    return mem_d;
+  }
+
+ private:
+  const OneDNNContext& dev_ctx_;
+  std::vector<int64_t> dims_;
+  std::vector<int> axis_;
+  std::vector<int> logical_axis_;
+  dnnl::engine engine_;
+};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace funcs
 }  // namespace phi

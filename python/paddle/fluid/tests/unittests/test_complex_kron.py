@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -24,6 +25,20 @@ from paddle import fluid
 class ComplexKronTestCase(unittest.TestCase):
     def __init__(self, methodName='runTest', x=None, y=None):
         super().__init__(methodName)
+=======
+from paddle import fluid, tensor
+import paddle
+import paddle.fluid.dygraph as dg
+import numpy as np
+import unittest
+from paddle.fluid.framework import _test_eager_guard
+
+
+class ComplexKronTestCase(unittest.TestCase):
+
+    def __init__(self, methodName='runTest', x=None, y=None):
+        super(ComplexKronTestCase, self).__init__(methodName)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.x = x
         self.y = y
 
@@ -36,21 +51,36 @@ class ComplexKronTestCase(unittest.TestCase):
     def runTest(self):
         for place in self._places:
             self.test_kron_api(place)
+<<<<<<< HEAD
+=======
+            self.test_eager(place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_kron_api(self, place):
         with dg.guard(place):
             x_var = dg.to_variable(self.x)
             y_var = dg.to_variable(self.y)
             out_var = paddle.kron(x_var, y_var)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 out_var.numpy(), self.ref_result, rtol=1e-05
             )
+=======
+            np.testing.assert_allclose(out_var.numpy(),
+                                       self.ref_result,
+                                       rtol=1e-05)
+
+    def test_eager(self, place):
+        with _test_eager_guard():
+            self.test_kron_api(place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def load_tests(loader, standard_tests, pattern):
     suite = unittest.TestSuite()
     for dtype in ["float32", "float64"]:
         suite.addTest(
+<<<<<<< HEAD
             ComplexKronTestCase(
                 x=np.random.randn(2, 2).astype(dtype)
                 + 1j * np.random.randn(2, 2).astype(dtype),
@@ -80,6 +110,25 @@ def load_tests(loader, standard_tests, pattern):
                 y=np.random.randn(2, 2, 3).astype(dtype),
             )
         )
+=======
+            ComplexKronTestCase(x=np.random.randn(2, 2).astype(dtype) +
+                                1j * np.random.randn(2, 2).astype(dtype),
+                                y=np.random.randn(3, 3).astype(dtype) +
+                                1j * np.random.randn(3, 3).astype(dtype)))
+        suite.addTest(
+            ComplexKronTestCase(x=np.random.randn(2, 2).astype(dtype),
+                                y=np.random.randn(3, 3).astype(dtype) +
+                                1j * np.random.randn(3, 3).astype(dtype)))
+        suite.addTest(
+            ComplexKronTestCase(x=np.random.randn(2, 2).astype(dtype) +
+                                1j * np.random.randn(2, 2).astype(dtype),
+                                y=np.random.randn(3, 3).astype(dtype)))
+
+        suite.addTest(
+            ComplexKronTestCase(x=np.random.randn(2, 2).astype(dtype) +
+                                1j * np.random.randn(2, 2).astype(dtype),
+                                y=np.random.randn(2, 2, 3).astype(dtype)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return suite
 

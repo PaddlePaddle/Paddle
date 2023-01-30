@@ -12,12 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 
 
 class TestUniqueName(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_guard(self):
         with fluid.unique_name.guard():
             name_1 = fluid.unique_name.generate('')
@@ -45,6 +55,10 @@ class TestUniqueName(unittest.TestCase):
 
 
 class TestImperativeUniqueName(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_name_generator(self):
         with fluid.dygraph.guard():
             tracer = fluid.framework._dygraph_tracer()

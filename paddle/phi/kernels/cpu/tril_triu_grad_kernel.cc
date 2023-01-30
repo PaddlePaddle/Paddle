@@ -26,6 +26,7 @@ PD_REGISTER_KERNEL(tril_triu_grad,
                    int,
                    int64_t,
                    phi::dtype::float16) {}
+<<<<<<< HEAD
 
 PD_REGISTER_KERNEL(triu_grad,
                    CPU,
@@ -48,3 +49,5 @@ PD_REGISTER_KERNEL(tril_grad,
                    int,
                    int64_t,
                    phi::dtype::float16) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

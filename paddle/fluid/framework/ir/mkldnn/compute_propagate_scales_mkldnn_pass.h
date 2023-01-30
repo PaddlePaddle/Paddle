@@ -37,11 +37,19 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
 
  private:
   void GetTensorFromVector(const std::vector<float>& data_v,
+<<<<<<< HEAD
                            phi::DenseTensor* tensor) const;
 
   void GetQuantInfo(ir::Graph* graph, StringPairMap* var_quant_scales) const;
 
   std::vector<float> GetScales(phi::DenseTensor* tensor, int axis) const;
+=======
+                           Tensor* tensor) const;
+
+  void GetQuantInfo(ir::Graph* graph, StringPairMap* var_quant_scales) const;
+
+  std::vector<float> GetScales(Tensor* tensor, int axis) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void ComputeVarScales(ir::Graph* graph,
                         Scope* scope,
@@ -53,7 +61,11 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
   void ComputeSingleGruWeightScales(Scope* scope,
                                     const std::string& wx_var_name,
                                     const std::string& wh_var_name,
+<<<<<<< HEAD
                                     phi::DenseTensor* tensor) const;
+=======
+                                    Tensor* tensor) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void ComputeGruWeightScales(ir::Graph* graph,
                               Scope* scope,
@@ -64,7 +76,11 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
   void ComputeSingleLstmWeightScales(Scope* scope,
                                      const std::string& wx_var_name,
                                      const std::string& wh_var_name,
+<<<<<<< HEAD
                                      phi::DenseTensor* tensor) const;
+=======
+                                     Tensor* tensor) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void ComputeLstmWeightScales(ir::Graph* graph,
                                Scope* scope,

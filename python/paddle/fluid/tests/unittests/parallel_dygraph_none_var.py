@@ -12,11 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import contextlib
+import unittest
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dygraph
+from paddle.fluid import core
+from paddle.fluid.optimizer import SGDOptimizer
+from paddle.fluid.dygraph.nn import Linear
+
+from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.seed(2021)
 paddle.seed(1024)
@@ -26,6 +43,7 @@ batch_num = 1000
 
 
 class SimpleNet(fluid.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
         self.net_a = paddle.nn.Sequential(
@@ -38,6 +56,17 @@ class SimpleNet(fluid.Layer):
             paddle.nn.Linear(20, 20),
             paddle.nn.Linear(20, 5),
         )
+=======
+
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+        self.net_a = paddle.nn.Sequential(paddle.nn.Linear(10, 20),
+                                          paddle.nn.Linear(20, 20),
+                                          paddle.nn.Linear(20, 5))
+        self.net_b = paddle.nn.Sequential(paddle.nn.Linear(10, 20),
+                                          paddle.nn.Linear(20, 20),
+                                          paddle.nn.Linear(20, 5))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.step = 0
 
     def forward(self, x):
@@ -45,15 +74,23 @@ class SimpleNet(fluid.Layer):
 
 
 def fake_sample_reader():
+<<<<<<< HEAD
     def __reader__():
         for i in range(batch_num):
             x_data = np.random.random_sample((10,)).astype('float32')
+=======
+
+    def __reader__():
+        for i in range(batch_num):
+            x_data = np.random.random_sample((10, )).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             yield x_data
 
     return __reader__
 
 
 class TestSimpleNet(TestParallelDyGraphRunnerBase):
+<<<<<<< HEAD
     def get_model(self):
         model = SimpleNet()
         train_reader = paddle.batch(
@@ -62,6 +99,16 @@ class TestSimpleNet(TestParallelDyGraphRunnerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.001, parameters=model.parameters()
         )
+=======
+
+    def get_model(self):
+        model = SimpleNet()
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
+                                         parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):

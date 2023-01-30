@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 import os
 import subprocess
@@ -25,6 +26,18 @@ from paddle.distributed.utils.launch_utils import (
     get_cluster,
     watch_local_trainers,
 )
+=======
+from __future__ import print_function
+
+import unittest
+import os
+import time
+import copy
+import subprocess
+import paddle.fluid as fluid
+
+from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_cluster_from_args(selected_gpus):
@@ -52,6 +65,7 @@ def get_gpus(selected_gpus):
     return selected_gpus
 
 
+<<<<<<< HEAD
 def start_local_trainers(
     cluster,
     pod,
@@ -65,6 +79,19 @@ def start_local_trainers(
     # proxy maybe make trainers unreachable, so delete them.
     # if we set them to "", grpc will log error message "bad uri"
     # so just delete them.
+=======
+def start_local_trainers(cluster,
+                         pod,
+                         training_script,
+                         eager_mode,
+                         training_script_args,
+                         log_dir=None):
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
@@ -75,9 +102,18 @@ def start_local_trainers(
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+<<<<<<< HEAD
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
+=======
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+        }
+
+        if not eager_mode:
+            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         current_env.update(proc_env)
 
         print("trainer proc env:{}".format(current_env))
@@ -105,6 +141,10 @@ def start_local_trainers(
 
 
 class TestMultipleGpus(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def run_mnist_2gpu(self, target_file_name, eager_mode=True):
         if fluid.core.get_cuda_device_count() == 0:
             return
@@ -115,6 +155,7 @@ class TestMultipleGpus(unittest.TestCase):
 
         cluster, pod = get_cluster_from_args(selected_gpus)
 
+<<<<<<< HEAD
         procs = start_local_trainers(
             cluster,
             pod,
@@ -122,6 +163,13 @@ class TestMultipleGpus(unittest.TestCase):
             training_script=target_file_name,
             training_script_args=[],
         )
+=======
+        procs = start_local_trainers(cluster,
+                                     pod,
+                                     eager_mode=eager_mode,
+                                     training_script=target_file_name,
+                                     training_script_args=[])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_nranks())
@@ -133,6 +181,7 @@ class TestMultipleGpus(unittest.TestCase):
 
     def test_hapi_multiple_gpus_static(self):
         self.run_mnist_2gpu('dist_hapi_mnist_static.py')
+<<<<<<< HEAD
 
     def test_hapi_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
@@ -142,4 +191,19 @@ class TestMultipleGpus(unittest.TestCase):
 
 
 if __name__ == "__main__":
+=======
+        self.run_mnist_2gpu('dist_hapi_mnist_static.py', eager_mode=False)
+
+    def test_hapi_multiple_gpus_dynamic(self):
+        self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
+        self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py', eager_mode=False)
+
+    def test_hapi_amp_static(self):
+        self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py')
+        self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py', eager_mode=False)
+
+
+if __name__ == "__main__":
+    os.environ["FLAGS_enable_eager_mode"] = "1"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     unittest.main()

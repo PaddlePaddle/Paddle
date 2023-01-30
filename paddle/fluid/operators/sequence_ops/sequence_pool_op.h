@@ -23,12 +23,23 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class SequencePoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* in = context.Input<phi::DenseTensor>("X");
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* in = context.Input<LoDTensor>("X");
+    auto* out = context.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::string pooltype = context.Attr<std::string>("pooltype");
     T pad_value = static_cast<T>(context.Attr<float>("pad_value"));
 
@@ -36,11 +47,19 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     auto lod = in->lod();
     auto lod_level = lod.size();
     // InferShape by lod
+<<<<<<< HEAD
     PADDLE_ENFORCE_GT(lod_level,
                       0,
                       platform::errors::InvalidArgument(
                           "Input(X) phi::DenseTensor of SequencePoolOp "
                           "does not contain LoD information."));
+=======
+    PADDLE_ENFORCE_GT(
+        lod_level,
+        0,
+        platform::errors::InvalidArgument("Input(X) Tensor of SequencePoolOp "
+                                          "does not contain LoD information."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_LE(lod_level,
                       2UL,
                       platform::errors::InvalidArgument(
@@ -68,7 +87,11 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     dims[0] = lod[lod_level - 1].size() - 1;
     out->Resize({dims});
     out->mutable_data<T>(context.GetPlace());
+<<<<<<< HEAD
     phi::DenseTensor* index = nullptr;
+=======
+    Tensor* index = nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     bool is_test =
         context.HasAttr("is_test") ? context.Attr<bool>("is_test") : false;
@@ -78,7 +101,11 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     if (pooltype == "MAX" &&
         (is_test == false ||
          platform::is_cpu_place(context.GetPlace()) == false)) {
+<<<<<<< HEAD
       index = context.Output<phi::DenseTensor>("MaxIndex");
+=======
+      index = context.Output<Tensor>("MaxIndex");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       index->Resize({dims});
       index->mutable_data<int>(context.GetPlace());
     }
@@ -97,6 +124,7 @@ template <typename DeviceContext, typename T>
 class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* out_g =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
@@ -104,6 +132,14 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* index = nullptr;
     if (pooltype == "MAX") {
       index = context.Input<phi::DenseTensor>("MaxIndex");
+=======
+    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
+    std::string pooltype = context.Attr<std::string>("pooltype");
+    const Tensor* index = nullptr;
+    if (pooltype == "MAX") {
+      index = context.Input<Tensor>("MaxIndex");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     in_g->mutable_data<T>(context.GetPlace());
     math::SequencePoolGradFunctor<DeviceContext, T> pool;

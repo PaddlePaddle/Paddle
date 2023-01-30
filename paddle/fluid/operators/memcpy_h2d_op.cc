@@ -38,6 +38,7 @@ class MemcpyH2DOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
@@ -51,6 +52,22 @@ class MemcpyH2DOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -83,9 +100,15 @@ class MemcpyH2DKernel {
 class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("X", "(phi::DenseTensor) The input variable ");
     AddOutput("Out",
               "(phi::DenseTensor) The type of output "
+=======
+    AddInput("X", "(LoDTensor) The input variable ");
+    AddOutput("Out",
+              "(LoDTensor) The type of output "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "is the same as input X.");
     AddAttr<int>("dst_place_type",
                  "Determine the dst place of tensor copy. "
@@ -99,7 +122,11 @@ class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     MemcpyD2H Operator.
     By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace.
     You would have to update it if you want other more capacities.
+<<<<<<< HEAD
 Out = X,  when type in [phi::DenseTensor]
+=======
+Out = X,  when type in [LoDTensor]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 raise error if the type is not listed above.
 )DOC");
   }

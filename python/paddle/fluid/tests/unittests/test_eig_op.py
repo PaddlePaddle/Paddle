@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,13 +21,29 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+=======
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from op_test import OpTest, skip_check_grad_ci
+import unittest
+from paddle.fluid.op import Operator
+from paddle.fluid import compiler, Program, program_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # cast output to complex for numpy.linalg.eig
 def cast_to_complex(input, output):
+<<<<<<< HEAD
     if input.dtype == np.float32:
         output = output.astype(np.complex64)
     elif input.dtype == np.float64:
+=======
+    if (input.dtype == np.float32):
+        output = output.astype(np.complex64)
+    elif (input.dtype == np.float64):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output = output.astype(np.complex128)
     return output
 
@@ -59,6 +76,10 @@ def eig_backward(w, v, grad_w, grad_v):
 
 
 class TestEigOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         paddle.device.set_device("cpu")
@@ -73,10 +94,15 @@ class TestEigOp(OpTest):
         self.set_dims()
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.out = np.linalg.eig(self.x)
+<<<<<<< HEAD
         self.out = (
             cast_to_complex(self.x, self.out[0]),
             cast_to_complex(self.x, self.out[1]),
         )
+=======
+        self.out = (cast_to_complex(self.x, self.out[0]),
+                    cast_to_complex(self.x, self.out[1]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # for the real input, a customized checker is needed
     def checker(self, outs):
@@ -87,6 +113,7 @@ class TestEigOp(OpTest):
 
         length_w = len(expect_out_w)
         act_w_real = np.sort(
+<<<<<<< HEAD
             np.array([np.abs(actual_out_w[i].real) for i in range(length_w)])
         )
         act_w_imag = np.sort(
@@ -98,6 +125,15 @@ class TestEigOp(OpTest):
         exp_w_imag = np.sort(
             np.array([np.abs(expect_out_w[i].imag) for i in range(length_w)])
         )
+=======
+            np.array([np.abs(actual_out_w[i].real) for i in range(length_w)]))
+        act_w_imag = np.sort(
+            np.array([np.abs(actual_out_w[i].imag) for i in range(length_w)]))
+        exp_w_real = np.sort(
+            np.array([np.abs(expect_out_w[i].real) for i in range(length_w)]))
+        exp_w_imag = np.sort(
+            np.array([np.abs(expect_out_w[i].imag) for i in range(length_w)]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for i in range(length_w):
             np.testing.assert_allclose(
@@ -105,17 +141,23 @@ class TestEigOp(OpTest):
                 exp_w_real[i],
                 rtol=1e-06,
                 atol=1e-05,
+<<<<<<< HEAD
                 err_msg='The eigenvalues real part have diff: \nExpected '
                 + str(act_w_real[i])
                 + '\n'
                 + 'But got: '
                 + str(exp_w_real[i]),
             )
+=======
+                err_msg='The eigenvalues real part have diff: \nExpected ' +
+                str(act_w_real[i]) + '\n' + 'But got: ' + str(exp_w_real[i]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(
                 act_w_imag[i],
                 exp_w_imag[i],
                 rtol=1e-06,
                 atol=1e-05,
+<<<<<<< HEAD
                 err_msg='The eigenvalues image part have diff: \nExpected '
                 + str(act_w_imag[i])
                 + '\n'
@@ -136,6 +178,20 @@ class TestEigOp(OpTest):
         exp_v_imag = np.sort(
             np.array([np.abs(expect_out_v[i].imag) for i in range(length_v)])
         )
+=======
+                err_msg='The eigenvalues image part have diff: \nExpected ' +
+                str(act_w_imag[i]) + '\n' + 'But got: ' + str(exp_w_imag[i]))
+
+        length_v = len(expect_out_v)
+        act_v_real = np.sort(
+            np.array([np.abs(actual_out_v[i].real) for i in range(length_v)]))
+        act_v_imag = np.sort(
+            np.array([np.abs(actual_out_v[i].imag) for i in range(length_v)]))
+        exp_v_real = np.sort(
+            np.array([np.abs(expect_out_v[i].real) for i in range(length_v)]))
+        exp_v_imag = np.sort(
+            np.array([np.abs(expect_out_v[i].imag) for i in range(length_v)]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for i in range(length_v):
             np.testing.assert_allclose(
@@ -143,23 +199,33 @@ class TestEigOp(OpTest):
                 exp_v_real[i],
                 rtol=1e-06,
                 atol=1e-05,
+<<<<<<< HEAD
                 err_msg='The eigenvectors real part have diff: \nExpected '
                 + str(act_v_real[i])
                 + '\n'
                 + 'But got: '
                 + str(exp_v_real[i]),
             )
+=======
+                err_msg='The eigenvectors real part have diff: \nExpected ' +
+                str(act_v_real[i]) + '\n' + 'But got: ' + str(exp_v_real[i]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(
                 act_v_imag[i],
                 exp_v_imag[i],
                 rtol=1e-06,
                 atol=1e-05,
+<<<<<<< HEAD
                 err_msg='The eigenvectors image part have diff: \nExpected '
                 + str(act_v_imag[i])
                 + '\n'
                 + 'But got: '
                 + str(exp_v_imag[i]),
             )
+=======
+                err_msg='The eigenvectors image part have diff: \nExpected ' +
+                str(act_v_imag[i]) + '\n' + 'But got: ' + str(exp_v_imag[i]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_dtype(self):
         self.dtype = np.complex64
@@ -176,6 +242,7 @@ class TestEigOp(OpTest):
             gtype = np.complex128
         self.grad_w = np.ones(self.out[0].shape, gtype)
         self.grad_v = np.ones(self.out[1].shape, gtype)
+<<<<<<< HEAD
         self.grad_x = eig_backward(
             self.out[0], self.out[1], self.grad_w, self.grad_v
         )
@@ -196,14 +263,40 @@ class TestEigOp(OpTest):
 
 
 class TestComplex128(TestEigOp):
+=======
+        self.grad_x = eig_backward(self.out[0], self.out[1], self.grad_w,
+                                   self.grad_v)
+
+    def test_check_output(self):
+        self.check_output_with_place_customized(checker=self.checker,
+                                                place=core.CPUPlace())
+
+    def test_check_grad(self):
+        self.init_grad()
+        self.check_grad(['X'], ['Eigenvalues', 'Eigenvectors'],
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_w, self.grad_v])
+
+
+class TestComplex128(TestEigOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.complex128
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
 )
 class TestDouble(TestEigOp):
+=======
+    reason=
+    "For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
+)
+class TestDouble(TestEigOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.float64
 
@@ -212,9 +305,17 @@ class TestDouble(TestEigOp):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
 )
 class TestEigBatchMarices(TestEigOp):
+=======
+    reason=
+    "For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
+)
+class TestEigBatchMarices(TestEigOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.float64
 
@@ -226,9 +327,17 @@ class TestEigBatchMarices(TestEigOp):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
 )
 class TestFloat(TestEigOp):
+=======
+    reason=
+    "For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
+)
+class TestFloat(TestEigOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.float32
 
@@ -237,6 +346,10 @@ class TestFloat(TestEigOp):
 
 
 class TestEigStatic(TestEigOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output_with_place(self):
         paddle.enable_static()
         place = core.CPUPlace()
@@ -247,27 +360,39 @@ class TestEigStatic(TestEigOp):
             act_val, act_vec = paddle.linalg.eig(input)
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             fetch_val, fetch_vec = exe.run(
                 fluid.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[act_val, act_vec],
             )
+=======
+            fetch_val, fetch_vec = exe.run(fluid.default_main_program(),
+                                           feed={"input": input_np},
+                                           fetch_list=[act_val, act_vec])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(
             expect_val,
             fetch_val,
             rtol=1e-06,
             atol=1e-06,
+<<<<<<< HEAD
             err_msg='The eigen values have diff: \nExpected '
             + str(expect_val)
             + '\n'
             + 'But got: '
             + str(fetch_val),
         )
+=======
+            err_msg='The eigen values have diff: \nExpected ' +
+            str(expect_val) + '\n' + 'But got: ' + str(fetch_val))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(
             np.abs(expect_vec),
             np.abs(fetch_vec),
             rtol=1e-06,
             atol=1e-06,
+<<<<<<< HEAD
             err_msg='The eigen vectors have diff: \nExpected '
             + str(np.abs(expect_vec))
             + '\n'
@@ -277,6 +402,15 @@ class TestEigStatic(TestEigOp):
 
 
 class TestEigDyGraph(unittest.TestCase):
+=======
+            err_msg='The eigen vectors have diff: \nExpected ' +
+            str(np.abs(expect_vec)) + '\n' + 'But got: ' +
+            str(np.abs(fetch_vec)))
+
+
+class TestEigDyGraph(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output_with_place(self):
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
@@ -292,23 +426,34 @@ class TestEigDyGraph(unittest.TestCase):
             fetch_val.numpy(),
             rtol=1e-06,
             atol=1e-06,
+<<<<<<< HEAD
             err_msg='The eigen values have diff: \nExpected '
             + str(expect_val)
             + '\n'
             + 'But got: '
             + str(fetch_val),
         )
+=======
+            err_msg='The eigen values have diff: \nExpected ' +
+            str(expect_val) + '\n' + 'But got: ' + str(fetch_val))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(
             np.abs(expect_vec),
             np.abs(fetch_vec.numpy()),
             rtol=1e-06,
             atol=1e-06,
+<<<<<<< HEAD
             err_msg='The eigen vectors have diff: \nExpected '
             + str(np.abs(expect_vec))
             + '\n'
             + 'But got: '
             + str(np.abs(fetch_vec.numpy())),
         )
+=======
+            err_msg='The eigen vectors have diff: \nExpected ' +
+            str(np.abs(expect_vec)) + '\n' + 'But got: ' +
+            str(np.abs(fetch_vec.numpy())))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad(self):
         test_shape = [3, 3]
@@ -328,6 +473,7 @@ class TestEigDyGraph(unittest.TestCase):
             w, v = paddle.linalg.eig(x)
             (w.sum() + v.sum()).backward()
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             np.abs(x.grad.numpy()),
             np.abs(grad_x),
@@ -342,6 +488,19 @@ class TestEigDyGraph(unittest.TestCase):
 
 
 class TestEigWrongDimsError(unittest.TestCase):
+=======
+        np.testing.assert_allclose(np.abs(x.grad.numpy()),
+                                   np.abs(grad_x),
+                                   rtol=1e-05,
+                                   atol=1e-05,
+                                   err_msg='The grad x have diff: \nExpected ' +
+                                   str(np.abs(grad_x)) + '\n' + 'But got: ' +
+                                   str(np.abs(x.grad.numpy())))
+
+
+class TestEigWrongDimsError(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_error(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()
@@ -351,6 +510,10 @@ class TestEigWrongDimsError(unittest.TestCase):
 
 
 class TestEigNotSquareError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_error(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()
@@ -360,6 +523,10 @@ class TestEigNotSquareError(unittest.TestCase):
 
 
 class TestEigUnsupportedDtypeError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_error(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()

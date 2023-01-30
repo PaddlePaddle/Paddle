@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import threading
 import time
 import unittest
@@ -25,6 +26,21 @@ import paddle.nn as nn
 class SimpleNet(nn.Layer):
     def __init__(self, in_dim, out_dim):
         super().__init__()
+=======
+import unittest
+import paddle
+import time
+import paddle.nn as nn
+import numpy as np
+import threading
+from paddle.fluid.framework import _test_eager_guard
+
+
+class SimpleNet(nn.Layer):
+
+    def __init__(self, in_dim, out_dim):
+        super(SimpleNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fc = nn.Linear(in_dim, out_dim)
 
     def forward(self, x):
@@ -32,6 +48,10 @@ class SimpleNet(nn.Layer):
 
 
 class TestCases(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @paddle.no_grad()
     def thread_1_main(self):
         time.sleep(8)
@@ -46,7 +66,11 @@ class TestCases(unittest.TestCase):
             x = net(x)
             self.assertFalse(x.stop_gradient)
 
+<<<<<<< HEAD
     def test_main(self):
+=======
+    def func_main(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         threads = []
         for _ in range(10):
             threads.append(threading.Thread(target=self.thread_1_main))
@@ -56,6 +80,14 @@ class TestCases(unittest.TestCase):
         for t in threads:
             t.join()
 
+<<<<<<< HEAD
+=======
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_main()
+        self.func_main()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == "__main__":
     unittest.main()

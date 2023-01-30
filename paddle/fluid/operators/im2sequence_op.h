@@ -20,12 +20,22 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/im2col.h"
+=======
+#include "paddle/fluid/operators/math/im2col.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline int Im2SeqOutputSize(
     int input_size, int filter_size, int padding_0, int padding_1, int stride) {
   const int output_size =
@@ -37,8 +47,13 @@ template <typename DeviceContext, typename T>
 class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* in = ctx.Input<phi::DenseTensor>("X");
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    const Tensor* in = ctx.Input<Tensor>("X");
+    LoDTensor* out = ctx.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto in_dim = in->dims();
     int batch_size = in_dim[0];
     int img_channels = in_dim[1];
@@ -48,9 +63,15 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
     if (ctx.HasInput("Y") && batch_size > 1) {
+<<<<<<< HEAD
       const phi::DenseTensor* imgrealsize = ctx.Input<phi::DenseTensor>("Y");
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       phi::DenseTensor cpu_shape_tensor;
+=======
+      const Tensor* imgrealsize = ctx.Input<Tensor>("Y");
+      auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
+      Tensor cpu_shape_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       paddle::framework::TensorCopySync(
           *imgrealsize, platform::CPUPlace(), &cpu_shape_tensor);
       std::vector<int> imgreal_h;
@@ -87,6 +108,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       const std::vector<int> dilations({1, 1});
       int offset_out = 0;
       for (int i = 0; i < batch_size; i++) {
+<<<<<<< HEAD
         const phi::DenseTensor src =
             in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
         phi::DenseTensor dst =
@@ -101,6 +123,20 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
 
         phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
             f;
+=======
+        const Tensor src =
+            in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
+        Tensor dst = out->Slice(offset_out,
+                                offset_out + output_height[i] * output_width[i])
+                         .Resize({output_height[i],
+                                  output_width[i],
+                                  img_channels,
+                                  kernels[0],
+                                  kernels[1]});
+        offset_out += output_height[i] * output_width[i];
+
+        math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
@@ -126,6 +162,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       auto out_dims = out->dims();
       out->Resize({batch_size, out->numel() / batch_size});
       for (int i = 0; i < batch_size; i++) {
+<<<<<<< HEAD
         const phi::DenseTensor src =
             in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
         phi::DenseTensor dst = out->Slice(i, i + 1).Resize({output_height,
@@ -136,6 +173,17 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
 
         phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
             f;
+=======
+        const Tensor src =
+            in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
+        Tensor dst = out->Slice(i, i + 1).Resize({output_height,
+                                                  output_width,
+                                                  img_channels,
+                                                  kernels[0],
+                                                  kernels[1]});
+
+        math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
@@ -157,10 +205,17 @@ template <typename DeviceContext, typename T>
 class Im2SequenceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     phi::DenseTensor* d_out = const_cast<phi::DenseTensor*>(
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out")));
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* in = ctx.Input<Tensor>("X");
+    Tensor* d_out =
+        const_cast<Tensor*>(ctx.Input<Tensor>(framework::GradVarName("Out")));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     d_x->mutable_data<T>(ctx.GetPlace());
 
     auto x_v = framework::EigenVector<T>::Flatten(*d_x);
@@ -186,12 +241,20 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
     auto d_out_dims = d_out->dims();
     d_out->Resize({batch_size, d_out->numel() / batch_size});
     for (int i = 0; i < batch_size; i++) {
+<<<<<<< HEAD
       phi::DenseTensor dst =
           d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
       const phi::DenseTensor src = d_out->Slice(i, i + 1).Resize(
           {output_height, output_width, img_channels, kernels[0], kernels[1]});
       phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
           f;
+=======
+      Tensor dst =
+          d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
+      const Tensor src = d_out->Slice(i, i + 1).Resize(
+          {output_height, output_width, img_channels, kernels[0], kernels[1]});
+      math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -28,10 +33,17 @@ def sigmoid_array(x):
     return 1 / (1 + np.exp(-x))
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
 class TestLogLossOp(OpTest):
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestLogLossOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = 'log_loss'
@@ -58,9 +70,14 @@ class TestLogLossOp(OpTest):
         epsilon = self.attrs['epsilon']
         labels = self.inputs['Labels']
         predicted = self.inputs['Predicted']
+<<<<<<< HEAD
         loss = -labels * np.log(predicted + epsilon) - (1 - labels) * np.log(
             1 - predicted + epsilon
         )
+=======
+        loss = -labels * np.log(predicted + epsilon) - (
+            1 - labels) * np.log(1 - predicted + epsilon)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.outputs = {'Loss': loss}
 
     def set_npu(self):
@@ -76,5 +93,40 @@ class TestLogLossOp(OpTest):
         self.check_grad_with_place(self.place, ['Predicted'], 'Loss')
 
 
+<<<<<<< HEAD
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestLogLossOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_x_type():
+                input_data = np.random.random(100, 1).astype("float32")
+                fluid.layers.log_loss(input_data)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_x_dtype():
+                x2 = fluid.layers.data(name='x2', shape=[100, 1], dtype='int32')
+                fluid.layers.log_loss(x2)
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+            def test_label_type():
+                input_data = np.random.random(100, 1).astype("float32")
+                fluid.layers.log_loss(input_data)
+
+            self.assertRaises(TypeError, test_label_type)
+
+            def test_label_dtype():
+                x2 = fluid.layers.data(name='x2', shape=[100, 1], dtype='int32')
+                fluid.layers.log_loss(x2)
+
+            self.assertRaises(TypeError, test_label_dtype)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     unittest.main()

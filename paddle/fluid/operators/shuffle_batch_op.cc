@@ -55,6 +55,7 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -69,6 +70,20 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
       return phi::KernelKey(phi::Backend::ALL_BACKEND,
                             expected_kernel_type.layout(),
                             expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "Seed") {
+      return expected_kernel_type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     return framework::OperatorWithKernel::GetKernelTypeForVar(
         var_name, tensor, expected_kernel_type);
@@ -78,18 +93,29 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
 class ShuffleBatchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("X", "(phi::DenseTensor) The input tensor of shuffle_batch op.");
     AddInput("Seed", "(phi::DenseTensor) The input seed tensor.");
+=======
+    AddInput("X", "(LoDTensor) The input tensor of shuffle_batch op.");
+    AddInput("Seed", "(LoDTensor) The input seed tensor.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<int>(
         "startup_seed",
         "If input tensor 'Seed' is not initialized, the 'startup_seed' "
         "will be used to replace it. The seed after shuffle batch will "
         "be saved in 'SeedOut'. ")
         .SetDefault(0);
+<<<<<<< HEAD
     AddOutput("Out",
               "(phi::DenseTensor) The output tensor of shuffle_batch op.");
     AddOutput("ShuffleIdx", "(Tensor) Record forword shuffle order");
     AddOutput("SeedOut", "(phi::DenseTensor) Saved new generated seed.");
+=======
+    AddOutput("Out", "(LoDTensor) The output tensor of shuffle_batch op.");
+    AddOutput("ShuffleIdx", "(Tensor) Record forword shuffle order");
+    AddOutput("SeedOut", "(LoDTensor) Saved new generated seed.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddComment(R"DOC(
 Shuffle Batch Operator.
 
@@ -125,11 +151,19 @@ class ShuffleBatchOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

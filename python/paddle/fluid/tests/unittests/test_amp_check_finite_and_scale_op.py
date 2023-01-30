@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
@@ -30,6 +31,17 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
         self.op_type = "check_finite_and_unscale"
         self.python_api = check_finite_and_unscale_wrapper
         self.python_out_sig = ["out0", "FoundInfinite"]
+=======
+import numpy as np
+from op_test import OpTest, skip_check_grad_ci
+import paddle.fluid as fluid
+
+
+class TestCheckFiniteAndUnscaleOp(OpTest):
+
+    def setUp(self):
+        self.op_type = "check_finite_and_unscale"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         scale = np.random.random((1)).astype(self.dtype)
@@ -44,6 +56,7 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
+<<<<<<< HEAD
         self.check_output(check_eager=True)
 
 
@@ -53,6 +66,16 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
         self.init_dtype()
         self.python_api = check_finite_and_unscale_wrapper
         self.python_out_sig = ["out0", "FoundInfinite"]
+=======
+        self.check_output()
+
+
+class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
+
+    def setUp(self):
+        self.op_type = "check_finite_and_unscale"
+        self.init_dtype()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.nan
         scale = np.random.random((1)).astype(self.dtype)
@@ -69,6 +92,7 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
     def test_check_output(self):
         # When input contains nan, do not check the output,
         # since the output may be nondeterministic and will be discarded.
+<<<<<<< HEAD
         self.check_output(no_check_set=['Out'], check_eager=True)
 
 
@@ -78,6 +102,16 @@ class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
         self.init_dtype()
         self.python_api = check_finite_and_unscale_wrapper
         self.python_out_sig = ["out0", "FoundInfinite"]
+=======
+        self.check_output(no_check_set=['Out'])
+
+
+class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
+
+    def setUp(self):
+        self.op_type = "check_finite_and_unscale"
+        self.init_dtype()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.inf
         scale = np.random.random((1)).astype(self.dtype)
@@ -94,7 +128,11 @@ class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
     def test_check_output(self):
         # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
+<<<<<<< HEAD
         self.check_output(no_check_set=['Out'], check_eager=True)
+=======
+        self.check_output(no_check_set=['Out'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

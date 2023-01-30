@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -29,6 +34,10 @@ paddle.enable_static()
 
 
 class TestSqueezeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "squeeze"
@@ -61,6 +70,10 @@ class TestSqueezeOp(OpTest):
 
 
 class TestSqueezeOp1(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)
         self.axes = (0, -2)
@@ -71,6 +84,10 @@ class TestSqueezeOp1(TestSqueezeOp):
 
 
 class TestSqueezeOp2(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = ()
@@ -81,6 +98,10 @@ class TestSqueezeOp2(TestSqueezeOp):
 
 
 class TestSqueezeOp3(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
         self.axes = (1, -1)
@@ -91,6 +112,10 @@ class TestSqueezeOp3(TestSqueezeOp):
 
 
 class TestSqueezeOp4(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
         self.axes = (1, 2)
@@ -98,13 +123,22 @@ class TestSqueezeOp4(TestSqueezeOp):
 
 
 class TestSqueezeOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], paddle.NPUPlace(0)
             )
+=======
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         paddle.NPUPlace(0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(TypeError, paddle.squeeze, x1)
             # The input axes of squeeze must be list.
             x2 = paddle.static.data(name='x2', shape=[4], dtype="int32")
@@ -115,6 +149,10 @@ class TestSqueezeOpError(unittest.TestCase):
 
 
 class API_TestSqueeze(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.executed_api()
 
@@ -123,29 +161,50 @@ class API_TestSqueeze(unittest.TestCase):
 
     def test_out(self):
         paddle.enable_static()
+<<<<<<< HEAD
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
             data1 = paddle.static.data(
                 'data1', shape=[-1, 1, 10], dtype='float64'
             )
+=======
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data1 = paddle.static.data('data1',
+                                       shape=[-1, 1, 10],
+                                       dtype='float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             result_squeeze = self.squeeze(data1, axis=[1])
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
+<<<<<<< HEAD
             (result,) = exe.run(
                 feed={"data1": input1}, fetch_list=[result_squeeze]
             )
+=======
+            result, = exe.run(feed={"data1": input1},
+                              fetch_list=[result_squeeze])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.squeeze(input1, axis=1)
             np.testing.assert_allclose(expected_result, result)
 
 
 class API_TestStaticSqueeze_(API_TestSqueeze):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def executed_api(self):
         self.squeeze = paddle.squeeze_
 
 
 class API_TestDygraphSqueeze(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.executed_api()
 
@@ -204,12 +263,20 @@ class API_TestDygraphSqueeze(unittest.TestCase):
 
 
 class API_TestDygraphSqueezeInplace(API_TestDygraphSqueeze):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def executed_api(self):
         self.squeeze = paddle.squeeze_
 
 
 # Correct: General.
 class TestSqueeze2Op(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "squeeze2"
@@ -218,16 +285,25 @@ class TestSqueeze2Op(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.ori_shape).astype("float32"),
+=======
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_npu(self):
         self.__class__.use_npu = True
 
     def test_check_output(self):
+<<<<<<< HEAD
         self.check_output_with_place(
             paddle.NPUPlace(0), no_check_set=['XShape']
         )
+=======
+        self.check_output_with_place(paddle.NPUPlace(0),
+                                     no_check_set=['XShape'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad(self):
         self.check_grad_with_place(paddle.NPUPlace(0), ["X"], "Out")
@@ -243,6 +319,10 @@ class TestSqueeze2Op(OpTest):
 
 # Correct: There is mins axis.
 class TestSqueeze2Op1(TestSqueeze2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = (0, -2)
@@ -251,6 +331,10 @@ class TestSqueeze2Op1(TestSqueeze2Op):
 
 # Correct: No axes input.
 class TestSqueeze2Op2(TestSqueeze2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = ()
@@ -259,6 +343,10 @@ class TestSqueeze2Op2(TestSqueeze2Op):
 
 # Correct: Just part of axes be squeezed.
 class TestSqueeze2Op3(TestSqueeze2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
         self.axes = (1, -1)

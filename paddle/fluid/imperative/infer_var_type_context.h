@@ -68,12 +68,20 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     return (it != outputs_.end() && it->second.size() > 0);
   }
 
+<<<<<<< HEAD
   size_t InputSize(const std::string& name) const override {
+=======
+  size_t InputSize(const std::string& name) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return inputs_.at(name).size();
   }
 
   const std::string& InputVarName(const std::string& name,
+<<<<<<< HEAD
                                   const int index = 0) const override {
+=======
+                                  const int index = 0) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return GetNameFromVar(inputs_.at(name)[index]);
   }
 

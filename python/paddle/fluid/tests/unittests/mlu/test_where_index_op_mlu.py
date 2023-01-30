@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
@@ -28,6 +33,10 @@ paddle.enable_static()
 
 
 class TestWhereIndexOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "where_index"
         self.place = paddle.device.MLUPlace(0)
@@ -46,6 +55,10 @@ class TestWhereIndexOp(OpTest):
 
 
 class TestAllFalse(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "where_index"
         self.place = paddle.device.MLUPlace(0)
@@ -76,6 +89,10 @@ class TestAllFalse(unittest.TestCase):
 
 
 class TestRank2(TestWhereIndexOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.inputs = {
             'Condition': np.array([[True, False], [False, True]]),
@@ -85,6 +102,7 @@ class TestRank2(TestWhereIndexOp):
 
 
 class TestRank3(TestWhereIndexOp):
+<<<<<<< HEAD
     def init_config(self):
         self.inputs = {
             'Condition': np.array(
@@ -101,14 +119,37 @@ class TestRank3(TestWhereIndexOp):
                 [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
                 dtype='int64',
             )
+=======
+
+    def init_config(self):
+        self.inputs = {
+            'Condition':
+            np.array([[[True, False], [False, True]],
+                      [[False, True], [True, False]],
+                      [[False, False], [False, True]]]),
+        }
+
+        self.outputs = {
+            'Out':
+            np.array([[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
+                     dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestWhereOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
         with program_guard(Program(), Program()):
             cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
             result = paddle.nonzero(cond)
+=======
+
+    def test_api(self):
+        with program_guard(Program(), Program()):
+            cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
+            result = fluid.layers.where(cond)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = fluid.Executor(paddle.device.MLUPlace(0))
             exe.run(fluid.default_startup_program())
@@ -117,9 +158,17 @@ class TestWhereOpError(unittest.TestCase):
 
 
 class TestWhereRaiseError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         def test_type():
             paddle.nonzero([10])
+=======
+
+    def test_errors(self):
+
+        def test_type():
+            fluid.layers.where([10])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(TypeError, test_type)
 

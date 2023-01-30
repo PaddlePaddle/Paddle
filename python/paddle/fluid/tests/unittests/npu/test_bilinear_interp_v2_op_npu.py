@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -29,6 +34,10 @@ paddle.enable_static()
 
 
 class TestBilinearInterpOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -52,7 +61,11 @@ class TestBilinearInterpOp(OpTest):
         scale_w = 0
         if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
+<<<<<<< HEAD
                 if self.scale > 0.0:
+=======
+                if self.scale > 0.:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 scale_w = scale_h = self.scale[0]
@@ -65,6 +78,7 @@ class TestBilinearInterpOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
+<<<<<<< HEAD
         output_np = bilinear_interp_np(
             input_np,
             out_h,
@@ -77,6 +91,12 @@ class TestBilinearInterpOp(OpTest):
             self.align_mode,
             self.data_layout,
         )
+=======
+        output_np = bilinear_interp_np(input_np, out_h, out_w, scale_w, scale_h,
+                                       self.out_size, self.actual_shape,
+                                       self.align_corners, self.align_mode,
+                                       self.data_layout)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {'X': input_np}
         if self.out_size is not None:
@@ -90,11 +110,19 @@ class TestBilinearInterpOp(OpTest):
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,
+<<<<<<< HEAD
             'data_layout': self.data_layout,
         }
         if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0.0:
+=======
+            'data_layout': self.data_layout
+        }
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0.:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0]]
@@ -113,6 +141,7 @@ class TestBilinearInterpOp(OpTest):
         output_names = ['Out']
         no_grad_set = set()
         cpu_place = fluid.CPUPlace()
+<<<<<<< HEAD
         cpu_grads = self._get_gradient(
             inputs_to_check, cpu_place, output_names, no_grad_set
         )
@@ -126,6 +155,15 @@ class TestBilinearInterpOp(OpTest):
             self.max_relative_error,
             "Gradient Check between places",
         )
+=======
+        cpu_grads = self._get_gradient(inputs_to_check, cpu_place, output_names,
+                                       no_grad_set)
+        npu_grads = self._get_gradient(inputs_to_check, self.place,
+                                       output_names, no_grad_set)
+        self._assert_is_close(cpu_grads, npu_grads, inputs_to_check,
+                              self.max_relative_error,
+                              "Gradient Check between places")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -140,13 +178,20 @@ class TestBilinearInterpOp(OpTest):
 
 
 class TestBilinearInterpCaseFP16(TestBilinearInterpOp):
+<<<<<<< HEAD
     def init_test_case(self):
         super().init_test_case()
+=======
+
+    def init_test_case(self):
+        super(TestBilinearInterpCaseFP16, self).init_test_case()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dtype = 'float16'
         self.atol = 1e-2
 
 
 class TestBilinearInterpCase1(TestBilinearInterpOp):
+<<<<<<< HEAD
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [4, 1, 7, 8]
@@ -180,32 +225,97 @@ class TestBilinearInterpCase4(TestBilinearInterpOp):
         self.out_h = 1
         self.out_w = 1
         self.scale = 0.0
+=======
+
+    def init_test_case(self):
+        super(TestBilinearInterpCase1, self).init_test_case()
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = 0.
+
+
+class TestBilinearInterpCase2(TestBilinearInterpOp):
+
+    def init_test_case(self):
+        super(TestBilinearInterpCase2, self).init_test_case()
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = 0.
+
+
+class TestBilinearInterpCase3(TestBilinearInterpOp):
+
+    def init_test_case(self):
+        super(TestBilinearInterpCase3, self).init_test_case()
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.
+
+
+class TestBilinearInterpCase4(TestBilinearInterpOp):
+
+    def init_test_case(self):
+        super(TestBilinearInterpCase4, self).init_test_case()
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([2, 2]).astype("int32")
 
 
 class TestBilinearInterpCase5(TestBilinearInterpOp):
+<<<<<<< HEAD
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
         self.scale = 0.0
+=======
+
+    def init_test_case(self):
+        super(TestBilinearInterpCase5, self).init_test_case()
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([11, 11]).astype("int32")
 
 
 class TestBilinearInterpCase6(TestBilinearInterpOp):
+<<<<<<< HEAD
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
         self.scale = 0.0
+=======
+
+    def init_test_case(self):
+        super(TestBilinearInterpCase6, self).init_test_case()
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([65, 33]).astype("int32")
 
 
 class TestBilinearInterpCase7(TestBilinearInterpOp):
+<<<<<<< HEAD
     def init_test_case(self):
         super().init_test_case()
+=======
+
+    def init_test_case(self):
+        super(TestBilinearInterpCase7, self).init_test_case()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
@@ -213,6 +323,7 @@ class TestBilinearInterpCase7(TestBilinearInterpOp):
 
 
 class TestBilinearInterpSame(TestBilinearInterpOp):
+<<<<<<< HEAD
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [2, 3, 32, 64]
@@ -228,39 +339,81 @@ class TestBilinearInterpActualShape(TestBilinearInterpOp):
         self.out_h = 64
         self.out_w = 32
         self.scale = 0.0
+=======
+
+    def init_test_case(self):
+        super(TestBilinearInterpSame, self).init_test_case()
+        self.input_shape = [2, 3, 32, 64]
+        self.out_h = 32
+        self.out_w = 64
+        self.scale = 0.
+
+
+class TestBilinearInterpActualShape(TestBilinearInterpOp):
+
+    def init_test_case(self):
+        super(TestBilinearInterpActualShape, self).init_test_case()
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([66, 40]).astype("int32")
 
 
 class TestBilinearInterpDataLayout(TestBilinearInterpOp):
+<<<<<<< HEAD
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [2, 5, 5, 3]
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.0
+=======
+
+    def init_test_case(self):
+        super(TestBilinearInterpDataLayout, self).init_test_case()
+        self.input_shape = [2, 5, 5, 3]
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([3, 3]).astype("int32")
         self.data_layout = "NHWC"
 
 
 class TestBilinearInterpOtherMethod1(TestBilinearInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 1
 
 
 class TestBilinearInterpWithMethod2(TestBilinearInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 0
 
 
 class TestBilinearInterpWithMethod3(TestBilinearInterpOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_align_mode(self):
         self.align_corners = True
         self.align_mode = 0
 
 
 class TestBilinearInterpScale1(TestBilinearInterpOp):
+<<<<<<< HEAD
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [2, 3, 5, 7]
@@ -281,6 +434,31 @@ class TestBilinearInterpScale2(TestBilinearInterpOp):
 class TestBilinearInterpZero(TestBilinearInterpOp):
     def init_test_case(self):
         super().init_test_case()
+=======
+
+    def init_test_case(self):
+        super(TestBilinearInterpScale1, self).init_test_case()
+        self.input_shape = [2, 3, 5, 7]
+        self.out_h = 60
+        self.out_w = 25
+        self.scale = 2.
+
+
+class TestBilinearInterpScale2(TestBilinearInterpOp):
+
+    def init_test_case(self):
+        super(TestBilinearInterpScale2, self).init_test_case()
+        self.input_shape = [2, 3, 5, 7]
+        self.out_h = 60
+        self.out_w = 25
+        self.scale = 1.
+
+
+class TestBilinearInterpZero(TestBilinearInterpOp):
+
+    def init_test_case(self):
+        super(TestBilinearInterpZero, self).init_test_case()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.input_shape = [2, 3, 5, 7]
         self.out_h = 60
         self.out_w = 25

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 from collections import defaultdict
 
@@ -37,6 +38,61 @@ from ..fluid.framework import Parameter, program_guard
 from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
 from .lr import LRScheduler
+=======
+from __future__ import print_function
+
+import numpy as np
+import six
+import logging
+from collections import defaultdict
+
+import paddle
+from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+from paddle.fluid.framework import (
+    Program,
+    Variable,
+    name_scope,
+    default_main_program,
+    default_startup_program,
+    device_guard,
+)
+
+from ..fluid import framework
+from ..fluid import layers
+from ..fluid import unique_name
+from ..fluid.backward import (
+    append_backward,
+    _some_in_set_,
+    _append_grad_suffix_,
+    _get_no_grad_set_name,
+)
+from ..fluid.clip import (
+    GradientClipBase,
+    GradientClipByNorm,
+    error_clip_callback,
+    append_gradient_clip_ops,
+)
+from ..fluid.framework import program_guard, Parameter
+from ..fluid.initializer import Constant
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.layers import ops
+from ..fluid.dygraph import base as imperative_base
+from ..fluid.dygraph import no_grad
+from paddle.fluid import core
+from paddle.fluid.layers import tensor
+from functools import reduce
+from ..fluid.wrapped_decorator import signature_safe_contextmanager
+from .. import compat as cpt
+from .lr import LRScheduler
+import copy
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import (
+    _in_legacy_dygraph,
+    _in_eager_without_dygraph_check,
+    _current_expected_place,
+    in_dygraph_mode,
+)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -50,7 +106,11 @@ def append_backward_new(
     checkpoints=None,
     distop_context=None,
 ):
+<<<<<<< HEAD
     from paddle.incubate.autograd.primx import Transform, orig2prim
+=======
+    from paddle.incubate.autograd.primx import orig2prim, Transform
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     program = default_main_program()
     assert (
@@ -60,7 +120,11 @@ def append_backward_new(
     for el in loss_list:
         assert (
             el.block == block
+<<<<<<< HEAD
         ), 'variable in loss_list should be in current block of main program'
+=======
+        ), f'variable in loss_list should be in current block of main program'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     orig2prim(block)
     ad = Transform(block)
@@ -89,7 +153,11 @@ def append_backward_new(
     return params_and_grads
 
 
+<<<<<<< HEAD
 class Optimizer:
+=======
+class Optimizer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
@@ -104,7 +172,11 @@ class Optimizer:
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
+<<<<<<< HEAD
             The default value is None in static graph mode, at this time all parameters will be updated.
+=======
+            The default value is None in static mode, at this time all parameters will be updated.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -121,8 +193,13 @@ class Optimizer:
             The default value is None.
 
     Returns:
+<<<<<<< HEAD
        Base class for optimizer.
 
+=======
+       Base class for optimizer. 
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
         .. code-block:: python
 
@@ -139,7 +216,11 @@ class Optimizer:
             adam.clear_grad()
 
             #Take the subclass sgd as an example
+<<<<<<< HEAD
             #optimize parameters in linear_1 and linear2 in different options.
+=======
+            #optimize parameters in linear_1 and linear2 in different options. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             #Note that the learning_rate of linear_2 is 0.01.
             linear_1 = paddle.nn.Linear(10, 10)
             linear_2 = paddle.nn.Linear(10, 10)
@@ -156,14 +237,22 @@ class Optimizer:
                     'weight_decay': 0.001,
                     'learning_rate': 0.1
                 }],
+<<<<<<< HEAD
                 weight_decay=0.01)
+=======
+                weight_decay=0.01)                   
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss.backward()
             sgd.step()
             sgd.clear_grad()
 
     """
 
+<<<<<<< HEAD
     @imperative_base.no_grad()
+=======
+    @imperative_base.no_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(
         self,
         learning_rate,
@@ -220,7 +309,11 @@ class Optimizer:
                 % type(learning_rate)
             )
         if grad_clip is not None:
+<<<<<<< HEAD
             if not isinstance(grad_clip, paddle.nn.clip.GradientClipBase):
+=======
+            if not isinstance(grad_clip, GradientClipBase):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 raise TypeError(
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
@@ -412,13 +505,18 @@ class Optimizer:
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
+<<<<<<< HEAD
         # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
+=======
+        # lr var can't be float16, for pure fp16 training, should extra handle the dtype for lr
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         _lr_dtype = (
             paddle.get_default_dtype() if self._dtype is None else self._dtype
         )
         _lr_dtype = (
             paddle.float32
             if (
+<<<<<<< HEAD
                 (
                     paddle.get_default_dtype() != "float16"
                     and _lr_dtype == paddle.float16
@@ -427,6 +525,10 @@ class Optimizer:
                     paddle.get_default_dtype() != "bfloat16"
                     and _lr_dtype == paddle.bfloat16
                 )
+=======
+                paddle.get_default_dtype() != "float16"
+                and _lr_dtype == paddle.float16
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
             else _lr_dtype
         )
@@ -463,7 +565,11 @@ class Optimizer:
             else:
                 self._learning_rate_map[
                     framework.default_main_program()
+<<<<<<< HEAD
                 ] = paddle.static.create_global_var(
+=======
+                ] = layers.create_global_var(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     name=unique_name.generate("learning_rate"),
                     shape=[1],
                     value=float(self._learning_rate),
@@ -528,6 +634,20 @@ class Optimizer:
                     current_lr.dtype,
                     place,
                 )
+<<<<<<< HEAD
+=======
+
+            elif _in_legacy_dygraph():
+                _legacy_C_ops.fill_constant(
+                    current_lr,
+                    'value',
+                    float(value),
+                    'dtype',
+                    current_lr.dtype,
+                    'shape',
+                    list(current_lr.shape),
+                )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 global_block = framework.default_main_program().global_block()
                 global_block.append_op(
@@ -690,7 +810,11 @@ class Optimizer:
                     name, param.name
                 )
             )
+<<<<<<< HEAD
         if shape is None:
+=======
+        if shape == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             shape = param.shape
         assert isinstance(self.helper, LayerHelper)
 
@@ -710,6 +834,7 @@ class Optimizer:
         )
         if device is None:
             device = self._get_device_for_param(param.name)
+<<<<<<< HEAD
 
         if (
             in_dygraph_mode()
@@ -728,6 +853,12 @@ class Optimizer:
                 self.helper.set_variable_initializer(
                     var, initializer=Constant(value=float(fill_value))
                 )
+=======
+        with device_guard(device):
+            self.helper.set_variable_initializer(
+                var, initializer=Constant(value=float(fill_value))
+            )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if framework._non_static_mode():
             if len(self._accumulators_holder) > 0:
@@ -920,6 +1051,7 @@ class Optimizer:
                 self._create_accumulators(target_block, params_acc_dict)
 
             if framework._non_static_mode():
+<<<<<<< HEAD
                 found_inf = self._get_auxiliary_var('found_inf')
                 if found_inf:
                     if isinstance(found_inf, core.eager.Tensor):
@@ -952,6 +1084,33 @@ class Optimizer:
                                 self._append_optimize_op(
                                     target_block, param_grad_dict
                                 )
+=======
+                if isinstance(parameters_and_grads, list):
+                    for param_and_grad in parameters_and_grads:
+                        if param_and_grad[1] is None:
+                            continue
+                        if param_and_grad[0].stop_gradient is False:
+                            self._append_optimize_op(
+                                target_block, param_and_grad
+                            )
+                else:
+                    for param_and_grad in parameters_and_grads['params']:
+                        if param_and_grad[1] is None:
+                            continue
+                        if param_and_grad[0].stop_gradient is False:
+                            param_grad_dict = dict()
+                            param_grad_dict['params'] = param_and_grad
+                            param_grad_dict.update(
+                                {
+                                    k: v
+                                    for k, v in parameters_and_grads.items()
+                                    if k != 'params'
+                                }
+                            )
+                            self._append_optimize_op(
+                                target_block, param_grad_dict
+                            )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
@@ -1032,6 +1191,7 @@ class Optimizer:
         if self._dtype is None:
             self._dtype = loss.dtype
 
+<<<<<<< HEAD
         if framework.in_dygraph_mode():
             parameter_list = parameters if parameters else self._parameter_list
 
@@ -1045,6 +1205,22 @@ class Optimizer:
         else:
             if callbacks is None:
                 callbacks = [paddle.nn.clip.error_clip_callback]
+=======
+        if framework._non_static_mode():
+            parameter_list = parameters if parameters else self._parameter_list
+
+            params_grads = []
+            for param in parameter_list:
+                if param.stop_gradient:
+                    continue
+                if param._grad_ivar() is not None:
+                    # create gradient tensor
+                    grad_var = param._grad_ivar()
+                    params_grads.append((param, grad_var))
+        else:
+            if callbacks is None:
+                callbacks = [error_clip_callback]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
@@ -1105,7 +1281,11 @@ class Optimizer:
             params_grads = self._grad_clip(params_grads)
         else:
 
+<<<<<<< HEAD
             params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
+=======
+            params_grads = append_gradient_clip_ops(params_grads)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # Add regularization if any
         params_grads = self.append_regularization_ops(
@@ -1185,6 +1365,7 @@ class Optimizer:
 
         if framework.in_dygraph_mode():
             return _C_ops.add_n([grad, regularization_term])
+<<<<<<< HEAD
         else:
             new_grad = grad
             if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
@@ -1205,27 +1386,67 @@ class Optimizer:
             grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 
             return new_grad
+=======
+        elif framework._in_legacy_dygraph():
+            return _legacy_C_ops.sum([grad, regularization_term])
+
+        new_grad = grad
+        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+            # the grad's type and name will be changed. But the gradient's name
+            # is used in ParallelExecutor Reduce mode, so I add a flag for
+            # the new_grad here.
+            new_grad = grad.block.create_var(
+                name=grad.name + core.kNewGradSuffix(),
+                dtype=param.dtype,
+                shape=param.shape,
+                lod_level=param.lod_level,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+            )
+
+        inputs = {"X": [grad, regularization_term]}
+        outputs = {"Out": [new_grad]}
+        grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
+
+        return new_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def append_regularization_ops(
         self, parameters_and_grads, regularization=None
     ):
         r"""Create and add backward regularization Operators
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Creates and adds backward regularization operators in the BlockDesc.
         This will add gradients of the regularizer function to the gradients
         of the parameters and return these modified gradients. This is the
         same as implementing weight decay in optimizers for regularization.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Args:
             parameters_and_grads: A list of (parameters, gradients) pairs
                                   that need to be regularized.
             regularization: A global regularizer. If the parameter is not
                             set. It will be applied with regularizer.
+<<<<<<< HEAD
 
         Returns:
             list[(Variable, Variable)]: list of (parameters, gradients) \
             pair with the regularized gradient
 
+=======
+    
+        Returns:
+            list[(Variable, Variable)]: list of (parameters, gradients) \
+            pair with the regularized gradient
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Raises:
             Exception: Unknown regularization type
         """
@@ -1319,7 +1540,11 @@ class Optimizer:
         else:
             core.clear_gradients(param_list, set_to_zero)
 
+<<<<<<< HEAD
     @imperative_base.no_grad()
+=======
+    @imperative_base.no_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
@@ -1382,7 +1607,11 @@ class Optimizer:
 
         return optimize_ops, params_grads
 
+<<<<<<< HEAD
     @imperative_base.no_grad()
+=======
+    @imperative_base.no_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @framework.dygraph_only
     def step(self):
         """
@@ -1519,6 +1748,7 @@ class Optimizer:
         For Multi Tensor, append optimize merged_operator to block.
         """
         pass
+<<<<<<< HEAD
 
     def _is_dtype_fp16_or_bf16(self, dtype):
         """
@@ -1533,3 +1763,5 @@ class Optimizer:
             dtype == core.VarDesc.VarType.FP16
             or dtype == core.VarDesc.VarType.BF16
         )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

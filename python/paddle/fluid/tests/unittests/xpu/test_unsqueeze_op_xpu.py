@@ -12,12 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
+=======
+from __future__ import print_function
+import unittest
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append("..")
 
 import numpy as np
+<<<<<<< HEAD
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
@@ -26,17 +33,33 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+
+import paddle
+import paddle.fluid as fluid
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 # Correct: General.
 class XPUTestUnsqueezeOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = "unsqueeze"
         self.use_dynamic_create_class = False
 
     class TestUnsqueezeOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "unsqueeze"
             self.__class__.op_type = "unsqueeze"
@@ -72,13 +95,24 @@ class XPUTestUnsqueezeOp(XPUOpTestWrapper):
 
     # Correct: Single input index.
     class TestUnsqueezeOp1(TestUnsqueezeOp):
+<<<<<<< HEAD
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (-1,)
+=======
+
+        def init_test_case(self):
+            self.ori_shape = (20, 5)
+            self.axes = (-1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.new_shape = (20, 5, 1)
 
     # Correct: Mixed input axis.
     class TestUnsqueezeOp2(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (0, -1)
@@ -86,6 +120,10 @@ class XPUTestUnsqueezeOp(XPUOpTestWrapper):
 
     # Correct: There is duplicated axis.
     class TestUnsqueezeOp3(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (0, 3, 3)
@@ -93,6 +131,10 @@ class XPUTestUnsqueezeOp(XPUOpTestWrapper):
 
     # Correct: Reversed axes.
     class TestUnsqueezeOp4(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (3, 1, 1)

@@ -38,7 +38,11 @@ class SendOpV2 : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     const framework::Variable* var = ctx.InputVar("X");
     if (var->IsType<framework::LoDTensorArray>()) {
@@ -46,11 +50,20 @@ class SendOpV2 : public framework::OperatorWithKernel {
       // NOTE(sandyhouse): Support an empty tensor array as Input.
       // And set the kernel type is float.
       if (t_arr.size() == 0) {
+<<<<<<< HEAD
         return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
       }
     }
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       ctx.device_context());
+      }
+    }
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

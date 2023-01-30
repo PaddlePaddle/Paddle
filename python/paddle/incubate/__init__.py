@@ -23,11 +23,15 @@ from .operators import graph_send_recv
 from .operators import graph_khop_sampler
 from .operators import graph_sample_neighbors
 from .operators import graph_reindex
+<<<<<<< HEAD
 from .operators import unzip
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .tensor import segment_sum
 from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
+<<<<<<< HEAD
 from .tensor import _npu_identity
 from .passes import fuse_resnet_unit_pass
 
@@ -38,6 +42,16 @@ from . import asp  # noqa: F401
 from . import multiprocessing  # noqa: F401
 
 from .nn.loss import identity_loss
+=======
+from .passes import fuse_resnet_unit_pass
+
+from . import autograd  #noqa: F401
+from . import autotune  #noqa: F401
+from . import nn  #noqa: F401
+from . import asp  #noqa: F401
+
+from ..fluid.layers.loss import identity_loss
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from ..fluid.incubate import fleet
 from . import xpu
@@ -56,5 +70,8 @@ __all__ = [
     'segment_max',
     'segment_min',
     'identity_loss',
+<<<<<<< HEAD
     'unzip',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

@@ -12,21 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 
 from paddle.framework import core
+=======
+import copy
+import numpy as np
+from paddle.fluid import core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class ProcessMesh(core.ProcessMesh):
     r"""
+<<<<<<< HEAD
     The class `Processmesh` describes the topology of logical processes.
+=======
+    The class `Processmesh` describes the topology of logical processes. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Args:
         mesh (list|numpy.array): an N-dimensional array describes the toplogy
             of logical processes.
         dim_names (list, optional): the i-th element of this list gives the name of the
             i-th dimension.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         None
 
@@ -35,9 +49,15 @@ class ProcessMesh(core.ProcessMesh):
 
             import paddle
             import paddle.distributed as dist
+<<<<<<< HEAD
 
             paddle.enable_static()
 
+=======
+            
+            paddle.enable_static()
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
             assert mesh.shape == [2, 3]
             assert mesh.processe_ids == [2, 4, 5, 0, 1, 3]
@@ -45,10 +65,17 @@ class ProcessMesh(core.ProcessMesh):
     """
 
     def __init__(self, mesh, dim_names=None):
+<<<<<<< HEAD
         if not isinstance(mesh, list) and not isinstance(mesh, np.ndarray):
             raise ValueError(
                 'The mesh must be an instance of list or np.ndarray.'
             )
+=======
+        if not isinstance(mesh, list) and \
+           not isinstance(mesh, np.ndarray):
+            raise ValueError(
+                'The mesh must be an instance of list or np.ndarray.')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if isinstance(mesh, list):
             mesh = np.array(mesh)
 
@@ -57,6 +84,7 @@ class ProcessMesh(core.ProcessMesh):
         self._shape = list(self._mesh.shape)
 
         self._process_ids = self._mesh.flatten().tolist()
+<<<<<<< HEAD
         assert all(
             isinstance(p, int) for p in self._process_ids
         ), "All elements of the mesh must be integer"
@@ -72,14 +100,32 @@ class ProcessMesh(core.ProcessMesh):
             assert len(dim_names) == len(
                 self._shape
             ), "The length of dims_names must be same as the shape of the mesh."
+=======
+        assert all(isinstance(p, int) for p in self._process_ids), \
+            ("All elements of the mesh must be integer")
+        assert min(
+            self._process_ids) >= 0, ('All elements of the mesh must be >= 0.')
+        unique_process_ids = set(self._process_ids)
+        assert len(unique_process_ids) == len(
+            self._process_ids), ('All elements of the mesh must be unique.')
+
+        if dim_names is not None:
+            assert len(dim_names) == len(self._shape), \
+                ("The length of dims_names must be same as the shape of the mesh.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self._dim_names = dim_names
         else:
             self._dim_names = ["d" + str(i) for i in range(len(self._shape))]
 
         # Follow the requirement for using pybind11
+<<<<<<< HEAD
         core.ProcessMesh.__init__(
             self, self._shape, self._process_ids, self._dim_names
         )
+=======
+        core.ProcessMesh.__init__(self, self._shape, self._process_ids,
+                                  self._dim_names)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def mesh(self):
@@ -113,20 +159,29 @@ def compute_compatible_process_mesh(process_meshes):
 
     compatible_result = None
     for process_mesh in process_meshes:
+<<<<<<< HEAD
         (
             compatible,
             compatible_result,
         ) = _compute_compatible_of_two_process_meshes(
             compatible_result, process_mesh
         )
+=======
+        compatible, compatible_result = _compute_compatible_of_two_process_meshes(
+            compatible_result, process_mesh)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if not compatible:
             return None
     if compatible_result.empty():
         return None
     if isinstance(compatible_result, core.ProcessMesh):
         mesh = np.array(compatible_result.process_ids).reshape(
+<<<<<<< HEAD
             compatible_result.shape
         )
+=======
+            compatible_result.shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return ProcessMesh(mesh, compatible_result.dim_names)
     elif isinstance(compatible_result, ProcessMesh):
         return ProcessMesh(compatible_result.mesh, compatible_result.dim_names)

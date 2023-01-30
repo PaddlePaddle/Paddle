@@ -89,9 +89,13 @@ class MLUContext {
   DISABLE_COPY_AND_ASSIGN(MLUContext);
 };
 
+<<<<<<< HEAD
 class MLUDeviceContext
     : public DeviceContext,
       public phi::TypeInfoTraits<DeviceContext, MLUDeviceContext> {
+=======
+class MLUDeviceContext : public DeviceContext {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   explicit MLUDeviceContext(MLUPlace place);
   virtual ~MLUDeviceContext();
@@ -150,8 +154,11 @@ class MLUDeviceContext
     return thread_ctx_.at(this);
   }
 
+<<<<<<< HEAD
   static const char* name() { return "MLUDeviceContext"; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   int compute_capability_;
   int driver_version_;

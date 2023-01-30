@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import json
 import os
 import shutil
@@ -19,6 +20,17 @@ import subprocess
 
 
 class Info:
+=======
+import subprocess
+import shlex
+import os
+import json
+import shutil
+
+
+class Info(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __repr__(self):
         return str(self.__dict__)
 
@@ -75,6 +87,7 @@ def query_smi(query=None, query_type="gpu", index=None, dtype=None):
 
 def get_gpu_info(index=None):
     q = "index,uuid,driver_version,name,gpu_serial,display_active,display_mode".split(
+<<<<<<< HEAD
         ","
     )
     d = [int, str, str, str, str, str, str]
@@ -83,12 +96,19 @@ def get_gpu_info(index=None):
         if index is None or isinstance(index, list)
         else str(index).split(",")
     )
+=======
+        ",")
+    d = [int, str, str, str, str, str, str]
+    index = index if index is None or isinstance(
+        index, list) else str(index).split(",")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return query_smi(q, index=index, dtype=d)
 
 
 def get_gpu_util(index=None):
     q = "index,utilization.gpu,memory.total,memory.used,memory.free,timestamp".split(
+<<<<<<< HEAD
         ","
     )
     d = [int, int, int, int, int, str]
@@ -97,6 +117,12 @@ def get_gpu_util(index=None):
         if index is None or isinstance(index, list)
         else str(index).split(",")
     )
+=======
+        ",")
+    d = [int, int, int, int, int, str]
+    index = index if index is None or isinstance(
+        index, list) else str(index).split(",")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return query_smi(q, index=index, dtype=d)
 
@@ -104,11 +130,16 @@ def get_gpu_util(index=None):
 def get_gpu_process(index=None):
     q = "pid,process_name,gpu_uuid,gpu_name,used_memory".split(",")
     d = [int, str, str, str, int]
+<<<<<<< HEAD
     index = (
         index
         if index is None or isinstance(index, list)
         else str(index).split(",")
     )
+=======
+    index = index if index is None or isinstance(
+        index, list) else str(index).split(",")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return query_smi(q, index=index, query_type="compute", dtype=d)
 

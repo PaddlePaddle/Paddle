@@ -17,6 +17,7 @@
 namespace phi {
 
 KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
+<<<<<<< HEAD
   return KernelSignature("conv2d",
                          {"Input", "Filter"},
                          {"strides",
@@ -26,6 +27,33 @@ KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
                           "groups",
                           "data_format"},
                          {"Output"});
+=======
+  if (!ctx.HasAttr("use_addto") || !ctx.HasAttr("workspace_size_MB") ||
+      !ctx.HasAttr("exhaustive_search")) {
+    return KernelSignature("conv2d_infer",
+                           {"Input", "Filter"},
+                           {"strides",
+                            "paddings",
+                            "padding_algorithm",
+                            "groups",
+                            "dilations",
+                            "data_format"},
+                           {"Output"});
+  } else {
+    return KernelSignature("conv2d",
+                           {"Input", "Filter"},
+                           {"strides",
+                            "paddings",
+                            "padding_algorithm",
+                            "groups",
+                            "dilations",
+                            "data_format",
+                            "use_addto",
+                            "workspace_size_MB",
+                            "exhaustive_search"},
+                           {"Output"});
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
@@ -34,9 +62,18 @@ KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"strides",
                           "paddings",
                           "padding_algorithm",
+<<<<<<< HEAD
                           "dilations",
                           "groups",
                           "data_format"},
+=======
+                          "groups",
+                          "dilations",
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          {"Input@GRAD", "Filter@GRAD"});
 }
 
@@ -47,6 +84,7 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
                          {"strides",
                           "paddings",
                           "padding_algorithm",
+<<<<<<< HEAD
                           "dilations",
                           "groups",
                           "data_format"},
@@ -71,6 +109,20 @@ KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
 PD_REGISTER_ARG_MAPPING_FN(conv2d, phi::Conv2dOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion_cutlass,
                            phi::Conv2dFusionArgumentMapping);
+=======
+                          "groups",
+                          "dilations",
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search"},
+                         {"DInput", "DFilter", "DDOutput"});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(conv2d, phi::Conv2dOpArgumentMapping);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_ARG_MAPPING_FN(conv2d_grad, phi::Conv2dGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv2d_grad_grad,
                            phi::Conv2dDoubleGradOpArgumentMapping);

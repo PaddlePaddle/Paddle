@@ -14,6 +14,10 @@
 
 import os
 import re
+<<<<<<< HEAD
+=======
+import json
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 skip_list = []
 
@@ -21,7 +25,11 @@ skip_list = []
 def remove_grad_kernel(kernels):
     clean_kernels = []
     for kernel_ in kernels:
+<<<<<<< HEAD
         if "_grad" not in kernel_:
+=======
+        if (not "_grad" in kernel_):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             clean_kernels.append(kernel_)
     return clean_kernels
 
@@ -36,7 +44,11 @@ def get_compat_kernels_info(register):
     kernel_names = []
     for dirpath, dirnames, filenames in os.walk("../../paddle/fluid/operators"):
         for file_name in filenames:
+<<<<<<< HEAD
             if ".cc" not in file_name:
+=======
+            if not ".cc" in file_name:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 continue
             with open(os.path.join(dirpath, file_name)) as f:
                 txt = f.readlines()
@@ -45,8 +57,12 @@ def get_compat_kernels_info(register):
                 is_macro_defination = False
                 for line in txt:
                     if line.strip().startswith(
+<<<<<<< HEAD
                         "#define"
                     ) and line.strip().endswith("\\"):
+=======
+                            "#define") and line.strip().endswith("\\"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         is_macro_defination = True
                         continue
                     if is_macro_defination:
@@ -54,6 +70,7 @@ def get_compat_kernels_info(register):
                             is_macro_defination = False
                         continue
 
+<<<<<<< HEAD
                     if register in line:
                         content = ""
                         registry = True
@@ -66,6 +83,16 @@ def get_compat_kernels_info(register):
                             .strip(register)
                             .split(",")
                         )
+=======
+                    if (register in line):
+                        content = ""
+                        registry = True
+                    if (registry):
+                        content += line
+                    if (registry and ";" in line):
+                        kernel_name = content.replace("\n", "").replace(
+                            " ", "").strip(register).split(",")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         registry = False
                         kernel_names.append(kernel_name[0])
     return remove_grad_kernel(kernel_names)
@@ -73,9 +100,14 @@ def get_compat_kernels_info(register):
 
 def show_kernel_statistics(backend, kernels):
     print("=== kernels statistics === ")
+<<<<<<< HEAD
     print(
         "the number of " + backend + " kernels is: " + str(len(kernels)) + "\n"
     )
+=======
+    print("the number of " + backend + " kernels is: " + str(len(kernels)) +
+          "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     print(kernels)
     print("\n")
 
@@ -98,7 +130,11 @@ def get_passes_info(register):
                 continue
             if register in line:
                 registry_fun_found = True
+<<<<<<< HEAD
             if registry_fun_found:
+=======
+            if (registry_fun_found):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 pass_registry_func += line
             if registry_fun_found:
                 for char in line:

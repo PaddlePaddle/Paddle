@@ -106,6 +106,7 @@ struct SinFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+<<<<<<< HEAD
 // sine''(x) = -sin(x)
 template <typename T>
 struct SinDoubleGradFunctor : public BaseActivationFunctor<T> {
@@ -247,6 +248,8 @@ struct SinTripleGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // reciprocal(x) = 1 / x
 template <typename T>
 struct ReciprocalFunctor : public BaseActivationFunctor<T> {
@@ -272,6 +275,7 @@ struct ReciprocalGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+<<<<<<< HEAD
 // 1st reverse grad
 // y = cos(x)
 // x --> y
@@ -288,6 +292,8 @@ struct ReciprocalGradFunctor : public BaseActivationFunctor<T> {
 // d3d1y = -cos(x) * d2d1x * d3d2x
 // d3d2d1x = -cos(x) * d1y * d3d2x - sin(x) * d3d2d1y
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // cosine'(x) = -sin(x)
 template <typename T>
 struct CosGradFunctor : public BaseActivationFunctor<T> {
@@ -303,6 +309,7 @@ struct CosGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+<<<<<<< HEAD
 // cos''(x) = -cos(x)
 template <typename T>
 struct CosDoubleGradFunctor : public BaseActivationFunctor<T> {
@@ -429,6 +436,8 @@ struct CosTripleGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // cosine(x) = cos(x)
 template <typename T>
 struct CosFunctor : public BaseActivationFunctor<T> {
@@ -1210,10 +1219,18 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
         GET_DATA_SAFELY(Out, "Input", "Out", "TanhTripleGrad"));
     auto dout = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "DOut", "TanhTripleGrad"));
+<<<<<<< HEAD
+=======
+    auto d_ddOut = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+    auto d_dOutNew = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (d_Out_New) {
       auto d_OutNew = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_Out_New, "Output", "D_OutNew", "TanhTripleGrad"));
+<<<<<<< HEAD
 
       if (d_DDOut && d_dOut_New) {
         auto d_ddOut = EigenVector<T>::Flatten(
@@ -1238,10 +1255,15 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
       } else {
         d_OutNew.device(*d) = static_cast<T>(0) * out;
       }
+=======
+      d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut) -
+                            (static_cast<T>(2) * dout * ddx * d_dOutNew);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     if (d_d_Out) {
       auto d_dOut = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_d_Out, "Output", "D_DOut", "TanhTripleGrad"));
+<<<<<<< HEAD
 
       if (d_dOut_New) {
         auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
@@ -1250,10 +1272,14 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
       } else {
         d_dOut.device(*d) = static_cast<T>(0) * out;
       }
+=======
+      d_dOut.device(*d) = static_cast<T>(-2) * out * ddx * d_dOutNew;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     if (d_DDx) {
       auto d_ddx = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "TanhTripleGrad"));
+<<<<<<< HEAD
 
       if (d_DDOut && d_dOut_New) {
         auto d_ddOut = EigenVector<T>::Flatten(
@@ -1274,6 +1300,10 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
       } else {
         d_ddx.device(*d) = static_cast<T>(0) * ddx;
       }
+=======
+      d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut -
+                         static_cast<T>(2) * out * dout * d_dOutNew;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -1282,7 +1312,11 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+<<<<<<< HEAD
 struct HardTanhFunctor : public BaseActivationFunctor<T> {
+=======
+struct BReluFunctor : public BaseActivationFunctor<T> {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float t_min;
   float t_max;
 
@@ -1300,7 +1334,11 @@ struct HardTanhFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+<<<<<<< HEAD
 struct HardTanhGradFunctor : public BaseActivationFunctor<T> {
+=======
+struct BReluGradFunctor : public BaseActivationFunctor<T> {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float t_min;
   float t_max;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -3033,7 +3071,11 @@ struct CudaTanhGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+<<<<<<< HEAD
 struct CudaHardTanhFunctor : public BaseActivationFunctor<T> {
+=======
+struct CudaBReluFunctor : public BaseActivationFunctor<T> {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float t_min;
   float t_max;
 
@@ -3101,7 +3143,11 @@ struct CudaMishGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+<<<<<<< HEAD
 struct CudaHardTanhGradFunctor : public BaseActivationFunctor<T> {
+=======
+struct CudaBReluGradFunctor : public BaseActivationFunctor<T> {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   T zero = static_cast<T>(0.0f);
   float t_min;
   float t_max;

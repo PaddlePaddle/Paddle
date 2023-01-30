@@ -13,11 +13,19 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.distributed as dist
 
 
 class TestWorldSizeAndRankAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._num_of_ranks = 2
         self._subgroup_ranks = [0, 1]
@@ -33,11 +41,17 @@ class TestWorldSizeAndRankAPI(unittest.TestCase):
         self.assertEqual(dist.get_world_size(self._subgroup), world_size)
 
     def test_given_group_rank(self):
+<<<<<<< HEAD
         rank = (
             self._subgroup_ranks.index(self._global_rank)
             if self._global_rank in self._subgroup_ranks
             else -1
         )
+=======
+        rank = self._subgroup_ranks.index(
+            self._global_rank
+        ) if self._global_rank in self._subgroup_ranks else -1
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(dist.get_rank(self._subgroup), rank)
 
 

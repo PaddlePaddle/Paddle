@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import gradient_checker
@@ -24,6 +25,24 @@ import paddle.fluid.core as core
 
 
 class TestInstanceNormDoubleGradCheck(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle.fluid.core as core
+import gradient_checker
+import paddle
+
+from decorator_helper import prog_scope
+
+
+class TestInstanceNormDoubleGradCheck(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @prog_scope()
     def func(self, place):
         prog = fluid.Program()
@@ -33,12 +52,24 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
+<<<<<<< HEAD
             x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.static.nn.instance_norm(input=x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             gradient_checker.double_grad_check(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
             )
+=======
+            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            z = fluid.layers.instance_norm(input=x)
+            x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+            gradient_checker.double_grad_check([x],
+                                               z,
+                                               x_init=x_arr,
+                                               atol=atol,
+                                               place=place,
+                                               eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -50,8 +81,13 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
 
 
 class TestInstanceNormDoubleGradCheckWithoutParamBias(
+<<<<<<< HEAD
     TestInstanceNormDoubleGradCheck
 ):
+=======
+        TestInstanceNormDoubleGradCheck):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @prog_scope()
     def func(self, place):
         prog = fluid.Program()
@@ -61,6 +97,7 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
+<<<<<<< HEAD
             x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.static.nn.instance_norm(
                 input=x, param_attr=False, bias_attr=False
@@ -72,6 +109,23 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
 
 
 class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
+=======
+            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            z = fluid.layers.instance_norm(input=x,
+                                           param_attr=False,
+                                           bias_attr=False)
+            x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+            gradient_checker.double_grad_check([x],
+                                               z,
+                                               x_init=x_arr,
+                                               atol=atol,
+                                               place=place,
+                                               eps=eps)
+
+
+class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def instance_norm_wrapper(self, x):
         return paddle.nn.functional.instance_norm(x[0])
 
@@ -84,6 +138,7 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
+<<<<<<< HEAD
             x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.nn.functional.instance_norm(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -100,6 +155,25 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
                 atol=atol,
                 place=place,
             )
+=======
+            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            z = paddle.nn.functional.instance_norm(x)
+            x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+            # check for static mode
+            gradient_checker.double_grad_check([x],
+                                               z,
+                                               x_init=x_arr,
+                                               atol=atol,
+                                               place=place,
+                                               eps=eps)
+            # check for eager mode
+            gradient_checker.double_grad_check_for_dygraph(
+                self.instance_norm_wrapper, [x],
+                z,
+                x_init=x_arr,
+                atol=atol,
+                place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -111,8 +185,13 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
 
 
 class TestInstanceNormDoubleGradEagerCheckWithParams(
+<<<<<<< HEAD
     TestInstanceNormDoubleGradEagerCheck
 ):
+=======
+        TestInstanceNormDoubleGradEagerCheck):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def instance_norm_wrapper(self, x):
         instance_norm = paddle.nn.InstanceNorm2D(3)
         return instance_norm(x[0])
@@ -126,6 +205,7 @@ class TestInstanceNormDoubleGradEagerCheckWithParams(
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
+<<<<<<< HEAD
             x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.nn.InstanceNorm2D(3)(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -145,6 +225,29 @@ class TestInstanceNormDoubleGradEagerCheckWithParams(
 
 
 class TestBatchNormDoubleGradCheck(unittest.TestCase):
+=======
+            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            z = paddle.nn.InstanceNorm2D(3)(x)
+            x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+            # check for static mode
+            gradient_checker.double_grad_check([x],
+                                               z,
+                                               x_init=x_arr,
+                                               atol=atol,
+                                               place=place,
+                                               eps=eps)
+            # check for eager mode
+            gradient_checker.double_grad_check_for_dygraph(
+                self.instance_norm_wrapper, [x],
+                z,
+                x_init=x_arr,
+                atol=atol,
+                place=place)
+
+
+class TestBatchNormDoubleGradCheck(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -158,8 +261,12 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
         batch_norm = paddle.nn.BatchNorm2D(
             self.shape[self.channel_index],
             data_format=self.data_layout,
+<<<<<<< HEAD
             use_global_stats=self.use_global_stats,
         )
+=======
+            use_global_stats=self.use_global_stats)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return batch_norm(x[0])
 
     @prog_scope()
@@ -170,6 +277,7 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
+<<<<<<< HEAD
             x = paddle.create_parameter(dtype=dtype, shape=self.shape, name='x')
             z = paddle.static.nn.batch_norm(
                 input=x,
@@ -188,6 +296,25 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
                 atol=atol,
                 place=place,
             )
+=======
+            x = layers.create_parameter(dtype=dtype, shape=self.shape, name='x')
+            z = fluid.layers.batch_norm(input=x,
+                                        data_layout=self.data_layout,
+                                        use_global_stats=self.use_global_stats)
+            x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
+            gradient_checker.double_grad_check([x],
+                                               z,
+                                               x_init=x_arr,
+                                               atol=atol,
+                                               place=place,
+                                               eps=eps)
+            gradient_checker.double_grad_check_for_dygraph(
+                self.batch_norm_wrapper, [x],
+                z,
+                x_init=x_arr,
+                atol=atol,
+                place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -199,6 +326,10 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
 
 
 class TestBatchNormDoubleGradCheckCase1(TestBatchNormDoubleGradCheck):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test(self):
         self.data_layout = 'NHWC'
         self.use_global_stats = False
@@ -207,6 +338,10 @@ class TestBatchNormDoubleGradCheckCase1(TestBatchNormDoubleGradCheck):
 
 
 class TestBatchNormDoubleGradCheckCase2(TestBatchNormDoubleGradCheck):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test(self):
         self.data_layout = 'NCHW'
         self.use_global_stats = True
@@ -215,6 +350,10 @@ class TestBatchNormDoubleGradCheckCase2(TestBatchNormDoubleGradCheck):
 
 
 class TestBatchNormDoubleGradCheckCase3(TestBatchNormDoubleGradCheck):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test(self):
         self.data_layout = 'NHWC'
         self.use_global_stats = True
@@ -223,6 +362,10 @@ class TestBatchNormDoubleGradCheckCase3(TestBatchNormDoubleGradCheck):
 
 
 class TestBatchNormDoubleGradCheckCase4(TestBatchNormDoubleGradCheck):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test(self):
         self.data_layout = 'NCHW'
         self.use_global_stats = False
@@ -233,12 +376,20 @@ class TestBatchNormDoubleGradCheckCase4(TestBatchNormDoubleGradCheck):
         batch_norm = paddle.nn.BatchNorm3D(
             self.shape[self.channel_index],
             data_format=self.data_layout,
+<<<<<<< HEAD
             use_global_stats=self.use_global_stats,
         )
+=======
+            use_global_stats=self.use_global_stats)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return batch_norm(x[0])
 
 
 class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @prog_scope()
     def func(self, place):
         prog = fluid.Program()
@@ -247,6 +398,7 @@ class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
             dtype = "float32"
             eps = 0.005
             atol = 2e-4
+<<<<<<< HEAD
             chn = (
                 self.shape[1] if self.data_layout == 'NCHW' else self.shape[-1]
             )
@@ -256,10 +408,18 @@ class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
                 data_layout=self.data_layout,
                 use_global_stats=self.use_global_stats,
             )
+=======
+            chn = self.shape[1] if self.data_layout == 'NCHW' else self.shape[-1]
+            x = layers.create_parameter(dtype=dtype, shape=self.shape, name='x')
+            z = fluid.layers.batch_norm(input=x,
+                                        data_layout=self.data_layout,
+                                        use_global_stats=self.use_global_stats)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
             w, b = prog.global_block().all_parameters()[1:3]
             w_arr = np.ones(chn).astype(dtype)
             b_arr = np.zeros(chn).astype(dtype)
+<<<<<<< HEAD
             gradient_checker.double_grad_check(
                 [x, w, b],
                 z,
@@ -271,6 +431,18 @@ class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
 
 
 class TestBatchNormDoubleGradCheckCase6(TestBatchNormDoubleGradCheckCase5):
+=======
+            gradient_checker.double_grad_check([x, w, b],
+                                               z,
+                                               x_init=[x_arr, w_arr, b_arr],
+                                               atol=atol,
+                                               place=place,
+                                               eps=eps)
+
+
+class TestBatchNormDoubleGradCheckCase6(TestBatchNormDoubleGradCheckCase5):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test(self):
         self.data_layout = 'NCHW'
         self.use_global_stats = True

@@ -27,6 +27,10 @@ register_unity_group(
   bilateral_slice_op.cc)
 register_unity_group(
   cc
+<<<<<<< HEAD
+=======
+  mkldnn/batch_norm_mkldnn_op.cc
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bilinear_tensor_product_op.cc
   bmm_op.cc
   bpr_loss_op.cc
@@ -64,7 +68,10 @@ register_unity_group(
   cudnn_lstm_op.cc
   cumsum_op.cc
   cvm_op.cc
+<<<<<<< HEAD
   unzip_op.cc
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   data_norm_op.cc
   deformable_conv_op.cc
   deformable_conv_v1_op.cc
@@ -362,7 +369,13 @@ register_unity_group(
   lstm_op.cu.cc
   rnn_op.cu.cc
   split_op.cu.cc
+<<<<<<< HEAD
   assign_value_op.cu.cc
+=======
+  activation_cudnn_op.cu.cc
+  assign_value_op.cu.cc
+  merge_selected_rows_op.cu.cc
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   run_program_op.cu.cc
   warpctc_op.cu.cc)
 register_unity_group(
@@ -403,7 +416,10 @@ register_unity_group(
   ctc_align_op.cu
   cumsum_op.cu
   cvm_op.cu
+<<<<<<< HEAD
   unzip_op.cu
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   data_norm_op.cu
   deformable_conv_op.cu
   deformable_conv_v1_op.cu
@@ -466,6 +482,10 @@ register_unity_group(
   lookup_table_v2_op.cu
   margin_rank_loss_op.cu
   masked_select_op.cu
+<<<<<<< HEAD
+=======
+  merge_selected_rows_op.cu
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   lstmp_op.cu
   shuffle_channel_op.cu
   softmax_cudnn_op.cu
@@ -581,5 +601,8 @@ register_unity_group(cu expand_op.cu)
 register_unity_group(cu matmul_v2_op.cu)
 register_unity_group(cu top_k_v2_op.cu)
 register_unity_group(cu set_value_op.cu)
+<<<<<<< HEAD
 register_unity_group(cu unzip.cu)
 register_unity_group(cc unzip.cc)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

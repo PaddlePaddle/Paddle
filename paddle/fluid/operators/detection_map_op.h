@@ -60,6 +60,7 @@ template <typename Place, typename T>
 class DetectionMAPOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in_detect = ctx.Input<phi::DenseTensor>("DetectRes");
     auto* in_label = ctx.Input<phi::DenseTensor>("Label");
     auto* out_map = ctx.Output<phi::DenseTensor>("MAP");
@@ -71,6 +72,19 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto* out_pos_count = ctx.Output<phi::DenseTensor>("AccumPosCount");
     auto* out_true_pos = ctx.Output<phi::DenseTensor>("AccumTruePos");
     auto* out_false_pos = ctx.Output<phi::DenseTensor>("AccumFalsePos");
+=======
+    auto* in_detect = ctx.Input<framework::LoDTensor>("DetectRes");
+    auto* in_label = ctx.Input<framework::LoDTensor>("Label");
+    auto* out_map = ctx.Output<framework::Tensor>("MAP");
+
+    auto* in_pos_count = ctx.Input<framework::Tensor>("PosCount");
+    auto* in_true_pos = ctx.Input<framework::LoDTensor>("TruePos");
+    auto* in_false_pos = ctx.Input<framework::LoDTensor>("FalsePos");
+
+    auto* out_pos_count = ctx.Output<framework::Tensor>("AccumPosCount");
+    auto* out_true_pos = ctx.Output<framework::LoDTensor>("AccumTruePos");
+    auto* out_false_pos = ctx.Output<framework::LoDTensor>("AccumFalsePos");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     float overlap_threshold = ctx.Attr<float>("overlap_threshold");
     bool evaluate_difficult = ctx.Attr<bool>("evaluate_difficult");
@@ -102,7 +116,11 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     std::map<int, std::vector<std::pair<T, int>>> true_pos;
     std::map<int, std::vector<std::pair<T, int>>> false_pos;
 
+<<<<<<< HEAD
     auto* has_state = ctx.Input<phi::DenseTensor>("HasState");
+=======
+    auto* has_state = ctx.Input<framework::LoDTensor>("HasState");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int state = 0;
     if (has_state) {
       state = has_state->data<int>()[0];
@@ -182,8 +200,13 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     clipped_bbox->ymax = std::max(std::min(bbox.ymax, one), zero);
   }
 
+<<<<<<< HEAD
   void GetBoxes(const phi::DenseTensor& input_label,
                 const phi::DenseTensor& input_detect,
+=======
+  void GetBoxes(const framework::LoDTensor& input_label,
+                const framework::LoDTensor& input_detect,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 std::vector<std::map<int, std::vector<Box>>>* gt_boxes,
                 std::vector<std::map<int, std::vector<std::pair<T, Box>>>>&
                     detect_boxes) const {
@@ -241,9 +264,15 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       const std::map<int, int>& label_pos_count,
       const std::map<int, std::vector<std::pair<T, int>>>& true_pos,
       const std::map<int, std::vector<std::pair<T, int>>>& false_pos,
+<<<<<<< HEAD
       phi::DenseTensor* output_pos_count,
       phi::DenseTensor* output_true_pos,
       phi::DenseTensor* output_false_pos,
+=======
+      framework::Tensor* output_pos_count,
+      framework::LoDTensor* output_true_pos,
+      framework::LoDTensor* output_false_pos,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const int class_num) const {
     int true_pos_count = 0;
     int false_pos_count = 0;
@@ -307,9 +336,15 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     output_false_pos->set_lod(false_pos_lod);
   }
 
+<<<<<<< HEAD
   void GetInputPos(const phi::DenseTensor& input_pos_count,
                    const phi::DenseTensor& input_true_pos,
                    const phi::DenseTensor& input_false_pos,
+=======
+  void GetInputPos(const framework::Tensor& input_pos_count,
+                   const framework::LoDTensor& input_true_pos,
+                   const framework::LoDTensor& input_false_pos,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    std::map<int, int>* label_pos_count,
                    std::map<int, std::vector<std::pair<T, int>>>* true_pos,
                    std::map<int, std::vector<std::pair<T, int>>>* false_pos,
@@ -319,7 +354,11 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       (*label_pos_count)[i] = pos_count_data[i];
     }
 
+<<<<<<< HEAD
     auto SetData = [](const phi::DenseTensor& pos_tensor,
+=======
+    auto SetData = [](const framework::LoDTensor& pos_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       std::map<int, std::vector<std::pair<T, int>>>& pos) {
       const T* pos_data = pos_tensor.data<T>();
       auto& pos_data_lod = pos_tensor.lod()[0];

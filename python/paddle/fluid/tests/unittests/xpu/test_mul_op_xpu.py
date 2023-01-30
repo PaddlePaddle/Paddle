@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -32,26 +33,78 @@ from xpu.get_test_cover_info import (
 
 
 class XPUTestMulOp(XPUOpTestWrapper):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid.core as core
+import sys
+
+sys.path.append("..")
+from op_test_xpu import XPUOpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+import time
+
+paddle.enable_static()
+
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+
+class TestMulOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of mul_op must be Variable.
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.XPUPlace(0))
+            x2 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.XPUPlace(0))
+            self.assertRaises(TypeError, fluid.layers.mul, x1, x2)
+            # The input dtype of mul_op must be float32.
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="int32")
+            x4 = fluid.layers.data(name='x4', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.mul, x3, x4)
+
+
+class XPUTestMulOp(XPUOpTestWrapper):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'mul'
         self.use_dynamic_create_class = False
 
     class TestXPUMulOp1(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "mul"
             self.dtype = self.in_type
             self.inputs = {
                 'X': np.random.random((3, 4, 2, 9)).astype(self.in_type_str),
+<<<<<<< HEAD
                 'Y': np.random.random((3, 6, 1, 2, 3)).astype(self.in_type_str),
+=======
+                'Y': np.random.random((3, 6, 1, 2, 3)).astype(self.in_type_str)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.attrs = {
                 'x_num_col_dims': 2,
                 'y_num_col_dims': 2,
             }
+<<<<<<< HEAD
             result = np.dot(
                 self.inputs['X'].reshape(3 * 4, 2 * 9),
                 self.inputs['Y'].reshape(3 * 6, 1 * 2 * 3),
             )
+=======
+            result = np.dot(self.inputs['X'].reshape(3 * 4, 2 * 9),
+                            self.inputs['Y'].reshape(3 * 6, 1 * 2 * 3))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             result = result.reshape(3, 4, 1, 2, 3)
             self.outputs = {'Out': result}
 
@@ -63,13 +116,20 @@ class XPUTestMulOp(XPUOpTestWrapper):
         def test_check_grad_normal(self):
             place = paddle.XPUPlace(0)
             paddle.enable_static()
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place, ['X', 'Y'], 'Out', max_relative_error=0.1
             )
+=======
+            self.check_grad_with_place(place, ['X', 'Y'],
+                                       'Out',
+                                       max_relative_error=0.1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_grad_ingore_x(self):
             place = paddle.XPUPlace(0)
             paddle.enable_static()
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place,
                 ['Y'],
@@ -77,10 +137,17 @@ class XPUTestMulOp(XPUOpTestWrapper):
                 max_relative_error=0.1,
                 no_grad_set=set("X"),
             )
+=======
+            self.check_grad_with_place(place, ['Y'],
+                                       'Out',
+                                       max_relative_error=0.1,
+                                       no_grad_set=set("X"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_grad_ignore_y(self):
             place = paddle.XPUPlace(0)
             paddle.enable_static()
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place,
                 ['X'],
@@ -90,13 +157,26 @@ class XPUTestMulOp(XPUOpTestWrapper):
             )
 
     class TestXPUMulOp2(XPUOpTest):
+=======
+            self.check_grad_with_place(place, ['X'],
+                                       'Out',
+                                       max_relative_error=0.1,
+                                       no_grad_set=set('Y'))
+
+    class TestXPUMulOp2(XPUOpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "mul"
             self.use_xpu = True
             self.dtype = self.in_type
             self.inputs = {
                 'X': np.random.random((20, 5)).astype(self.in_type_str),
+<<<<<<< HEAD
                 'Y': np.random.random((5, 21)).astype(self.in_type_str),
+=======
+                'Y': np.random.random((5, 21)).astype(self.in_type_str)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
@@ -108,13 +188,20 @@ class XPUTestMulOp(XPUOpTestWrapper):
         def test_check_grad_normal(self):
             place = paddle.XPUPlace(0)
             paddle.enable_static()
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place, ['X', 'Y'], 'Out', max_relative_error=0.1
             )
+=======
+            self.check_grad_with_place(place, ['X', 'Y'],
+                                       'Out',
+                                       max_relative_error=0.1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_grad_ingore_x(self):
             place = paddle.XPUPlace(0)
             paddle.enable_static()
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place,
                 ['Y'],
@@ -122,10 +209,17 @@ class XPUTestMulOp(XPUOpTestWrapper):
                 max_relative_error=0.1,
                 no_grad_set=set("X"),
             )
+=======
+            self.check_grad_with_place(place, ['Y'],
+                                       'Out',
+                                       max_relative_error=0.1,
+                                       no_grad_set=set("X"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_grad_ingore_y(self):
             place = paddle.XPUPlace(0)
             paddle.enable_static()
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place,
                 ['X'],
@@ -133,6 +227,12 @@ class XPUTestMulOp(XPUOpTestWrapper):
                 max_relative_error=0.1,
                 no_grad_set=set('Y'),
             )
+=======
+            self.check_grad_with_place(place, ['X'],
+                                       'Out',
+                                       max_relative_error=0.1,
+                                       no_grad_set=set('Y'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 support_types = get_xpu_op_support_types('mul')

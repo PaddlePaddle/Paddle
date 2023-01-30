@@ -23,13 +23,22 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/sequence_ops/sequence_softmax_op.h"
 #include "paddle/phi/kernels/funcs/math.h"
+=======
+#include "paddle/fluid/operators/math.h"
+#include "paddle/fluid/operators/sequence_ops/sequence_softmax_op.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using LoDTensor = phi::DenseTensor;
+=======
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T, int BlockDim>
 using BlockReduce = cub::BlockReduce<T, BlockDim>;
@@ -67,7 +76,11 @@ __global__ void sequence_softmax_kernel(const T *in_data,
     T sum_data = 0;
     for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
       T ele = in_data[start + tid];
+<<<<<<< HEAD
       sum_data += phi::funcs::real_exp(ele - shared_max_data);
+=======
+      sum_data += real_exp(ele - shared_max_data);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     sum_data =
         BlockReduce<T, BlockDim>(temp_storage).Reduce(sum_data, cub::Sum());
@@ -79,7 +92,11 @@ __global__ void sequence_softmax_kernel(const T *in_data,
     // get final resit
     for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
       T ele = in_data[start + tid];
+<<<<<<< HEAD
       ele = phi::funcs::real_exp(ele - shared_max_data) / shared_sum_data;
+=======
+      ele = real_exp(ele - shared_max_data) / shared_sum_data;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       out_data[start + tid] = ele;
     }
   }

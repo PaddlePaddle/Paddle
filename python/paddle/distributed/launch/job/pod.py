@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import annotations
+=======
+from collections import OrderedDict
+from .container import Container
+
+from .status import Status
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import random
 import time
 
+<<<<<<< HEAD
 from .container import Container
 from .status import Status
 
@@ -33,6 +41,21 @@ class PodSepc:
 
         # self.resource: Resource = None
         # self.status: Status = None
+=======
+
+class PodSepc(object):
+
+    def __init__(self):
+        self._name = ''.join(
+            random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6))
+
+        # by controller
+        self._init_containers: List[Container] = []
+        self._containers: List[Container] = []
+
+        #self.resource: Resource = None
+        #self.status: Status = None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._rank = -1
         self._init_timeout = None
@@ -42,13 +65,23 @@ class PodSepc:
 
 
 class Pod(PodSepc):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         super().__init__()
 
     def __str__(self):
+<<<<<<< HEAD
         return "Pod: {}, replicas {}, status {}".format(
             self.name, self.replicas, self.status
         )
+=======
+        return "Pod: {}, replicas {}, status {}".format(self.name,
+                                                        self.replicas,
+                                                        self.status)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def failed_container(self):
         cs = []
@@ -183,6 +216,7 @@ class Pod(PodSepc):
         else:
             self._containers[idx].tail()
 
+<<<<<<< HEAD
     def watch(
         self,
         all_list=[Status.COMPLETED],
@@ -190,6 +224,13 @@ class Pod(PodSepc):
         interval=1,
         timeout=-1,
     ):
+=======
+    def watch(self,
+              all_list=[Status.COMPLETED],
+              any_list=[Status.FAILED],
+              interval=1,
+              timeout=-1):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         '''
         watch return if any container status in any_list
         or all container status in all_list

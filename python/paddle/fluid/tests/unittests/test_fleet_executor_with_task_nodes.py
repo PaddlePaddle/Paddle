@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
+=======
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
@@ -24,10 +28,15 @@ paddle.enable_static()
 
 
 class TestFleetExecutor(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def run_fleet_executor(self, place, x_data, y_data):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):
+<<<<<<< HEAD
             x = paddle.static.data(
                 name='x', shape=[-1] + list(x_data.shape), dtype=x_data.dtype
             )
@@ -36,6 +45,14 @@ class TestFleetExecutor(unittest.TestCase):
                 name='y', shape=[-1] + list(y_data.shape), dtype=y_data.dtype
             )
             y.desc.set_need_check_feed(False)
+=======
+            x = fluid.layers.data(name='x',
+                                  shape=x_data.shape,
+                                  dtype=x_data.dtype)
+            y = fluid.layers.data(name='y',
+                                  shape=y_data.shape,
+                                  dtype=y_data.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             z = x + y
             a = 2 * x + 3 * y
             loss = paddle.mean(a)
@@ -44,6 +61,7 @@ class TestFleetExecutor(unittest.TestCase):
             steps_per_pass = 10
             bd = [steps_per_pass * p for p in passes]
             lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
+<<<<<<< HEAD
             lr_val = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr
             )
@@ -51,6 +69,13 @@ class TestFleetExecutor(unittest.TestCase):
                 learning_rate=lr_val,
                 grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
             )
+=======
+            lr_val = paddle.optimizer.lr.PiecewiseDecay(boundaries=bd,
+                                                        values=lr)
+            opt = paddle.optimizer.AdamW(
+                learning_rate=lr_val,
+                grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             opt.minimize(loss)
         # TODO: section_program will be removed in the future
         task_node = TaskNode(
@@ -59,6 +84,7 @@ class TestFleetExecutor(unittest.TestCase):
             rank=0,
             node_type="Compute",
             max_run_times=1,
+<<<<<<< HEAD
             lazy_initialize=True,
         )
         empty_program._pipeline_opt = {
@@ -73,6 +99,25 @@ class TestFleetExecutor(unittest.TestCase):
             feed={'x': x_data, 'y': y_data},
             fetch_list=[z.name, a.name],
         )
+=======
+            max_slot_times=1,
+            lazy_initialize=True)
+        empty_program._pipeline_opt = {
+            "fleet_opt": {
+                'tasks': [task_node],
+                'task_id_to_rank': {
+                    task_node.task_id(): 0
+                }
+            },
+            "section_program": empty_program
+        }
+        res = exe.run(empty_program,
+                      feed={
+                          'x': x_data,
+                          'y': y_data
+                      },
+                      fetch_list=[z.name, a.name])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return res
 
     def test_executor_on_single_device(self):

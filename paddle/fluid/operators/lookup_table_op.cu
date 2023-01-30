@@ -15,8 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/lookup_table_op.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -93,7 +98,11 @@ __global__ void LookupTableGrad(T *table,
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
+<<<<<<< HEAD
       phi::CudaAtomicAdd(&tab[i], out[i]);
+=======
+      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     idy += BlockDimY * GridDimX;
   }
@@ -103,9 +112,15 @@ template <typename T>
 class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *table_t = context.Input<phi::DenseTensor>("W");
     auto *ids_t = context.Input<phi::DenseTensor>("Ids");
     auto *output_t = context.Output<phi::DenseTensor>("Out");
+=======
+    auto *table_t = context.Input<LoDTensor>("W");
+    auto *ids_t = context.Input<LoDTensor>("Ids");
+    auto *output_t = context.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
     auto id_name = context.InputNames("Ids").front();
@@ -157,10 +172,16 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
+<<<<<<< HEAD
       auto *ids = context.Input<phi::DenseTensor>("Ids");
       auto *table = context.Input<phi::DenseTensor>("W");
       auto *d_output =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+      auto *ids = context.Input<LoDTensor>("Ids");
+      auto *table = context.Input<LoDTensor>("W");
+      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto *d_table =
           context.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
@@ -210,11 +231,17 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
                    stream);
 
     } else {
+<<<<<<< HEAD
       auto ids_t = context.Input<phi::DenseTensor>("Ids");
       auto d_output_t =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto d_table_t =
           context.Output<phi::DenseTensor>(framework::GradVarName("W"));
+=======
+      auto ids_t = context.Input<LoDTensor>("Ids");
+      auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       int N = d_table_t->dims()[0];
       int D = d_table_t->dims()[1];

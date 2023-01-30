@@ -60,7 +60,11 @@ class GLOOParallelContext : public ParallelContext {
   void SynchronizeCompute() override;
 
  private:
+<<<<<<< HEAD
   void AllReduce(const phi::DenseTensor& src, phi::DenseTensor* dst);
+=======
+  void AllReduce(const framework::Tensor& src, framework::Tensor* dst);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void AllReduce(const phi::SelectedRows& src, phi::SelectedRows* dst);
 
  private:

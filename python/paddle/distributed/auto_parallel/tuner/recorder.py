@@ -18,7 +18,11 @@
 import numpy as np
 
 
+<<<<<<< HEAD
 class MetricRecord:
+=======
+class MetricRecord(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     One record for a single metric at a given execution step.
     """
@@ -62,7 +66,11 @@ class MetricRecord:
         return "MetricRecord(value={}, step={})".format(self.value, self.step)
 
 
+<<<<<<< HEAD
 class MetricRecords:
+=======
+class MetricRecords(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Records of a single metric across different executions.
     """
@@ -70,10 +78,15 @@ class MetricRecords:
     def __init__(self, direction="min"):
         if direction not in {"min", "max"}:
             raise ValueError(
+<<<<<<< HEAD
                 "direction should be one of {{min, max}}, but got: {}.".format(
                     direction
                 )
             )
+=======
+                "direction should be one of {min, max}, but got: {}.".format(
+                    direction))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._direction = direction
         self._records = {}
 
@@ -143,7 +156,11 @@ class MetricRecords:
         return records
 
 
+<<<<<<< HEAD
 class MetricsRecorder:
+=======
+class MetricsRecorder(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Record the values for all metrics.
     """

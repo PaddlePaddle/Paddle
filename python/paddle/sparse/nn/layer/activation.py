@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle.nn import Layer
 
 from .. import functional as F
+=======
+from .. import functional as F
+from paddle.nn import Layer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -50,7 +55,11 @@ class ReLU(Layer):
     """
 
     def __init__(self, name=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(ReLU, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._name = name
 
     def forward(self, x):
@@ -70,8 +79,13 @@ class Softmax(Layer):
         Only support axis=-1 for SparseCsrTensor, which is faster when read data
         by row (axis=-1).
 
+<<<<<<< HEAD
     Transform x to dense matix, and :math:`i` is row index, :math:`j` is column index.
     If axis=-1, We have:
+=======
+    From the point of view of dense matrix, for each row :math:`i` and each column :math:`j`
+    in the matrix, we have:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     .. math::
 
@@ -90,6 +104,7 @@ class Softmax(Layer):
         .. code-block:: python
 
             import paddle
+<<<<<<< HEAD
             paddle.seed(2022)
 
             mask = paddle.rand((3, 4)) < 0.7
@@ -120,6 +135,35 @@ class Softmax(Layer):
 
     def __init__(self, axis=-1, name=None):
         super().__init__()
+=======
+            import numpy as np
+            paddle.seed(100)
+
+            mask = np.random.rand(3, 4) < 0.5
+            np_x = np.random.rand(3, 4) * mask
+            # [[0.         0.         0.96823406 0.19722934]
+            #  [0.94373937 0.         0.02060066 0.71456372]
+            #  [0.         0.         0.         0.98275049]]
+
+            csr = paddle.to_tensor(np_x).to_sparse_csr()
+            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 2, 5, 6],
+            #        cols=[2, 3, 0, 2, 3, 3],
+            #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
+            #                0.98275049])
+
+            softmax = paddle.sparse.nn.Softmax()
+            out = softmax(csr)
+            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 2, 5, 6],
+            #        cols=[2, 3, 0, 2, 3, 3],
+            #        values=[0.68373820, 0.31626180, 0.45610887, 0.18119845, 0.36269269,
+            #                1.        ])
+    """
+
+    def __init__(self, axis=-1, name=None):
+        super(Softmax, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._axis = axis
         self._name = name
 
@@ -138,7 +182,11 @@ class ReLU6(Layer):
 
     .. math::
 
+<<<<<<< HEAD
         ReLU6(x) = min(max(0,x), 6)
+=======
+        ReLU(x) = min(max(0,x), 6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -161,7 +209,11 @@ class ReLU6(Layer):
     """
 
     def __init__(self, name=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(ReLU6, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._name = name
 
     def forward(self, x):
@@ -210,7 +262,11 @@ class LeakyReLU(Layer):
     """
 
     def __init__(self, negative_slope=0.01, name=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(LeakyReLU, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._negative_slope = negative_slope
         self._name = name
 

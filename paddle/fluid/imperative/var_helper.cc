@@ -45,7 +45,11 @@ const std::shared_ptr<VariableWrapper> &GetVariableWrapper<VariableWrapper>(
 void InitializeVariable(paddle::framework::Variable *var,
                         paddle::framework::proto::VarType::Type var_type) {
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
+<<<<<<< HEAD
     var->GetMutable<phi::DenseTensor>();
+=======
+    var->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
     var->GetMutable<phi::SelectedRows>();
   } else if (var_type == paddle::framework::proto::VarType::FEED_MINIBATCH) {
@@ -81,8 +85,13 @@ void InitializeVariable(paddle::framework::Variable *var,
 template <typename VarType>
 const paddle::platform::Place &GetPlace(const std::shared_ptr<VarType> &var) {
   paddle::framework::Variable variable = var->Var();
+<<<<<<< HEAD
   if (variable.IsType<phi::DenseTensor>()) {
     return variable.Get<phi::DenseTensor>().place();
+=======
+  if (variable.IsType<paddle::framework::LoDTensor>()) {
+    return variable.Get<paddle::framework::LoDTensor>().place();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (variable.IsType<phi::SelectedRows>()) {
     return variable.Get<phi::SelectedRows>().place();
   } else {
@@ -124,7 +133,11 @@ void SetType<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
                                  framework::proto::VarType::Type type) {
   switch (type) {
     case paddle::framework::proto::VarType::LOD_TENSOR: {
+<<<<<<< HEAD
       var->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+      var->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       break;
     }
     case paddle::framework::proto::VarType::SELECTED_ROWS: {
@@ -173,12 +186,21 @@ framework::proto::VarType::Type GetDataType<egr::EagerVariable>(
   if (var->Var().IsType<phi::SelectedRows>()) {
     return framework::TransToProtoVarType(
         var->Var().Get<phi::SelectedRows>().value().type());
+<<<<<<< HEAD
   } else if (var->Var().IsType<phi::DenseTensor>()) {
     return framework::TransToProtoVarType(
         var->Var().Get<phi::DenseTensor>().type());
   } else {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "We only support phi::SelectedRows and phi::DenseTensor in "
+=======
+  } else if (var->Var().IsType<framework::LoDTensor>()) {
+    return framework::TransToProtoVarType(
+        var->Var().Get<framework::LoDTensor>().type());
+  } else {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "We only support phi::SelectedRows and framework::LoDTensor in "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "eager mode, but we got %s here, please checkout your var type of "
         "tensor: %s",
         paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),
@@ -192,6 +214,7 @@ template framework::proto::VarType::Type GetDataType<VariableWrapper>(
 
 /* GetDataLayout */
 template <typename VarType>
+<<<<<<< HEAD
 phi::DataLayout GetDataLayout(std::shared_ptr<VarType> var) {
   return var->DataLayout();
 }
@@ -203,18 +226,38 @@ phi::DataLayout GetDataLayout<egr::EagerVariable>(
   } else {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Only support phi::DenseTensor, but got %s here, please checkout "
+=======
+paddle::experimental::DataLayout GetDataLayout(std::shared_ptr<VarType> var) {
+  return var->DataLayout();
+}
+template <>
+paddle::experimental::DataLayout GetDataLayout<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> var) {
+  if (var->Var().IsType<framework::LoDTensor>()) {
+    return var->Var().Get<framework::LoDTensor>().layout();
+  } else {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Only support framework::LoDTensor, but got %s here, please checkout "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "var type of "
         "tensor: %s",
         paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),
         var->name()));
   }
 }
+<<<<<<< HEAD
 template phi::DataLayout GetDataLayout<VarBase>(std::shared_ptr<VarBase> var);
 template phi::DataLayout GetDataLayout<VariableWrapper>(
+=======
+template paddle::experimental::DataLayout GetDataLayout<VarBase>(
+    std::shared_ptr<VarBase> var);
+template paddle::experimental::DataLayout GetDataLayout<VariableWrapper>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::shared_ptr<VariableWrapper> var);
 
 /* SetDataLayout */
 template <typename VarType>
+<<<<<<< HEAD
 void SetDataLayout(std::shared_ptr<VarType> var, const phi::DataLayout layout) {
   var->SetDataLayout(layout);
 }
@@ -226,12 +269,29 @@ void SetDataLayout<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
   } else {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Only support phi::DenseTensor, but got %s here, please checkout "
+=======
+void SetDataLayout(std::shared_ptr<VarType> var,
+                   const paddle::experimental::DataLayout layout) {
+  var->SetDataLayout(layout);
+}
+template <>
+void SetDataLayout<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> var,
+    const paddle::experimental::DataLayout layout) {
+  if (var->Var().IsType<framework::LoDTensor>()) {
+    var->MutableVar()->GetMutable<paddle::framework::LoDTensor>()->set_layout(
+        layout);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Only support framework::LoDTensor, but got %s here, please checkout "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "var type of "
         "tensor: %s",
         paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),
         var->name()));
   }
 }
+<<<<<<< HEAD
 template void SetDataLayout<VarBase>(std::shared_ptr<VarBase> var,
                                      const phi::DataLayout layout);
 template void SetDataLayout<VariableWrapper>(
@@ -240,16 +300,35 @@ template void SetDataLayout<VariableWrapper>(
 /* CheckCachedKey */
 template <typename VarType>
 bool CheckCachedKey(std::shared_ptr<VarType> var, const phi::KernelKey &key) {
+=======
+template void SetDataLayout<VarBase>(
+    std::shared_ptr<VarBase> var,
+    const paddle::experimental::DataLayout layout);
+template void SetDataLayout<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var,
+    const paddle::experimental::DataLayout layout);
+
+/* CheckCachedKey */
+template <typename VarType>
+bool CheckCachedKey(std::shared_ptr<VarType> var,
+                    const paddle::framework::OpKernelType &key) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return GetVariableWrapper(var)->hasCacheKey(key);
 }
 template <>
 bool CheckCachedKey<egr::EagerVariable>(
+<<<<<<< HEAD
     std::shared_ptr<egr::EagerVariable> tensor, const phi::KernelKey &key) {
+=======
+    std::shared_ptr<egr::EagerVariable> tensor,
+    const paddle::framework::OpKernelType &key) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // TODO(jiabin): Support this later
   // VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key is
   // equal to self: " << key == key.
   return false;
 }
+<<<<<<< HEAD
 template bool CheckCachedKey<VarBase>(std::shared_ptr<VarBase> var,
                                       const phi::KernelKey &key);
 template bool CheckCachedKey<VariableWrapper>(
@@ -259,11 +338,28 @@ template bool CheckCachedKey<VariableWrapper>(
 template <typename VarType>
 std::shared_ptr<VariableWrapper> GetCachedValue(std::shared_ptr<VarType> var,
                                                 const phi::KernelKey &key) {
+=======
+template bool CheckCachedKey<VarBase>(
+    std::shared_ptr<VarBase> var, const paddle::framework::OpKernelType &key);
+template bool CheckCachedKey<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var,
+    const paddle::framework::OpKernelType &key);
+
+/* GetCachedValue */
+template <typename VarType>
+std::shared_ptr<VariableWrapper> GetCachedValue(
+    std::shared_ptr<VarType> var, const paddle::framework::OpKernelType &key) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return GetVariableWrapper(var)->getCacheValue(key);
 }
 template <>
 std::shared_ptr<VariableWrapper> GetCachedValue(
+<<<<<<< HEAD
     std::shared_ptr<egr::EagerVariable> var, const phi::KernelKey &key) {
+=======
+    std::shared_ptr<egr::EagerVariable> var,
+    const paddle::framework::OpKernelType &key) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // TODO(jiabin): Support this later
   //   PADDLE_THROW(platform::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
@@ -273,21 +369,36 @@ std::shared_ptr<VariableWrapper> GetCachedValue(
   return std::make_shared<VariableWrapper>("");
 }
 template std::shared_ptr<VariableWrapper> GetCachedValue<VarBase>(
+<<<<<<< HEAD
     std::shared_ptr<VarBase> var, const phi::KernelKey &key);
 template std::shared_ptr<VariableWrapper> GetCachedValue<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var, const phi::KernelKey &key);
+=======
+    std::shared_ptr<VarBase> var, const paddle::framework::OpKernelType &key);
+template std::shared_ptr<VariableWrapper> GetCachedValue<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var,
+    const paddle::framework::OpKernelType &key);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 /* SetCachedValue */
 template <typename VarType>
 void SetCachedValue(std::shared_ptr<VarType> var,
+<<<<<<< HEAD
                     const phi::KernelKey &key,
+=======
+                    const paddle::framework::OpKernelType &key,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     std::shared_ptr<VarType> res) {
   GetVariableWrapper(var)->setCacheValue(key, GetVariableWrapper(res));
 }
 template <>
 void SetCachedValue<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> tensor,
+<<<<<<< HEAD
     const phi::KernelKey &key,
+=======
+    const paddle::framework::OpKernelType &key,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::shared_ptr<egr::EagerVariable> res) {
   //   PADDLE_THROW(platform::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
@@ -295,12 +406,22 @@ void SetCachedValue<egr::EagerVariable>(
   //   VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key
   //   is equal to self: " << key == key << " and res name is:" << res->Name().
 }
+<<<<<<< HEAD
 template void SetCachedValue<VarBase>(std::shared_ptr<VarBase> var,
                                       const phi::KernelKey &key,
                                       std::shared_ptr<VarBase> res);
 template void SetCachedValue<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var,
     const phi::KernelKey &key,
+=======
+template void SetCachedValue<VarBase>(
+    std::shared_ptr<VarBase> var,
+    const paddle::framework::OpKernelType &key,
+    std::shared_ptr<VarBase> res);
+template void SetCachedValue<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var,
+    const paddle::framework::OpKernelType &key,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::shared_ptr<VariableWrapper> res);
 }  // namespace imperative
 }  // namespace paddle

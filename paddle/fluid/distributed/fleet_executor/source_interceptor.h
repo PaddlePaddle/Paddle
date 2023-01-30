@@ -25,7 +25,11 @@ namespace distributed {
  *   1. receive `start` message from carrier
  *   2. send num_of_steps `data_is_ready` message to downstream
  */
+<<<<<<< HEAD
 class SourceInterceptor final : public Interceptor {
+=======
+class SourceInterceptor : public Interceptor {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   SourceInterceptor(int64_t interceptor_id, TaskNode* node);
 

@@ -23,6 +23,12 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -147,6 +153,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "XX");
 }
 
+<<<<<<< HEAD
 phi::KernelKey FusionGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -186,17 +193,71 @@ void FusionGRUOpMaker::Make() {
       .AsIntermediate();
   AddOutput("XX",
             "(phi::DenseTensor) the result after X * WeightX (size is T x 3D)"
+=======
+framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+#ifdef PADDLE_WITH_MKLDNN
+  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+}
+
+void FusionGRUOpMaker::Make() {
+  AddInput("X",
+           "(LoDTensor) the input is a LodTensor, which support "
+           "variable-time length input sequence. The underlying tensor in "
+           "this LoDTensor is a matrix with shape (T X M), where T is the "
+           "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput("H0",
+           "(Tensor, optional) The initial hidden state is an optional "
+           "input. This is a tensor with shape (N x D), where N is the "
+           "batch size, D is the hidden size.")
+      .AsDispensable();
+  AddInput("WeightX",
+           "(Tensor) The FC weight with shape (M x 3D),"
+           "where M is the dim size of x, D is the hidden size. ");
+  AddInput("WeightH",
+           "(Tensor) (D x 3D) Same as GRUOp, where D is the hidden size. "
+           "This weight is not exactly D x 3D as: {W_update, W_reset, W_state}"
+           "Acutally they are D x 2D and D x D two part weights."
+           "{W_update, W_reset; W_state}"
+           "{D x (D + D); D x D}");
+  AddInput("Bias",
+           "(Tensor, optional) (1 x 3D)."
+           "Almost same as GRUOp."
+           "Note: if have FC bias it should be added on this bias.")
+      .AsDispensable();
+  AddOutput("ReorderedH0", "(Tensor) (N x D), which N is the min-batch size.")
+      .AsIntermediate();
+  AddOutput("XX",
+            "(LoDTensor) the result after X * WeightX (size is T x 3D)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             " or batched_X (size is T x M), this will be automatically chosen,"
             " where T is the total time steps in this mini-batch,"
             " D is the hidden size, M is the dim size of x input.")
       .AsIntermediate();
   AddOutput("BatchedInput",
+<<<<<<< HEAD
             "(phi::DenseTensor) This is the batched result of input X"
             "or the batched result after fc, shape (T x 3D)")
       .AsIntermediate();
   AddOutput("BatchedOut", "(phi::DenseTensor) (T X D) save batched hidden.")
       .AsIntermediate();
   AddOutput("Hidden", "(phi::DenseTensor) (T x D) Same as GRUOp");
+=======
+            "(LoDTensor) This is the batched result of input X"
+            "or the batched result after fc, shape (T x 3D)")
+      .AsIntermediate();
+  AddOutput("BatchedOut", "(LoDTensor) (T X D) save batched hidden.")
+      .AsIntermediate();
+  AddOutput("Hidden", "(LoDTensor) (T x D) Same as GRUOp");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddAttr<std::string>("activation",
                        "(string, default tanh) "
                        "The activation type used for output candidate {h}_t.")
@@ -244,7 +305,11 @@ void FusionGRUOpMaker::Make() {
       .SetDefault(false);
   AddComment(R"DOC(
 The Fusion complete GRU Operator.
+<<<<<<< HEAD
 This operator fuse the fully-connected operator into GRU,
+=======
+This operator fuse the fully-connected operator into GRU, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 more details can refer to GRU op.
 )DOC");
 }
@@ -261,9 +326,15 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   }
 
 #define INIT_BASE_DEFINES                                  \
+<<<<<<< HEAD
   auto* x = ctx.Input<phi::DenseTensor>("X");              \
   auto* wh = ctx.Input<phi::DenseTensor>("WeightH");       \
   auto* xx = ctx.Output<phi::DenseTensor>("XX");           \
+=======
+  auto* x = ctx.Input<LoDTensor>("X");                     \
+  auto* wh = ctx.Input<Tensor>("WeightH");                 \
+  auto* xx = ctx.Output<LoDTensor>("XX");                  \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto x_lod = x->lod();                                   \
   auto x_dims = x->dims(); /* T x M*/                      \
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1) \
@@ -274,10 +345,17 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   const int D3 = wh_dims[1]
 
 #define INIT_OTHER_DEFINES                                                   \
+<<<<<<< HEAD
   auto* h0 = ctx.Input<phi::DenseTensor>("H0");                              \
   auto* wx = ctx.Input<phi::DenseTensor>("WeightX");                         \
   auto* bias = ctx.Input<phi::DenseTensor>("Bias");                          \
   auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden");                 \
+=======
+  auto* h0 = ctx.Input<Tensor>("H0");                                        \
+  auto* wx = ctx.Input<Tensor>("WeightX");                                   \
+  auto* bias = ctx.Input<Tensor>("Bias");                                    \
+  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");                        \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool is_reverse = ctx.Attr<bool>("is_reverse");                            \
   const int M = x_mat_dims[1];                                               \
   const int D = wh_dims[0];                                                  \
@@ -401,9 +479,15 @@ class FusionGRUKernel : public framework::OpKernel<T> {
       return;
     }
     INIT_OTHER_DEFINES;
+<<<<<<< HEAD
     auto* reordered_h0 = ctx.Output<phi::DenseTensor>("ReorderedH0");
     auto* batched_input = ctx.Output<phi::DenseTensor>("BatchedInput");
     auto* batched_out = ctx.Output<phi::DenseTensor>("BatchedOut");
+=======
+    auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
+    auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
+    auto* batched_out = ctx.Output<LoDTensor>("BatchedOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T* batched_input_data = batched_input->mutable_data<T>(place);
     T* batched_out_data = batched_out->mutable_data<T>(place);
     hidden_out->mutable_data<T>(place);

@@ -16,6 +16,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/tril_triu_grad_kernel_impl.h"
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(tril_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -38,6 +39,8 @@ PD_REGISTER_KERNEL(triu_grad,
                    int64_t,
                    phi::dtype::float16) {}
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_KERNEL(tril_triu_grad,
                    GPU,
                    ALL_LAYOUT,

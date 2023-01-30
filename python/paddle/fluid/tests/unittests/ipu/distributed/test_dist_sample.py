@@ -54,10 +54,15 @@ python3.7 python/paddle/fluid/tests/unittests/ipu/distributed/test_dist_sample.p
 
 import os
 import sys
+<<<<<<< HEAD
 
 import numpy as np
 
 import paddle
+=======
+import paddle
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 mpi_comm = None
 
@@ -93,6 +98,7 @@ def Test(use_dist, file_name):
             if use_dist:
                 ipu_strategy.set_graph_config(num_ipus=2, is_training=True)
                 # Set distributed envs
+<<<<<<< HEAD
                 ipu_strategy.set_options(
                     {
                         "enable_distribution": True,
@@ -118,10 +124,36 @@ def Test(use_dist, file_name):
             ipu_program = paddle.static.IpuCompiledProgram(
                 main_prog, ipu_strategy=ipu_strategy
             )
+=======
+                ipu_strategy.set_options({
+                    "enable_distribution":
+                    True,
+                    "enable_replicated_graphs":
+                    True,
+                    "replicated_graph_count":
+                    2,
+                    "enable_distributed_replicated_graphs":
+                    True,
+                    "global_replica_offset":
+                    int(os.environ.get("PADDLE_TRAINER_ID")) * 2,
+                    "global_replication_factor":
+                    4
+                })
+            else:
+                ipu_strategy.set_graph_config(num_ipus=4, is_training=True)
+                ipu_strategy.set_options({
+                    "enable_replicated_graphs": True,
+                    "replicated_graph_count": 4,
+                })
+
+            ipu_program = paddle.static.IpuCompiledProgram(
+                main_prog, ipu_strategy=ipu_strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             program = ipu_program.compile(feed_list, fetch_list)
 
             if use_dist:
                 if os.environ.get("PADDLE_TRAINER_ID") == "0":
+<<<<<<< HEAD
                     input_data = np.concatenate(
                         [
                             np.array(
@@ -160,6 +192,32 @@ def Test(use_dist, file_name):
                         ).astype(np.int32),
                     ]
                 )
+=======
+                    input_data = np.concatenate([
+                        np.array([[[1], [3]], [[2], [4]],
+                                  [[4], [127]]]).astype(np.int32),
+                        np.array([[[1], [3]], [[2], [4]],
+                                  [[4], [127]]]).astype(np.int32)
+                    ])
+                else:
+                    input_data = np.concatenate([
+                        np.array([[[8], [60]], [[50], [77]],
+                                  [[90], [13]]]).astype(np.int32),
+                        np.array([[[8], [60]], [[50], [77]],
+                                  [[90], [13]]]).astype(np.int32)
+                    ])
+            else:
+                input_data = np.concatenate([
+                    np.array([[[1], [3]], [[2], [4]],
+                              [[4], [127]]]).astype(np.int32),
+                    np.array([[[1], [3]], [[2], [4]],
+                              [[4], [127]]]).astype(np.int32),
+                    np.array([[[8], [60]], [[50], [77]],
+                              [[90], [13]]]).astype(np.int32),
+                    np.array([[[8], [60]], [[50], [77]],
+                              [[90], [13]]]).astype(np.int32)
+                ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             feed_data = {"x": input_data}
 
             for step in range(10):

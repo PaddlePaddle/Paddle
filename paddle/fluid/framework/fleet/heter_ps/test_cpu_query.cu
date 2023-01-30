@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
+<<<<<<< HEAD
 using namespace paddle::framework;  // NOLINT
 namespace platform = paddle::platform;
 
@@ -64,6 +65,48 @@ const char *nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",
                        "item\t49\ta 0.21",
                        "item\t248\ta 0.21",
                        "item\t113\ta 0.21"};
+=======
+using namespace paddle::framework;
+namespace platform = paddle::platform;
+
+std::string edges[] = {
+    std::string("0\t1"),
+    std::string("0\t9"),
+    std::string("1\t2"),
+    std::string("1\t0"),
+    std::string("2\t1"),
+    std::string("2\t3"),
+    std::string("3\t2"),
+    std::string("3\t4"),
+    std::string("4\t3"),
+    std::string("4\t5"),
+    std::string("5\t4"),
+    std::string("5\t6"),
+    std::string("6\t5"),
+    std::string("6\t7"),
+    std::string("7\t6"),
+    std::string("7\t8"),
+};
+char edge_file_name[] = "edges1.txt";
+
+std::string nodes[] = {
+    std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
+    std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
+    std::string("user\t59\ta 0.11\tb 11 14"),
+    std::string("user\t97\ta 0.11\tb 12 11"),
+    std::string("item\t45\ta 0.21"),
+    std::string("item\t145\ta 0.21"),
+    std::string("item\t112\ta 0.21"),
+    std::string("item\t48\ta 0.21"),
+    std::string("item\t247\ta 0.21"),
+    std::string("item\t111\ta 0.21"),
+    std::string("item\t46\ta 0.21"),
+    std::string("item\t146\ta 0.21"),
+    std::string("item\t122\ta 0.21"),
+    std::string("item\t49\ta 0.21"),
+    std::string("item\t248\ta 0.21"),
+    std::string("item\t113\ta 0.21")};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 char node_file_name[] = "nodes.txt";
 std::vector<std::string> user_feature_name = {"a", "b", "c", "d"};
 std::vector<std::string> item_feature_name = {"a"};
@@ -117,7 +160,11 @@ TEST(TEST_FLEET, test_cpu_cache) {
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
   int use_nv = 1;
+<<<<<<< HEAD
   GpuPsGraphTable g(resource, 2);
+=======
+  GpuPsGraphTable g(resource, 1, 2);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   g.init_cpu_table(table_proto);
   g.cpu_graph_table_->Load(node_file_name, "nuser");
   g.cpu_graph_table_->Load(node_file_name, "nitem");
@@ -159,9 +206,15 @@ TEST(TEST_FLEET, test_cpu_cache) {
   for (int i = 0; i < 2; i++) {
     // platform::CUDADeviceGuard guard(i);
     LOG(0) << "query on card " << i;
+<<<<<<< HEAD
     // {1,9} or {9,1} is expected for key 0
     // {0,2} or {2,0} is expected for key 1
     // {1,3} or {3,1} is expected for key 2
+=======
+    //{1,9} or {9,1} is expected for key 0
+    //{0,2} or {2,0} is expected for key 1
+    //{1,3} or {3,1} is expected for key 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int step = 2;
     int cur = 0;
     while (true) {
@@ -176,7 +229,11 @@ TEST(TEST_FLEET, test_cpu_cache) {
       query.initialize(
           i, 0, node_query_res.get_val(), 1, node_query_res.get_len());
       query.display();
+<<<<<<< HEAD
       auto c = g.graph_neighbor_sample_v3(query, false, true);
+=======
+      auto c = g.graph_neighbor_sample_v3(query, false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       c.display();
     }
   }
@@ -218,7 +275,11 @@ TEST(TEST_FLEET, test_cpu_cache) {
         query.initialize(i, 0, node_query_res.get_val(), 4,
                          node_query_res.get_len());
         query.display();
+<<<<<<< HEAD
         auto c = g.graph_neighbor_sample_v3(query, true, true);
+=======
+        auto c = g.graph_neighbor_sample_v3(query, true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         c.display();
         platform::CUDADeviceGuard guard(i);
         uint64_t *key;
@@ -228,7 +289,11 @@ TEST(TEST_FLEET, test_cpu_cache) {
         uint64_t t_key = 1;
         cudaMemcpy(key, &t_key, sizeof(uint64_t), cudaMemcpyHostToDevice);
         q1.initialize(i, 0, (uint64_t)key, 2, 1);
+<<<<<<< HEAD
         auto d = g.graph_neighbor_sample_v3(q1, true, true);
+=======
+        auto d = g.graph_neighbor_sample_v3(q1, true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         d.display();
         cudaFree(key);
         g.cpu_graph_table_->set_search_level(1);

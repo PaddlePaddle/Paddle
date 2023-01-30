@@ -22,7 +22,11 @@ KernelSignature UniformRandomOpArgumentMapping(
   if (ctx.IsDenseTensorOutput("Out")) {
     if (diag_num) {
       if (ctx.InputSize("ShapeTensorList") > 0) {
+<<<<<<< HEAD
         return KernelSignature("uniform_raw",
+=======
+        return KernelSignature("uniform_random_raw",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                {},
                                {"ShapeTensorList",
                                 "dtype",
@@ -37,7 +41,11 @@ KernelSignature UniformRandomOpArgumentMapping(
         const auto& shape =
             paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
         if (ctx.HasInput("ShapeTensor") && shape.empty()) {
+<<<<<<< HEAD
           return KernelSignature("uniform_raw",
+=======
+          return KernelSignature("uniform_random_raw",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  {},
                                  {"ShapeTensor",
                                   "dtype",
@@ -49,7 +57,11 @@ KernelSignature UniformRandomOpArgumentMapping(
                                   "diag_val"},
                                  {"Out"});
         } else {
+<<<<<<< HEAD
           return KernelSignature("uniform_raw",
+=======
+          return KernelSignature("uniform_random_raw",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  {},
                                  {"shape",
                                   "dtype",
@@ -65,7 +77,11 @@ KernelSignature UniformRandomOpArgumentMapping(
     } else {
       if (ctx.InputSize("ShapeTensorList") > 0) {
         return KernelSignature(
+<<<<<<< HEAD
             "uniform",
+=======
+            "uniform_random",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             {},
             {"ShapeTensorList", "dtype", "min", "max", "seed"},
             {"Out"});
@@ -73,20 +89,35 @@ KernelSignature UniformRandomOpArgumentMapping(
         const auto& shape =
             paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
         if (ctx.HasInput("ShapeTensor") && shape.empty()) {
+<<<<<<< HEAD
           return KernelSignature("uniform",
+=======
+          return KernelSignature("uniform_random",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  {},
                                  {"ShapeTensor", "dtype", "min", "max", "seed"},
                                  {"Out"});
         } else {
+<<<<<<< HEAD
           return KernelSignature(
               "uniform", {}, {"shape", "dtype", "min", "max", "seed"}, {"Out"});
+=======
+          return KernelSignature("uniform_random",
+                                 {},
+                                 {"shape", "dtype", "min", "max", "seed"},
+                                 {"Out"});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
       }
     }
   } else if (ctx.IsSelectedRowsOutput("Out")) {
     if (diag_num) {
       if (ctx.InputSize("ShapeTensorList") > 0) {
+<<<<<<< HEAD
         return KernelSignature("uniform_raw_sr",
+=======
+        return KernelSignature("uniform_random_raw_sr",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                {},
                                {"ShapeTensorList",
                                 "dtype",
@@ -101,7 +132,11 @@ KernelSignature UniformRandomOpArgumentMapping(
         const auto& shape =
             paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
         if (ctx.HasInput("ShapeTensor") && shape.empty()) {
+<<<<<<< HEAD
           return KernelSignature("uniform_raw_sr",
+=======
+          return KernelSignature("uniform_random_raw_sr",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  {},
                                  {"ShapeTensor",
                                   "dtype",
@@ -113,7 +148,11 @@ KernelSignature UniformRandomOpArgumentMapping(
                                   "diag_val"},
                                  {"Out"});
         } else {
+<<<<<<< HEAD
           return KernelSignature("uniform_raw_sr",
+=======
+          return KernelSignature("uniform_random_raw_sr",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  {},
                                  {"shape",
                                   "dtype",
@@ -129,7 +168,11 @@ KernelSignature UniformRandomOpArgumentMapping(
     } else {
       if (ctx.InputSize("ShapeTensorList") > 0) {
         return KernelSignature(
+<<<<<<< HEAD
             "uniform_sr",
+=======
+            "uniform_random_sr",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             {},
             {"ShapeTensorList", "dtype", "min", "max", "seed"},
             {"Out"});
@@ -137,12 +180,20 @@ KernelSignature UniformRandomOpArgumentMapping(
         const auto& shape =
             paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
         if (ctx.HasInput("ShapeTensor") && shape.empty()) {
+<<<<<<< HEAD
           return KernelSignature("uniform_sr",
+=======
+          return KernelSignature("uniform_random_sr",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  {},
                                  {"ShapeTensor", "dtype", "min", "max", "seed"},
                                  {"Out"});
         } else {
+<<<<<<< HEAD
           return KernelSignature("uniform_sr",
+=======
+          return KernelSignature("uniform_random_sr",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  {},
                                  {"shape", "dtype", "min", "max", "seed"},
                                  {"Out"});
@@ -154,6 +205,9 @@ KernelSignature UniformRandomOpArgumentMapping(
 }
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_BASE_KERNEL_NAME(uniform_random, uniform);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_ARG_MAPPING_FN(uniform_random, phi::UniformRandomOpArgumentMapping);

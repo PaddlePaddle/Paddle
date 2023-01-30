@@ -14,20 +14,33 @@
 
 #include "paddle/phi/kernels/top_k_kernel.h"
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/top_k_function_cuda.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 namespace phi {
 
+=======
+
+namespace phi {
+
+namespace ops = paddle::operators;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
   case (dim): {                        \
     constexpr auto kBlockDim = (dim);  \
     __VA_ARGS__;                       \
   } break
 
+<<<<<<< HEAD
 #define FIXED_MAXLENGTH_BASE(MaxLength, ...) \
   case (MaxLength): {                        \
     constexpr auto maxLength = (MaxLength);  \
@@ -49,6 +62,14 @@ namespace phi {
   FIXED_MAXLENGTH_BASE(4, ##__VA_ARGS__); \
   FIXED_MAXLENGTH_BASE(5, ##__VA_ARGS__)
 
+=======
+#define FIXED_BLOCK_DIM(...)                \
+  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
@@ -92,6 +113,7 @@ void TopkKernel(const Context& dev_ctx,
     // statistics
     if (input_width >= 128 && k >= input_width * 0.75) {
       auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
+<<<<<<< HEAD
       if (phi::funcs::SortTopk<T>(*ctx,
                                   input,
                                   input_width,
@@ -100,6 +122,16 @@ void TopkKernel(const Context& dev_ctx,
                                   out,
                                   indices,
                                   largest)) {
+=======
+      if (ops::SortTopk<T>(*ctx,
+                           input,
+                           input_width,
+                           input_height,
+                           k,
+                           out,
+                           indices,
+                           largest)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         // Successed, return.
         return;
       } else {
@@ -113,7 +145,11 @@ void TopkKernel(const Context& dev_ctx,
       // 1. Gather TopK, but without sorting
       constexpr int max_num_threads = 1024;
       if (largest) {
+<<<<<<< HEAD
         phi::funcs::RadixTopK<T, true>
+=======
+        ops::RadixTopK<T, true>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             <<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
                 input_data,
                 k,
@@ -122,7 +158,11 @@ void TopkKernel(const Context& dev_ctx,
                 output_data,
                 indices_data);
       } else {
+<<<<<<< HEAD
         phi::funcs::RadixTopK<T, false>
+=======
+        ops::RadixTopK<T, false>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             <<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
                 input_data,
                 k,
@@ -143,6 +183,7 @@ void TopkKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<int64_t>(&sorted_indices);
         dev_ctx.template Alloc<int64_t>(&gather_indices);
         auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
+<<<<<<< HEAD
         if (phi::funcs::SortTopk<T>(*ctx,
                                     out,
                                     k,
@@ -151,6 +192,16 @@ void TopkKernel(const Context& dev_ctx,
                                     &sorted_output,
                                     &sorted_indices,
                                     largest)) {
+=======
+        if (ops::SortTopk<T>(*ctx,
+                             out,
+                             k,
+                             input_height,
+                             k,
+                             &sorted_output,
+                             &sorted_indices,
+                             largest)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           funcs::GPUGather<int64_t, int64_t>(
               dev_ctx, *indices, sorted_indices, &gather_indices);
           Copy(dev_ctx, gather_indices, indices->place(), false, indices);
@@ -170,12 +221,19 @@ void TopkKernel(const Context& dev_ctx,
     // NOTE: old matrix implementation of stride is different to eigen.
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
+<<<<<<< HEAD
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
     switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
       FIXED_BLOCK_DIM(
           phi::funcs::KeMatrixTopK<T, 20, kBlockDim>
+=======
+    switch (ops::GetDesiredBlockDim(input_width)) {
+#ifdef PADDLE_WITH_HIP
+      FIXED_BLOCK_DIM(
+          ops::KeMatrixTopK<T, 20, kBlockDim>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
                                                       k,
                                                       indices_data,
@@ -187,6 +245,7 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
+<<<<<<< HEAD
       FIXED_BLOCK_DIM(switch (phi::funcs::getMaxLength(k)) {
         FIXED_MAXLENGTH(
             phi::funcs::KeMatrixTopK<T, maxLength, kBlockDim>
@@ -205,6 +264,20 @@ void TopkKernel(const Context& dev_ctx,
               errors::Fatal("the input k has error when use getMaxLength "
                             "function to get the maxLength."));
       });
+=======
+      FIXED_BLOCK_DIM(
+          ops::KeMatrixTopK<T, 5, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
+                                                      k,
+                                                      indices_data,
+                                                      input_data,
+                                                      input_width,
+                                                      input_width,
+                                                      static_cast<int>(k),
+                                                      gridx,
+                                                      input_height,
+                                                      largest));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
       default:
         PADDLE_THROW(errors::Fatal(
@@ -257,6 +330,7 @@ void TopkKernel(const Context& dev_ctx,
     // statistics
     if (input_width >= 128 && k >= input_width * 0.75) {
       auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
+<<<<<<< HEAD
       if (phi::funcs::SortTopk<T>(*ctx,
                                   &trans_input,
                                   input_width,
@@ -265,6 +339,16 @@ void TopkKernel(const Context& dev_ctx,
                                   &trans_out,
                                   &trans_ind,
                                   largest)) {
+=======
+      if (ops::SortTopk<T>(*ctx,
+                           &trans_input,
+                           input_width,
+                           input_height,
+                           k,
+                           &trans_out,
+                           &trans_ind,
+                           largest)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         // last step, tranpose back the indices and output
         funcs::TransCompute<phi::GPUContext, int64_t>(
             ndims, dev_ctx, trans_ind, indices, trans);
@@ -279,12 +363,19 @@ void TopkKernel(const Context& dev_ctx,
 
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
+<<<<<<< HEAD
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
     switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
       FIXED_BLOCK_DIM(
           phi::funcs::KeMatrixTopK<T, 20, kBlockDim>
+=======
+    switch (ops::GetDesiredBlockDim(input_width)) {
+#ifdef PADDLE_WITH_HIP
+      FIXED_BLOCK_DIM(
+          ops::KeMatrixTopK<T, 20, kBlockDim>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(trans_out.data<T>(),
                                                       k,
                                                       trans_ind.data<int64_t>(),
@@ -296,6 +387,7 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
+<<<<<<< HEAD
       FIXED_BLOCK_DIM(switch (phi::funcs::getMaxLength(k)) {
         FIXED_MAXLENGTH(phi::funcs::KeMatrixTopK<T, maxLength, kBlockDim>
                         <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
@@ -314,6 +406,20 @@ void TopkKernel(const Context& dev_ctx,
               errors::Fatal("the input k has error when use getMaxLength "
                             "function to get the maxLength."));
       });
+=======
+      FIXED_BLOCK_DIM(
+          ops::KeMatrixTopK<T, 5, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(trans_out.data<T>(),
+                                                      k,
+                                                      trans_ind.data<int64_t>(),
+                                                      trans_input.data<T>(),
+                                                      input_width,
+                                                      input_width,
+                                                      static_cast<int>(k),
+                                                      gridx,
+                                                      input_height,
+                                                      largest));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
       default:
         PADDLE_THROW(errors::Fatal(
@@ -332,7 +438,11 @@ void TopkKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(topk,
+=======
+PD_REGISTER_KERNEL(top_k,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    GPU,
                    ALL_LAYOUT,
                    phi::TopkKernel,

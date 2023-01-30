@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -24,6 +25,21 @@ from paddle.incubate.nn.functional import fused_linear, fused_matmul_bias
 
 def is_fused_matmul_bias_supported():
     return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
+=======
+import paddle
+import paddle.fluid.core as core
+import unittest
+import numpy as np
+from paddle.incubate.nn.functional import fused_matmul_bias, fused_linear
+from paddle.incubate.nn import FusedLinear
+
+
+def is_fused_matmul_bias_supported():
+    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        return hasattr(core.ops, 'fused_gemm_epilogue')
+    else:
+        return False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def matmul(x, y, bias, trans_x, trans_y):
@@ -63,9 +79,15 @@ def matmul_grad(x, y, bias, dz, trans_x, trans_y):
 
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
+<<<<<<< HEAD
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
 )
 class TestFusedMatmulBias(unittest.TestCase):
+=======
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
+class TestFusedMatmulBias(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.set_device('gpu')
 
@@ -102,8 +124,12 @@ class TestFusedMatmulBias(unittest.TestCase):
         paddle.autograd.backward(z, grad_tensors=[paddle.to_tensor(z_grad_np)])
 
         x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
+<<<<<<< HEAD
             x_np, y_np, bias_np, z_grad_np, trans_x, trans_y
         )
+=======
+            x_np, y_np, bias_np, z_grad_np, trans_x, trans_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(x.grad.numpy(), x_grad_np)
         self.assertEqual(y_grad_np.shape, y_np.shape)
         np.testing.assert_array_equal(y.grad.numpy(), y_grad_np)
@@ -111,16 +137,25 @@ class TestFusedMatmulBias(unittest.TestCase):
         if need_bias:
             np.testing.assert_array_equal(bias.grad.numpy(), bias_grad_np)
         else:
+<<<<<<< HEAD
             self.assertIsNone(bias_grad_np)
+=======
+            self.assertTrue(bias_grad_np is None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def rand_test(self, m, n, k, dtype):
         seed = int(np.random.randint(low=0, high=1000, size=[1]))
         for trans_x in [False, True]:
             for trans_y in [False, True]:
                 for need_bias in [False, True]:
+<<<<<<< HEAD
                     self.rand_test_base(
                         m, n, k, trans_x, trans_y, need_bias, dtype, seed
                     )
+=======
+                    self.rand_test_base(m, n, k, trans_x, trans_y, need_bias,
+                                        dtype, seed)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_fp32(self):
         self.rand_test(30, 40, 50, np.float32)
@@ -131,9 +166,15 @@ class TestFusedMatmulBias(unittest.TestCase):
 
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
+<<<<<<< HEAD
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
 )
 class TestFusedLinear(unittest.TestCase):
+=======
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
+class TestFusedLinear(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def check_fused_linear(self, transpose):
         x = paddle.randn([30, 40])
         linear = FusedLinear(40, 50, transpose_weight=transpose)
@@ -150,9 +191,15 @@ class TestFusedLinear(unittest.TestCase):
 
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
+<<<<<<< HEAD
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
 )
 class TestStaticGraph(unittest.TestCase):
+=======
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
+class TestStaticGraph(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_static_graph(self):
         paddle.enable_static()
         x = paddle.static.data(name='x', dtype='float32', shape=[-1, 100])

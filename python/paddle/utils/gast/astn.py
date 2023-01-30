@@ -34,7 +34,13 @@ from . import gast
 
 
 def _generate_translators(to):
+<<<<<<< HEAD
     class Translator(ast.NodeTransformer):
+=======
+
+    class Translator(ast.NodeTransformer):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def _visit(self, node):
             if isinstance(node, list):
                 return [self._visit(n) for n in node]

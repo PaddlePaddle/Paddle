@@ -34,8 +34,13 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto *var = context.InputVar("W");
     int64_t emb_dim = 0;
 
+<<<<<<< HEAD
     if (var->IsType<phi::DenseTensor>()) {
       emb_dim = var->Get<phi::DenseTensor>().dims()[1];
+=======
+    if (var->IsType<framework::LoDTensor>()) {
+      emb_dim = var->Get<framework::LoDTensor>().dims()[1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (var->IsType<phi::SelectedRows>()) {
       emb_dim = var->Get<phi::SelectedRows>().value().dims()[1];
     } else {
@@ -45,8 +50,13 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
           framework::ToTypeName(var->Type())));
     }
 
+<<<<<<< HEAD
     auto inputs = context.MultiInput<phi::DenseTensor>("Ids");
     auto outputs = context.MultiOutput<phi::DenseTensor>("Outputs");
+=======
+    auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
+    auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto fleet = distributed::FleetWrapper::GetInstance();
 
@@ -64,6 +74,7 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
       auto cpu_place = platform::CPUPlace();
 
+<<<<<<< HEAD
       std::vector<const phi::DenseTensor *> tmp_input_vec;
       auto input_var_size = inputs_variable.size();
       std::vector<phi::DenseTensor *> tmp_output_vec;
@@ -76,6 +87,20 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
         tmp_tensors.emplace_back(std::make_shared<phi::DenseTensor>());
         auto *p = tmp_tensors.back().get();
         framework::TensorCopy(inputs_variable[idx]->Get<phi::DenseTensor>(),
+=======
+      std::vector<const framework::LoDTensor *> tmp_input_vec;
+      auto input_var_size = inputs_variable.size();
+      std::vector<framework::LoDTensor *> tmp_output_vec;
+      auto output_var_size = outputs_variable.size();
+
+      std::vector<std::shared_ptr<framework::LoDTensor>> tmp_tensors;
+
+      // create temp input
+      for (size_t idx = 0; idx < input_var_size; ++idx) {
+        tmp_tensors.emplace_back(std::make_shared<framework::LoDTensor>());
+        auto *p = tmp_tensors.back().get();
+        framework::TensorCopy(inputs_variable[idx]->Get<framework::LoDTensor>(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                               cpu_place,
                               context.device_context(),
                               p);
@@ -84,7 +109,11 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
       // create temp output
       for (size_t idx = 0; idx < output_var_size; ++idx) {
+<<<<<<< HEAD
         tmp_tensors.emplace_back(std::make_shared<phi::DenseTensor>());
+=======
+        tmp_tensors.emplace_back(std::make_shared<framework::LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto *p = tmp_tensors.back().get();
         p->Resize(outputs[idx]->dims());
         tmp_output_vec.push_back(p);
@@ -105,7 +134,11 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
             *tmp_output_vec[idx],
             context.GetPlace(),
             context.device_context(),
+<<<<<<< HEAD
             outputs_variable[idx]->GetMutable<phi::DenseTensor>());
+=======
+            outputs_variable[idx]->GetMutable<framework::LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     }
 
@@ -116,8 +149,13 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
     if (lookup_table_version == "lookup_table_v2") {
       for (size_t i = 0; i < id_vars.size(); ++i) {
+<<<<<<< HEAD
         auto *id_tensor = id_vars[i]->GetMutable<phi::DenseTensor>();
         auto *out_tensor = out_vars[i]->GetMutable<phi::DenseTensor>();
+=======
+        auto *id_tensor = id_vars[i]->GetMutable<framework::LoDTensor>();
+        auto *out_tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         auto id_dims = id_tensor->dims();
         out_tensor->Resize(phi::make_ddim({static_cast<int64_t>(id_dims[0]),

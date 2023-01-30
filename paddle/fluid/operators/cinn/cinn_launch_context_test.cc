@@ -40,6 +40,10 @@ USE_OP(cinn_instruction_run);
 namespace paddle {
 namespace operators::details {
 
+<<<<<<< HEAD
+=======
+using framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using framework::OpDesc;
 using framework::ParallelExecutor;
 using framework::ProgramDesc;
@@ -202,8 +206,13 @@ TEST_F(CinnLaunchContextTest, TestConstructResult) {
 TEST_F(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   platform::CPUPlace place;
   framework::Scope scope;
+<<<<<<< HEAD
   auto* tensor1 = scope.Var("var1")->GetMutable<phi::DenseTensor>();
   auto* tensor2 = scope.Var("var2")->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // dimension not equivalent
   tensor1->mutable_data<float>(phi::make_ddim({3, 5}), place);
@@ -263,7 +272,11 @@ TEST_F(CinnLaunchContextTest, TestCallbackAssignment) {
   launch_context->UpdateCapturedEnv(scope, place);
 
   // assign external variables
+<<<<<<< HEAD
   auto* tensor1 = scope.Var("var1")->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* data1 = tensor1->mutable_data<float>(phi::make_ddim({3, 4}), place);
   data1[0] = 9.99f;
   data1[10] = 19.99f;

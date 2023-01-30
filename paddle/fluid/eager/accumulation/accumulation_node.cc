@@ -15,7 +15,10 @@
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 
 #include "glog/logging.h"
+<<<<<<< HEAD
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
@@ -32,11 +35,15 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
                             const paddle::experimental::Tensor& t,
                             bool is_fake_empty) {
   if (is_fake_empty) {
+<<<<<<< HEAD
     VLOG(3) << "Move Tensor ptr: " << t.impl();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     *tensor = t;
   } else {
     if (!tensor->defined() || !tensor->initialized()) {
       // Simply copy tensor->impl
+<<<<<<< HEAD
       VLOG(3) << "Move Tensor ptr: " << t.impl();
       *tensor = t;
     } else {
@@ -51,6 +58,15 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
             paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t,
                                                                         tensor);
           }
+=======
+      *tensor = t;
+    } else {
+      // Accumulation
+      if (LIKELY(t.is_dense_tensor())) {
+        if (LIKELY(tensor->is_dense_tensor())) {
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t,
+                                                                      tensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         } else {
           // TODO(jiabin): Support Other TensorBase later
           // TODO(zhanlve): Replace SelectedRowsAddTensor with
@@ -73,12 +89,17 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
           paddle::experimental::Tensor tensor_values(
               std::make_shared<phi::DenseTensor>(
                   tensor_sparse->non_zero_elements()));
+<<<<<<< HEAD
           if (t.is_custom_device()) {
             tensor_values = add_ad_func(t_values, tensor_values);
           } else {
             paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
                 t_values, &tensor_values);
           }
+=======
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
+              t_values, &tensor_values);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
       } else {
         // TODO(jiabin): Support Other TensorBase later

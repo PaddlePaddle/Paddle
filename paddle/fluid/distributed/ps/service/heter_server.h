@@ -233,7 +233,11 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
                       nullptr,
                       platform::errors::InvalidArgument(
                           "Not find variable microbatch_id in scope."));
+<<<<<<< HEAD
     auto* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    auto* tensor = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto data = reinterpret_cast<const float*>(tensor->data());
     auto micro_id = static_cast<int>(data[0]);
     VLOG(4) << "micro_id in heter server: " << micro_id;

@@ -20,7 +20,10 @@
 #include <thrust/functional.h>
 #include <thrust/scatter.h>
 #include <thrust/sequence.h>
+<<<<<<< HEAD
 #include <thrust/sort.h>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <thrust/unique.h>
 
 #include <iostream>
@@ -564,7 +567,10 @@ void UniqueRawKernel(const Context& context,
   } else {
     // 'axis' is required.
     int axis_value = axis[0];
+<<<<<<< HEAD
     axis_value = (axis_value == -1) ? (x.dims().size() - 1) : axis_value;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     phi::VisitDataTypeTiny(dtype,
                            UniqueDimsCUDAFunctor<Context, T>(context,
                                                              x,

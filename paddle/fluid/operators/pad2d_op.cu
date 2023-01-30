@@ -16,13 +16,23 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+using platform::PADDLE_CUDA_NUM_THREADS;
+
+using framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 __global__ void Pad2DConstNCHW(const int nthreads,
@@ -257,8 +267,14 @@ __global__ void Pad2DGradReflectNCHW(const int out_size,
     in_w = max(in_w, -in_w);
     in_h = min(in_h, 2 * in_height - in_h - 2);
     in_w = min(in_w, 2 * in_width - in_w - 2);
+<<<<<<< HEAD
     phi::CudaAtomicAdd(&d_in_data[(nc * in_height + in_h) * in_width + in_w],
                        d_out_data[out_index]);
+=======
+    platform::CudaAtomicAdd(
+        &d_in_data[(nc * in_height + in_h) * in_width + in_w],
+        d_out_data[out_index]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -287,7 +303,11 @@ __global__ void Pad2DGradReflectNHWC(const int out_size,
     in_w = max(in_w, -in_w);
     in_h = min(in_h, in_height * 2 - in_h - 2);
     in_w = min(in_w, in_width * 2 - in_w - 2);
+<<<<<<< HEAD
     phi::CudaAtomicAdd(
+=======
+    platform::CudaAtomicAdd(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         &d_in_data[((n * in_height + in_h) * in_width + in_w) * channels + c],
         d_out_data[out_index]);
   }
@@ -312,8 +332,14 @@ __global__ void Pad2DGradEdgeNCHW(const int out_size,
     nc /= out_height;
     const int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
+<<<<<<< HEAD
     phi::CudaAtomicAdd(&d_in_data[(nc * in_height + in_h) * in_width + in_w],
                        d_out_data[out_index]);
+=======
+    platform::CudaAtomicAdd(
+        &d_in_data[(nc * in_height + in_h) * in_width + in_w],
+        d_out_data[out_index]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -338,7 +364,11 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size,
     n /= out_height;
     const int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
+<<<<<<< HEAD
     phi::CudaAtomicAdd(
+=======
+    platform::CudaAtomicAdd(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         &d_in_data[((n * in_height + in_h) * in_width + in_w) * channels + c],
         d_out_data[out_index]);
   }
@@ -346,9 +376,15 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size,
 
 static inline void GetPaddings(int* paddings,
                                const framework::ExecutionContext& context) {
+<<<<<<< HEAD
   auto* paddings_t = context.Input<phi::DenseTensor>("Paddings");
   if (paddings_t) {
     phi::DenseTensor pads;
+=======
+  auto* paddings_t = context.Input<Tensor>("Paddings");
+  if (paddings_t) {
+    Tensor pads;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorCopySync(*paddings_t, platform::CPUPlace(), &pads);
     auto pads_data = pads.data<int>();
     paddings[0] = pads_data[0];
@@ -371,10 +407,17 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
     auto data_format = context.Attr<std::string>("data_format");
     T value = static_cast<T>(context.Attr<float>("pad_value"));
 
+<<<<<<< HEAD
     auto* x = context.Input<phi::DenseTensor>("X");
     auto in_dims = x->dims();
     const T* in_data = x->data<T>();
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = context.Input<Tensor>("X");
+    auto in_dims = x->dims();
+    const T* in_data = x->data<T>();
+    auto* out = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto out_dims = out->dims();
     if (data_format == "NCHW") {
       out_dims[0] = in_dims[0];
@@ -497,9 +540,14 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
     GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
+<<<<<<< HEAD
     auto* d_out =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* d_in = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_in = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto d_in_dims = d_in->dims();
     auto d_out_dims = d_out->dims();
     const T* d_out_data = d_out->data<T>();

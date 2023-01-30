@@ -21,6 +21,10 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+<<<<<<< HEAD
+=======
+#pragma GCC diagnostic ignored "-Wunused-variable"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DECLARE_bool(check_nan_inf);
 
 paddle::experimental::Tensor conv2d_ad_func(
@@ -28,10 +32,20 @@ paddle::experimental::Tensor conv2d_ad_func(
     const paddle::experimental::Tensor& filter,
     std::vector<int> strides,
     std::vector<int> paddings,
+<<<<<<< HEAD
     std::string padding_algorithm,
     std::vector<int> dilations,
     int groups,
     std::string data_format) {
+=======
+    std::string paddding_algorithm,
+    int groups,
+    std::vector<int> dilations,
+    std::string data_format,
+    bool use_addto,
+    int workspace_size_MB,
+    bool exhaustive_search) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Dygraph Record Event
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "conv2d dygraph", paddle::platform::TracerEventType::Operator, 1);
@@ -60,10 +74,20 @@ paddle::experimental::Tensor conv2d_ad_func(
                             new_filter,
                             strides,
                             paddings,
+<<<<<<< HEAD
                             padding_algorithm,
                             dilations,
                             groups,
                             data_format);
+=======
+                            paddding_algorithm,
+                            groups,
+                            dilations,
+                            data_format,
+                            use_addto,
+                            workspace_size_MB,
+                            exhaustive_search);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 
@@ -85,10 +109,20 @@ paddle::experimental::Tensor conv2d_ad_func(
                               filter,
                               strides,
                               paddings,
+<<<<<<< HEAD
                               padding_algorithm,
                               dilations,
                               groups,
                               data_format);
+=======
+                              paddding_algorithm,
+                              groups,
+                              dilations,
+                              data_format,
+                              use_addto,
+                              workspace_size_MB,
+                              exhaustive_search);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     transformer->SetOutTensorLayout(&out);
     if (need_tune) {
       egr::Controller::Instance().EnableLayoutAutoTune();
@@ -109,10 +143,20 @@ paddle::experimental::Tensor conv2d_ad_func(
                                                  filter,
                                                  strides,
                                                  paddings,
+<<<<<<< HEAD
                                                  padding_algorithm,
                                                  dilations,
                                                  groups,
                                                  data_format);
+=======
+                                                 paddding_algorithm,
+                                                 groups,
+                                                 dilations,
+                                                 data_format,
+                                                 use_addto,
+                                                 workspace_size_MB,
+                                                 exhaustive_search);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d", api_result);
@@ -144,10 +188,20 @@ paddle::experimental::Tensor conv2d_ad_func(
     // SetAttributes if needed
     grad_node->SetAttributestrides(strides);
     grad_node->SetAttributepaddings(paddings);
+<<<<<<< HEAD
     grad_node->SetAttributepadding_algorithm(padding_algorithm);
     grad_node->SetAttributegroups(groups);
     grad_node->SetAttributedilations(dilations);
     grad_node->SetAttributedata_format(data_format);
+=======
+    grad_node->SetAttributepaddding_algorithm(paddding_algorithm);
+    grad_node->SetAttributegroups(groups);
+    grad_node->SetAttributedilations(dilations);
+    grad_node->SetAttributedata_format(data_format);
+    grad_node->SetAttributeuse_addto(use_addto);
+    grad_node->SetAttributeworkspace_size_MB(workspace_size_MB);
+    grad_node->SetAttributeexhaustive_search(exhaustive_search);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // Set TensorWrappers for Forward Inputs if needed
     grad_node->SetTensorWrapperinput(input);
     grad_node->SetTensorWrapperfilter(filter);

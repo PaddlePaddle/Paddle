@@ -120,7 +120,11 @@ void TestHcomRecvOp(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
   auto place = ctx.GetPlace();
   auto out = scope->Var("Data");
+<<<<<<< HEAD
   auto tensor_out = out->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_out->Resize({num, num});
   tensor_out->mutable_data<float>(place);  // allocate
 

@@ -23,7 +23,11 @@ template <typename DeviceContext, typename T>
 class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* out = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(context.GetPlace());
 
     phi::funcs::SetConstant<DeviceContext, T> setter;

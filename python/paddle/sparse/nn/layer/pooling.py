@@ -13,7 +13,10 @@
 # limitations under the License.
 
 from paddle.nn import Layer
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .. import functional as F
 
 
@@ -82,7 +85,11 @@ class MaxPool3D(Layer):
         data_format="NDHWC",
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MaxPool3D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding

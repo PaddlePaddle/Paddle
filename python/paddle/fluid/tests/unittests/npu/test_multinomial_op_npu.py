@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -47,6 +52,10 @@ def sample_output_two_dimension(out, shape):
 
 
 class TestMultinomialOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "multinomial"
@@ -64,9 +73,14 @@ class TestMultinomialOp(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
+<<<<<<< HEAD
         self.check_output_customized(
             self.verify_output, custom_place=self.place
         )
+=======
+        self.check_output_customized(self.verify_output,
+                                     custom_place=self.place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -79,6 +93,10 @@ class TestMultinomialOp(OpTest):
 
 
 class TestMultinomialOp2(TestMultinomialOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # input probability is a matrix
         self.input_np = np.random.rand(3, 4)
@@ -90,6 +108,10 @@ class TestMultinomialOp2(TestMultinomialOp):
 
 
 class TestMultinomialOp3(TestMultinomialOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # replacement is False. number of samples must be less than number of categories.
         self.input_np = np.random.rand(1000)
@@ -100,6 +122,7 @@ class TestMultinomialOp3(TestMultinomialOp):
         out = np.array(outs[0])
         unique_out = np.unique(out)
         self.assertEqual(
+<<<<<<< HEAD
             len(unique_out),
             100,
             "replacement is False. categories can't be sampled repeatedly",
@@ -107,6 +130,14 @@ class TestMultinomialOp3(TestMultinomialOp):
 
 
 class TestMultinomialApi(unittest.TestCase):
+=======
+            len(unique_out), 100,
+            "replacement is False. categories can't be sampled repeatedly")
+
+
+class TestMultinomialApi(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_dygraph(self):
         # input probability is a vector, and replacement is True
         paddle.set_device('npu:0')
@@ -143,10 +174,15 @@ class TestMultinomialApi(unittest.TestCase):
 
         unique_out = np.unique(out.numpy())
         self.assertEqual(
+<<<<<<< HEAD
             len(unique_out),
             100,
             "replacement is False. categories can't be sampled repeatedly",
         )
+=======
+            len(unique_out), 100,
+            "replacement is False. categories can't be sampled repeatedly")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
 
     def test_dygraph4(self):
@@ -179,17 +215,31 @@ class TestMultinomialApi(unittest.TestCase):
 
 
 class TestMultinomialAlias(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_alias(self):
         paddle.set_device('npu:0')
         x = paddle.rand([4])
         out1 = paddle.multinomial(x, num_samples=10, replacement=True)
         out2 = paddle.tensor.multinomial(x, num_samples=10, replacement=True)
+<<<<<<< HEAD
         out3 = paddle.tensor.random.multinomial(
             x, num_samples=10, replacement=True
         )
 
 
 class TestMultinomialError(unittest.TestCase):
+=======
+        out3 = paddle.tensor.random.multinomial(x,
+                                                num_samples=10,
+                                                replacement=True)
+
+
+class TestMultinomialError(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.set_device('npu:0')
         paddle.disable_static()
@@ -198,6 +248,10 @@ class TestMultinomialError(unittest.TestCase):
         paddle.enable_static()
 
     def test_num_sample(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_num_sample_less_than_0():
             x = paddle.rand([4])
             out = paddle.multinomial(x, num_samples=-2)
@@ -205,6 +259,10 @@ class TestMultinomialError(unittest.TestCase):
         self.assertRaises(ValueError, test_num_sample_less_than_0)
 
     def test_input_probs_dim(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_dim_larger_than_2():
             x = paddle.rand([2, 3, 3])
             out = paddle.multinomial(x)

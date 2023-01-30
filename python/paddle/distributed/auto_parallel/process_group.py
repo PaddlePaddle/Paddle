@@ -15,11 +15,21 @@
 from collections import OrderedDict
 
 import paddle
+<<<<<<< HEAD
 from paddle import _legacy_C_ops
 from paddle.framework import core, in_dygraph_mode
 
 from ...fluid.layers.tensor import fill_constant
 from ..collective import _get_global_env, _new_ring_id
+=======
+import paddle.fluid.core as core
+
+from ..collective import _get_global_env
+from ..collective import _new_ring_id
+from ...fluid.framework import _non_static_mode
+from ...fluid.layers.tensor import fill_constant
+from paddle.fluid.framework import _enable_legacy_dygraph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_all_process_groups():
@@ -29,11 +39,18 @@ def get_all_process_groups():
 
 def get_process_group(group_id, g_process_group_map=None):
     global _g_process_group_map
+<<<<<<< HEAD
     return (
         _g_process_group_map.get(group_id, None)
         if g_process_group_map is None
         else g_process_group_map.get(group_id, None)
     )
+=======
+    return _g_process_group_map.get(
+        group_id,
+        None) if g_process_group_map is None else g_process_group_map.get(
+            group_id, None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_world_process_group():
@@ -47,6 +64,7 @@ def clear_all_process_groups():
     _g_process_group_map[0] = ProcessGroup(0, [])
 
 
+<<<<<<< HEAD
 def new_process_group(ranks, group_id=None, force_new_group=False):
 
     global _g_process_group_map
@@ -57,11 +75,25 @@ def new_process_group(ranks, group_id=None, force_new_group=False):
             cur_key = ''.join(map(str, sorted(pg.ranks)))
             if pg_id != 0 and new_key == cur_key:
                 return pg
+=======
+def new_process_group(ranks, group_id=None):
+    global _g_process_group_map
+    # A key constructed from ranks is used for avoiding duplication
+    new_key = ''.join(map(str, sorted(ranks)))
+    for pg_id, pg in _g_process_group_map.items():
+        cur_key = ''.join(map(str, sorted(pg.ranks)))
+        if pg_id != 0 and new_key == cur_key:
+            return pg
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # If not matching the existing one, construt a new process group
     num_groups = len(_g_process_group_map)
     # Note: our process group may interfere with the original implementation
     # so the created group id should start from the original _new_ring_id()
+<<<<<<< HEAD
     if group_id is None:
+=======
+    if group_id == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         group_id = _new_ring_id() + num_groups + 1
 
     new_pg = ProcessGroup(group_id, ranks)
@@ -76,11 +108,18 @@ def new_process_group(ranks, group_id=None, force_new_group=False):
 # the instantiation process in a more general way. In the future, the process group may
 # handle the communication implementation choice.
 class ProcessGroup:
+<<<<<<< HEAD
     def __init__(self, group_id, ranks):
         if group_id == 0 and get_process_group(0) is not None:
             assert (
                 group_id != 0
             ), "Process group id 0 is reserved for all ranks."
+=======
+
+    def __init__(self, group_id, ranks):
+        if group_id == 0 and get_process_group(0) is not None:
+            assert group_id != 0, "Process group id 0 is reserved for all ranks."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._group_id = group_id
         self._ranks = sorted(ranks)
         # Add the current ranks into group 0
@@ -105,9 +144,14 @@ class ProcessGroup:
         if set(new_ranks) <= set(self.ranks):
             return
         else:
+<<<<<<< HEAD
             assert (
                 not self.is_instantiate()
             ), "Cannot add new ranks after instantiating the process group"
+=======
+            assert self.is_instantiate() == False, \
+                "Cannot add new ranks after instantiating the process group"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._ranks.extend(new_ranks)
         self._ranks = sorted(list(set(self.ranks)))
 
@@ -115,9 +159,14 @@ class ProcessGroup:
         if global_rank in self.ranks:
             return self.ranks.index(global_rank)
         else:
+<<<<<<< HEAD
             assert False, "Rank {} doesn't belong to this group".format(
                 global_rank
             )
+=======
+            assert False, \
+                "Rank {} doesn't belong to this group".format(global_rank)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def is_instantiate(self):
         return self._is_instantiate
@@ -138,6 +187,7 @@ class ProcessGroup:
             ]
             strategy.current_endpoint = genv.current_endpoint
             strategy.nrings = 1
+<<<<<<< HEAD
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
@@ -145,10 +195,20 @@ class ProcessGroup:
                 )
             else:
                 assert False, "No CUDA device found"
+=======
+
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(genv.device_id)
+                core.NCCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
+            else:
+                assert False, ("No CUDA device found")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
             paddle.disable_static()
+<<<<<<< HEAD
             paddle.set_device(
                 'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
             )
@@ -162,6 +222,16 @@ class ProcessGroup:
                 tmp, 'use_calc_stream', True, 'ring_id', self.id
             )
             _legacy_C_ops.c_sync_calc_stream(tmp, tmp)
+=======
+            _enable_legacy_dygraph()
+            paddle.set_device('gpu:%d' %
+                              paddle.distributed.ParallelEnv().dev_id)
+            tmp = paddle.to_tensor(
+                [1], dtype="int32") if _non_static_mode() else fill_constant(
+                    [0], dtype="int32", value="1")
+            paddle.distributed.all_reduce(tmp, sync_op=True, group=self)
+            paddle.distributed.wait(tmp, group=self)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.enable_static()
 
         self._is_instantiate = True
@@ -181,8 +251,12 @@ class ProcessGroup:
 
     def __str__(self):
         string = "id: {}, nranks: {}, ranks: {}.".format(
+<<<<<<< HEAD
             self.id, self.nranks, ", ".join(map(str, self.ranks))
         )
+=======
+            self.id, self.nranks, ", ".join(map(str, self.ranks)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return string
 
     def __hash__(self):

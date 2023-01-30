@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_collective_api_base import TestDistBase
@@ -20,11 +21,25 @@ import paddle
 
 
 class TestCollectiveSelectScatterAPI(TestDistBase):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_api_base import TestDistBase
+import os
+
+
+class TestCollectiveSelectScatterAPI(TestDistBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_global_scatter_nccl(self):
         paddle.enable_static()
+<<<<<<< HEAD
         self.check_with_place(
             "collective_global_scatter.py", "global_scatter", "nccl"
         )
@@ -37,6 +52,24 @@ class TestCollectiveSelectScatterAPI(TestDistBase):
             static_mode="0",
             eager_mode=True,
         )
+=======
+        self.check_with_place("collective_global_scatter.py", "global_scatter",
+                              "nccl")
+
+    def test_global_scatter_nccl_dygraph(self):
+        self.check_with_place("collective_global_scatter_dygraph.py",
+                              "global_scatter",
+                              "nccl",
+                              static_mode="0",
+                              eager_mode=False)
+
+    def test_global_scatter_nccl_dygraph_eager(self):
+        self.check_with_place("collective_global_scatter_dygraph.py",
+                              "global_scatter",
+                              "nccl",
+                              static_mode="0",
+                              eager_mode=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

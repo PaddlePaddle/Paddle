@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,6 +24,22 @@ import paddle.fluid as fluid
 
 def create_test_not_equal_class(op_type, typename, callback):
     class Cls(op_test.OpTest):
+=======
+from __future__ import print_function
+
+import op_test
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+
+
+def create_test_not_equal_class(op_type, typename, callback):
+
+    class Cls(op_test.OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10, 7)).astype(typename)
@@ -41,7 +58,13 @@ def create_test_not_equal_class(op_type, typename, callback):
 
 
 def create_test_not_shape_equal_class(op_type, typename, callback):
+<<<<<<< HEAD
     class Cls(op_test.OpTest):
+=======
+
+    class Cls(op_test.OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10)).astype(typename)
@@ -60,7 +83,13 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
 
 
 def create_test_equal_class(op_type, typename, callback):
+<<<<<<< HEAD
     class Cls(op_test.OpTest):
+=======
+
+    class Cls(op_test.OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             x = y = np.random.random(size=(10, 7)).astype(typename)
             z = callback(x, y)
@@ -78,7 +107,13 @@ def create_test_equal_class(op_type, typename, callback):
 
 
 def create_test_dim1_class(op_type, typename, callback):
+<<<<<<< HEAD
     class Cls(op_test.OpTest):
+=======
+
+    class Cls(op_test.OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             x = y = np.random.random(size=(1)).astype(typename)
             x = np.array([True, False, True]).astype(typename)
@@ -106,6 +141,10 @@ for _type_name in {'float32', 'float64', 'int32', 'int64', 'bool'}:
 
 
 class TestEqualReduceAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_name(self):
         x = fluid.layers.assign(np.array([3, 4], dtype="int32"))
         y = fluid.layers.assign(np.array([3, 4], dtype="int32"))
@@ -117,7 +156,11 @@ class TestEqualReduceAPI(unittest.TestCase):
         x = paddle.ones(shape=[10, 10], dtype="int32")
         y = paddle.ones(shape=[10, 10], dtype="int32")
         out = paddle.equal_all(x, y)
+<<<<<<< HEAD
         assert out.numpy()[0] is np.True_
+=======
+        assert out.numpy()[0] == True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
 
 

@@ -15,12 +15,21 @@
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/threadpool.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+=======
+#include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/adam_functors.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 namespace sr {
@@ -118,7 +127,11 @@ void AdamDenseParamSparseGradKernel(
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
+<<<<<<< HEAD
     phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+=======
+    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }
@@ -201,12 +214,21 @@ void AdamDenseParamSparseGradKernel(
       if (end > static_cast<int64_t>(param_row_count)) {
         end = static_cast<int64_t>(param_row_count);
       }
+<<<<<<< HEAD
       fs.push_back(phi::Async([&functor,
                                &row_id_to_grad_row_offset,
                                &grad_data,
                                row_numel,
                                start,
                                end]() {
+=======
+      fs.push_back(paddle::framework::Async([&functor,
+                                             &row_id_to_grad_row_offset,
+                                             &grad_data,
+                                             row_numel,
+                                             start,
+                                             end]() {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for (int64_t row_id = start; row_id < end; ++row_id) {
           auto iter = row_id_to_grad_row_offset.find(row_id);
           if (iter != row_id_to_grad_row_offset.end()) {

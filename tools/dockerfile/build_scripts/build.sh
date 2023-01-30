@@ -24,7 +24,11 @@ set -ex
 # remove others to expedite build and reduce docker image size. The original
 # manylinux docker image project builds many python versions.
 # NOTE We added back 3.5.1, since auditwheel requires python 3.3+
+<<<<<<< HEAD
 CPYTHON_VERSIONS="3.9.0 3.8.0 3.7.0"
+=======
+CPYTHON_VERSIONS="3.9.0 3.8.0 3.7.0 3.6.0"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # openssl version to build, with expected sha256 hash of .tar.gz
 # archive
@@ -77,6 +81,10 @@ build_openssl $OPENSSL_ROOT $OPENSSL_HASH
 mkdir -p /opt/python
 build_cpythons $CPYTHON_VERSIONS
 
+<<<<<<< HEAD
+=======
+PY36_BIN=/opt/python/cp36-cp36m/bin
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PY37_BIN=/opt/python/cp37-cp37m/bin
 PY38_BIN=/opt/python/cp38-cp38m/bin
 PY39_BIN=/opt/python/cp39-cp39m/bin
@@ -84,7 +92,11 @@ PY39_BIN=/opt/python/cp39-cp39m/bin
 # libpython, we need to add libpython's dir to LD_LIBRARY_PATH before running
 # python.
 ORIGINAL_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+<<<<<<< HEAD
 LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY37_BIN})/lib:$(dirname ${PY38_BIN})/lib:$(dirname ${PY39_BIN})/lib"
+=======
+LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY36_BIN})/lib:$(dirname ${PY37_BIN})/lib:$(dirname ${PY38_BIN})/lib:$(dirname ${PY39_BIN})/lib"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # Our openssl doesn't know how to find the system CA trust store
 #   (https://github.com/pypa/manylinux/issues/53)

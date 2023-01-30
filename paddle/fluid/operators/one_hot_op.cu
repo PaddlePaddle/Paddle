@@ -14,11 +14,19 @@
 
 #include "paddle/fluid/operators/one_hot_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+
+namespace paddle {
+namespace operators {
+using platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename InT, typename OutT>
 __global__ void FillOutputKernel(const InT* p_in_data,
@@ -33,6 +41,7 @@ __global__ void FillOutputKernel(const InT* p_in_data,
 
 template <typename DeviceContext, typename InT>
 struct OneHotOpCUDAFunctor {
+<<<<<<< HEAD
   const phi::DenseTensor* in_;
   phi::DenseTensor* out_;
   const DeviceContext& ctx_;
@@ -40,6 +49,15 @@ struct OneHotOpCUDAFunctor {
 
   OneHotOpCUDAFunctor(const phi::DenseTensor* in,
                       phi::DenseTensor* out,
+=======
+  const framework::LoDTensor* in_;
+  framework::LoDTensor* out_;
+  const DeviceContext& ctx_;
+  int depth_;
+
+  OneHotOpCUDAFunctor(const framework::LoDTensor* in,
+                      framework::LoDTensor* out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       int depth,
                       const DeviceContext& ctx)
       : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
@@ -60,10 +78,15 @@ struct OneHotOpCUDAFunctor {
   }
 };
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class OneHotCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* in = context.Input<phi::DenseTensor>("X");
     auto* out = context.Output<phi::DenseTensor>("Out");
 
@@ -72,6 +95,16 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
       auto* depth_tensor = context.Input<phi::DenseTensor>("depth_tensor");
       if (platform::is_gpu_place(depth_tensor->place())) {
         phi::DenseTensor temp;
+=======
+    auto* in = context.Input<LoDTensor>("X");
+    auto* out = context.Output<LoDTensor>("Out");
+
+    int depth = -1;
+    if (context.HasInput("depth_tensor")) {
+      auto* depth_tensor = context.Input<framework::Tensor>("depth_tensor");
+      if (platform::is_gpu_place(depth_tensor->place())) {
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(
             *depth_tensor, platform::CPUPlace(), &temp);
         depth = *temp.data<int32_t>();

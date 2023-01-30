@@ -17,7 +17,11 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
+=======
+#include "paddle/fluid/platform/place.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -60,7 +64,11 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     pass.reset(new ComputePropagateScalesMkldnnPass());
   }
 
+<<<<<<< HEAD
   std::vector<float> GetScales(phi::DenseTensor* tensor, int axis) const {
+=======
+  std::vector<float> GetScales(Tensor* tensor, int axis) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return pass->GetScales(tensor, axis);
   }
 
@@ -119,7 +127,11 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
                     const ProgramDesc& prog,
                     Scope* scope,
                     const std::initializer_list<std::string>& variable_names) {
+<<<<<<< HEAD
     auto place = phi::CPUPlace();
+=======
+    auto place = paddle::platform::CPUPlace();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     NaiveExecutor exe{place};
     exe.CreateVariables(prog, 0, true, scope);
 
@@ -148,19 +160,33 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
     wx_tensor->Resize(phi::make_dim(wx.size(), wx[0].size()));
     for (size_t i = 0; i < wx.size(); i++)
+<<<<<<< HEAD
       std::copy(
           begin(wx[i]),
           end(wx[i]),
           wx_tensor->mutable_data<float>(phi::CPUPlace()) + i * wx[0].size());
+=======
+      std::copy(begin(wx[i]),
+                end(wx[i]),
+                wx_tensor->mutable_data<float>(platform::CPUPlace()) +
+                    i * wx[0].size());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto* wh_var = scope.FindVar(wh_var_names);
     auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
     wh_tensor->Resize(phi::make_dim(wh.size(), wh[0].size()));
     for (size_t i = 0; i < wh.size(); i++)
+<<<<<<< HEAD
       std::copy(
           begin(wh[i]),
           end(wh[i]),
           wh_tensor->mutable_data<float>(phi::CPUPlace()) + i * wh[0].size());
+=======
+      std::copy(begin(wh[i]),
+                end(wh[i]),
+                wh_tensor->mutable_data<float>(platform::CPUPlace()) +
+                    i * wh[0].size());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (type == "gru") {
       ComputeGruWeightScales(
           graph, &scope, wx_name, wh_name, &var_quant_scales);
@@ -169,7 +195,11 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
           graph, &scope, wx_name, wh_name, &var_quant_scales);
     }
     bool is_unsigned;
+<<<<<<< HEAD
     phi::DenseTensor wx_result_tensor;
+=======
+    framework::Tensor wx_result_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     std::tie(is_unsigned, wx_result_tensor) = var_quant_scales[wx_var_names];
     ASSERT_EQ(is_unsigned, false);
@@ -279,11 +309,19 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, get_scales_function) {
   const auto& values = positive_and_negative_values;
   float max_val = *std::max_element(values.begin(), values.end());
 
+<<<<<<< HEAD
   phi::DenseTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size(), 1));
   std::copy(begin(values),
             end(values),
             var_tensor.mutable_data<float>(phi::CPUPlace()));
+=======
+  framework::Tensor var_tensor;
+  var_tensor.Resize(phi::make_dim(values.size(), 1));
+  std::copy(begin(values),
+            end(values),
+            var_tensor.mutable_data<float>(platform::CPUPlace()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<float> results = GetScales(&var_tensor, 0);
 
   ASSERT_EQ(results.size(), std::size_t(1));
@@ -310,14 +348,22 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
   weight_tensor->Resize(phi::make_dim(1, values.size()));
   std::copy(begin(values),
             end(values),
+<<<<<<< HEAD
             weight_tensor->mutable_data<float>(phi::CPUPlace()));
+=======
+            weight_tensor->mutable_data<float>(platform::CPUPlace()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto max_val = *std::max_element(values.begin(), values.end());
 
   ComputeVarScales(graph, &scope, ops, weight_name, axis, &var_quant_scales);
 
   bool is_unsigned;
+<<<<<<< HEAD
   phi::DenseTensor result_tensor;
+=======
+  framework::Tensor result_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::tie(is_unsigned, result_tensor) = var_quant_scales[weight_var_name];
 
@@ -338,7 +384,11 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, update_relu_output_scales) {
   StringPairMap var_quant_scales;
   for (auto& var_name : conv_variable_names) {
     phi::DenseTensor tensor;
+<<<<<<< HEAD
     auto* data = tensor.mutable_data<float>({1}, phi::CPUPlace());
+=======
+    auto* data = tensor.mutable_data<float>({1}, platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     data[0] = 10;
     auto pair = std::make_pair(false, tensor);
     var_quant_scales.insert(std::make_pair(var_name, pair));

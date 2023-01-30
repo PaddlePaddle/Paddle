@@ -12,8 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+from __future__ import division
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from op_test import OpTest
 
@@ -26,9 +33,18 @@ def adaptive_end_index(index, input_size, output_size):
     return int(np.ceil((index + 1) * input_size / output_size))
 
 
+<<<<<<< HEAD
 def max_pool3D_forward_naive(
     x, ksize, strides, paddings, global_pool=False, adaptive=False
 ):
+=======
+def max_pool3D_forward_naive(x,
+                             ksize,
+                             strides,
+                             paddings,
+                             global_pool=False,
+                             adaptive=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     N, C, D, H, W = x.shape
     if global_pool:
@@ -75,19 +91,33 @@ def max_pool3D_forward_naive(
                         sub_deep = index[0][0]
                         sub_row = index[1][0]
                         sub_col = index[2][0]
+<<<<<<< HEAD
                         index = (
                             ((d_start + sub_deep) * H + (h_start + sub_row)) * W
                             + w_start
                             + sub_col
                         )
+=======
+                        index = ((d_start + sub_deep) * H +
+                                 (h_start + sub_row)) * W + w_start + sub_col
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         mask[n, c, k, i, j] = index
 
     return out, mask
 
 
+<<<<<<< HEAD
 def max_pool2D_forward_naive(
     x, ksize, strides, paddings, global_pool=False, adaptive=False
 ):
+=======
+def max_pool2D_forward_naive(x,
+                             ksize,
+                             strides,
+                             paddings,
+                             global_pool=False,
+                             adaptive=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     N, C, H, W = x.shape
     if global_pool:
@@ -130,12 +160,17 @@ def max_pool2D_forward_naive(
 
 
 class TestMaxPoolWithIndex_Op(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test_case()
         self.init_global()
         self.init_adaptive()
 
         input = np.random.random(self.shape).astype("float64")
+<<<<<<< HEAD
         input = np.round(input * 100.0, 2)
         output, mask = self.pool_forward_naive(
             input,
@@ -145,6 +180,12 @@ class TestMaxPoolWithIndex_Op(OpTest):
             self.global_pool,
             self.adaptive,
         )
+=======
+        input = np.round(input * 100., 2)
+        output, mask = self.pool_forward_naive(input, self.ksize, self.strides,
+                                               self.paddings, self.global_pool,
+                                               self.adaptive)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output = output.astype("float64")
         mask = mask.astype("int32")
 
@@ -181,11 +222,19 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
 
 class TestCase1(TestMaxPoolWithIndex_Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_global(self):
         self.global_pool = True
 
 
 class TestCase2(TestMaxPoolWithIndex_Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
@@ -199,12 +248,22 @@ class TestCase2(TestMaxPoolWithIndex_Op):
 
 
 class TestCase3(TestCase2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_global(self):
         self.global_pool = False
 
 
+<<<<<<< HEAD
 # ----------------max_pool2d_with_index----------------
 class TestCase4(TestMaxPoolWithIndex_Op):
+=======
+#----------------max_pool2d_with_index----------------
+class TestCase4(TestMaxPoolWithIndex_Op):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
@@ -218,11 +277,19 @@ class TestCase4(TestMaxPoolWithIndex_Op):
 
 
 class TestCase5(TestCase4):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_global(self):
         self.global_pool = False
 
 
 class TestCase6(TestMaxPoolWithIndex_Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
@@ -236,16 +303,28 @@ class TestCase6(TestMaxPoolWithIndex_Op):
 
 
 class TestCase7(TestCase6):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_global(self):
         self.global_pool = False
 
 
 class TestCastAdaptive2d(TestCase6):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_adaptive(self):
         self.adaptive = True
 
 
 class TestCastAdaptive3d(TestMaxPoolWithIndex_Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_adaptive(self):
         self.adaptive = True
 

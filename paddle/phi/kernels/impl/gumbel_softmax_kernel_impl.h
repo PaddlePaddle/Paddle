@@ -16,12 +16,20 @@
 
 #include <random>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax.h"
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
+=======
+#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/operators/math/softmax_impl.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -49,7 +57,12 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
                                float temperature,
                                bool hard,
                                int axis,
+<<<<<<< HEAD
                                DenseTensor* out) {
+=======
+                               DenseTensor* out,
+                               bool is_test) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
   int axis_dim = x.dims()[axis];
@@ -67,12 +80,15 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
     return;
   }
 
+<<<<<<< HEAD
   // For 0D Tensor
   if (rank == 0) {
     phi::funcs::set_constant(ctx, out, 1.0);
     return;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const int size_to_axis = funcs::SizeToAxis(axis, x.dims());
   const int size_from_axis = funcs::SizeFromAxis(axis, x.dims());
   DenseTensor x_noise_2d, out_2d(*out);
@@ -87,7 +103,17 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
                                               size_to_axis,
                                               size_from_axis,
                                               temperature);
+<<<<<<< HEAD
   phi::funcs::SoftmaxFunctor<Context, T>()(ctx, axis_dim, &x_noise_2d, &out_2d);
+=======
+  if (is_test) {
+    paddle::operators::math::SoftmaxFunctor<Context, T, true>()(
+        ctx, axis_dim, &x_noise_2d, &out_2d);
+  } else {
+    paddle::operators::math::SoftmaxFunctor<Context, T, false>()(
+        ctx, axis_dim, &x_noise_2d, &out_2d);
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (hard) {
     OneHotGenerator<Context, T>::Transform(ctx, x, out, axis);
@@ -101,7 +127,23 @@ void GumbelSoftmaxKernel(const Context& ctx,
                          bool hard,
                          int axis,
                          DenseTensor* out) {
+<<<<<<< HEAD
   GumbelSoftmaxKernelHelper<T, Context>(ctx, x, temperature, hard, axis, out);
+=======
+  GumbelSoftmaxKernelHelper<T, Context>(
+      ctx, x, temperature, hard, axis, out, false);
+}
+
+template <typename T, typename Context>
+void GumbelSoftmaxInferKernel(const Context& ctx,
+                              const DenseTensor& x,
+                              float temperature,
+                              bool hard,
+                              int axis,
+                              DenseTensor* out) {
+  GumbelSoftmaxKernelHelper<T, Context>(
+      ctx, x, temperature, hard, axis, out, true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

@@ -14,6 +14,7 @@
 
 import numpy as np
 
+<<<<<<< HEAD
 import paddle
 
 from .line_search import strong_wolfe
@@ -38,6 +39,26 @@ def minimize_lbfgs(
     dtype='float32',
     name=None,
 ):
+=======
+from .line_search import strong_wolfe
+from .utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
+
+import paddle
+
+
+def minimize_lbfgs(objective_func,
+                   initial_position,
+                   history_size=100,
+                   max_iters=50,
+                   tolerance_grad=1e-8,
+                   tolerance_change=1e-8,
+                   initial_inverse_hessian_estimate=None,
+                   line_search_fn='strong_wolfe',
+                   max_line_search_iters=50,
+                   initial_step_length=1.0,
+                   dtype='float32',
+                   name=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     r"""
     Minimizes a differentiable function `func` using the L-BFGS method.
     The L-BFGS is a quasi-Newton method for solving an unconstrained optimization problem over a differentiable function.
@@ -47,9 +68,15 @@ def minimize_lbfgs(
         x_{k+1} = x_{k} + H_k \nabla{f_k}
 
     If :math:`H_k` is the inverse Hessian of :math:`f` at :math:`x_k`, then it's the Newton method.
+<<<<<<< HEAD
     If :math:`H_k` is symmetric and positive definite, used as an approximation of the inverse Hessian, then
     it's a quasi-Newton. In practice, the approximated Hessians are obtained
     by only using the gradients, over either whole or part of the search
+=======
+    If :math:`H_k` is symmetric and positive definite, used as an approximation of the inverse Hessian, then 
+    it's a quasi-Newton. In practice, the approximated Hessians are obtained
+    by only using the gradients, over either whole or part of the search 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     history, the former is BFGS, the latter is L-BFGS.
 
     Reference:
@@ -57,7 +84,11 @@ def minimize_lbfgs(
 
     Args:
         objective_func: the objective function to minimize. ``objective_func`` accepts a 1D Tensor and returns a scalar.
+<<<<<<< HEAD
         initial_position (Tensor): the starting point of the iterates, has the same shape with the input of ``objective_func`` .
+=======
+        initial_position (Tensor): the starting point of the iterates, has the same shape with the input of ``objective_func`` . 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         history_size (Scalar): the number of stored vector pairs {si,yi}. Default value: 100.
         max_iters (int, optional): the maximum number of minimization iterations. Default value: 50.
         tolerance_grad (float, optional): terminates if the gradient norm is smaller than this. Currently gradient norm uses inf norm. Default value: 1e-7.
@@ -77,12 +108,20 @@ def minimize_lbfgs(
             - position (Tensor): the position of the last iteration. If the search converged, this value is the argmin of the objective function regrading to the initial position.
             - objective_value (Tensor): objective function value at the `position`.
             - objective_gradient (Tensor): objective function gradient at the `position`.
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
         .. code-block:: python
 
             import paddle
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             def func(x):
                 return paddle.dot(x, x)
 
@@ -97,10 +136,15 @@ def minimize_lbfgs(
     """
     if dtype not in ['float32', 'float64']:
         raise ValueError(
+<<<<<<< HEAD
             "The dtype must be 'float32' or 'float64', but the specified is {}.".format(
                 dtype
             )
         )
+=======
+            "The dtype must be 'float32' or 'float64', but the specified is {}."
+            .format(dtype))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     op_name = 'minimize_lbfgs'
     check_input_type(initial_position, 'initial_position', op_name)
@@ -108,11 +152,16 @@ def minimize_lbfgs(
     if initial_inverse_hessian_estimate is None:
         H0 = paddle.eye(initial_position.shape[0], dtype=dtype)
     else:
+<<<<<<< HEAD
         check_input_type(
             initial_inverse_hessian_estimate,
             'initial_inverse_hessian_estimate',
             op_name,
         )
+=======
+        check_input_type(initial_inverse_hessian_estimate,
+                         'initial_inverse_hessian_estimate', op_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_initial_inverse_hessian_estimate(initial_inverse_hessian_estimate)
         H0 = initial_inverse_hessian_estimate
 
@@ -125,14 +174,24 @@ def minimize_lbfgs(
     is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
     num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
 
+<<<<<<< HEAD
     history_size = paddle.full(
         shape=[1], fill_value=history_size, dtype='int64'
     )
+=======
+    history_size = paddle.full(shape=[1],
+                               fill_value=history_size,
+                               dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     head = paddle.full(shape=[1], fill_value=1, dtype='int64')
     tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
 
     shape = initial_position.shape[0]
+<<<<<<< HEAD
     # Use tensor as array of fixed length, rather than flexible tensor array. Because in static graph mode,
+=======
+    # Use tensor as array of fixed length, rather than flexible tensor array. Because in static mode,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # tensor array will produce tensor of shape[-1], which will cause error when calling jacobian. In this way, can not use append
     # or pop, so we need head and tail to record where is the newest data and where is the oldest.
     # Totally speaking, realized a stack by array.
@@ -141,6 +200,7 @@ def minimize_lbfgs(
     rhok_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
     ai_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
 
+<<<<<<< HEAD
     def cond(
         k,
         done,
@@ -179,6 +239,22 @@ def minimize_lbfgs(
         i = paddle.full(
             shape=[1], fill_value=(head - 1).mod(history_size), dtype='int64'
         )
+=======
+    def cond(k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
+             yk_vec, rhok_vec, head, tail):
+        return (k < max_iters) & ~done
+
+    def body(k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
+             yk_vec, rhok_vec, head, tail):
+        # use assign to cut off the relevance between g1 and q, or they will change together.
+
+        #############    compute p_k by two-loop recursion    #############
+        q = paddle.assign(g1)
+        # In a array circle, the index may out of range, so must use mod.
+        i = paddle.full(shape=[1],
+                        fill_value=(head - 1).mod(history_size),
+                        dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def cond(i, q):
             return i != tail
@@ -208,13 +284,18 @@ def minimize_lbfgs(
 
         pk = -r
 
+<<<<<<< HEAD
         # --------------   compute alpha by line serach    -------------- #
+=======
+        #############    compute alpha by line serach    #############
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if line_search_fn == 'strong_wolfe':
             alpha, value, g2, ls_func_calls = strong_wolfe(
                 f=objective_func,
                 xk=xk,
                 pk=pk,
                 initial_step_length=initial_step_length,
+<<<<<<< HEAD
                 dtype=dtype,
             )
         else:
@@ -226,15 +307,31 @@ def minimize_lbfgs(
         paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
 
         # --------------   update sk_vec, yk_vec, rhok_vec    -------------- #
+=======
+                dtype=dtype)
+        else:
+            raise NotImplementedError(
+                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'"
+                .format(line_search_fn))
+        paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
+
+        #############    update sk_vec, yk_vec, rhok_vec    #############
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sk = alpha * pk
         yk = g2 - g1
 
         rhok_inv = paddle.dot(yk, sk)
         rhok = paddle.static.nn.cond(
+<<<<<<< HEAD
             rhok_inv == 0.0,
             lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
             lambda: 1.0 / rhok_inv,
         )
+=======
+            rhok_inv == 0.,
+            lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
+            lambda: 1. / rhok_inv)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         sk_vec[head] = sk
         yk_vec[head] = yk
@@ -251,6 +348,7 @@ def minimize_lbfgs(
         g1 = g2
         k += 1
 
+<<<<<<< HEAD
         # --------------   check convergence    -------------- #
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
@@ -294,4 +392,27 @@ def minimize_lbfgs(
             tail,
         ],
     )
+=======
+        #############    check convergence    #############
+        gnorm = paddle.linalg.norm(g1, p=np.inf)
+        pk_norm = paddle.linalg.norm(pk, p=np.inf)
+        paddle.assign(
+            done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change),
+            done)
+        paddle.assign(done, is_converge)
+        # when alpha=0, there is no chance to get xk change.
+        paddle.assign(done | (alpha == 0.), done)
+
+        return [
+            k, done, is_converge, num_func_calls, value, xk, g1, sk_vec, yk_vec,
+            rhok_vec, head, tail
+        ]
+
+    paddle.static.nn.while_loop(cond=cond,
+                                body=body,
+                                loop_vars=[
+                                    k, done, is_converge, num_func_calls, value,
+                                    xk, g1, sk_vec, yk_vec, rhok_vec, head, tail
+                                ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return is_converge, num_func_calls, xk, value, g1

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 import unittest
 
@@ -20,6 +21,17 @@ from paddle.distributed.fleet.utils.log_util import logger
 
 
 class TestFleetLog(unittest.TestCase):
+=======
+import paddle
+from paddle.distributed import fleet
+from paddle.distributed.fleet.utils.log_util import logger
+import logging
+import unittest
+
+
+class TestFleetLog(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         fleet.init(log_level="DEBUG")
 

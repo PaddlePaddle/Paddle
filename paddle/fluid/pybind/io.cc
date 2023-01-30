@@ -25,7 +25,12 @@ namespace pybind {
 
 void BindIO(pybind11::module *m) {
   m->def("save_lod_tensor",
+<<<<<<< HEAD
          [](const phi::DenseTensor &tensor, const std::string &str_file_name) {
+=======
+         [](const paddle::framework::LoDTensor &tensor,
+            const std::string &str_file_name) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            std::ofstream fout(str_file_name, std::ios::binary);
            PADDLE_ENFORCE_EQ(
                static_cast<bool>(fout),
@@ -40,7 +45,12 @@ void BindIO(pybind11::module *m) {
          });
 
   m->def("load_lod_tensor",
+<<<<<<< HEAD
          [](phi::DenseTensor &tensor, const std::string &str_file_name) {
+=======
+         [](paddle::framework::LoDTensor &tensor,
+            const std::string &str_file_name) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            std::ifstream fin(str_file_name, std::ios::binary);
            PADDLE_ENFORCE_EQ(
                static_cast<bool>(fin),
@@ -87,14 +97,23 @@ void BindIO(pybind11::module *m) {
       });
 
   m->def("save_lod_tensor_to_memory",
+<<<<<<< HEAD
          [](const phi::DenseTensor &tensor) -> py::bytes {
+=======
+         [](const paddle::framework::LoDTensor &tensor) -> py::bytes {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            std::ostringstream ss;
            paddle::framework::SerializeToStream(ss, tensor);
            return ss.str();
          });
 
   m->def("load_lod_tensor_from_memory",
+<<<<<<< HEAD
          [](phi::DenseTensor &tensor, const std::string &tensor_bytes) {
+=======
+         [](paddle::framework::LoDTensor &tensor,
+            const std::string &tensor_bytes) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            std::istringstream fin(tensor_bytes,
                                   std::ios::in | std::ios::binary);
            paddle::framework::DeserializeFromStream(fin, &tensor);

@@ -24,6 +24,7 @@ namespace dyl = paddle::platform::dynload;
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
 
 struct CublasLtAlgoParam {
   int algoId;
@@ -38,6 +39,8 @@ struct CublasLtAlgoParam {
 
 const std::map<std::tuple<int, int, int>, CublasLtAlgoParam> AlgoParamCache{};
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class CublasLtHelper {
  public:
   CublasLtHelper(int m, int k, int n)
@@ -113,15 +116,36 @@ class CublasLtHelper {
             "cublasLtMatrixLayoutCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
+<<<<<<< HEAD
 
 #if CUDA_VERSION >= 11020
 
+=======
+  }
+  ~CublasLtHelper() {
+    if (handle_) dyl::cublasLtDestroy(handle_);
+    if (matmul_desc_) dyl::cublasLtMatmulDescDestroy(matmul_desc_);
+    if (A_desc_) dyl::cublasLtMatrixLayoutDestroy(A_desc_);
+    if (B_desc_) dyl::cublasLtMatrixLayoutDestroy(B_desc_);
+    if (C_desc_) dyl::cublasLtMatrixLayoutDestroy(C_desc_);
+  }
+
+  void GEMM(int8_t* A_dev,
+            const int8_t* B_dev,
+            int32_t* C_dev,
+            cudaStream_t stream) {
+    cublasStatus_t status;
+
+#if __CUDA_ARCH__ >= 800 && CUDA_VERSION >= 11020
+    cublasLtMatmulAlgo_t algo;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int algoId = 21;
     int swizzle = 0;
     int customOption = 0;
     int tile = 15;
     int splitK_val = 0;
     int reductionScheme = 0;
+<<<<<<< HEAD
     int stages = 23;
     workspace_size_ = 0;
     if (m >= 128) {
@@ -141,6 +165,17 @@ class CublasLtHelper {
       stages = value.stages;
       workspace_size_ = value.workspace_size;
     }
+=======
+#if CUDA_VERSION >= 11000
+    int stages = 23;
+#endif
+
+#if CUBLAS_VER_MAJOR < 11
+    cudaDataType_t cudaComputeType = CUDA_R_32I;
+#else
+    cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     dyl::cublasLtMatmulAlgoInit(handle_,
                                 cudaComputeType,
@@ -150,30 +185,48 @@ class CublasLtHelper {
                                 CUDA_R_32I,
                                 CUDA_R_32I,
                                 algoId,
+<<<<<<< HEAD
                                 &algo_);
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
         &algo_,
+=======
+                                &algo);
+    dyl::cublasLtMatmulAlgoConfigSetAttribute(
+        &algo,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
         &(customOption),
         sizeof(customOption));
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
+<<<<<<< HEAD
         &algo_, CUBLASLT_ALGO_CONFIG_TILE_ID, &(tile), sizeof(tile));
     dyl::cublasLtMatmulAlgoConfigSetAttribute(&algo_,
+=======
+        &algo, CUBLASLT_ALGO_CONFIG_TILE_ID, &(tile), sizeof(tile));
+    dyl::cublasLtMatmulAlgoConfigSetAttribute(&algo,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                               CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
                                               &(splitK_val),
                                               sizeof(splitK_val));
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
+<<<<<<< HEAD
         &algo_,
         CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING,
         &(swizzle),
         sizeof(swizzle));
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
         &algo_,
+=======
+        &algo, CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING, &(swizzle), sizeof(swizzle));
+    dyl::cublasLtMatmulAlgoConfigSetAttribute(
+        &algo,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
         &(reductionScheme),
         sizeof(int));
 #if CUDA_VERSION >= 11000
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
+<<<<<<< HEAD
         &algo_, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
 #endif
 #endif
@@ -187,6 +240,11 @@ class CublasLtHelper {
             void* workspace = nullptr) {
     cublasStatus_t status;
 
+=======
+        &algo, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
+#endif
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     status = dyl::cublasLtMatmul(handle_,
                                  matmul_desc_,
                                  &alpha_,
@@ -199,6 +257,7 @@ class CublasLtHelper {
                                  C_desc_,
                                  C_dev,
                                  C_desc_,
+<<<<<<< HEAD
 #if CUDA_VERSION >= 11020
                                  &algo_,
                                  workspace,
@@ -208,6 +267,15 @@ class CublasLtHelper {
                                  nullptr,
                                  0,
 #endif
+=======
+#if __CUDA_ARCH__ >= 800 && CUDA_VERSION >= 11020
+                                 &algo,
+#else
+                                 nullptr,
+#endif
+                                 nullptr,
+                                 0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  stream);
     PADDLE_ENFORCE_EQ(
         status,
@@ -224,17 +292,23 @@ class CublasLtHelper {
   cublasLtMatrixLayout_t A_desc_;
   cublasLtMatrixLayout_t B_desc_;
   cublasLtMatrixLayout_t C_desc_;
+<<<<<<< HEAD
 
   cublasLtMatmulAlgo_t algo_;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int32_t alpha_;
   int32_t beta_;
 
   int m_;
   int k_;
   int n_;
+<<<<<<< HEAD
 
   size_t workspace_size_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace operators

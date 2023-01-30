@@ -14,12 +14,19 @@
 
 #include "paddle/phi/kernels/cumprod_kernel.h"
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/inclusive_scan.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/inclusive_scan.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -32,6 +39,7 @@ void CumprodKernel(const Context &dev_ctx,
   auto *y = out;
   size_t outer_dim, mid_dim, inner_dim;
   GetCumprodDimInfo(x->dims(), dim, &outer_dim, &mid_dim, &inner_dim);
+<<<<<<< HEAD
   if (x->dims().size() == 0) {
     phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
     return;
@@ -48,6 +56,20 @@ void CumprodKernel(const Context &dev_ctx,
                             funcs::MultiplyFunctor<T>(),
                             /*reverse=*/false,
                             dev_ctx);
+=======
+
+  const auto *x_data = x->data<T>();
+  auto *y_data = dev_ctx.template Alloc<T>(y);
+  paddle::operators::math::InclusiveScan(x_data,
+                                         y_data,
+                                         outer_dim,
+                                         mid_dim,
+                                         inner_dim,
+                                         static_cast<T>(1),
+                                         funcs::MultiplyFunctor<T>(),
+                                         /*reverse=*/false,
+                                         dev_ctx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import multiprocessing
 import queue
 import unittest
@@ -20,6 +21,21 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid.reader import _reader_process_loop
+=======
+import sys
+import unittest
+import multiprocessing
+import numpy as np
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.reader import _reader_process_loop
+from paddle.fluid.framework import _test_eager_guard
+
+if sys.version_info[0] == 2:
+    import Queue as queue
+else:
+    import queue
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -29,11 +45,19 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def batch_generator_creator(batch_size, batch_num):
+<<<<<<< HEAD
     def __reader__():
         for _ in range(batch_num):
             batch_image, batch_label = get_random_images_and_labels(
                 [batch_size, 784], [batch_size, 1]
             )
+=======
+
+    def __reader__():
+        for _ in range(batch_num):
+            batch_image, batch_label = get_random_images_and_labels(
+                [batch_size, 784], [batch_size, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             yield batch_image, batch_label
 
     return __reader__
@@ -42,13 +66,21 @@ def batch_generator_creator(batch_size, batch_num):
 # NOTE: coverage CI can't cover child process code, so need these test.
 # Here test child process loop function in main process
 class TestDygraphDataLoaderProcess(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
         self.epoch_num = 2
         self.capacity = 2
 
+<<<<<<< HEAD
     def test_reader_process_loop(self):
+=======
+    def func_test_reader_process_loop(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # This unittest's memory mapped files needs to be cleaned manually
         def __clear_process__(util_queue):
             while True:
@@ -59,12 +91,19 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
 
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
+<<<<<<< HEAD
                 capacity=self.batch_num + 1, use_multiprocess=True
             )
             loader.set_batch_generator(
                 batch_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace(),
             )
+=======
+                capacity=self.batch_num + 1, use_multiprocess=True)
+            loader.set_batch_generator(batch_generator_creator(
+                self.batch_size, self.batch_num),
+                                       places=fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loader._data_queue = queue.Queue(self.batch_num + 1)
             _reader_process_loop(loader._batch_reader, loader._data_queue)
             # For clean memory mapped files
@@ -74,6 +113,7 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
                 util_queue.put(data)
 
             # Clean up memory mapped files
+<<<<<<< HEAD
             clear_process = multiprocessing.Process(
                 target=__clear_process__, args=(util_queue,)
             )
@@ -81,6 +121,21 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
 
     def test_reader_process_loop_simple_none(self):
         def none_sample_genarator(batch_num):
+=======
+            clear_process = multiprocessing.Process(target=__clear_process__,
+                                                    args=(util_queue, ))
+            clear_process.start()
+
+    def test_reader_process_loop(self):
+        with _test_eager_guard():
+            self.func_test_reader_process_loop()
+        self.func_test_reader_process_loop()
+
+    def func_test_reader_process_loop_simple_none(self):
+
+        def none_sample_genarator(batch_num):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             def __reader__():
                 for _ in range(batch_num):
                     yield None
@@ -89,11 +144,17 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
 
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
+<<<<<<< HEAD
                 capacity=self.batch_num + 1, use_multiprocess=True
             )
             loader.set_batch_generator(
                 none_sample_genarator(self.batch_num), places=fluid.CPUPlace()
             )
+=======
+                capacity=self.batch_num + 1, use_multiprocess=True)
+            loader.set_batch_generator(none_sample_genarator(self.batch_num),
+                                       places=fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loader._data_queue = queue.Queue(self.batch_num + 1)
             exception = None
             try:
@@ -102,6 +163,14 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
                 exception = ex
             self.assertIsNotNone(exception)
 
+<<<<<<< HEAD
+=======
+    def test_reader_process_loop_simple_none(self):
+        with _test_eager_guard():
+            self.func_test_reader_process_loop_simple_none()
+        self.func_test_reader_process_loop_simple_none()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

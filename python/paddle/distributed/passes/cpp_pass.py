@@ -12,17 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle.framework import _apply_pass as _apply_cpp_pass
 from paddle.framework import core
 from paddle.static import Executor
 
 from .pass_base import CPPPassWrapper, PassType, register_pass
+=======
+from paddle.static import Executor
+from .pass_base import PassType, CPPPassWrapper, register_pass
+from paddle.fluid.framework import core, _apply_pass as _apply_cpp_pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @register_pass("fuse_elewise_add_act")
 class FuseElementwiseAddActPass(CPPPassWrapper):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(FuseElementwiseAddActPass, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def cpp_name(self):
@@ -34,8 +46,14 @@ class FuseElementwiseAddActPass(CPPPassWrapper):
 
 @register_pass("fuse_bn_act")
 class FuseBatchNormActPass(CPPPassWrapper):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(FuseBatchNormActPass, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def cpp_name(self):
@@ -47,8 +65,14 @@ class FuseBatchNormActPass(CPPPassWrapper):
 
 @register_pass("fuse_bn_add_act")
 class FuseBatchNormAddActPass(CPPPassWrapper):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(FuseBatchNormAddActPass, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def cpp_name(self):
@@ -60,6 +84,7 @@ class FuseBatchNormAddActPass(CPPPassWrapper):
 
 @register_pass("fuse_relu_depthwise_conv")
 class FuseReluDepthwiseConvPass(CPPPassWrapper):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
 
@@ -92,6 +117,15 @@ class FuseGemmEpiloguePass(CPPPassWrapper):
     @property
     def cpp_name(self):
         return "fuse_gemm_epilogue_pass"
+=======
+
+    def __init__(self):
+        super(FuseReluDepthwiseConvPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_relu_depthwise_conv_pass"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _type(self):
         return PassType.FUSION_OPT
@@ -99,15 +133,25 @@ class FuseGemmEpiloguePass(CPPPassWrapper):
 
 @register_pass("fuse_optimizer")
 class FuseOptimizerPass(CPPPassWrapper):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(FuseOptimizerPass, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def cpp_name(self):
         return [
+<<<<<<< HEAD
             "fuse_adam_op_pass",
             "fuse_sgd_op_pass",
             "fuse_momentum_op_pass",
+=======
+            "fuse_adam_op_pass", "fuse_sgd_op_pass", "fuse_momentum_op_pass"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
     def _type(self):
@@ -116,8 +160,14 @@ class FuseOptimizerPass(CPPPassWrapper):
 
 @register_pass("inplace_addto_op")
 class InplaceAddtoOpPass(CPPPassWrapper):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(InplaceAddtoOpPass, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def cpp_name(self):
@@ -136,8 +186,14 @@ def _set_cinn_op_flag(flag_name, extra_ops):
 
 @register_pass("build_cinn")
 class BuildCINNPass(CPPPassWrapper):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(BuildCINNPass, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.set_attr("allow_ops", [])
         self.set_attr("deny_ops", [])
 
@@ -150,15 +206,24 @@ class BuildCINNPass(CPPPassWrapper):
 
     def _apply_single_impl(self, main_program, startup_program, context):
 
+<<<<<<< HEAD
         assert (
             'FLAGS_allow_cinn_ops' in core.globals()
+=======
+        assert 'FLAGS_allow_cinn_ops' in core.globals(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ), "PaddlePaddle is not compiled with CINN support"
         old_allow_ops = core.globals()['FLAGS_allow_cinn_ops']
         old_deny_ops = core.globals()['FLAGS_deny_cinn_ops']
         try:
+<<<<<<< HEAD
             _set_cinn_op_flag(
                 'FLAGS_allow_cinn_ops', self.get_attr("allow_ops")
             )
+=======
+            _set_cinn_op_flag('FLAGS_allow_cinn_ops',
+                              self.get_attr("allow_ops"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             _set_cinn_op_flag('FLAGS_deny_cinn_ops', self.get_attr("deny_ops"))
 
             feed = self.get_attr('feed', [])
@@ -167,16 +232,24 @@ class BuildCINNPass(CPPPassWrapper):
 
             if prune_program:
                 tmp_main_program = Executor._prune_program(
+<<<<<<< HEAD
                     main_program, feed, fetch_list, []
                 )
 
                 tmp_main_program = Executor._add_fetch_ops(
                     tmp_main_program, fetch_list, 'fetch'
                 )
+=======
+                    main_program, feed, fetch_list, [])
+
+                tmp_main_program = Executor._add_fetch_ops(
+                    tmp_main_program, fetch_list, 'fetch')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             else:
 
                 tmp_main_program = Executor._add_fetch_ops(
+<<<<<<< HEAD
                     main_program, fetch_list, 'fetch'
                 )
 
@@ -187,6 +260,12 @@ class BuildCINNPass(CPPPassWrapper):
                 {},
                 self.cpp_attr_types,
             )
+=======
+                    main_program, fetch_list, 'fetch')
+
+            _apply_cpp_pass(tmp_main_program, startup_program, self.cpp_name,
+                            {}, self.cpp_attr_types)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             tmp_main_program = Executor._remove_fetch_ops(tmp_main_program)
 

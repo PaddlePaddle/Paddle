@@ -14,12 +14,25 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/all_context.h"
+=======
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/custom/custom_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/onednn/onednn_context.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/extended_tensor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -265,8 +278,11 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+<<<<<<< HEAD
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(ExtendedTensor);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorBase);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
@@ -326,7 +342,25 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
 
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(TensorArray);
+<<<<<<< HEAD
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(ExtendedTensor);
+=======
+
+  template <typename... Tail>
+  struct KernelCallHelper<const RuntimeAttrs&, Tail...> {
+    template <int dev_ctx_idx,
+              int in_idx,
+              int attr_idx,
+              int out_idx,
+              typename... PreviousArgs>
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {
+      const auto& runtime_attrs = ctx->GetRuntimeAttrs();
+      KernelCallHelper<Tail...>::
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx>(
+              ctx, pargs..., runtime_attrs);
+    }
+  };
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   /* End case */
   template <typename T>
@@ -340,6 +374,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   };
 };
 
+<<<<<<< HEAD
 inline bool recompute_reduce_all(const DenseTensor& x,
                                  const IntArray& dims,
                                  bool reduce_all = false) {
@@ -351,4 +386,6 @@ inline bool recompute_reduce_all(const DenseTensor& x,
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

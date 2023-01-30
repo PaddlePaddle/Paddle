@@ -89,12 +89,15 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
                           cb,
                           cb_params);
         break;
+<<<<<<< HEAD
       case PaddleDType::BOOL:
         src.CopyToCpuImpl(dst.mutable_data<bool>(PlaceType::kCPU),
                           exec_stream,
                           cb,
                           cb_params);
         break;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       case PaddleDType::FLOAT16:
         src.CopyToCpuImpl(
             dst.mutable_data<paddle::platform::float16>(PlaceType::kCPU),
@@ -104,7 +107,11 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
         break;
       default:
         PADDLE_THROW(paddle::platform::errors::Unimplemented(
+<<<<<<< HEAD
             "Only INT32, INT64, UINT8, INT8, BOOL, FLOAT16 and "
+=======
+            "Only INT32, INT64, UINT8, INT8, FLOAT16 and "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "FLOAT32 is supported in Tensor. Others not implements"));
     }
     // gpu => gpu or cpu => gpu
@@ -148,11 +155,14 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
         src_data = static_cast<void*>(src.data<int8_t>(&src_place, &data_size));
         data_len = data_size * sizeof(int8_t);
         break;
+<<<<<<< HEAD
       case PaddleDType::BOOL:
         dst_data = static_cast<void*>(dst.mutable_data<bool>(PlaceType::kGPU));
         src_data = static_cast<void*>(src.data<bool>(&src_place, &data_size));
         data_len = data_size * sizeof(bool);
         break;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       case PaddleDType::FLOAT16:
         dst_data = static_cast<void*>(
             dst.mutable_data<paddle::platform::float16>(PlaceType::kGPU));
@@ -162,7 +172,11 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
         break;
       default:
         PADDLE_THROW(paddle::platform::errors::Unimplemented(
+<<<<<<< HEAD
             "Only INT32, INT64, UINT8, INT8, BOOL, FLOAT16 and "
+=======
+            "Only INT32, INT64, UINT8, INT8, FLOAT16 and "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "FLOAT32 is supported in Tensor. Others not implements"));
     }
 

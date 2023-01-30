@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numbers
 import unittest
 
@@ -22,6 +23,19 @@ import paddle.fluid.core as core
 
 
 class TestTensorPtr(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import unittest
+import numpy as np
+import numbers
+
+
+class TestTensorPtr(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_tensor_ptr(self):
         t = core.Tensor()
         np_arr = np.zeros([2, 3])
@@ -30,6 +44,7 @@ class TestTensorPtr(unittest.TestCase):
 
 
 class TestTensor(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.support_dtypes = [
             'bool',
@@ -41,6 +56,13 @@ class TestTensor(unittest.TestCase):
             'float16',
             'float32',
             'float64',
+=======
+
+    def setUp(self):
+        self.support_dtypes = [
+            'bool', 'uint8', 'int8', 'int16', 'int32', 'int64', 'float16',
+            'float32', 'float64'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
     def test_int_tensor(self):
@@ -86,9 +108,16 @@ class TestTensor(unittest.TestCase):
         scope = core.Scope()
         var = scope.var("int8_tensor")
         cpu_tensor = var.get_tensor()
+<<<<<<< HEAD
         tensor_array = np.random.randint(
             -127, high=128, size=[100, 200], dtype=np.int8
         )
+=======
+        tensor_array = np.random.randint(-127,
+                                         high=128,
+                                         size=[100, 200],
+                                         dtype=np.int8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         place = core.CPUPlace()
         cpu_tensor.set(tensor_array, place)
         cpu_tensor_array_2 = np.array(cpu_tensor)
@@ -96,6 +125,7 @@ class TestTensor(unittest.TestCase):
 
         if core.is_compiled_with_cuda():
             cuda_tensor = var.get_tensor()
+<<<<<<< HEAD
             tensor_array = np.random.randint(
                 -127, high=128, size=[100, 200], dtype=np.int8
             )
@@ -105,6 +135,17 @@ class TestTensor(unittest.TestCase):
             self.assertAlmostEqual(
                 cuda_tensor_array_2.all(), tensor_array.all()
             )
+=======
+            tensor_array = np.random.randint(-127,
+                                             high=128,
+                                             size=[100, 200],
+                                             dtype=np.int8)
+            place = core.CUDAPlace(0)
+            cuda_tensor.set(tensor_array, place)
+            cuda_tensor_array_2 = np.array(cuda_tensor)
+            self.assertAlmostEqual(cuda_tensor_array_2.all(),
+                                   tensor_array.all())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_int_lod_tensor(self):
         place = core.CPUPlace()
@@ -213,6 +254,7 @@ class TestTensor(unittest.TestCase):
         shape = [3, 3, 3]
         tensor._set_dims(shape)
 
+<<<<<<< HEAD
         tensor_array = np.array(
             [
                 [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
@@ -220,6 +262,12 @@ class TestTensor(unittest.TestCase):
                 [[19, 20, 21], [22, 23, 24], [25, 26, 27]],
             ]
         ).astype(dtype)
+=======
+        tensor_array = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                                 [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+                                 [[19, 20, 21], [22, 23, 24],
+                                  [25, 26, 27]]]).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         tensor.set(tensor_array, place)
         n1 = tensor[1]
@@ -292,12 +340,17 @@ class TestTensor(unittest.TestCase):
         tensor = var.get_tensor()
         dtype = core.VarDesc.VarType.FP32
         self.assertTrue(
+<<<<<<< HEAD
             isinstance(tensor._mutable_data(place, dtype), numbers.Integral)
         )
+=======
+            isinstance(tensor._mutable_data(place, dtype), numbers.Integral))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.assertTrue(
+<<<<<<< HEAD
                 isinstance(tensor._mutable_data(place, dtype), numbers.Integral)
             )
             place = core.CUDAPinnedPlace()
@@ -310,6 +363,18 @@ class TestTensor(unittest.TestCase):
                     tensor._mutable_data(places[0], dtype), numbers.Integral
                 )
             )
+=======
+                isinstance(tensor._mutable_data(place, dtype),
+                           numbers.Integral))
+            place = core.CUDAPinnedPlace()
+            self.assertTrue(
+                isinstance(tensor._mutable_data(place, dtype),
+                           numbers.Integral))
+            places = fluid.cuda_pinned_places()
+            self.assertTrue(
+                isinstance(tensor._mutable_data(places[0], dtype),
+                           numbers.Integral))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_tensor_set_fp16(self):
         array = np.random.random((300, 500)).astype("float16")

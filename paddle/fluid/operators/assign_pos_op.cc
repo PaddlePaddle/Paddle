@@ -31,7 +31,11 @@ class AssignPosOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     auto cum_count_dtype =
         OperatorWithKernel::IndicateVarDataType(ctx, "cum_count");
@@ -46,7 +50,11 @@ class AssignPosOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The dtype of the cum_count_dtype, eff_num_len and "
                           "X should be same as int64"));
+<<<<<<< HEAD
     return phi::KernelKey(cum_count_dtype, ctx.device_context().GetPlace());
+=======
+    return framework::OpKernelType(cum_count_dtype, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -62,7 +70,11 @@ class AssignPosOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 assign_pos_op Operator.
 
+<<<<<<< HEAD
 Assign pos decides which tokens should be fetched belong to
+=======
+Assign pos decides which tokens should be fetched belong to 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 specially counter orderingly.
 
 )DOC");

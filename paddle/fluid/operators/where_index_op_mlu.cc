@@ -20,16 +20,30 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class MLUWhereIndexKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* condition = context.Input<phi::DenseTensor>("Condition");
     auto* out = context.Output<phi::DenseTensor>("Out");
     auto dims = condition->dims();
     const int rank = dims.size();
 
     phi::DenseTensor num_true;
+=======
+    auto* condition = context.Input<Tensor>("Condition");
+    auto* out = context.Output<Tensor>("Out");
+    auto dims = condition->dims();
+    const int rank = dims.size();
+
+    Tensor num_true;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     num_true.mutable_data<int>({1}, context.GetPlace());
     MLUCnnlTensorDesc con_desc(*condition);
     MLUCnnlTensorDesc num_true_desc(num_true);
@@ -39,7 +53,11 @@ class MLUWhereIndexKernel : public framework::OpKernel<T> {
                      num_true_desc.get(),
                      GetBasePtr(&num_true));
 
+<<<<<<< HEAD
     phi::DenseTensor local_true_num;
+=======
+    Tensor local_true_num;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle::framework::TensorCopySync(
         num_true, platform::CPUPlace(), &local_true_num);
     auto true_num = *local_true_num.data<int>();
@@ -52,7 +70,11 @@ class MLUWhereIndexKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = context.template device_context<MLUDeviceContext>();
+<<<<<<< HEAD
     phi::DenseTensor out_int32 =
+=======
+    framework::Tensor out_int32 =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         context.AllocateTmpTensor<int32_t, MLUDeviceContext>(out->dims(),
                                                              dev_ctx);
     MLUCnnlTensorDesc out_int32_desc(out_int32);

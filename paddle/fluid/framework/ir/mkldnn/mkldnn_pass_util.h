@@ -140,7 +140,11 @@ static void GetInfoFromTheFirstOp(ir::Graph* graph,
                                                 op_desc->GetAttr(vector_name));
           phi::DenseTensor tensor;
           const int size = static_cast<int>(scales_vector.size());
+<<<<<<< HEAD
           auto data = tensor.mutable_data<double>({size}, phi::CPUPlace());
+=======
+          auto data = tensor.mutable_data<double>({size}, platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           std::copy(scales_vector.begin(), scales_vector.end(), data);
           auto pair = std::make_pair(is_unsigned, tensor);
           info_map->insert(std::make_pair(var_name, pair));

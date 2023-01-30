@@ -63,6 +63,7 @@ void FusionSquaredMatSubOp::InferShape(
   ctx->SetOutputDim("Out", {x_dims[0], y_dims[1]});
 }
 
+<<<<<<< HEAD
 phi::KernelKey FusionSquaredMatSubOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -80,6 +81,25 @@ void FusionSquaredMatSubOpMaker::Make() {
   AddComment(R"DOC(
     Fusion Squared Matrix and substrct operator.
 
+=======
+framework::OpKernelType FusionSquaredMatSubOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+}
+
+void FusionSquaredMatSubOpMaker::Make() {
+  AddInput("X", "(Tensor) Input Mat A of this operator.");
+  AddInput("Y", "(Tensor) Input Mat B of this operator.");
+  AddOutput("SquaredX", "(Tensor) Squared X.").AsIntermediate();
+  AddOutput("SquaredY", "(Tensor) Squared Y.").AsIntermediate();
+  AddOutput("SquaredXY", "(Tensor) Squared X*Y.").AsIntermediate();
+  AddOutput("Out", "(Tensor) Output tensor of concat operator.");
+  AddAttr<float>("scalar", "The scalar on output matrix.").SetDefault(1.f);
+  AddComment(R"DOC(
+    Fusion Squared Matrix and substrct operator.
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ( (X * Y).^2 - (X.^2 * Y.^2) ) .* scalar
 )DOC");
 }
@@ -88,12 +108,21 @@ template <typename T>
 class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto y = ctx.Input<phi::DenseTensor>("Y");
     auto* squared_x = ctx.Output<phi::DenseTensor>("SquaredX");
     auto* squared_y = ctx.Output<phi::DenseTensor>("SquaredY");
     auto* squared_xy = ctx.Output<phi::DenseTensor>("SquaredXY");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto x = ctx.Input<Tensor>("X");
+    auto y = ctx.Input<Tensor>("Y");
+    auto* squared_x = ctx.Output<Tensor>("SquaredX");
+    auto* squared_y = ctx.Output<Tensor>("SquaredY");
+    auto* squared_xy = ctx.Output<Tensor>("SquaredXY");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto place = ctx.GetPlace();
     T scalar = static_cast<T>(ctx.Attr<float>("scalar"));
 

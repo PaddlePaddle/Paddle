@@ -28,10 +28,17 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
 
     // cnnl require input, scale, bias with same type. And all in device side.
     auto scale = static_cast<T>(ctx.Attr<float>("scale"));
+<<<<<<< HEAD
     phi::DenseTensor scale_tensor;
     if (ctx.HasInput("ScaleTensor")) {
       phi::DenseTensor float_scale_tensor =
           *ctx.Input<phi::DenseTensor>("ScaleTensor");
+=======
+    framework::Tensor scale_tensor;
+    if (ctx.HasInput("ScaleTensor")) {
+      framework::Tensor float_scale_tensor =
+          *ctx.Input<framework::Tensor>("ScaleTensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (framework::TransToProtoVarType(float_scale_tensor.dtype()) !=
           framework::TransToProtoVarType(in->dtype())) {
         scale_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
@@ -60,7 +67,11 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
     }
 
     auto bias = static_cast<T>(ctx.Attr<float>("bias"));
+<<<<<<< HEAD
     phi::DenseTensor bias_tensor =
+=======
+    framework::Tensor bias_tensor =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     MLUCnnlTensorDesc bias_desc(bias_tensor);
     MLUCnnl::Fill(ctx,
@@ -98,7 +109,11 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
                      output_desc.get(),
                      GetBasePtr(out));
     } else {
+<<<<<<< HEAD
       phi::DenseTensor new_bias_tensor =
+=======
+      framework::Tensor new_bias_tensor =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
       MLUCnnlTensorDesc new_bias_desc(new_bias_tensor);
 

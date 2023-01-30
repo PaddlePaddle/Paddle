@@ -691,7 +691,11 @@ void DlnneSubgraphPass::CreateDlnneOp(
     for (auto param_name : params) {
       auto *var = scope->FindVar(param_name);
       if (var != nullptr) {
+<<<<<<< HEAD
         auto *var_t = var->GetMutable<phi::DenseTensor>();
+=======
+        auto *var_t = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         std::ofstream p_stream;
         p_stream.open(
             subgraph_root_path + "/" + replace_name(param_name, "/", "."),

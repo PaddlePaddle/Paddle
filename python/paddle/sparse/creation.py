@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 
 import paddle
@@ -25,6 +26,23 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.tensor import max, to_tensor
+=======
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import core, dygraph_only
+from paddle.fluid.framework import _current_expected_place, _get_paddle_place
+from paddle.tensor import to_tensor, max
+from paddle.fluid.data_feeder import (
+    check_variable_and_dtype,
+    check_type,
+    check_dtype,
+    convert_dtype,
+)
+from paddle import in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
+
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = [
     'sparse_coo_tensor',
@@ -152,7 +170,10 @@ def sparse_coo_tensor(
         if shape is None:
             shape = min_shape
         else:
+<<<<<<< HEAD
             shape = list(shape)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if shape < min_shape:
                 raise ValueError(
                     "the minimun shape required is {}, but get {}".format(

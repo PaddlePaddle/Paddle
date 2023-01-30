@@ -15,26 +15,50 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/convert_utils.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
+<<<<<<< HEAD
 namespace paddle {
 namespace operators {
+=======
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+#include "paddle/fluid/framework/convert_utils.h"
+
+namespace paddle {
+namespace operators {
+using framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class SumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     auto x_vars_name = ctx.InputNames("X");
 
+<<<<<<< HEAD
+=======
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_GT(
         x_vars.size(),
         0,
@@ -45,7 +69,11 @@ class SumOp : public framework::OperatorWithKernel {
         platform::errors::NotFound("Input var[%s] should not be nullptr",
                                    x_vars_name[0]));
 
+<<<<<<< HEAD
     if (x_vars[0]->IsType<phi::DenseTensor>()) {
+=======
+    if (x_vars[0]->IsType<framework::LoDTensor>()) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
         PADDLE_ENFORCE_NOT_NULL(
@@ -72,6 +100,7 @@ class SumOp : public framework::OperatorWithKernel {
                             "Sum operator should have at least one tensor"));
 
       auto data_type = static_cast<framework::proto::VarType::Type>(dtype);
+<<<<<<< HEAD
 
       // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
       if (!((data_type == framework::proto::VarType::FP32 ||
@@ -88,23 +117,68 @@ class SumOp : public framework::OperatorWithKernel {
       // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
       return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+#ifdef PADDLE_WITH_MKLDNN
+      if (library == framework::LibraryType::kPlain &&
+          this->CanMKLDNNBeUsed(ctx, data_type) &&
+          (data_type == framework::proto::VarType::FP32 ||
+           data_type == framework::proto::VarType::BF16) &&
+          ctx.OutputVar("Out")->IsType<framework::LoDTensor>()) {
+        if (std::all_of(
+                x_vars.begin(), x_vars.end(), [](const framework::Variable* v) {
+                  return v->IsType<framework::LoDTensor>();
+                })) {
+          return framework::OpKernelType(data_type,
+                                         ctx.GetPlace(),
+                                         framework::DataLayout::kMKLDNN,
+                                         framework::LibraryType::kMKLDNN);
+        }
+      }
+#endif
+
+      return framework::OpKernelType(
+          data_type, ctx.GetPlace(), layout, library);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
       for (auto& var : x_vars) {
         auto& value = var->Get<phi::SelectedRows>().value();
         if (value.IsInitialized()) {
+<<<<<<< HEAD
           return phi::KernelKey(framework::TransToProtoVarType(value.dtype()),
                                 ctx.GetPlace());
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
       return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+=======
+          return framework::OpKernelType(
+              framework::TransToProtoVarType(value.dtype()),
+              ctx.device_context(),
+              layout,
+              library);
+        }
+      }
+      // if input sparse vars are not initialized, use an default kernel type.
+      return framework::OpKernelType(framework::proto::VarType::FP32,
+                                     ctx.device_context(),
+                                     layout,
+                                     library);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
           if (each.numel() != 0 && each.IsInitialized()) {
+<<<<<<< HEAD
             return phi::KernelKey(framework::TransToProtoVarType(each.dtype()),
                                   ctx.GetPlace());
+=======
+            return framework::OpKernelType(
+                framework::TransToProtoVarType(each.dtype()),
+                ctx.device_context(),
+                layout,
+                library);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           }
         }
       }
@@ -125,12 +199,20 @@ class SumOp : public framework::OperatorWithKernel {
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "A Varaible list. The shape and data type of the list elements"
         "should be consistent. Variable can be multi-dimensional Tensor"
         "or phi::DenseTensor, and data types can be: float32, float64, int32, "
         "int64.")
+=======
+    AddInput("X",
+             "A Varaible list. The shape and data type of the list elements"
+             "should be consistent. Variable can be multi-dimensional Tensor"
+             "or LoDTensor, and data types can be: float32, float64, int32, "
+             "int64.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .AsDuplicable();
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
@@ -143,9 +225,14 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
         .InEnum({"float32", "bfloat16"});
+<<<<<<< HEAD
     AddComment(
         R"DOC(This OP is used to sum one or more Tensor or phi::DenseTensor
                     of the input. If the input is phi::DenseTensor, the output only
+=======
+    AddComment(R"DOC(This OP is used to sum one or more Tensor or LoDTensor
+                    of the input. If the input is LoDTensor, the output only
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     shares LoD information with the first input.)DOC");
   }
 };

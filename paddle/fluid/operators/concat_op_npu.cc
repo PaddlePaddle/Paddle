@@ -22,8 +22,13 @@ template <typename T>
 class ConcatNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_NOT_NULL(ins[0],
                             platform::errors::NotFound(
                                 "The first input tensor is not initalized."));
@@ -39,7 +44,11 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
+<<<<<<< HEAD
     std::vector<phi::DenseTensor> inputs;
+=======
+    std::vector<framework::Tensor> inputs;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<std::string> names;
     for (size_t i = 0; i < ins.size(); ++i) {
       if (ins[i] && ins[i]->numel() > 0) {
@@ -66,10 +75,19 @@ template <typename T>
 class ConcatGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
     auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
+    auto outs =
+        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_NOT_NULL(ins[0],
                             platform::errors::NotFound(

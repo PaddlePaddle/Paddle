@@ -12,12 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
+=======
+from __future__ import print_function
+import unittest
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append("..")
 
 import numpy as np
+<<<<<<< HEAD
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
@@ -25,17 +32,31 @@ from xpu.get_test_cover_info import (
     get_xpu_op_support_types,
 )
 
+=======
+
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
 
 class XPUTestSqueeze2Op(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = "squeeze2"
         self.use_dynamic_create_class = False
 
     class TestSqueeze2Op(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "squeeze2"
             self.__class__.op_type = "squeeze2"
@@ -47,7 +68,11 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
             }
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
                 "XShape": np.random.random(self.ori_shape).astype(self.dtype),
+=======
+                "XShape": np.random.random(self.ori_shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.init_attrs()
 
@@ -75,6 +100,10 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
 
     # Correct: There is mins axis.
     class TestSqueeze2Op1(TestSqueeze2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (1, 20, 1, 5)
             self.axes = (0, -2)
@@ -82,6 +111,10 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
 
     # Correct: No axes input.
     class TestSqueeze2Op2(TestSqueeze2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (1, 20, 1, 5)
             self.axes = ()
@@ -89,6 +122,10 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
 
     # Correct: Just part of axes be squeezed.
     class TestSqueeze2Op3(TestSqueeze2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.ori_shape = (6, 1, 5, 1, 4, 1)
             self.axes = (1, -1)

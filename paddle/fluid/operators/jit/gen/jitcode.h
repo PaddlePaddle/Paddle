@@ -18,7 +18,11 @@
 #include <type_traits>
 
 #include "paddle/fluid/operators/jit/gen_base.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #define XBYAK_USE_MMAP_ALLOCATOR
 #include "xbyak/xbyak.h"
@@ -92,7 +96,11 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
     for (int i = 0; i < num_g_abi_regs; ++i) {
       push(Xbyak::Reg64(g_abi_regs[i]));
     }
+<<<<<<< HEAD
     if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
+=======
+    if (platform::MayIUse(platform::avx512f)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       mov(reg_EVEX_max_8b_offt, 2 * EVEX_max_8b_offt);
     }
   }

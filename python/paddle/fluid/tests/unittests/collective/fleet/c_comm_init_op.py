@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -20,11 +21,25 @@ import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
+=======
+from __future__ import print_function
+
+import unittest
+import os
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestCCommInitOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')
         self.current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
@@ -44,6 +59,7 @@ class TestCCommInitOp(unittest.TestCase):
         nccl_id_var = block.create_var(
             name=fluid.unique_name.generate('nccl_id'),
             persistable=True,
+<<<<<<< HEAD
             type=fluid.core.VarDesc.VarType.RAW,
         )
         block.append_op(
@@ -67,6 +83,26 @@ class TestCCommInitOp(unittest.TestCase):
                 'device_id': self.gpu_id,
             },
         )
+=======
+            type=fluid.core.VarDesc.VarType.RAW)
+        block.append_op(type='c_gen_nccl_id',
+                        inputs={},
+                        outputs={'Out': nccl_id_var},
+                        attrs={
+                            'rank': self.rank,
+                            'endpoint': self.current_endpoint,
+                            'other_endpoints': self.other_endpoints
+                        })
+        block.append_op(type='c_comm_init',
+                        inputs={'X': nccl_id_var},
+                        outputs={},
+                        attrs={
+                            'nranks': self.nranks,
+                            'rank': self.rank,
+                            'ring_id': 0,
+                            'device_id': self.gpu_id
+                        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.exe.run(program)
 
 

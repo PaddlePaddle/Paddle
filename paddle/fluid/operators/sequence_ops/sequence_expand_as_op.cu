@@ -15,11 +15,20 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_as_op.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 static __global__ void sequence_expand_as_kernel(const T *in_data,
                                                  const size_t *expand_offset,
@@ -67,9 +76,15 @@ template <typename T>
 struct SequenceExpandAsFunctor<phi::GPUContext, T> {
   void operator()(
       const phi::GPUContext &context,
+<<<<<<< HEAD
       const phi::DenseTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *out) {
+=======
+      const LoDTensor &x,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      LoDTensor *out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int height = x.dims()[0];
     int width = phi::product(x.dims()) / height;
 
@@ -97,9 +112,15 @@ struct SequenceExpandAsFunctor<phi::GPUContext, T> {
 template <typename T>
 struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &context,
+<<<<<<< HEAD
                   const phi::DenseTensor &dout,
                   const framework::Vector<size_t> &ref_lod, /*expand based lod*/
                   phi::DenseTensor *dx) {
+=======
+                  const LoDTensor &dout,
+                  const framework::Vector<size_t> &ref_lod, /*expand based lod*/
+                  LoDTensor *dx) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int height = dx->dims()[0];
     int width = phi::product(dx->dims()) / height;
 

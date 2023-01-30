@@ -11,15 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 import itertools
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 
 import librosa
 import numpy as np
+<<<<<<< HEAD
 from parameterized import parameterized
 
 import paddle
 import paddle.audio
+=======
+import os
+import paddle
+
+import paddle.audio
+from scipy import signal
+import itertools
+from parameterized import parameterized
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def parameterize(*params):
@@ -27,10 +40,18 @@ def parameterize(*params):
 
 
 class TestFeatures(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.initParmas()
 
     def initParmas(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def get_wav_data(dtype: str, num_channels: int, num_frames: int):
             dtype_ = getattr(paddle, dtype)
             base = paddle.linspace(-1.0, 1.0, num_frames, dtype=dtype_) * 0.1
@@ -42,6 +63,7 @@ class TestFeatures(unittest.TestCase):
         self.num_channels = 1
         self.sr = 16000
         self.dtype = "float32"
+<<<<<<< HEAD
         waveform_tensor = get_wav_data(
             self.dtype, self.num_channels, num_frames=self.duration * self.sr
         )
@@ -53,6 +75,17 @@ class TestFeatures(unittest.TestCase):
     def test_mel(
         self, sr: int, n_fft: int, n_mels: int, fmin: float, dtype: str
     ):
+=======
+        waveform_tensor = get_wav_data(self.dtype,
+                                       self.num_channels,
+                                       num_frames=self.duration * self.sr)
+        self.waveform = waveform_tensor.numpy()
+
+    @parameterize([8000], [128, 256], [64, 32], [0.0, 1.0],
+                  ['float32', 'float64'])
+    def test_mel(self, sr: int, n_fft: int, n_mels: int, fmin: float,
+                 dtype: str):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         feature_librosa = librosa.filters.mel(
             sr=sr,
             n_fft=n_fft,
@@ -75,6 +108,7 @@ class TestFeatures(unittest.TestCase):
             dtype=paddle_dtype,
         )
 
+<<<<<<< HEAD
         np.testing.assert_array_almost_equal(
             feature_librosa, feature_functional
         )
@@ -103,12 +137,37 @@ class TestFeatures(unittest.TestCase):
         x = paddle.to_tensor(self.waveform, dtype=paddle.float64).unsqueeze(
             0
         )  # Add batch dim.
+=======
+        np.testing.assert_array_almost_equal(feature_librosa,
+                                             feature_functional)
+
+    @parameterize([8000, 16000], [128, 256], [64, 82], [40, 80], [False, True])
+    def test_melspect(self, sr: int, n_fft: int, hop_length: int, n_mels: int,
+                      htk: bool):
+        if len(self.waveform.shape) == 2:  # (C, T)
+            self.waveform = self.waveform.squeeze(
+                0)  # 1D input for librosa.feature.melspectrogram
+
+        # librosa:
+        feature_librosa = librosa.feature.melspectrogram(y=self.waveform,
+                                                         sr=sr,
+                                                         n_fft=n_fft,
+                                                         hop_length=hop_length,
+                                                         n_mels=n_mels,
+                                                         htk=htk,
+                                                         fmin=50.0)
+
+        # paddle.audio.features.layer
+        x = paddle.to_tensor(self.waveform, dtype=paddle.float64).unsqueeze(
+            0)  # Add batch dim.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         feature_extractor = paddle.audio.features.MelSpectrogram(
             sr=sr,
             n_fft=n_fft,
             hop_length=hop_length,
             n_mels=n_mels,
             htk=htk,
+<<<<<<< HEAD
             dtype=x.dtype,
         )
         feature_layer = feature_extractor(x).squeeze(0).numpy()
@@ -116,6 +175,14 @@ class TestFeatures(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             feature_librosa, feature_layer, decimal=5
         )
+=======
+            dtype=x.dtype)
+        feature_layer = feature_extractor(x).squeeze(0).numpy()
+
+        np.testing.assert_array_almost_equal(feature_librosa,
+                                             feature_layer,
+                                             decimal=5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

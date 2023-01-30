@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import gradient_checker
@@ -21,11 +22,28 @@ from decorator_helper import prog_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle.fluid.core as core
+import gradient_checker
+from decorator_helper import prog_scope
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestMatmulDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -40,6 +58,7 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -55,6 +74,27 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.double_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -65,6 +105,10 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
 
 
 class TestMatmulDoubleGradCheckCase1(TestMatmulDoubleGradCheck):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test(self):
         self.x_shape = [2, 3]
         self.y_shape = [3, 2]
@@ -80,6 +124,10 @@ class TestMatmulDoubleGradCheckCase1(TestMatmulDoubleGradCheck):
 
 
 class TestMatmulDoubleGradCheck2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -94,6 +142,7 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -109,6 +158,27 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.double_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -119,6 +189,10 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
 
 
 class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -133,6 +207,7 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -148,6 +223,27 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.double_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -158,6 +254,10 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckDotCase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -174,19 +274,36 @@ def func(self, place):
     eps = 0.005
     dtype = np.float64
     typename = "float64"
+<<<<<<< HEAD
     x = paddle.static.create_parameter(
         dtype=typename, shape=self.x_shape, name='x'
     )
     y = paddle.static.create_parameter(
         dtype=typename, shape=self.y_shape, name='y'
     )
+=======
+    x = paddle.static.create_parameter(dtype=typename,
+                                       shape=self.x_shape,
+                                       name='x')
+    y = paddle.static.create_parameter(dtype=typename,
+                                       shape=self.y_shape,
+                                       name='y')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out = paddle.matmul(x, y, self.transpose_x, self.transpose_y, name='out')
     np.random.seed(2021)
     x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
     y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+<<<<<<< HEAD
     gradient_checker.triple_grad_check(
         [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
     )
+=======
+    gradient_checker.triple_grad_check([x, y],
+                                       out,
+                                       x_init=[x_arr, y_arr],
+                                       place=place,
+                                       eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def test_grad(self):
@@ -198,6 +315,10 @@ def test_grad(self):
 
 
 class TestMatmulTripleGradCheckNormalCase1(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -212,6 +333,7 @@ class TestMatmulTripleGradCheckNormalCase1(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -227,6 +349,27 @@ class TestMatmulTripleGradCheckNormalCase1(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -237,6 +380,10 @@ class TestMatmulTripleGradCheckNormalCase1(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckNormalCase2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -251,6 +398,7 @@ class TestMatmulTripleGradCheckNormalCase2(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -266,6 +414,27 @@ class TestMatmulTripleGradCheckNormalCase2(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -276,6 +445,10 @@ class TestMatmulTripleGradCheckNormalCase2(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckNormalCase3(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -290,6 +463,7 @@ class TestMatmulTripleGradCheckNormalCase3(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -305,6 +479,27 @@ class TestMatmulTripleGradCheckNormalCase3(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -315,6 +510,10 @@ class TestMatmulTripleGradCheckNormalCase3(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckNormalCase4(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -329,6 +528,7 @@ class TestMatmulTripleGradCheckNormalCase4(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -344,6 +544,27 @@ class TestMatmulTripleGradCheckNormalCase4(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -354,6 +575,10 @@ class TestMatmulTripleGradCheckNormalCase4(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckBroadcastCase1(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -368,6 +593,7 @@ class TestMatmulTripleGradCheckBroadcastCase1(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -383,6 +609,27 @@ class TestMatmulTripleGradCheckBroadcastCase1(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -393,6 +640,10 @@ class TestMatmulTripleGradCheckBroadcastCase1(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckBroadcastCase2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -407,6 +658,7 @@ class TestMatmulTripleGradCheckBroadcastCase2(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -422,6 +674,27 @@ class TestMatmulTripleGradCheckBroadcastCase2(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -432,6 +705,10 @@ class TestMatmulTripleGradCheckBroadcastCase2(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckBroadcastCase3(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -446,6 +723,7 @@ class TestMatmulTripleGradCheckBroadcastCase3(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -461,6 +739,27 @@ class TestMatmulTripleGradCheckBroadcastCase3(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -471,6 +770,10 @@ class TestMatmulTripleGradCheckBroadcastCase3(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckBroadcastCase4(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -485,6 +788,7 @@ class TestMatmulTripleGradCheckBroadcastCase4(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -500,6 +804,27 @@ class TestMatmulTripleGradCheckBroadcastCase4(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -510,6 +835,10 @@ class TestMatmulTripleGradCheckBroadcastCase4(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckBroadcastCase5(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -524,6 +853,7 @@ class TestMatmulTripleGradCheckBroadcastCase5(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -539,6 +869,27 @@ class TestMatmulTripleGradCheckBroadcastCase5(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -549,6 +900,10 @@ class TestMatmulTripleGradCheckBroadcastCase5(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckSpecialCase1(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -563,6 +918,7 @@ class TestMatmulTripleGradCheckSpecialCase1(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -578,6 +934,27 @@ class TestMatmulTripleGradCheckSpecialCase1(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -588,6 +965,10 @@ class TestMatmulTripleGradCheckSpecialCase1(unittest.TestCase):
 
 
 class TestMatmulTripleGradCheckSpecialCase2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test()
 
@@ -602,6 +983,7 @@ class TestMatmulTripleGradCheckSpecialCase2(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = paddle.static.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -617,6 +999,27 @@ class TestMatmulTripleGradCheckSpecialCase2(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.x_shape,
+                                           name='x')
+        y = paddle.static.create_parameter(dtype=typename,
+                                           shape=self.y_shape,
+                                           name='y')
+        out = paddle.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         places = [fluid.CPUPlace()]

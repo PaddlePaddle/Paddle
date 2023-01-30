@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import hashlib
 import os
 import os.path as osp
@@ -23,12 +24,34 @@ import time
 import zipfile
 
 import requests
+=======
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
+import sys
+import os.path as osp
+import shutil
+import requests
+import subprocess
+import hashlib
+import tarfile
+import zipfile
+import time
+from collections import OrderedDict
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 try:
     from tqdm import tqdm
 except:
 
+<<<<<<< HEAD
     class tqdm:
+=======
+    class tqdm(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def __init__(self, total=None):
             self.total = total
             self.n = 0
@@ -38,9 +61,14 @@ except:
             if self.total is None:
                 sys.stderr.write("\r{0:.1f} bytes".format(self.n))
             else:
+<<<<<<< HEAD
                 sys.stderr.write(
                     "\r{0:.1f}%".format(100 * self.n / float(self.total))
                 )
+=======
+                sys.stderr.write("\r{0:.1f}%".format(100 * self.n /
+                                                     float(self.total)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sys.stderr.flush()
 
         def __enter__(self):
@@ -116,10 +144,20 @@ def _get_unique_endpoints(trainer_endpoints):
     return unique_endpoints
 
 
+<<<<<<< HEAD
 def get_path_from_url(
     url, root_dir, md5sum=None, check_exist=True, decompress=True, method='get'
 ):
     """Download from given url to root_dir.
+=======
+def get_path_from_url(url,
+                      root_dir,
+                      md5sum=None,
+                      check_exist=True,
+                      decompress=True,
+                      method='get'):
+    """ Download from given url to root_dir.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
     from url and decompress it, return the path.
@@ -155,9 +193,14 @@ def get_path_from_url(
                 time.sleep(1)
 
     if ParallelEnv().current_endpoint in unique_endpoints:
+<<<<<<< HEAD
         if decompress and (
             tarfile.is_tarfile(fullpath) or zipfile.is_zipfile(fullpath)
         ):
+=======
+        if decompress and (tarfile.is_tarfile(fullpath)
+                           or zipfile.is_zipfile(fullpath)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             fullpath = _decompress(fullpath)
 
     return fullpath
@@ -169,6 +212,7 @@ def _get_download(url, fullname):
     try:
         req = requests.get(url, stream=True)
     except Exception as e:  # requests.exceptions.ConnectionError
+<<<<<<< HEAD
         logger.info(
             "Downloading {} from {} failed with exception {}".format(
                 fname, url, str(e)
@@ -181,6 +225,15 @@ def _get_download(url, fullname):
             "Downloading from {} failed with code "
             "{}!".format(url, req.status_code)
         )
+=======
+        logger.info("Downloading {} from {} failed with exception {}".format(
+            fname, url, str(e)))
+        return False
+
+    if req.status_code != 200:
+        raise RuntimeError("Downloading from {} failed with code "
+                           "{}!".format(url, req.status_code))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # For protecting download interupted, download to
     # tmp_fullname firstly, move tmp_fullname to fullname
@@ -206,20 +259,34 @@ def _wget_download(url, fullname):
     # using wget to download url
     tmp_fullname = fullname + "_tmp"
     # –user-agent
+<<<<<<< HEAD
     command = 'wget -O {} -t {} {}'.format(
         tmp_fullname, DOWNLOAD_RETRY_LIMIT, url
     )
     subprc = subprocess.Popen(
         command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
+=======
+    command = 'wget -O {} -t {} {}'.format(tmp_fullname, DOWNLOAD_RETRY_LIMIT,
+                                           url)
+    subprc = subprocess.Popen(command,
+                              shell=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     _ = subprc.communicate()
 
     if subprc.returncode != 0:
         raise RuntimeError(
+<<<<<<< HEAD
             '{} failed. Please make sure `wget` is installed or {} exists'.format(
                 command, url
             )
         )
+=======
+            '{} failed. Please make sure `wget` is installed or {} exists'.
+            format(command, url))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     shutil.move(tmp_fullname, fullname)
 
@@ -243,8 +310,12 @@ def _download(url, path, md5sum=None, method='get'):
 
     """
     assert method in _download_methods, 'make sure `{}` implemented'.format(
+<<<<<<< HEAD
         method
     )
+=======
+        method)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if not osp.exists(path):
         os.makedirs(path)
@@ -258,9 +329,14 @@ def _download(url, path, md5sum=None, method='get'):
         if retry_cnt < DOWNLOAD_RETRY_LIMIT:
             retry_cnt += 1
         else:
+<<<<<<< HEAD
             raise RuntimeError(
                 "Download from {} failed. " "Retry limit reached".format(url)
             )
+=======
+            raise RuntimeError("Download from {} failed. "
+                               "Retry limit reached".format(url))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if not _download_methods[method](url, fullname):
             time.sleep(1)
@@ -281,10 +357,15 @@ def _md5check(fullname, md5sum=None):
     calc_md5sum = md5.hexdigest()
 
     if calc_md5sum != md5sum:
+<<<<<<< HEAD
         logger.info(
             "File {} md5 check failed, {}(calc) != "
             "{}(base)".format(fullname, calc_md5sum, md5sum)
         )
+=======
+        logger.info("File {} md5 check failed, {}(calc) != "
+                    "{}(base)".format(fullname, calc_md5sum, md5sum))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return False
     return True
 
@@ -324,8 +405,12 @@ def _uncompress_file_zip(filepath):
         elif _is_a_single_dir(file_list):
             # `strip(os.sep)` to remove `os.sep` in the tail of path
             rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
+<<<<<<< HEAD
                 os.sep
             )[-1]
+=======
+                os.sep)[-1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             uncompressed_path = os.path.join(file_dir, rootpath)
 
             files.extractall(file_dir)
@@ -351,8 +436,12 @@ def _uncompress_file_tar(filepath, mode="r:*"):
             files.extractall(file_dir)
         elif _is_a_single_dir(file_list):
             rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
+<<<<<<< HEAD
                 os.sep
             )[-1]
+=======
+                os.sep)[-1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             uncompressed_path = os.path.join(file_dir, rootpath)
             files.extractall(file_dir)
         else:

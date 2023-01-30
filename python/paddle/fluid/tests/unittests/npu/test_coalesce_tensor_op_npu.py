@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -28,6 +33,10 @@ alignment = 512
 
 
 class TestAllocContinuousSpace(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.__class__.use_npu = True
         self.op_type = "coalesce_tensor"
@@ -38,8 +47,12 @@ class TestAllocContinuousSpace(OpTest):
         self.set_constant = attrs["set_constant"]
         self.Inputs = self.init_input()
         self.Outputs, self.FusedOutput = self.init_output(
+<<<<<<< HEAD
             self.Inputs, self.set_constant, self.constant
         )
+=======
+            self.Inputs, self.set_constant, self.constant)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {'Input': self.Inputs}
         self.attrs = attrs
         self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
@@ -59,7 +72,11 @@ class TestAllocContinuousSpace(OpTest):
             "set_constant": False,
             "constant": 0.0,
             "use_align": True,
+<<<<<<< HEAD
             "dtype": self.fluid_dtype,
+=======
+            "dtype": self.fluid_dtype
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_output(self, input_list, set_constant, constant):
@@ -85,6 +102,10 @@ class TestAllocContinuousSpace(OpTest):
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attr(self):
         return {
             "copy_data": True,
@@ -92,7 +113,11 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
             "constant": 0.5,
             "use_align": True,
             "dtype": self.fluid_dtype,
+<<<<<<< HEAD
             "user_defined_size_of_dtype": 2,
+=======
+            "user_defined_size_of_dtype": 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):

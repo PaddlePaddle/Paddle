@@ -476,7 +476,11 @@ class fused_attentionGradNodeCompat : public egr::GradNodeBase {
     SoftmaxOut_ = egr::TensorWrapper(SoftmaxOut, false);
   }
   void SetTensorWrapperSrcMask(const paddle::experimental::Tensor& SrcMask) {
+<<<<<<< HEAD
     SrcMask_ = egr::TensorWrapper(SrcMask, true);
+=======
+    SrcMask_ = egr::TensorWrapper(SrcMask, false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   void SetTensorWrapperSrcMaskOut(
       const paddle::experimental::Tensor& SrcMaskOut) {
@@ -614,6 +618,7 @@ class fused_gemm_epilogueGradNodeCompat : public egr::GradNodeBase {
   paddle::framework::AttributeMap attr_map_;
   paddle::framework::AttributeMap default_attr_map_;
 };
+<<<<<<< HEAD
 
 class fused_bias_dropout_residual_layer_normGradNodeCompat
     : public egr::GradNodeBase {
@@ -723,3 +728,5 @@ class fused_bias_dropout_residual_layer_normGradNodeCompat
   paddle::framework::AttributeMap attr_map_;
   paddle::framework::AttributeMap default_attr_map_;
 };
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

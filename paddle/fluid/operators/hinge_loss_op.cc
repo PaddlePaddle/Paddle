@@ -82,7 +82,11 @@ take any values from (-inf, inf), but the labels should be either -1 or 1.
 Then, the hinge loss is computed as follows:
 
 $$
+<<<<<<< HEAD
 L_(x, y) = max(1 - y.x, 0)
+=======
+L_(x, y) = max(1 - y.x, 0) 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 $$
 
 Note that the labels passed as input will have values as either 0 or 1.

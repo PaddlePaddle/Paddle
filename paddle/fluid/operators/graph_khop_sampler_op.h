@@ -28,6 +28,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <class bidiiter>
 void SampleUniqueNeighbors(bidiiter begin, bidiiter end, int num_samples) {
   int left_num = std::distance(begin, end);
@@ -196,9 +201,15 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get sample neighbors operators' inputs.
+<<<<<<< HEAD
     auto* src = ctx.Input<phi::DenseTensor>("Row");
     auto* dst_count = ctx.Input<phi::DenseTensor>("Col_Ptr");
     auto* vertices = ctx.Input<phi::DenseTensor>("X");
+=======
+    auto* src = ctx.Input<Tensor>("Row");
+    auto* dst_count = ctx.Input<Tensor>("Col_Ptr");
+    auto* vertices = ctx.Input<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
 
@@ -227,7 +238,11 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
     bool is_last_layer = false, is_first_layer = true;
 
     if (return_eids) {
+<<<<<<< HEAD
       auto* src_eids = ctx.Input<phi::DenseTensor>("Eids");
+=======
+      auto* src_eids = ctx.Input<Tensor>("Eids");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const T* src_eids_data = src_eids->data<T>();
       for (size_t i = 0; i < num_layers; i++) {
         if (i == num_layers - 1) {
@@ -334,7 +349,11 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
                                      eids_merge_ptr);
         }
       }
+<<<<<<< HEAD
       auto* out_eids = ctx.Output<phi::DenseTensor>("Out_Eids");
+=======
+      auto* out_eids = ctx.Output<Tensor>("Out_Eids");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       out_eids->Resize({static_cast<int>(eids_merge.size())});
       T* p_out_eids = out_eids->mutable_data<T>(ctx.GetPlace());
       std::copy(eids_merge.begin(), eids_merge.end(), p_out_eids);
@@ -375,16 +394,26 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
     }
 
     // 7. Get Reindex_X for input nodes.
+<<<<<<< HEAD
     auto* reindex_x = ctx.Output<phi::DenseTensor>("Reindex_X");
+=======
+    auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
     for (size_t i = 0; i < bs; i++) {
       p_reindex_x[i] = node_map[p_vertices[i]];
     }
 
     // 8. Get operator's outputs.
+<<<<<<< HEAD
     auto* sample_index = ctx.Output<phi::DenseTensor>("Sample_Index");
     auto* out_src = ctx.Output<phi::DenseTensor>("Out_Src");
     auto* out_dst = ctx.Output<phi::DenseTensor>("Out_Dst");
+=======
+    auto* sample_index = ctx.Output<Tensor>("Sample_Index");
+    auto* out_src = ctx.Output<Tensor>("Out_Src");
+    auto* out_dst = ctx.Output<Tensor>("Out_Dst");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sample_index->Resize({static_cast<int>(unique_nodes.size())});
     out_src->Resize({static_cast<int>(src_merge.size()), 1});
     out_dst->Resize({static_cast<int>(src_merge.size()), 1});

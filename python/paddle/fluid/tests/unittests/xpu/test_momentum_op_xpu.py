@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -42,6 +43,29 @@ def calculate_momentum_by_numpy(
     regularization_method,
     regularization_coeff,
 ):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+
+import paddle
+import paddle.fluid.core as core
+
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+paddle.enable_static()
+
+
+def calculate_momentum_by_numpy(param, grad, mu, velocity, use_nesterov,
+                                learning_rate, regularization_method,
+                                regularization_coeff):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if regularization_method == "l2_decay":
         grad = grad + regularization_coeff * param
         velocity_out = mu * velocity + grad
@@ -52,20 +76,33 @@ def calculate_momentum_by_numpy(
     else:
         velocity_out = mu * velocity + grad
         if use_nesterov:
+<<<<<<< HEAD
             param_out = (
                 param - grad * learning_rate - velocity_out * mu * learning_rate
             )
+=======
+            param_out = param - grad * learning_rate - \
+                        velocity_out * mu * learning_rate
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             param_out = param - learning_rate * velocity_out
     return param_out, velocity_out
 
 
 class XPUTestMomentumOP(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'momentum'
         self.use_dynamic_create_class = False
 
     class TestMomentumOPBase(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.xpu_version = core.get_xpu_device_version(0)
@@ -76,6 +113,7 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
             self.op_type = 'momentum'
             self.init_config()
 
+<<<<<<< HEAD
             self.param = np.random.uniform(-1, 1, self.input_shape).astype(
                 self.dtype
             )
@@ -85,6 +123,14 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
             self.velocity = np.random.uniform(-1, 1, self.input_shape).astype(
                 self.dtype
             )
+=======
+            self.param = np.random.uniform(-1, 1,
+                                           self.input_shape).astype(self.dtype)
+            self.grad = np.random.uniform(-1, 1,
+                                          self.input_shape).astype(self.dtype)
+            self.velocity = np.random.uniform(-1, 1, self.input_shape).astype(
+                self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             param_out, velocity_out = calculate_momentum_by_numpy(
                 param=self.param,
                 grad=self.grad,
@@ -93,8 +139,12 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
                 use_nesterov=self.use_nesterov,
                 learning_rate=self.learning_rate,
                 regularization_method=self.regularization_method,
+<<<<<<< HEAD
                 regularization_coeff=self.regularization_coeff,
             )
+=======
+                regularization_coeff=self.regularization_coeff)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             param_out = param_out.astype(self.dtype)
             velocity_out = velocity_out.astype(self.dtype)
             self.inputs = {
@@ -108,7 +158,11 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
                 'mu': self.mu,
                 'use_nesterov': self.use_nesterov,
                 'regularization_method': self.regularization_method,
+<<<<<<< HEAD
                 'regularization_coeff': self.regularization_coeff,
+=======
+                'regularization_coeff': self.regularization_coeff
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 
@@ -127,6 +181,10 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
             self.regularization_coeff = 0
 
     class XPUTestMomentum1(TestMomentumOPBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.input_shape = [2, 768]
             self.learning_rate = np.array([0.002]).astype(float)
@@ -136,6 +194,10 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
             self.regularization_coeff = 0
 
     class XPUTestMomentum2(TestMomentumOPBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.input_shape = [3, 8, 4096]
             self.learning_rate = np.array([0.005]).astype(float)
@@ -145,6 +207,10 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
             self.regularization_coeff = 0
 
     class XPUTestMomentum3(TestMomentumOPBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.input_shape = [1024]
             self.learning_rate = np.array([0.01]).astype(float)
@@ -159,6 +225,10 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
                 self.regularization_coeff = 0
 
     class XPUTestMomentum4(TestMomentumOPBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.input_shape = [2, 2, 255]
             self.learning_rate = np.array([0.0005]).astype(float)

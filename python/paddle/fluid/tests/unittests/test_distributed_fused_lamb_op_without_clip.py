@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_distributed_fused_lamb_op_with_clip import run_test
 
 
 class TestDistributedFusedLambWithoutClip(unittest.TestCase):
+=======
+from test_distributed_fused_lamb_op_with_clip import run_test
+import unittest
+
+
+class TestDistributedFusedLambWithoutClip(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_1(self):
         run_test(clip_after_allreduce=True, max_global_norm=-1.0)
 

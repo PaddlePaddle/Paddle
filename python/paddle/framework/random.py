@@ -37,7 +37,11 @@ def seed(seed):
             gen = paddle.seed(102)
 
     """
+<<<<<<< HEAD
     # TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
+=======
+    #TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # 2. support gpu generator by global device
 
     seed = int(seed)
@@ -45,13 +49,17 @@ def seed(seed):
     if core.is_compiled_with_cuda():
         for i in range(core.get_cuda_device_count()):
             core.default_cuda_generator(i).manual_seed(seed)
+<<<<<<< HEAD
     elif core.is_compiled_with_xpu():
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).manual_seed(seed)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return core.default_cpu_generator().manual_seed(seed)
 
 
+<<<<<<< HEAD
 def get_rng_state(device=None):
     """
     Get all random states of random generators of specified device.
@@ -90,6 +98,8 @@ def get_rng_state(device=None):
     return state_list
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def get_cuda_rng_state():
     """
 
@@ -116,6 +126,7 @@ def get_cuda_rng_state():
     return state_list
 
 
+<<<<<<< HEAD
 def set_rng_state(state_list, device=None):
     """
 
@@ -169,6 +180,8 @@ def set_rng_state(state_list, device=None):
         )
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def set_cuda_rng_state(state_list):
     """
 
@@ -200,13 +213,21 @@ def set_cuda_rng_state(state_list):
 def _manual_program_seed(seed):
     """
     Sets global seed for generating random numbers.
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     NOTE(zhiqiu): This is the original implemention of seed. Keeps it temporally
     since CUDA generator is not developed, so we need it in the unittest.
 
     Args:
         seed(int): The random seed to set. It is recommend to set a large int number.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         None
     """

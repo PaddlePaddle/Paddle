@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/group_norm_op.h"
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -28,7 +31,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using DataLayout = framework::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class GroupNormOp : public framework::OperatorWithKernel {
  public:
@@ -114,7 +123,11 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
 
@@ -122,6 +135,7 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
         var,
         platform::errors::InvalidArgument(
             "Input(Y@GRAD) of GroupNormGradOp should not be null"));
+<<<<<<< HEAD
     const phi::DenseTensor *t = nullptr;
     if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
@@ -134,6 +148,20 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
                                 "GroupNormGradOp should not be null"));
     return phi::KernelKey(framework::TransToProtoVarType(t->dtype()),
                           ctx.GetPlace());
+=======
+    const Tensor *t = nullptr;
+    if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
+    } else if (var->IsType<LoDTensor>()) {
+      t = &var->Get<LoDTensor>();
+    }
+    PADDLE_ENFORCE_NOT_NULL(
+        t,
+        platform::errors::InvalidArgument(
+            "Input(Y@GRAD) Tensor of GroupNormGradOp should not be null"));
+    return framework::OpKernelType(framework::TransToProtoVarType(t->dtype()),
+                                   ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

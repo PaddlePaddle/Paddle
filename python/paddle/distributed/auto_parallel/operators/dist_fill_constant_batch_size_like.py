@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+<<<<<<< HEAD
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 from ..cost import (
@@ -42,6 +43,45 @@ register_distributed_operator_impl_container(
 class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
     def __init__(self, name):
         super().__init__(name)
+=======
+from .common import DistributedOperatorImplContainer
+from .common import DistributedOperatorImpl
+from .common import register_distributed_operator_impl_container
+from .common import register_distributed_operator_impl
+from ..utils import is_dim_shard
+from ..utils import is_dim_replicate
+from ..utils import is_valid_list_index
+from ..utils import compute_compatible_dim_mapping
+from ..utils import compute_compatible_dims_mapping
+from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import set_dist_op_desc_original_id
+from paddle.fluid import core, unique_name
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import Program, Parameter, Variable, program_guard
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from .dist_default import DistributedDefaultImpl0
+from ..cost import FillConstantBatchSizeLikeOpCost
+from ..cost import build_comp_desc_from_dist_op, build_dp_costs
+from ..cost import build_comp_costs_from_descs
+from paddle.distributed.auto_parallel.cost.comm_op_cost import AllreduceSumOpCost
+
+
+class DistributedFillConstantBatchSizeLike(DistributedOperatorImplContainer):
+
+    def __init__(self, op_type):
+        super(DistributedFillConstantBatchSizeLike, self).__init__(op_type)
+
+
+register_distributed_operator_impl_container(
+    DistributedFillConstantBatchSizeLike("fill_constant_batch_size_like"))
+
+
+class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
+
+    def __init__(self, name):
+        super(DistributedFillConstantBatchSizeLikeImpl0, self).__init__(name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -49,8 +89,12 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         cost = None
         if int(op_role) == int(OpRole.Backward):
             raise ValueError(
+<<<<<<< HEAD
                 "The fill_constant_batch_size_like has no grad op."
             )
+=======
+                "The fill_constant_batch_size_like has no grad op.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             cost = self.calc_fwd_cost(dist_op, ctx, cluster)
         assert cost is not None
@@ -58,6 +102,7 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
 
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
+<<<<<<< HEAD
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
@@ -70,6 +115,15 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
             desc_mapping,
             cluster,
         )
+=======
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        op_type = dist_op.serial_op.type
+        cost_mapping = build_comp_costs_from_descs(
+            FillConstantBatchSizeLikeOpCost, ctx, processes, desc_mapping,
+            cluster)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         res_cost = [cost_mapping]
         return res_cost
@@ -91,9 +145,14 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
+<<<<<<< HEAD
         if (not self.is_input_compatible(dist_op)) or (
             not self.is_output_compatible(dist_op)
         ):
+=======
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -116,6 +175,7 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
 
         # only the batch size dimemsion of input and output are relative.
         dim_changed = compute_compatible_and_update_dim_mapping(
+<<<<<<< HEAD
             [x_dims_mapping, out_dims_mapping], [0, 0]
         )
         if dim_changed:
@@ -125,6 +185,12 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
             op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
             op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
 
+=======
+            [x_dims_mapping, out_dims_mapping], [0, 0])
+        if dim_changed:
+            changed = True
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return changed
 
     @staticmethod
@@ -133,6 +199,27 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         kwargs: inputname_mapping & outputname_mapping
         """
         DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
+<<<<<<< HEAD
+=======
+        dist_op_context = ctx.dist_op_context
+        src_op = dist_op_context.cur_src_op
+        op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+        main_block = dist_op_context.work_block
+        op = main_block.ops[-1]
+        assert op.type == "fill_constant_batch_size_like"
+
+        # modify shape attr according to how output are partitioned
+        out_name = op.output('Out')[0]
+        dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        shape_list = op.attr("shape")
+        # modify target shape
+        for idx, axis in enumerate(dims_mapping):
+            if axis >= 0:
+                shape_list[idx] = shape_list[idx] // process_mesh_shape[axis]
+
+        op._set_attr("shape", shape_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -141,5 +228,9 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
 
 register_distributed_operator_impl(
     "fill_constant_batch_size_like",
+<<<<<<< HEAD
     DistributedFillConstantBatchSizeLikeImpl0("fill_by_shape"),
 )
+=======
+    DistributedFillConstantBatchSizeLikeImpl0("fill_by_shape"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from numpy.random import random as rand
@@ -24,6 +25,19 @@ from paddle import tensor
 
 
 class TestComplexSumLayer(unittest.TestCase):
+=======
+import numpy as np
+import paddle
+from numpy.random import random as rand
+from paddle import tensor
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestComplexSumLayer(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -32,9 +46,15 @@ class TestComplexSumLayer(unittest.TestCase):
 
     def test_complex_basic_api(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             input = rand([2, 10, 10]).astype(dtype) + 1j * rand(
                 [2, 10, 10]
             ).astype(dtype)
+=======
+            input = rand([
+                2, 10, 10
+            ]).astype(dtype) + 1j * rand([2, 10, 10]).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for place in self._places:
                 with dg.guard(place):
                     var_x = dg.to_variable(input)
@@ -42,6 +62,13 @@ class TestComplexSumLayer(unittest.TestCase):
                     target = np.sum(input, axis=(1, 2))
                     np.testing.assert_allclose(result, target, rtol=1e-05)
 
+<<<<<<< HEAD
+=======
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_complex_basic_api()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

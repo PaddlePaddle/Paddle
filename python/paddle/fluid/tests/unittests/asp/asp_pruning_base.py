@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,16 +22,32 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.incubate.asp import ASPHelper
+=======
+from __future__ import print_function
+
+import unittest
+import threading, time
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.contrib.sparsity.asp import ASPHelper
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestASPHelperPruningBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
 
         def build_model():
+<<<<<<< HEAD
             img = fluid.data(
                 name='img', shape=[None, 3, 32, 32], dtype='float32'
             )
@@ -42,26 +59,50 @@ class TestASPHelperPruningBase(unittest.TestCase):
             prediction = paddle.static.nn.fc(
                 x=hidden, size=10, activation='softmax'
             )
+=======
+            img = fluid.data(name='img',
+                             shape=[None, 3, 32, 32],
+                             dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            hidden = fluid.layers.conv2d(input=img,
+                                         num_filters=4,
+                                         filter_size=3,
+                                         padding=2,
+                                         act="relu")
+            hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
+            prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return img, label, prediction
 
         with fluid.program_guard(self.main_program, self.startup_program):
             self.img, self.label, self.predict = build_model()
 
+<<<<<<< HEAD
     def run_inference_pruning_test(
         self, get_mask_gen_func, get_mask_check_func
     ):
+=======
+    def run_inference_pruning_test(self, get_mask_gen_func,
+                                   get_mask_check_func):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
+<<<<<<< HEAD
         self.__pruning_and_checking(
             exe, place, get_mask_gen_func, get_mask_check_func, False
         )
+=======
+        self.__pruning_and_checking(exe, place, get_mask_gen_func,
+                                    get_mask_check_func, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def run_training_pruning_test(self, get_mask_gen_func, get_mask_check_func):
         with fluid.program_guard(self.main_program, self.startup_program):
             loss = paddle.mean(
+<<<<<<< HEAD
                 paddle.nn.functional.cross_entropy(
                     input=self.predict,
                     label=self.label,
@@ -72,6 +113,12 @@ class TestASPHelperPruningBase(unittest.TestCase):
             optimizer = paddle.incubate.asp.decorate(
                 fluid.optimizer.SGD(learning_rate=0.01)
             )
+=======
+                fluid.layers.cross_entropy(input=self.predict,
+                                           label=self.label))
+            optimizer = paddle.incubate.asp.decorate(
+                fluid.optimizer.SGD(learning_rate=0.01))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             optimizer.minimize(loss, self.startup_program)
 
         place = paddle.CPUPlace()
@@ -79,6 +126,7 @@ class TestASPHelperPruningBase(unittest.TestCase):
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
+<<<<<<< HEAD
         self.__pruning_and_checking(
             exe, place, get_mask_gen_func, get_mask_check_func, True
         )
@@ -100,3 +148,21 @@ class TestASPHelperPruningBase(unittest.TestCase):
                         mat.T, func_name=check_func_name, n=2, m=4
                     )
                 )
+=======
+        self.__pruning_and_checking(exe, place, get_mask_gen_func,
+                                    get_mask_check_func, True)
+
+    def __pruning_and_checking(self, exe, place, mask_func_name,
+                               check_func_name, with_mask):
+        exe.run(self.startup_program)
+        paddle.incubate.asp.prune_model(self.main_program,
+                                        mask_algo=mask_func_name,
+                                        with_mask=with_mask)
+        for param in self.main_program.global_block().all_parameters():
+            if ASPHelper._is_supported_layer(self.main_program, param.name):
+                mat = np.array(fluid.global_scope().find_var(
+                    param.name).get_tensor())
+                self.assertTrue(
+                    paddle.fluid.contrib.sparsity.check_sparsity(
+                        mat.T, func_name=check_func_name, n=2, m=4))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

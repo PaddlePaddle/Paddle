@@ -15,6 +15,7 @@ import sys
 
 sys.path.append("..")
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
@@ -27,16 +28,34 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid as fluid
+=======
+import numpy as np
+from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+
+import paddle
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestElementwiseModOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self) -> None:
         self.op_name = 'elementwise_mod'
         self.use_dynamic_create_class = False
 
     class ElementwiseModOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_kernel_type(self):
             self.use_mkldnn = False
 
@@ -46,7 +65,11 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
             self.out = np.mod(self.x, self.y)
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
                 'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+=======
+                'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': self.out}
             self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
@@ -73,26 +96,46 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestElementwiseModOp_broadcast_1(ElementwiseModOp):
+<<<<<<< HEAD
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 100, 3).astype(self.dtype),
                 'Y': np.random.rand(2, 100, 3).astype(self.dtype),
+=======
+
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.rand(2, 100, 3).astype(self.dtype),
+                'Y': np.random.rand(2, 100, 3).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.attrs = {'axis': 1}
             self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
 
     class TestElementwiseModOp_broadcast_2(ElementwiseModOp):
+<<<<<<< HEAD
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(22, 128, 3).astype(self.dtype),
                 'Y': np.random.rand(22, 128, 3).astype(self.dtype),
+=======
+
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.rand(22, 128, 3).astype(self.dtype),
+                'Y': np.random.rand(22, 128, 3).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.attrs = {'axis': 1}
             self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
 
     class TestRemainderOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_dygraph(self):
             with fluid.dygraph.guard():
                 np_x = np.random.rand(22, 128, 3).astype('int64')
@@ -105,7 +148,11 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 self.assertEqual((np_z == z_expected).all(), True)
 
                 np_x = np.array([-3.3, 11.5, -2, 3.5])
+<<<<<<< HEAD
                 np_y = np.array([-1.2, 2.0, 3.3, -2.3])
+=======
+                np_y = np.array([-1.2, 2., 3.3, -2.3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 x = paddle.to_tensor(np_x)
                 y = paddle.to_tensor(np_y)
                 z = x % y

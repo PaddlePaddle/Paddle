@@ -16,12 +16,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class MeanNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     std::vector<int> axes;
 
@@ -47,6 +57,7 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+<<<<<<< HEAD
     auto grad = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(
@@ -62,19 +73,43 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
 
     // ones
     phi::DenseTensor ones(grad->dtype());
+=======
+    auto grad = context.Input<Tensor>(framework::GradVarName("Out"));
+
+    PADDLE_ENFORCE_EQ(grad->numel(),
+                      1,
+                      platform::errors::InvalidArgument(
+                          "Mean Gradient Input Tensor len should be 1. But "
+                          "received Out@Grad's elements num is %d.",
+                          grad->numel()));
+
+    auto IG = context.Output<Tensor>(framework::GradVarName("X"));
+    IG->mutable_data<T>(context.GetPlace());
+
+    // ones
+    Tensor ones(grad->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ones.mutable_data<T>(IG->dims(), context.GetPlace());
     const auto& runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
     runner_ones.Run(stream);
 
     // means
+<<<<<<< HEAD
     phi::DenseTensor mean_tensor(grad->dtype());
+=======
+    Tensor mean_tensor(grad->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     mean_tensor.Resize({1});
     mean_tensor.mutable_data<T>(context.GetPlace());
     FillNpuTensorWithConstant<T>(
         &mean_tensor, static_cast<T>(1.0 / static_cast<float>(IG->numel())));
 
     // means mul ones
+<<<<<<< HEAD
     phi::DenseTensor mean_ma(grad->dtype());
+=======
+    Tensor mean_ma(grad->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     mean_ma.Resize(IG->dims());
     mean_ma.mutable_data<T>(context.GetPlace());
     const auto& runner_mul_1 =

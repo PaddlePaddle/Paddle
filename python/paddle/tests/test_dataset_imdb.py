@@ -13,13 +13,20 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 from paddle.text.datasets import Imdb
 
 
 class TestImdbTrain(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         imdb = Imdb(mode='train')
         self.assertTrue(len(imdb) == 25000)
@@ -34,6 +41,10 @@ class TestImdbTrain(unittest.TestCase):
 
 
 class TestImdbTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         imdb = Imdb(mode='test')
         self.assertTrue(len(imdb) == 25000)

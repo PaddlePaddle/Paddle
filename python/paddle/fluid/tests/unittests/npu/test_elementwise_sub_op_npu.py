@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -27,6 +32,10 @@ SEED = 2021
 
 
 class TestElementwiseSubOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_sub"
@@ -38,7 +47,11 @@ class TestElementwiseSubOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+=======
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -90,16 +103,28 @@ class TestElementwiseSubOp(OpTest):
 
 
 class TestElementwiseSubOpInt32(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestElementwiseSubOpInt64(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int64
 
 
 class TestSubtractAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
@@ -124,6 +149,7 @@ class TestSubtractAPI(unittest.TestCase):
 
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             x_value, y_value, z_value = exe.run(
                 feed={"x": x_np, "y": y_np}, fetch_list=[x, y, z]
             )
@@ -165,10 +191,55 @@ class TestSubtractError(unittest.TestCase):
             y2 = paddle.static.data(
                 name='y2', shape=[3, 4, 5, 6], dtype="uint8"
             )
+=======
+            x_value, y_value, z_value = exe.run(feed={
+                "x": x_np,
+                "y": y_np
+            },
+                                                fetch_list=[x, y, z])
+
+            z_expected = np.array([1., -2., 2.])
+            self.assertEqual(
+                (x_value == x_np).all(),
+                True,
+                msg="x_value = {}, but expected {}".format(x_value, x_np))
+            self.assertEqual(
+                (y_value == y_np).all(),
+                True,
+                msg="y_value = {}, but expected {}".format(y_value, y_np))
+            self.assertEqual(
+                (z_value == z_expected).all(),
+                True,
+                msg="z_value = {}, but expected {}".format(z_value, z_expected))
+
+
+class TestSubtractError(unittest.TestCase):
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # the input of elementwise_add must be Variable.
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.NPUPlace(0))
+            y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.NPUPlace(0))
+            self.assertRaises(TypeError, paddle.subtract, x1, y1)
+
+            # the input dtype must be float16 or float32 or float64 or int32 or int64
+            x2 = paddle.static.data(name='x2',
+                                    shape=[3, 4, 5, 6],
+                                    dtype="uint8")
+            y2 = paddle.static.data(name='y2',
+                                    shape=[3, 4, 5, 6],
+                                    dtype="uint8")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(TypeError, paddle.subtract, x2, y2)
 
 
 class TestSubtractNet(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -183,19 +254,33 @@ class TestSubtractNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64'
             )
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             sum = paddle.add(a, b)
             c = paddle.assign(b)
             z = paddle.subtract(sum, c)
 
+<<<<<<< HEAD
             fc_1 = paddle.static.nn.fc(x=z, size=128)
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
             cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
+=======
+            fc_1 = fluid.layers.fc(input=z, size=128)
+            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+
+            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            loss = fluid.layers.reduce_mean(cost)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -209,6 +294,7 @@ class TestSubtractNet(unittest.TestCase):
 
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(
                 main_prog,
                 feed={"a": a_np, "b": b_np, "label": label_np},
@@ -220,6 +306,18 @@ class TestSubtractNet(unittest.TestCase):
                         epoch, pred_res[0], loss_res
                     )
                 )
+=======
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
+            if epoch % 10 == 0:
+                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                    epoch, pred_res[0], loss_res))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return pred_res, loss_res
 

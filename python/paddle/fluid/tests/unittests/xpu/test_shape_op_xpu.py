@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -25,6 +26,17 @@ from xpu.get_test_cover_info import (
     get_xpu_op_support_types,
 )
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 from paddle.fluid import core
 from paddle.fluid.op import Operator
@@ -33,11 +45,19 @@ paddle.enable_static()
 
 
 class XPUTestShapeOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = "shape"
         self.use_dynamic_create_class = False
 
     class TestShapeOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.dtype = self.in_type
             self.op_type = "shape"
@@ -55,26 +75,50 @@ class XPUTestShapeOp(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestShapeOp1(TestShapeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def config(self):
             self.shape = [2]
 
     class TestShapeOp2(TestShapeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def config(self):
             self.shape = [1, 2, 3]
 
     class TestShapeOp3(TestShapeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def config(self):
             self.shape = [1, 2, 3, 4]
 
     class TestShapeOp4(TestShapeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def config(self):
             self.shape = [1, 2, 3, 4, 1024]
 
     class TestShapeOp5(TestShapeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def config(self):
             self.shape = [1, 2, 3, 4, 1, 201]
 
     class TestShapeWithSelectedRows(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.dtype = self.in_type
 

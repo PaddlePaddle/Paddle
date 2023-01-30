@@ -29,5 +29,12 @@ runner:
   sync_mode: "async"  # sync / async / geo / heter
   thread_num: 16
   use_gpu: 0
+<<<<<<< HEAD
 
   model_path: "../ps_dnn_model.py"
+=======
+  
+  model_path: "../ps_dnn_model.py"
+
+  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

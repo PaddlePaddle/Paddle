@@ -12,11 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
@@ -29,6 +38,10 @@ def np_masked_select(x, mask):
 
 
 class TestMaskedSelectOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init()
         self.op_type = "masked_select"
@@ -50,16 +63,30 @@ class TestMaskedSelectOp(OpTest):
 
 
 class TestMaskedSelectOp1(TestMaskedSelectOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.shape = (6, 8, 9, 18)
 
 
 class TestMaskedSelectOp2(TestMaskedSelectOp):
+<<<<<<< HEAD
     def init(self):
         self.shape = (168,)
 
 
 class TestMaskedSelectAPI(unittest.TestCase):
+=======
+
+    def init(self):
+        self.shape = (168, )
+
+
+class TestMaskedSelectAPI(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_imperative_mode(self):
         paddle.disable_static()
         shape = (88, 6, 8)
@@ -84,26 +111,48 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
 
+<<<<<<< HEAD
         (res,) = exe.run(
             paddle.static.default_main_program(),
             feed={"x": np_x, "mask": np_mask},
             fetch_list=[out],
         )
+=======
+        res, = exe.run(paddle.static.default_main_program(),
+                       feed={
+                           "x": np_x,
+                           "mask": np_mask
+                       },
+                       fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(res, np_out, rtol=1e-05)
 
 
 class TestMaskedSelectError(unittest.TestCase):
+<<<<<<< HEAD
     def test_error(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+
+    def test_error(self):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             shape = [8, 9, 6]
             x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
             mask = paddle.fluid.data(shape=shape, dtype='bool', name='mask')
+<<<<<<< HEAD
             mask_float = paddle.fluid.data(
                 shape=shape, dtype='float32', name='mask_float'
             )
+=======
+            mask_float = paddle.fluid.data(shape=shape,
+                                           dtype='float32',
+                                           name='mask_float')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np_x = np.random.random(shape).astype('float32')
             np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
 

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import paddle
@@ -32,8 +36,17 @@ class TestSyncBatchNormOp(TestDistBase):
         pass
 
     def test_identity(self, col_type="identity"):
+<<<<<<< HEAD
         self.check_with_place(
             "sync_batch_norm_op_mlu.py", col_type, check_error_log=True
+=======
+        envs = {"CNCL_MEM_POOL_MULTI_CLIQUE_ENABLE": "1"}
+        self.check_with_place(
+            "sync_batch_norm_op_mlu.py",
+            col_type,
+            check_error_log=True,
+            need_envs=envs,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
 
 

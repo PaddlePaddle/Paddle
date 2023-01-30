@@ -13,6 +13,7 @@
 # limitations under the License.
 """This is unit test of Test data_norm Op."""
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,6 +23,20 @@ import paddle
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.op import Operator
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import os
+from op_test import OpTest
+from paddle.fluid.framework import grad_var_name
+from paddle.fluid import Program, program_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
@@ -40,9 +55,14 @@ def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
             for j in range(0, x_shape[1], slot_dim):
                 if x[i][j] <= -min_precision or x[i][j] >= min_precision:
                     for k in range(0, slot_dim):
+<<<<<<< HEAD
                         y[i][j + k] = (
                             x[i][j + k] - means_arr[j + k]
                         ) * scales_arr[j + k]
+=======
+                        y[i][j + k] = (x[i][j + k] -
+                                       means_arr[j + k]) * scales_arr[j + k]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return y
 
 
@@ -69,6 +89,7 @@ class TestDataNormOpInference(unittest.TestCase):
         self.use_mkldnn = False
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             np.array(tensor), np_array, rtol=1e-05, atol=atol, err_msg=msg
         )
@@ -82,6 +103,21 @@ class TestDataNormOpInference(unittest.TestCase):
         slot_dim=-1,
         enable_scale_and_shift=False,
     ):
+=======
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=1e-05,
+                                   atol=atol,
+                                   err_msg=msg)
+
+    def check_with_place(self,
+                         place,
+                         data_layout,
+                         dtype,
+                         shape,
+                         slot_dim=-1,
+                         enable_scale_and_shift=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         do forward and check
 
@@ -112,13 +148,19 @@ class TestDataNormOpInference(unittest.TestCase):
         batch_square_sum = np.ones(scale_shape).astype(np.float32)
         batch_square_sum *= 1e4
 
+<<<<<<< HEAD
         y_out = _reference_testing(
             x_val, batch_size, batch_sum, batch_square_sum, slot_dim
         ).astype(dtype)
+=======
+        y_out = _reference_testing(x_val, batch_size, batch_sum,
+                                   batch_square_sum, slot_dim).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         scope = core.Scope()
 
         # create input
+<<<<<<< HEAD
         x_tensor = create_or_get_tensor(
             scope, "x_val", OpTest.np_dtype_to_fluid_dtype(x_val), place
         )
@@ -137,6 +179,20 @@ class TestDataNormOpInference(unittest.TestCase):
             OpTest.np_dtype_to_fluid_dtype(batch_square_sum),
             place,
         )
+=======
+        x_tensor = create_or_get_tensor(scope, "x_val",
+                                        OpTest.np_dtype_to_fluid_dtype(x_val),
+                                        place)
+        batch_size_tensor = create_or_get_tensor(
+            scope, "batch_size", OpTest.np_dtype_to_fluid_dtype(batch_size),
+            place)
+        batch_sum_tensor = create_or_get_tensor(
+            scope, "batch_sum", OpTest.np_dtype_to_fluid_dtype(batch_sum),
+            place)
+        batch_square_sum_tensor = create_or_get_tensor(
+            scope, "batch_square_sum",
+            OpTest.np_dtype_to_fluid_dtype(batch_square_sum), place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # create output
         y_tensor = create_or_get_tensor(scope, "y_out", None, place)
@@ -159,17 +215,28 @@ class TestDataNormOpInference(unittest.TestCase):
                 epsilon=epsilon,
                 use_mkldnn=self.use_mkldnn,
                 slot_dim=slot_dim,
+<<<<<<< HEAD
                 enable_scale_and_shift=False,
             )
+=======
+                enable_scale_and_shift=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             scale_w = np.ones(scale_shape).astype(np.float32)
             bias = np.zeros(scale_shape).astype(np.float32)
             scale_w_tensor = create_or_get_tensor(
+<<<<<<< HEAD
                 scope, "scale_w", OpTest.np_dtype_to_fluid_dtype(scale_w), place
             )
             bias_tensor = create_or_get_tensor(
                 scope, "bias", OpTest.np_dtype_to_fluid_dtype(bias), place
             )
+=======
+                scope, "scale_w", OpTest.np_dtype_to_fluid_dtype(scale_w),
+                place)
+            bias_tensor = create_or_get_tensor(
+                scope, "bias", OpTest.np_dtype_to_fluid_dtype(bias), place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_norm_op = Operator(
                 "data_norm",
                 # inputs
@@ -187,12 +254,17 @@ class TestDataNormOpInference(unittest.TestCase):
                 epsilon=epsilon,
                 use_mkldnn=self.use_mkldnn,
                 slot_dim=slot_dim,
+<<<<<<< HEAD
                 enable_scale_and_shift=True,
             )
+=======
+                enable_scale_and_shift=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         data_norm_op.run(scope, place)
 
         # check inference result
+<<<<<<< HEAD
         self.__assert_close(
             y_tensor,
             y_out,
@@ -206,6 +278,14 @@ class TestDataNormOpInference(unittest.TestCase):
             + str(y_out),
             atol=1e-3,
         )
+=======
+        self.__assert_close(y_tensor,
+                            y_out,
+                            "inference output are different at " + str(place) +
+                            ", " + data_layout + ", " + str(np.dtype(dtype)) +
+                            str(np.array(y_tensor)) + str(y_out),
+                            atol=1e-3)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         """
@@ -219,11 +299,17 @@ class TestDataNormOpInference(unittest.TestCase):
                         self.check_with_place(
                             place,
                             data_format,
+<<<<<<< HEAD
                             self.dtype,
                             [2, 3],
                             slot_dim=slot_dim,
                             enable_scale_and_shift=enable_scale_and_shift,
                         )
+=======
+                            self.dtype, [2, 3],
+                            slot_dim=slot_dim,
+                            enable_scale_and_shift=enable_scale_and_shift)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestDataNormOp(OpTest):
@@ -259,7 +345,11 @@ class TestDataNormOp(OpTest):
             "X": x_val,
             "BatchSize": batch_size,
             "BatchSum": batch_sum,
+<<<<<<< HEAD
             "BatchSquareSum": batch_square_sum,
+=======
+            "BatchSquareSum": batch_square_sum
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
         self.attrs = {"epsilon": epsilon, "use_mkldnn": self.use_mkldnn}
@@ -316,14 +406,22 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum,
             "scale_w": scale_w,
+<<<<<<< HEAD
             "bias": bias,
+=======
+            "bias": bias
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
         self.attrs = {
             "epsilon": epsilon,
             "use_mkldnn": self.use_mkldnn,
             "slot_dim": slot_dim,
+<<<<<<< HEAD
             "enable_scale_and_shift": True,
+=======
+            "enable_scale_and_shift": True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -378,7 +476,11 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum,
             "scale_w": scale_w,
+<<<<<<< HEAD
             "bias": bias,
+=======
+            "bias": bias
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
         self.attrs = {"epsilon": epsilon, "use_mkldnn": self.use_mkldnn}
@@ -435,14 +537,22 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum,
             "scale_w": scale_w,
+<<<<<<< HEAD
             "bias": bias,
+=======
+            "bias": bias
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
         self.attrs = {
             "epsilon": epsilon,
             "use_mkldnn": self.use_mkldnn,
             "slot_dim": slot_dim,
+<<<<<<< HEAD
             "enable_scale_and_shift": True,
+=======
+            "enable_scale_and_shift": True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -492,13 +602,21 @@ class TestDataNormOpWithSlotDim(OpTest):
             "X": x_val,
             "BatchSize": batch_size,
             "BatchSum": batch_sum,
+<<<<<<< HEAD
             "BatchSquareSum": batch_square_sum,
+=======
+            "BatchSquareSum": batch_square_sum
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
         self.attrs = {
             "epsilon": epsilon,
             "use_mkldnn": self.use_mkldnn,
+<<<<<<< HEAD
             "slot_dim": slot_dim,
+=======
+            "slot_dim": slot_dim
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -515,6 +633,7 @@ class TestDataNormOpWithSlotDim(OpTest):
 
 
 class TestDataNormOpErrorr(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         with program_guard(Program(), Program()):
             x2 = paddle.static.data(name='x2', shape=[-1, 3, 4], dtype="int32")
@@ -522,6 +641,16 @@ class TestDataNormOpErrorr(unittest.TestCase):
             paddle.static.nn.data_norm(
                 input=x2, param_attr={}, enable_scale_and_shift=True
             )
+=======
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x2 = fluid.layers.data(name='x2', shape=[3, 4], dtype="int32")
+            #self.assertRaises(TypeError, fluid.data_norm, x2)
+            fluid.layers.data_norm(input=x2,
+                                   param_attr={},
+                                   enable_scale_and_shift=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

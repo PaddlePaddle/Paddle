@@ -19,6 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
@@ -54,12 +58,21 @@ class MomentumOp : public framework::OperatorWithKernel {
         true,
         platform::errors::NotFound(
             "Input(LearningRate) of Momentum should not be null."));
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
                       framework::proto::VarType::LOD_TENSOR,
                       platform::errors::InvalidArgument(
                           "The input var's type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx->GetInputsVarType("Param").front()));
+=======
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Param").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->GetInputsVarType("Param").front()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"),
                       true,
@@ -114,11 +127,19 @@ class MomentumOp : public framework::OperatorWithKernel {
     }
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return phi::KernelKey(input_data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

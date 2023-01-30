@@ -25,8 +25,13 @@ template <typename DeviceContext, typename T>
 class L1NormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
     phi::DenseTensor *Out = context.Output<phi::DenseTensor>("Out");
+=======
+    const framework::Tensor *X = context.Input<framework::Tensor>("X");
+    framework::Tensor *Out = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Out->mutable_data<T>(context.GetPlace());
 
     auto x = framework::EigenVector<T>::Flatten(*X);
@@ -43,16 +48,27 @@ template <typename DeviceContext, typename T>
 class L1NormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     const phi::DenseTensor *x = context.Input<phi::DenseTensor>("X");
     const phi::DenseTensor *d_out =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    const framework::Tensor *x = context.Input<framework::Tensor>("X");
+    const framework::Tensor *d_out =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         d_out->numel(),
         1,
         platform::errors::InvalidArgument(
             "Input(GRAD@Out) of L1NormGradOP should be a scalar."));
+<<<<<<< HEAD
     phi::DenseTensor *dx =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    framework::Tensor *dx =
+        context.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dx->mutable_data<T>(context.GetPlace());
 
     auto x_eigen = framework::EigenVector<T>::Flatten(*x);

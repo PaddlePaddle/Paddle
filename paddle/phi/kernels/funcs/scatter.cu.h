@@ -16,8 +16,13 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -70,7 +75,11 @@ __global__ void ScatterCUDAKernel(const T* params,
     if (overwrite) {
       *(output + out_i) = *(params + i);
     } else {
+<<<<<<< HEAD
       phi::CudaAtomicAdd(output + out_i, *(params + i));
+=======
+      paddle::platform::CudaAtomicAdd(output + out_i, *(params + i));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }
@@ -104,7 +113,11 @@ __global__ void ScatterNdCUDAKernel(const T* update,
       temp *= output_dims[j];
     }
     int64_t output_i = gather_i + slice_i;
+<<<<<<< HEAD
     phi::CudaAtomicAdd(output + output_i, *(update + i));
+=======
+    paddle::platform::CudaAtomicAdd(output + output_i, *(update + i));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -122,6 +135,10 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
                       const DenseTensor& index,
                       DenseTensor* output,
                       bool overwrite = true) {
+<<<<<<< HEAD
+=======
+  // check index of shape 1-D
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -131,6 +148,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
                                      "But received value is [%d]",
                                      index.dims()[1]));
   } else {
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(
         index.dims().size() == 1 || index.dims().size() == 0,
         true,
@@ -141,30 +159,52 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   }
 
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
+=======
+    PADDLE_ENFORCE_EQ(index.dims().size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "index.dims().size() should be 1 or 2 in scatter_op."
+                          "But received value is [%d]",
+                          index.dims().size()));
+  }
+  int64_t index_size = index.dims()[0];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto src_dims = src.dims();
   phi::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
   // slice size
+<<<<<<< HEAD
   size_t slice_size = 1;
   if (index.dims().size() != 0) {
     for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
   } else {
     for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
   }
+=======
+  int64_t slice_size = 1;
+  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   const T* p_src = src.data<T>();
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const size_t& slice_bytes = slice_size * sizeof(T);
 
   // set block and grid num
   int block = 512;
   int64_t n = slice_size * index_size;
   dim3 grid = dim3((n + block - 1) / block);
+<<<<<<< HEAD
   phi::backends::gpu::LimitGridDim(ctx, &grid);
+=======
+  paddle::platform::LimitGridDim(ctx, &grid);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // if not overwrite mode, init data
   if (!overwrite) {
@@ -196,7 +236,11 @@ void GPUScatterGradForX(const phi::GPUContext& ctx,
   int64_t n = slice_size * index_size;
   int64_t height = (n + block - 1) / block;
   dim3 grid = dim3((n + block - 1) / block);
+<<<<<<< HEAD
   phi::backends::gpu::LimitGridDim(ctx, &grid);
+=======
+  paddle::platform::LimitGridDim(ctx, &grid);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_index, p_output, index_size, slice_size);
@@ -237,7 +281,11 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * remain_numel;
   dim3 grid = dim3((n + block - 1) / block);
+<<<<<<< HEAD
   phi::backends::gpu::LimitGridDim(ctx, &grid);
+=======
+  paddle::platform::LimitGridDim(ctx, &grid);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ScatterNdCUDAKernel<T, IndexT>
       <<<grid, block, 0, ctx.stream()>>>(p_update,

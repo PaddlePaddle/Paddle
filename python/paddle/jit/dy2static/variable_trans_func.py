@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle
 from paddle.fluid.framework import Variable
 from paddle.fluid.layers.utils import is_sequence, map_structure
@@ -84,3 +85,11 @@ def create_bool_node(name, value):
     assert isinstance(value, bool)
     node = "{} = {}".format(name, value)
     return gast.parse(node).body[0]
+=======
+from __future__ import print_function
+
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_bool_as_type  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable  # noqa: F401
+
+__all__ = []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -18,7 +18,11 @@
 import numpy as np
 
 
+<<<<<<< HEAD
 class TunableVariable:
+=======
+class TunableVariable(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Tunablevariable base class.
     """
@@ -45,14 +49,22 @@ class Fixed(TunableVariable):
     """
 
     def __init__(self, name, default):
+<<<<<<< HEAD
         super().__init__(name=name, default=default)
+=======
+        super(Fixed, self).__init__(name=name, default=default)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.name = name
         if not isinstance(default, (str, int, float, bool)):
             raise ValueError(
                 "Fixed must be an str, int, float or bool, but found {}".format(
+<<<<<<< HEAD
                     default
                 )
             )
+=======
+                    default))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._default = default
 
     def random(self, seed=None):
@@ -68,11 +80,18 @@ class Boolean(TunableVariable):
     """
 
     def __init__(self, name, default=False):
+<<<<<<< HEAD
         super().__init__(name=name, default=default)
         if default not in {True, False}:
             raise ValueError(
                 "default must be a Python boolean, but got {}".format(default)
             )
+=======
+        super(Boolean, self).__init__(name=name, default=default)
+        if default not in {True, False}:
+            raise ValueError(
+                "default must be a Python boolean, but got {}".format(default))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def random(self, seed=None):
         rng = np.random.default_rng(seed)
@@ -80,6 +99,7 @@ class Boolean(TunableVariable):
 
     def __repr__(self):
         return 'Boolean(name: "{}", default: {})'.format(
+<<<<<<< HEAD
             self.name, self.default
         )
 
@@ -87,14 +107,28 @@ class Boolean(TunableVariable):
 class Choice(TunableVariable):
     def __init__(self, name, values, default=None):
         super().__init__(name=name, default=default)
+=======
+            self.name, self.default)
+
+
+class Choice(TunableVariable):
+
+    def __init__(self, name, values, default=None):
+        super(Choice, self).__init__(name=name, default=default)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         types = set(type(v) for v in values)
         if len(types) > 1:
             raise TypeError(
+<<<<<<< HEAD
                 "Choice can contain only one type of value, but found values: {} with types: {}.".format(
                     str(values), str(types)
                 )
             )
+=======
+                "Choice can contain only one type of value, but found values: {} with types: {}."
+                .format(str(values), str(types)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._is_unknown_type = False
 
         if isinstance(values[0], str):
@@ -120,10 +154,15 @@ class Choice(TunableVariable):
 
         if default is not None and default not in values:
             raise ValueError(
+<<<<<<< HEAD
                 "The default value should be one of the choices {}, but found {}".format(
                     values, default
                 )
             )
+=======
+                "The default value should be one of the choices {}, but found {}"
+                .format(values, default))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._default = default
 
     @property
@@ -143,14 +182,22 @@ class Choice(TunableVariable):
             return rng.choice(self.values)
 
     def get_state(self):
+<<<<<<< HEAD
         state = super().get_state()
+=======
+        state = super(Choice, self).get_state()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         state["values"] = self.values
         return state
 
     def __repr__(self):
         return 'Choice(name: "{}", values: {}, default: {})'.format(
+<<<<<<< HEAD
             self.name, self.values, self.default
         )
+=======
+            self.name, self.values, self.default)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class IntRange(TunableVariable):
@@ -159,7 +206,11 @@ class IntRange(TunableVariable):
     """
 
     def __init__(self, name, start, stop, step=1, default=None, endpoint=False):
+<<<<<<< HEAD
         super().__init__(name=name, default=default)
+=======
+        super(IntRange, self).__init__(name=name, default=default)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.start = self._check_int(start)
         self.stop = self._check_int(stop)
         self.step = self._check_int(step)
@@ -185,7 +236,11 @@ class IntRange(TunableVariable):
         return int(value)
 
     def get_state(self):
+<<<<<<< HEAD
         state = super().get_state()
+=======
+        state = super(IntRange, self).get_state()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         state["start"] = self.start
         state["stop"] = self.stop
         state["step"] = self.step
@@ -195,15 +250,24 @@ class IntRange(TunableVariable):
     def _check_int(self, val):
         int_val = int(val)
         if int_val != val:
+<<<<<<< HEAD
             raise ValueError(
                 "Expects val is an int, but found: {}.".format(str(val))
             )
+=======
+            raise ValueError("Expects val is an int, but found: {}.".format(
+                str(val)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return int_val
 
     def __repr__(self):
         return "IntRange(name: {}, start: {}, stop: {}, step: {}, default: {})".format(
+<<<<<<< HEAD
             self.name, self.start, self.stop, self.step, self.default
         )
+=======
+            self.name, self.start, self.stop, self.step, self.default)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class FloatRange(TunableVariable):
@@ -211,10 +275,21 @@ class FloatRange(TunableVariable):
     Float range.
     """
 
+<<<<<<< HEAD
     def __init__(
         self, name, start, stop, step=None, default=None, endpoint=False
     ):
         super().__init__(name=name, default=default)
+=======
+    def __init__(self,
+                 name,
+                 start,
+                 stop,
+                 step=None,
+                 default=None,
+                 endpoint=False):
+        super(FloatRange, self).__init__(name=name, default=default)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.stop = float(stop)
         self.start = float(start)
         if step is not None:
@@ -243,7 +318,11 @@ class FloatRange(TunableVariable):
         return value
 
     def get_state(self):
+<<<<<<< HEAD
         state = super().get_state()
+=======
+        state = super(FloatRange, self).get_state()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         state["start"] = self.start
         state["stop"] = self.stop
         state["step"] = self.step
@@ -252,6 +331,7 @@ class FloatRange(TunableVariable):
 
     def __repr__(self):
         return "FloatRange(name: {}, start: {}, stop: {}, step: {}, default: {}, endpoint: {})".format(
+<<<<<<< HEAD
             self.name,
             self.start,
             self.stop,
@@ -259,3 +339,7 @@ class FloatRange(TunableVariable):
             self.default,
             self.endpoint,
         )
+=======
+            self.name, self.start, self.stop, self.step, self.default,
+            self.endpoint)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

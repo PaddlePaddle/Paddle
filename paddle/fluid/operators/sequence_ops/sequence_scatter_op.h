@@ -20,17 +20,29 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
 using LoDTensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 class SequenceScatterOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* ids = ctx.Input<LoDTensor>("Ids");
     auto* updates = ctx.Input<LoDTensor>("Updates");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* ids = ctx.Input<LoDTensor>("Ids");
+    auto* updates = ctx.Input<LoDTensor>("Updates");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto& ids_lod = ids->lod();
     PADDLE_ENFORCE_EQ(ids_lod.empty(),
@@ -96,10 +108,17 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
         platform::errors::Unimplemented("Device dose not match. The "
                                         "SequenceScatterGradientOpKernel can "
                                         "only run on CPU device."));
+<<<<<<< HEAD
     auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dUpdates = ctx.Output<LoDTensor>(framework::GradVarName("Updates"));
     auto* ids = ctx.Input<LoDTensor>("Ids");
     auto* dOut = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dUpdates = ctx.Output<LoDTensor>(framework::GradVarName("Updates"));
+    auto* ids = ctx.Input<LoDTensor>("Ids");
+    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto& ids_lod = ids->lod();
 

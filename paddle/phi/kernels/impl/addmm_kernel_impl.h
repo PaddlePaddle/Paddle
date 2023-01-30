@@ -37,8 +37,13 @@ void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& x,
                  const DenseTensor& y,
+<<<<<<< HEAD
                  float beta,
                  float alpha,
+=======
+                 float alpha,
+                 float beta,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  DenseTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();

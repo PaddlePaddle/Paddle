@@ -47,8 +47,13 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               const paddle::optional<DenseTensor>& ddx,
                               const paddle::optional<DenseTensor>& ddy,
+<<<<<<< HEAD
                               const paddle::optional<DenseTensor>& d_dx,
                               const paddle::optional<DenseTensor>& d_dy,
+=======
+                              const DenseTensor& d_dx,
+                              const DenseTensor& d_dy,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                               const paddle::optional<DenseTensor>& d_ddout,
                               int axis,
                               DenseTensor* d_x,

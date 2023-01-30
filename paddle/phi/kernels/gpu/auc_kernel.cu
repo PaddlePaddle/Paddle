@@ -14,13 +14,22 @@
 
 #include "paddle/phi/kernels/auc_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
+<<<<<<< HEAD
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __global__ void ClearObsoleteDataKernel(int64_t *pos,
                                         int64_t *neg,
@@ -74,9 +83,15 @@ __global__ void AddDataKernel(const int64_t *label_data,
                    "The predict data must gather or equal 0.");
     uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
     if (label_data[i]) {
+<<<<<<< HEAD
       phi::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
     } else {
       phi::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
+=======
+      paddle::platform::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
+    } else {
+      paddle::platform::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }

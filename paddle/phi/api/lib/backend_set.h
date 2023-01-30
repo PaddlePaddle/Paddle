@@ -36,7 +36,11 @@ class BackendSet final {
                     ? 0
                     : 1ULL << (static_cast<uint8_t>(b) - 1)) {}
 
+<<<<<<< HEAD
   inline uint32_t bitset() const { return bitset_; }
+=======
+  inline uint64_t bitset() const { return bitset_; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   bool inline Has(Backend b) const {
     PD_CHECK(b != Backend::UNDEFINED, "Backend argument can't be UNDEFINED.");
@@ -62,8 +66,13 @@ class BackendSet final {
   }
 
  private:
+<<<<<<< HEAD
   constexpr BackendSet(uint32_t bitset) : bitset_(bitset) {}
   uint32_t bitset_;
+=======
+  constexpr BackendSet(uint64_t bitset) : bitset_(bitset) {}
+  uint64_t bitset_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace experimental

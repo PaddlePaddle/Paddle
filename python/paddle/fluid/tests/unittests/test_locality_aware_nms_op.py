@@ -1,5 +1,6 @@
 #  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
+<<<<<<< HEAD
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -18,6 +19,27 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from test_multiclass_nms_op import iou
+=======
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+
+from __future__ import print_function
+import unittest
+import numpy as np
+import copy
+from op_test import OpTest
+from test_multiclass_nms_op import iou
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def weight_merge(box1, box2, score1, score2):
@@ -25,6 +47,7 @@ def weight_merge(box1, box2, score1, score2):
         box2[i] = (box1[i] * score1 + box2[i] * score2) / (score1 + score2)
 
 
+<<<<<<< HEAD
 def nms(
     boxes,
     scores,
@@ -34,6 +57,15 @@ def nms(
     normalized=True,
     eta=1.0,
 ):
+=======
+def nms(boxes,
+        scores,
+        score_threshold,
+        nms_threshold,
+        top_k=200,
+        normalized=True,
+        eta=1.0):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Apply non-maximum suppression at test time to avoid detecting too many
     overlapping bounding boxes for a given object.
     Args:
@@ -50,6 +82,7 @@ def nms(
     """
     index = -1
     for i in range(boxes.shape[0]):
+<<<<<<< HEAD
         if (
             index > -1
             and iou(boxes[i], boxes[index], normalized) > nms_threshold
@@ -57,6 +90,13 @@ def nms(
             weight_merge(boxes[i], boxes[index], scores[i], scores[index])
             scores[index] += scores[i]
             scores[i] = score_threshold - 1.0
+=======
+        if index > -1 and iou(boxes[i], boxes[index],
+                              normalized) > nms_threshold:
+            weight_merge(boxes[i], boxes[index], scores[i], scores[index])
+            scores[index] += scores[i]
+            scores[i] = score_threshold - 1.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             index = i
 
@@ -94,6 +134,7 @@ def nms(
     return selected_indices
 
 
+<<<<<<< HEAD
 def multiclass_nms(
     boxes,
     scores,
@@ -105,6 +146,10 @@ def multiclass_nms(
     normalized,
     shared,
 ):
+=======
+def multiclass_nms(boxes, scores, background, score_threshold, nms_threshold,
+                   nms_top_k, keep_top_k, normalized, shared):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if shared:
         class_num = scores.shape[0]
         priorbox_num = scores.shape[1]
@@ -115,6 +160,7 @@ def multiclass_nms(
     selected_indices = {}
     num_det = 0
     for c in range(class_num):
+<<<<<<< HEAD
         if c == background:
             continue
         if shared:
@@ -135,6 +181,15 @@ def multiclass_nms(
                 nms_top_k,
                 normalized,
             )
+=======
+        if c == background: continue
+        if shared:
+            indices = nms(boxes, scores[c], score_threshold, nms_threshold,
+                          nms_top_k, normalized)
+        else:
+            indices = nms(boxes[:, c, :], scores[:, c], score_threshold,
+                          nms_threshold, nms_top_k, normalized)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         selected_indices[c] = indices
         num_det += len(indices)
 
@@ -147,9 +202,15 @@ def multiclass_nms(
                 else:
                     score_index.append((scores[idx][c], c, idx))
 
+<<<<<<< HEAD
         sorted_score_index = sorted(
             score_index, key=lambda tup: tup[0], reverse=True
         )
+=======
+        sorted_score_index = sorted(score_index,
+                                    key=lambda tup: tup[0],
+                                    reverse=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sorted_score_index = sorted_score_index[:keep_top_k]
         selected_indices = {}
 
@@ -165,6 +226,7 @@ def multiclass_nms(
     return selected_indices, num_det
 
 
+<<<<<<< HEAD
 def batched_multiclass_nms(
     boxes,
     scores,
@@ -175,12 +237,23 @@ def batched_multiclass_nms(
     keep_top_k,
     normalized=True,
 ):
+=======
+def batched_multiclass_nms(boxes,
+                           scores,
+                           background,
+                           score_threshold,
+                           nms_threshold,
+                           nms_top_k,
+                           keep_top_k,
+                           normalized=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     batch_size = scores.shape[0]
     num_boxes = scores.shape[2]
     det_outs = []
 
     lod = []
     for n in range(batch_size):
+<<<<<<< HEAD
         nmsed_outs, nmsed_num = multiclass_nms(
             boxes[n],
             scores[n],
@@ -192,6 +265,17 @@ def batched_multiclass_nms(
             normalized,
             shared=True,
         )
+=======
+        nmsed_outs, nmsed_num = multiclass_nms(boxes[n],
+                                               scores[n],
+                                               background,
+                                               score_threshold,
+                                               nms_threshold,
+                                               nms_top_k,
+                                               keep_top_k,
+                                               normalized,
+                                               shared=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         lod.append(nmsed_num)
 
         if nmsed_num == 0:
@@ -200,6 +284,7 @@ def batched_multiclass_nms(
         for c, indices in nmsed_outs.items():
             for idx in indices:
                 xmin, ymin, xmax, ymax = boxes[n][idx][:]
+<<<<<<< HEAD
                 tmp_det_out.append(
                     [
                         c,
@@ -214,11 +299,24 @@ def batched_multiclass_nms(
         sorted_det_out = sorted(
             tmp_det_out, key=lambda tup: tup[0], reverse=False
         )
+=======
+                tmp_det_out.append([
+                    c, scores[n][c][idx], xmin, ymin, xmax, ymax,
+                    idx + n * num_boxes
+                ])
+        sorted_det_out = sorted(tmp_det_out,
+                                key=lambda tup: tup[0],
+                                reverse=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         det_outs.extend(sorted_det_out)
     return det_outs, lod
 
 
 class TestLocalAwareNMSOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_argument(self):
         self.score_threshold = 0.01
 
@@ -239,7 +337,11 @@ class TestLocalAwareNMSOp(OpTest):
         def softmax(x):
             # clip to shiftx, otherwise, when calc loss with
             # log(exp(shiftx)), may get log(0)=INF
+<<<<<<< HEAD
             shiftx = (x - np.max(x)).clip(-64.0)
+=======
+            shiftx = (x - np.max(x)).clip(-64.)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exps = np.exp(shiftx)
             return exps / np.sum(exps)
 
@@ -253,6 +355,7 @@ class TestLocalAwareNMSOp(OpTest):
 
         boxes_copy = copy.deepcopy(boxes)
         scores_copy = copy.deepcopy(scores)
+<<<<<<< HEAD
         det_outs, lod = batched_multiclass_nms(
             boxes_copy,
             scores_copy,
@@ -262,6 +365,12 @@ class TestLocalAwareNMSOp(OpTest):
             nms_top_k,
             keep_top_k,
         )
+=======
+        det_outs, lod = batched_multiclass_nms(boxes_copy, scores_copy,
+                                               background, score_threshold,
+                                               nms_threshold, nms_top_k,
+                                               keep_top_k)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         lod = [1] if not det_outs else lod
         det_outs = [[-1, 0]] if not det_outs else det_outs
@@ -286,11 +395,19 @@ class TestLocalAwareNMSOp(OpTest):
 
 
 class TestLocalAwareNMSOpNoBoxes(TestLocalAwareNMSOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_argument(self):
         self.score_threshold = 2.0
 
 
 class TestLocalAwareNMSOp4Points(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_argument(self):
         self.score_threshold = 0.01
 
@@ -305,6 +422,7 @@ class TestLocalAwareNMSOp4Points(OpTest):
         nms_threshold = 0.3
         score_threshold = self.score_threshold
 
+<<<<<<< HEAD
         scores = np.array(
             [[[0.76319082, 0.73770091]], [[0.68513154, 0.45952697]]]
         )
@@ -385,13 +503,47 @@ class TestLocalAwareNMSOp4Points(OpTest):
                 ],
             ]
         )
+=======
+        scores = np.array([[[0.76319082, 0.73770091]],
+                           [[0.68513154, 0.45952697]]])
+        boxes = np.array([[[
+            0.42078365, 0.58117018, 2.92776169, 3.28557757, 4.24344318,
+            0.92196165, 2.72370856, -1.66141214
+        ],
+                           [
+                               0.13856006, 1.86871034, 2.81287224, 3.61381734,
+                               4.5505249, 0.51766346, 2.75630304, -1.91459389
+                           ]],
+                          [[
+                              1.57533883, 1.3217477, 3.07904942, 3.89512545,
+                              4.78680923, 1.96914586, 3.539482, -1.59739244
+                          ],
+                           [
+                               0.55084125, 1.71596215, 2.52476074, 3.18940435,
+                               5.09035159, 0.91959482, 3.71442385, -0.57299128
+                           ]]])
+
+        det_outs = np.array([[
+            0., 1.5008917, 0.28206837, 1.2140071, 2.8712926, 3.4469104,
+            4.3943763, 0.7232457, 2.7397292, -1.7858533
+        ],
+                             [
+                                 0., 1.1446586, 1.1640508, 1.4800063, 2.856528,
+                                 3.6118112, 4.908667, 1.5478, 3.609713,
+                                 -1.1861432
+                             ]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         lod = [1, 1]
         nmsed_outs = det_outs.astype('float32')
 
         self.op_type = 'locality_aware_nms'
         self.inputs = {
             'BBoxes': boxes.astype('float32'),
+<<<<<<< HEAD
             'Scores': scores.astype('float32'),
+=======
+            'Scores': scores.astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': (nmsed_outs, [lod])}
         self.attrs = {
@@ -400,12 +552,91 @@ class TestLocalAwareNMSOp4Points(OpTest):
             'nms_top_k': nms_top_k,
             'keep_top_k': keep_top_k,
             'background_label': -1,
+<<<<<<< HEAD
             'normalized': False,
+=======
+            'normalized': False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
         self.check_output()
 
 
+<<<<<<< HEAD
+=======
+class TestLocalityAwareNMSAPI(unittest.TestCase):
+
+    def test_api(self):
+        boxes = fluid.data(name='bboxes', shape=[None, 81, 8], dtype='float32')
+        scores = fluid.data(name='scores', shape=[None, 1, 81], dtype='float32')
+        fluid.layers.locality_aware_nms(bboxes=boxes,
+                                        scores=scores,
+                                        score_threshold=0.5,
+                                        nms_top_k=400,
+                                        nms_threshold=0.3,
+                                        keep_top_k=200,
+                                        normalized=False)
+
+
+class TestLocalityAwareNMSError(unittest.TestCase):
+
+    def test_error(self):
+        boxes = fluid.data(name='bboxes', shape=[None, 81, 8], dtype='float32')
+        scores = fluid.data(name='scores', shape=[None, 1, 81], dtype='float32')
+
+        boxes_int = fluid.data(name='bboxes_int',
+                               shape=[None, 81, 8],
+                               dtype='int32')
+        scores_int = fluid.data(name='scores_int',
+                                shape=[None, 1, 81],
+                                dtype='int32')
+        boxes_tmp = [1, 2]
+        scores_tmp = [1, 2]
+
+        # type of boxes and scores must be variable
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes_tmp,
+                          scores, 0.5, 400, 200)
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
+                          scores_tmp, 0.5, 400, 200)
+
+        # dtype of boxes and scores must in ['float32', 'float64']
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes_int,
+                          scores, 0.5, 400, 200)
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
+                          scores_int, 0.5, 400, 200)
+
+        score_threshold = int(1)
+        # type of score_threshold must be float
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
+                          scores, score_threshold, 400, 200)
+
+        nms_top_k = 400.5
+        # type of num_top_k must be int
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
+                          scores, 0.5, nms_top_k, 200)
+
+        keep_top_k = 200.5
+        # type of keep_top_k must be int
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
+                          scores, 0.5, 400, keep_top_k)
+
+        nms_threshold = int(0)
+        # type of nms_threshold must be int
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
+                          scores, 0.5, 400, 200, nms_threshold)
+
+        nms_eta = int(1)
+        # type of nms_eta must be float
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
+                          scores, 0.5, 400, 200, 0.5, nms_eta)
+
+        bg_label = 1.5
+        # type of background_label must be int
+        self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
+                          scores, 0.5, 400, 200, 0.5, 1.0, bg_label)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     unittest.main()

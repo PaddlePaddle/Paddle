@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,11 +23,34 @@ import paddle.incubate.nn.functional as incubate_f
 from paddle.fluid.framework import default_main_program
 from paddle.nn.layer.common import Dropout
 from paddle.nn.layer.norm import LayerNorm
+=======
+import numpy as np
+
+import paddle
+import paddle.nn as nn
+import paddle.fluid.core as core
+import paddle.nn.functional as F
+import paddle.incubate.nn.functional as incubate_f
+from paddle.nn.layer.norm import LayerNorm
+from paddle.nn.layer.common import Linear, Dropout
+from paddle.nn.layer.transformer import _convert_attention_mask
+from paddle import tensor
+from paddle.fluid import layers
+import unittest
+from op_test import OpTest
+from paddle.fluid.framework import default_main_program, _enable_legacy_dygraph
+
+_enable_legacy_dygraph()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 default_main_program().random_seed = 42
 
 
 class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.config()
         self.generate_input_data()
@@ -51,6 +75,7 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         self.bias_attr = None
 
     def generate_input_data(self):
+<<<<<<< HEAD
         self.x = np.random.rand(
             self.batch_size, self.query_length, self.embed_dim
         ).astype(self.x_type)
@@ -61,10 +86,20 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         self.dout = np.random.random(
             (self.batch_size, self.query_length, self.embed_dim)
         ).astype(self.x_type)
+=======
+        self.x = np.random.rand(self.batch_size, self.query_length,
+                                self.embed_dim).astype(self.x_type)
+        self.residual = np.random.rand(self.batch_size, self.query_length,
+                                       self.embed_dim).astype(self.x_type)
+        self.linear_bias = np.random.rand(self.embed_dim).astype(self.x_type)
+        self.dout = np.random.random((self.batch_size, self.query_length,
+                                      self.embed_dim)).astype(self.x_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self.bias_attr is False:
             self.tensor_linear_bias = None
         else:
+<<<<<<< HEAD
             self.tensor_linear_bias = paddle.to_tensor(
                 self.linear_bias, stop_gradient=False
             )
@@ -73,6 +108,14 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         self.tensor_residual = paddle.to_tensor(
             self.residual, stop_gradient=False
         )
+=======
+            self.tensor_linear_bias = paddle.to_tensor(self.linear_bias,
+                                                       stop_gradient=False)
+
+        self.tensor_x = paddle.to_tensor(self.x, stop_gradient=False)
+        self.tensor_residual = paddle.to_tensor(self.residual,
+                                                stop_gradient=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def GetBaselineOut(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -85,20 +128,29 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         residual_out = self.tensor_residual + self.dropout(out)
         final_out = self.norm1(residual_out)
 
+<<<<<<< HEAD
         paddle.autograd.backward(
             [final_out], [paddle.to_tensor(self.dout)], retain_graph=True
         )
+=======
+        paddle.autograd.backward([final_out], [paddle.to_tensor(self.dout)],
+                                 retain_graph=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self.tensor_linear_bias is not None:
             tensor_linear_bias_grad = self.tensor_linear_bias.grad
         else:
             tensor_linear_bias_grad = None
+<<<<<<< HEAD
         return (
             final_out,
             self.tensor_x.grad,
             self.tensor_residual.grad,
             tensor_linear_bias_grad,
         )
+=======
+        return final_out, self.tensor_x.grad, self.tensor_residual.grad, tensor_linear_bias_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def GetFusedBiasDropoutResidualLayerNormOut(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -108,6 +160,7 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         epsilon = 1e-05
 
         final_out = incubate_f.fused_bias_dropout_residual_layer_norm(
+<<<<<<< HEAD
             self.tensor_x,
             self.tensor_residual,
             self.tensor_linear_bias,
@@ -120,10 +173,18 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         paddle.autograd.backward(
             [final_out], [paddle.to_tensor(self.dout)], retain_graph=True
         )
+=======
+            self.tensor_x, self.tensor_residual, self.tensor_linear_bias,
+            ln_scale, ln_bias, self.dropout_prob, epsilon)
+
+        paddle.autograd.backward([final_out], [paddle.to_tensor(self.dout)],
+                                 retain_graph=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if self.tensor_linear_bias is not None:
             tensor_linear_bias_grad = self.tensor_linear_bias.grad
         else:
             tensor_linear_bias_grad = None
+<<<<<<< HEAD
         return (
             final_out,
             self.tensor_x.grad,
@@ -165,14 +226,50 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
 class TestFusedBiasDropoutResidualLayerNormOpBiasIsNone(
     TestFusedBiasDropoutResidualLayerNormOp
 ):
+=======
+        return final_out, self.tensor_x.grad, self.tensor_residual.grad, tensor_linear_bias_grad
+
+    def test_fused_op(self):
+        out_ref, x_grad_ref, residual_grad_ref, linear_bias_grad_ref = self.GetBaselineOut(
+        )
+        out, x_grad, residual_grad, linear_bias_grad = self.GetFusedBiasDropoutResidualLayerNormOut(
+        )
+        np.testing.assert_allclose(out_ref,
+                                   out.numpy(),
+                                   rtol=1e-5,
+                                   atol=self.atol)
+        np.testing.assert_allclose(x_grad_ref,
+                                   x_grad.numpy(),
+                                   rtol=1e-5,
+                                   atol=self.atol)
+        np.testing.assert_allclose(residual_grad_ref,
+                                   residual_grad.numpy(),
+                                   rtol=1e-5,
+                                   atol=self.atol)
+        if linear_bias_grad_ref is not None:
+            np.testing.assert_allclose(linear_bias_grad_ref,
+                                       linear_bias_grad.numpy(),
+                                       rtol=1e-5,
+                                       atol=self.atol)
+
+
+class TestFusedBiasDropoutResidualLayerNormOpBiasIsNone(
+        TestFusedBiasDropoutResidualLayerNormOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         super().config()
         self.bias_attr = False
 
 
 class TestFusedBiasDropoutResidualLayerNormOpFp16(
+<<<<<<< HEAD
     TestFusedBiasDropoutResidualLayerNormOp
 ):
+=======
+        TestFusedBiasDropoutResidualLayerNormOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         super().config()
         self.x_type = np.float16

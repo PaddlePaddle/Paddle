@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from ..utils import is_dim_shard
 from .common import (
     DistributedOperatorImpl,
@@ -25,14 +26,34 @@ from .dist_default import DistributedDefaultImpl0
 class DistributedShape(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+=======
+from .common import DistributedOperatorImplContainer
+from .common import DistributedOperatorImpl
+from .common import register_distributed_operator_impl_container
+from .common import register_distributed_operator_impl
+from .dist_default import DistributedDefaultImpl0
+from ..utils import is_dim_shard
+
+
+class DistributedShape(DistributedOperatorImplContainer):
+
+    def __init__(self, op_type):
+        super(DistributedShape, self).__init__(op_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 register_distributed_operator_impl_container(DistributedShape("shape"))
 
 
 class DistributedShapeImpl(DistributedOperatorImpl):
+<<<<<<< HEAD
     def __init__(self, name):
         super().__init__(name)
+=======
+
+    def __init__(self, name):
+        super(DistributedShapeImpl, self).__init__(name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -52,9 +73,14 @@ class DistributedShapeImpl(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
+<<<<<<< HEAD
         if (not self.is_input_compatible(dist_op)) or (
             not self.is_output_compatible(dist_op)
         ):
+=======
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
 
         return True

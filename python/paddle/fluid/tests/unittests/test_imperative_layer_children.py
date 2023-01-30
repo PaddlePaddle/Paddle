@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -32,6 +33,30 @@ class LeNetDygraph(fluid.dygraph.Layer):
             nn.ReLU(),
             paddle.nn.MaxPool2D(2, 2),
         )
+=======
+from __future__ import print_function
+
+import unittest
+
+import paddle
+import paddle.nn as nn
+import paddle.fluid as fluid
+
+import numpy as np
+from paddle.fluid.framework import _test_eager_guard
+
+
+class LeNetDygraph(fluid.dygraph.Layer):
+
+    def __init__(self):
+        super(LeNetDygraph, self).__init__()
+        self.features = nn.Sequential(nn.Conv2D(1, 6, 3, stride=1, padding=1),
+                                      nn.ReLU(),
+                                      paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+                                      nn.Conv2D(6, 16, 5, stride=1, padding=0),
+                                      nn.ReLU(),
+                                      paddle.fluid.dygraph.Pool2D(2, 'max', 2))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -39,6 +64,10 @@ class LeNetDygraph(fluid.dygraph.Layer):
 
 
 class TestLayerChildren(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def func_apply_init_weight(self):
         with fluid.dygraph.guard():
             net = LeNetDygraph()
@@ -55,8 +84,14 @@ class TestLayerChildren(unittest.TestCase):
             return y1, y2
 
     def test_func_apply_init_weight(self):
+<<<<<<< HEAD
         paddle.seed(102)
         self.new_y1, self.new_y2 = self.func_apply_init_weight()
+=======
+        with _test_eager_guard():
+            paddle.seed(102)
+            self.new_y1, self.new_y2 = self.func_apply_init_weight()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.seed(102)
         self.ori_y1, self.ori_y2 = self.func_apply_init_weight()
 

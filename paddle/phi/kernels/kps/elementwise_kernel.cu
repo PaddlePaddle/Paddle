@@ -93,20 +93,34 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(fmax_raw,
                    KPS,
                    ALL_LAYOUT,
                    phi::FMaxRawKernel,
+=======
+PD_REGISTER_KERNEL(fmax,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::FMaxKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    int,
                    float16,
                    int64_t) {}
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(fmin_raw,
                    KPS,
                    ALL_LAYOUT,
                    phi::FMinRawKernel,
+=======
+PD_REGISTER_KERNEL(fmin,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::FMinKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    int,

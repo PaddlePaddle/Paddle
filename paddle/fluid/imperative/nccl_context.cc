@@ -143,7 +143,11 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
+<<<<<<< HEAD
   phi::DenseTensor *src_tensor = src->GetMutable<phi::DenseTensor>();
+=======
+  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const auto &place = src_tensor->place();
   platform::NCCLComm *comm =
       platform::NCCLCommContext::Instance().Get(ring_id, place);

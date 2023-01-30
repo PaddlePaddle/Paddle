@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -27,6 +28,24 @@ from paddle.distributed.fleet.meta_parallel import (
     SharedLayerDesc,
 )
 from paddle.fluid.dygraph.layers import Layer
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+import paddle
+import numpy as np
+import random
+import paddle
+import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
+from paddle.fluid.dygraph.container import Sequential
+from paddle.distributed.fleet.meta_parallel import PipelineLayer
+from paddle.fluid.dygraph.layers import Layer
+import paddle.nn as nn
+import paddle.fluid as fluid
+from paddle.distributed.fleet.meta_parallel import LayerDesc, SharedLayerDesc
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def print_hook_fn(grad):
@@ -47,6 +66,7 @@ hidden_size = 16
 
 
 class SimpleNet(Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
@@ -69,12 +89,41 @@ class SimpleNet(Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=y1, soft_label=False
         )
+=======
+
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+        self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
+
+        self.softmax_weight = self.create_parameter(
+            shape=[hidden_size, vocab_size])
+        self.softmax_bias = self.create_parameter(shape=[vocab_size],
+                                                  is_bias=False)
+
+    def forward(self, x1, x2, y1):
+        x_emb = self.word_embeddings(x1)
+        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
+        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
+        projection = fluid.layers.reshape(fc, shape=[-1, vocab_size])
+
+        projection = paddle.matmul(projection, self.word_embeddings.weight)
+
+        loss = fluid.layers.softmax_with_cross_entropy(logits=projection,
+                                                       label=y1,
+                                                       soft_label=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return loss.mean()
 
 
 class EmbeddingPipe(Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(EmbeddingPipe, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
 
     @property
@@ -88,6 +137,7 @@ class EmbeddingPipe(Layer):
 
 
 class MatmulNet(Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
         self.softmax_weight = self.create_parameter(
@@ -97,23 +147,46 @@ class MatmulNet(Layer):
     def forward(self, args):
         x1, x2 = args
         fc = paddle.matmul(x1, self.softmax_weight)
+=======
+
+    def __init__(self):
+        super(MatmulNet, self).__init__()
+        self.softmax_weight = self.create_parameter(
+            shape=[hidden_size, vocab_size])
+
+    def forward(self, args):
+        x1, x2 = args
+        fc = fluid.layers.matmul(x1, self.softmax_weight)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return fc, x2
 
 
 class BiasNet(Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(BiasNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.softmax_bias = self.create_parameter(shape=[vocab_size])
 
     def forward(self, args):
         fc, x2 = args
+<<<<<<< HEAD
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, vocab_size])
+=======
+        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
+        projection = fluid.layers.reshape(fc, shape=[-1, vocab_size])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return projection, x2
 
 
 class LossNet(Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
 
@@ -122,10 +195,22 @@ class LossNet(Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=y1[0], soft_label=False
         )
+=======
+
+    def __init__(self):
+        super(LossNet, self).__init__()
+
+    def forward(self, args, y1):
+        projection = args
+        loss = fluid.layers.softmax_with_cross_entropy(logits=projection,
+                                                       label=y1[0],
+                                                       soft_label=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return loss.mean()
 
 
 class SimpleNetPipe(PipelineLayer):
+<<<<<<< HEAD
     def __init__(self, **kwargs):
         self.descs = []
         self.descs.append(
@@ -133,6 +218,15 @@ class SimpleNetPipe(PipelineLayer):
                 'embed', EmbeddingPipe, shared_weight_attr='embedding_weight'
             )
         )
+=======
+
+    def __init__(self, **kwargs):
+        self.descs = []
+        self.descs.append(
+            SharedLayerDesc('embed',
+                            EmbeddingPipe,
+                            shared_weight_attr='embedding_weight'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.descs.append(LayerDesc(MatmulNet))
 
         self.descs.append(LayerDesc(BiasNet))
@@ -141,6 +235,7 @@ class SimpleNetPipe(PipelineLayer):
             return paddle.matmul(output[0], embedding.embedding_weight)
 
         self.descs.append(
+<<<<<<< HEAD
             SharedLayerDesc(
                 'embed',
                 EmbeddingPipe,
@@ -153,6 +248,20 @@ class SimpleNetPipe(PipelineLayer):
 
 
 class TestDistEmbeddingTraning(unittest.TestCase):
+=======
+            SharedLayerDesc('embed',
+                            EmbeddingPipe,
+                            forward_func=_logits_helper,
+                            shared_weight_attr='embedding_weight'))
+
+        super(SimpleNetPipe, self).__init__(layers=self.descs,
+                                            loss_fn=LossNet(),
+                                            **kwargs)
+
+
+class TestDistEmbeddingTraning(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -165,7 +274,11 @@ class TestDistEmbeddingTraning(unittest.TestCase):
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,
+<<<<<<< HEAD
             "micro_batch_size": micro_batch_size,
+=======
+            "micro_batch_size": micro_batch_size
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         fleet.init(is_collective=True, strategy=strategy)
 
@@ -177,6 +290,7 @@ class TestDistEmbeddingTraning(unittest.TestCase):
         rank_id = dist.get_rank()
         set_random_seed(1024, dp_id, rank_id)
 
+<<<<<<< HEAD
         # construct model a
         model_a = SimpleNet()
         scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
@@ -185,15 +299,29 @@ class TestDistEmbeddingTraning(unittest.TestCase):
         optimizer_a = paddle.optimizer.SGD(
             learning_rate=scheduler_a, parameters=model_a.parameters()
         )
+=======
+        #construct model a
+        model_a = SimpleNet()
+        scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True)
+        optimizer_a = paddle.optimizer.SGD(learning_rate=scheduler_a,
+                                           parameters=model_a.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_b = SimpleNetPipe(topology=hcg.topology())
 
         scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
+<<<<<<< HEAD
             boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True
         )
         optimizer_b = paddle.optimizer.SGD(
             learning_rate=scheduler_b, parameters=model_b.parameters()
         )
+=======
+            boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True)
+        optimizer_b = paddle.optimizer.SGD(learning_rate=scheduler_b,
+                                           parameters=model_b.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         model_b = fleet.distributed_model(model_b)
         optimizer_b = fleet.distributed_optimizer(optimizer_b)
 
@@ -233,9 +361,14 @@ class TestDistEmbeddingTraning(unittest.TestCase):
             optimizer_a.clear_grad()
             scheduler_a.step()
 
+<<<<<<< HEAD
             loss_b = model_b.train_batch(
                 [(x1, x2), (y1,)], optimizer_b, scheduler_b
             )
+=======
+            loss_b = model_b.train_batch([(x1, x2), (y1, )], optimizer_b,
+                                         scheduler_b)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             print("loss", loss_a.numpy(), loss_b.numpy())
             np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())

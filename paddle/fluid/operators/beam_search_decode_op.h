@@ -23,8 +23,13 @@ namespace operators {
 struct BeamSearchDecodeFunctor {
   BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
                           const LoDTensorArray& step_scores,
+<<<<<<< HEAD
                           phi::DenseTensor* id_tensor,
                           phi::DenseTensor* score_tensor,
+=======
+                          LoDTensor* id_tensor,
+                          LoDTensor* score_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           size_t beam_size,
                           int end_id)
       : beam_size_(beam_size),
@@ -48,7 +53,11 @@ struct BeamSearchDecodeFunctor {
       auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids_origin_) {
+<<<<<<< HEAD
         phi::DenseTensor out;
+=======
+        framework::LoDTensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (step_id.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
@@ -73,7 +82,11 @@ struct BeamSearchDecodeFunctor {
       auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores_origin_) {
+<<<<<<< HEAD
         phi::DenseTensor out;
+=======
+        framework::LoDTensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (step_score.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
@@ -119,8 +132,13 @@ struct BeamSearchDecodeFunctor {
   const LoDTensorArray& step_scores_origin_;
   LoDTensorArray step_ids_ = LoDTensorArray();
   LoDTensorArray step_scores_ = LoDTensorArray();
+<<<<<<< HEAD
   phi::DenseTensor* id_tensor_;
   phi::DenseTensor* score_tensor_;
+=======
+  LoDTensor* id_tensor_;
+  LoDTensor* score_tensor_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename DeviceContext, typename T>
@@ -164,10 +182,15 @@ class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
     int end_id = context.Attr<int>("end_id");
 
     // prepare output
+<<<<<<< HEAD
     phi::DenseTensor* sentenceIds =
         context.Output<phi::DenseTensor>("SentenceIds");
     phi::DenseTensor* sentenceScores =
         context.Output<phi::DenseTensor>("SentenceScores");
+=======
+    LoDTensor* sentenceIds = context.Output<LoDTensor>("SentenceIds");
+    LoDTensor* sentenceScores = context.Output<LoDTensor>("SentenceScores");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     BeamSearchDecodeFunctor bs(
         *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id);

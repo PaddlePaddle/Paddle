@@ -36,7 +36,11 @@ CinnCacheKey::CinnCacheKey(GraphHashStrategy graph_hash)
 
 CinnCacheKey::CinnCacheKey(
     const ir::Graph& graph,
+<<<<<<< HEAD
     const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+=======
+    const std::map<std::string, const LoDTensor*>& input_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const std::string& arch_str,
     GraphHashStrategy graph_hash)
     : graph_hash_(graph_hash) {
@@ -53,7 +57,11 @@ CinnCacheKey::CinnCacheKey(const ir::Graph& graph,
 
 void CinnCacheKey::SetKey(
     const ir::Graph& graph,
+<<<<<<< HEAD
     const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+=======
+    const std::map<std::string, const LoDTensor*>& input_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const std::string& arch_str) {
   graph_hash_val_ = graph_hash_(graph);
   for (const auto& name_tensor : input_tensors) {
@@ -84,7 +92,11 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
 
   for (const auto& name_shape : key.input_shapes_) {
     has_str << name_shape.first;
+<<<<<<< HEAD
     has_str << std::hash<phi::DDim>()(name_shape.second);
+=======
+    has_str << name_shape.second.to_str();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   has_str << key.graph_hash_val_;

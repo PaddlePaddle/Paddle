@@ -43,9 +43,12 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
     const int shift_size = PADDLE_GET_CONST(int, op_desc.GetAttr("shift_size"));
     const int input_resolution =
         PADDLE_GET_CONST(int, op_desc.GetAttr("input_resolution"));
+<<<<<<< HEAD
     // int shift_size = window_size / 2;
     // shift_size = (input_resolution <= window_size) ? 0 : shift_size;
     // int shift_size = 0;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
@@ -62,8 +65,13 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
             "The begin_norm_axis of LayernormShiftPartition should be %d",
             begin_norm_axis));
 
+<<<<<<< HEAD
     auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
     auto* Scale_t = Scale_v->GetMutable<phi::DenseTensor>();
+=======
+    auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
+    auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto bias_weight =
         engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *Bias_t);

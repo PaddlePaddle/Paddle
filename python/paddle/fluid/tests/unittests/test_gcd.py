@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,11 +20,26 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestGcdAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x_np = 12
         self.y_np = 20
@@ -38,6 +54,7 @@ class TestGcdAPI(unittest.TestCase):
             y = fluid.data(name='input2', dtype='int32', shape=self.y_shape)
             out = paddle.gcd(x, y)
 
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -52,20 +69,43 @@ class TestGcdAPI(unittest.TestCase):
             self.assertTrue(
                 (np.array(res[0]) == np.gcd(self.x_np, self.y_np)).all()
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            res = exe.run(fluid.default_main_program(),
+                          feed={
+                              'input1': self.x_np,
+                              'input2': self.y_np
+                          },
+                          fetch_list=[out])
+            self.assertTrue((np.array(res[0]) == np.gcd(self.x_np,
+                                                        self.y_np)).all())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         y = paddle.to_tensor(self.y_np)
         result = paddle.gcd(x, y)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             np.gcd(self.x_np, self.y_np), result.numpy(), rtol=1e-05
         )
+=======
+        np.testing.assert_allclose(np.gcd(self.x_np, self.y_np),
+                                   result.numpy(),
+                                   rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         paddle.enable_static()
 
 
 class TestGcdAPI2(TestGcdAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x_np = np.arange(6).astype(np.int32)
         self.y_np = np.array([20]).astype(np.int32)
@@ -74,6 +114,10 @@ class TestGcdAPI2(TestGcdAPI):
 
 
 class TestGcdAPI3(TestGcdAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x_np = 0
         self.y_np = 20
@@ -82,6 +126,10 @@ class TestGcdAPI3(TestGcdAPI):
 
 
 class TestGcdAPI4(TestGcdAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x_np = 0
         self.y_np = 0
@@ -90,6 +138,10 @@ class TestGcdAPI4(TestGcdAPI):
 
 
 class TestGcdAPI5(TestGcdAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x_np = 12
         self.y_np = -20

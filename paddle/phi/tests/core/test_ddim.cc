@@ -21,6 +21,7 @@ namespace phi {
 namespace tests {
 
 TEST(DDim, Equality) {
+<<<<<<< HEAD
   // default construct ddim
   phi::DDim default_ddim;
   EXPECT_EQ(arity(default_ddim), 1);
@@ -49,15 +50,26 @@ TEST(DDim, Equality) {
   EXPECT_EQ(reshape_ddim.size(), 1);
   EXPECT_EQ(phi::product(reshape_ddim), 1);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // construct a DDim from an initialization list
   phi::DDim ddim = phi::make_ddim({9, 1, 5});
   EXPECT_EQ(ddim[0], 9);
   EXPECT_EQ(ddim[1], 1);
   EXPECT_EQ(ddim[2], 5);
 
+<<<<<<< HEAD
   // arity of a DDim
   EXPECT_EQ(phi::arity(ddim), 3);
   EXPECT_EQ(ddim.size(), 3);
+=======
+  // construct a DDim from a vector
+  std::vector<int64_t> vec({9, 1, 5});
+  phi::DDim vddim = phi::make_ddim(vec);
+  EXPECT_EQ(ddim[0], 9);
+  EXPECT_EQ(ddim[1], 1);
+  EXPECT_EQ(ddim[2], 5);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // mutate a DDim
   ddim[1] = 2;
@@ -65,6 +77,7 @@ TEST(DDim, Equality) {
   ddim[0] = 6;
   EXPECT_EQ(ddim[0], 6);
 
+<<<<<<< HEAD
   // construct a DDim from a vector
   std::vector<int64_t> vec({9, 1, 5});
   phi::DDim vddim = phi::make_ddim(vec);
@@ -72,6 +85,8 @@ TEST(DDim, Equality) {
   EXPECT_EQ(vddim[1], 1);
   EXPECT_EQ(vddim[2], 5);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // vectorize a DDim
   std::vector<int64_t> res_vec = phi::vectorize(vddim);
   EXPECT_EQ(res_vec[0], 9);
@@ -83,12 +98,20 @@ TEST(DDim, Equality) {
   EXPECT_EQ(res_vec[1], 2);
   EXPECT_EQ(res_vec[2], 1);
 
+<<<<<<< HEAD
+=======
+  // arity of a DDim
+  EXPECT_EQ(phi::arity(ddim), 3);
+  EXPECT_EQ(ddim.size(), 3);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // product of a DDim
   EXPECT_EQ(phi::product(vddim), 45);
   EXPECT_EQ(phi::product(phi::make_ddim({3, 2, 5, 3})), 90);
 
   // slice a DDim
   phi::DDim ddim2 = phi::make_ddim({1, 2, 3, 4, 5, 6});
+<<<<<<< HEAD
   phi::DDim slice_dim1 = phi::slice_ddim(ddim2, 2, 5);
   EXPECT_EQ(arity(slice_dim1), 3);
   EXPECT_EQ(slice_dim1[0], 3);
@@ -108,10 +131,26 @@ TEST(DDim, Equality) {
   EXPECT_EQ(arity(slice_dim3), 0);
   EXPECT_EQ(slice_dim3.size(), 0);
   EXPECT_EQ(phi::product(slice_dim3), 1);
+=======
+  phi::DDim ss = phi::slice_ddim(ddim2, 2, 5);
+  EXPECT_EQ(arity(ss), 3);
+  EXPECT_EQ(ss[0], 3);
+  EXPECT_EQ(ss[1], 4);
+  EXPECT_EQ(ss[2], 5);
+  phi::DDim ss2 = phi::slice_ddim(ddim2, 0, 6);
+  EXPECT_EQ(arity(ss2), 6);
+  EXPECT_EQ(ss2[0], 1);
+  EXPECT_EQ(ss2[1], 2);
+  EXPECT_EQ(ss2[2], 3);
+  EXPECT_EQ(ss2[3], 4);
+  EXPECT_EQ(ss2[4], 5);
+  EXPECT_EQ(ss2[5], 6);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(DDim, Print) {
   // print a DDim
+<<<<<<< HEAD
   std::stringstream ss1;
   phi::DDim ddim = phi::make_ddim({2, 3, 4});
   ss1 << ddim;
@@ -130,6 +169,12 @@ TEST(DDim, Hash) {
   phi::DDim ddim = phi::make_ddim({2, 3, 4});
   h = std::hash<phi::DDim>()(ddim);
   EXPECT_EQ(h, 0xa16fb2b2967ul);
+=======
+  std::stringstream ss;
+  phi::DDim ddim = phi::make_ddim({2, 3, 4});
+  ss << ddim;
+  EXPECT_EQ("2, 3, 4", ss.str());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace tests

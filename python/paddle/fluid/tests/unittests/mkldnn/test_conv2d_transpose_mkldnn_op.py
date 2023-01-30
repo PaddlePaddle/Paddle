@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,6 +22,16 @@ from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_conv2d_transpose_op import (
     TestConv2DTransposeOp,
 )
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle import enable_static
+from paddle.fluid.tests.unittests.test_conv2d_transpose_op import conv2dtranspose_forward_naive, TestConv2DTransposeOp
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def conv2d_bias_naive(out, bias):
@@ -32,6 +43,10 @@ def conv2d_bias_naive(out, bias):
 
 
 class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_grad(self):
         return
 
@@ -90,6 +105,10 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
 
 
 class TestMKLDNNFuseBias(TestConv2DTransposeMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -98,6 +117,10 @@ class TestMKLDNNFuseBias(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithPad(TestConv2DTransposeMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -105,6 +128,10 @@ class TestMKLDNNWithPad(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithStride(TestConv2DTransposeMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -113,6 +140,10 @@ class TestMKLDNNWithStride(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithAsymPad(TestConv2DTransposeMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [0, 0, 1, 2]
@@ -120,6 +151,10 @@ class TestMKLDNNWithAsymPad(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithSamePad(TestConv2DTransposeMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [0, 0]
@@ -127,6 +162,10 @@ class TestMKLDNNWithSamePad(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithValidPad(TestConv2DTransposeMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -134,16 +173,27 @@ class TestMKLDNNWithValidPad(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
+<<<<<<< HEAD
     def init_test_case(self):
         super().init_test_case()
+=======
+
+    def init_test_case(self):
+        super(TestMKLDNNWithValidPad_NHWC, self).init_test_case()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.data_format = "NHWC"
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]
 
 
 class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
+<<<<<<< HEAD
     TestConv2DTransposeMKLDNNOp
 ):
+=======
+        TestConv2DTransposeMKLDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.stride = [2, 1]
@@ -157,6 +207,10 @@ class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
 
 
 class TestMKLDNNWithGroups(TestConv2DTransposeMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -167,6 +221,10 @@ class TestMKLDNNWithGroups(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithGroups_NHWC(TestConv2DTransposeMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]

@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestLogicalAnd(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -32,13 +39,18 @@ class TestLogicalAnd(IPUOpTest):
         return False
 
     def set_test_op(self):
+<<<<<<< HEAD
         self.op = paddle.logical_and
+=======
+        self.op = paddle.fluid.layers.logical_and
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_op_attrs(self):
         self.attrs = {}
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0],
             shape=self.feed_shape[0],
@@ -49,6 +61,14 @@ class TestLogicalAnd(IPUOpTest):
             shape=self.feed_shape[1],
             dtype=self.feed_dtype[1],
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype=self.feed_dtype[0])
+        y = paddle.static.data(name=self.feed_list[1],
+                               shape=self.feed_shape[1],
+                               dtype=self.feed_dtype[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = self.op(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -83,8 +103,14 @@ class TestLogicalAnd(IPUOpTest):
 
 
 class TestLogicalOr(TestLogicalAnd):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.logical_or
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.logical_or
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

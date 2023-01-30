@@ -16,7 +16,11 @@ limitations under the License. */
 
 #include <string>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
@@ -169,11 +173,19 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   ctx->ShareLoD("Ids", "XX");
 }
 
+<<<<<<< HEAD
 phi::KernelKey FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return phi::KernelKey(
       OperatorWithKernel::IndicateVarDataType(ctx, "Embeddings"),
       ctx.GetPlace());
+=======
+framework::OpKernelType FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Embeddings"),
+      ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void FusedEmbeddingFCLSTMOpMaker::Make() {
@@ -182,6 +194,7 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
            "contains the ids to be looked up in W. "
            "The last dimension size must be 1.");
   AddInput("Embeddings",
+<<<<<<< HEAD
            "(phi::DenseTensor) the learnable weights of X."
            " - The shape is (M x 4D), where M is the dim size of x, D is the "
            "hidden size. "
@@ -193,6 +206,18 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
       " - Weight = {W_ch, W_ih, W_fh, W_oh}");
   AddInput("Bias",
            "(phi::DenseTensor) the learnable weights. Almost same as LSTMOp"
+=======
+           "(Tensor) the learnable weights of X."
+           " - The shape is (M x 4D), where M is the dim size of x, D is the "
+           "hidden size. "
+           " - Weight = {W_cx, W_ix, W_fx, W_ox}");
+  AddInput("WeightH",
+           "(Tensor) same as LSTMOp, the learnable hidden-hidden weights."
+           " - The shape is (D x 4D), where D is the hidden size. "
+           " - Weight = {W_ch, W_ih, W_fh, W_oh}");
+  AddInput("Bias",
+           "(Tensor) the learnable weights. Almost same as LSTMOp"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            "Note: we should add the fc bias into this (1x4D) in bias."
            "input-hidden bias weight and peephole connections weight if "
            "setting `use_peepholes` True. "
@@ -203,19 +228,28 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
            " - The shape is (1 x 7D). "
            " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
   AddInput("H0",
+<<<<<<< HEAD
            "(phi::DenseTensor, optional) (same as LSTMOp) the initial hidden "
            "state is an "
+=======
+           "(Tensor, optional) (same as LSTMOp) the initial hidden state is an "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            "optional "
            "input. This is a tensor with shape (N x D), where N is the "
            "batch size and D is the hidden size.")
       .AsDispensable();
   AddInput("C0",
+<<<<<<< HEAD
            "(phi::DenseTensor, optional) (same as LSTMOp) (the initial cell "
            "state is an "
+=======
+           "(Tensor, optional) (same as LSTMOp) (the initial cell state is an "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            "optional "
            "input. This is a tensor with shape (N x D), where N is the "
            "batch size. `H0` and `C0` can be NULL but only at the same time.")
       .AsDispensable();
+<<<<<<< HEAD
   AddOutput(
       "Hidden",
       "(phi::DenseTensor) (same as LSTMOp) the hidden state of LSTM operator. "
@@ -226,15 +260,33 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
       "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("XX",
             "(phi::DenseTensor) the result after X * WeightX (size is T x 4D)"
+=======
+  AddOutput("Hidden",
+            "(LoDTensor) (same as LSTMOp) the hidden state of LSTM operator. "
+            "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput("Cell",
+            "(LoDTensor) (same as LSTMOp) the cell state of LSTM operator. "
+            "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput("XX",
+            "(LoDTensor) the result after X * WeightX (size is T x 4D)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             " or batched_X (size is T x M), this will be automatically chosen,"
             " where T is the total time steps in this mini-batch,"
             " D is the hidden size, M is the dim size of x input.")
       .AsIntermediate();
+<<<<<<< HEAD
   AddOutput("BatchedInput", "(phi::DenseTensor) (T x 4D).").AsIntermediate();
   AddOutput("BatchedHidden", "(phi::DenseTensor) (T x D).").AsIntermediate();
   AddOutput("BatchedCell", "(phi::DenseTensor) (T x D).").AsIntermediate();
   AddOutput("ReorderedH0", "(phi::DenseTensor) (N x D).").AsIntermediate();
   AddOutput("ReorderedC0", "(phi::DenseTensor) (N x D).").AsIntermediate();
+=======
+  AddOutput("BatchedInput", "(LoDTensor) (T x 4D).").AsIntermediate();
+  AddOutput("BatchedHidden", "(LoDTensor) (T x D).").AsIntermediate();
+  AddOutput("BatchedCell", "(LoDTensor) (T x D).").AsIntermediate();
+  AddOutput("ReorderedH0", "(LoDTensor) (N x D).").AsIntermediate();
+  AddOutput("ReorderedC0", "(LoDTensor) (N x D).").AsIntermediate();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddAttr<bool>("use_peepholes",
                 "(bool, default: True) "
                 "whether to enable diagonal/peephole connections.")
@@ -278,18 +330,28 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   auto& act_gate_str = ctx.Attr<std::string>("gate_activation");             \
   auto& act_cell_str = ctx.Attr<std::string>("cell_activation");             \
   auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");        \
+<<<<<<< HEAD
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {                \
     phi::funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;      \
+=======
+  if (platform::MayIUse(platform::avx)) {                                    \
+    phi::funcs::VecActivations<T, platform::avx> act_functor;                \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     act_gate = act_functor(act_gate_str);                                    \
     act_cell = act_functor(act_cell_str);                                    \
     act_cand = act_functor(act_cand_str);                                    \
   } else {                                                                   \
+<<<<<<< HEAD
     phi::funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;  \
+=======
+    phi::funcs::VecActivations<T, platform::isa_any> act_functor;            \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     act_gate = act_functor(act_gate_str);                                    \
     act_cell = act_functor(act_cell_str);                                    \
     act_cand = act_functor(act_cand_str);                                    \
   }
 
+<<<<<<< HEAD
 #define INIT_BASE_INPUT_OUTPUT                                  \
   auto* ids = ctx.Input<phi::DenseTensor>("Ids");               \
   auto* h0 = ctx.Input<phi::DenseTensor>("H0");                 \
@@ -301,6 +363,19 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden");    \
   auto* cell_out = ctx.Output<phi::DenseTensor>("Cell");        \
   bool is_reverse = ctx.Attr<bool>("is_reverse");               \
+=======
+#define INIT_BASE_INPUT_OUTPUT                        \
+  auto* ids = ctx.Input<LoDTensor>("Ids");            \
+  auto* h0 = ctx.Input<Tensor>("H0");                 \
+  auto* c0 = ctx.Input<Tensor>("C0");                 \
+  auto* embeddings = ctx.Input<Tensor>("Embeddings"); \
+  auto* wh = ctx.Input<Tensor>("WeightH");            \
+  auto* bias = ctx.Input<Tensor>("Bias");             \
+  auto* xx = ctx.Output<LoDTensor>("XX");             \
+  auto* hidden_out = ctx.Output<LoDTensor>("Hidden"); \
+  auto* cell_out = ctx.Output<LoDTensor>("Cell");     \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");     \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
 #define INIT_BASE_SIZES                                \
@@ -321,7 +396,11 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   /* diagonal weight*/                                               \
   const T* wc_data = bias->data<T>() + D4;                           \
   /* for peephole only*/                                             \
+<<<<<<< HEAD
   phi::DenseTensor checked_cell;                                     \
+=======
+  Tensor checked_cell;                                               \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   T* checked_cell_data = nullptr;                                    \
   auto place = ctx.GetPlace();                                       \
   if (use_peepholes) {                                               \
@@ -511,11 +590,19 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     INIT_VEC_FUNC
     INIT_BASE_INPUT_DATAS
 
+<<<<<<< HEAD
     auto* reordered_h0 = ctx.Output<phi::DenseTensor>("ReorderedH0");
     auto* reordered_c0 = ctx.Output<phi::DenseTensor>("ReorderedC0");
     auto* batched_input = ctx.Output<phi::DenseTensor>("BatchedInput");
     auto* batched_c_out = ctx.Output<phi::DenseTensor>("BatchedCell");
     auto* batched_h_out = ctx.Output<phi::DenseTensor>("BatchedHidden");
+=======
+    auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
+    auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
+    auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
+    auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
+    auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T* xx_data = xx->mutable_data<T>(place);
     T* batched_input_data = batched_input->mutable_data<T>(place);
     T* batched_c_out_data = batched_c_out->mutable_data<T>(place);

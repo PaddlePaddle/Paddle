@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -23,6 +24,18 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
+=======
+import unittest
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import os
+from launch_function_helper import launch_func
+
+
+class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_graph_execution_optimizer(self):
         node_a = {
             "PADDLE_TRAINER_ID": "0",
@@ -30,7 +43,11 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
             "http_proxy": "",
+<<<<<<< HEAD
             "https_proxy": "",
+=======
+            "https_proxy": ""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         node_b = {
@@ -39,12 +56,17 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
             "http_proxy": "",
+<<<<<<< HEAD
             "https_proxy": "",
+=======
+            "https_proxy": ""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         def node_func():
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
+<<<<<<< HEAD
             input_x = paddle.static.data(
                 name="x", shape=[-1, 32], dtype='float32'
             )
@@ -61,15 +83,36 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 reduction='none',
                 use_softmax=False,
             )
+=======
+            input_x = paddle.fluid.layers.data(name="x",
+                                               shape=[32],
+                                               dtype='float32')
+            input_y = paddle.fluid.layers.data(name="y",
+                                               shape=[1],
+                                               dtype='int64')
+
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                size=2,
+                                                act='softmax')
+            cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                     label=input_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.nccl_comm_num = 2
             strategy.sync_nccl_allreduce = True
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+<<<<<<< HEAD
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )
+=======
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             optimizer.minimize(avg_cost)
             exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
             exe.run(paddle.fluid.default_startup_program())
@@ -79,7 +122,11 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             def gen_data():
                 return {
                     "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
                     "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+=======
+                    "y": np.random.randint(2, size=(128, 1)).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
 
             for i in range(5):

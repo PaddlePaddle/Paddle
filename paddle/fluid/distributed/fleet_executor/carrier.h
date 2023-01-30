@@ -100,6 +100,11 @@ class Carrier final {
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
       interceptor_idx_to_interceptor_;
 
+<<<<<<< HEAD
+=======
+  std::vector<int64_t> source_interceptor_ids_;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool is_init_{false};
 
   std::mutex running_mutex_;

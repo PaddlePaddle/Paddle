@@ -223,7 +223,11 @@ void Tracer::TraceOpImpl(const std::string& type,
   platform::RecordEvent op_type_record_event(
       type, platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
+<<<<<<< HEAD
   VLOG(4) << "Trace Op: " << type;
+=======
+  VLOG(1) << "Trace Op: " << type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
     // FLAGS_use_mkldnn=1)

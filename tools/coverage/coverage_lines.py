@@ -29,8 +29,13 @@ def get_lines(info_file):
     Returns:
         float: Coverage rate.
     """
+<<<<<<< HEAD
     hits = 0.0
     total = 0.0
+=======
+    hits = .0
+    total = .0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     with open(info_file) as info_file:
         for line in info_file:
@@ -68,6 +73,7 @@ if __name__ == '__main__':
     actual = round(actual, 3)
 
     if actual < expected:
+<<<<<<< HEAD
         print(
             'expected >= {} %, actual {} %, failed'.format(
                 round(expected * 100, 1), round(actual * 100, 1)
@@ -81,3 +87,12 @@ if __name__ == '__main__':
             round(expected * 100, 1), round(actual * 100, 1)
         )
     )
+=======
+        print('expected >= {} %, actual {} %, failed'.format(
+            round(expected * 100, 1), round(actual * 100, 1)))
+
+        exit(1)
+
+    print('expected >= {} %, actual {} %, passed'.format(
+        round(expected * 100, 1), round(actual * 100, 1)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

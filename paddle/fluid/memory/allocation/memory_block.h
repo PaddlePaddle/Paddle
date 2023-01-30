@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+<<<<<<< HEAD
 #include <cstddef>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <cstdint>
 #include <unordered_map>
 

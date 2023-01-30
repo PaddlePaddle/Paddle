@@ -12,9 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
+=======
+from __future__ import print_function
+
+import os
+import time
+import json
+import unittest
+import argparse
+import tempfile
+import traceback
+from warnings import catch_warnings
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from paddle.distributed.fleet.elastic.collective import CollectiveLauncher
 from paddle.distributed.fleet.launch import launch_collective
@@ -25,11 +38,19 @@ print("test")
 
 
 class TestCollectiveLauncher(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.code_path = os.path.join(
             self.temp_dir.name, "fake_python_for_elastic.py"
         )
+=======
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.code_path = os.path.join(self.temp_dir.name,
+                                      "fake_python_for_elastic.py")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with open(self.code_path, "w") as f:
             f.write(fake_python_code)
 
@@ -37,6 +58,10 @@ class TestCollectiveLauncher(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_launch(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -75,6 +100,10 @@ class TestCollectiveLauncher(unittest.TestCase):
             pass
 
     def test_stop(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"

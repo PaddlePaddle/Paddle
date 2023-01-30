@@ -12,12 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+from re import X
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.seed(10)
 
@@ -40,12 +52,17 @@ class TestBucketizeAPI(unittest.TestCase):
                 sorted_sequence = paddle.static.data(
                     'SortedSequence',
                     shape=self.sorted_sequence.shape,
+<<<<<<< HEAD
                     dtype="float64",
                 )
+=======
+                    dtype="float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 x = paddle.static.data('x', shape=self.x.shape, dtype="float64")
                 out1 = paddle.bucketize(x, sorted_sequence)
                 out2 = paddle.bucketize(x, sorted_sequence, right=True)
                 exe = paddle.static.Executor(place)
+<<<<<<< HEAD
                 res = exe.run(
                     feed={'SortedSequence': self.sorted_sequence, 'x': self.x},
                     fetch_list=[out1, out2],
@@ -54,6 +71,17 @@ class TestBucketizeAPI(unittest.TestCase):
             out_ref1 = np.searchsorted(
                 self.sorted_sequence, self.x, side='right'
             )
+=======
+                res = exe.run(feed={
+                    'SortedSequence': self.sorted_sequence,
+                    'x': self.x
+                },
+                              fetch_list=[out1, out2])
+            out_ref = np.searchsorted(self.sorted_sequence, self.x)
+            out_ref1 = np.searchsorted(self.sorted_sequence,
+                                       self.x,
+                                       side='right')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
             np.testing.assert_allclose(out_ref1, res[1], rtol=1e-05)
 
@@ -61,6 +89,10 @@ class TestBucketizeAPI(unittest.TestCase):
             run(place)
 
     def test_api_dygraph(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def run(place):
             paddle.disable_static(place)
             sorted_sequence = paddle.to_tensor(self.sorted_sequence)
@@ -68,9 +100,15 @@ class TestBucketizeAPI(unittest.TestCase):
             out1 = paddle.bucketize(x, sorted_sequence)
             out2 = paddle.bucketize(x, sorted_sequence, right=True)
             out_ref1 = np.searchsorted(self.sorted_sequence, self.x)
+<<<<<<< HEAD
             out_ref2 = np.searchsorted(
                 self.sorted_sequence, self.x, side='right'
             )
+=======
+            out_ref2 = np.searchsorted(self.sorted_sequence,
+                                       self.x,
+                                       side='right')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out_ref1, out1.numpy(), rtol=1e-05)
             np.testing.assert_allclose(out_ref2, out2.numpy(), rtol=1e-05)
             paddle.enable_static()
@@ -87,9 +125,15 @@ class TestBucketizeAPI(unittest.TestCase):
 
     def test_bucketize_dims_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
             sorted_sequence = paddle.static.data(
                 'SortedSequence', shape=[2, 2], dtype="float64"
             )
+=======
+            sorted_sequence = paddle.static.data('SortedSequence',
+                                                 shape=[2, 2],
+                                                 dtype="float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x = paddle.static.data('x', shape=[2, 5], dtype="float64")
             self.assertRaises(ValueError, paddle.bucketize, x, sorted_sequence)
 
@@ -97,18 +141,28 @@ class TestBucketizeAPI(unittest.TestCase):
         for place in self.place:
             paddle.disable_static(place)
             sorted_sequence = paddle.to_tensor(self.sorted_sequence)
+<<<<<<< HEAD
             self.assertRaises(
                 ValueError, paddle.bucketize, self.x, sorted_sequence
             )
+=======
+            self.assertRaises(ValueError, paddle.bucketize, self.x,
+                              sorted_sequence)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_empty_input_error(self):
         for place in self.place:
             paddle.disable_static(place)
             sorted_sequence = paddle.to_tensor(self.sorted_sequence)
             x = paddle.to_tensor(self.x)
+<<<<<<< HEAD
             self.assertRaises(
                 ValueError, paddle.bucketize, None, sorted_sequence
             )
+=======
+            self.assertRaises(ValueError, paddle.bucketize, None,
+                              sorted_sequence)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(AttributeError, paddle.bucketize, x, None)
 
 

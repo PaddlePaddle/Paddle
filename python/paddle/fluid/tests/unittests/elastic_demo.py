@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import sys
 import time
@@ -27,5 +28,15 @@ sys.stderr.write(
         os.environ['PADDLE_TRAINER_ID'], os.environ['PADDLE_TRAINERS']
     )
 )
+=======
+import os, sys
+import time
+
+sys.stderr.write("{}-DISTRIBUTED_TRAINER_ENDPOINTS={}\n".format(
+    os.environ['PADDLE_TRAINER_ID'],
+    os.environ['DISTRIBUTED_TRAINER_ENDPOINTS']))
+sys.stderr.write("{}-PADDLE_TRAINERS={}\n".format(
+    os.environ['PADDLE_TRAINER_ID'], os.environ['PADDLE_TRAINERS']))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 time.sleep(600)

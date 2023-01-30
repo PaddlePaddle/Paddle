@@ -18,10 +18,16 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class ClipNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
@@ -33,6 +39,17 @@ class ClipNPUKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor min_tensor_temp(x->type());
     phi::DenseTensor max_tensor_temp(x->type());
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+
+    auto min_tensor = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min") : nullptr;
+    auto max_tensor = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max") : nullptr;
+
+    Tensor min_tensor_temp(x->type());
+    Tensor max_tensor_temp(x->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (min_tensor == nullptr) {
       auto min_value = static_cast<T>(ctx.Attr<float>("min"));
       min_tensor_temp.mutable_data<T>({1}, ctx.GetPlace());
@@ -60,6 +77,7 @@ template <typename DeviceContext, typename T>
 class ClipGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
@@ -73,6 +91,19 @@ class ClipGradNPUKernel : public framework::OpKernel<T> {
     auto min_val = ctx.Attr<float>("min");
     if (min_tensor) {
       phi::DenseTensor min_data;
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+
+    auto* min_tensor = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min") : nullptr;
+    auto* max_tensor = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max") : nullptr;
+
+    auto min_val = ctx.Attr<float>("min");
+    if (min_tensor) {
+      Tensor min_data;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopy(
           *min_tensor,
           platform::CPUPlace(),
@@ -84,7 +115,11 @@ class ClipGradNPUKernel : public framework::OpKernel<T> {
 
     auto max_val = ctx.Attr<float>("max");
     if (max_tensor) {
+<<<<<<< HEAD
       phi::DenseTensor max_data;
+=======
+      Tensor max_data;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopy(
           *max_tensor,
           platform::CPUPlace(),

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import shutil
 import subprocess
@@ -21,6 +22,19 @@ import unittest
 
 
 class TestOptimizationTunerAPI(unittest.TestCase):
+=======
+import tempfile
+import unittest
+import os
+import sys
+import shutil
+import subprocess
+from paddle.distributed.fleet.launch_utils import run_with_coverage
+
+
+class TestOptimizationTunerAPI(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_engine_api(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "optimization_tuner_api.py")
@@ -31,6 +45,7 @@ class TestOptimizationTunerAPI(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         cmd = (
             [sys.executable, "-u"]
             + coverage_args
@@ -44,6 +59,12 @@ class TestOptimizationTunerAPI(unittest.TestCase):
                 launch_model_path,
             ]
         )
+=======
+        cmd = [sys.executable, "-u"] + coverage_args + [
+            "-m", "launch", "--gpus", "0,1", "--log_dir", tmp_dir.name,
+            launch_model_path
+        ]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         process = subprocess.Popen(cmd)
         process.wait()

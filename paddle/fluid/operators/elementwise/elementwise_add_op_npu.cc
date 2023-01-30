@@ -21,6 +21,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
@@ -28,9 +32,15 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(ctx.GetPlace());
 
     int axis = ctx.Attr<int>("axis");
@@ -52,7 +62,11 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
       const auto& runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
       runner.Run(dev_ctx.stream());
     } else {
+<<<<<<< HEAD
       phi::DenseTensor transformed_x, transformed_y;
+=======
+      Tensor transformed_x, transformed_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       NpuElementWiseOpBroadcast<T>(
           dev_ctx, x, y, axis, &transformed_x, &transformed_y);
       const auto& runner =
@@ -68,11 +82,19 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
 
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
@@ -95,7 +117,11 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes.empty()) {
+<<<<<<< HEAD
           phi::DenseTensor tmp;
+=======
+          Tensor tmp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           tmp.ShareDataWith(*dx);
           tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
@@ -127,7 +153,11 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes.empty()) {
+<<<<<<< HEAD
           phi::DenseTensor tmp;
+=======
+          Tensor tmp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           tmp.ShareDataWith(*dy);
           tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =

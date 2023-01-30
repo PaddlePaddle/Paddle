@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from .utils import saw, UndefinedVar, ast_to_source_code
+=======
+from .base import saw
+from .base import UndefinedVar
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .convert_operators import convert_logical_and as And  # noqa: F401
 from .convert_operators import convert_var_dtype as AsDtype  # noqa: F401
 from .convert_operators import convert_assert as Assert  # noqa: F401
@@ -22,6 +27,10 @@ from .convert_operators import convert_len as Len  # noqa: F401
 from .convert_operators import convert_logical_not as Not  # noqa: F401
 from .convert_operators import convert_logical_or as Or  # noqa: F401
 from .convert_operators import convert_pop as Pop  # noqa: F401
+<<<<<<< HEAD
+=======
+from .convert_operators import convert_print as Print  # noqa: F401
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .convert_operators import convert_shape as Shape  # noqa: F401
 from .convert_operators import convert_while_loop as While  # noqa: F401
 from .convert_operators import unpack_by_structure as Unpack  # noqa: F401
@@ -30,9 +39,12 @@ from .convert_operators import indexable as Indexable  # noqa: F401
 from .variable_trans_func import create_bool_as_type  # noqa: F401
 from .variable_trans_func import to_static_variable  # noqa: F401
 from .convert_operators import convert_shape_compare  # noqa: F401
+<<<<<<< HEAD
 from .assert_transformer import AssertTransformer
 from .ast_transformer import DygraphToStaticAst
 from .program_translator import convert_to_static
 from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []

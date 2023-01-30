@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from utils import IS_MAC, extra_compile_args, paddle_includes
 
 from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
+=======
+import os
+
+from utils import paddle_includes, extra_compile_args, IS_MAC
+from paddle.utils.cpp_extension import CUDAExtension, setup, CppExtension
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # Mac-CI don't support GPU
 Extension = CppExtension if IS_MAC else CUDAExtension
@@ -31,6 +38,10 @@ setup(
         sources=sources,  # test for multi ops
         include_dirs=paddle_includes,
         extra_compile_args=extra_compile_args,
+<<<<<<< HEAD
         verbose=True,
     ),
 )
+=======
+        verbose=True))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

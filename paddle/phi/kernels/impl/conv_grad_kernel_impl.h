@@ -14,12 +14,22 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/vol2col.h"
+=======
+#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/fluid/operators/math/vol2col.h"
+#include "paddle/phi/kernels/conv_grad_kernel.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -31,9 +41,18 @@ void ConvGradKernel(const Context& dev_ctx,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings_t,
                     const std::string& padding_algorithm,
+<<<<<<< HEAD
                     const std::vector<int>& dilations_t,
                     int groups,
                     const std::string& data_format,
+=======
+                    int groups,
+                    const std::vector<int>& dilations_t,
+                    const std::string& data_format,
+                    bool use_addto,
+                    int workspace_size_MB,
+                    bool exhaustive_search,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     DenseTensor* input_grad,
                     DenseTensor* filter_grad) {
   // The filter and filter_grad will be reshaped in the calculations,
@@ -147,8 +166,15 @@ void ConvGradKernel(const Context& dev_ctx,
     if (is_expand) {
       set_zero(dev_ctx, &transformed_input_grad, static_cast<T>(0));
     }
+<<<<<<< HEAD
     phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
     phi::funcs::Col2VolFunctor<Context, T> col2vol;
+=======
+    paddle::operators::math::Col2VolFunctor<Context, T> col2vol;
+    paddle::operators::math::
+        Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
+            col2im;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for (int i = 0; i < batch_size; i++) {
       DenseTensor out_grad_batch =
@@ -201,8 +227,15 @@ void ConvGradKernel(const Context& dev_ctx,
     Tensor filter_grad_ = *filter_grad;
     filter_grad_.Resize(filter_matrix_shape);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
+<<<<<<< HEAD
     phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
     phi::funcs::Vol2ColFunctor<Context, T> vol2col;
+=======
+    paddle::operators::math::
+        Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
+            im2col;
+    paddle::operators::math::Vol2ColFunctor<Context, T> vol2col;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (int i = 0; i < batch_size; i++) {
       DenseTensor out_grad_batch =
           transformed_output_grad.Slice(i, i + 1).Resize(output_matrix_shape);
@@ -246,6 +279,7 @@ void ConvGradKernel(const Context& dev_ctx,
   }
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void ConvGradGradKernel(const Context& dev_ctx,
                         const DenseTensor& input,
@@ -540,4 +574,6 @@ void ConvGradGradKernel(const Context& dev_ctx,
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

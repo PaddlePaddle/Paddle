@@ -76,7 +76,11 @@ void TestDeviceInterface(const paddle::platform::Place& place) {
 
 void TestTensorMutableData(const paddle::platform::Place& place) {
   std::cout << "TestTensorInitialization on " << place << std::endl;
+<<<<<<< HEAD
   phi::DenseTensor src_tensor;
+=======
+  paddle::framework::Tensor src_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* p1 = nullptr;
   float* p2 = nullptr;
   // initialization
@@ -101,8 +105,13 @@ void TestTensorMutableData(const paddle::platform::Place& place) {
 
 void TestTensorShareDataWith(const paddle::platform::Place& place) {
   std::cout << "TestTensorShareDataWith on " << place << std::endl;
+<<<<<<< HEAD
   phi::DenseTensor src_tensor;
   phi::DenseTensor dst_tensor;
+=======
+  paddle::framework::Tensor src_tensor;
+  paddle::framework::Tensor dst_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}), place);
   dst_tensor.ShareDataWith(src_tensor);
   ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
@@ -113,9 +122,15 @@ void TestTensorUtils(const paddle::platform::Place& place) {
   if (paddle::platform::is_custom_place(place) == false) {
     return;
   }
+<<<<<<< HEAD
   phi::DenseTensor src_tensor;
   phi::DenseTensor gpu_tensor;
   phi::DenseTensor dst_tensor;
+=======
+  paddle::framework::Tensor src_tensor;
+  paddle::framework::Tensor gpu_tensor;
+  paddle::framework::Tensor dst_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
                                               paddle::platform::CPUPlace());
@@ -148,7 +163,11 @@ void TestTensorUtils(const paddle::platform::Place& place) {
     EXPECT_EQ(src_ptr[i], dst_ptr_tmp[i]);
   }
 
+<<<<<<< HEAD
   phi::DenseTensor slice_tensor = src_tensor.Slice(1, 2);
+=======
+  paddle::framework::Tensor slice_tensor = src_tensor.Slice(1, 2);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // CPU Slice Tensor to GPU Tensor
   paddle::framework::TensorCopy(slice_tensor, place, gpu_ctx, &gpu_tensor);
@@ -260,8 +279,13 @@ void TestBlasAPI(const paddle::platform::Place& place) {
   }
 
   std::vector<int64_t> dims = {2, 5};
+<<<<<<< HEAD
   auto* src = var1.GetMutable<phi::DenseTensor>();
   auto* dst = var2.GetMutable<phi::DenseTensor>();
+=======
+  auto* src = var1.GetMutable<paddle::framework::LoDTensor>();
+  auto* dst = var2.GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   src->Resize(phi::make_ddim(dims));
   dst->Resize(phi::make_ddim(dims));
   auto* src_mutable = src->mutable_data<float>(place);
@@ -280,7 +304,11 @@ void TestBlasAPI(const paddle::platform::Place& place) {
                        sizeof(float) * dst_data.size());
 
   paddle::imperative::TensorAdd<paddle::framework::Variable>(var1, &var2);
+<<<<<<< HEAD
   phi::DenseTensor rlt;
+=======
+  paddle::framework::LoDTensor rlt;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::platform::CPUPlace rlt_place;
   paddle::framework::TensorCopySync(*dst, rlt_place, &rlt);
 }

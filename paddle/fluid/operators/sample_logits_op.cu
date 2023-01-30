@@ -21,9 +21,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
+<<<<<<< HEAD
 #include "paddle/fluid/operators/sample_logits_op.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax.h"
+=======
+#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/operators/sample_logits_op.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -112,6 +118,7 @@ __global__ void gpu_compute_remove_accidental_hits(const int size,
 template <typename T>
 class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
  public:
+<<<<<<< HEAD
   void Compute(const framework::ExecutionContext& context) const override {
     // get necessary inputs
     const phi::DenseTensor* logits = context.Input<phi::DenseTensor>("Logits");
@@ -126,6 +133,20 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>("SampledLogits");
     phi::DenseTensor* sampled_labels =
         context.Output<phi::DenseTensor>("SampledLabels");
+=======
+  using Tensor = framework::Tensor;
+  void Compute(const framework::ExecutionContext& context) const override {
+    // get necessary inputs
+    const Tensor* logits = context.Input<Tensor>("Logits");
+    const Tensor* labels = context.Input<Tensor>("Labels");
+    VLOG(3) << "Enter SampleLogitsCUDAKernel";
+
+    // get necessary outputs
+    Tensor* samples = context.Output<Tensor>("Samples");
+    Tensor* probabilities = context.Output<Tensor>("Probabilities");
+    Tensor* sampled_logits = context.Output<Tensor>("SampledLogits");
+    Tensor* sampled_labels = context.Output<Tensor>("SampledLabels");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // shapes
     const auto batch_size = logits->dims()[0];
@@ -160,6 +181,7 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
             size, num_true, sampled_labels_data);
 
     if (use_customized_samples) {
+<<<<<<< HEAD
       const phi::DenseTensor* customized_samples =
           context.Input<phi::DenseTensor>("CustomizedSamples");
       const phi::DenseTensor* customized_probabilities =
@@ -170,11 +192,26 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
           platform::errors::InvalidArgument(
               "CustomizedSamples must be the same phi::DenseTensor with "
               "Samples when use_customized_samples = True"));
+=======
+      const Tensor* customized_samples =
+          context.Input<Tensor>("CustomizedSamples");
+      const Tensor* customized_probabilities =
+          context.Input<Tensor>("CustomizedProbabilities");
+      PADDLE_ENFORCE_EQ(customized_samples,
+                        samples,
+                        platform::errors::InvalidArgument(
+                            "CustomizedSamples must be the same Tensor with "
+                            "Samples when use_customized_samples = True"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_EQ(
           customized_probabilities,
           probabilities,
           platform::errors::InvalidArgument(
+<<<<<<< HEAD
               "CustomizedProbabilities must be the same phi::DenseTensor with "
+=======
+              "CustomizedProbabilities must be the same Tensor with "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "Probabilities when use_customized_samples = True"));
     } else {
       samples->mutable_data<int64_t>(context.GetPlace());
@@ -238,6 +275,7 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
 template <typename T>
 class SampleLogitsGradCUDAKernel : public framework::OpKernel<T> {
  public:
+<<<<<<< HEAD
   void Compute(const framework::ExecutionContext& context) const override {
     auto logits_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
@@ -246,6 +284,14 @@ class SampleLogitsGradCUDAKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* sampled_logits_grad =
         context.Input<phi::DenseTensor>(
             framework::GradVarName("SampledLogits"));
+=======
+  using Tensor = framework::Tensor;
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto logits_grad = context.Output<Tensor>(framework::GradVarName("Logits"));
+    const Tensor* samples = context.Input<Tensor>("Samples");
+    const Tensor* sampled_logits_grad =
+        context.Input<Tensor>(framework::GradVarName("SampledLogits"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     logits_grad->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx = context.cuda_device_context();

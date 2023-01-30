@@ -14,12 +14,21 @@
 
 #include "paddle/phi/kernels/put_along_axis_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
+=======
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/operators/gather_scatter_kernel.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -37,6 +46,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
                     errors::PreconditionNotMet(
                         "PutAlongAxisGradOpCUDAKernel only runs on GPU."));
 
+<<<<<<< HEAD
   const auto& index_type = index.dtype();
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
@@ -45,21 +55,43 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
           out_grad, axis, index, *x_grad, dev_ctx);
     } else {
       phi::funcs::gpu_scatter_input_grad_kernel<T, int64_t>(
+=======
+  const auto& index_type =
+      paddle::framework::TransToProtoVarType(index.dtype());
+  if (x_grad) {
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    if (index_type == paddle::framework::proto::VarType::INT32) {
+      paddle::operators::gpu_scatter_input_grad_kernel<T, int32_t>(
+          out_grad, axis, index, *x_grad, dev_ctx);
+    } else {
+      paddle::operators::gpu_scatter_input_grad_kernel<T, int64_t>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           out_grad, axis, index, *x_grad, dev_ctx);
     }
   }
   if (value_grad) {
     value_grad->Resize(index.dims());
+<<<<<<< HEAD
     dev_ctx.template Alloc<T>(value_grad);
     if (index_type == DataType::INT32) {
       phi::funcs::gpu_gather_kernel<T, int32_t>(
+=======
+    value_grad->mutable_data<T>(dev_ctx.GetPlace());
+    if (index_type == paddle::framework::proto::VarType::INT32) {
+      paddle::operators::gpu_gather_kernel<T, int32_t>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           out_grad,
           axis,
           index,
           *value_grad,
           dev_ctx);  // the gradient of scatter is gather
+<<<<<<< HEAD
     } else if (index_type == DataType::INT64) {
       phi::funcs::gpu_gather_kernel<T, int64_t>(
+=======
+    } else if (index_type == paddle::framework::proto::VarType::INT64) {
+      paddle::operators::gpu_gather_kernel<T, int64_t>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           out_grad, axis, index, *value_grad, dev_ctx);
     }
   }

@@ -43,4 +43,8 @@ void ClipKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
+<<<<<<< HEAD
     clip, OneDNN, ONEDNN, phi::ClipKernel, float, phi::dtype::bfloat16) {}
+=======
+    clip, OneDNN, ALL_LAYOUT, phi::ClipKernel, float, phi::dtype::bfloat16) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 
 import unittest
 
@@ -21,6 +22,19 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle import rand
 from paddle.fluid import Program, program_guard
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+
+import paddle.fluid.core as core
+from paddle import rand
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestRandOpError(unittest.TestCase):
@@ -34,9 +48,14 @@ class TestRandOpError(unittest.TestCase):
         with program_guard(main_prog, start_prog):
 
             def test_Variable():
+<<<<<<< HEAD
                 x1 = fluid.create_lod_tensor(
                     np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
+=======
+                x1 = fluid.create_lod_tensor(np.zeros((4, 784)), [[1, 1, 1, 1]],
+                                             fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 rand(x1)
 
             self.assertRaises(TypeError, test_Variable)
@@ -71,9 +90,15 @@ class TestRandOp(unittest.TestCase):
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = rand(var_shape)
 
+<<<<<<< HEAD
             var_shape_int32 = fluid.data(
                 name='var_shape_int32', shape=[2], dtype="int32"
             )
+=======
+            var_shape_int32 = fluid.data(name='var_shape_int32',
+                                         shape=[2],
+                                         dtype="int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             result_4 = rand(var_shape_int32)
 
         exe.run(startup_program)
@@ -82,9 +107,17 @@ class TestRandOp(unittest.TestCase):
         x2 = np.array([4, 3]).astype('int32')
         ret = exe.run(
             train_program,
+<<<<<<< HEAD
             feed={"var_shape": x1, "var_shape_int32": x2},
             fetch_list=[result_1, result_1, result_2, result_3, result_4],
         )
+=======
+            feed={
+                "var_shape": x1,
+                "var_shape_int32": x2
+            },
+            fetch_list=[result_1, result_1, result_2, result_3, result_4])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_run(self):
         self.run_net(False)
@@ -118,6 +151,10 @@ class TestRandOpForDygraph(unittest.TestCase):
 
 
 class TestRandDtype(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_default_dtype(self):
         paddle.disable_static()
 

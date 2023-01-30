@@ -12,14 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import time
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+import time
+
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
+<<<<<<< HEAD
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
@@ -30,6 +40,20 @@ class TestCommunicator(unittest.TestCase):
         x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=x, label=y)
+=======
+import paddle.fluid as fluid
+
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
+
+
+class TestCommunicator(unittest.TestCase):
+
+    def net(self):
+        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        cost = fluid.layers.square_error_cost(input=x, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         avg_cost = paddle.mean(cost)
         return avg_cost
 
@@ -41,9 +65,14 @@ class TestCommunicator(unittest.TestCase):
         os.environ["PADDLE_PORT"] = "36001"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
+<<<<<<< HEAD
         os.environ[
             "PADDLE_PSERVERS_IP_PORT_LIST"
         ] = "127.0.0.1:36001,127.0.0.2:36001"
+=======
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
+            "127.0.0.1:36001,127.0.0.2:36001"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
         avg_cost = self.net()

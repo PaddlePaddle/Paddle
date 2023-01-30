@@ -12,15 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import os
 import shutil
 import tempfile
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
+<<<<<<< HEAD
 from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
 from test_dist_fleet_base import TestFleetBase
 
@@ -29,13 +38,32 @@ import paddle.fluid as fluid
 
 @unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")
 class TestDistMnistSync2x2(TestFleetBase):
+=======
+import paddle.fluid as fluid
+
+from test_dist_fleet_base import TestFleetBase
+from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
+
+
+@unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")
+class TestDistMnistSync2x2(TestFleetBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._mode = "sync"
         self._reader = "pyreader"
 
+<<<<<<< HEAD
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
+=======
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -56,6 +84,7 @@ class TestDistMnistSync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_sparse_embedding_ctr.py",
             delta=1e-5,
@@ -64,13 +93,30 @@ class TestDistMnistSync2x2(TestFleetBase):
 
 
 class TestDistMnistAsync2x2(TestFleetBase):
+=======
+        self.check_with_place("dist_fleet_sparse_embedding_ctr.py",
+                              delta=1e-5,
+                              check_error_log=True)
+
+
+class TestDistMnistAsync2x2(TestFleetBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
 
+<<<<<<< HEAD
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
+=======
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -91,6 +137,7 @@ class TestDistMnistAsync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_sparse_embedding_ctr.py",
             delta=1e-5,
@@ -99,13 +146,30 @@ class TestDistMnistAsync2x2(TestFleetBase):
 
 
 class TestDistMnistAsync2x2WithDecay(TestFleetBase):
+=======
+        self.check_with_place("dist_fleet_sparse_embedding_ctr.py",
+                              delta=1e-5,
+                              check_error_log=True)
+
+
+class TestDistMnistAsync2x2WithDecay(TestFleetBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
 
+<<<<<<< HEAD
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
+=======
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -127,6 +191,7 @@ class TestDistMnistAsync2x2WithDecay(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_sparse_embedding_ctr.py",
             delta=1e-5,
@@ -135,13 +200,30 @@ class TestDistMnistAsync2x2WithDecay(TestFleetBase):
 
 
 class TestDistMnistAsync2x2WithUnifrom(TestFleetBase):
+=======
+        self.check_with_place("dist_fleet_sparse_embedding_ctr.py",
+                              delta=1e-5,
+                              check_error_log=True)
+
+
+class TestDistMnistAsync2x2WithUnifrom(TestFleetBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
 
+<<<<<<< HEAD
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
+=======
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -163,20 +245,34 @@ class TestDistMnistAsync2x2WithUnifrom(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_sparse_embedding_ctr.py",
             delta=1e-5,
             check_error_log=True,
         )
+=======
+        self.check_with_place("dist_fleet_sparse_embedding_ctr.py",
+                              delta=1e-5,
+                              check_error_log=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @unittest.skip(reason="Skip unstable ut, need tensor table to enhance")
 class TestDistMnistAsync2x2WithGauss(TestFleetBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
 
     def _run_local_infer(self, model_file):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def net():
             """
             network definition
@@ -189,6 +285,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             """
             dnn_input_dim, lr_input_dim = 10, 10
 
+<<<<<<< HEAD
             dnn_data = paddle.static.data(
                 name="dnn_data",
                 shape=[-1, 1],
@@ -207,6 +304,23 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 dtype="int64",
                 lod_level=0,
             )
+=======
+            dnn_data = fluid.layers.data(name="dnn_data",
+                                         shape=[-1, 1],
+                                         dtype="int64",
+                                         lod_level=1,
+                                         append_batch_size=False)
+            lr_data = fluid.layers.data(name="lr_data",
+                                        shape=[-1, 1],
+                                        dtype="int64",
+                                        lod_level=1,
+                                        append_batch_size=False)
+            label = fluid.layers.data(name="click",
+                                      shape=[-1, 1],
+                                      dtype="int64",
+                                      lod_level=0,
+                                      append_batch_size=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             datas = [dnn_data, lr_data, label]
 
@@ -218,6 +332,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 input=dnn_data,
                 size=[dnn_input_dim, dnn_layer_dims[0]],
                 is_test=inference,
+<<<<<<< HEAD
                 param_attr=fluid.ParamAttr(
                     name="deep_embedding", initializer=init
                 ),
@@ -236,6 +351,21 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     ),
                     name='dnn-fc-%d' % i,
                 )
+=======
+                param_attr=fluid.ParamAttr(name="deep_embedding",
+                                           initializer=init))
+            dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding,
+                                                  pool_type="sum")
+            dnn_out = dnn_pool
+            for i, dim in enumerate(dnn_layer_dims[1:]):
+                fc = fluid.layers.fc(
+                    input=dnn_out,
+                    size=dim,
+                    act="relu",
+                    param_attr=fluid.ParamAttr(
+                        initializer=fluid.initializer.Constant(value=0.01)),
+                    name='dnn-fc-%d' % i)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 dnn_out = fc
 
             # build lr model
@@ -245,6 +375,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 is_test=inference,
                 param_attr=fluid.ParamAttr(
                     name="wide_embedding",
+<<<<<<< HEAD
                     initializer=fluid.initializer.Constant(value=0.01),
                 ),
             )
@@ -256,6 +387,14 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             predict = paddle.static.nn.fc(
                 x=merge_layer, size=2, activation='softmax'
             )
+=======
+                    initializer=fluid.initializer.Constant(value=0.01)))
+
+            lr_pool = fluid.layers.sequence_pool(input=lr_embbding,
+                                                 pool_type="sum")
+            merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+            predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return datas, predict
 
         reader = paddle.batch(fake_ctr_reader(), batch_size=4)
@@ -267,6 +406,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
         fluid.io.load_persistables(exe, model_file)
 
         for batch_id, data in enumerate(reader()):
+<<<<<<< HEAD
             score = exe.run(
                 fluid.default_main_program(),
                 feed=feeder.feed(data),
@@ -276,6 +416,17 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
+=======
+            score = exe.run(fluid.default_main_program(),
+                            feed=feeder.feed(data),
+                            fetch_list=[predict])
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         model_dir = tempfile.mkdtemp()
 
         required_envs = {
@@ -301,11 +452,17 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
         shutil.rmtree(model_dir)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_sparse_embedding_ctr.py",
             delta=1e-5,
             check_error_log=True,
         )
+=======
+        self.check_with_place("dist_fleet_sparse_embedding_ctr.py",
+                              delta=1e-5,
+                              check_error_log=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

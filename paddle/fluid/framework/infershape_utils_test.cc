@@ -84,9 +84,15 @@ class InferShapeUtilsTestOp : public OperatorWithKernel {
  public:
   using OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     return phi::KernelKey(proto::VarType::FP32, ctx.GetPlace());
+=======
+  OpKernelType GetExpectedKernelType(
+      const ExecutionContext& ctx) const override {
+    return OpKernelType(proto::VarType::FP32, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -126,6 +132,7 @@ void InferShapeUtilsTestKernel(const Context& dev_ctx,
   VLOG(6) << "Come into InferShapeUtilsTestKernel";
 }
 
+<<<<<<< HEAD
 void TestOutputInferMeta(const phi::MetaTensor& x, phi::MetaTensor* out) {
   ASSERT_EQ(x.dtype(), phi::DataType::FLOAT32);
 }
@@ -165,6 +172,8 @@ void InferShapeUtilsTestOutputKernel(const Context& dev_ctx,
   VLOG(6) << "Come into InferShapeUtilsTestOutputKernel";
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace framework
 }  // namespace paddle
 
@@ -182,6 +191,7 @@ PD_REGISTER_KERNEL(infer_shape_utils_test,
                    paddle::framework::InferShapeUtilsTestKernel,
                    int) {}
 
+<<<<<<< HEAD
 DECLARE_INFER_SHAPE_FUNCTOR(
     infer_shape_utils_test_output,
     InferShapeUtilsTestOutputInferShapeFunctor,
@@ -197,6 +207,8 @@ PD_REGISTER_KERNEL(test_sparse_coo_tensor_output,
                    paddle::framework::InferShapeUtilsTestOutputKernel,
                    int) {}
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 TEST(InferShapeUtilsTest, ALL) {
   paddle::framework::ProgramDesc prog;
   paddle::framework::proto::BlockDesc proto_block;
@@ -254,6 +266,7 @@ TEST(InferShapeUtilsTest, ALL) {
 
   op->InferShape(block_desc);
 }
+<<<<<<< HEAD
 
 TEST(InferShapeUtilsTestOutput, ALL) {
   paddle::framework::ProgramDesc prog;
@@ -278,3 +291,5 @@ TEST(InferShapeUtilsTestOutput, ALL) {
 
   op->InferShape(block_desc);
 }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

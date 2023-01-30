@@ -17,7 +17,10 @@
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+<<<<<<< HEAD
 #include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -50,6 +53,7 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     int in_dtype = ctx.Attr<int>("out_dtype");
@@ -90,6 +94,20 @@ class ReduceSumCompositeGradOpMaker : public prim::GradCompositeOpMakerBase {
         x, out_grad, axis, keep_dim, reduce_all, x_grad);
     // recover output name
     this->RecoverOutputName(x_grad_t, x_grad_name);
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    int in_dtype = ctx.Attr<int>("out_dtype");
+    if (in_dtype >= 0) {
+      return framework::OpKernelType(
+          static_cast<framework::proto::VarType::Type>(in_dtype),
+          ctx.GetPlace());
+    }
+    return framework::OpKernelType(
+        framework::OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("Out")),
+        ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -144,7 +162,10 @@ REGISTER_OPERATOR(reduce_sum,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>,
+<<<<<<< HEAD
                   ops::ReduceSumCompositeGradOpMaker,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   ReduceSumInferShapeFunctor);
 REGISTER_OPERATOR(reduce_sum_grad,
                   ops::ReduceGradOp,

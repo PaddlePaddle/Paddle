@@ -48,6 +48,7 @@ function(find_python_module module)
       ${PY_${module_upper}_VERSION}
       PARENT_SCOPE)
 endfunction()
+<<<<<<< HEAD
 
 function(check_py_version py_version)
   string(REPLACE "." ";" version_list ${py_version})
@@ -65,3 +66,5 @@ function(check_py_version py_version)
     message(FATAL_ERROR "Paddle only support Python version >=3.7 now!")
   endif()
 endfunction()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

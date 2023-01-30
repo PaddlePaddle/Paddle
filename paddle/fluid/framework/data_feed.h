@@ -4,7 +4,11 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
+<<<<<<< HEAD
 http://www.apache.org/licenses/LICENSE-2.0
+=======
+    http://www.apache.org/licenses/LICENSE-2.0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,8 +64,11 @@ class Scope;
 class Variable;
 class NeighborSampleResult;
 class NodeQueryResult;
+<<<<<<< HEAD
 template <typename KeyType, typename ValType>
 class HashTable;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace framework
 }  // namespace paddle
 
@@ -404,7 +411,11 @@ class CustomParser {
                             const char* str,
                             std::vector<Record>* instances) {
     return 0;
+<<<<<<< HEAD
   }
+=======
+  };
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual bool ParseOneInstance(
       const std::string& line,
       std::function<void(std::vector<SlotRecord>&, int)>
@@ -564,8 +575,13 @@ class MiniBatchGpuPack {
       }
     }
   }
+<<<<<<< HEAD
   phi::DenseTensor& float_tensor(void) { return float_tensor_; }
   phi::DenseTensor& uint64_tensor(void) { return uint64_tensor_; }
+=======
+  LoDTensor& float_tensor(void) { return float_tensor_; }
+  LoDTensor& uint64_tensor(void) { return uint64_tensor_; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   HostBuffer<size_t>& offsets(void) { return offsets_; }
   HostBuffer<void*>& h_tensor_ptrs(void) { return h_tensor_ptrs_; }
@@ -630,9 +646,15 @@ class MiniBatchGpuPack {
   const SlotRecord* batch_ins_ = nullptr;
 
   // uint64 tensor
+<<<<<<< HEAD
   phi::DenseTensor uint64_tensor_;
   // float tensor
   phi::DenseTensor float_tensor_;
+=======
+  LoDTensor uint64_tensor_;
+  // float tensor
+  LoDTensor float_tensor_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // batch
   HostBuffer<size_t> offsets_;
   HostBuffer<void*> h_tensor_ptrs_;
@@ -880,9 +902,12 @@ struct BufState {
 
   int GetNextBatch() {
     cursor += len;
+<<<<<<< HEAD
     if (row_num - cursor < 0) {
       return 0;
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int tmp_len = cursor + batch_size > row_num ? row_num - cursor : batch_size;
     if (tmp_len == 0) {
       return 0;
@@ -897,6 +922,7 @@ struct BufState {
 
 class GraphDataGenerator {
  public:
+<<<<<<< HEAD
   GraphDataGenerator() {}
   virtual ~GraphDataGenerator() {}
   void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
@@ -910,10 +936,21 @@ class GraphDataGenerator {
   int FillInferBuf();
   void DoWalkandSage();
   int FillSlotFeature(uint64_t* d_walk);
+=======
+  GraphDataGenerator(){};
+  virtual ~GraphDataGenerator(){};
+  void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
+  void AllocResource(const paddle::platform::Place& place,
+                     std::vector<LoDTensor*> feed_vec);
+  int AcquireInstance(BufState* state);
+  int GenerateBatch();
+  int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int FillFeatureBuf(uint64_t* d_walk, uint64_t* d_feature, size_t key_num);
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
                      std::shared_ptr<phi::Allocation> d_feature);
   void FillOneStep(uint64_t* start_ids,
+<<<<<<< HEAD
                    int etype_id,
                    uint64_t* walk,
                    uint8_t* walk_ntype,
@@ -978,11 +1015,27 @@ class GraphDataGenerator {
 
  protected:
   HashTable<uint64_t, uint64_t>* table_;
+=======
+                   uint64_t* walk,
+                   int len,
+                   NeighborSampleResult& sample_res,
+                   int cur_degree,
+                   int step,
+                   int* len_per_row);
+  int FillInsBuf();
+  void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
+    type_to_index_[type] = h_device_keys_.size();
+    h_device_keys_.push_back(device_keys);
+  }
+
+ protected:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int walk_degree_;
   int walk_len_;
   int window_;
   int once_sample_startid_len_;
   int gpuid_;
+<<<<<<< HEAD
   size_t cursor_;
   int thread_id_;
   size_t jump_rows_;
@@ -1014,12 +1067,38 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_actual_slot_id_map_;
   std::shared_ptr<phi::Allocation> d_fea_offset_map_;
 
+=======
+  // start ids
+  // int64_t* device_keys_;
+  // size_t device_key_size_;
+  std::vector<std::vector<uint64_t>*> h_device_keys_;
+  std::unordered_map<int, int> type_to_index_;
+  // point to device_keys_
+  size_t cursor_;
+  size_t jump_rows_;
+  int64_t* id_tensor_ptr_;
+  int64_t* show_tensor_ptr_;
+  int64_t* clk_tensor_ptr_;
+  cudaStream_t stream_;
+  paddle::platform::Place place_;
+  std::vector<LoDTensor*> feed_vec_;
+  std::vector<size_t> offset_;
+  std::shared_ptr<phi::Allocation> d_prefix_sum_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_device_keys_;
+
+  std::shared_ptr<phi::Allocation> d_walk_;
+  std::shared_ptr<phi::Allocation> d_feature_;
+  std::shared_ptr<phi::Allocation> d_len_per_row_;
+  std::shared_ptr<phi::Allocation> d_random_row_;
+  //
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<std::shared_ptr<phi::Allocation>> d_sampleidx2rows_;
   int cur_sampleidx2row_;
   // record the keys to call graph_neighbor_sample
   std::shared_ptr<phi::Allocation> d_sample_keys_;
   int sample_keys_len_;
 
+<<<<<<< HEAD
   std::shared_ptr<phi::Allocation> d_ins_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_list_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_prefixsum_buf_;
@@ -1051,6 +1130,18 @@ class GraphDataGenerator {
   int sage_batch_num_;
   int ins_buf_pair_len_;
 
+=======
+  std::set<int> finish_node_type_;
+  std::unordered_map<int, size_t> node_type_start_;
+  std::vector<int> infer_node_type_start_;
+
+  std::shared_ptr<phi::Allocation> d_ins_buf_;
+  std::shared_ptr<phi::Allocation> d_feature_buf_;
+  std::shared_ptr<phi::Allocation> d_pair_num_;
+  std::shared_ptr<phi::Allocation> d_slot_tensor_ptr_;
+  std::shared_ptr<phi::Allocation> d_slot_lod_tensor_ptr_;
+  int ins_buf_pair_len_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // size of a d_walk buf
   size_t buf_size_;
   int repeat_time_;
@@ -1058,6 +1149,7 @@ class GraphDataGenerator {
   BufState buf_state_;
   int batch_size_;
   int slot_num_;
+<<<<<<< HEAD
   std::vector<int> h_slot_feature_num_map_;
   int fea_num_per_node_;
   int shuffle_seed_;
@@ -1078,6 +1170,13 @@ class GraphDataGenerator {
   std::set<int> infer_node_type_index_set_;
   std::string infer_node_type_;
   bool get_degree_;
+=======
+  int shuffle_seed_;
+  int debug_mode_;
+  std::vector<int> first_node_type_;
+  std::vector<std::vector<int>> meta_path_;
+  bool gpu_graph_training_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class DataFeed {
@@ -1142,6 +1241,7 @@ class DataFeed {
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
   virtual void SetCurrentPhase(int current_phase) {}
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource() {}
   virtual void InitGraphTrainResource() {}
@@ -1150,6 +1250,13 @@ class DataFeed {
   }
 #endif
 
+=======
+  virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
+#endif
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual void SetGpuGraphMode(int gpu_graph_mode) {
     gpu_graph_mode_ = gpu_graph_mode;
   }
@@ -1166,6 +1273,7 @@ class DataFeed {
     return ins_content_vec_;
   }
   virtual int GetCurBatchSize() { return batch_size_; }
+<<<<<<< HEAD
   virtual int GetGraphPathNum() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     return gpu_graph_data_generator_.GetPathNum();
@@ -1202,6 +1310,8 @@ class DataFeed {
 #endif
 
   virtual bool IsTrainMode() { return train_mode_; }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual void LoadIntoMemory() {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(LoadIntoMemory) is not implemented."));
@@ -1250,9 +1360,15 @@ class DataFeed {
       use_slots_index_;  // -1: not used; >=0: the index of use_slots_
 
   // The data read by DataFeed will be stored here
+<<<<<<< HEAD
   std::vector<phi::DenseTensor*> feed_vec_;
 
   phi::DenseTensor* rank_offset_;
+=======
+  std::vector<LoDTensor*> feed_vec_;
+
+  LoDTensor* rank_offset_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // the batch size defined by user
   int default_batch_size_;
@@ -1276,7 +1392,10 @@ class DataFeed {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   GraphDataGenerator gpu_graph_data_generator_;
 #endif
+<<<<<<< HEAD
   bool train_mode_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
@@ -1744,7 +1863,11 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual bool ParseOneInstanceFromPipe(Record* instance);
   virtual void ParseOneInstanceFromSo(const char* str,
                                       Record* instance,
+<<<<<<< HEAD
                                       CustomParser* parser) {}
+=======
+                                      CustomParser* parser){};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual int ParseInstanceFromSo(int len,
                                   const char* str,
                                   std::vector<Record>* instances,
@@ -1814,6 +1937,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                      const int float_slot_size,
                      const UsedSlotGpuType* used_slots);
 #endif
+<<<<<<< HEAD
 
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource(void);
@@ -1821,6 +1945,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void DoWalkandSage();
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
   int float_use_slot_size_ = 0;

@@ -58,9 +58,12 @@ void DropoutRawKernel(const Context& dev_ctx,
     } else {
       seed_data = fix_seed ? seed : 0;
     }
+<<<<<<< HEAD
     if (seed_data == 0) {
       seed_data = dev_ctx.GetGenerator()->Random64();
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto* mask_data = dev_ctx.template Alloc<T>(mask);
     // Special case when dropout_prob is 1.0

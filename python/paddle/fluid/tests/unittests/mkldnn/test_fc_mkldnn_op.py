@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.tests.unittests.op_test import OpTest
 
 
@@ -25,12 +32,20 @@ def fully_connected_naive(input, weights, bias_data):
 
 
 class MatrixGenerate:
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, mb, ic, oc, h, w):
         self.input = np.random.random((mb, ic * h * w)).astype("float32")
         self.weights = np.random.random((ic * h * w, oc)).astype("float32")
 
 
 class TestFCMKLDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def create_data(self):
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
         self.bias = np.random.random(15).astype("float32")
@@ -43,15 +58,25 @@ class TestFCMKLDNNOp(OpTest):
         self.inputs = {
             'Input': self.matrix.input,
             'W': self.matrix.weights,
+<<<<<<< HEAD
             'Bias': self.bias,
+=======
+            'Bias': self.bias
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
         self.outputs = {
+<<<<<<< HEAD
             'Out': fully_connected_naive(
                 self.matrix.input, self.matrix.weights, self.bias
             )
+=======
+            'Out':
+            fully_connected_naive(self.matrix.input, self.matrix.weights,
+                                  self.bias)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -66,13 +91,20 @@ class TestFCMKLDNNOp(OpTest):
 
 
 class TestFCMKLDNNOp1(TestFCMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def create_data(self):
         self.matrix = MatrixGenerate(2, 15, 48, 2, 2)
         self.bias = np.random.random(48).astype("float32")
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     import paddle
 
     paddle.enable_static()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     unittest.main()

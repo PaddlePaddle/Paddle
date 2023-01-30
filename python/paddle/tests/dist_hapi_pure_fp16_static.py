@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import division
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 
 import numpy as np
 
 import paddle
+<<<<<<< HEAD
 from paddle import Model, fluid
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.static import InputSpec
@@ -27,6 +34,20 @@ from paddle.vision.models import LeNet
     not fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
 )
 class TestDistTraningWithPureFP16(unittest.TestCase):
+=======
+from paddle import fluid
+
+from paddle import Model
+from paddle.static import InputSpec
+from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.vision.models import LeNet
+
+
+@unittest.skipIf(not fluid.is_compiled_with_cuda(),
+                 'CPU testing is not supported')
+class TestDistTraningWithPureFP16(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_amp_training_purefp16(self):
         if not fluid.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
@@ -40,6 +61,7 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
         inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
         labels = InputSpec([None, 1], "int64", "y")
         model = Model(net, inputs, labels)
+<<<<<<< HEAD
         optim = paddle.optimizer.Adam(
             learning_rate=0.001,
             parameters=model.parameters(),
@@ -51,6 +73,15 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
             loss=CrossEntropyLoss(reduction="sum"),
             amp_configs=amp_configs,
         )
+=======
+        optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                      parameters=model.parameters(),
+                                      multi_precision=True)
+        amp_configs = {"level": amp_level, "use_fp16_guard": False}
+        model.prepare(optimizer=optim,
+                      loss=CrossEntropyLoss(reduction="sum"),
+                      amp_configs=amp_configs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         model.train_batch([data], [label])
 
 

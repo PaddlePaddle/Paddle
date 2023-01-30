@@ -28,10 +28,17 @@ limitations under the License. */
 #endif
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
@@ -206,7 +213,11 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   // of host pinned allocation. Allocates too much would reduce
   // the amount of memory available to the underlying system for paging.
   size_t usable =
+<<<<<<< HEAD
       phi::backends::cpu::CUDAPinnedMaxAllocSize() - cuda_pinnd_alloc_size_;
+=======
+      paddle::platform::CUDAPinnedMaxAllocSize() - cuda_pinnd_alloc_size_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (size > usable) {
     LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
@@ -362,7 +373,11 @@ void* NPUPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 
   size_t usable =
+<<<<<<< HEAD
       phi::backends::cpu::NPUPinnedMaxAllocSize() - npu_pinnd_alloc_size_;
+=======
+      paddle::platform::NPUPinnedMaxAllocSize() - npu_pinnd_alloc_size_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (size > usable) {
     LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0

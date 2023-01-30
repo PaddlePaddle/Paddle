@@ -12,14 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import test_collective_api_base as test_base
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
+<<<<<<< HEAD
 
 
 class TestCollectiveAllreduceAPI(test_base.TestCollectiveAPIRunnerBase):
+=======
+import unittest
+import test_collective_api_base as test_base
+
+
+class TestCollectiveAllreduceAPI(test_base.TestCollectiveAPIRunnerBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 

@@ -52,10 +52,17 @@ template <typename T>
 class CPURangeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     T start = context.Input<phi::DenseTensor>("Start")->data<T>()[0];
     T end = context.Input<phi::DenseTensor>("End")->data<T>()[0];
     T step = context.Input<phi::DenseTensor>("Step")->data<T>()[0];
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    T start = context.Input<framework::Tensor>("Start")->data<T>()[0];
+    T end = context.Input<framework::Tensor>("End")->data<T>()[0];
+    T step = context.Input<framework::Tensor>("Step")->data<T>()[0];
+    auto* out = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int64_t size = 0;
     GetSize(start, end, step, &size);
     out->Resize(phi::make_ddim({size}));

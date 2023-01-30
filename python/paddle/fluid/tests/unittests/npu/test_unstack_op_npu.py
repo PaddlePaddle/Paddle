@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import sys
 
@@ -24,6 +29,10 @@ paddle.enable_static()
 
 
 class TestUnStackOpBase(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initDefaultParameters(self):
         self.input_dim = (5, 6, 7)
         self.axis = 0
@@ -73,21 +82,37 @@ class TestUnStackOpBase(OpTest):
 
 
 class TestStackOp3(TestUnStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = -1
 
 
 class TestStackOp4(TestUnStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = -3
 
 
 class TestStackOp5(TestUnStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 1
 
 
 class TestStackOp6(TestUnStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 2
 

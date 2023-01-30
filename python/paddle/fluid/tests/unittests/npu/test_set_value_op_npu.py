@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -24,6 +29,10 @@ from paddle.fluid import core
 
 
 class TestSetValueBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -54,6 +63,10 @@ class TestSetValueBase(unittest.TestCase):
 
 
 class TestSetValueApi(TestSetValueBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _run_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(self.program):
@@ -78,6 +91,7 @@ class TestSetValueApi(TestSetValueBase):
         dynamic_out = self._run_dynamic()
         self._get_answer()
 
+<<<<<<< HEAD
         error_msg = (
             "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
         )
@@ -89,11 +103,22 @@ class TestSetValueApi(TestSetValueBase):
             (self.data == dynamic_out).all(),
             msg=error_msg.format("dynamic", self.data, dynamic_out),
         )
+=======
+        error_msg = "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
+        self.assertTrue((self.data == static_out).all(),
+                        msg=error_msg.format("static", self.data, static_out))
+        self.assertTrue((self.data == dynamic_out).all(),
+                        msg=error_msg.format("dynamic", self.data, dynamic_out))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
 # 1.1 item is int
 class TestSetValueItemInt(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0] = self.value
 
@@ -104,6 +129,10 @@ class TestSetValueItemInt(TestSetValueApi):
 # 1.2 item is slice
 # 1.2.1 step is 1
 class TestSetValueItemSlice(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:2] = self.value
 
@@ -112,6 +141,10 @@ class TestSetValueItemSlice(TestSetValueApi):
 
 
 class TestSetValueItemSlice2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:-1] = self.value
 
@@ -120,6 +153,10 @@ class TestSetValueItemSlice2(TestSetValueApi):
 
 
 class TestSetValueItemSlice3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:-1, 0:2] = self.value
 
@@ -128,6 +165,10 @@ class TestSetValueItemSlice3(TestSetValueApi):
 
 
 class TestSetValueItemSlice4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:, 1:2, :] = self.value
 
@@ -147,7 +188,11 @@ class TestSetValueItemSlice4(TestSetValueApi):
 #             return i, x
 
 #         i = paddle.zeros(shape=(1, ), dtype='int32')
+<<<<<<< HEAD
 #         i, x = paddle.static.nn.while_loop(cond, body, [i, x])
+=======
+#         i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #     def _get_answer(self):
 #         self.data[0] = self.value
@@ -155,6 +200,10 @@ class TestSetValueItemSlice4(TestSetValueApi):
 
 # 1.2.2 step > 1
 class TestSetValueItemSliceStep(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [5, 5, 5]
 
@@ -166,6 +215,10 @@ class TestSetValueItemSliceStep(TestSetValueApi):
 
 
 class TestSetValueItemSliceStep2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [7, 5, 5]
 
@@ -177,6 +230,10 @@ class TestSetValueItemSliceStep2(TestSetValueApi):
 
 
 class TestSetValueItemSliceStep3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:-1, 0:2, ::2] = self.value
 
@@ -185,6 +242,10 @@ class TestSetValueItemSliceStep3(TestSetValueApi):
 
 
 class TestSetValueItemSliceStep4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:, 1:2:2, :] = self.value
 
@@ -194,6 +255,10 @@ class TestSetValueItemSliceStep4(TestSetValueApi):
 
 # 1.2.3 step < 0
 class TestSetValueItemSliceNegetiveStep(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [5, 2]
 
@@ -208,6 +273,10 @@ class TestSetValueItemSliceNegetiveStep(TestSetValueApi):
 
 
 class TestSetValueItemSliceNegetiveStep2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [5]
 
@@ -222,6 +291,10 @@ class TestSetValueItemSliceNegetiveStep2(TestSetValueApi):
 
 
 class TestSetValueItemSliceNegetiveStep3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [3]
 
@@ -236,6 +309,10 @@ class TestSetValueItemSliceNegetiveStep3(TestSetValueApi):
 
 
 class TestSetValueItemSliceNegetiveStep4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [3, 4, 5]
 
@@ -250,6 +327,10 @@ class TestSetValueItemSliceNegetiveStep4(TestSetValueApi):
 
 
 class TestSetValueItemEllipsis1(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:, ..., 1:] = self.value
 
@@ -258,6 +339,10 @@ class TestSetValueItemEllipsis1(TestSetValueApi):
 
 
 class TestSetValueItemEllipsis2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0:, ...] = self.value
 
@@ -266,6 +351,10 @@ class TestSetValueItemEllipsis2(TestSetValueApi):
 
 
 class TestSetValueItemEllipsis3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[..., 1:] = self.value
 
@@ -274,6 +363,10 @@ class TestSetValueItemEllipsis3(TestSetValueApi):
 
 
 class TestSetValueItemEllipsis4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[...] = self.value
 
@@ -283,6 +376,10 @@ class TestSetValueItemEllipsis4(TestSetValueApi):
 
 # 1.4 item is Paddle Tensor
 class TestSetValueItemTensor(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         x[zero] = self.value
@@ -292,6 +389,10 @@ class TestSetValueItemTensor(TestSetValueApi):
 
 
 class TestSetValueItemTensor2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         two = paddle.full([1], 2, dtype="int64")
@@ -302,6 +403,10 @@ class TestSetValueItemTensor2(TestSetValueApi):
 
 
 class TestSetValueItemTensor3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         two = paddle.full([1], 2, dtype="int64")
@@ -312,6 +417,10 @@ class TestSetValueItemTensor3(TestSetValueApi):
 
 
 class TestSetValueItemTensor4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         two = paddle.full([1], 2, dtype="int64")
@@ -322,6 +431,10 @@ class TestSetValueItemTensor4(TestSetValueApi):
 
 
 class TestSetValueItemTensor5(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         zero = paddle.full([1], 0, dtype="int32")
         two = paddle.full([1], 2, dtype="int64")
@@ -332,6 +445,10 @@ class TestSetValueItemTensor5(TestSetValueApi):
 
 
 class TestSetValueItemTensor6(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [3, 4, 5]
 
@@ -346,6 +463,10 @@ class TestSetValueItemTensor6(TestSetValueApi):
 
 # 1.5 item is None
 class TestSetValueItemNone1(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[None] = self.value
 
@@ -354,6 +475,10 @@ class TestSetValueItemNone1(TestSetValueApi):
 
 
 class TestSetValueItemNone2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0, None, 1] = self.value
 
@@ -362,6 +487,10 @@ class TestSetValueItemNone2(TestSetValueApi):
 
 
 class TestSetValueItemNone3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[:, None, None, 1] = self.value
 
@@ -370,6 +499,10 @@ class TestSetValueItemNone3(TestSetValueApi):
 
 
 class TestSetValueItemNone4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0, 0, None, 1] = self.value
 
@@ -378,6 +511,10 @@ class TestSetValueItemNone4(TestSetValueApi):
 
 
 class TestSetValueItemNone5(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0, None, 0, None, 1] = self.value
 
@@ -386,6 +523,10 @@ class TestSetValueItemNone5(TestSetValueApi):
 
 
 class TestSetValueItemNone6(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[None, 0, 0, None, 0] = self.value
 
@@ -394,6 +535,10 @@ class TestSetValueItemNone6(TestSetValueApi):
 
 
 class TestSetValueItemNone7(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[:, None, 1] = np.zeros(self.shape)[:, None, 0]
 
@@ -402,6 +547,10 @@ class TestSetValueItemNone7(TestSetValueApi):
 
 
 class TestSetValueItemNone8(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[:, 1, None] = np.zeros(self.shape)[:, 0, None]
 
@@ -410,6 +559,10 @@ class TestSetValueItemNone8(TestSetValueApi):
 
 
 class TestSetValueItemNone9(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
 
@@ -419,6 +572,10 @@ class TestSetValueItemNone9(TestSetValueApi):
 
 # 1.5 item is list or Tensor of bol
 class TestSetValueItemBool1(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[[True, False]] = self.value
 
@@ -427,6 +584,10 @@ class TestSetValueItemBool1(TestSetValueApi):
 
 
 class TestSetValueItemBool2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[[False, False]] = self.value
 
@@ -435,6 +596,10 @@ class TestSetValueItemBool2(TestSetValueApi):
 
 
 class TestSetValueItemBool3(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[[False, True]] = np.zeros(self.shape[2])
 
@@ -443,6 +608,10 @@ class TestSetValueItemBool3(TestSetValueApi):
 
 
 class TestSetValueItemBool4(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         idx = paddle.assign(np.array([False, True]))
         x[idx] = np.zeros(self.shape[2])
@@ -452,6 +621,7 @@ class TestSetValueItemBool4(TestSetValueApi):
 
 
 class TestSetValueItemBool5(TestSetValueApi):
+<<<<<<< HEAD
     def _call_setitem(self, x):
         idx = paddle.assign(
             np.array([[False, True, False], [True, True, False]])
@@ -465,6 +635,21 @@ class TestSetValueItemBool5(TestSetValueApi):
 
 
 class TestSetValueItemBool6(TestSetValueApi):
+=======
+
+    def _call_setitem(self, x):
+        idx = paddle.assign(
+            np.array([[False, True, False], [True, True, False]]))
+        x[idx] = self.value
+
+    def _get_answer(self):
+        self.data[np.array([[False, True, False], [True, True,
+                                                   False]])] = self.value
+
+
+class TestSetValueItemBool6(TestSetValueApi):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _call_setitem(self, x):
         x[0, ...] = 0
         x[x > 0] = self.value
@@ -475,7 +660,13 @@ class TestSetValueItemBool6(TestSetValueApi):
 
 
 def create_test_value_int32(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = 7
 
@@ -495,7 +686,13 @@ create_test_value_int32(TestSetValueItemSlice4)
 
 
 def create_test_value_int64(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_value(self):
             self.value = 7
 
@@ -515,7 +712,13 @@ create_test_value_int64(TestSetValueItemSlice4)
 
 
 def create_test_value_tensor_fp32(parent):
+<<<<<<< HEAD
     class TestValueInt(parent):
+=======
+
+    class TestValueInt(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_dtype(self):
             self.dtype = "float32"
 
@@ -540,6 +743,10 @@ create_test_value_tensor_fp32(TestSetValueItemSlice4)
 
 # 3. Test different shape of value
 class TestSetValueValueShape1(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_value(self):
         self.value = np.array([3, 4, 5, 6])  # shape is (4,)
 
@@ -551,6 +758,10 @@ class TestSetValueValueShape1(TestSetValueApi):
 
 
 class TestSetValueValueShape2(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_value(self):
         self.value = np.array([[3, 4, 5, 6]])  # shape is (1,4)
 
@@ -562,10 +773,17 @@ class TestSetValueValueShape2(TestSetValueApi):
 
 
 class TestSetValueValueShape3(TestSetValueApi):
+<<<<<<< HEAD
     def set_value(self):
         self.value = np.array(
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
         )  # shape is (3,4)
+=======
+
+    def set_value(self):
+        self.value = np.array([[1, 1, 1, 1], [2, 2, 2, 2],
+                               [3, 3, 3, 3]])  # shape is (3,4)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _call_setitem(self, x):
         x[0] = self.value
@@ -575,12 +793,20 @@ class TestSetValueValueShape3(TestSetValueApi):
 
 
 class TestSetValueValueShape4(TestSetValueApi):
+<<<<<<< HEAD
     def set_value(self):
         self.value = np.array(
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
         ).astype(
             self.dtype
         )  # shape is (3,4)
+=======
+
+    def set_value(self):
+        self.value = np.array([[1, 1, 1, 1], [2, 2, 2, 2],
+                               [3, 3, 3,
+                                3]]).astype(self.dtype)  # shape is (3,4)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _call_setitem(self, x):
         x[0] = paddle.assign(self.value)  # x is Paddle.Tensor
@@ -590,6 +816,10 @@ class TestSetValueValueShape4(TestSetValueApi):
 
 
 class TestSetValueValueShape5(TestSetValueApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_value(self):
         self.value = np.array([3, 3, 3]).astype(self.dtype)
 

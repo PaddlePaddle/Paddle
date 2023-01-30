@@ -37,7 +37,11 @@ struct ReservoirValue {
     counter = 0;
   }
 
+<<<<<<< HEAD
   explicit ReservoirValue(uint32_t dim) {
+=======
+  ReservoirValue(uint32_t dim) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     this->dim = dim;
     values.resize(dim);
     counter = 0;
@@ -72,8 +76,13 @@ class BarrierTable : public Table {
 
   virtual void *GetShard(size_t shard_idx) { return 0; }
 
+<<<<<<< HEAD
   virtual int32_t Pull(TableContext &context) { return 0; }  // NOLINT
   virtual int32_t Push(TableContext &context) { return 0; }  // NOLINT
+=======
+  virtual int32_t Pull(TableContext &context) { return 0; }
+  virtual int32_t Push(TableContext &context) { return 0; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int32_t Shrink(const std::string &param) override { return 0; }
   virtual void Clear() {}
@@ -86,6 +95,7 @@ class BarrierTable : public Table {
   }
   virtual int32_t InitializeShard() { return 0; }
 
+<<<<<<< HEAD
   int32_t Initialize() override;
   // only for barrier
   // 0: send_barrier 1: recv_barrier 2: complete
@@ -93,6 +103,15 @@ class BarrierTable : public Table {
                   const std::string barrier_type) override;
 
   int32_t SetTableMap(
+=======
+  virtual int32_t Initialize() override;
+  // only for barrier
+  // 0: send_barrier 1: recv_barrier 2: complete
+  virtual int32_t Barrier(const uint32_t trainer_id,
+                          const std::string barrier_type) override;
+
+  virtual int32_t SetTableMap(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) override;
 
  private:

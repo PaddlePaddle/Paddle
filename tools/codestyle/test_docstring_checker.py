@@ -12,26 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import astroid
 import docstring_checker
 import pylint.testutils
+=======
+import docstring_checker
+import pylint.testutils
+import astroid
+import pytest
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestDocstring(pylint.testutils.CheckerTestCase):
     CHECKER_CLASS = docstring_checker.DocstringChecker
 
     def test_one_line(self):
+<<<<<<< HEAD
         func_node = astroid.extract_node(
             '''
         def test():
             """get
+=======
+        func_node = astroid.extract_node('''
+        def test(): 
+            """get 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             news.
             """
             if True:
                 return 5
             return 5
+<<<<<<< HEAD
         '''
         )
+=======
+        ''')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.checker.visit_functiondef(func_node)
         got = self.linter.release_messages()
@@ -39,15 +57,24 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
         assert 'W9001' == got[0][0]
 
     def test_one_line_1(self):
+<<<<<<< HEAD
         func_node = astroid.extract_node(
             '''
         def test():
+=======
+        func_node = astroid.extract_node('''
+        def test(): 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             """get news"""
             if True:
                 return 5
             return 5
+<<<<<<< HEAD
         '''
         )
+=======
+        ''')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.checker.visit_functiondef(func_node)
         got = self.linter.release_messages()
@@ -55,9 +82,14 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
         assert 'W9002' == got[0][0]
 
     def test_args(self):
+<<<<<<< HEAD
         func_node = astroid.extract_node(
             '''
         def test(scale, mean):
+=======
+        func_node = astroid.extract_node('''
+        def test(scale, mean): 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             """get news.
             Args:
                 scale (int): scale is the number.
@@ -69,8 +101,12 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
             mean=scale
             mean=scale
             mean=scale
+<<<<<<< HEAD
         '''
         )
+=======
+        ''')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.checker.visit_functiondef(func_node)
         got = self.linter.release_messages()
@@ -78,9 +114,14 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
         assert 'W9003' == got[0][0]
 
     def test_missing(self):
+<<<<<<< HEAD
         func_node = astroid.extract_node(
             '''
         def test():
+=======
+        func_node = astroid.extract_node('''
+        def test(): 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             mean=scale
             mean=scale
             mean=scale
@@ -92,8 +133,12 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
             mean=scale
             mean=scale
             mean=scale
+<<<<<<< HEAD
         '''
         )
+=======
+        ''')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.checker.visit_functiondef(func_node)
         got = self.linter.release_messages()
@@ -101,6 +146,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
         assert 'W9005' == got[0][0]
 
     def test_indent(self):
+<<<<<<< HEAD
         func_node = astroid.extract_node(
             '''
         def test():
@@ -110,6 +156,15 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
             pass
         '''
         )
+=======
+        func_node = astroid.extract_node('''
+        def test(): 
+            """ get get get get get get get get
+              get get get get get get get get.
+            """
+            pass 
+        ''')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.checker.visit_functiondef(func_node)
         got = self.linter.release_messages()
@@ -117,9 +172,14 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
         assert 'W9006' == got[0][0]
 
     def test_with_resturns(self):
+<<<<<<< HEAD
         func_node = astroid.extract_node(
             '''
         def test():
+=======
+        func_node = astroid.extract_node('''
+        def test(): 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             """get news.
             Args:
                 scale (int): scale is the number.
@@ -136,8 +196,12 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
             mean=scale
             mean=scale
             return mean
+<<<<<<< HEAD
         '''
         )
+=======
+        ''')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.checker.visit_functiondef(func_node)
         got = self.linter.release_messages()
@@ -145,9 +209,14 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
         assert 'W9007' == got[0][0]
 
     def test_with_raises(self):
+<<<<<<< HEAD
         func_node = astroid.extract_node(
             '''
         def test():
+=======
+        func_node = astroid.extract_node('''
+        def test(): 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             """get news.
             Args:
                 scale (int): scale is the number.
@@ -164,8 +233,12 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
             mean=scale
             mean=scale
             raise ValueError('A very specific bad thing happened.')
+<<<<<<< HEAD
         '''
         )
+=======
+        ''')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.checker.visit_functiondef(func_node)
         got = self.linter.release_messages()
@@ -218,8 +291,13 @@ def fc(input,
         ValueError: If rank of the input tensor is less than 2.
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
             data = paddle.static.data(name="data", shape=[-1, 32, 32], dtype="float32")
             fc = paddle.static.nn.fc(x=data, size=1000, activation="tanh")
+=======
+            data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            fc = fluid.layers.fc(input=data, size=1000, act="tanh")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     raise ValueError('A very specific bad thing happened.')
     size = 1

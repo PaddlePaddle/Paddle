@@ -1,5 +1,10 @@
 # compile flags
+<<<<<<< HEAD
 set(DLNNE_FLAGS -Wno-error=non-virtual-dtor -Wno-error=attributes ${fsanitize})
+=======
+set(DLNNE_FLAGS -Wno-error=non-virtual-dtor -Wno-error=unused-variable
+                -Wno-error=attributes ${fsanitize})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 foreach(flag ${DLNNE_FLAGS})
   safe_set_cflag(CMAKE_C_FLAGS ${flag})
   safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})

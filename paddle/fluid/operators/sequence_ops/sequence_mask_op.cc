@@ -39,6 +39,7 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -55,6 +56,23 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "depth_tensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -83,10 +101,17 @@ class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
 SequenceMask Operator
 
 This operator outputs a Mask according to Input(X) and Attr(maxlen).
+<<<<<<< HEAD
 Supposing Input(X) is a phi::DenseTensor with shape [d_1, d_2, ..., d_n], the
 Output(Y) is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
 
 Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n))
+=======
+Supposing Input(X) is a Tensor with shape [d_1, d_2, ..., d_n], the
+Output(Y) is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
+
+Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n)) 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 If maxlen < 0, maxlen = max(X)
     )DOC");

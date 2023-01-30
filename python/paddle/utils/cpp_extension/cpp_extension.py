@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 # isort: skip_file
 
 import os
+=======
+import os
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import copy
 import re
 
@@ -24,10 +29,18 @@ from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 
 from .extension_utils import (
+<<<<<<< HEAD
     add_compile_flag,
     find_cuda_home,
     find_rocm_home,
     normalize_extension_kwargs,
+=======
+    find_cuda_home,
+    find_rocm_home,
+    normalize_extension_kwargs,
+    add_compile_flag,
+    run_cmd,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )
 from .extension_utils import (
     is_cuda_file,
@@ -45,7 +58,15 @@ from .extension_utils import (
     CustomOpInfo,
     parse_op_name_from,
 )
+<<<<<<< HEAD
 from .extension_utils import _reset_so_rpath, clean_object_if_change_cflags
+=======
+from .extension_utils import (
+    clean_object_if_change_cflags,
+    _reset_so_rpath,
+    _get_fluid_path,
+)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .extension_utils import (
     bootstrap_context,
     get_build_directory,
@@ -56,6 +77,10 @@ from .extension_utils import (
     IS_WINDOWS,
     OS_NAME,
     MSVC_COMPILE_FLAGS,
+<<<<<<< HEAD
+=======
+    MSVC_COMPILE_FLAGS,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
@@ -64,7 +89,11 @@ from ...fluid import core
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
 # refer to https://stackoverflow.com/questions/34689210/error-exporting-symbol-when-building-python-c-extension-in-windows
+<<<<<<< HEAD
 if IS_WINDOWS:
+=======
+if IS_WINDOWS and six.PY3:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     from distutils.command.build_ext import build_ext as _du_build_ext
     from unittest.mock import Mock
 
@@ -84,7 +113,11 @@ def setup(**attr):
     ``import`` statement.
 
     It encapsulates the python built-in ``setuptools.setup`` function and keeps arguments
+<<<<<<< HEAD
     and usage same as the native interface. Meanwhile, it hides Paddle inner framework
+=======
+    and usage same as the native interface. Meanwhile, it hiddens Paddle inner framework
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     concepts, such as necessary compiling flags, included paths of head files, and linking
     flags. It also will automatically search and valid local environment and versions of
     ``cc(Linux)`` , ``cl.exe(Windows)`` and ``nvcc`` , then compiles customized operators
@@ -103,8 +136,13 @@ def setup(**attr):
 
     Note:
 
+<<<<<<< HEAD
         1. Currently we support Linux, MacOS and Windows platform.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking candidate of ``/usr/bin/cc`` .
+=======
+        1. Currently we support Linux, MacOS and Windows platfrom.
+        2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking
            GCC version.
         3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
@@ -163,7 +201,11 @@ def setup(**attr):
                                  ``site-package/paddle/include`` . Please add the corresponding directory path if including third-party
                                  head files. Default is None.
         extra_compile_args(list[str] | dict, optional): Specify the extra compiling flags such as ``-O3`` . If set ``list[str]`` , all these flags
+<<<<<<< HEAD
                                 will be applied for ``cc`` and ``nvcc`` compiler. It supports specify flags only applied ``cc`` or ``nvcc``
+=======
+                                will be applied for ``cc`` and ``nvcc`` compiler. It support specify flags only applied ``cc`` or ``nvcc``
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                 compiler using dict type with ``{'cxx': [...], 'nvcc': [...]}`` . Default is None.
         **attr(dict, optional): Specify other arguments same as ``setuptools.setup`` .
 
@@ -210,7 +252,11 @@ def setup(**attr):
     ), "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extension.".format(
         len(ext_modules)
     )
+<<<<<<< HEAD
     # replace Extension.name with attr['name] to keep consistent with Package name.
+=======
+    # replace Extension.name with attr['name] to keep consistant with Package name.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for ext_module in ext_modules:
         ext_module.name = attr['name']
 
@@ -262,7 +308,11 @@ def CppExtension(sources, *args, **kwargs):
 
 
     Note:
+<<<<<<< HEAD
         It is mainly used in ``setup`` and the name of built shared library keeps same
+=======
+        It is mainly used in ``setup`` and the nama of built shared library keeps same
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         as ``name`` argument specified in ``setup`` interface.
 
 
@@ -276,7 +326,11 @@ def CppExtension(sources, *args, **kwargs):
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=False)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
+<<<<<<< HEAD
     # be replaced as `setup.name` to keep consistent with package. Because we allow
+=======
+    # be replaced as `setup.name` to keep consistant with package. Because we allow
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # users can not specific name in Extension.
     # See `paddle.utils.cpp_extension.setup` for details.
     name = kwargs.get('name', None)
@@ -314,7 +368,11 @@ def CUDAExtension(sources, *args, **kwargs):
 
 
     Note:
+<<<<<<< HEAD
         It is mainly used in ``setup`` and the name of built shared library keeps same
+=======
+        It is mainly used in ``setup`` and the nama of built shared library keeps same
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         as ``name`` argument specified in ``setup`` interface.
 
 
@@ -328,7 +386,11 @@ def CUDAExtension(sources, *args, **kwargs):
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
+<<<<<<< HEAD
     # be replaced as `setup.name` to keep consistent with package. Because we allow
+=======
+    # be replaced as `setup.name` to keep consistant with package. Because we allow
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # users can not specific name in Extension.
     # See `paddle.utils.cpp_extension.setup` for details.
     name = kwargs.get('name', None)
@@ -354,7 +416,11 @@ def _generate_extension_name(sources):
     return '_'.join(file_prefix)
 
 
+<<<<<<< HEAD
 class BuildExtension(build_ext):
+=======
+class BuildExtension(build_ext, object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Inherited from setuptools.command.build_ext to customize how to apply
     compilation process with share library.
@@ -375,26 +441,43 @@ class BuildExtension(build_ext):
 
     def __init__(self, *args, **kwargs):
         """
+<<<<<<< HEAD
         Attributes is initialized with following order:
 
             1. super().__init__()
+=======
+        Attributes is initialized with following oreder:
+
+            1. super(self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             2. initialize_options(self)
             3. the reset of current __init__()
             4. finalize_options(self)
 
         So, it is recommended to set attribute value in `finalize_options`.
         """
+<<<<<<< HEAD
         super().__init__(*args, **kwargs)
+=======
+        super(BuildExtension, self).__init__(*args, **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
         self.output_dir = kwargs.get("output_dir", None)
         # whether containing cuda source file in Extensions
         self.contain_cuda_file = False
 
     def initialize_options(self):
+<<<<<<< HEAD
         super().initialize_options()
 
     def finalize_options(self):
         super().finalize_options()
+=======
+        super(BuildExtension, self).initialize_options()
+
+    def finalize_options(self):
+        super(BuildExtension, self).finalize_options()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # NOTE(Aurelius84): Set location of compiled shared library.
         # Carefully to modify this because `setup.py build/install`
         # and `load` interface rely on this attribute.
@@ -429,9 +512,15 @@ class BuildExtension(build_ext):
             obj, src, ext, cc_args, extra_postargs, pp_opts
         ):
             """
+<<<<<<< HEAD
             Monkey patch mechanism to replace inner compiler to custom compile process on Unix platform.
             """
             # use abspath to ensure no warning and don't remove deepcopy because modify params
+=======
+            Monkey patch machanism to replace inner compiler to custom complie process on Unix platform.
+            """
+            # use abspath to ensure no warning and don't remove deecopy because modify params
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # with dict type is dangerous.
             src = os.path.abspath(src)
             cflags = copy.deepcopy(extra_postargs)
@@ -592,7 +681,11 @@ class BuildExtension(build_ext):
 
         def object_filenames_with_cuda(origina_func, build_directory):
             """
+<<<<<<< HEAD
             Decorated the function to add customized naming mechanism.
+=======
+            Decorated the function to add customized naming machanism.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             Originally, both .cc/.cu will have .o object output that will
             bring file override problem. Use .cu.o as CUDA object suffix.
             """
@@ -644,11 +737,19 @@ class BuildExtension(build_ext):
         _reset_so_rpath(so_path)
 
     def get_ext_filename(self, fullname):
+<<<<<<< HEAD
         # for example: customized_extension.cpython-37m-x86_64-linux-gnu.so
         ext_name = super().get_ext_filename(fullname)
         split_str = '.'
         name_items = ext_name.split(split_str)
         if self.no_python_abi_suffix:
+=======
+        # for example: custommed_extension.cpython-37m-x86_64-linux-gnu.so
+        ext_name = super(BuildExtension, self).get_ext_filename(fullname)
+        split_str = '.'
+        name_items = ext_name.split(split_str)
+        if self.no_python_abi_suffix and six.PY3:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             assert (
                 len(name_items) > 2
             ), "Expected len(name_items) > 2, but received {}".format(
@@ -657,7 +758,11 @@ class BuildExtension(build_ext):
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
+<<<<<<< HEAD
         # customized_extension.dylib
+=======
+        # custommed_extension.dylib
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if OS_NAME.startswith('darwin'):
             name_items[-1] = 'dylib'
             ext_name = split_str.join(name_items)
@@ -725,9 +830,15 @@ class BuildExtension(build_ext):
                 )
 
 
+<<<<<<< HEAD
 class EasyInstallCommand(easy_install):
     """
     Extend easy_install Command to control the behavior of naming shared library
+=======
+class EasyInstallCommand(easy_install, object):
+    """
+    Extend easy_intall Command to control the behavior of naming shared library
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     file.
 
     NOTE(Aurelius84): This is a hook subclass inherited Command used to rename shared
@@ -735,11 +846,19 @@ class EasyInstallCommand(easy_install):
     """
 
     def __init__(self, *args, **kwargs):
+<<<<<<< HEAD
         super().__init__(*args, **kwargs)
 
     # NOTE(Aurelius84): Add args and kwargs to make compatible with PY2/PY3
     def run(self, *args, **kwargs):
         super().run(*args, **kwargs)
+=======
+        super(EasyInstallCommand, self).__init__(*args, **kwargs)
+
+    # NOTE(Aurelius84): Add args and kwargs to make compatible with PY2/PY3
+    def run(self, *args, **kwargs):
+        super(EasyInstallCommand, self).run(*args, **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # NOTE: To avoid failing import .so file instead of
         # python file because they have same name, we rename
         # .so shared library to another name.
@@ -760,7 +879,11 @@ class EasyInstallCommand(easy_install):
                 assert os.path.exists(new_so_path)
 
 
+<<<<<<< HEAD
 class BuildCommand(build):
+=======
+class BuildCommand(build, object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Extend build Command to control the behavior of specifying `build_base` root directory.
 
@@ -785,14 +908,22 @@ class BuildCommand(build):
         # Note: shall put before super()
         self._specified_build_base = kwargs.get('build_base', None)
 
+<<<<<<< HEAD
         super().__init__(*args, **kwargs)
+=======
+        super(BuildCommand, self).__init__(*args, **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def initialize_options(self):
         """
         build_base is root directory for all sub-command, such as
         build_lib, build_temp. See `distutils.command.build` for details.
         """
+<<<<<<< HEAD
         super().initialize_options()
+=======
+        super(BuildCommand, self).initialize_options()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if self._specified_build_base is not None:
             self.build_base = self._specified_build_base
 
@@ -837,8 +968,13 @@ def load(
 
     Note:
 
+<<<<<<< HEAD
         1. Currently we support Linux, MacOS and Windows platform.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking candidate of ``/usr/bin/cc`` .
+=======
+        1. Currently we support Linux, MacOS and Windows platfrom.
+        2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking
            GCC version.
         3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).

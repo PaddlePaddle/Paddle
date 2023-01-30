@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import signal
 import sys
@@ -19,19 +20,40 @@ import sys
 from paddle.distributed.launch.job.container import Container
 from paddle.distributed.launch.job.job import Job
 from paddle.distributed.launch.job.pod import Pod
+=======
+import sys
+import os
+import signal
+
+from paddle.distributed.launch.job.job import Job
+from paddle.distributed.launch.job.pod import Pod
+from paddle.distributed.launch.job.container import Container
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from .master import Master
 from .watcher import Watcher
 
+<<<<<<< HEAD
+=======
+import time
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class ControleMode:
     COLLECTIVE = "collective"
     PS = "ps"
     IPU = "ipu"
+<<<<<<< HEAD
     RPC = "rpc"
 
 
 class ControllerBase:
+=======
+
+
+class ControllerBase(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, ctx):
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
@@ -42,11 +64,17 @@ class ControllerBase:
 
         self.watcher = Watcher(self.ctx)
 
+<<<<<<< HEAD
         self.job = Job(
             nnodes=self.ctx.args.nnodes,
             mode=self.ctx.args.run_mode,
             jid=self.ctx.args.job_id,
         )
+=======
+        self.job = Job(nnodes=self.ctx.args.nnodes,
+                       mode=self.ctx.args.run_mode,
+                       jid=self.ctx.args.job_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.pod = Pod()
 
         self.ctx.set_envs({"POD_NAME": self.pod.name})
@@ -75,14 +103,22 @@ class ControllerBase:
         '''
         watch self and peer status, return true to exit
         '''
+<<<<<<< HEAD
         # TODO(kuizhiqing) unify ctx.status and master status
+=======
+        #TODO(kuizhiqing) unify ctx.status and master status
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.ctx.logger.info("Watching {}".format(self.pod))
 
         while not self.ctx.status.is_done():
             status = self.pod.watch(timeout=2)
 
+<<<<<<< HEAD
             # if self.ctx.continous_log():
+=======
+            #if self.ctx.continous_log():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # default to print log
             self.pod.logs()
 
@@ -121,10 +157,15 @@ class ControllerBase:
                     return False
 
             # peer failure
+<<<<<<< HEAD
             if (
                 self.ctx.status.is_restarting()
                 and self.master.get_status() != self.ctx.status.COMPLETED
             ):
+=======
+            if self.ctx.status.is_restarting(
+            ) and self.master.get_status() != self.ctx.status.COMPLETED:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.pod.stop(timeout=30)
                 return False
 
@@ -193,9 +234,18 @@ class Controller(ControllerBase):
             err = os.path.join(self.ctx.args.log_dir, err)
         return out, (err or out)
 
+<<<<<<< HEAD
     def new_container(
         self, entrypoint=None, envs={}, use_ctx_env=True, out=None, err=None
     ):
+=======
+    def new_container(self,
+                      entrypoint=None,
+                      envs={},
+                      use_ctx_env=True,
+                      out=None,
+                      err=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         c = Container(
             entrypoint=(entrypoint or self._get_entrypoint()),
             env=(self.ctx.get_envs() if use_ctx_env else {}),
@@ -204,6 +254,7 @@ class Controller(ControllerBase):
         c.update_env(envs)
         return c
 
+<<<<<<< HEAD
     def add_container(
         self,
         container=None,
@@ -217,6 +268,20 @@ class Controller(ControllerBase):
             container = self.new_container(
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file
             )
+=======
+    def add_container(self,
+                      container=None,
+                      entrypoint=None,
+                      envs={},
+                      log_file=None,
+                      is_init=False):
+
+        if not container:
+            container = self.new_container(entrypoint=entrypoint,
+                                           envs=envs,
+                                           out=log_file,
+                                           err=log_file)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if is_init:
             self.pod.add_init_container(container)
@@ -242,10 +307,15 @@ class Controller(ControllerBase):
         if not self.ctx.args.log_dir:
             return
 
+<<<<<<< HEAD
         f = os.path.join(
             self.ctx.args.log_dir,
             '{}.{}.log'.format(self.job.id, self.pod.name),
         )
+=======
+        f = os.path.join(self.ctx.args.log_dir,
+                         '{}.{}.log'.format(self.job.id, self.pod.name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         try:
             os.makedirs(os.path.dirname(f), exist_ok=True)
             with open(f, 'a+') as fd:

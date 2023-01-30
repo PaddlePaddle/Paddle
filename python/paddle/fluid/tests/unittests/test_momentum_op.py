@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy
@@ -22,6 +23,19 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+import numpy
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def calculate_momentum_by_numpy(
@@ -528,12 +542,19 @@ class TestMomentumV2(unittest.TestCase):
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
             rms_optimizer = paddle.optimizer.Momentum(
@@ -557,6 +578,14 @@ class TestMomentumV2(unittest.TestCase):
         )
         self.assertRaises(ValueError, paddle.optimizer.Momentum, momentum=None)
 
+<<<<<<< HEAD
+=======
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_momentum_dygraph()
+            self.test_raise_error()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class TestMomentumOpWithDecay(OpTest):
     def setUp(self):
@@ -666,12 +695,19 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
             momentum_optimizer = paddle.fluid.contrib.optimizer.Momentum(
@@ -910,10 +946,17 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 multi_precision=use_amp,
             )
         for idx in range(5):
+<<<<<<< HEAD
             if place == 'gpu' and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             if place == 'gpu' and use_amp:
+=======
+            if place == 'gpu' and use_amp == True:
+                model = paddle.amp.decorate(models=model, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            if place == 'gpu' and use_amp == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -990,6 +1033,13 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
 
+<<<<<<< HEAD
+=======
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_main()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class TestMultiTensorMomentumStatic(unittest.TestCase):
     def _momentum_optimize_static(

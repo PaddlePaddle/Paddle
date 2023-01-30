@@ -65,10 +65,22 @@ class TopkOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context(),
+        layout_,
+        library_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -85,8 +97,13 @@ class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Top K operator
 
+<<<<<<< HEAD
 If the input is a vector (1d tensor), this operator finds the k largest
 entries in the vector and outputs their values and indices as vectors.
+=======
+If the input is a vector (1d tensor), this operator finds the k largest 
+entries in the vector and outputs their values and indices as vectors. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 Thus values[j] is the j-th largest entry in input, and its index is indices[j].
 
 For matrices, this operator computes the top k entries in each row. )DOC");
@@ -123,11 +140,19 @@ class TopkOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

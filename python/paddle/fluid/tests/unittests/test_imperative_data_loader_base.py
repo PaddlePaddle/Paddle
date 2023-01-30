@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,15 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid.reader import use_pinned_memory
+=======
+import sys
+import unittest
+import numpy as np
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.reader import use_pinned_memory
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -28,6 +38,10 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def sample_generator_creator(batch_size, batch_num):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __reader__():
         for _ in range(batch_num * batch_size):
             image, label = get_random_images_and_labels([784], [1])
@@ -37,6 +51,10 @@ def sample_generator_creator(batch_size, batch_num):
 
 
 class TestDygraphDataLoader(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
@@ -46,11 +64,16 @@ class TestDygraphDataLoader(unittest.TestCase):
     def iter_loader_data(self, loader):
         for _ in range(self.epoch_num):
             for image, label in loader():
+<<<<<<< HEAD
                 relu = F.relu(image)
+=======
+                relu = fluid.layers.relu(image)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.assertEqual(image.shape, [self.batch_size, 784])
                 self.assertEqual(label.shape, [self.batch_size, 1])
                 self.assertEqual(relu.shape, [self.batch_size, 784])
 
+<<<<<<< HEAD
     def test_single_process_loader(self):
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
@@ -98,6 +121,70 @@ class TestDygraphDataLoader(unittest.TestCase):
             self.iter_loader_data(loader)
             use_pinned_memory(True)
 
+=======
+    def func_test_single_process_loader(self):
+        with fluid.dygraph.guard():
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                        iterable=False,
+                                                        use_multiprocess=False)
+            loader.set_sample_generator(sample_generator_creator(
+                self.batch_size, self.batch_num),
+                                        batch_size=self.batch_size,
+                                        places=fluid.CPUPlace())
+            self.iter_loader_data(loader)
+
+    def test_single_process_loader(self):
+        with _test_eager_guard():
+            self.func_test_single_process_loader()
+        self.func_test_single_process_loader()
+
+    def func_test_multi_process_loader(self):
+        with fluid.dygraph.guard():
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                        use_multiprocess=True)
+            loader.set_sample_generator(sample_generator_creator(
+                self.batch_size, self.batch_num),
+                                        batch_size=self.batch_size,
+                                        places=fluid.CPUPlace())
+            self.iter_loader_data(loader)
+
+    def test_multi_process_loader(self):
+        with _test_eager_guard():
+            self.func_test_multi_process_loader()
+        self.func_test_multi_process_loader()
+
+    def func_test_generator_no_places(self):
+        with fluid.dygraph.guard():
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity)
+            loader.set_sample_generator(sample_generator_creator(
+                self.batch_size, self.batch_num),
+                                        batch_size=self.batch_size)
+            self.iter_loader_data(loader)
+
+    def test_generator_no_places(self):
+        with _test_eager_guard():
+            self.func_test_generator_no_places()
+        self.func_test_generator_no_places()
+
+    def func_test_set_pin_memory(self):
+        with fluid.dygraph.guard():
+            use_pinned_memory(False)
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                        iterable=False,
+                                                        use_multiprocess=False)
+            loader.set_sample_generator(sample_generator_creator(
+                self.batch_size, self.batch_num),
+                                        batch_size=self.batch_size,
+                                        places=fluid.CPUPlace())
+            self.iter_loader_data(loader)
+            use_pinned_memory(True)
+
+    def test_set_pin_memory(self):
+        with _test_eager_guard():
+            self.func_test_set_pin_memory()
+        self.func_test_set_pin_memory()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

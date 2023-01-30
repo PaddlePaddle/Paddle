@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
@@ -31,6 +35,10 @@ print("file: {}".format(flag_name))
 
 
 class TestParallelDygraphMnistMLU(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = False
         self._cncl_mode = True
@@ -48,7 +56,11 @@ class TestParallelDygraphMnistMLU(TestDistBase):
             "FLAGS_call_stack_level": "2",
             "GLOG_v": "2",
             "PADDLE_WITH_GLOO": '0',
+<<<<<<< HEAD
             "BACKEND": "cncl",
+=======
+            "BACKEND": "cncl"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         if check_error_log:
@@ -59,6 +71,7 @@ class TestParallelDygraphMnistMLU(TestDistBase):
         required_envs.update(need_envs)
         return required_envs
 
+<<<<<<< HEAD
     def _run_local(
         self,
         model,
@@ -69,6 +82,16 @@ class TestParallelDygraphMnistMLU(TestDistBase):
         log_name="",
         devices="1",
     ):
+=======
+    def _run_local(self,
+                   model,
+                   envs,
+                   check_error_log=False,
+                   batch_size=DEFAULT_BATCH_SIZE,
+                   batch_merge_repeat=1,
+                   log_name="",
+                   devices="1"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         cmd = self._python_interp
 
@@ -76,10 +99,15 @@ class TestParallelDygraphMnistMLU(TestDistBase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             cmd += " -m coverage run --branch -p"
 
+<<<<<<< HEAD
         cmd += " %s --role trainer --update_method local --lr %f" % (
             model,
             self._lr,
         )
+=======
+        cmd += " %s --role trainer --update_method local --lr %f" % (model,
+                                                                     self._lr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if batch_size != DEFAULT_BATCH_SIZE:
             cmd += " --batch_size %d" % batch_size
@@ -93,7 +121,11 @@ class TestParallelDygraphMnistMLU(TestDistBase):
             env_local = {
                 "FLAGS_selected_mlus": devices,
                 "PADDLE_TRAINERS_NUM": "1",
+<<<<<<< HEAD
                 "PADDLE_TRAINER_ID": "0",
+=======
+                "PADDLE_TRAINER_ID": "0"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
         else:
             env_local = {'CPU_NUM': '1'}
@@ -114,6 +146,7 @@ class TestParallelDygraphMnistMLU(TestDistBase):
         if check_error_log:
             path = "/tmp/local_err_%d.log" % os.getpid()
             err_log = open(path, "w")
+<<<<<<< HEAD
             local_proc = subprocess.Popen(
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
@@ -127,23 +160,43 @@ class TestParallelDygraphMnistMLU(TestDistBase):
                 stderr=subprocess.PIPE,
                 env=env_local,
             )
+=======
+            local_proc = subprocess.Popen(cmd.split(" "),
+                                          stdout=subprocess.PIPE,
+                                          stderr=err_log,
+                                          env=env_local)
+        else:
+            local_proc = subprocess.Popen(cmd.split(" "),
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE,
+                                          env=env_local)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         local_out, local_err = local_proc.communicate()
 
         if check_error_log:
             err_log.close()
             sys.stderr.write(
+<<<<<<< HEAD
                 '\n--run_local-- trainer 0 stderr file saved in: %s\n' % (path)
             )
+=======
+                '\n--run_local-- trainer 0 stderr file saved in: %s\n' % (path))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         sys.stderr.write('local_stderr: %s\n' % local_err)
         sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
 
         return pickle.loads(local_out)
 
+<<<<<<< HEAD
     def _run_cluster_nccl2(
         self, model, envs, update_method, check_error_log, log_name
     ):
+=======
+    def _run_cluster_nccl2(self, model, envs, update_method, check_error_log,
+                           log_name):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
         worker_endpoints = self._ps_endpoints.split(",")
 
@@ -153,6 +206,7 @@ class TestParallelDygraphMnistMLU(TestDistBase):
         pipes = []
         for i in range(0, trainer_num):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
+<<<<<<< HEAD
                 model, worker_endpoints[i], update_method, i, trainer_num
             )
             tr_env.update(envs)
@@ -161,11 +215,18 @@ class TestParallelDygraphMnistMLU(TestDistBase):
                     self._use_hallreduce, i, tr_cmd, tr_env
                 )
             )
+=======
+                model, worker_endpoints[i], update_method, i, trainer_num)
+            tr_env.update(envs)
+            print("use_hallreduce:{} \ntr{}_cmd:{}, env: {}".format(
+                self._use_hallreduce, i, tr_cmd, tr_env))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             tr_pipe = open("/tmp/tr%d_err_%d.log" % (i, os.getpid()), "w")
 
             sys.stderr.write(
                 "\n{} going to start process {} with nccl2\n".format(
+<<<<<<< HEAD
                     type(self).__name__, i
                 )
             )
@@ -175,6 +236,13 @@ class TestParallelDygraphMnistMLU(TestDistBase):
                 stderr=tr_pipe,
                 env=tr_env,
             )
+=======
+                    type(self).__name__, i))
+            tr_proc = subprocess.Popen(tr_cmd.strip().split(" "),
+                                       stdout=subprocess.PIPE,
+                                       stderr=tr_pipe,
+                                       env=tr_env)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             procs.append(tr_proc)
             pipes.append(tr_pipe)
@@ -187,9 +255,13 @@ class TestParallelDygraphMnistMLU(TestDistBase):
             sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
             sys.stderr.write(
                 'trainer {} glog file saved in: /tmp/tr{}_err_{}.log \n'.format(
+<<<<<<< HEAD
                     i, i, os.getpid()
                 )
             )
+=======
+                    i, i, os.getpid()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if check_error_log:
             print("outs[0]:", pickle.loads(outs[0]))
@@ -203,8 +275,12 @@ class TestParallelDygraphMnistMLU(TestDistBase):
                 os.path.abspath("parallel_dygraph_sync_batch_norm.py"),
                 delta=1e-5,
                 check_error_log=True,
+<<<<<<< HEAD
                 log_name=flag_name,
             )
+=======
+                log_name=flag_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

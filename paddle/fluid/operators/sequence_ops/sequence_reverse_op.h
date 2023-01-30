@@ -113,7 +113,11 @@ struct SequenceReverseFunctor {
 
 template <typename DeviceContext, typename T>
 class SequenceReverseOpKernel : public framework::OpKernel<T> {
+<<<<<<< HEAD
   using LoDTensor = phi::DenseTensor;
+=======
+  using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

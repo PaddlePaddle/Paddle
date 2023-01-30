@@ -12,15 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid import metrics
 
 
 class TestAucSinglePredOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
@@ -30,27 +42,46 @@ class TestAucSinglePredOp(OpTest):
         slide_steps = 1
 
         stat_pos = np.zeros(
+<<<<<<< HEAD
             (1 + slide_steps) * (num_thresholds + 1) + 1,
         ).astype("int64")
         stat_neg = np.zeros(
             (1 + slide_steps) * (num_thresholds + 1) + 1,
         ).astype("int64")
+=======
+            (1 + slide_steps) * (num_thresholds + 1) + 1, ).astype("int64")
+        stat_neg = np.zeros(
+            (1 + slide_steps) * (num_thresholds + 1) + 1, ).astype("int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'Predict': pred0,
             'Label': labels,
             "StatPos": stat_pos,
+<<<<<<< HEAD
             "StatNeg": stat_neg,
+=======
+            "StatNeg": stat_neg
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'curve': 'ROC',
             'num_thresholds': num_thresholds,
+<<<<<<< HEAD
             "slide_steps": slide_steps,
         }
 
         python_auc = metrics.Auc(
             name="auc", curve='ROC', num_thresholds=num_thresholds
         )
+=======
+            "slide_steps": slide_steps
+        }
+
+        python_auc = metrics.Auc(name="auc",
+                                 curve='ROC',
+                                 num_thresholds=num_thresholds)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for i in range(128):
             pred[i][1] = pred[i][0]
         python_auc.update(pred, labels)
@@ -62,7 +93,11 @@ class TestAucSinglePredOp(OpTest):
         self.outputs = {
             'AUC': np.array(python_auc.eval()),
             'StatPosOut': np.array(pos),
+<<<<<<< HEAD
             'StatNegOut': np.array(neg),
+=======
+            'StatNegOut': np.array(neg)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -70,6 +105,10 @@ class TestAucSinglePredOp(OpTest):
 
 
 class TestAucGlobalSinglePredOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
@@ -85,17 +124,30 @@ class TestAucGlobalSinglePredOp(OpTest):
             'Predict': pred0,
             'Label': labels,
             "StatPos": stat_pos,
+<<<<<<< HEAD
             "StatNeg": stat_neg,
+=======
+            "StatNeg": stat_neg
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'curve': 'ROC',
             'num_thresholds': num_thresholds,
+<<<<<<< HEAD
             "slide_steps": slide_steps,
         }
 
         python_auc = metrics.Auc(
             name="auc", curve='ROC', num_thresholds=num_thresholds
         )
+=======
+            "slide_steps": slide_steps
+        }
+
+        python_auc = metrics.Auc(name="auc",
+                                 curve='ROC',
+                                 num_thresholds=num_thresholds)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for i in range(128):
             pred[i][1] = pred[i][0]
         python_auc.update(pred, labels)
@@ -105,7 +157,11 @@ class TestAucGlobalSinglePredOp(OpTest):
         self.outputs = {
             'AUC': np.array(python_auc.eval()),
             'StatPosOut': np.array(pos),
+<<<<<<< HEAD
             'StatNegOut': np.array(neg),
+=======
+            'StatNegOut': np.array(neg)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):

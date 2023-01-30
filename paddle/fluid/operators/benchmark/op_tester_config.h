@@ -78,6 +78,7 @@ T StringTo(const std::string& str) {
   return value;
 }
 
+<<<<<<< HEAD
 static const char kStartSeparator[] = "{";
 static const char kEndSeparator[] = "}";
 static const char kSepBetweenItems[] = ";";
@@ -294,6 +295,8 @@ const OpInputConfig* OpTesterConfig::GetInput(const std::string& name) {
   return nullptr;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace benchmark
 }  // namespace operators
 }  // namespace paddle

@@ -20,8 +20,13 @@
 namespace infrt {
 namespace phi {
 
+<<<<<<< HEAD
 void DenseTensorMap::SetDenseTensor(const std::string& name,
                                     std::unique_ptr<::Tensor>&& tensor) {
+=======
+void DenseTensorMap::SetDenseTensor(
+    const std::string& name, std::unique_ptr<::phi::DenseTensor>&& tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::lock_guard<std::mutex> lock(mu_);
   auto it = map_.emplace(std::make_pair(name, std::move(tensor)));
   if (!it.second) {
@@ -29,7 +34,12 @@ void DenseTensorMap::SetDenseTensor(const std::string& name,
   }
 }
 
+<<<<<<< HEAD
 ::Tensor* DenseTensorMap::GetDenseTensor(const std::string& name) const {
+=======
+::phi::DenseTensor* DenseTensorMap::GetDenseTensor(
+    const std::string& name) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::lock_guard<std::mutex> lock(mu_);
   auto it = map_.find(name);
   if (it != map_.end()) {

@@ -14,7 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
+<<<<<<< HEAD
 #include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace inference {
@@ -40,10 +43,17 @@ class MultiheadMatMulOpConverter : public OpConverter {
     auto bias_name = op_desc.Input("Bias").front();
 
     auto* weight_v = scope.FindVar(weight_name);
+<<<<<<< HEAD
     auto* weight_t = weight_v->GetMutable<phi::DenseTensor>();
 
     auto* bias_v = scope.FindVar(bias_name);
     auto* bias_t = bias_v->GetMutable<phi::DenseTensor>();
+=======
+    auto* weight_t = weight_v->GetMutable<framework::LoDTensor>();
+
+    auto* bias_v = scope.FindVar(bias_name);
+    auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     float* weight_data = nullptr;
     bool qkv2context_plugin_int8 = op_desc.HasAttr("qkv2context_plugin_int8");
@@ -88,16 +98,25 @@ class MultiheadMatMulOpConverter : public OpConverter {
                           engine_->tensorrt_transformer_posid() != "" &&
                           engine_->tensorrt_transformer_maskid() != "";
     if (engine_->with_dynamic_shape()) {
+<<<<<<< HEAD
       if (engine_->tensorrt_transformer_maskid() != "" &&
           engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
           platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
               75) {
+=======
+      if (flag_varseqlen) {
+        if (engine_->precision() == AnalysisConfig::Precision::kFloat32) {
+          PADDLE_THROW(platform::errors::Fatal(
+              "use use_varseqlen must be int8 or half, not float32."));
+        }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
                                  static_cast<int32_t>(weight_t->numel())};
         nvinfer1::Weights bias{nvinfer1::DataType::kFLOAT,
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
+<<<<<<< HEAD
 
         nvinfer1::ITensor* mask_tensor;
         nvinfer1::ITensor* pos_id_tensor;
@@ -193,6 +212,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
           pos_id_tensor = transformer_input_layer->getOutput(2);
           max_seqlen_tensor = transformer_input_layer->getOutput(3);
         }
+=======
+        auto max_seqlen_tensor = engine_->GetITensor("max_seqlen_tensor");
+        auto pos_id_tensor = engine_->GetITensor("pos_id");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (engine_->with_interleaved()) {
           VLOG(4) << "fused multihead_matmul op: use_varseqlen and "
                      "with_interleaved";
@@ -204,7 +227,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
           float dp_probs = 1.0 / 127.0;
           nvinfer1::DimsHW nv_ksize(1, 1);
           fc_layer = TRT_ENGINE_ADD_LAYER(
+<<<<<<< HEAD
               engine_, Convolution, *new_input, n, nv_ksize, weight, bias);
+=======
+              engine_, Convolution, *input, n, nv_ksize, weight, bias);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           fc_layer->setName(
               ("Multihead: Convolution/FullyConnected: (Output: " +
                output_name + ")")
@@ -258,8 +285,12 @@ class MultiheadMatMulOpConverter : public OpConverter {
               max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
+<<<<<<< HEAD
           RreplenishLayerAndOutput(
               plugin_layer, "multihead_matmul", {output_name}, test_mode);
+=======
+          layer = plugin_layer;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         } else {
           int head_size = hidden_out / head_number;
           // [3, head_number, head_size, hidden_in] -> [head_number, 3,
@@ -314,10 +345,17 @@ class MultiheadMatMulOpConverter : public OpConverter {
           if (op_desc.HasAttr("Input_scale")) {
             nvinfer1::DimsHW nv_ksize(1, 1);
             fc_layer = TRT_ENGINE_ADD_LAYER(
+<<<<<<< HEAD
                 engine_, Convolution, *new_input, n, nv_ksize, weight, bias);
           } else {
             fc_layer = TRT_ENGINE_ADD_LAYER(
                 engine_, FullyConnected, *new_input, n, weight, bias);
+=======
+                engine_, Convolution, *input, n, nv_ksize, weight, bias);
+          } else {
+            fc_layer = TRT_ENGINE_ADD_LAYER(
+                engine_, FullyConnected, *input, n, weight, bias);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           }
 
           if (op_desc.HasAttr("fc_out_threshold")) {
@@ -376,13 +414,18 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           plugin_inputs.emplace_back(fc_layer->getOutput(0));
+<<<<<<< HEAD
           plugin_inputs.emplace_back(mask_tensor);
+=======
+          plugin_inputs.emplace_back(engine_->GetITensor("qkv_plugin_mask"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           plugin_inputs.emplace_back(pos_id_tensor);
           plugin_inputs.emplace_back(
               max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
 
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
+<<<<<<< HEAD
           plugin_layer->setName(
               ("CustomQKVToContextPluginDynamic: " + output_name).c_str());
           // recover no_varlen output
@@ -408,6 +451,13 @@ class MultiheadMatMulOpConverter : public OpConverter {
             engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
             platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
                 75) {
+=======
+          layer = plugin_layer;
+        }
+      } else {
+        if (input_dims.d[1] <= 384 && !bias_qk_attr &&
+            engine_->precision() != AnalysisConfig::Precision::kFloat32) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           /*
             * input_dims.d[0]: batch(-1)
             * input_dims.d[1]: length:256
@@ -512,6 +562,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           // add fc layer
           nvinfer1::ILayer* fc_layer = nullptr;
+<<<<<<< HEAD
           if (op_desc.HasAttr("Input_scale")) {
             engine_->SetTensorDynamicRange(
                 reshape_before_fc_layer->getOutput(0), in_scale);
@@ -543,6 +594,15 @@ class MultiheadMatMulOpConverter : public OpConverter {
           }
           fc_layer->setName(
               ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+=======
+          fc_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   FullyConnected,
+                                   *reshape_before_fc_layer->getOutput(0),
+                                   n,
+                                   weight,
+                                   bias);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
           // add shuffle for CustomQKVToContextPluginDynamic layer
           auto* reshape_after_fc_layer =
@@ -598,10 +658,16 @@ class MultiheadMatMulOpConverter : public OpConverter {
           plugin_inputs.emplace_back(mask_tensor);
           // input_2 for plugin
           std::vector<int> pos_id = {0};
+<<<<<<< HEAD
           int max_batch = 512;
           int length = (input_dims.d[1] == -1) ? 1 : input_dims.d[1];
           for (int i = 1; i < max_batch; i++) {
             pos_id.push_back(i * length);
+=======
+          int max_batch = 500;
+          for (int i = 1; i < max_batch; i++) {
+            pos_id.push_back(i);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           }
           nvinfer1::ITensor* fake_pos_id_tensor = Add1DConstantLayer(pos_id);
           nvinfer1::ITensor* length_tensor =
@@ -636,26 +702,39 @@ class MultiheadMatMulOpConverter : public OpConverter {
           stride.d[0] = 1;
           size.d[0] = 1;
 
+<<<<<<< HEAD
           nvinfer1::ITensor* pos_id_tensor = (input_dims.d[1] == -1)
                                                  ? pos_id_layer->getOutput(0)
                                                  : fake_pos_id_tensor;
 
           auto* slice_pos_layer = TRT_ENGINE_ADD_LAYER(
               engine_, Slice, *pos_id_tensor, start, size, stride);
+=======
+          auto* slice_pos_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Slice, *pos_id_layer->getOutput(0), start, size, stride);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           slice_pos_layer->setInput(2, *size_layer->getOutput(0));
           plugin_inputs.emplace_back(slice_pos_layer->getOutput(0));
 
           // input_3 for plugin
+<<<<<<< HEAD
           int max_length = (input_dims.d[1] == -1) ? 512 : input_dims.d[1];
           std::vector<int> data(max_length, 1);
+=======
+          std::vector<int> data(500, 1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           nvinfer1::ITensor* fake_max_seqlen_tensor = Add1DConstantLayer(data);
           auto* slice_max_layer = TRT_ENGINE_ADD_LAYER(
               engine_, Slice, *fake_max_seqlen_tensor, start, size, stride);
           slice_max_layer->setInput(2, *length_tensor);
+<<<<<<< HEAD
           nvinfer1::ITensor* max_seqlen_tensor =
               (input_dims.d[1] == -1) ? slice_max_layer->getOutput(0)
                                       : fake_max_seqlen_tensor;
           plugin_inputs.emplace_back(max_seqlen_tensor);
+=======
+          plugin_inputs.emplace_back(slice_max_layer->getOutput(0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           // plugin_layer
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
@@ -782,8 +861,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
               new plugin::QkvToContextPluginDynamic(
                   hidden_in, head_number, head_size, scale, with_fp16);
           layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
+<<<<<<< HEAD
           RreplenishLayerAndOutput(
               layer, "multihead_matmul", {output_name}, test_mode);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
       }
     } else {
@@ -793,6 +875,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
+<<<<<<< HEAD
+=======
+    RreplenishLayerAndOutput(
+        layer, "multihead_matmul", {output_name}, test_mode);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

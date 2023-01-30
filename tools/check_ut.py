@@ -15,6 +15,7 @@
 """ Get pull requests. """
 
 import os
+<<<<<<< HEAD
 import os.path
 
 from github import Github
@@ -22,16 +23,32 @@ from github import Github
 
 class PRChecker:
     """PR Checker."""
+=======
+import time
+import os.path
+from github import Github
+
+
+class PRChecker(object):
+    """ PR Checker. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __init__(self):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = None
 
     def check(self, filename, msg):
+<<<<<<< HEAD
         """
         Args:
             filename (str): File to get block names.
             msg (str): Error message.
+=======
+        """ 
+        Args:
+            filename (str): File to get block names.  
+            msg (str): Error message.  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:

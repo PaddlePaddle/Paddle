@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -47,6 +48,42 @@ def fusion_gru(
 
 
 class TestFusionGRUOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import math
+from op_test import OpTest
+from paddle.fluid.tests.unittests.test_gru_op import gru
+from paddle.fluid.tests.unittests.test_fusion_lstm_op import fc, ACTIVATION
+
+
+def fusion_gru(
+        x,  # T x M
+        lod,  # 1 x N
+        h0,  # N x D
+        wx,  # M x 3D
+        wh,  # D x 3D
+        bias,  # 1 x 3D
+        is_reverse,
+        origin_mode,
+        act_state,
+        act_gate):
+    return gru(fc(x, wx, bias),
+               lod,
+               h0,
+               wh,
+               np.zeros((1, wh.shape[1]), dtype='float32'),
+               is_reverse,
+               act_state,
+               act_gate,
+               origin_mode=origin_mode)
+
+
+class TestFusionGRUOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         pass
 
@@ -70,6 +107,7 @@ class TestFusionGRUOp(OpTest):
         x = np.random.rand(T, self.M).astype('float32')
         wx = np.random.rand(self.M, 3 * self.D).astype('float32')
         wh = np.random.rand(self.D, 3 * self.D).astype('float32')
+<<<<<<< HEAD
         bias = (
             np.random.rand(1, 3 * self.D).astype('float32')
             if self.with_bias
@@ -93,6 +131,19 @@ class TestFusionGRUOp(OpTest):
             ACTIVATION[self.act_state],
             ACTIVATION[self.act_gate],
         )
+=======
+        bias = np.random.rand(
+            1, 3 * self.D).astype('float32') if self.with_bias else np.zeros(
+                (1, 3 * self.D), dtype='float32')
+        h0 = np.random.rand(
+            N, self.D).astype('float32') if self.with_h0 else np.zeros(
+                (N, self.D), dtype='float32')
+
+        _, _, _, hidden = fusion_gru(x, self.lod, h0, wx, wh, bias,
+                                     self.is_reverse, self.origin_mode,
+                                     ACTIVATION[self.act_state],
+                                     ACTIVATION[self.act_gate])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {'X': (x, self.lod), 'WeightX': wx, 'WeightH': wh}
 
@@ -109,7 +160,11 @@ class TestFusionGRUOp(OpTest):
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
+<<<<<<< HEAD
             'use_mkldnn': self.use_mkldnn,
+=======
+            'use_mkldnn': self.use_mkldnn
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -119,39 +174,67 @@ class TestFusionGRUOp(OpTest):
 
 
 class TestFusionGRUOpNoInitial(TestFusionGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.with_h0 = False
 
 
 class TestFusionGRUOpNoBias(TestFusionGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.with_bias = False
 
 
 class TestFusionGRUOpReverse(TestFusionGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestFusionGRUOpMD1(TestFusionGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.M = 36
         self.D = 8
 
 
 class TestFusionGRUOpMD2(TestFusionGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.M = 8
         self.D = 8
 
 
 class TestFusionGRUOpMD3(TestFusionGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.M = 17
         self.D = 15
 
 
 class TestFusionGRUOpBS1(TestFusionGRUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.lod = [[3]]
         self.D = 16
@@ -159,6 +242,9 @@ class TestFusionGRUOpBS1(TestFusionGRUOp):
 
 if __name__ == "__main__":
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

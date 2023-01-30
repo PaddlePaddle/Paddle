@@ -168,7 +168,11 @@ struct KeyValuePair<half> {
 #define WARP_SIZE 32
 
 template <typename T>
+<<<<<<< HEAD
 __inline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
+=======
+__inline__ __device__ T warpReduceSum(T val, unsigned lane_mask) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
     val += __shfl_xor_sync(lane_mask, val, mask, warpSize);
@@ -180,12 +184,20 @@ __inline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
 
 /* Calculate the sum of all elements in a block */
 template <typename T>
+<<<<<<< HEAD
 __inline__ __device__ T BlockReduceSum(T val, unsigned mask) {
+=======
+__inline__ __device__ T blockReduceSum(T val, unsigned mask) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
 
+<<<<<<< HEAD
   val = WarpReduceSum<T>(val, mask);
+=======
+  val = warpReduceSum<T>(val, mask);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   __syncthreads();
   if (lane == 0) shared[wid] = val;
@@ -195,11 +207,16 @@ __inline__ __device__ T BlockReduceSum(T val, unsigned mask) {
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
   val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
+<<<<<<< HEAD
   val = WarpReduceSum<T>(val, mask);
+=======
+  val = warpReduceSum<T>(val, mask);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   return val;
 }
 
+<<<<<<< HEAD
 /*
 WarpReduce multi values.
 */
@@ -242,6 +259,10 @@ __inline__ __device__ T BlockReduceSumV2(T *val) {
 
 template <typename T>
 __inline__ __device__ T WarpReduceMax(T val, unsigned lane_mask) {
+=======
+template <typename T>
+__inline__ __device__ T warpReduceMax(T val, unsigned lane_mask) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
     val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
@@ -251,6 +272,7 @@ __inline__ __device__ T WarpReduceMax(T val, unsigned lane_mask) {
   return val;
 }
 
+<<<<<<< HEAD
 template <typename T, int NUM>
 __inline__ __device__ T WarpReduceMaxV2(T *val) {
 #pragma unroll
@@ -264,6 +286,10 @@ __inline__ __device__ T WarpReduceMaxV2(T *val) {
 
 template <typename T>
 __inline__ __device__ T WarpReduceMin(T val, unsigned lane_mask) {
+=======
+template <typename T>
+__inline__ __device__ T warpReduceMin(T val, unsigned lane_mask) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
     val = min(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
@@ -297,12 +323,20 @@ __inline__ __device__ T PartialWarpReduceMin(T val, unsigned lane_mask) {
 
 /* Calculate the maximum of all elements in a block */
 template <typename T>
+<<<<<<< HEAD
 __inline__ __device__ T BlockReduceMax(T val, unsigned mask) {
+=======
+__inline__ __device__ T blockReduceMax(T val, unsigned mask) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
 
+<<<<<<< HEAD
   val = WarpReduceMax(val, mask);
+=======
+  val = warpReduceMax(val, mask);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (lane == 0) shared[wid] = val;
 
@@ -311,11 +345,16 @@ __inline__ __device__ T BlockReduceMax(T val, unsigned mask) {
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
   val = (lane < block_span) ? shared[lane] : -1e10f;
+<<<<<<< HEAD
   val = WarpReduceMax(val, mask);
+=======
+  val = warpReduceMax(val, mask);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   return val;
 }
 
+<<<<<<< HEAD
 template <typename T, int NUM>
 __inline__ __device__ T BlockReduceMaxV2(T *val) {
   static __shared__ T shared[32][NUM];
@@ -348,18 +387,31 @@ __inline__ __device__ T BlockReduceMaxV2(T *val) {
 /* Calculate the minimum of all elements in a block */
 template <typename T>
 __inline__ __device__ T BlockReduceMin(T val, unsigned mask) {
+=======
+/* Calculate the minimum of all elements in a block */
+template <typename T>
+__inline__ __device__ T blockReduceMin(T val, unsigned mask) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
 
+<<<<<<< HEAD
   val = WarpReduceMin(val, mask);
+=======
+  val = warpReduceMin(val, mask);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (lane == 0) shared[wid] = val;
   __syncthreads();
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
   val = (lane < block_span) ? shared[lane] : 1e10f;
+<<<<<<< HEAD
   val = WarpReduceMin(val, mask);
+=======
+  val = warpReduceMin(val, mask);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   return val;
 }

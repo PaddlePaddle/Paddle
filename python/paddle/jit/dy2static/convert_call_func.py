@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+=======
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 
 import builtins
 import collections
@@ -351,3 +356,10 @@ def convert_call(func):
     if func_self:
         converted_call = functools.partial(converted_call, func_self)
     return converted_call
+=======
+from __future__ import print_function
+
+from ...fluid.dygraph.dygraph_to_static.convert_call_func import convert_call  # noqa: F401
+
+__all__ = []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

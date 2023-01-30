@@ -16,6 +16,7 @@
 """
 TestCases for check_api_compatible.py
 """
+<<<<<<< HEAD
 import tempfile
 import unittest
 
@@ -33,6 +34,24 @@ class Test_check_compatible(unittest.TestCase):
             self.fullargspec_prefix
             + '''ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
         )
+=======
+import unittest
+import sys
+import os
+import tempfile
+import inspect
+
+from check_api_compatible import read_argspec_from_file
+from check_api_compatible import check_compatible
+from check_api_compatible import check_compatible_str
+
+
+class Test_check_compatible(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.fullargspec_prefix = 'inspect.Full'
+        self.argspec_str_o = self.fullargspec_prefix + '''ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return super().setUp()
 
     def test_normal_not_changed(self):
@@ -72,6 +91,7 @@ class Test_check_compatible(unittest.TestCase):
 
 
 class Test_check_compatible_str(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
         # paddle.fluid.layer_helper_base.LayerHelperBase.create_parameter
@@ -79,6 +99,13 @@ class Test_check_compatible_str(unittest.TestCase):
             self.fullargspec_prefix
             + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
         )
+=======
+
+    def setUp(self) -> None:
+        self.fullargspec_prefix = 'inspect.Full'
+        # paddle.fluid.layer_helper_base.LayerHelperBase.create_parameter
+        self.argspec_str_o = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return super().setUp()
 
     def test_normal_not_changed(self):
@@ -87,6 +114,7 @@ class Test_check_compatible_str(unittest.TestCase):
         self.assertTrue(check_compatible_str(argspec_o, argspec_n))
 
     def test_args_added(self):
+<<<<<<< HEAD
         argspec_n = (
             self.fullargspec_prefix
             + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
@@ -117,14 +145,35 @@ class Test_check_compatible_str(unittest.TestCase):
             self.fullargspec_prefix
             + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'type', 'stop_gradient'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
         )
+=======
+        argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        argspec_o = self.argspec_str_o
+        self.assertFalse(check_compatible_str(argspec_o, argspec_n))
+
+        argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR, argadded), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        self.assertTrue(check_compatible_str(argspec_o, argspec_n))
+
+        argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR, argadded, 1), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        self.assertFalse(check_compatible_str(argspec_o, argspec_n))
+
+        argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(1, None, False, None, False, VarType.LOD_TENSOR, argadded), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        self.assertTrue(check_compatible_str(argspec_o, argspec_n))
+
+    def test_args_places_exchanged(self):
+        argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'type', 'stop_gradient'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         argspec_o = self.argspec_str_o
         self.assertFalse(check_compatible_str(argspec_o, argspec_n))
 
     def test_args_reduced(self):
+<<<<<<< HEAD
         argspec_n = (
             self.fullargspec_prefix
             + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
         )
+=======
+        argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         argspec_o = self.argspec_str_o
         self.assertFalse(check_compatible_str(argspec_o, argspec_n))
 
@@ -135,6 +184,7 @@ class Test_check_compatible_str(unittest.TestCase):
 
 
 class Test_read_argspec_from_file(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
         self.argspec_str_o = (
@@ -152,6 +202,19 @@ class Test_read_argspec_from_file(unittest.TestCase):
                     ]
                 )
             )
+=======
+
+    def setUp(self) -> None:
+        self.fullargspec_prefix = 'inspect.Full'
+        self.argspec_str_o = self.fullargspec_prefix + '''ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+        self.api_spec_file = tempfile.TemporaryFile('w+t')
+        if self.api_spec_file:
+            self.api_spec_file.write("\n".join([
+                """paddle.ones (ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={}), ('document', '50a3b3a77fa13bb2ae4337d8f9d091b7'))""",
+                # """paddle.four_plus_four (paddle.four_plus_four, ('document', 'ff0f188c95030158cc6398d2a6c5four'))""",
+                """paddle.five_plus_five (ArgSpec(), ('document', 'ff0f188c95030158cc6398d2a6c5five'))""",
+            ]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.api_spec_file.seek(0)
         return super().setUp()
 
@@ -164,11 +227,17 @@ class Test_read_argspec_from_file(unittest.TestCase):
             api_argspec_dict = read_argspec_from_file(self.api_spec_file)
             argspec = eval(self.argspec_str_o)
             self.assertEqual(
+<<<<<<< HEAD
                 api_argspec_dict.get('paddle.ones').args, argspec.args
             )
             self.assertEqual(
                 api_argspec_dict.get('paddle.ones').defaults, argspec.defaults
             )
+=======
+                api_argspec_dict.get('paddle.ones').args, argspec.args)
+            self.assertEqual(
+                api_argspec_dict.get('paddle.ones').defaults, argspec.defaults)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertIsNone(api_argspec_dict.get('paddle.five_plus_five'))
         else:
             self.fail('api_spec_file error')

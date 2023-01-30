@@ -197,7 +197,10 @@ void SerializationLogger::LogHostTraceEventNode(
         op_supplement_event_node->ThreadId());
     op_supplement_event_proto->set_callstack(
         op_supplement_event_node->CallStack());
+<<<<<<< HEAD
     op_supplement_event_proto->set_op_id(op_supplement_event_node->OpId());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     OperatorSupplementEventProto::input_shape_proto* input_shape_proto =
         op_supplement_event_proto->mutable_input_shapes();

@@ -78,7 +78,11 @@ void ConcatGradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(concat_grad,
                    OneDNN,
+<<<<<<< HEAD
                    ONEDNN,
+=======
+                   ALL_LAYOUT,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    phi::ConcatGradKernel,
                    float,
                    phi::dtype::bfloat16) {}

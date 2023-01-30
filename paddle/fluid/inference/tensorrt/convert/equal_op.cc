@@ -35,6 +35,10 @@ class EqualOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+<<<<<<< HEAD
+=======
+#if IS_TRT_VERSION_GE(8000)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
 
@@ -78,6 +82,7 @@ class EqualOpConverter : public OpConverter {
     layer = TRT_ENGINE_ADD_LAYER(
         engine_, ElementWise, *X, *Y, nvinfer1::ElementWiseOperation::kEQUAL);
     RreplenishLayerAndOutput(layer, "equal", {output_name}, test_mode);
+<<<<<<< HEAD
   }
 };
 
@@ -134,6 +139,13 @@ class NotEqualOpConverter : public OpConverter {
         engine_, Unary, *layer->getOutput(0), nvinfer1::UnaryOperation::kNOT);
 
     RreplenishLayerAndOutput(layer, "not_equal", {output_name}, test_mode);
+=======
+#else
+    PADDLE_THROW(
+        platform::errors::Fatal("ElementWise Equal Operation is only supported "
+                                "on TRT 8 or higher version."));
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -142,4 +154,7 @@ class NotEqualOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(equal, EqualOpConverter);
+<<<<<<< HEAD
 REGISTER_TRT_OP_CONVERTER(not_equal, NotEqualOpConverter);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

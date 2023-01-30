@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -27,6 +32,10 @@ SEED = 2021
 
 
 class TestFillConstant(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -48,6 +57,10 @@ class TestFillConstant(OpTest):
 
 
 class TestFillConstantInt(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -57,7 +70,11 @@ class TestFillConstantInt(OpTest):
         self.attrs = {
             'shape': [123, 92],
             'value': 1,
+<<<<<<< HEAD
             'dtype': core.VarDesc.VarType.INT32,
+=======
+            'dtype': core.VarDesc.VarType.INT32
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': np.full((123, 92), 1).astype(self.dtype)}
 
@@ -72,6 +89,10 @@ class TestFillConstantInt(OpTest):
 
 
 class TestFillConstantInt64(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -81,7 +102,11 @@ class TestFillConstantInt64(OpTest):
         self.attrs = {
             'shape': [123, 92],
             'value': 1,
+<<<<<<< HEAD
             'dtype': core.VarDesc.VarType.INT64,
+=======
+            'dtype': core.VarDesc.VarType.INT64
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': np.full((123, 92), 1).astype(self.dtype)}
 
@@ -96,6 +121,10 @@ class TestFillConstantInt64(OpTest):
 
 
 class TestFillConstantFP16(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -105,7 +134,11 @@ class TestFillConstantFP16(OpTest):
         self.attrs = {
             'shape': [123, 92],
             'value': 1.0,
+<<<<<<< HEAD
             'dtype': core.VarDesc.VarType.FP16,
+=======
+            'dtype': core.VarDesc.VarType.FP16
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': np.full((123, 92), 1.0).astype(self.dtype)}
 
@@ -120,6 +153,10 @@ class TestFillConstantFP16(OpTest):
 
 
 class TestFillConstantBool(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -129,7 +166,11 @@ class TestFillConstantBool(OpTest):
         self.attrs = {
             'shape': [123, 92],
             'value': True,
+<<<<<<< HEAD
             'dtype': core.VarDesc.VarType.BOOL,
+=======
+            'dtype': core.VarDesc.VarType.BOOL
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': np.full((123, 92), True).astype(self.dtype)}
 
@@ -144,6 +185,10 @@ class TestFillConstantBool(OpTest):
 
 
 class TestFillConstantWithPlaceType(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)

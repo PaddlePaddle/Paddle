@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import signal
 import subprocess
@@ -30,6 +31,22 @@ class ProcessContext:
         preexec_fn=None,
         shell=False,
     ):
+=======
+import subprocess
+import os, sys, signal, time
+
+
+class ProcessContext(object):
+
+    def __init__(self,
+                 cmd,
+                 env=os.environ,
+                 out=sys.stdout,
+                 err=sys.stderr,
+                 group=True,
+                 preexec_fn=None,
+                 shell=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._cmd = cmd
         self._env = env
         self._preexec_fn = preexec_fn
@@ -42,6 +59,7 @@ class ProcessContext:
 
     def _start(self):
         pre_fn = os.setsid if self._group else None
+<<<<<<< HEAD
         self._proc = subprocess.Popen(
             self._cmd,
             env=self._env,
@@ -50,6 +68,14 @@ class ProcessContext:
             preexec_fn=self._preexec_fn or pre_fn,
             shell=self._shell,
         )
+=======
+        self._proc = subprocess.Popen(self._cmd,
+                                      env=self._env,
+                                      stdout=self._stdout,
+                                      stderr=self._stderr,
+                                      preexec_fn=self._preexec_fn or pre_fn,
+                                      shell=self._shell)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _close_std(self):
         try:

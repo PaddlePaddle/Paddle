@@ -27,6 +27,10 @@ paddle.enable_static()
 
 
 class TestCheckFiniteAndUnscale(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         fluid.set_flags({'FLAGS_check_nan_inf': True})
 

@@ -21,16 +21,30 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class CosSimKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     // get phi::DenseTensor
     auto* in_x = context.Input<phi::DenseTensor>("X");
     auto* in_y = context.Input<phi::DenseTensor>("Y");
     auto* out_z = context.Output<phi::DenseTensor>("Out");
     auto* out_x_norm = context.Output<phi::DenseTensor>("XNorm");
     auto* out_y_norm = context.Output<phi::DenseTensor>("YNorm");
+=======
+    // get Tensor
+    auto* in_x = context.Input<framework::LoDTensor>("X");
+    auto* in_y = context.Input<Tensor>("Y");
+    auto* out_z = context.Output<framework::LoDTensor>("Out");
+    auto* out_x_norm = context.Output<Tensor>("XNorm");
+    auto* out_y_norm = context.Output<Tensor>("YNorm");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int rows_x = in_x->dims()[0];
     int rows_y = in_y->dims()[0];
@@ -72,6 +86,7 @@ template <typename DeviceContext, typename T>
 class CosSimGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     // get phi::DenseTensor
     auto* in_x = context.Input<phi::DenseTensor>("X");
     auto* in_y = context.Input<phi::DenseTensor>("Y");
@@ -84,6 +99,17 @@ class CosSimGradKernel : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     auto* in_grad_z =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    // get Tensor
+    auto* in_x = context.Input<Tensor>("X");
+    auto* in_y = context.Input<Tensor>("Y");
+    auto* in_z = context.Input<Tensor>("Out");
+    auto* in_x_norm = context.Input<Tensor>("XNorm");
+    auto* in_y_norm = context.Input<Tensor>("YNorm");
+    auto* out_grad_x = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* out_grad_y = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto* in_grad_z = context.Input<Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // compute gradident
     int rows_x = in_x->dims()[0];

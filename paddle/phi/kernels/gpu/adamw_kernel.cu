@@ -19,15 +19,24 @@
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 template <typename T, typename MT>
@@ -282,7 +291,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
         param.numel());
     if (!use_global_beta_pow) {
       // Update with gpu
+<<<<<<< HEAD
       UpdateAdamWBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
+=======
+      UpdateAdamWBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           beta1_,
           beta2_,
           beta1_pow.data<MPDType>(),
@@ -301,8 +314,12 @@ PD_REGISTER_KERNEL(adamw,
                    phi::AdamwDenseKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+=======
+                   phi::dtype::float16) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

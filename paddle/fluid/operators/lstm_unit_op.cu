@@ -107,10 +107,17 @@ class LstmUnitOpCUDAKernel : public framework::OpKernel<T> {
         true,
         paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
 
+<<<<<<< HEAD
     auto* x_tensor = ctx.Input<phi::DenseTensor>("X");
     auto* c_prev_tensor = ctx.Input<phi::DenseTensor>("C_prev");
     auto* c_tensor = ctx.Output<phi::DenseTensor>("C");
     auto* h_tensor = ctx.Output<phi::DenseTensor>("H");
+=======
+    auto* x_tensor = ctx.Input<framework::Tensor>("X");
+    auto* c_prev_tensor = ctx.Input<framework::Tensor>("C_prev");
+    auto* c_tensor = ctx.Output<framework::Tensor>("C");
+    auto* h_tensor = ctx.Output<framework::Tensor>("H");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto forget_bias = static_cast<T>(ctx.Attr<float>("forget_bias"));
 
@@ -140,6 +147,7 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
         true,
         paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
 
+<<<<<<< HEAD
     auto x_tensor = ctx.Input<phi::DenseTensor>("X");
     auto c_prev_tensor = ctx.Input<phi::DenseTensor>("C_prev");
     auto c_tensor = ctx.Input<phi::DenseTensor>("C");
@@ -154,6 +162,19 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto c_prev_diff_tensor =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("C_prev"));
+=======
+    auto x_tensor = ctx.Input<Tensor>("X");
+    auto c_prev_tensor = ctx.Input<Tensor>("C_prev");
+    auto c_tensor = ctx.Input<Tensor>("C");
+    auto h_tensor = ctx.Input<Tensor>("H");
+
+    auto hdiff_tensor = ctx.Input<Tensor>(framework::GradVarName("H"));
+    auto cdiff_tensor = ctx.Input<Tensor>(framework::GradVarName("C"));
+
+    auto xdiff_tensor = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto c_prev_diff_tensor =
+        ctx.Output<Tensor>(framework::GradVarName("C_prev"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto* X = x_tensor->data<T>();
     auto* C_prev = c_prev_tensor->data<T>();

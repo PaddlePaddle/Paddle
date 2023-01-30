@@ -12,17 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
 from launch_function_helper import _find_free_port, launch_func, wait
 
 import paddle
+=======
+import unittest
+import paddle
+import os
+from launch_function_helper import launch_func, wait, _find_free_port
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         try:
             self._dist_ut_port_0 = int(os.environ["PADDLE_DIST_UT_PORT"])
@@ -35,6 +46,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         port_a = self._dist_ut_port_0
         port_b = self._dist_ut_port_1
         node_a = {
+<<<<<<< HEAD
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
             "PADDLE_TRAINERS_NUM": "2",
@@ -54,10 +66,40 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+=======
+            "PADDLE_TRAINER_ID":
+            "0",
+            "PADDLE_CURRENT_ENDPOINT":
+            "127.0.0.1:{}".format(port_a),
+            "PADDLE_TRAINERS_NUM":
+            "2",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
+            "http_proxy":
+            "",
+            "https_proxy":
+            ""
+        }
+
+        node_b = {
+            "PADDLE_TRAINER_ID":
+            "1",
+            "PADDLE_CURRENT_ENDPOINT":
+            "127.0.0.1:{}".format(port_b),
+            "PADDLE_TRAINERS_NUM":
+            "2",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
+            "http_proxy":
+            "",
+            "https_proxy":
+            ""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         def node_func():
             import paddle.distributed.fleet as fleet
+<<<<<<< HEAD
 
             fleet.init(is_collective=True)
             input_x = paddle.static.data(
@@ -76,13 +118,35 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 reduction='none',
                 use_softmax=False,
             )
+=======
+            fleet.init(is_collective=True)
+            input_x = paddle.fluid.layers.data(name="x",
+                                               shape=[32],
+                                               dtype='float32')
+            input_y = paddle.fluid.layers.data(name="y",
+                                               shape=[1],
+                                               dtype='int64')
+
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                size=2,
+                                                act='softmax')
+            cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                     label=input_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+<<<<<<< HEAD
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )
+=======
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             optimizer.minimize(avg_cost)
 
             exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
@@ -99,6 +163,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         port_b = self._dist_ut_port_1 + 2
 
         node_a = {
+<<<<<<< HEAD
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
             "PADDLE_TRAINERS_NUM": "2",
@@ -118,10 +183,40 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+=======
+            "PADDLE_TRAINER_ID":
+            "0",
+            "PADDLE_CURRENT_ENDPOINT":
+            "127.0.0.1:{}".format(port_a),
+            "PADDLE_TRAINERS_NUM":
+            "2",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
+            "http_proxy":
+            "",
+            "https_proxy":
+            ""
+        }
+
+        node_b = {
+            "PADDLE_TRAINER_ID":
+            "1",
+            "PADDLE_CURRENT_ENDPOINT":
+            "127.0.0.1:{}".format(port_b),
+            "PADDLE_TRAINERS_NUM":
+            "2",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
+            "http_proxy":
+            "",
+            "https_proxy":
+            ""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         def node_func():
             import paddle.distributed.fleet as fleet
+<<<<<<< HEAD
 
             fleet.init(is_collective=True)
             input_x = paddle.static.data(
@@ -140,15 +235,37 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 reduction='none',
                 use_softmax=False,
             )
+=======
+            fleet.init(is_collective=True)
+            input_x = paddle.fluid.layers.data(name="x",
+                                               shape=[32],
+                                               dtype='float32')
+            input_y = paddle.fluid.layers.data(name="y",
+                                               shape=[1],
+                                               dtype='int64')
+
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                size=2,
+                                                act='softmax')
+            cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                     label=input_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.nccl_comm_num = 2
             strategy.sync_nccl_allreduce = True
             optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+<<<<<<< HEAD
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )
+=======
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             optimizer.minimize(avg_cost)
             exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
             exe.run(paddle.fluid.default_startup_program())
@@ -158,7 +275,11 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             def gen_data():
                 return {
                     "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
                     "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+=======
+                    "y": np.random.randint(2, size=(128, 1)).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
 
             for i in range(10):
@@ -175,6 +296,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         port_a = self._dist_ut_port_0 + 4
         port_b = self._dist_ut_port_1 + 4
         node_a = {
+<<<<<<< HEAD
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
             "PADDLE_TRAINERS_NUM": "2",
@@ -194,10 +316,40 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+=======
+            "PADDLE_TRAINER_ID":
+            "0",
+            "PADDLE_CURRENT_ENDPOINT":
+            "127.0.0.1:{}".format(port_a),
+            "PADDLE_TRAINERS_NUM":
+            "2",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
+            "http_proxy":
+            "",
+            "https_proxy":
+            ""
+        }
+
+        node_b = {
+            "PADDLE_TRAINER_ID":
+            "1",
+            "PADDLE_CURRENT_ENDPOINT":
+            "127.0.0.1:{}".format(port_b),
+            "PADDLE_TRAINERS_NUM":
+            "2",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
+            "http_proxy":
+            "",
+            "https_proxy":
+            ""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         def node_func():
             import paddle.distributed.fleet as fleet
+<<<<<<< HEAD
 
             fleet.init(is_collective=True)
             input_x = paddle.static.data(
@@ -216,13 +368,35 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 reduction='none',
                 use_softmax=False,
             )
+=======
+            fleet.init(is_collective=True)
+            input_x = paddle.fluid.layers.data(name="x",
+                                               shape=[32],
+                                               dtype='float32')
+            input_y = paddle.fluid.layers.data(name="y",
+                                               shape=[1],
+                                               dtype='int64')
+
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                size=2,
+                                                act='softmax')
+            cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                     label=input_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+<<<<<<< HEAD
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )
+=======
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             optimizer.minimize(avg_cost)
 
             exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
@@ -238,6 +412,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         port_a = self._dist_ut_port_0 + 6
         port_b = self._dist_ut_port_1 + 6
         node_a = {
+<<<<<<< HEAD
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
             "PADDLE_TRAINERS_NUM": "2",
@@ -257,10 +432,40 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+=======
+            "PADDLE_TRAINER_ID":
+            "0",
+            "PADDLE_CURRENT_ENDPOINT":
+            "127.0.0.1:{}".format(port_a),
+            "PADDLE_TRAINERS_NUM":
+            "2",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
+            "http_proxy":
+            "",
+            "https_proxy":
+            ""
+        }
+
+        node_b = {
+            "PADDLE_TRAINER_ID":
+            "1",
+            "PADDLE_CURRENT_ENDPOINT":
+            "127.0.0.1:{}".format(port_b),
+            "PADDLE_TRAINERS_NUM":
+            "2",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
+            "http_proxy":
+            "",
+            "https_proxy":
+            ""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         def node_func():
             import paddle.distributed.fleet as fleet
+<<<<<<< HEAD
 
             fleet.init(is_collective=True)
             input_x = paddle.static.data(
@@ -279,15 +484,37 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 reduction='none',
                 use_softmax=False,
             )
+=======
+            fleet.init(is_collective=True)
+            input_x = paddle.fluid.layers.data(name="x",
+                                               shape=[32],
+                                               dtype='float32')
+            input_y = paddle.fluid.layers.data(name="y",
+                                               shape=[1],
+                                               dtype='int64')
+
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                size=2,
+                                                act='softmax')
+            cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                     label=input_y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.nccl_comm_num = 2
             strategy.sync_nccl_allreduce = True
             optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+<<<<<<< HEAD
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )
+=======
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             optimizer.minimize(avg_cost)
             exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
             exe.run(paddle.fluid.default_startup_program())
@@ -297,7 +524,11 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             def gen_data():
                 return {
                     "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
                     "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+=======
+                    "y": np.random.randint(2, size=(128, 1)).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
 
             for i in range(10):

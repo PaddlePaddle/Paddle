@@ -15,8 +15,13 @@
 #include "paddle/fluid/framework/ir/mkldnn/int8_scale_calculation_mkldnn_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/phi/core/enforce.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -60,6 +65,7 @@ Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {
       .AddAttr("data_format")
       .IsStringIn({"NCHW", "AnyLayout"})
       .End();
+<<<<<<< HEAD
   AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -106,6 +112,11 @@ void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 
 void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
     ir::Graph* graph, const std::string& conv_type) const {
+=======
+}
+
+void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
@@ -113,7 +124,11 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
   GraphPatternDetector gpd;
   patterns::Conv conv_pattern(gpd.mutable_pattern(),
                               "int8_scale_calculation_mkldnn_pass");
+<<<<<<< HEAD
   conv_pattern(conv_type);
+=======
+  conv_pattern();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int found_int8_scales_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -123,9 +138,12 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
+<<<<<<< HEAD
     if (conv_op->Op()->Type() == "conv2d") {
       conv_op->Op()->SetType("fused_conv2d");
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (!platform::HasOpINT8DataType(conv_op->Op()) ||
         conv_op->Op()->HasAttr("Sum_scale")) {

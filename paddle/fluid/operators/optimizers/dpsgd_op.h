@@ -29,29 +29,52 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be phi::DenseTensor, "
+=======
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
 
     const auto *grad_var = ctx.InputVar("Grad");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be phi::DenseTensor, "
+=======
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           "but the received is %s",
                           ctx.InputNames("Grad").front(),
                           framework::ToTypeName(grad_var->Type())));
 
+<<<<<<< HEAD
     const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
 
     const auto *param = ctx.Input<phi::DenseTensor>("Param");
     const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
 
     auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+=======
+    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+
+    const auto *param = ctx.Input<framework::Tensor>("Param");
+    const auto *grad = ctx.Input<framework::Tensor>("Grad");
+
+    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto sz = param_out->numel();
     PADDLE_ENFORCE_EQ(param->numel(),

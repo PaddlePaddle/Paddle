@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -26,6 +27,19 @@ from xpu.get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+=======
+import paddle
+import numpy as np
+import sys
+import unittest
+from functools import reduce
+
+sys.path.append("..")
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from operator import mul
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -69,11 +83,19 @@ def ref_p_norm(x, axis, porder, keepdims=False, reduce_all=False):
 
 
 class XPUTestPNormOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'p_norm'
         self.use_dynamic_create_class = False
 
     class TestXPUPNormOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "p_norm"
             self.dtype = self.in_type
@@ -88,16 +110,25 @@ class XPUTestPNormOp(XPUOpTestWrapper):
 
             x_np = np.random.uniform(-10, 10, self.shape).astype(self.dtype)
 
+<<<<<<< HEAD
             ref_y_np = ref_p_norm(
                 x_np, self.axis, self.porder, self.keepdims, self.asvector
             )
+=======
+            ref_y_np = ref_p_norm(x_np, self.axis, self.porder, self.keepdims,
+                                  self.asvector)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.inputs = {'X': x_np}
             self.outputs = {'Out': ref_y_np}
             self.attrs = {
                 'epsilon': self.epsilon,
                 'axis': self.axis,
                 'porder': float(self.porder),
+<<<<<<< HEAD
                 'asvector': self.asvector,
+=======
+                'asvector': self.asvector
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def set_attrs(self):
@@ -110,60 +141,100 @@ class XPUTestPNormOp(XPUOpTestWrapper):
             self.check_grad_with_place(paddle.XPUPlace(0), ['X'], 'Out')
 
     class TestPnormOp2(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3]
             self.axis = 2
             self.porder = 2.0
 
     class TestPnormOp3(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3]
             self.axis = 2
             self.porder = np.inf
 
     class TestPnormOp4(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3]
             self.axis = 2
             self.porder = -np.inf
 
     class TestPnormOp5(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3]
             self.axis = 2
             self.porder = 0
 
     class TestPnormOp6(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3]
             self.axis = -1
             self.porder = 2
 
     class TestPnormOp7(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3, 10]
             self.axis = 2
             self.porder = 2.0
 
     class TestPnormOp8(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3]
             self.axis = 2
             self.porder = np.inf
 
     class TestPnormOp9(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3, 10]
             self.axis = 1
             self.porder = -np.inf
 
     class TestPnormOp10(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3, 10]
             self.axis = 2
             self.porder = 0
 
     class TestPnormOp11(TestXPUPNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_attrs(self):
             self.shape = [3, 20, 3, 10]
             self.axis = -1

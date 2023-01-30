@@ -11,13 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 import math
+<<<<<<< HEAD
 from typing import List, Tuple, Union
+=======
+from typing import List
+from typing import Tuple
+from typing import Union
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 from paddle import Tensor
 
 
+<<<<<<< HEAD
 class WindowFunctionRegister:
+=======
+class WindowFunctionRegister(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self._functions_dict = dict()
 
@@ -208,7 +218,11 @@ def _tukey(
     if alpha <= 0:
         return paddle.ones((M,), dtype=dtype)
     elif alpha >= 1.0:
+<<<<<<< HEAD
         return _hann(M, sym=sym)
+=======
+        return hann(M, sym=sym)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     M, needs_trunc = _extend(M, sym)
 

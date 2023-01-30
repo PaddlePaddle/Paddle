@@ -16,6 +16,10 @@
 #include <cmath>
 #include <string>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/data_type.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"

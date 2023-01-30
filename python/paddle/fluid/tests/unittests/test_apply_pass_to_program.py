@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,15 +23,31 @@ from paddle.fluid.framework import _apply_pass
 from paddle.fluid.ir import apply_build_strategy
 from paddle.nn import CrossEntropyLoss
 from paddle.vision.models import resnet50
+=======
+import paddle
+from paddle.vision.models import resnet50
+from paddle.nn import CrossEntropyLoss
+from paddle.fluid.framework import _apply_pass
+from paddle.fluid.ir import apply_build_strategy
+import paddle.fluid as fluid
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_resnet50_model():
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
+<<<<<<< HEAD
         image = paddle.static.data(
             name="image", shape=[None, 3, 224, 224], dtype="float32"
         )
+=======
+        image = paddle.static.data(name="image",
+                                   shape=[None, 3, 224, 224],
+                                   dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         label = paddle.static.data(name="label", shape=[None, 1], dtype="int64")
         model = resnet50()
         loss_fn = CrossEntropyLoss()
@@ -50,6 +67,10 @@ def global_block_contains_op(program, op_type):
 
 
 class TestApplyPassToProgram(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
 
@@ -68,14 +89,20 @@ class TestApplyPassToProgram(unittest.TestCase):
             "size_t_attr": "size_t",
             "float32_attr": "float32",
         }
+<<<<<<< HEAD
         ret_attrs = _apply_pass(
             main, startup, "fuse_elewise_add_act_pass", attrs, attr_types
         )
+=======
+        ret_attrs = _apply_pass(main, startup, "fuse_elewise_add_act_pass",
+                                attrs, attr_types)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(attrs, ret_attrs)
         self.assertTrue(global_block_contains_op(main, fused_op))
 
 
 class TestIRPassBase(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
@@ -85,6 +112,16 @@ class TestIRPassBase(unittest.TestCase):
                     'FLAGS_max_inplace_grad_add': 6,
                 }
             )
+=======
+
+    def setUp(self):
+        paddle.enable_static()
+        if paddle.is_compiled_with_cuda():
+            fluid.set_flags({
+                'FLAGS_cudnn_deterministic': 1,
+                'FLAGS_max_inplace_grad_add': 6,
+            })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.place = paddle.CUDAPlace(0)
         else:
             self.place = paddle.CPUPlace()
@@ -107,8 +144,12 @@ class TestIRPassBase(unittest.TestCase):
         self.assertFalse(global_block_contains_op(main, "share_buffer"))
         self.assertFalse(global_block_contains_op(main, "coalesce_tensor"))
         self.assertFalse(
+<<<<<<< HEAD
             global_block_contains_op(main, "fused_elemwise_add_activation")
         )
+=======
+            global_block_contains_op(main, "fused_elemwise_add_activation"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         adam_cnt = 0
         for op in main.global_block().ops:
@@ -123,8 +164,12 @@ class TestIRPassBase(unittest.TestCase):
             self.assertTrue(global_block_contains_op(main, "coalesce_tensor"))
             self.assertTrue(global_block_contains_op(main, "depend"))
         self.assertTrue(
+<<<<<<< HEAD
             global_block_contains_op(main, "fused_elemwise_add_activation")
         )
+=======
+            global_block_contains_op(main, "fused_elemwise_add_activation"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         share_dims_cnt = 0
         non_share_dims_cnt = 0
@@ -172,9 +217,14 @@ class TestIRPassBase(unittest.TestCase):
             setattr(build_strategy, k, v)
         self.check_before_applied(main2, startup2)
 
+<<<<<<< HEAD
         apply_build_strategy(
             main2, startup2, build_strategy, {"use_cuda": self.use_cuda}
         )
+=======
+        apply_build_strategy(main2, startup2, build_strategy,
+                             {"use_cuda": self.use_cuda})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.check_after_applied(main2, startup2)
 
         image_shape = [batch_size] + list(image.shape)[1:]
@@ -192,6 +242,7 @@ class TestIRPassBase(unittest.TestCase):
 
         for idx in range(batch_num):
             feed = {
+<<<<<<< HEAD
                 image.name: np.random.rand(*image_shape).astype('float32'),
                 label.name: np.random.randint(
                     low=0,
@@ -208,6 +259,24 @@ class TestIRPassBase(unittest.TestCase):
                 loss_value2 = self.executor.run(
                     main2, feed=feed, fetch_list=[loss2]
                 )[0]
+=======
+                image.name:
+                np.random.rand(*image_shape).astype('float32'),
+                label.name:
+                np.random.randint(low=0,
+                                  high=self.num_classes,
+                                  size=label_shape,
+                                  dtype='int64'),
+            }
+            with paddle.static.scope_guard(scope1):
+                loss_value1 = self.executor.run(main1,
+                                                feed=feed,
+                                                fetch_list=[loss1])[0]
+            with paddle.static.scope_guard(scope2):
+                loss_value2 = self.executor.run(main2,
+                                                feed=feed,
+                                                fetch_list=[loss2])[0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(loss_value1, loss_value2, "batch {}".format(idx))
 
 

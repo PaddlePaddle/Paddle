@@ -29,13 +29,18 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     auto dtype = framework::proto::VarType::FP32;
     if (ctx.MultiInputVar("X").size() >= 1) {
       dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     }
 
+<<<<<<< HEAD
     return phi::KernelKey(dtype, ctx.GetPlace());
   }
 
@@ -48,6 +53,18 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
       return phi::KernelKey(phi::Backend::ALL_BACKEND,
                             expected_kernel_type.layout(),
                             expected_kernel_type.dtype());
+=======
+    return framework::OpKernelType(dtype, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+#ifndef PADDLE_WITH_XPU
+    if (var_name == "FoundInfinite" || var_name == "StopUpdate") {
+      return expected_kernel_type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 #endif
     return framework::OperatorWithKernel::GetKernelTypeForVar(
@@ -113,8 +130,13 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Stop updating loss scaling, and just zero inputs.")
         .SetDefault(false);
     AddComment(R"DOC(
+<<<<<<< HEAD
 Update loss scaling according to overall gradients. If all gradients is
 finite after incr_every_n_steps, loss scaling will increase by incr_ratio.
+=======
+Update loss scaling according to overall gradients. If all gradients is 
+finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 Otherwise, loss scaling will decrease by decr_ratio after
 decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 

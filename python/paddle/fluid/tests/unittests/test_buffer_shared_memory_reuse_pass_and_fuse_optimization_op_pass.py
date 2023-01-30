@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_buffer_shared_memory_reuse_pass import InplaceTestBase
 
 
 class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
+=======
+from test_buffer_shared_memory_reuse_pass import InplaceTestBase
+import unittest
+
+
+class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameter(self):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = True
@@ -31,6 +40,10 @@ class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
 
 
 class CPUInplaceTestWithFuseOptimizationOps(InplaceTestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameter(self):
         self.use_cuda = False
         self.fuse_all_optimizer_ops = True

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,6 +22,17 @@ import paddle.fluid as fluid
 
 
 class TestEmbeddingIdStopGradientBase(unittest.TestCase):
+=======
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import six
+import unittest
+
+
+class TestEmbeddingIdStopGradientBase(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.reshape_times = 1
         self.iteration = 10
@@ -53,8 +65,13 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                 x_2 = fluid.data(name='x2', shape=[4, 1], dtype='int64')
                 x = fluid.layers.concat([x_1, x_2], axis=-1)
 
+<<<<<<< HEAD
                 for _ in range(self.reshape_times):
                     x = paddle.reshape(x, [-1, 1])
+=======
+                for _ in six.moves.range(self.reshape_times):
+                    x = fluid.layers.reshape(x, [-1, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 x.stop_gradient = stop_gradient
 
@@ -70,16 +87,29 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                 x2_data = np.random.randint(0, 9, x_2.shape).astype('int64')
 
                 fetch_val = None
+<<<<<<< HEAD
                 for _ in range(self.iteration):
                     fetch_val = exe.run(
                         feed={x_1.name: x1_data, x_2.name: x2_data},
                         fetch_list=[emb],
                     )[0]
+=======
+                for _ in six.moves.range(self.iteration):
+                    fetch_val = exe.run(feed={
+                        x_1.name: x1_data,
+                        x_2.name: x2_data
+                    },
+                                        fetch_list=[emb])[0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 return fetch_val
 
 
 class TestEmbeddingIdStopGradient2(TestEmbeddingIdStopGradientBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.reshape_times = 100
         self.iteration = 10

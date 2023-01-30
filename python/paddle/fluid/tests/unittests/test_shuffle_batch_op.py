@@ -13,6 +13,7 @@
 # limitations under the License.
 """This is unit test of Test shuffle_batch Op."""
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -23,6 +24,21 @@ import paddle.fluid as fluid
 
 
 class TestShuffleBatchOpBase(OpTest):
+=======
+from __future__ import print_function, division
+import unittest
+import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from op_test import OpTest
+import os
+import random
+
+
+class TestShuffleBatchOpBase(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def gen_random_array(self, shape, low=0, high=1):
         rnd = (high - low) * np.random.random(shape) + low
         return rnd.astype(self.dtype)
@@ -34,16 +50,25 @@ class TestShuffleBatchOpBase(OpTest):
         # NOTE: shuffle_batch is not supported on Windows
         if os.name == 'nt':
             return [fluid.CPUPlace()]
+<<<<<<< HEAD
         return super()._get_places()
+=======
+        return super(TestShuffleBatchOpBase, self)._get_places()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = 'shuffle_batch'
         self.dtype = np.float64
         self.shape = self.get_shape()
         x = self.gen_random_array(self.shape)
+<<<<<<< HEAD
         seed = np.random.random_integers(low=10, high=100, size=(1,)).astype(
             'int64'
         )
+=======
+        seed = np.random.random_integers(low=10, high=100,
+                                         size=(1, )).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {'X': x, 'Seed': seed}
         self.outputs = {
             'Out': np.array([]).astype(x.dtype),
@@ -80,6 +105,10 @@ class TestShuffleBatchOpBase(OpTest):
 
 
 class TestShuffleBatchOp2(TestShuffleBatchOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_shape(self):
         return (4, 30)
 

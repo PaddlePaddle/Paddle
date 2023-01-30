@@ -15,6 +15,11 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_HETERPS
+<<<<<<< HEAD
+=======
+// #include
+// "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <iostream>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/managed.cuh"
@@ -29,7 +34,11 @@ class MemoryPool {
       : capacity_(capacity), block_size_(block_size) {
     VLOG(3) << "mem_pool init with block_size: " << block_size
             << " capacity: " << capacity;
+<<<<<<< HEAD
     mem_ = reinterpret_cast<char*>(malloc(block_size * capacity_));
+=======
+    mem_ = (char*)malloc(block_size * capacity_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   ~MemoryPool() {
     VLOG(3) << "mem pool delete";
@@ -40,7 +49,13 @@ class MemoryPool {
 
   size_t capacity() { return capacity_; }
   size_t byte_size() { return capacity_ * block_size_; }
+<<<<<<< HEAD
   void* mem_address(const uint32_t& idx) { return &mem_[(idx)*block_size_]; }
+=======
+  void* mem_address(const uint32_t& idx) {
+    return (void*)&mem_[(idx)*block_size_];
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   char* mem_ = NULL;
@@ -48,12 +63,19 @@ class MemoryPool {
   size_t block_size_;
 };
 
+<<<<<<< HEAD
 // Derived from managed, alloced managed hbm
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class HBMMemoryPool : public managed {
  public:
   HBMMemoryPool(size_t capacity, size_t block_size)
       : capacity_(capacity), block_size_(block_size) {}
+<<<<<<< HEAD
   explicit HBMMemoryPool(MemoryPool* mem_pool) {
+=======
+  HBMMemoryPool(MemoryPool* mem_pool) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     capacity_ = mem_pool->capacity();
     block_size_ = mem_pool->block_size();
     VLOG(3) << "hbm memory pool with capacity" << capacity_
@@ -84,6 +106,7 @@ class HBMMemoryPool : public managed {
 
   size_t capacity() { return capacity_; }
   __forceinline__ __device__ void* mem_address(const uint32_t& idx) {
+<<<<<<< HEAD
     return &mem_[(idx)*block_size_];
   }
 
@@ -130,14 +153,21 @@ class HBMMemoryPoolFix : public managed {
   size_t size() { return size_; }
   __forceinline__ __device__ void* mem_address(const uint32_t& idx) {
     return &mem_[(idx)*block_size_];
+=======
+    return (void*)&mem_[(idx)*block_size_];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
  private:
   char* mem_ = NULL;
   size_t capacity_;
+<<<<<<< HEAD
   size_t size_;
   size_t block_size_;
   size_t max_byte_capacity_;
+=======
+  size_t block_size_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // end namespace framework

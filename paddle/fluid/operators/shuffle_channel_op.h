@@ -23,8 +23,13 @@ template <typename DeviceContext, typename T>
 class ShuffleChannelOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<framework::Tensor>("X");
+    auto* output = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int group = ctx.Attr<int>("group");
 
     const auto& input_dims = input->dims();
@@ -59,9 +64,15 @@ class ShuffleChannelGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* output_grad =
+<<<<<<< HEAD
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* input_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int group = ctx.Attr<int>("group");
 

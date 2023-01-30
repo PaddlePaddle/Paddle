@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from math import log
 
 import numpy as np
 from op_test import OpTest
+=======
+import numpy as np
+from math import log
+from math import exp
+from op_test import OpTest
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def cvm_compute(X, item_width, use_cvm):
@@ -53,7 +61,11 @@ def cvm_grad_compute(DY, CVM, item_width, use_cvm):
 
 class TestCVMOpWithLodTensor(OpTest):
     """
+<<<<<<< HEAD
     Test cvm op with discrete one-hot labels.
+=======
+        Test cvm op with discrete one-hot labels.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def setUp(self):
@@ -65,6 +77,7 @@ class TestCVMOpWithLodTensor(OpTest):
 
         lod = [[1]]
         self.inputs = {
+<<<<<<< HEAD
             'X': (
                 np.random.uniform(
                     0, 1, [self.batch_size, self.item_width]
@@ -72,6 +85,13 @@ class TestCVMOpWithLodTensor(OpTest):
                 lod,
             ),
             'CVM': np.array([[0.6, 0.4]]).astype("float32"),
+=======
+            'X': (np.random.uniform(
+                0, 1,
+                [self.batch_size, self.item_width]).astype("float32"), lod),
+            'CVM':
+            np.array([[0.6, 0.4]]).astype("float32"),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'use_cvm': False}
         out = []
@@ -83,6 +103,7 @@ class TestCVMOpWithLodTensor(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         user_grads = (
             np.array([1.0 / (self.item_width - 2)] * self.item_width)
             .reshape((self.batch_size, self.item_width))
@@ -93,6 +114,17 @@ class TestCVMOpWithLodTensor(OpTest):
         self.check_grad(
             ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False
         )
+=======
+        user_grads = np.array(
+            [1.0 / (self.item_width - 2)] * self.item_width).reshape(
+                (self.batch_size, self.item_width)).astype("float32")
+        user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
+        user_grads = [user_grads]
+        self.check_grad(['X'],
+                        'Y',
+                        user_defined_grads=user_grads,
+                        check_dygraph=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestCVMOpWithOutLodTensor1(OpTest):
@@ -108,6 +140,7 @@ class TestCVMOpWithOutLodTensor1(OpTest):
         self.item_width = 11
 
         input = np.random.uniform(
+<<<<<<< HEAD
             0, 1, (self.batch_size, self.item_width)
         ).astype('float32')
         output = cvm_compute(input, self.item_width, self.use_cvm)
@@ -116,6 +149,12 @@ class TestCVMOpWithOutLodTensor1(OpTest):
             .reshape((self.batch_size, 2))
             .astype("float32")
         )
+=======
+            0, 1, (self.batch_size, self.item_width)).astype('float32')
+        output = cvm_compute(input, self.item_width, self.use_cvm)
+        cvm = np.array([[0.6, 0.4] * self.batch_size]).reshape(
+            (self.batch_size, 2)).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {'X': input, 'CVM': cvm}
         self.attrs = {'use_cvm': self.use_cvm}
@@ -126,6 +165,7 @@ class TestCVMOpWithOutLodTensor1(OpTest):
 
     def test_check_grad(self):
         numel = self.batch_size * self.item_width
+<<<<<<< HEAD
         user_grads = (
             np.array([1.0 / numel] * numel)
             .reshape((self.batch_size, self.item_width))
@@ -136,6 +176,16 @@ class TestCVMOpWithOutLodTensor1(OpTest):
         self.check_grad(
             ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False
         )
+=======
+        user_grads = np.array([1.0 / numel] * numel).reshape(
+            (self.batch_size, self.item_width)).astype("float32")
+        user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
+        user_grads = [user_grads]
+        self.check_grad(['X'],
+                        'Y',
+                        user_defined_grads=user_grads,
+                        check_dygraph=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestCVMOpWithOutLodTensor2(OpTest):
@@ -151,6 +201,7 @@ class TestCVMOpWithOutLodTensor2(OpTest):
         self.item_width = 11
 
         input = np.random.uniform(
+<<<<<<< HEAD
             0, 1, (self.batch_size, self.item_width)
         ).astype('float32')
         output = cvm_compute(input, self.item_width, self.use_cvm)
@@ -159,6 +210,12 @@ class TestCVMOpWithOutLodTensor2(OpTest):
             .reshape((self.batch_size, 2))
             .astype("float32")
         )
+=======
+            0, 1, (self.batch_size, self.item_width)).astype('float32')
+        output = cvm_compute(input, self.item_width, self.use_cvm)
+        cvm = np.array([[0.6, 0.4] * self.batch_size]).reshape(
+            (self.batch_size, 2)).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {'X': input, 'CVM': cvm}
         self.attrs = {'use_cvm': self.use_cvm}
@@ -169,6 +226,7 @@ class TestCVMOpWithOutLodTensor2(OpTest):
 
     def test_check_grad(self):
         numel = self.batch_size * self.item_width
+<<<<<<< HEAD
         user_grads = (
             np.array([1.0 / (self.batch_size * (self.item_width - 2))] * numel)
             .reshape((self.batch_size, self.item_width))
@@ -179,6 +237,17 @@ class TestCVMOpWithOutLodTensor2(OpTest):
         self.check_grad(
             ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False
         )
+=======
+        user_grads = np.array(
+            [1.0 / (self.batch_size * (self.item_width - 2))] * numel).reshape(
+                (self.batch_size, self.item_width)).astype("float32")
+        user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
+        user_grads = [user_grads]
+        self.check_grad(['X'],
+                        'Y',
+                        user_defined_grads=user_grads,
+                        check_dygraph=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

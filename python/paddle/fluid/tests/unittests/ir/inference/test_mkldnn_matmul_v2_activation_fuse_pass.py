@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -19,6 +20,14 @@ import hypothesis.strategies as st
 import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
+=======
+from auto_scan_test import PassAutoScanTest
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+from functools import partial
+import unittest
+import hypothesis.strategies as st
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestMatmulv2ActivationMkldnnFusePass(PassAutoScanTest):
@@ -92,11 +101,19 @@ class TestMatmulv2ActivationMkldnnFusePass(PassAutoScanTest):
                 outputs={'Out': ['activation_output']},
                 threshold=draw(st.floats(min_value=1.0, max_value=10.0)),
             )
+<<<<<<< HEAD
         elif activation_type == "leaky_relu":
             activation_op = OpConfig(
                 activation_type,
                 inputs={"X": ["matmul_output"]},
                 outputs={"Out": ["activation_output"]},
+=======
+        elif activation_type == 'leaky_relu':
+            activation_op = OpConfig(
+                activation_type,
+                inputs={'X': ['matmul_output']},
+                outputs={'Out': ['activation_output']},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 alpha=draw(st.floats(min_value=0.1, max_value=1.0)),
             )
         elif activation_type == "scale":

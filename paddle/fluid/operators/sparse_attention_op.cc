@@ -66,8 +66,13 @@ class SparseAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddComment(R"DOC(
       Compute the value of the sparse attention module. Its input value includes five tensors.
+<<<<<<< HEAD
       Q, K, and V represent query, key, and value in the Attention module, respectively.
       The CSR format is used to represent the sparsity feature in the Attention module.
+=======
+      Q, K, and V represent query, key, and value in the Attention module, respectively. 
+      The CSR format is used to represent the sparsity feature in the Attention module. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       The CSR format contains two tensors, offset and columns.
       )DOC");
   }
@@ -122,11 +127,19 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "Q", "K");
     return phi::KernelKey(input_data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "Q", "K");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -169,11 +182,19 @@ class SparseAttentionOpGrad : public framework::OperatorWithKernel {
     }
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

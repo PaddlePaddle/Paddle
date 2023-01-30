@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -33,6 +34,20 @@ def convert_to_offset(lod):
 
 
 class TestFusionSeqPoolCVMConcatOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+from test_reorder_lod_tensor import convert_to_offset
+from sequence.test_sequence_pool import compute_seqpool_sum, compute_seqpool_avg, compute_seqpool_sqrt
+from test_cvm_op import cvm_compute
+
+
+class TestFusionSeqPoolCVMConcatOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.w = 11
         self.use_cvm = True
@@ -49,9 +64,14 @@ class TestFusionSeqPoolCVMConcatOp(OpTest):
         i = 0
         for lod in self.lods:
             assert bs == len(lod[0]), 'All lod size should be equal'
+<<<<<<< HEAD
             x = np.random.uniform(0.1, 1, [sum(lod[0]), self.w]).astype(
                 'float32'
             )
+=======
+            x = np.random.uniform(0.1, 1,
+                                  [sum(lod[0]), self.w]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             offset = convert_to_offset(lod)
             out = np.zeros((bs, self.w)).astype('float32')
             if self.pooltype == "SUM":
@@ -87,34 +107,62 @@ class TestFusionSeqPoolCVMConcatOp(OpTest):
 
 
 class TestFusionSeqPoolCVMConcatOpCase1(TestFusionSeqPoolCVMConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.lods = [[[1]]]
 
 
 class TestFusionSeqPoolCVMConcatOpCase2(TestFusionSeqPoolCVMConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.lods = [[[1]], [[1]], [[1]]]
 
 
 class TestFusionSeqPoolCVMConcatOpCase3(TestFusionSeqPoolCVMConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.lods = [[[1, 3, 4, 6]]]
         self.w = 10
 
 
 class TestFusionSeqPoolCVMConcatOpCase4(TestFusionSeqPoolCVMConcatOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.lods = [[[2, 13, 4]], [[1, 1, 1]], [[5, 3, 1]], [[9, 10, 3]]]
         self.w = 3
 
 
+<<<<<<< HEAD
 # test avg pool and sqrt
 def create_test_avg_sqrt_class(parent):
     class TestSeqPoolAvgCase(parent):
+=======
+## test avg pool and sqrt
+def create_test_avg_sqrt_class(parent):
+
+    class TestSeqPoolAvgCase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_pooltype(self):
             self.pooltype = "AVERAGE"
 
     class TestSeqPoolSqrtCase(parent):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_pooltype(self):
             self.pooltype = "SQRT"
 

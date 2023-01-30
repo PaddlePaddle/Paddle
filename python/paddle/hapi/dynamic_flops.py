@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import warnings
 
 import numpy as np
@@ -21,6 +22,14 @@ import paddle.nn as nn
 from paddle.jit.dy2static.program_translator import unwrap_decorators
 
 from .static_flops import Table, static_flops
+=======
+import paddle
+import warnings
+import paddle.nn as nn
+import numpy as np
+from .static_flops import static_flops, Table
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -29,11 +38,19 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
     """Print a table about the FLOPs of network.
 
     Args:
+<<<<<<< HEAD
         net (paddle.nn.Layer||paddle.static.Program): The network which could be a instance of paddle.nn.Layer in
                     dygraph or paddle.static.Program in static graph.
         input_size (list): size of input tensor. Note that the batch_size in argument ``input_size`` only support 1.
         custom_ops (A dict of function, optional): A dictionary which key is the class of specific operation such as
                     paddle.nn.Conv2D and the value is the function used to count the FLOPs of this operation. This
+=======
+        net (paddle.nn.Layer||paddle.static.Program): The network which could be a instance of paddle.nn.Layer in 
+                    dygraph or paddle.static.Program in static graph.
+        input_size (list): size of input tensor. Note that the batch_size in argument ``input_size`` only support 1.
+        custom_ops (A dict of function, optional): A dictionary which key is the class of specific operation such as 
+                    paddle.nn.Conv2D and the value is the function used to count the FLOPs of this operation. This 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     argument only work when argument ``net`` is an instance of paddle.nn.Layer. The details could be found
                     in following example code. Default is None.
         print_detail (bool, optional): Whether to print the detail information, like FLOPs per layer, about the net FLOPs.
@@ -50,7 +67,11 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
 
             class LeNet(nn.Layer):
                 def __init__(self, num_classes=10):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(LeNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self.num_classes = num_classes
                     self.features = nn.Sequential(
                         nn.Conv2D(
@@ -109,9 +130,16 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
         _, net.forward = unwrap_decorators(net.forward)
 
         inputs = paddle.randn(input_size)
+<<<<<<< HEAD
         return dynamic_flops(
             net, inputs=inputs, custom_ops=custom_ops, print_detail=print_detail
         )
+=======
+        return dynamic_flops(net,
+                             inputs=inputs,
+                             custom_ops=custom_ops,
+                             print_detail=print_detail)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif isinstance(net, paddle.static.Program):
         return static_flops(net, print_detail=print_detail)
     else:
@@ -125,9 +153,14 @@ def count_convNd(m, x, y):
     x = x[0]
     kernel_ops = np.product(m.weight.shape[2:])
     bias_ops = 1 if m.bias is not None else 0
+<<<<<<< HEAD
     total_ops = int(y.numel()) * (
         x.shape[1] / m._groups * kernel_ops + bias_ops
     )
+=======
+    total_ops = int(
+        y.numel()) * (x.shape[1] / m._groups * kernel_ops + bias_ops)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     m.total_ops += abs(int(total_ops))
 
 
@@ -208,7 +241,11 @@ register_hooks = {
     nn.AvgPool3D: count_avgpool,
     nn.AdaptiveAvgPool1D: count_adap_avgpool,
     nn.AdaptiveAvgPool2D: count_adap_avgpool,
+<<<<<<< HEAD
     nn.AdaptiveAvgPool3D: count_adap_avgpool,
+=======
+    nn.AdaptiveAvgPool3D: count_adap_avgpool
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 
@@ -230,8 +267,12 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             flops_fn = custom_ops[m_type]
             if m_type not in types_collection:
                 print(
+<<<<<<< HEAD
                     "Customize Function has been applied to {}".format(m_type)
                 )
+=======
+                    "Customize Function has been applied to {}".format(m_type))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif m_type in register_hooks:
             flops_fn = register_hooks[m_type]
             if m_type not in types_collection:
@@ -239,10 +280,15 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         else:
             if m_type not in types_collection:
                 print(
+<<<<<<< HEAD
                     "Cannot find suitable count function for {}. Treat it as zero FLOPs.".format(
                         m_type
                     )
                 )
+=======
+                    "Cannot find suitable count function for {}. Treat it as zero FLOPs."
+                    .format(m_type))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if flops_fn is not None:
             flops_handler = m.register_forward_post_hook(flops_fn)
@@ -266,12 +312,17 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     for m in model.sublayers():
         if len(list(m.children())) > 0:
             continue
+<<<<<<< HEAD
         if {
             'total_ops',
             'total_params',
             'input_shape',
             'output_shape',
         }.issubset(set(list(m._buffers.keys()))):
+=======
+        if {'total_ops', 'total_params', 'input_shape',
+                'output_shape'}.issubset(set(list(m._buffers.keys()))):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             total_ops += m.total_ops
             total_params += m.total_params
 
@@ -281,12 +332,17 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         handler.remove()
 
     table = Table(
+<<<<<<< HEAD
         ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"]
     )
+=======
+        ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for n, m in model.named_sublayers():
         if len(list(m.children())) > 0:
             continue
+<<<<<<< HEAD
         if {
             'total_ops',
             'total_params',
@@ -302,15 +358,31 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
                     int(m.total_ops),
                 ]
             )
+=======
+        if {'total_ops', 'total_params', 'input_shape',
+                'output_shape'}.issubset(set(list(m._buffers.keys()))):
+            table.add_row([
+                m.full_name(),
+                list(m.input_shape.numpy()),
+                list(m.output_shape.numpy()),
+                int(m.total_params),
+                int(m.total_ops)
+            ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             m._buffers.pop("total_ops")
             m._buffers.pop("total_params")
             m._buffers.pop('input_shape')
             m._buffers.pop('output_shape')
     if print_detail:
         table.print_table()
+<<<<<<< HEAD
     print(
         'Total Flops: {}     Total Params: {}'.format(
             int(total_ops), int(total_params)
         )
     )
+=======
+    print('Total Flops: {}     Total Params: {}'.format(int(total_ops),
+                                                        int(total_params)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return int(total_ops)

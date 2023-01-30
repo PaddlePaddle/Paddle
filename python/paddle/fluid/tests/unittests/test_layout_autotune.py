@@ -12,19 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import json
 import os
 import tempfile
 import unittest
 import warnings
+=======
+import os
+import json
+import tempfile
+import unittest
+import warnings
+import numpy
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 import paddle.nn.functional as F
 
 
 class SimpleNet(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self, data_format="NCHW", class_num=2):
         super().__init__()
+=======
+
+    def __init__(self, data_format="NCHW", class_num=2):
+        super(SimpleNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.conv = paddle.nn.Conv2D(3, 8, (3, 3))
         self.bn = paddle.nn.BatchNorm(num_channels=8)
         self.relu = paddle.nn.ReLU()
@@ -43,13 +58,20 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class LayoutAutoTune(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_config(self):
         paddle.fluid.core.enable_layout_autotune()
         if self.use_autoune():
             self.assertEqual(paddle.fluid.core.use_layout_autotune(), True)
             paddle.fluid.core.disable_layout_autotune()
         self.assertEqual(paddle.fluid.core.use_layout_autotune(), False)
+<<<<<<< HEAD
         self.use_autoune()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.use_autoune()
@@ -57,8 +79,14 @@ class LayoutAutoTune(unittest.TestCase):
     def use_autoune(self):
         if paddle.is_compiled_with_cuda():
             paddle.incubate.autotune.set_config(
+<<<<<<< HEAD
                 config={"layout": {"enable": True}}
             )
+=======
+                config={"layout": {
+                    "enable": True
+                }})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return paddle.fluid.core.use_layout_autotune()
         else:
             config = {"layout": {"enable": False}}
@@ -72,12 +100,20 @@ class LayoutAutoTune(unittest.TestCase):
     def train(self, data_format):
         model = SimpleNet(data_format="NCHW", class_num=2)
         data = paddle.rand([1, 3, 16, 16])
+<<<<<<< HEAD
         if data_format == "NHWC":
             data = paddle.rand([1, 16, 16, 3])
         label_data = paddle.randint(0, 1, shape=[1, 1], dtype="int64")
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.0001, parameters=model.parameters()
         )
+=======
+        if (data_format == "NHWC"):
+            data = paddle.rand([1, 16, 16, 3])
+        label_data = paddle.randint(0, 1, shape=[1, 1], dtype="int64")
+        optimizer = paddle.optimizer.SGD(learning_rate=0.0001,
+                                         parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         scaler = paddle.amp.GradScaler()
         for i in range(2):
             with paddle.amp.auto_cast(level="O2"):
@@ -99,9 +135,14 @@ class LayoutAutoTune(unittest.TestCase):
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
         label_data = paddle.randint(0, 1, shape=[1, 1], dtype="int64")
+<<<<<<< HEAD
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.0001, parameters=conv.parameters()
         )
+=======
+        optimizer = paddle.optimizer.SGD(learning_rate=0.0001,
+                                         parameters=conv.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         scaler = paddle.amp.GradScaler()
         with paddle.amp.auto_cast(level="O2"):
             conv_out = conv(data)
@@ -169,6 +210,10 @@ class LayoutAutoTune(unittest.TestCase):
 
 
 class TestAutoTuneAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_set_config_warnings(self):
         with warnings.catch_warnings(record=True) as w:
             config = {"layout": {"enable": 1}}

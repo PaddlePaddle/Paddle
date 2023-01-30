@@ -39,6 +39,7 @@ void TrilTriuKernel(const Context& ctx,
   for_range(tril_triu_computer);
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void TrilKernel(const Context& ctx,
                 const DenseTensor& x,
@@ -55,4 +56,6 @@ void TriuKernel(const Context& ctx,
   TrilTriuKernel<T, Context>(ctx, x, diagonal, false, out);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

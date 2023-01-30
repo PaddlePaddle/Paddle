@@ -221,7 +221,11 @@ class OpBase {
   NameVarMap<VariableWrapper> ins_;
   NameVarMap<VariableWrapper> outs_;
   framework::AttributeMap attrs_;
+<<<<<<< HEAD
   const framework::AttributeMap* default_attrs_ = nullptr;
+=======
+  const framework::AttributeMap* default_attrs_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};

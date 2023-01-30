@@ -12,31 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
 from test_dist_fleet_base import TestFleetBase
 
+=======
+from __future__ import print_function
+
+import os
+import unittest
+import tempfile
+from test_dist_fleet_base import TestFleetBase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
 
 class TestDistSimnetASync2x2(TestFleetBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
 
+<<<<<<< HEAD
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
+=======
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
+<<<<<<< HEAD
             "CPU_NUM": "2",
+=======
+            "CPU_NUM": "2"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         required_envs.update(need_envs)
@@ -48,9 +73,15 @@ class TestDistSimnetASync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_simnet_bow.py", delta=1e-5, check_error_log=True
         )
+=======
+        self.check_with_place("dist_fleet_simnet_bow.py",
+                              delta=1e-5,
+                              check_error_log=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

@@ -33,6 +33,11 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
+<<<<<<< HEAD
+=======
+using Tensor = paddle::framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 USE_OP_ITSELF(reduce_any);
 USE_OP_DEVICE_KERNEL(reduce_any, NPU);
 
@@ -40,7 +45,11 @@ template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
+<<<<<<< HEAD
   auto tensor_x = x->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<bool> init_x = {true, false, false, false};
   f::TensorFromVector<bool>(init_x, ctx, tensor_x);
   tensor_x->Resize(phi::make_ddim({2}));
@@ -49,7 +58,11 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
+<<<<<<< HEAD
   auto tensor_out = out->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // run
   std::vector<int> axes;

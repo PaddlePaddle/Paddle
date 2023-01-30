@@ -12,16 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_dist_base import TestDistBase
 
+=======
+from __future__ import print_function
+import unittest
+from test_dist_base import TestDistBase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
 
 class TestDistMnistLocalSGDFleetApi(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -32,12 +42,19 @@ class TestDistMnistLocalSGDFleetApi(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
 class TestDistMnistGradAllReduceFleetApi(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -48,7 +65,10 @@ class TestDistMnistGradAllReduceFleetApi(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 

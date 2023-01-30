@@ -57,10 +57,15 @@ PD_REGISTER_KERNEL(stack,
                    phi::StackKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    bool,
                    int64_t,
                    int,
                    uint8_t,
                    int8_t,
                    phi::dtype::float16,
+=======
+                   int,
+                   int64_t,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    phi::dtype::bfloat16) {}

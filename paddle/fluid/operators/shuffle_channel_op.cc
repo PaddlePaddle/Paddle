@@ -35,11 +35,28 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(input_data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -61,6 +78,7 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "group should be larger than 0."));
         });
     AddComment(R"DOC(
+<<<<<<< HEAD
     Shuffle Channel operator
     This opearator shuffles the channels of input x.
     It  divide the input channels in each group into several subgroups,
@@ -71,6 +89,18 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
     please get more information from the following paper:
     https://arxiv.org/pdf/1707.01083.pdf
     )DOC");
+=======
+		Shuffle Channel operator
+		This opearator shuffles the channels of input x.
+		It  divide the input channels in each group into several subgroups,
+		and obtain a new order by selecting element from every subgroup one by one.
+
+		Shuffle channel operation makes it possible to build more powerful structures
+		with multiple group convolutional layers.
+		please get more information from the following paper:
+		https://arxiv.org/pdf/1707.01083.pdf
+        )DOC");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -89,11 +119,19 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

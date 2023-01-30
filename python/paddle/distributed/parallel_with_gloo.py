@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import time
 from multiprocessing import Manager, Process
 
@@ -22,6 +23,17 @@ from paddle.distributed.fleet.base.private_helper_function import (
 # deprecated module import
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
+=======
+import os
+import sys
+import time
+import warnings
+from multiprocessing import Process, Manager
+
+# deprecated module import
+from paddle.fluid import core
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -30,7 +42,10 @@ _global_gloo_ctx = None
 
 def _start_kv_server(port, http_server_d, size):
     from paddle.distributed.fleet.utils.http_server import KVServer
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     http_server = KVServer(int(port), size=size)
     http_server.start()
     wait_seconds = 3
@@ -94,9 +109,14 @@ def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
                 test_gloo_init_with_multiprocess(2)
     """
 
+<<<<<<< HEAD
     assert (
         rank_num < 2
     ) is False, "rank_num should greater than or equal to 2 for parallel environment initialzation."
+=======
+    assert (rank_num < 2) is False, \
+        "rank_num should greater than or equal to 2 for parallel environment initialzation."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # init gloo context
     manager = Manager()
@@ -106,10 +126,16 @@ def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
     if rank_id == 0:
         # The scope for worker used by http server is '_worker'
         size = {'_worker': rank_num}
+<<<<<<< HEAD
         http_server_proc = Process(
             target=_start_kv_server,
             args=(int(server_endpoint.split(":")[1]), http_server_status, size),
         )
+=======
+        http_server_proc = Process(target=_start_kv_server,
+                                   args=(int(server_endpoint.split(":")[1]),
+                                         http_server_status, size))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         http_server_proc.daemon = True
         http_server_status["running"] = True
         http_server_proc.start()

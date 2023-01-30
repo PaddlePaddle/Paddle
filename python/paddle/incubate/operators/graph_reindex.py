@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle.utils.deprecated as deprecated
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
+=======
+import paddle
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid import core
+from paddle import _C_ops, _legacy_C_ops
+import paddle.utils.deprecated as deprecated
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
@@ -40,7 +50,11 @@ def graph_reindex(
 
     This API is mainly used in Graph Learning domain, which should be used
     in conjunction with `graph_sample_neighbors` API. And the main purpose
+<<<<<<< HEAD
     is to reindex the ids information of the input nodes, and return the
+=======
+    is to reindex the ids information of the input nodes, and return the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     corresponding graph edges after reindex.
 
     Notes:
@@ -49,8 +63,13 @@ def graph_reindex(
         edge_type neighbors for x, we should concatenate all the neighbors and count of x.
         We will reindex all the nodes from 0.
 
+<<<<<<< HEAD
     Take input nodes x = [0, 1, 2] as an example.
     If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
+=======
+    Take input nodes x = [0, 1, 2] as an example. 
+    If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2], 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     then we know that the neighbors of 0 is [8, 9], the neighbors of 1
     is [0, 4, 7], and the neighbors of 2 is [6, 7].
 
@@ -59,7 +78,11 @@ def graph_reindex(
                     data type is int32, int64.
         neighbors (Tensor): The neighbors of the input nodes `x`. The data type
                             should be the same with `x`.
+<<<<<<< HEAD
         count (Tensor): The neighbor count of the input nodes `x`. And the
+=======
+        count (Tensor): The neighbor count of the input nodes `x`. And the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         data type should be int32.
         value_buffer (Tensor, optional): Value buffer for hashtable. The data type should
                                     be int32, and should be filled with -1. Default is None.
@@ -69,7 +92,11 @@ def graph_reindex(
                                       Default is False. Only useful for gpu version currently.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         - reindex_src (Tensor), The source node index of graph edges after reindex.
         - reindex_dst (Tensor), The destination node index of graph edges after reindex.
@@ -112,7 +139,11 @@ def graph_reindex(
     if flag_buffer_hashtable:
         if value_buffer is None or index_buffer is None:
             raise ValueError(
+<<<<<<< HEAD
                 "`value_buffer` and `index_buffer` should not"
+=======
+                f"`value_buffer` and `index_buffer` should not"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "be None if `flag_buffer_hashtable` is True."
             )
 

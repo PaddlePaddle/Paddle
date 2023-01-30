@@ -25,6 +25,7 @@ def train(prefix):
     worker_endpoints = worker_endpoints_env
     trainers_num = len(worker_endpoints.split(','))
 
+<<<<<<< HEAD
     name = "selected_mlus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
         selected_mlus,
         worker_endpoints,
@@ -32,6 +33,10 @@ def train(prefix):
         current_endpoint,
         trainer_id,
     )
+=======
+    name = "selected_mlus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
+        .format(selected_mlus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     print(name)
     with open("{}.check_{}.log".format(prefix, trainer_id), "w") as f:

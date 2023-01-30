@@ -20,7 +20,10 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+<<<<<<< HEAD
 #include "paddle/phi/core/hostdevice.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -37,6 +40,19 @@
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
+<<<<<<< HEAD
+=======
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+#define HOSTDEVICE __host__ __device__
+#define DEVICE __device__
+#define HOST __host__
+#else
+#define HOSTDEVICE
+#define DEVICE
+#define HOST
+#endif
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace phi {
 namespace dtype {
 
@@ -145,7 +161,11 @@ struct PADDLE_ALIGN(2) bfloat16 {
   }
 
   // Conversion opertors
+<<<<<<< HEAD
   HOSTDEVICE inline operator float() const {
+=======
+  HOSTDEVICE inline explicit operator float() const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_HIP
     uint32_t res = 0;
     // We should be using memcpy in order to respect the strict aliasing rule
@@ -168,7 +188,11 @@ struct PADDLE_ALIGN(2) bfloat16 {
   }
 
 #ifdef PADDLE_CUDA_BF16
+<<<<<<< HEAD
   HOSTDEVICE inline __nv_bfloat16 to_nv_bfloat16() const {
+=======
+  HOSTDEVICE inline explicit operator __nv_bfloat16() const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return *reinterpret_cast<const __nv_bfloat16*>(&x);
   }
 #endif
@@ -207,7 +231,11 @@ struct PADDLE_ALIGN(2) bfloat16 {
     return static_cast<uint64_t>(static_cast<float>(*this));
   }
 
+<<<<<<< HEAD
   HOSTDEVICE inline operator double() const {
+=======
+  HOSTDEVICE inline explicit operator double() const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return static_cast<double>(static_cast<float>(*this));
   }
 };

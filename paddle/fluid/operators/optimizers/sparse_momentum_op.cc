@@ -19,6 +19,11 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class SparseMomentumOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
@@ -34,6 +39,7 @@ class SparseMomentumOpInferVarType : public framework::VarTypeInference {
 
 void SparseMomentumOpMaker::Make() {
   AddInput("Param",
+<<<<<<< HEAD
            "(phi::DenseTensor, default phi::DenseTensor<float>) "
            "Input parameter that has to be updated");
   AddInput("Grad",
@@ -59,6 +65,32 @@ void SparseMomentumOpMaker::Make() {
             "It shared memory with Input(Param).");
   AddOutput("VelocityOut",
             "(phi::DenseTensor) This output is updated velocity. "
+=======
+           "(Tensor, default Tensor<float>) "
+           "Input parameter that has to be updated");
+  AddInput("Grad",
+           "(Tensor, default Tensor<float>) "
+           "Input gradient of the parameter");
+  AddInput("Velocity",
+           "(Tensor, default Tensor<float>) "
+           "Input velocity (corresponding to the parameter) "
+           "that has to be updated");
+  AddInput("Index",
+           "(Tensor, default Tensor<int>) "
+           "Input index of Param to do update operation");
+  AddInput("Axis",
+           "The Tensor which contains the axis that we do update operation.")
+      .AsDispensable();
+  AddInput("LearningRate",
+           "(Tensor, default Tensor<float>) "
+           "Input learning rate");
+  AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
+  AddOutput("ParamOut",
+            "(Tensor) This output is updated parameter. "
+            "It shared memory with Input(Param).");
+  AddOutput("VelocityOut",
+            "(Tensor) This output is updated velocity. "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "It shared memory with Input(Velocity).");
   AddOutput("MasterParamOut",
             "The updated FP32 master weight for AMP. "

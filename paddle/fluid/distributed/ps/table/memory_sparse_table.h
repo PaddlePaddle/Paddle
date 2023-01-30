@@ -90,11 +90,15 @@ class MemorySparseTable : public Table {
   std::pair<int64_t, int64_t> PrintTableStat() override;
   int32_t PullSparse(float* values, const PullSparseValue& pull_value);
 
+<<<<<<< HEAD
   int32_t PullSparsePtr(int shard_id,
                         char** pull_values,
                         const uint64_t* keys,
                         size_t num,
                         uint16_t pass_id);
+=======
+  int32_t PullSparsePtr(char** pull_values, const uint64_t* keys, size_t num);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int32_t PushSparse(const uint64_t* keys, const float* values, size_t num);
 

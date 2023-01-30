@@ -26,8 +26,11 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
+<<<<<<< HEAD
 DECLARE_bool(use_shm_cache);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -76,7 +79,10 @@ void AllocateMemoryMap(
               "File descriptor %s open failed, unable in read-write mode",
               filename.c_str()));
       VLOG(6) << "shm_open: " << filename;
+<<<<<<< HEAD
       MemoryMapFdSet::Instance().Insert(filename);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   } else {
     fd = -1;
@@ -113,6 +119,7 @@ void AllocateMemoryMap(
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
                                       int flags,
+<<<<<<< HEAD
                                       size_t size,
                                       int buffer_id) {
   int fd = -1;
@@ -140,6 +147,22 @@ RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
     : MemoryMapAllocation(ptr, size, ipc_name, fd, flags) {
   // must reset base ptr first.
   buffer_id_ = buffer_id;
+=======
+                                      size_t size) {
+  int fd = -1;
+  void *base_ptr = nullptr;
+  AllocateMemoryMap(filename, flags, size + mmap_alignment, &base_ptr, &fd);
+  void *aliged_base_ptr =
+      static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
+  return std::make_shared<RefcountedMemoryMapAllocation>(
+      aliged_base_ptr, size, filename, flags, fd);
+}
+
+RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
+    void *ptr, size_t size, std::string ipc_name, int fd, int flags)
+    : MemoryMapAllocation(ptr, size, ipc_name, fd, flags) {
+  // must reset base ptr first.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   resetBaseptr();
   initializeRefercount();
 }
@@ -180,13 +203,17 @@ void RefcountedMemoryMapAllocation::initializeRefercount() {
 }
 
 void RefcountedMemoryMapAllocation::close() {
+<<<<<<< HEAD
   VLOG(4) << "Close a RefcountedMemoryMapAllocation: " << ipc_name_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (closed_) {
     return;
   }
   closed_ = true;
   void *data = map_ptr_;
   CountInfo *info = reinterpret_cast<CountInfo *>(data);
+<<<<<<< HEAD
   --info->refcount;
   if (FLAGS_use_shm_cache && buffer_id_ != -1) {
     return;
@@ -213,6 +240,25 @@ void RefcountedMemoryMapAllocation::close() {
                             ")"));
     }
   }
+=======
+  if (--info->refcount == 0) {
+    PADDLE_ENFORCE_NE(
+        shm_unlink(ipc_name_.c_str()),
+        -1,
+        platform::errors::Unavailable(
+            "could not unlink the shared memory file ", ipc_name_));
+    VLOG(6) << "shm_unlink file: " << ipc_name_;
+  }
+
+  PADDLE_ENFORCE_NE(
+      munmap(map_ptr_, map_size_),
+      -1,
+      platform::errors::Unavailable("could not unmap the shared memory file: ",
+                                    strerror(errno),
+                                    " (",
+                                    errno,
+                                    ")"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
@@ -328,6 +374,7 @@ void MemoryMapFdSet::Clear() {
 
 MemoryMapFdSet::~MemoryMapFdSet() { Clear(); }
 
+<<<<<<< HEAD
 MemoryMapAllocationPool *MemoryMapAllocationPool::pool_ = nullptr;
 
 void MemoryMapAllocationPool::Insert(const MemoryMapInfo &memory_map) {
@@ -389,6 +436,8 @@ void MemoryMapAllocationPool::Clear() {
 
 MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

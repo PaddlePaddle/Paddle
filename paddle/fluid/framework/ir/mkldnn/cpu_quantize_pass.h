@@ -37,7 +37,11 @@ class Graph;
 class Node;
 
 using VarQuantScale =
+<<<<<<< HEAD
     std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+=======
+    std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 /*
  * Quantize all supported operators.
@@ -50,9 +54,15 @@ class CPUQuantizePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
   void QuantizeConv(Graph* graph,
+<<<<<<< HEAD
                     const std::string& conv_type,
                     bool with_residual_data) const;
   void QuantizeFc(Graph* graph, bool with_residual_data) const;
+=======
+                    bool with_residual_data = false,
+                    std::vector<std::string>* changed_weight = nullptr) const;
+  void QuantizeFc(Graph* graph) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void QuantizePool(Graph* graph) const;
   void QuantizeConcat(Graph* graph) const;
   void QuantizePriorBox(Graph* graph) const;
@@ -93,6 +103,7 @@ class CPUQuantizePass : public FusePassBase {
                         bool is_unsigned,
                         std::string scale_attr_name = "") const;
 
+<<<<<<< HEAD
   // quantize all outputs of given name
   void DequantizeOutputs(Graph* g,
                          Node* op,
@@ -108,6 +119,14 @@ class CPUQuantizePass : public FusePassBase {
   std::pair<bool, phi::DenseTensor> GetScaleDataForNode(const Node* node) const;
   phi::DenseTensor GetScaleTensorByName(const std::string& name) const;
   phi::DenseTensor GetScaleTensorForNode(const Node* node) const;
+=======
+  bool AreScalesPresentForVarNames(std::vector<std::string> names) const;
+  bool AreScalesPresentForNodes(std::initializer_list<Node*> nodes) const;
+  std::pair<bool, LoDTensor> GetScaleDataByName(const std::string& name) const;
+  std::pair<bool, LoDTensor> GetScaleDataForNode(const Node* node) const;
+  LoDTensor GetScaleTensorByName(const std::string& name) const;
+  LoDTensor GetScaleTensorForNode(const Node* node) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   double GetScaleValueByName(const std::string& name,
                              bool* is_unsigned = nullptr) const;
   double GetScaleValueForNode(const Node* node,
@@ -121,11 +140,14 @@ class CPUQuantizePass : public FusePassBase {
   VarQuantScale string_pair_map = {};
   VarQuantScale* const var_quant_scales_ = &string_pair_map;
 
+<<<<<<< HEAD
   // Save the scale values of which weights have been processed to avoid
   // secondary processing
   std::vector<std::string> change_weight = {};
   std::vector<std::string>* const change_weight_ = &change_weight;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void GetQuantInfo(Graph* graph) const;
 };
 

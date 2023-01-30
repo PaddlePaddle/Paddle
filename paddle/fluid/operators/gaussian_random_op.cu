@@ -51,7 +51,11 @@ template <typename T>
 class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* tensor = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* tensor = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     T mean = static_cast<T>(context.Attr<float>("mean"));

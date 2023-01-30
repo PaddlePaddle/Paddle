@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 import glob
 import os
@@ -64,11 +65,68 @@ def get_argparse():
         default=2,
         help='Num of line need to display in a group.',
     )
+=======
+import os
+import glob
+import logging
+import argparse
+import multiprocessing
+
+import pandas as pd
+from multiprocessing import Process
+
+from NetFileReader import netFileReader
+from DCGMFileReader import dcgmFileReader
+from ProfileFileReader import profileFileReader
+
+from CspFileReader import getLogger
+from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
+from CspFileReader import NETINFO_TRACE_NUM, DCGMINFO_TRACE_NUM, PIPELINEINFO_TRACE_NUM
+from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, FILEORGANIZEFORM_BYOTHER, FILEORGANIZEFORM
+
+
+def get_argparse():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--profile_path',
+                        type=str,
+                        default='.',
+                        help='Working path that store the monitor data.')
+
+    parser.add_argument('--timeline_path',
+                        type=str,
+                        default='.',
+                        help='Output timeline file name.')
+
+    parser.add_argument('--gpuPerTrainer',
+                        type=int,
+                        default=8,
+                        help='Gpus per trainer.')
+
+    parser.add_argument('--trainerNum',
+                        type=int,
+                        default=4,
+                        help='Num of trainer.')
+
+    parser.add_argument('--groupSize',
+                        type=int,
+                        default=8,
+                        help='Num of trainer in a group.')
+
+    parser.add_argument('--displaySize',
+                        type=int,
+                        default=2,
+                        help='Num of line need to display in a group.')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return parser.parse_args()
 
 
+<<<<<<< HEAD
 class CspReporter:
+=======
+class CspReporter(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, args):
         self._args = args
         print(self._args)
@@ -89,9 +147,14 @@ class CspReporter:
     def _checkArgs(self):
         if self._trainerNum % self._groupSize != 0:
             raise Exception(
+<<<<<<< HEAD
                 "Input args error: trainerNum[%d] %% groupSize[%d] != 0"
                 % (self._trainerNum, self._groupSize)
             )
+=======
+                "Input args error: trainerNum[%d] %% groupSize[%d] != 0" %
+                (self._trainerNum, self._groupSize))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _init_logger(self):
         self._logger = getLogger()
@@ -128,12 +191,19 @@ class CspReporter:
             "organizeForm": FILEORGANIZEFORM_BYRANK,
         }
 
+<<<<<<< HEAD
         self._dcgmFileReader = dcgmFileReader(
             self._logger, self._dcgmFileReaderArgs
         )
         self._profileFileReader = profileFileReader(
             self._logger, self._profileFileReaderArgs
         )
+=======
+        self._dcgmFileReader = dcgmFileReader(self._logger,
+                                              self._dcgmFileReaderArgs)
+        self._profileFileReader = profileFileReader(self._logger,
+                                                    self._profileFileReaderArgs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _init_timeInfo(self):
         self._timePath = os.path.join(self._workPath, TIME_PATH)
@@ -143,8 +213,12 @@ class CspReporter:
 
     def _set_timeInfo(self, timeFileNamePrefix="time.txt", sed="."):
         timeFileNameList = glob.glob(
+<<<<<<< HEAD
             os.path.join(self._timePath, timeFileNamePrefix, sed, "*")
         )
+=======
+            os.path.join(self._timePath, timeFileNamePrefix, sed, "*"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for timeFileName in timeFileNameList:
             trainerId = int(timeFileName.split(sed)[-1])
             gpuId = int(timeFileName.split(sed)[-2])
@@ -153,25 +227,38 @@ class CspReporter:
                 for line in rf:
                     if line.startswith("start time:"):
                         info["start_time"] = int(
+<<<<<<< HEAD
                             float(line.split(":")[-1]) * 1e9
                         )
 
                         self._minTimeStamp = min(
                             self._minTimeStamp, info["start_time"]
                         )
+=======
+                            float(line.split(":")[-1]) * 1e9)
+
+                        self._minTimeStamp = min(self._minTimeStamp,
+                                                 info["start_time"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                     if line.startswith("end time:"):
                         info["end_time"] = int(float(line.split(":")[-1]) * 1e9)
             if not info:
                 self._timeInfo[gpuId * trainerId] = info
 
+<<<<<<< HEAD
     def _generateTraceFileByGroupAndGpuId(
         self, pipileInfo, netInfo, groupId, gpuId
     ):
+=======
+    def _generateTraceFileByGroupAndGpuId(self, pipileInfo, netInfo, groupId,
+                                          gpuId):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dcgmInfoDict = self._dcgmFileReader.getDcgmInfoDict(groupId, gpuId)
         opInfoDict = self._profileFileReader.getOpInfoDict(groupId, gpuId)
 
         traceObj = {}
+<<<<<<< HEAD
         traceObj["traceEvents"] = (
             pipileInfo[str(gpuId)]
             + opInfoDict["traceEvents"]
@@ -182,12 +269,24 @@ class CspReporter:
         self._profileFileReader.dumpDict(
             traceObj, "traceFile", groupId, gpuId, False, self._saveFilePath
         )
+=======
+        traceObj["traceEvents"] = pipileInfo[str(
+            gpuId)] + opInfoDict["traceEvents"] + dcgmInfoDict[
+                "traceEvents"] + netInfo["traceEvents"]
+
+        self._profileFileReader.dumpDict(traceObj, "traceFile", groupId, gpuId,
+                                         False, self._saveFilePath)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _generateTraceFileByGroup(self, groupId, processNum):
         # first we need to generate pipeline info
         pipileInfo = self._profileFileReader.getPipeLineInfo(
+<<<<<<< HEAD
             groupId, processNum
         )
+=======
+            groupId, processNum)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # second we need to generate dcgm info
         dcgmInfo = self._dcgmFileReader.getDCGMTraceInfo(groupId, processNum)
 
@@ -204,6 +303,7 @@ class CspReporter:
         pidList = []
 
         for gpuId in range(self._gpuPerTrainer):
+<<<<<<< HEAD
             subproc = Process(
                 target=self._generateTraceFileByGroupAndGpuId,
                 args=(
@@ -213,26 +313,45 @@ class CspReporter:
                     gpuId,
                 ),
             )
+=======
+            subproc = Process(target=self._generateTraceFileByGroupAndGpuId,
+                              args=(
+                                  pipileInfo,
+                                  netInfo,
+                                  groupId,
+                                  gpuId,
+                              ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)
             self._logger.info(
                 "[traceFile]: process [%d] has been started, total task num is %d ..."
+<<<<<<< HEAD
                 % (subproc.pid, 1)
             )
+=======
+                % (subproc.pid, 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for t in processPool:
             t.join()
             pidList.remove(t.pid)
             self._logger.info(
+<<<<<<< HEAD
                 "[traceFile]: process [%d] has exited! remained %d process!"
                 % (t.pid, len(pidList))
             )
+=======
+                "[traceFile]: process [%d] has exited! remained %d process!" %
+                (t.pid, len(pidList)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def generateTraceFile(self, processNum=8):
         processPool = []
         pidList = []
         for groupId in range(self._trainerNum / self._groupSize):
+<<<<<<< HEAD
             subproc = Process(
                 target=self._generateTraceFileByGroup,
                 args=(
@@ -240,20 +359,35 @@ class CspReporter:
                     processNum,
                 ),
             )
+=======
+            subproc = Process(target=self._generateTraceFileByGroup,
+                              args=(
+                                  groupId,
+                                  processNum,
+                              ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)
             self._logger.info(
                 "[GroupTraceFile]: process [%d] has been started, total task num is %d ..."
+<<<<<<< HEAD
                 % (subproc.pid, 1)
             )
+=======
+                % (subproc.pid, 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for t in processPool:
             t.join()
             pidList.remove(t.pid)
             self._logger.info(
                 "[GroupTraceFile]: process [%d] has exited! remained %d process!"
+<<<<<<< HEAD
                 % (t.pid, len(pidList))
             )
+=======
+                % (t.pid, len(pidList)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

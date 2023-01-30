@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import re
 
 import yaml
@@ -63,6 +64,31 @@ ops_to_fill_zero_for_empty_grads = set(
         "argsort_grad",
     ]
 )
+=======
+import logging
+import yaml
+import re
+import argparse
+import os
+
+########################
+### Global Variables ###
+########################
+ops_to_fill_zero_for_empty_grads = set([
+    "split_grad", "split_with_num_grad", "rnn_grad", "matmul_double_grad",
+    "matmul_triple_grad", "sigmoid_double_grad", "sigmoid_triple_grad",
+    "add_double_grad", "add_triple_grad", "multiply_grad",
+    "multiply_double_grad", "multiply_triple_grad", "conv2d_grad_grad",
+    "batch_norm_double_grad", "tanh_double_grad", "tanh_triple_grad",
+    "subtract_double_grad", "divide_double_grad", "log_double_grad",
+    "elu_double_grad", "leaky_relu_double_grad", "sqrt_double_grad",
+    "rsqrt_double_grad", "square_double_grad", "celu_double_grad",
+    "pad_double_grad", "pad3d_double_grad", "squeeze_double_grad",
+    "unsqueeze_double_grad", "instance_norm_double_grad", "conv3d_double_grad",
+    "depthwise_conv2d_grad_grad", "concat_double_grad", "expand_grad",
+    "argsort_grad"
+])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
@@ -71,6 +97,7 @@ core_ops_args_info = {}
 core_ops_args_type_info = {}
 
 yaml_types_mapping = {
+<<<<<<< HEAD
     'int': 'int',
     'int32_t': 'int32_t',
     'int64_t': 'int64_t',
@@ -103,6 +130,30 @@ yaml_types_mapping = {
 #########################
 #  File Reader Helpers  #
 #########################
+=======
+    'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
+    'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
+    'str' : 'std::string', \
+    'str[]' : 'std::vector<std::string>', 'float[]' : 'std::vector<float>', \
+    'Place' : 'paddle::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
+    'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
+    'Tensor' : 'Tensor',
+    'Tensor[]' : 'std::vector<Tensor>',
+    'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
+    'Scalar' : 'paddle::experimental::Scalar',
+    'Scalar(int)' : 'paddle::experimental::Scalar',
+    'Scalar(int64_t)' : 'paddle::experimental::Scalar',
+    'Scalar(float)' : 'paddle::experimental::Scalar',
+    'Scalar(double)' : 'paddle::experimental::Scalar',
+    'Scalar[]' : 'std::vector<phi::Scalar>',
+    'IntArray' : 'paddle::experimental::IntArray'
+}
+
+
+#############################
+###  File Reader Helpers  ###
+#############################
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def AssertMessage(lhs_str, rhs_str):
     return f"lhs: {lhs_str}, rhs: {rhs_str}"
 
@@ -122,8 +173,12 @@ def ReadBwdFile(filepath):
     if contents is not None:
         for content in contents:
             assert 'backward_op' in content.keys(), AssertMessage(
+<<<<<<< HEAD
                 'backward_op', content.keys()
             )
+=======
+                'backward_op', content.keys())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if 'backward_op' in content.keys():
                 api_name = content['backward_op']
 
@@ -132,9 +187,15 @@ def ReadBwdFile(filepath):
     return ret
 
 
+<<<<<<< HEAD
 ##############################
 #  Generic Helper Functions  #
 ##############################
+=======
+##################################
+###  Generic Helper Functions  ###
+##################################
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def FindGradName(string):
     return string + "_grad"
 
@@ -158,8 +219,12 @@ def IsPlainTensorType(string):
 
 def IsVectorTensorType(string):
     vector_tensor_types = [
+<<<<<<< HEAD
         'std::vector<std::vector<Tensor>>',
         'std::vector<Tensor>',
+=======
+        'std::vector<std::vector<Tensor>>', 'std::vector<Tensor>'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ]
     if string in vector_tensor_types:
         return True
@@ -190,6 +255,10 @@ def RemoveConstAndReference(string):
 
 
 def GetGradNodeName(string):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def str2Hump(text):
         arr = filter(None, text.split('_'))
         res = ''
@@ -208,6 +277,10 @@ def GetDygraphForwardFunctionName(string):
 
 
 def GetDygraphLogName(string):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def str2Hump(text):
         arr = filter(None, text.split('_'))
         res = ''
@@ -257,9 +330,15 @@ def GetIndent(num):
     return "".join([tab for i in range(num)])
 
 
+<<<<<<< HEAD
 ##################
 #  Yaml Parsers  #
 ##################
+=======
+######################
+###  Yaml Parsers  ###
+######################
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def ParseYamlArgs(string):
     # Example: const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y
 
@@ -277,6 +356,7 @@ def ParseYamlArgs(string):
         m = re.search(pattern, arg)
         arg_type = m.group(1).strip()
         arg_name = m.group(3).split("=")[0].strip()
+<<<<<<< HEAD
         default_value = (
             m.group(3).split("=")[1].strip()
             if len(m.group(3).split("=")) > 1
@@ -285,6 +365,12 @@ def ParseYamlArgs(string):
 
         assert (
             arg_type in yaml_types_mapping.keys()
+=======
+        default_value = m.group(3).split("=")[1].strip() if len(
+            m.group(3).split("=")) > 1 else None
+
+        assert arg_type in yaml_types_mapping.keys(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
         if arg_type in ["DataType", "DataLayout"] and default_value is not None:
             default_value = f"paddle::experimental::{default_value}"
@@ -322,8 +408,12 @@ def ParseYamlReturns(string):
         else:
             ret_type = ret.strip()
 
+<<<<<<< HEAD
         assert (
             ret_type in yaml_types_mapping.keys()
+=======
+        assert ret_type in yaml_types_mapping.keys(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
         ret_type = yaml_types_mapping[ret_type]
 
@@ -341,9 +431,13 @@ def ParseYamlForwardFromBackward(string):
     wspace = r'\s*'
     fargs = r'(.*?)'
     frets = r'(.*)'
+<<<<<<< HEAD
     pattern = (
         fr'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
     )
+=======
+    pattern = f'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     m = re.search(pattern, string)
     function_name = m.group(1)
@@ -362,7 +456,11 @@ def ParseYamlForward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
+<<<<<<< HEAD
     args_pattern = fr'^\({fargs}\)$'
+=======
+    args_pattern = f'^\({fargs}\)$'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     args_str = re.search(args_pattern, args_str.strip()).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -377,7 +475,11 @@ def ParseYamlBackward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
+<<<<<<< HEAD
     args_pattern = fr'\({fargs}\)'
+=======
+    args_pattern = f'\({fargs}\)'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     args_str = re.search(args_pattern, args_str).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -403,6 +505,7 @@ def ParseYamlInplaceInfo(string):
     return inplace_map
 
 
+<<<<<<< HEAD
 def ParseYamlCompositeInfo(string):
     # example:  composite: fun(args1, args2, ...)
     fname = r'(.*?)'
@@ -427,10 +530,18 @@ def ParseYamlCompositeInfo(string):
 #  Generator Base  #
 ####################
 class FunctionGeneratorBase:
+=======
+########################
+###  Generator Base  ###
+########################
+class FunctionGeneratorBase:
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, forward_api_contents, namespace):
         self.forward_api_contents = forward_api_contents
         self.namespace = namespace
 
+<<<<<<< HEAD
         self.is_forward_only = (
             False if 'backward' in forward_api_contents.keys() else True
         )
@@ -468,6 +579,35 @@ class FunctionGeneratorBase:
         forward_api_contents = self.forward_api_contents
         if 'inplace' not in forward_api_contents.keys():
             return
+=======
+        self.is_forward_only = False if 'backward' in forward_api_contents.keys(
+        ) else True
+
+        self.forward_api_name = ""
+
+        self.orig_forward_inputs_list = [
+        ]  #[ [arg_name, arg_type, orig_position], ...]
+        self.orig_forward_attrs_list = [
+        ]  #[ [attr_name, attr_type, default_value, orig_position], ...]
+        self.orig_forward_returns_list = [
+        ]  #[ [ret_name, ret_type, orig_position], ...]
+
+        # Processed Forward Data
+        self.forward_inputs_position_map = {
+        }  #{ "name" : [type, fwd_position] }
+        self.forward_outputs_position_map = {
+        }  #{ "name" : [type, fwd_position] }
+
+        # Special Op Attributes
+        self.optional_inputs = []  #[name, ...]
+        self.no_need_buffers = []  #[name, ...]
+        self.intermediate_outputs = []  #[name, ...]
+        self.forward_inplace_map = {}  #{name : name, ...}
+
+    def ParseForwardInplaceInfo(self):
+        forward_api_contents = self.forward_api_contents
+        if 'inplace' not in forward_api_contents.keys(): return
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         inplace_map_str = forward_api_contents['inplace']
         self.forward_inplace_map = ParseYamlInplaceInfo(inplace_map_str)
@@ -482,6 +622,7 @@ class FunctionGeneratorBase:
                 name = RemoveSpecialSymbolsInName(name)
                 self.no_need_buffers.append(name.strip())
 
+<<<<<<< HEAD
     def ParseComposite(self):
         grad_api_contents = self.grad_api_contents
 
@@ -489,6 +630,8 @@ class FunctionGeneratorBase:
             composite_str = grad_api_contents['composite']
             self.composite_func_info = ParseYamlCompositeInfo(composite_str)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def ParseDispensable(self):
         forward_api_contents = self.forward_api_contents
 
@@ -516,6 +659,7 @@ class FunctionGeneratorBase:
         forward_args_str = forward_api_contents['args']
         forward_returns_str = forward_api_contents['output']
 
+<<<<<<< HEAD
         assert (
             'op' in forward_api_contents.keys()
         ), "Unable to find \"op\" in forward_api_contents keys"
@@ -536,6 +680,21 @@ class FunctionGeneratorBase:
     def DetermineForwardPositionMap(
         self, forward_inputs_list, forward_returns_list
     ):
+=======
+        assert 'op' in forward_api_contents.keys(
+        ), "Unable to find \"op\" in forward_api_contents keys"
+        assert 'args' in forward_api_contents.keys(
+        ), "Unable to find \"args\" in forward_api_contents keys"
+        assert 'output' in forward_api_contents.keys(
+        ), "Unable to find \"output\" in forward_api_contents keys"
+
+        # Collect Original Forward Inputs/Outputs and then perform validation checks
+        self.orig_forward_inputs_list, self.orig_forward_attrs_list, self.orig_forward_returns_list = ParseYamlForward(
+            forward_args_str, forward_returns_str)
+
+    def DetermineForwardPositionMap(self, forward_inputs_list,
+                                    forward_returns_list):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for i in range(len(forward_inputs_list)):
             forward_input = forward_inputs_list[i]
             input_name = forward_input[0]
@@ -543,14 +702,22 @@ class FunctionGeneratorBase:
             input_pos = forward_input[2]
 
             self.forward_inputs_position_map[input_name] = [
+<<<<<<< HEAD
                 input_type,
                 input_pos,
+=======
+                input_type, input_pos
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
 
         for i in range(len(forward_returns_list)):
             forward_return = forward_returns_list[i]
             if len(forward_return[0]) == 0:
+<<<<<<< HEAD
                 if len(forward_returns_list) == 1:
+=======
+                if (len(forward_returns_list) == 1):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     return_name = "out"
                 else:
                     return_name = "out_{}".format(i + 1)
@@ -560,12 +727,20 @@ class FunctionGeneratorBase:
             return_pos = forward_return[2]
 
             self.forward_outputs_position_map[return_name] = [
+<<<<<<< HEAD
                 return_type,
                 return_pos,
+=======
+                return_type, return_pos
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
 
 
 class GeneratorBase:
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, api_yaml_path):
         self.namespace = ""
         self.api_yaml_path = api_yaml_path

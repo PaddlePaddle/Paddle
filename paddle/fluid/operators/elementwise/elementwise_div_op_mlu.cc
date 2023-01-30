@@ -21,6 +21,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class ElementwiseDivMLUKernel : public framework::OpKernel<T> {
  public:
@@ -33,12 +38,21 @@ template <typename T>
 class ElementwiseDivGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out = ctx.Input<phi::DenseTensor>("Out");
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
 
     const auto& x_dims = x->dims();
@@ -64,7 +78,11 @@ class ElementwiseDivGradMLUKernel : public framework::OpKernel<T> {
         CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
 
     // compute dout/y == 1/y * dout
+<<<<<<< HEAD
     phi::DenseTensor dout_div_y(dout->dtype());
+=======
+    Tensor dout_div_y(dout->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dout_div_y.Resize(dout->dims());
     dout_div_y.mutable_data<T>(ctx.GetPlace());
     MLUBinary<DIV>(ctx,
@@ -108,7 +126,11 @@ class ElementwiseDivGradMLUKernel : public framework::OpKernel<T> {
 
     if (dy) {
       // compute dy = -out * (dout/y) = -out/y * dout
+<<<<<<< HEAD
       phi::DenseTensor neg_out(out->type());
+=======
+      Tensor neg_out(out->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       neg_out.mutable_data<T>(out->dims(), ctx.GetPlace());
 
       MLUCnnlTensorDesc out_desc(*out);
@@ -119,7 +141,11 @@ class ElementwiseDivGradMLUKernel : public framework::OpKernel<T> {
                     out_desc.get(),
                     GetBasePtr(&neg_out));
 
+<<<<<<< HEAD
       phi::DenseTensor dy_temp(y->dtype());
+=======
+      Tensor dy_temp(y->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       dy_temp.Resize(dout->dims());
       dy_temp.mutable_data<T>(ctx.GetPlace());
 

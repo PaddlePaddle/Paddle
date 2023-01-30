@@ -17,13 +17,24 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T, typename AttrType = T>
 class LogLossXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* predict = ctx.Input<phi::DenseTensor>("Predicted");
     auto* labels = ctx.Input<phi::DenseTensor>("Labels");
     auto* loss = ctx.Output<phi::DenseTensor>("Loss");
+=======
+    auto* predict = ctx.Input<Tensor>("Predicted");
+    auto* labels = ctx.Input<Tensor>("Labels");
+    auto* loss = ctx.Output<Tensor>("Loss");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto epsilon = static_cast<T>(ctx.Attr<AttrType>("epsilon"));
     loss->mutable_data<T>(ctx.GetPlace());
     int n = predict->numel();
@@ -41,11 +52,18 @@ template <typename DeviceContext, typename T, typename AttrType = T>
 class LogLossGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* predict = ctx.Input<phi::DenseTensor>("Predicted");
     auto* labels = ctx.Input<phi::DenseTensor>("Labels");
     auto* dloss = ctx.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
     auto* dpred =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Predicted"));
+=======
+    auto* predict = ctx.Input<Tensor>("Predicted");
+    auto* labels = ctx.Input<Tensor>("Labels");
+    auto* dloss = ctx.Input<Tensor>(framework::GradVarName("Loss"));
+    auto* dpred = ctx.Output<Tensor>(framework::GradVarName("Predicted"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!dpred) {
       return;
     }

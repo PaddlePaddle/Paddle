@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 import json
 import logging
@@ -20,11 +21,27 @@ import os
 
 def check_path_exists(path):
     """Assert whether file/directory exists."""
+=======
+import os
+import json
+import logging
+import argparse
+
+
+def check_path_exists(path):
+    """Assert whether file/directory exists.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     assert os.path.exists(path), "%s does not exist." % path
 
 
 def parse_case_name(log_file_name):
+<<<<<<< HEAD
     """Parse case name."""
+=======
+    """Parse case name.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     case_id, case_info = log_file_name.split("-")
     direction = case_info.split(".")[0].split("_")[-1]
 
@@ -32,7 +49,12 @@ def parse_case_name(log_file_name):
 
 
 def parse_log_file(log_file):
+<<<<<<< HEAD
     """Load one case result from log file."""
+=======
+    """Load one case result from log file.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     check_path_exists(log_file)
 
     result = None
@@ -40,7 +62,11 @@ def parse_log_file(log_file):
         for line in f.read().strip().split('\n')[::-1]:
             try:
                 result = json.loads(line)
+<<<<<<< HEAD
                 if result.get("disabled", False):
+=======
+                if result.get("disabled", False) == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     return None
                 return result
             except ValueError:
@@ -53,6 +79,7 @@ def parse_log_file(log_file):
 
 
 def load_benchmark_result_from_logs_dir(logs_dir):
+<<<<<<< HEAD
     """Load benchmark result from logs directory."""
     check_path_exists(logs_dir)
 
@@ -61,12 +88,26 @@ def load_benchmark_result_from_logs_dir(logs_dir):
         log_file,
         parse_log_file(log_file_path(log_file)),
     )
+=======
+    """Load benchmark result from logs directory.
+    """
+    check_path_exists(logs_dir)
+
+    log_file_path = lambda log_file: os.path.join(logs_dir, log_file)
+    result_lambda = lambda log_file: (log_file,
+                                      parse_log_file(log_file_path(log_file)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return dict(map(result_lambda, os.listdir(logs_dir)))
 
 
 def check_speed_result(case_name, develop_data, pr_data, pr_result):
+<<<<<<< HEAD
     """Check speed differences between develop and pr."""
+=======
+    """Check speed differences between develop and pr.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     pr_gpu_time = pr_data.get("gpu_time")
     develop_gpu_time = develop_data.get("gpu_time")
     if develop_gpu_time != 0.0:
@@ -81,6 +122,7 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
     total_time_diff = (pr_total_time - develop_total_time) / develop_total_time
 
     logging.info("------ OP: %s ------" % case_name)
+<<<<<<< HEAD
     logging.info(
         "GPU time change: %s (develop: %.7f -> PR: %.7f)"
         % (gpu_time_diff_str, develop_gpu_time, pr_gpu_time)
@@ -89,6 +131,12 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
         "Total time change: %.5f%% (develop: %.7f -> PR: %.7f)"
         % (total_time_diff * 100, develop_total_time, pr_total_time)
     )
+=======
+    logging.info("GPU time change: %s (develop: %.7f -> PR: %.7f)" %
+                 (gpu_time_diff_str, develop_gpu_time, pr_gpu_time))
+    logging.info("Total time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
+                 (total_time_diff * 100, develop_total_time, pr_total_time))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     logging.info("backward: %s" % pr_result.get("backward"))
     logging.info("parameters:")
     for line in pr_result.get("parameters").strip().split("\n"):
@@ -98,7 +146,12 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
 
 
 def check_accuracy_result(case_name, pr_result):
+<<<<<<< HEAD
     """Check accuracy result."""
+=======
+    """Check accuracy result.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     logging.info("------ OP: %s ------" % case_name)
     logging.info("Accuracy diff: %s" % pr_result.get("diff"))
     logging.info("backward: %s" % pr_result.get("backward"))
@@ -109,16 +162,27 @@ def check_accuracy_result(case_name, pr_result):
     return not pr_result.get("consistent")
 
 
+<<<<<<< HEAD
 def compare_benchmark_result(
     case_name, develop_result, pr_result, check_results
 ):
     """Compare the differences between develop and pr."""
+=======
+def compare_benchmark_result(case_name, develop_result, pr_result,
+                             check_results):
+    """Compare the differences between develop and pr.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     develop_speed = develop_result.get("speed")
     pr_speed = pr_result.get("speed")
 
     assert type(develop_speed) == type(
+<<<<<<< HEAD
         pr_speed
     ), "The types of comparison results need to be consistent."
+=======
+        pr_speed), "The types of comparison results need to be consistent."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if isinstance(develop_speed, dict) and isinstance(pr_speed, dict):
         if check_speed_result(case_name, develop_speed, pr_speed, pr_result):
@@ -129,7 +193,12 @@ def compare_benchmark_result(
 
 
 def update_api_info_file(fail_case_list, api_info_file):
+<<<<<<< HEAD
     """Update api info file to auto retry benchmark test."""
+=======
+    """Update api info file to auto retry benchmark test.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     check_path_exists(api_info_file)
 
     # set of case names for performance check failures
@@ -153,14 +222,24 @@ def update_api_info_file(fail_case_list, api_info_file):
 
 
 def summary_results(check_results, api_info_file):
+<<<<<<< HEAD
     """Summary results and return exit code."""
+=======
+    """Summary results and return exit code.
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for case_name in check_results["speed"]:
         logging.error("Check speed result with case \"%s\" failed." % case_name)
 
     for case_name in check_results["accuracy"]:
+<<<<<<< HEAD
         logging.error(
             "Check accuracy result with case \"%s\" failed." % case_name
         )
+=======
+        logging.error("Check accuracy result with case \"%s\" failed." %
+                      case_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if len(check_results["speed"]) and api_info_file:
         update_api_info_file(check_results["speed"], api_info_file)
@@ -172,23 +251,36 @@ def summary_results(check_results, api_info_file):
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     """Load result from log directories and compare the differences."""
     logging.basicConfig(
         level=logging.INFO,
         format="[%(filename)s:%(lineno)d] [%(levelname)s] %(message)s",
     )
+=======
+    """Load result from log directories and compare the differences.
+    """
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(filename)s:%(lineno)d] [%(levelname)s] %(message)s")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--develop_logs_dir",
         type=str,
         required=True,
+<<<<<<< HEAD
         help="Specify the benchmark result directory of develop branch.",
     )
+=======
+        help="Specify the benchmark result directory of develop branch.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     parser.add_argument(
         "--pr_logs_dir",
         type=str,
         required=True,
+<<<<<<< HEAD
         help="Specify the benchmark result directory of PR branch.",
     )
     parser.add_argument(
@@ -197,13 +289,24 @@ if __name__ == "__main__":
         required=False,
         help="Specify the api info to run benchmark test.",
     )
+=======
+        help="Specify the benchmark result directory of PR branch.")
+    parser.add_argument("--api_info_file",
+                        type=str,
+                        required=False,
+                        help="Specify the api info to run benchmark test.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     args = parser.parse_args()
 
     check_results = dict(accuracy=list(), speed=list())
 
     develop_result_dict = load_benchmark_result_from_logs_dir(
+<<<<<<< HEAD
         args.develop_logs_dir
     )
+=======
+        args.develop_logs_dir)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     check_path_exists(args.pr_logs_dir)
     pr_log_files = os.listdir(args.pr_logs_dir)
@@ -213,8 +316,13 @@ if __name__ == "__main__":
         if develop_result is None or pr_result is None:
             continue
         case_name = parse_case_name(log_file)
+<<<<<<< HEAD
         compare_benchmark_result(
             case_name, develop_result, pr_result, check_results
         )
+=======
+        compare_benchmark_result(case_name, develop_result, pr_result,
+                                 check_results)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     exit(summary_results(check_results, args.api_info_file))

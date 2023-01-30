@@ -14,10 +14,17 @@
 
 #include "paddle/phi/kernels/grid_sample_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/grid_sample_utils.h"
@@ -28,7 +35,11 @@ template <typename T>
 static __forceinline__ __device__ void AtomicAdd(
     T* data, int h, int w, int sH, int sW, int H, int W, T delta) {
   if (InBounds(h, w, H, W)) {
+<<<<<<< HEAD
     phi::CudaAtomicAdd(data + h * sH + w * sW, delta);
+=======
+    paddle::platform::CudaAtomicAdd(data + h * sH + w * sW, delta);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -45,7 +56,11 @@ static __forceinline__ __device__ void AtomicAdd3D(T* data,
                                                    int W,
                                                    T delta) {
   if (InBounds3D(d, h, w, D, H, W)) {
+<<<<<<< HEAD
     phi::CudaAtomicAdd(data + d * sD + h * sH + w * sW, delta);
+=======
+    paddle::platform::CudaAtomicAdd(data + d * sD + h * sH + w * sW, delta);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

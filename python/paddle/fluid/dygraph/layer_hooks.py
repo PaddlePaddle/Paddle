@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import warnings
 
 from paddle.fluid.framework import default_main_program, in_dygraph_mode
+=======
+import six
+import warnings
+
+from paddle.fluid.framework import default_main_program, _non_static_mode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class LayerOpsRecoder:
@@ -34,19 +41,31 @@ def record_program_ops_pre_hook(layer, inputs):
     """
     A pre-hook to mark op numbers before enter layer.forward.
     """
+<<<<<<< HEAD
     if not in_dygraph_mode():
         if layer._op_recorder.start < 0:
             layer._op_recorder.start = len(
                 default_main_program().current_block().ops
             )
+=======
+    if not _non_static_mode():
+        if layer._op_recorder.start < 0:
+            layer._op_recorder.start = len(
+                default_main_program().current_block().ops)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             layer._op_recorder.is_valid = True
         else:
             layer._op_recorder.is_valid = False
             warnings.warn(
+<<<<<<< HEAD
                 "{} has recorded the op information before. Please check whether you call this layer twice.".format(
                     layer._full_name
                 )
             )
+=======
+                "{} has recorded the op information before. Please check whether you call this layer twice."
+                .format(layer._full_name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return None
 
@@ -55,18 +74,30 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
     """
     A post-hook to append customized attributes into all operators generated in current layer.
     """
+<<<<<<< HEAD
     if not in_dygraph_mode() and layer._op_recorder.is_valid:
 
         start = layer._op_recorder.start
         end = len(default_main_program().current_block().ops)
         assert start >= 0 and end >= start
+=======
+    if not _non_static_mode() and layer._op_recorder.is_valid:
+
+        start = layer._op_recorder.start
+        end = len(default_main_program().current_block().ops)
+        assert (start >= 0 and end >= start)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ops = default_main_program().current_block().ops[start:end]
 
         layer._op_recorder.end = end
         layer._op_recorder.ops = ops
 
         for op in ops:
+<<<<<<< HEAD
             for attr_name, val in layer._customized_attrs.items():
+=======
+            for attr_name, val in six.iteritems(layer._customized_attrs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 op._set_attr(attr_name, val)
 
         # remove pre-hook and post-hook

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,34 +23,73 @@ from paddle.fluid import Program, program_guard
 
 
 class TestZerosOpError(unittest.TestCase):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.compat as cpt
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestZerosOpError(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
             shape = [4]
             dtype = 'int8'
             self.assertRaises(TypeError, fluid.layers.zeros, shape, dtype)
 
+<<<<<<< HEAD
 
 class ApiZerosTest(unittest.TestCase):
+=======
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_errors()
+
+
+class ApiZerosTest(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_out(self):
         with program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype='float64')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             (result,) = exe.run(fetch_list=[zeros])
+=======
+            (result, ) = exe.run(fetch_list=[zeros])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.zeros(10, dtype='float64')
         self.assertEqual((result == expected_result).all(), True)
         with paddle.static.program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype='int64')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             (result,) = exe.run(fetch_list=[zeros])
+=======
+            (result, ) = exe.run(fetch_list=[zeros])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.zeros(10, dtype='int64')
         self.assertEqual((result == expected_result).all(), True)
         with program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype='int64')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             (result,) = exe.run(fetch_list=[zeros])
+=======
+            (result, ) = exe.run(fetch_list=[zeros])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.zeros(10, dtype='int64')
         self.assertEqual((result == expected_result).all(), True)
         with program_guard(Program()):
@@ -65,6 +105,7 @@ class ApiZerosTest(unittest.TestCase):
             zeros = fluid.layers.zeros(shape=[10], dtype='int64')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             (result,) = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype='int64')
         self.assertEqual((result == expected_result).all(), True)
@@ -72,6 +113,22 @@ class ApiZerosTest(unittest.TestCase):
 
 class ApiZerosError(unittest.TestCase):
     def test_errors(self):
+=======
+            (result, ) = exe.run(fetch_list=[zeros])
+            expected_result = np.zeros(10, dtype='int64')
+        self.assertEqual((result == expected_result).all(), True)
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_out()
+            self.test_fluid_out()
+
+
+class ApiZerosError(unittest.TestCase):
+
+    def test_errors(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_error1():
             with paddle.static.program_guard(fluid.Program()):
                 ones = fluid.layers.zeros(shape=10, dtype='int64')
@@ -90,9 +147,22 @@ class ApiZerosError(unittest.TestCase):
                 shape = [-1, 5]
                 out = paddle.zeros(shape)
             except Exception as e:
+<<<<<<< HEAD
                 error_msg = str(e)
                 assert error_msg.find("expected to be no less than 0") > 0
 
 
 if __name__ == '__main__':
+=======
+                error_msg = cpt.get_exception_message(e)
+                assert error_msg.find("expected to be no less than 0") > 0
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_errors()
+            self.test_shape_errors()
+
+
+if (__name__ == '__main__'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     unittest.main()

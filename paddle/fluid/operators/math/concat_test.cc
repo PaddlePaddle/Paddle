@@ -29,6 +29,7 @@ limitations under the License. */
  */
 template <typename DeviceContext, typename Place>
 void ConcatCase1(DeviceContext* context) {
+<<<<<<< HEAD
   phi::DenseTensor input_a_cpu;
   phi::DenseTensor input_b_cpu;
   phi::DenseTensor out_cpu;
@@ -36,6 +37,15 @@ void ConcatCase1(DeviceContext* context) {
   phi::DenseTensor input_a;
   phi::DenseTensor input_b;
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor input_a_cpu;
+  paddle::framework::Tensor input_b_cpu;
+  paddle::framework::Tensor out_cpu;
+
+  paddle::framework::Tensor input_a;
+  paddle::framework::Tensor input_b;
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto dim_a = phi::make_ddim({2, 3, 4});
   auto dim_b = phi::make_ddim({3, 3, 4});
@@ -73,7 +83,11 @@ void ConcatCase1(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> input;
+=======
+  std::vector<paddle::framework::Tensor> input;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   input.push_back(input_a);
   input.push_back(input_b);
 
@@ -134,6 +148,7 @@ void ConcatCase1(DeviceContext* context) {
  */
 template <typename DeviceContext, typename Place>
 void ConcatCase2(DeviceContext* context) {
+<<<<<<< HEAD
   phi::DenseTensor input_a_cpu;
   phi::DenseTensor input_b_cpu;
   phi::DenseTensor out_cpu;
@@ -141,6 +156,15 @@ void ConcatCase2(DeviceContext* context) {
   phi::DenseTensor input_a;
   phi::DenseTensor input_b;
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor input_a_cpu;
+  paddle::framework::Tensor input_b_cpu;
+  paddle::framework::Tensor out_cpu;
+
+  paddle::framework::Tensor input_a;
+  paddle::framework::Tensor input_b;
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto dim_a = phi::make_ddim({2, 3, 4});
   auto dim_b = phi::make_ddim({2, 4, 4});
@@ -178,7 +202,11 @@ void ConcatCase2(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> input;
+=======
+  std::vector<paddle::framework::Tensor> input;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   input.push_back(input_a);
   input.push_back(input_b);
 
@@ -243,6 +271,7 @@ void ConcatCase2(DeviceContext* context) {
  */
 template <typename DeviceContext, typename Place>
 void ConcatCase3(DeviceContext* context) {
+<<<<<<< HEAD
   phi::DenseTensor input_a_cpu;
   phi::DenseTensor input_b_cpu;
   phi::DenseTensor out_cpu;
@@ -250,6 +279,15 @@ void ConcatCase3(DeviceContext* context) {
   phi::DenseTensor input_a;
   phi::DenseTensor input_b;
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor input_a_cpu;
+  paddle::framework::Tensor input_b_cpu;
+  paddle::framework::Tensor out_cpu;
+
+  paddle::framework::Tensor input_a;
+  paddle::framework::Tensor input_b;
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto dim_a = phi::make_ddim({2, 3, 4});
   auto dim_b = phi::make_ddim({2, 3, 5});
@@ -287,7 +325,11 @@ void ConcatCase3(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> input;
+=======
+  std::vector<paddle::framework::Tensor> input;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   input.push_back(input_a);
   input.push_back(input_b);
 
@@ -354,6 +396,7 @@ void ConcatCase3(DeviceContext* context) {
  */
 template <typename DeviceContext, typename Place>
 void ConcatCase4(DeviceContext* context) {
+<<<<<<< HEAD
   phi::DenseTensor input_a_cpu;
   phi::DenseTensor input_b_cpu;
   phi::DenseTensor out_cpu;
@@ -361,6 +404,15 @@ void ConcatCase4(DeviceContext* context) {
   phi::DenseTensor input_a;
   phi::DenseTensor input_b;
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor input_a_cpu;
+  paddle::framework::Tensor input_b_cpu;
+  paddle::framework::Tensor out_cpu;
+
+  paddle::framework::Tensor input_a;
+  paddle::framework::Tensor input_b;
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto dim_a = phi::make_ddim({2, 3, 4});
   auto dim_b = phi::make_ddim({2, 3, 4});
@@ -398,7 +450,11 @@ void ConcatCase4(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> input;
+=======
+  std::vector<paddle::framework::Tensor> input;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   input.push_back(input_a);
   input.push_back(input_b);
 

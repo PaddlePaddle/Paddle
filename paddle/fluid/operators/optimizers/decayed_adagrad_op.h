@@ -24,24 +24,43 @@ class DecayedAdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be phi::DenseTensor, "
+=======
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
     const auto* grad_var = ctx.InputVar("Grad");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be phi::DenseTensor, "
+=======
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           "but the received is %s",
                           ctx.InputNames("Grad").front(),
                           framework::ToTypeName(grad_var->Type())));
 
+<<<<<<< HEAD
     auto param_out_tensor = ctx.Output<phi::DenseTensor>("ParamOut");
     auto moment_out_tensor = ctx.Output<phi::DenseTensor>("MomentOut");
+=======
+    auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
+    auto moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     param_out_tensor->mutable_data<T>(ctx.GetPlace());
     moment_out_tensor->mutable_data<T>(ctx.GetPlace());
@@ -50,6 +69,7 @@ class DecayedAdagradOpKernel : public framework::OpKernel<T> {
     float epsilon = ctx.Attr<float>("epsilon");
 
     auto param = framework::EigenVector<T>::Flatten(
+<<<<<<< HEAD
         *ctx.Input<phi::DenseTensor>("Param"));
     auto grad = framework::EigenVector<T>::Flatten(
         *ctx.Input<phi::DenseTensor>("Grad"));
@@ -57,6 +77,15 @@ class DecayedAdagradOpKernel : public framework::OpKernel<T> {
         *ctx.Input<phi::DenseTensor>("Moment"));
     auto lr = framework::EigenVector<T>::Flatten(
         *ctx.Input<phi::DenseTensor>("LearningRate"));
+=======
+        *ctx.Input<framework::Tensor>("Param"));
+    auto grad = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Grad"));
+    auto moment = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Moment"));
+    auto lr = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("LearningRate"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
     auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);

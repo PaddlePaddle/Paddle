@@ -195,6 +195,7 @@ inline std::string CreateKey(const OneDNNContext& dev_ctx, ArgTypes&&... args) {
   return key;
 }
 
+<<<<<<< HEAD
 // The function adjusts the vector of weight dimensions for group convolutions
 inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
                                   const int groups) {
@@ -208,6 +209,8 @@ inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline void MatchShapeToLayout(DenseTensor* tensor_in,
                                DataLayout from,
                                DataLayout to) {
@@ -284,7 +287,14 @@ inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
              : key;
 }
 
+<<<<<<< HEAD
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
+=======
+template <typename T>
+bool constexpr is_int8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace funcs
 }  // namespace phi

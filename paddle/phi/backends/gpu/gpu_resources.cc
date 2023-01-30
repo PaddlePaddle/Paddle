@@ -14,8 +14,11 @@
 
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 
+<<<<<<< HEAD
 #include <set>
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -24,7 +27,10 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/dynload/cublasLt.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
@@ -35,7 +41,12 @@
 
 #include "unsupported/Eigen/CXX11/Tensor"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
+=======
+// TODO(phi): remove fluid header.
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -59,6 +70,7 @@ void InitGpuProperties(Place place,
   *driver_version = backends::gpu::GetGPUDriverVersion(place.GetDeviceId());
   *runtime_version = backends::gpu::GetGPURuntimeVersion(place.GetDeviceId());
 
+<<<<<<< HEAD
   const gpuDeviceProp& prop =
       backends::gpu::GetDeviceProperties(place.GetDeviceId());
 
@@ -81,6 +93,8 @@ void InitGpuProperties(Place place,
   }
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // TODO(wilber): glog may be replaced in the future?
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
                           << static_cast<int>(place.device)

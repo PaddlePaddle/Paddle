@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -24,6 +25,21 @@ import paddle.fluid.core as core
 def _feed_data_helper():
     img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
+=======
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import numpy as np
+import paddle
+import paddle.dataset.mnist as mnist
+import unittest
+import os
+
+
+def _feed_data_helper():
+    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return img, label
 
 
@@ -32,11 +48,17 @@ def simple_fc_net(use_feed):
     x, y = _feed_data_helper()
     hidden_layer = 4
     for _ in range(hidden_layer):
+<<<<<<< HEAD
         x = paddle.static.nn.fc(x, size=20, activation='relu')
     y_predict = paddle.static.nn.fc(x, size=10, activation='softmax')
     cost = paddle.nn.functional.cross_entropy(
         input=y_predict, label=y, reduction='none', use_softmax=False
     )
+=======
+        x = fluid.layers.fc(input=x, size=20, act='relu')
+    y_predict = fluid.layers.fc(input=x, size=10, act='softmax')
+    cost = fluid.layers.cross_entropy(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     avg_cost = paddle.mean(cost)
     return avg_cost
 
@@ -44,6 +66,7 @@ def simple_fc_net(use_feed):
 def fc_with_inplace_net(use_feed):
     assert use_feed
     x, y = _feed_data_helper()
+<<<<<<< HEAD
     fc = paddle.static.nn.fc(x=x, size=20, activation='relu')
     fc = paddle.static.nn.fc(x=fc, size=10, activation='relu')
     reshape = paddle.reshape(x=fc, shape=[-1, 2, 5])
@@ -52,11 +75,23 @@ def fc_with_inplace_net(use_feed):
     cost = paddle.nn.functional.cross_entropy(
         input=y_predict, label=y, reduction='none', use_softmax=False
     )
+=======
+    fc = fluid.layers.fc(input=x, size=20, act='relu')
+    fc = fluid.layers.fc(input=fc, size=10, act='relu')
+    reshape = fluid.layers.reshape(x=fc, shape=[-1, 2, 5])
+    reshape = fluid.layers.reshape(x=reshape, shape=[-1, 5, 2])
+    y_predict = fluid.layers.fc(input=reshape, size=10, act='softmax')
+    cost = fluid.layers.cross_entropy(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     avg_cost = paddle.mean(cost)
     return avg_cost
 
 
 class TestMNIST(TestParallelExecutorBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _dummy_data(self):
         np.random.seed(5)
         img = np.random.random(size=[32, 784]).astype(np.float32)
@@ -70,6 +105,7 @@ class TestMNIST(TestParallelExecutorBase):
         img, label = self._dummy_data()
         first_loss0, last_loss0, _ = self.check_network_convergence(
             model,
+<<<<<<< HEAD
             feed_dict={"image": img, "label": label},
             use_device=use_device,
             use_ir_memory_optimize=False,
@@ -80,6 +116,22 @@ class TestMNIST(TestParallelExecutorBase):
             use_device=use_device,
             use_ir_memory_optimize=True,
         )
+=======
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+            use_device=use_device,
+            use_ir_memory_optimize=False)
+        first_loss1, last_loss1, _ = self.check_network_convergence(
+            model,
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+            use_device=use_device,
+            use_ir_memory_optimize=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for loss in zip(first_loss0, first_loss1):
             self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
         for loss in zip(last_loss0, last_loss1):

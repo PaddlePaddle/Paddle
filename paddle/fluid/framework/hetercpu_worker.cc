@@ -54,10 +54,16 @@ void HeterTask::PackTask(Scope* thread_scope,
   auto& use_slots = reader->GetUseSlotAlias();
   for (size_t i = 0; i < use_slots.size(); ++i) {
     Variable* thread_var = thread_scope->FindVar(use_slots[i]);
+<<<<<<< HEAD
     phi::DenseTensor* thread_tensor =
         thread_var->GetMutable<phi::DenseTensor>();
     Variable* task_var = scope_->FindVar(use_slots[i]);
     phi::DenseTensor* task_tensor = task_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+    Variable* task_var = scope_->FindVar(use_slots[i]);
+    LoDTensor* task_tensor = task_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TensorCopy(*thread_tensor, platform::CPUPlace(), task_tensor);
     auto& tensor_lod = thread_tensor->lod()[0];
     LoD thread_lod{tensor_lod};
@@ -199,7 +205,11 @@ void HeterCpuWorker::SetNeedDump(bool need_dump_field) {
 }
 
 // template <typename T>
+<<<<<<< HEAD
 // std::string PrintLodTensorType(phi::DenseTensor* tensor,
+=======
+// std::string PrintLodTensorType(LoDTensor* tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //                                int64_t start, int64_t end) {
 //   auto count = tensor->numel();
 //   if (start < 0 || end > count) {
@@ -213,7 +223,11 @@ void HeterCpuWorker::SetNeedDump(bool need_dump_field) {
 //   return os.str();
 // }
 //
+<<<<<<< HEAD
 // std::string PrintLodTensorIntType(phi::DenseTensor* tensor, int64_t start,
+=======
+// std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //                                   int64_t end) {
 //   auto count = tensor->numel();
 //   if (start < 0 || end > count) {
@@ -227,8 +241,12 @@ void HeterCpuWorker::SetNeedDump(bool need_dump_field) {
 //   return os.str();
 // }
 //
+<<<<<<< HEAD
 // std::string PrintLodTensor(phi::DenseTensor* tensor, int64_t start, int64_t
 // end) {
+=======
+// std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //   std::string out_val;
 //   if (tensor->type() == proto::VarType::FP32) {
 //     out_val = PrintLodTensorType<float>(tensor, start, end);
@@ -242,8 +260,12 @@ void HeterCpuWorker::SetNeedDump(bool need_dump_field) {
 //   return out_val;
 // }
 //
+<<<<<<< HEAD
 // std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor, int
 // index) {
+=======
+// std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //   auto& dims = tensor->dims();
 //   if (tensor->lod().size() != 0) {
 //     auto& lod = tensor->lod()[0];
@@ -253,7 +275,11 @@ void HeterCpuWorker::SetNeedDump(bool need_dump_field) {
 //   }
 // }
 //
+<<<<<<< HEAD
 // bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
+=======
+// bool CheckValidOutput(LoDTensor* tensor, size_t batch_size) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //   auto& dims = tensor->dims();
 //   if (dims.size() != 2) return false;
 //   if (tensor->lod().size() != 0) {
@@ -278,7 +304,11 @@ void HeterCpuWorker::DumpParam() {
   //    if (var == nullptr) {
   //      continue;
   //    }
+<<<<<<< HEAD
   //    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  //    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   //    int64_t len = tensor->numel();
   //    os += PrintLodTensor(tensor, 0, len);
   //    writer_ << os;
@@ -305,7 +335,11 @@ void HeterCpuWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
   Scope* scope = task->scope_;
   feature_label.resize(feature.size());
   Variable* var = scope->FindVar(label_var_name_[table_id]);
+<<<<<<< HEAD
   phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int64_t* label_ptr = tensor->data<int64_t>();
 
   size_t global_index = 0;
@@ -316,7 +350,11 @@ void HeterCpuWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
     if (fea_var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = fea_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(tensor != nullptr)
         << "tensor of var " << sparse_key_names_[table_id][i] << " is null";
 
@@ -368,7 +406,11 @@ void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
     if (var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
@@ -376,7 +418,11 @@ void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
     if (var_emb == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor_emb = var_emb->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* ptr =
         tensor_emb->mutable_data<float>({len, table.emb_dim()}, place_);
     // memset(ptr, 0, sizeof(float) * len * table.emb_dim());
@@ -451,7 +497,11 @@ void HeterCpuWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
             << " is nullptr, skip adjust ins weight";
     return;
   }
+<<<<<<< HEAD
   phi::DenseTensor* nid_tensor = nid_var->GetMutable<phi::DenseTensor>();
+=======
+  LoDTensor* nid_tensor = nid_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (nid_tensor == nullptr) {
     VLOG(0) << "tensor of nid slot var " << adjust_ins_weight_config_.nid_slot()
             << " is nullptr, skip adjust ins weight";
@@ -464,8 +514,12 @@ void HeterCpuWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
             << " is nullptr, skip adjust ins weight";
     return;
   }
+<<<<<<< HEAD
   phi::DenseTensor* ins_weight_tensor =
       ins_weight_var->GetMutable<phi::DenseTensor>();
+=======
+  LoDTensor* ins_weight_tensor = ins_weight_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (ins_weight_tensor == nullptr) {
     VLOG(0) << "tensor of ins weight tensor "
             << adjust_ins_weight_config_.ins_weight_slot()
@@ -588,14 +642,22 @@ void HeterCpuWorker::CopyDenseVars() {
             << dest_var_name;
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     CHECK(src_var != nullptr) << src_var_name << " not found";  // NOLINT
+<<<<<<< HEAD
     phi::DenseTensor* src_tensor = src_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* src_tensor = src_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(src_tensor != nullptr)
         << src_var_name << " tensor is null";  // NOLINT
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     CHECK(dest_var != nullptr) << dest_var_name << " not found";  // NOLINT
+<<<<<<< HEAD
     phi::DenseTensor* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* dest_tensor = dest_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(dest_tensor != nullptr)
         << dest_var_name << " tensor is null";  // NOLINT
     float* dest_data = dest_tensor->data<float>();
@@ -801,7 +863,11 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
           if (var == nullptr) {
             continue;
           }
+<<<<<<< HEAD
           phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+          LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           if (tensor == nullptr) {
             continue;
           }
@@ -1089,7 +1155,11 @@ void HeterCpuWorker::TrainFiles() {
           if (var == nullptr) {
             continue;
           }
+<<<<<<< HEAD
           phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+          LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           if (tensor == nullptr) {
             continue;
           }
@@ -1158,7 +1228,11 @@ void HeterCpuWorker::TrainFiles() {
         //     if (var == nullptr) {
         //       continue;
         //     }
+<<<<<<< HEAD
         //     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+        //     LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         //     if (!CheckValidOutput(tensor, batch_size)) {
         //       continue;
         //     }

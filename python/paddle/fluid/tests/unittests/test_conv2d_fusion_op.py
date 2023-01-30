@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,6 +24,23 @@ import paddle.fluid.core as core
 
 def create_test_padding_SAME_class(parent):
     class TestPaddingSAMECase(parent):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+
+import paddle.fluid.core as core
+from op_test import OpTest
+
+from test_conv2d_op import conv2d_forward_naive
+
+
+def create_test_padding_SAME_class(parent):
+
+    class TestPaddingSAMECase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_paddings(self):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
@@ -33,7 +51,13 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
+<<<<<<< HEAD
     class TestPaddingVALIDCase(parent):
+=======
+
+    class TestPaddingVALIDCase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_paddings(self):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
@@ -43,6 +67,7 @@ def create_test_padding_VALID_class(parent):
     globals()[cls_name] = TestPaddingVALIDCase
 
 
+<<<<<<< HEAD
 def create_test_cudnn_channel_last_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -68,6 +93,10 @@ def create_test_cudnn_channel_last_class(parent):
 
 
 class TestConv2DFusionOp(OpTest):
+=======
+class TestConv2DFusionOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "conv2d_fusion"
         self.exhaustive_search = False
@@ -90,13 +119,18 @@ class TestConv2DFusionOp(OpTest):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
+<<<<<<< HEAD
             'dilation': self.dilations,
+=======
+            'dilation': self.dilations
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
         bias = np.random.random(self.filter_size[0]).astype(self.dtype)
 
+<<<<<<< HEAD
         if self.data_format == "NHWC":
             filter_nchw = np.transpose(filter, [0, 3, 1, 2])
         else:
@@ -110,17 +144,29 @@ class TestConv2DFusionOp(OpTest):
             self.padding_algorithm,
             self.data_format,
         )
+=======
+        self.output, _, _, _, _ = conv2d_forward_naive(input, filter,
+                                                       self.groups,
+                                                       conv2d_param,
+                                                       self.padding_algorithm,
+                                                       self.data_format)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.output = self.output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+<<<<<<< HEAD
             'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
+=======
+            'Bias': OpTest.np_dtype_to_fluid_dtype(bias)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         if self.add_residual_data:
             residual_data = np.random.random(self.output.shape).astype(
+<<<<<<< HEAD
                 self.dtype
             )
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
@@ -133,6 +179,15 @@ class TestConv2DFusionOp(OpTest):
             self.output = self.output + bias.reshape((1, bias.size, 1, 1))
         else:
             self.output = self.output + bias.reshape((1, 1, 1, bias.size))
+=======
+                self.dtype)
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+                residual_data)
+            self.output += residual_data
+
+        # Add bias
+        self.output = self.output + bias.reshape((1, bias.size, 1, 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         assert self.activation in ['relu', 'identity']
         if self.activation == 'relu':
@@ -146,7 +201,11 @@ class TestConv2DFusionOp(OpTest):
             'data_format': self.data_format,
             'exhaustive_search': self.exhaustive_search,
             'activation': self.activation,
+<<<<<<< HEAD
             'padding_algorithm': self.padding_algorithm,
+=======
+            'padding_algorithm': self.padding_algorithm
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         if self.split_channels is not None:
             self.attrs['split_channels'] = self.split_channels
@@ -195,27 +254,47 @@ class TestConv2DFusionOp(OpTest):
 
 
 class TestWithoutResidual(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_residual(self):
         self.add_residual_data = False
 
 
 class TestIdentityActivation(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_activation(self):
         self.activation = 'identity'
 
 
 class TestIdentityActivation1(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_activation(self):
         self.activation = 'identity'
         self.add_residual_data = False
 
 
 class TestWithGroup(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_group(self):
         self.groups = 3
 
 
 class TestWithDilation(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -232,11 +311,19 @@ class TestWithDilation(TestConv2DFusionOp):
 
 
 class TestCUDNNExhaustiveSearch(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_search_method(self):
         self.exhaustive_search = True
 
 
 class TestMultipleOutputs(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -253,12 +340,20 @@ class TestMultipleOutputs(TestConv2DFusionOp):
 
 
 class TestAsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
 class TestWithPad_AsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 10, 10]  # NCHW
@@ -272,6 +367,10 @@ class TestWithPad_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithStride_AsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
@@ -285,6 +384,10 @@ class TestWithStride_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWith1x1_AsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -301,11 +404,19 @@ class TestWith1x1_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithGroup_AsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_group(self):
         self.groups = 3
 
 
 class TestWithDepthWise3x3_AsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [3, 4, 10, 10]  # NCHW
@@ -325,6 +436,10 @@ class TestWithDepthWise3x3_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithDepthWise5x5_AsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 4, 10, 10]  # NCHW
@@ -341,6 +456,10 @@ class TestWithDepthWise5x5_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithDepthWise7x7_AsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 8, 10, 10]  # NCHW
@@ -357,6 +476,10 @@ class TestWithDepthWise7x7_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithDilation_AsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 10, 10]  # NCHW
@@ -376,6 +499,10 @@ class TestWithDilation_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithInput1x1Filter1x1_AsyPadding(TestConv2DFusionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 1, 1]  # NCHW
@@ -391,6 +518,7 @@ class TestWithInput1x1Filter1x1_AsyPadding(TestConv2DFusionOp):
         self.padding_algorithm = "EXPLICIT"
 
 
+<<<<<<< HEAD
 class TestSimpleNHWC(TestConv2DFusionOp):
     def init_test_case(self):
         self.stride = [1, 1]
@@ -408,6 +536,8 @@ class TestSimpleNHWC(TestConv2DFusionOp):
         self.padding_algorithm = "EXPLICIT"
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 create_test_padding_SAME_class(TestAsyPadding)
 create_test_padding_SAME_class(TestWithPad_AsyPadding)
 create_test_padding_SAME_class(TestWithStride_AsyPadding)
@@ -420,11 +550,14 @@ create_test_padding_VALID_class(TestWithStride_AsyPadding)
 create_test_padding_VALID_class(TestWithGroup_AsyPadding)
 create_test_padding_VALID_class(TestWithInput1x1Filter1x1_AsyPadding)
 
+<<<<<<< HEAD
 create_test_cudnn_channel_last_class(TestAsyPadding)
 create_test_cudnn_channel_last_class(TestWithPad_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithStride_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithGroup_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithInput1x1Filter1x1_AsyPadding)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     unittest.main()

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -251,10 +256,17 @@ class TestDropoutAPI(unittest.TestCase):
             res6 = paddle.nn.functional.dropout(
                 x=input, p=1.0, training=True, mode='upscale_in_train'
             )
+<<<<<<< HEAD
             res7 = paddle.nn.functional.dropout(
                 x=input,
                 p=0.0,
                 mode='upscale_in_train',
+=======
+            res7 = paddle.fluid.layers.dropout(
+                x=input,
+                dropout_prob=0.0,
+                dropout_implementation='upscale_in_train',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
             res8 = paddle.nn.functional.dropout(
                 x=input,

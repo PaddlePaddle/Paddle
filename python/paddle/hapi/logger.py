@@ -12,9 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 import os
 import sys
+=======
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
+import sys
+import logging
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from paddle.fluid.dygraph.parallel import ParallelEnv
 

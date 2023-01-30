@@ -27,7 +27,11 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
+<<<<<<< HEAD
     auto *tensor = out_var->GetMutable<phi::DenseTensor>();
+=======
+    auto *tensor = out_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
 
     int64_t size = tensor->numel();
@@ -75,7 +79,11 @@ template <typename T>
 class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (dx) {
       T *data = dx->mutable_data<T>(ctx.GetPlace());
       int64_t size = dx->numel();

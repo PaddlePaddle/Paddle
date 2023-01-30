@@ -15,9 +15,15 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+=======
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/phi/kernels/funcs/activation_functor.h"
+#include "paddle/phi/kernels/funcs/detail/activation_functions.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
 
 #if defined(_WIN32)
@@ -34,7 +40,11 @@ using Array1 = Eigen::DSizes<int64_t, 1>;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
+<<<<<<< HEAD
 using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
+=======
+using EigenVector = paddle::framework::EigenVector<T, MajorType, IndexType>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group LSTM CPU
 

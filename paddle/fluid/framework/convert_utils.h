@@ -14,15 +14,25 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/utils/data_type.h"
+=======
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/tensor_meta.h"
+
+#include "paddle/fluid/framework/data_type.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 // TODO(chenweihang): this file may need to be removed
 
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 using DataType = phi::DataType;
 using DataLayout = phi::DataLayout;
 
@@ -33,6 +43,20 @@ using phi::TransToPhiDataType;
 inline proto::VarType::Type TransToProtoVarType(const DataType& dtype) {
   return static_cast<proto::VarType::Type>(phi::TransToProtoVarType(dtype));
 }
+=======
+using DataType = paddle::experimental::DataType;
+using DataLayout = paddle::experimental::DataLayout;
+
+DataType TransToPhiDataType(
+    const paddle::framework::proto::VarType::Type& dtype);
+
+paddle::framework::proto::VarType::Type TransToProtoVarType(
+    const DataType& dtype);
+
+size_t DataTypeSize(DataType dtype);
+DataType String2DataType(const std::string& str);
+std::string DataType2String(DataType dtype);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace framework
 }  // namespace paddle

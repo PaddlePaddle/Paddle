@@ -40,8 +40,13 @@ void XPUReduce(const framework::ExecutionContext& context,
       platform::errors::Unavailable("This kernel only runs on XPU."));
   bool reduce_all = context.Attr<bool>("reduce_all");
   auto dims = context.Attr<std::vector<int>>("dim");
+<<<<<<< HEAD
   auto* x = context.Input<phi::DenseTensor>("X");
   auto* y = context.Output<phi::DenseTensor>("Out");
+=======
+  auto* x = context.Input<Tensor>("X");
+  auto* y = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   y->mutable_data<T>(context.GetPlace());
   auto& dev_ctx = context.template device_context<DeviceContext>();
 

@@ -26,10 +26,18 @@ class ClassCenterSampleOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Label"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Label"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -74,8 +82,13 @@ class ClassCenterSampleOpMaker : public framework::OpProtoAndCheckerMaker {
     The process of sampling subset class centers is straightforward: 1) First select the positive class centers;
     2) Randomly sample negative class centers. Specifically, given a Label tensor, shape [batch_size], select all
     the positive class centers and randomly sample negative class centers, then remap the input label tensor using
+<<<<<<< HEAD
     the sampled class centers. Note that if the number of the positive class centers is greater than the input
     num_samples, it keeps all the positive class centers and the shape of SampledLocalClassCenter will be
+=======
+    the sampled class centers. Note that if the number of the positive class centers is greater than the input 
+    num_samples, it keeps all the positive class centers and the shape of SampledLocalClassCenter will be 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     [num_positive_class_centers]. The op supports CPU, single GPU and multi GPU.
 
     For more information, Partial FC: Training 10 Million Identities on a Single Machine

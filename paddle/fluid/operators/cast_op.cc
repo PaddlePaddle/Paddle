@@ -40,7 +40,11 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 Cast Operator.
 
 This Operator casts the input tensor to another data type and
+<<<<<<< HEAD
 returns the Output phi::DenseTensor. It's meaningless if the output dtype equals
+=======
+returns the Output Tensor. It's meaningless if the output dtype equals
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 the input dtype, but it's fine if you do so.
 
 )DOC");
@@ -75,10 +79,17 @@ class CastOp : public framework::OperatorWithKernel {
     context->ShareLoD("X", "Out");
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // CastOp kernel's device type is decided by input tensor place
     auto *tensor = ctx.Input<phi::DenseTensor>("X");
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    // CastOp kernel's device type is decided by input tensor place
+    auto *tensor = ctx.Input<framework::LoDTensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
                       true,
                       platform::errors::PreconditionNotMet(
@@ -86,6 +97,7 @@ class CastOp : public framework::OperatorWithKernel {
     auto &tensor_place = tensor->place();
     // NOTE: cuda pinned tensor need to copy its data to target place
     if (platform::is_cuda_pinned_place(tensor_place)) {
+<<<<<<< HEAD
       return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                             ctx.device_context().GetPlace());
     }
@@ -103,23 +115,70 @@ class CastOp : public framework::OperatorWithKernel {
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
+=======
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()),
+          ctx.device_context());
+    }
+
+#ifdef PADDLE_WITH_MKLDNN
+    int in_dtype = ctx.Attr<int>("in_dtype");
+    int out_dtype = ctx.Attr<int>("out_dtype");
+
+    auto MKLDNNSupportsCast = [&]() -> bool {
+      int dtype_fp32 = static_cast<int>(framework::proto::VarType::FP32);
+      int dtype_bf16 = static_cast<int>(framework::proto::VarType::BF16);
+
+      if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) ||
+          (out_dtype != dtype_fp32 && out_dtype != dtype_bf16))
+        return false;
+
+      return true;
+    };
+
+    if (this->CanMKLDNNBeUsed(
+            ctx, framework::TransToProtoVarType(tensor->dtype())) &&
+        MKLDNNSupportsCast()) {
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()),
+          ctx.GetPlace(),
+          framework::DataLayout::kMKLDNN,
+          framework::LibraryType::kMKLDNN);
+    }
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_MLU
     auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
     auto dst_type = static_cast<VT::Type>(ctx.Attr<int>("out_dtype"));
     if (src_type == dst_type || MLUSupportsCast(src_type, dst_type)) {
+<<<<<<< HEAD
       return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                             tensor_place);
+=======
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()), tensor_place);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       VLOG(3) << "MLU not support cast type: "
               << framework::DataTypeToString(src_type)
               << " to type: " << framework::DataTypeToString(dst_type)
               << ", fallbacking to CPU one!";
+<<<<<<< HEAD
       return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                             platform::CPUPlace());
     }
 #endif
     return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                           tensor_place);
+=======
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()),
+          platform::CPUPlace());
+    }
+#endif
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(tensor->dtype()), tensor_place);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

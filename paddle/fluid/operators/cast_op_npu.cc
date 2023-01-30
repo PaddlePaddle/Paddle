@@ -32,13 +32,24 @@ static std::map<framework::proto::VarType::Type, aclDataType>
         {framework::proto::VarType::FP64, ACL_DOUBLE},
 };
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class CastNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     int dtype = ctx.Attr<int>("out_dtype");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    int dtype = ctx.Attr<int>("out_dtype");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto place = ctx.GetPlace();
 
     if (framework::TransToProtoVarType(x->dtype()) == dtype) {

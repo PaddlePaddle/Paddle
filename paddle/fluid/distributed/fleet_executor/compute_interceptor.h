@@ -14,7 +14,10 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include <queue>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <utility>
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
@@ -31,8 +34,12 @@ class ComputeInterceptor : public Interceptor {
   virtual void SendDataReadyToDownStream();
   virtual void ReplyCompletedToUpStream();
 
+<<<<<<< HEAD
   std::queue<int64_t> ready_queue_;
   int64_t cur_scope_id_;
+=======
+  int64_t step_{0};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   void PrepareDeps();
@@ -45,10 +52,25 @@ class ComputeInterceptor : public Interceptor {
   void Run();
   void Compute(const InterceptorMessage& msg);
 
+<<<<<<< HEAD
+=======
+  void ReceivedStop(int64_t up_id);
+  void TryStop();
+
+  bool is_source_{false};
+  bool is_last_{false};
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // upstream_id-->(max_ready_size, ready_size)
   std::map<int64_t, std::pair<int64_t, int64_t>> in_readys_{};
   // downstream_id-->(max_buffer_size, used_size)
   std::map<int64_t, std::pair<int64_t, int64_t>> out_buffs_{};
+<<<<<<< HEAD
+=======
+
+  bool received_stop_{false};
+  std::map<int64_t, bool> in_stops_{};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace distributed

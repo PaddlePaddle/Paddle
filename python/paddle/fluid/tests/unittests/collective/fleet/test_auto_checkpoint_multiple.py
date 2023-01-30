@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -21,12 +22,37 @@ import paddle
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
+=======
+import unittest
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
+import os
+import sys
+
+from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
+from paddle.fluid.framework import program_guard
+from paddle.fluid import unique_name
+
+import numpy as np
+from paddle.io import Dataset, BatchSampler, DataLoader
+
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
+from paddle.fluid.tests.unittests.test_auto_checkpoint import AutoCheckPointACLBase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 logger = get_logger()
 
 
 class AutoCheckpointTestMul(AutoCheckPointACLBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -43,7 +69,11 @@ class AutoCheckpointTestMul(AutoCheckPointACLBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_dist_multiple",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_dist_multiple",
+<<<<<<< HEAD
             "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
+=======
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         os.environ.update(proc_env)
 
@@ -61,6 +91,7 @@ class AutoCheckpointTestMul(AutoCheckPointACLBase):
         exe, main_prog1, startup_prog1 = self._generate()
         _, main_prog2, startup_prog2 = self._generate()
 
+<<<<<<< HEAD
         (
             compiled1,
             data_loader1,
@@ -78,6 +109,13 @@ class AutoCheckpointTestMul(AutoCheckPointACLBase):
             image2,
             label2,
         ) = self._init_env(exe, main_prog2, startup_prog2)
+=======
+        compiled1, data_loader1, optimizer1, loss1, image1, label1 = \
+            self._init_env(exe, main_prog1, startup_prog1)
+
+        compiled2, data_loader2, optimizer2, loss2, image2, label2 = \
+            self._init_env(exe, main_prog2, startup_prog2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         o = None
         epochs = []
@@ -94,7 +132,11 @@ class AutoCheckpointTestMul(AutoCheckPointACLBase):
             epochs.append(i)
 
         o = acp._get_train_epoch_range()
+<<<<<<< HEAD
         self.assertTrue(o is None, "now train epoch must not exits now")
+=======
+        self.assertTrue(o == None, "now train epoch must not exits now")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(i, 2)
         self.assertEqual(epochs, [0, 1, 2])
 

@@ -121,9 +121,12 @@ class ValueAccessor {
   virtual void UpdateStatAfterSave(float* value, int param) {}
   // 判断该value是否保存到ssd
   virtual bool SaveSSD(float* value) = 0;
+<<<<<<< HEAD
   // 判断热启时是否过滤slot对应的feasign
   virtual bool FilterSlot(float* value) { return false; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   //
   virtual bool SaveCache(float* value,
                          int param,
@@ -165,6 +168,7 @@ class ValueAccessor {
     return 0;
   }
 
+<<<<<<< HEAD
   virtual bool SaveMemCache(float* value,
                             int param,
                             double global_cache_threshold,
@@ -177,6 +181,11 @@ class ValueAccessor {
   virtual float GetField(float* value, const std::string& name) { return 0.0; }
 #define DEFINE_GET_INDEX(class, field) \
   virtual int get_##field##_index() { return class ::field##_index(); }
+=======
+  virtual float GetField(float* value, const std::string& name) { return 0.0; }
+#define DEFINE_GET_INDEX(class, field) \
+  virtual int get_##field##_index() override { return class ::field##_index(); }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  protected:
   size_t _value_size;

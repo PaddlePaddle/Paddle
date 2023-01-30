@@ -65,7 +65,11 @@ def clean(pull_id):
     changed = []
 
     for file in get_files(pull_id):
+<<<<<<< HEAD
         # changed.append('/paddle/build/{}.gcda'.format(file))
+=======
+        #changed.append('/paddle/build/{}.gcda'.format(file))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         changed.append(file)
 
     for parent, dirs, files in os.walk('/paddle/build/'):
@@ -81,7 +85,11 @@ def clean(pull_id):
 
                 if src_name not in changed:
                     unused_file = parent + '/' + gcda
+<<<<<<< HEAD
                     # print unused_file
+=======
+                    #print unused_file
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     os.remove(gcda)
                 else:
                     print(src_name)

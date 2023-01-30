@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import unittest
 
@@ -23,6 +24,26 @@ from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 def bilinear_interp_mkldnn_np(
     input, out_h, out_w, out_size=None, actual_shape=None, data_layout='NCHW'
 ):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import math
+import paddle
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
+
+
+def bilinear_interp_mkldnn_np(input,
+                              out_h,
+                              out_w,
+                              out_size=None,
+                              actual_shape=None,
+                              data_layout='NCHW'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """bilinear interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
@@ -52,12 +73,19 @@ def bilinear_interp_mkldnn_np(
             input_h1_w0 = input[:, :, h1, w0]
             input_h0_w1 = input[:, :, h0, w1]
             input_h1_w1 = input[:, :, h1, w1]
+<<<<<<< HEAD
             out[:, :, oh, ow] = (
                 input_h0_w0 * (1 - Wh) * (1 - Ww)
                 + input_h1_w0 * Wh * (1 - Ww)
                 + input_h0_w1 * (1 - Wh) * Ww
                 + input_h1_w1 * Wh * Ww
             )
+=======
+            out[:, :, oh,
+                ow] = input_h0_w0 * (1 - Wh) * (1 - Ww) + input_h1_w0 * Wh * (
+                    1 - Ww) + input_h0_w1 * (1 -
+                                             Wh) * Ww + input_h1_w1 * Wh * Ww
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if data_layout == "NHWC":
         out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
@@ -67,6 +95,10 @@ def bilinear_interp_mkldnn_np(
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
 class TestBilinearInterpMKLDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         pass
 
@@ -101,6 +133,7 @@ class TestBilinearInterpMKLDNNOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
+<<<<<<< HEAD
         output_np = bilinear_interp_mkldnn_np(
             input_np,
             out_h,
@@ -109,6 +142,11 @@ class TestBilinearInterpMKLDNNOp(OpTest):
             self.actual_shape,
             self.data_layout,
         )
+=======
+        output_np = bilinear_interp_mkldnn_np(input_np, out_h, out_w,
+                                              self.out_size, self.actual_shape,
+                                              self.data_layout)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {'X': input_np}
         if self.out_size is not None:
@@ -121,7 +159,11 @@ class TestBilinearInterpMKLDNNOp(OpTest):
             'out_w': self.out_w,
             'scale': self.scale,
             'data_layout': self.data_layout,
+<<<<<<< HEAD
             'use_mkldnn': self.use_mkldnn,
+=======
+            'use_mkldnn': self.use_mkldnn
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': output_np}
 
@@ -130,6 +172,10 @@ class TestBilinearInterpMKLDNNOp(OpTest):
 
 
 class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 27
@@ -139,67 +185,126 @@ class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):
 
 
 class TestBilinearNeighborInterpMKLDNNCase2(TestBilinearInterpMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
+<<<<<<< HEAD
         self.scale = 1.0
 
 
 class TestBilinearNeighborInterpDataLayout(TestBilinearInterpMKLDNNOp):
+=======
+        self.scale = 1.
+
+
+class TestBilinearNeighborInterpDataLayout(TestBilinearInterpMKLDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [2, 4, 4, 5]
         self.out_h = 6
         self.out_w = 7
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.data_layout = "NHWC"
 
 
 class TestBilinearNeighborInterpCase3(TestBilinearInterpMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 128
+<<<<<<< HEAD
         self.scale = 0.0
 
 
 class TestBilinearNeighborInterpCase4(TestBilinearInterpMKLDNNOp):
+=======
+        self.scale = 0.
+
+
+class TestBilinearNeighborInterpCase4(TestBilinearInterpMKLDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([2, 2]).astype("int32")
 
 
 class TestBilinearNeighborInterpCase5(TestBilinearInterpMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [1, 1, 9, 6]
         self.out_h = 12
         self.out_w = 12
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([13, 13]).astype("int32")
 
 
 class TestBilinearNeighborInterpCase6(TestBilinearInterpMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([65, 129]).astype("int32")
 
 
 class TestBilinearNeighborInterpSame(TestBilinearInterpMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
         self.out_w = 64
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

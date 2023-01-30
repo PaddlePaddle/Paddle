@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from ..utils import compute_compatible_and_update_dim_mapping
 from .common import (
     DistributedOperatorImpl,
@@ -25,14 +26,34 @@ from .dist_default import DistributedDefaultImpl0
 class DistributedAssign(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+=======
+from .common import DistributedOperatorImplContainer
+from .common import DistributedOperatorImpl
+from .common import register_distributed_operator_impl_container
+from .common import register_distributed_operator_impl
+from .dist_default import DistributedDefaultImpl0
+from ..utils import compute_compatible_and_update_dim_mapping
+
+
+class DistributedAssign(DistributedOperatorImplContainer):
+
+    def __init__(self, op_type):
+        super(DistributedAssign, self).__init__(op_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 register_distributed_operator_impl_container(DistributedAssign("assign"))
 
 
 class DistributedAssignImpl(DistributedOperatorImpl):
+<<<<<<< HEAD
     def __init__(self, name):
         super().__init__(name)
+=======
+
+    def __init__(self, name):
+        super(DistributedAssignImpl, self).__init__(name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -43,9 +64,14 @@ class DistributedAssignImpl(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
+<<<<<<< HEAD
         if (not self.is_input_compatible(dist_op)) or (
             not self.is_output_compatible(dist_op)
         ):
+=======
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
 
         op_desc = dist_op.serial_op.desc
@@ -71,6 +97,7 @@ class DistributedAssignImpl(DistributedOperatorImpl):
 
         for i in range(len(x_dims_mapping)):
             dim_changed = compute_compatible_and_update_dim_mapping(
+<<<<<<< HEAD
                 [x_dims_mapping, out_dims_mapping], [i, i]
             )
             if dim_changed:
@@ -80,6 +107,12 @@ class DistributedAssignImpl(DistributedOperatorImpl):
             op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
             op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
 
+=======
+                [x_dims_mapping, out_dims_mapping], [i, i])
+            if dim_changed:
+                changed = True
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return changed
 
     @staticmethod

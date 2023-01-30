@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -32,23 +33,54 @@ class TRTFlattenTest(InferencePassTest):
             )
             flatten_out = self.append_flatten(data)
             out = nn.batch_norm(flatten_out, is_test=True)
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from inference_pass_test import InferencePassTest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.core import PassVersionChecker
+from paddle.fluid.core import AnalysisConfig
+
+
+class TRTFlattenTest(InferencePassTest):
+
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data",
+                              shape=[-1, 6, 64, 64],
+                              dtype="float32")
+            flatten_out = self.append_flatten(data)
+            out = fluid.layers.batch_norm(flatten_out, is_test=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TRTFlattenTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
         )
         self.fetch_list = [out]
 
     def append_flatten(self, data):
         return paddle.flatten(data, 1, -1)
+=======
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def append_flatten(self, data):
+        return fluid.layers.flatten(data, axis=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
+<<<<<<< HEAD
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
             )
 
@@ -61,11 +93,26 @@ class TRTFlattenDynamicTest(InferencePassTest):
             )
             flatten_out = self.append_flatten(data)
             out = nn.batch_norm(flatten_out, is_test=True)
+=======
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TRTFlattenDynamicTest(InferencePassTest):
+
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data",
+                              shape=[-1, 6, 64, 64],
+                              dtype="float32")
+            flatten_out = self.append_flatten(data)
+            out = fluid.layers.batch_norm(flatten_out, is_test=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.feeds = {
             "data": np.random.random([2, 6, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TRTFlattenDynamicTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = TRTFlattenDynamicTest.DynamicShapeParam(
@@ -78,14 +125,36 @@ class TRTFlattenDynamicTest(InferencePassTest):
 
     def append_flatten(self, data):
         return paddle.flatten(data, 1, -1)
+=======
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = TRTFlattenDynamicTest.DynamicShapeParam(
+            {
+                'data': [2, 6, 64, 64],
+                'flatten_0.tmp_0': [2, 6 * 64 * 64]
+            }, {
+                'data': [2, 6, 64, 64],
+                'flatten_0.tmp_0': [2, 6 * 64 * 64]
+            }, {
+                'data': [2, 6, 64, 64],
+                'flatten_0.tmp_0': [2, 6 * 64 * 64]
+            }, False)
+        self.fetch_list = [out]
+
+    def append_flatten(self, data):
+        return fluid.layers.flatten(data, axis=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
+<<<<<<< HEAD
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
             )
+=======
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

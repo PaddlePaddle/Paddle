@@ -174,6 +174,7 @@ PD_REGISTER_GENERAL_KERNEL(assign_array,
                            ALL_LAYOUT,
                            phi::AssignArrayKernel<phi::XPUContext>,
                            ALL_DTYPE) {}
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(assign_value,
                    XPU,
                    ALL_LAYOUT,
@@ -182,4 +183,6 @@ PD_REGISTER_KERNEL(assign_value,
                    int,
                    float,
                    int64_t) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif

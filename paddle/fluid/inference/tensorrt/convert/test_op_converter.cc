@@ -53,7 +53,11 @@ TEST(OpConverter, ConvertBlock) {
   framework::Scope scope;
   std::vector<int> dim_vec = {3, 2, 3, 3};
   auto* x = scope.Var("conv2d-Y");
+<<<<<<< HEAD
   auto* x_tensor = x->GetMutable<phi::DenseTensor>();
+=======
+  auto* x_tensor = x->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   x_tensor->Resize(phi::make_ddim(dim_vec));
   x_tensor->mutable_data<float>(platform::CUDAPlace(0));
 

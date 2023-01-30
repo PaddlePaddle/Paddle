@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -32,6 +33,37 @@ class MyLayer(fluid.Layer):
             [paddle.create_parameter(shape=[2, 2], dtype='float32')]
             * num_stacked_param
         )
+=======
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+import numpy as np
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import _test_eager_guard
+
+
+class MyLayer(fluid.Layer):
+
+    def __init__(self, num_stacked_param, use_fluid_api):
+        super(MyLayer, self).__init__()
+        # create ParameterList with iterable Parameters
+        self.params = self.fluid_dygraph_ParameterList(
+            num_stacked_param
+        ) if use_fluid_api else self.paddle_imperative_ParameterList(
+            num_stacked_param)
+
+    def fluid_dygraph_ParameterList(self, num_stacked_param):
+        return fluid.dygraph.ParameterList(
+            [fluid.layers.create_parameter(shape=[2, 2], dtype='float32')] *
+            num_stacked_param)
+
+    def paddle_imperative_ParameterList(self, num_stacked_param):
+        return paddle.nn.ParameterList(
+            [fluid.layers.create_parameter(shape=[2, 2], dtype='float32')] *
+            num_stacked_param)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x):
         for i, p in enumerate(self.params):
@@ -40,6 +72,10 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeContainerParameterList(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def paramter_list(self, use_fluid_api):
         data_np = np.random.uniform(-1, 1, [5, 2]).astype('float32')
         with fluid.dygraph.guard():
@@ -49,6 +85,7 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             self.assertEqual(len(model.params), num_stacked_param)
             res = model(x)
             self.assertListEqual(res.shape, [5, 2])
+<<<<<<< HEAD
             loss = paddle.mean(res)
             loss.backward()
 
@@ -67,6 +104,27 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             loss.backward()
 
     def test_paramter_list(self):
+=======
+            loss = fluid.layers.reduce_mean(res)
+            loss.backward()
+
+            model.params[num_stacked_param - 1] = fluid.layers.create_parameter(
+                shape=[2, 3], dtype='float32')
+            res = model(x)
+            self.assertListEqual(res.shape, [5, 3])
+            model.params.append(
+                fluid.layers.create_parameter(shape=[3, 4], dtype='float32'))
+            self.assertEqual(len(model.params), num_stacked_param + 1)
+            res = model(x)
+            self.assertListEqual(res.shape, [5, 4])
+            loss = fluid.layers.reduce_mean(res)
+            loss.backward()
+
+    def test_paramter_list(self):
+        with _test_eager_guard():
+            self.paramter_list(False)
+            self.paramter_list(True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.paramter_list(False)
         self.paramter_list(True)
 

@@ -25,8 +25,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 extern Barrier g_barrier;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
@@ -48,7 +51,10 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     places_.push_back(place);
   }
 #endif
+<<<<<<< HEAD
   user_define_dump_filename_ = trainer_desc.user_define_dump_filename();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -64,7 +70,11 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
         thread_num_);
   }
 #endif
+<<<<<<< HEAD
   g_barrier.reset(thread_num_);
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
@@ -76,7 +86,10 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
+<<<<<<< HEAD
     workers_[i]->SetThreadNum(thread_num_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   // set debug here
@@ -145,11 +158,18 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         if (root_var->IsType<phi::SelectedRows>()) {
           continue;
         }
+<<<<<<< HEAD
         phi::DenseTensor* root_tensor =
             root_var->GetMutable<phi::DenseTensor>();
         auto* ptr = scope->Var(name);
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
+=======
+        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        auto* ptr = scope->Var(name);
+        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         TensorCopy(*root_tensor, place, thread_tensor);
       }
     }
@@ -180,7 +200,11 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   // for unittest which call train_from_dataset but does not call
   // fleet.init_worker() first
   if (communicator == nullptr) {
+<<<<<<< HEAD
     VLOG(1) << "MultiTrainer::InitOtherEnv Communicator is null!";
+=======
+    VLOG(0) << "MultiTrainer::InitOtherEnv Communicator is null!";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     auto& recv_ctx = communicator->GetRecvCtxMap();
     communicator->PullDense(recv_ctx);
@@ -218,9 +242,15 @@ void MultiTrainer::MergeDenseParam() {
     for (auto& name : trainable_param_) {
       VLOG(2) << "merge var " << name << " to root scope";
       Variable* root_var = root_scope_->FindVar(name);
+<<<<<<< HEAD
       phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
       Variable* var = thread_scope->FindVar(name);
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+      Variable* var = thread_scope->FindVar(name);
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       TensorCopySync((*tensor), root_tensor->place(), root_tensor);
     }
   } else {
@@ -230,10 +260,16 @@ void MultiTrainer::MergeDenseParam() {
       for (auto& name : varnames) {
         VLOG(2) << "merge var " << name << " to root scope";
         Variable* root_var = root_scope_->FindVar(name);
+<<<<<<< HEAD
         phi::DenseTensor* root_tensor =
             root_var->GetMutable<phi::DenseTensor>();
         Variable* var = thread_scope->FindVar(name);
         phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        Variable* var = thread_scope->FindVar(name);
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         TensorCopySync((*tensor), root_tensor->place(), root_tensor);
       }
     }
@@ -243,12 +279,20 @@ void MultiTrainer::MergeDenseParam() {
 #endif
 
 template <typename T>
+<<<<<<< HEAD
 void MultiTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
                                     phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   phi::DenseTensor tmp_tensor;
+=======
+void MultiTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
+  LoDTensor tmp_root;
+  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  T* tmp_root_data = tmp_root.data<T>();
+  LoDTensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
@@ -266,7 +310,11 @@ void MultiTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for (int j = 1; j < thread_num_; j++) {
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
@@ -275,8 +323,12 @@ void MultiTrainer::Finalize() {
       if (thread_var == nullptr) {
         continue;
       }
+<<<<<<< HEAD
       phi::DenseTensor* thread_tensor =
           thread_var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
     if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \
@@ -302,13 +354,21 @@ void MultiTrainer::Finalize() {
   auto communicator = paddle::distributed::Communicator::GetInstance();
   // for unittest which does not call fleet.init_worker() first
   if (communicator == nullptr) {
+<<<<<<< HEAD
     VLOG(1) << "MultiTrainer::Finalize communicator is null!";
+=======
+    VLOG(0) << "MultiTrainer::Finalize communicator is null!";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     if (communicator->_worker_ptr != nullptr) {
       communicator->_worker_ptr->Flush();
       VLOG(1) << "MultiTrainer::Finalize ps client flush done";
     } else {
+<<<<<<< HEAD
       VLOG(1) << "communicator->_worker_ptr is null";
+=======
+      VLOG(0) << "communicator->_worker_ptr is null";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 #endif

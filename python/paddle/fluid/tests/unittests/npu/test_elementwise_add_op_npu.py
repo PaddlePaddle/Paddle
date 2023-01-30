@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -28,6 +32,10 @@ paddle.enable_static()
 
 
 class TestElementwiseAddOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_add"
@@ -39,7 +47,11 @@ class TestElementwiseAddOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+=======
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -127,19 +139,33 @@ class TestElementwiseAddOp(OpTest):
 
 
 class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestINT64ElementwiseAddOp(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int64
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
+=======
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -147,9 +173,15 @@ class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
+=======
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -157,9 +189,15 @@ class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Use y_shape(1,1) to test broadcast."
 )
 class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
+=======
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1, 1).astype(self.dtype)
@@ -167,9 +205,15 @@ class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Use y_shape(1,1) to test broadcast."
 )
 class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
+=======
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1, 1).astype(self.dtype)
@@ -177,6 +221,10 @@ class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
 
 
 class TestAddAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
@@ -201,6 +249,7 @@ class TestAddAPI(unittest.TestCase):
 
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             x_value, y_value, z_value = exe.run(
                 feed={"x": x_np, "y": y_np}, fetch_list=[x, y, z]
             )
@@ -242,24 +291,83 @@ class TestAddError(unittest.TestCase):
             y2 = paddle.static.data(
                 name='y2', shape=[3, 4, 5, 6], dtype="uint8"
             )
+=======
+            x_value, y_value, z_value = exe.run(feed={
+                "x": x_np,
+                "y": y_np
+            },
+                                                fetch_list=[x, y, z])
+
+            z_expected = np.array([3., 8., 6.])
+            self.assertEqual(
+                (x_value == x_np).all(),
+                True,
+                msg="x_value = {}, but expected {}".format(x_value, x_np))
+            self.assertEqual(
+                (y_value == y_np).all(),
+                True,
+                msg="y_value = {}, but expected {}".format(y_value, y_np))
+            self.assertEqual(
+                (z_value == z_expected).all(),
+                True,
+                msg="z_value = {}, but expected {}".format(z_value, z_expected))
+
+
+class TestAddError(unittest.TestCase):
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # the input of elementwise_add must be Variable.
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.NPUPlace(0))
+            y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.NPUPlace(0))
+            self.assertRaises(TypeError, paddle.add, x1, y1)
+
+            # the input dtype must be float16 or float32 or float64 or int32 or int64
+            x2 = paddle.static.data(name='x2',
+                                    shape=[3, 4, 5, 6],
+                                    dtype="uint8")
+            y2 = paddle.static.data(name='y2',
+                                    shape=[3, 4, 5, 6],
+                                    dtype="uint8")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertRaises(TypeError, paddle.add, x2, y2)
 
 
 class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
+<<<<<<< HEAD
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
+=======
+
+    def init_input_output(self):
+        self.x = np.random.random((100, )).astype(self.dtype)
+        self.y = np.random.random((100, )).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out = np.add(self.x, self.y)
 
 
 class TestFP16ElementwiseAddOp_Vector(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
+=======
+
+    def init_input_output(self):
+        self.x = np.random.random((100, )).astype(self.dtype)
+        self.y = np.random.random((100, )).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out = np.add(self.x, self.y)
 
 
 class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -270,6 +378,10 @@ class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -280,6 +392,10 @@ class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 100, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -290,6 +406,10 @@ class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_1(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 100, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -300,6 +420,10 @@ class TestFP16ElementwiseAddOp_broadcast_1(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -307,6 +431,10 @@ class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_2(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -314,6 +442,10 @@ class TestFP16ElementwiseAddOp_broadcast_2(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 1).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -324,6 +456,10 @@ class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_3(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -334,6 +470,10 @@ class TestFP16ElementwiseAddOp_broadcast_3(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 1, 2).astype(self.dtype)
         self.y = np.random.rand(100, 1).astype(self.dtype)
@@ -344,6 +484,10 @@ class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_4(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 1, 2).astype(self.dtype)
         self.y = np.random.rand(100, 1).astype(self.dtype)
@@ -354,6 +498,10 @@ class TestFP16ElementwiseAddOp_broadcast_4(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 12).astype(self.dtype)
         self.y = np.random.rand(10, 1, 12).astype(self.dtype)
@@ -361,6 +509,10 @@ class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_5(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 12).astype(self.dtype)
         self.y = np.random.rand(10, 1, 12).astype(self.dtype)
@@ -368,6 +520,10 @@ class TestFP16ElementwiseAddOp_broadcast_5(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
         self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
@@ -375,6 +531,10 @@ class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_7(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(1, 1, 20, 5).astype(self.dtype)
         self.y = np.random.rand(20, 5, 1, 1).astype(self.dtype)
@@ -382,6 +542,10 @@ class TestElementwiseAddOp_broadcast_7(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_6(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
         self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
@@ -389,6 +553,10 @@ class TestFP16ElementwiseAddOp_broadcast_6(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -399,6 +567,10 @@ class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -409,9 +581,15 @@ class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
+=======
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -422,9 +600,15 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
+=======
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -435,6 +619,10 @@ class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100, 1, 1).astype(self.dtype)
@@ -445,6 +633,10 @@ class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100, 1, 1).astype(self.dtype)
@@ -455,6 +647,10 @@ class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(1, 1, 100).astype(self.dtype)
@@ -465,6 +661,10 @@ class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
 
 
 class TestElementwiseFP16AddOp_commonuse_add1(TestFP16ElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(1, 1, 100).astype(self.dtype)
@@ -475,6 +675,10 @@ class TestElementwiseFP16AddOp_commonuse_add1(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
         self.y = np.random.rand(10, 1, 12, 1).astype(self.dtype)
@@ -485,6 +689,10 @@ class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
 
 
 class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
@@ -495,6 +703,10 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
 
 
 class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(10, 1, 12).astype(self.dtype)
         self.y = np.random.rand(10, 2, 12).astype(self.dtype)
@@ -504,7 +716,30 @@ class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
         self.axis = 0
 
 
+<<<<<<< HEAD
 class TestAddApi(unittest.TestCase):
+=======
+class TestElementwiseAddOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input of elementwise_add must be Variable.
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.NPUPlace(0))
+            y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.NPUPlace(0))
+            self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
+
+            # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="uint8")
+            y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
+
+
+class TestAddApi(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, y, name=None):
         return paddle.add(x, y, name)
 
@@ -522,7 +757,11 @@ class TestAddApi(unittest.TestCase):
             def gen_data():
                 return {
                     "x": np.array([2, 3, 4]).astype('float32'),
+<<<<<<< HEAD
                     "y": np.array([1, 5, 2]).astype('float32'),
+=======
+                    "y": np.array([1, 5, 2]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
@@ -532,7 +771,11 @@ class TestAddApi(unittest.TestCase):
             place = fluid.NPUPlace(0)
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+<<<<<<< HEAD
             z_expected = np.array([3.0, 8.0, 6.0])
+=======
+            z_expected = np.array([3., 8., 6.])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
@@ -543,16 +786,28 @@ class TestAddApi(unittest.TestCase):
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
+<<<<<<< HEAD
             z_expected = np.array([3.0, 8.0, 6.0])
+=======
+            z_expected = np.array([3., 8., 6.])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual((np_z == z_expected).all(), True)
 
 
 class TestAddInplaceApi(TestAddApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, y, name=None):
         return x.add_(y, name)
 
 
 class TestAddInplaceBroadcastSuccess(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 4).astype('float')
         self.y_numpy = np.random.rand(3, 4).astype('float')
@@ -569,18 +824,30 @@ class TestAddInplaceBroadcastSuccess(unittest.TestCase):
 
 
 class TestAddInplaceBroadcastSuccess2(TestAddInplaceBroadcastSuccess):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
         self.y_numpy = np.random.rand(3, 1).astype('float')
 
 
 class TestAddInplaceBroadcastSuccess3(TestAddInplaceBroadcastSuccess):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
 
 
 class TestAddInplaceBroadcastError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(3, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
@@ -599,12 +866,20 @@ class TestAddInplaceBroadcastError(unittest.TestCase):
 
 
 class TestAddInplaceBroadcastError2(TestAddInplaceBroadcastError):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
 class TestAddInplaceBroadcastError3(TestAddInplaceBroadcastError):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')

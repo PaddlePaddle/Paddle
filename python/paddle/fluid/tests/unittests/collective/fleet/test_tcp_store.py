@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -19,6 +20,18 @@ import paddle
 
 
 class TestTCPStore(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import datetime
+import paddle
+import os
+
+
+class TestTCPStore(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_tcp_store(self):
         dist_port = int(os.getenv("PADDLE_DIST_UT_PORT", 6170))
         print("get dist_port:", dist_port)

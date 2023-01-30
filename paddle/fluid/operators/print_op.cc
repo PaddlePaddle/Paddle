@@ -65,8 +65,14 @@ class PrintOp : public framework::OperatorBase {
         platform::errors::NotFound("The output:%s not found in scope",
                                    Output("Out")));
 
+<<<<<<< HEAD
     auto &in_tensor = in_var->Get<phi::DenseTensor>();
     phi::DenseTensor *out_tensor = out_var->GetMutable<phi::DenseTensor>();
+=======
+    auto &in_tensor = in_var->Get<framework::LoDTensor>();
+    framework::LoDTensor *out_tensor =
+        out_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PrintValue(place, Inputs("In").front(), in_tensor);
     framework::TensorCopy(in_tensor, place, out_tensor);
@@ -75,7 +81,11 @@ class PrintOp : public framework::OperatorBase {
 
   void PrintValue(const platform::Place &place,
                   const std::string &printed_var_name,
+<<<<<<< HEAD
                   const phi::DenseTensor &in_tensor) const {
+=======
+                  const framework::LoDTensor &in_tensor) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::string print_phase = Attr<std::string>("print_phase");
     bool is_forward = Attr<bool>("is_forward");
 

@@ -20,9 +20,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 TEST(Gather, GatherData) {
+<<<<<<< HEAD
   phi::DenseTensor* src = new phi::DenseTensor();
   phi::DenseTensor* index = new phi::DenseTensor();
   phi::DenseTensor* output = new phi::DenseTensor();
+=======
+  paddle::framework::Tensor* src = new paddle::framework::Tensor();
+  paddle::framework::Tensor* index = new paddle::framework::Tensor();
+  paddle::framework::Tensor* output = new paddle::framework::Tensor();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int* p_src = nullptr;
   int* p_index = nullptr;

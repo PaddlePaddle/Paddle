@@ -12,11 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 from multiprocessing import Process
 
 from launch_function_helper import _find_free_port, wait
+=======
+import unittest
+import os
+import copy
+from launch_function_helper import wait, _find_free_port
+from multiprocessing import Pool, Process
+from threading import Thread
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 os.environ['GLOG_vmodule'] = str("gen_nccl_id_op*=10,gen_comm_id*=10")
 
@@ -35,21 +44,30 @@ def run_gen_ncc_id(attr):
 
     with paddle.static.program_guard(main_program, startup_program):
         nccl_id_var = startup_program.global_block().create_var(
+<<<<<<< HEAD
             name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW
         )
+=======
+            name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for i in range(1, nccl_comm_num):
             startup_program.global_block().create_var(
                 name="NCCLID_{}".format(i),
                 persistable=True,
+<<<<<<< HEAD
                 type=core.VarDesc.VarType.RAW,
             )
+=======
+                type=core.VarDesc.VarType.RAW)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if use_hallreduce:
             for i in range(0, nccl_comm_num):
                 startup_program.global_block().create_var(
                     name="Hierarchical_inter_NCCLID_{}".format(i),
                     persistable=True,
+<<<<<<< HEAD
                     type=core.VarDesc.VarType.RAW,
                 )
                 startup_program.global_block().create_var(
@@ -57,13 +75,24 @@ def run_gen_ncc_id(attr):
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                 )
+=======
+                    type=core.VarDesc.VarType.RAW)
+                startup_program.global_block().create_var(
+                    name="Hierarchical_exter_NCCLID_{}".format(i),
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         startup_program.global_block().append_op(
             type="gen_nccl_id",
             inputs={},
             outputs={"NCCLID": nccl_id_var},
+<<<<<<< HEAD
             attrs=attr,
         )
+=======
+            attrs=attr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     place = paddle.CPUPlace()
     exe = paddle.static.Executor(place)
@@ -71,6 +100,10 @@ def run_gen_ncc_id(attr):
 
 
 class TestGenNcclIdOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         try:
             self._dist_ut_port_0 = int(os.environ["PADDLE_DIST_UT_PORT"])
@@ -103,7 +136,11 @@ class TestGenNcclIdOp(unittest.TestCase):
         for i in range(nranks):
             attr['trainer_id'] = i
             # NOTE: multiprocessing cannot be covered by coverage
+<<<<<<< HEAD
             p = Process(target=run_gen_ncc_id, args=(attr,))
+=======
+            p = Process(target=run_gen_ncc_id, args=(attr, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             p.start()
             procs.append(p)
 

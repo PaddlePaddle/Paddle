@@ -357,8 +357,12 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+=======
+                   phi::dtype::float16) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 PD_REGISTER_KERNEL(update_loss_scaling,
                    GPU,
@@ -366,7 +370,11 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    phi::UpdateLossScalingKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+=======
+                   phi::dtype::float16) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
 }

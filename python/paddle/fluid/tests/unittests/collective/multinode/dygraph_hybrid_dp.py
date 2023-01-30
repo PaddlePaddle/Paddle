@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from test_collective_multi_nodes import (
     TestCollectiveAPIRunnerBase,
     runtime_main,
@@ -19,11 +20,42 @@ from test_collective_multi_nodes import (
 
 
 class TestDygrapgHybridDP(TestCollectiveAPIRunnerBase):
+=======
+from __future__ import print_function
+
+import numpy as np
+import argparse
+import os
+import sys
+import signal
+import time
+import socket
+from contextlib import closing
+from six import string_types
+import math
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.profiler as profiler
+import paddle.fluid.unique_name as nameGen
+from paddle.fluid import core
+import paddle.distributed.fleet as fleet
+from paddle.fluid.incubate.fleet.base import role_maker
+import unittest
+from multiprocessing import Process
+import paddle.fluid.layers as layers
+from functools import reduce
+from test_collective_multi_nodes import TestCollectiveAPIRunnerBase, runtime_main
+
+
+class TestDygrapgHybridDP(TestCollectiveAPIRunnerBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         pass
 
     def check_pass(self, *args, **kwargs):
         from common import init_parallel_env
+<<<<<<< HEAD
 
         import paddle
 
@@ -35,13 +67,30 @@ class TestDygrapgHybridDP(TestCollectiveAPIRunnerBase):
         data = np.random.random((10 * dp_group.nranks, 100)).reshape(
             (dp_group.nranks, -1, 100)
         )
+=======
+        import paddle
+        from paddle.distributed import fleet
+        hcg = init_parallel_env("DP16-MP1-PP1-SH1-O1", 2)
+        import numpy as np
+        dp_group = hcg.get_data_parallel_group()
+        np.random.seed(1024)
+        data = np.random.random((10 * dp_group.nranks, 100)).reshape(
+            (dp_group.nranks, -1, 100))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data_part = paddle.to_tensor(data[dp_group.rank])
         paddle.distributed.collective.all_reduce(data_part)
         data_reduced = data_part
         data_sumed = np.sum(data, axis=0)
+<<<<<<< HEAD
         assert np.allclose(
             data_sumed, data_reduced.numpy(), rtol=1e-8, atol=1e-8
         )
+=======
+        assert np.allclose(data_sumed,
+                           data_reduced.numpy(),
+                           rtol=1e-8,
+                           atol=1e-8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

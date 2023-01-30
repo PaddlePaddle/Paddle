@@ -51,6 +51,7 @@ void XPUElementwise(const XPUContext& dev_ctx,
       errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
+<<<<<<< HEAD
   PADDLE_ENFORCE_LE(
       axis,
       max_dim,
@@ -58,6 +59,14 @@ void XPUElementwise(const XPUContext& dev_ctx,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
+=======
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
+                    errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim,
+                        axis));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<int> x_dims_vec(max_dim, 1);
   std::vector<int> y_dims_vec(max_dim, 1);
   if (x_dims.size() == max_dim) {
@@ -84,6 +93,7 @@ void XPUElementwise(const XPUContext& dev_ctx,
 
   int ret = xpu::SUCCESS;
 
+<<<<<<< HEAD
   // For [2, 3] + [] --> [2, 3] + [1, 1]
   // For [] + [2, 3] --> [1, 1] + [2, 3]
   // For [] + [], Use [1] + [1] to replace [], because xpu not support []
@@ -95,6 +105,8 @@ void XPUElementwise(const XPUContext& dev_ctx,
     y_dims_vec = std::vector<int>({1});
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ret = func(dev_ctx.x_context(),
              reinterpret_cast<const XPUType*>(x_data),
              reinterpret_cast<const XPUType*>(y_data),
@@ -133,6 +145,7 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
       errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
+<<<<<<< HEAD
   PADDLE_ENFORCE_LE(
       axis,
       max_dim,
@@ -140,6 +153,14 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
+=======
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
+                    errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim,
+                        axis));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<int> x_dims_vec(max_dim, 1);
   std::vector<int> y_dims_vec(max_dim, 1);
   if (x_dims.size() == max_dim) {
@@ -176,6 +197,7 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
     dy_data = dev_ctx.template Alloc<T>(dy);
   }
 
+<<<<<<< HEAD
   // use [1] to replace [], because xpu not support []
   if (x_dims_vec.size() == 0) {
     x_dims_vec = std::vector<int>({1});
@@ -185,6 +207,8 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
     y_dims_vec = std::vector<int>({1});
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int ret = func(dev_ctx.x_context(),
                  reinterpret_cast<const XPUType*>(x_data),
                  reinterpret_cast<const XPUType*>(y_data),

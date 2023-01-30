@@ -13,12 +13,21 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
 import paddle
 import paddle.incubate
 from paddle.fluid import core
+=======
+import numpy as np
+import paddle
+import paddle.incubate
+from paddle.fluid import core
+from paddle.vision.models import ResNet
+from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 np.random.seed(0)

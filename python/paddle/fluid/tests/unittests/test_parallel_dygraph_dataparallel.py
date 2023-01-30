@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 import os
 import subprocess
@@ -25,6 +26,20 @@ from paddle.distributed.utils.launch_utils import (
     get_cluster,
     watch_local_trainers,
 )
+=======
+from __future__ import print_function
+
+import unittest
+import time
+import paddle
+import paddle.fluid as fluid
+import copy
+import os
+import subprocess
+
+from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_cluster_from_args(selected_gpus):
@@ -52,9 +67,16 @@ def get_gpus(selected_gpus):
     return selected_gpus
 
 
+<<<<<<< HEAD
 def start_local_trainers_cpu(
     trainer_endpoints, training_script, training_script_args, log_dir=None
 ):
+=======
+def start_local_trainers_cpu(trainer_endpoints,
+                             training_script,
+                             training_script_args,
+                             log_dir=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     current_env = copy.copy(os.environ.copy())
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
@@ -68,16 +90,25 @@ def start_local_trainers_cpu(
             "PADDLE_TRAINER_ID": "%d" % rank_id,
             "PADDLE_CURRENT_ENDPOINT": "%s" % endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % n_rank,
+<<<<<<< HEAD
             "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints),
+=======
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         current_env.update(proc_env)
 
         print("trainer proc env:{}".format(current_env))
 
+<<<<<<< HEAD
         assert (
             os.getenv('WITH_COVERAGE', 'OFF') == 'OFF'
         ), "Gloo don't support WITH_COVERAGE."
+=======
+        assert os.getenv('WITH_COVERAGE',
+                         'OFF') == 'OFF', "Gloo don't support WITH_COVERAGE."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         cmd = "python -u " + training_script
 
         print("start trainer proc:{} env:{}".format(cmd, proc_env))
@@ -97,6 +128,7 @@ def start_local_trainers_cpu(
     return procs
 
 
+<<<<<<< HEAD
 def start_local_trainers(
     cluster,
     pod,
@@ -111,6 +143,19 @@ def start_local_trainers(
     # proxy maybe make trainers unreachable, so delete them.
     # if we set them to "", grpc will log error message "bad uri"
     # so just delete them.
+=======
+def start_local_trainers(cluster,
+                         pod,
+                         training_script,
+                         training_script_args,
+                         eager_mode=True,
+                         log_dir=None):
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
@@ -121,12 +166,20 @@ def start_local_trainers(
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+<<<<<<< HEAD
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
         proc_env["FLAGS_allocator_strategy"] = allocator_strategy
         if allocator_strategy == "auto_growth":
             proc_env["FLAGS_fraction_of_gpu_memory_to_use"] = "0.1"
+=======
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+        }
+
+        if not eager_mode:
+            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         current_env.update(proc_env)
 
@@ -155,6 +208,7 @@ def start_local_trainers(
 
 
 class TestMultipleGpus(unittest.TestCase):
+<<<<<<< HEAD
     def run_mnist_2gpu(
         self,
         target_file_name,
@@ -165,6 +219,12 @@ class TestMultipleGpus(unittest.TestCase):
             not fluid.core.is_compiled_with_cuda()
             or fluid.core.get_cuda_device_count() == 0
         ):
+=======
+
+    def run_mnist_2gpu(self, target_file_name, eager_mode=True):
+        if not fluid.core.is_compiled_with_cuda(
+        ) or fluid.core.get_cuda_device_count() == 0:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return
 
         selected_gpus = get_gpus('0,1')
@@ -173,6 +233,7 @@ class TestMultipleGpus(unittest.TestCase):
 
         cluster, pod = get_cluster_from_args(selected_gpus)
 
+<<<<<<< HEAD
         procs = start_local_trainers(
             cluster,
             pod,
@@ -181,6 +242,13 @@ class TestMultipleGpus(unittest.TestCase):
             training_script=target_file_name,
             training_script_args=[],
         )
+=======
+        procs = start_local_trainers(cluster,
+                                     pod,
+                                     eager_mode=eager_mode,
+                                     training_script=target_file_name,
+                                     training_script_args=[])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_endpoints())
@@ -192,6 +260,7 @@ class TestMultipleGpus(unittest.TestCase):
 
 
 class TestMultipleWithGloo(unittest.TestCase):
+<<<<<<< HEAD
     def run_mnist_2cpu(self, target_file_name):
 
         cluster, pod = get_cluster_from_args(
@@ -203,6 +272,17 @@ class TestMultipleWithGloo(unittest.TestCase):
             training_script=target_file_name,
             training_script_args=[],
         )
+=======
+
+    def run_mnist_2cpu(self, target_file_name):
+
+        cluster, pod = get_cluster_from_args(
+            [0, 1])  #tmp use. for getting trainer_nranks()
+
+        procs = start_local_trainers_cpu(cluster.trainers_endpoints(),
+                                         training_script=target_file_name,
+                                         training_script_args=[])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_nranks())
@@ -213,6 +293,7 @@ class TestMultipleWithGloo(unittest.TestCase):
             time.sleep(3)
 
 
+<<<<<<< HEAD
 class TestDataParallelWithPyLayer(TestMultipleGpus):
     def test_parallel_dygraph_dataparallel_with_pylayer(self):
         self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
@@ -223,9 +304,32 @@ class TestDataParallelWithPyLayer(TestMultipleGpus):
 
 
 class TestGradientCheckInEagerMode(TestMultipleGpus):
+=======
+class TestDataParallelGradientCheck(TestMultipleGpus):
+
+    def test_multiple_gpus_dynamic(self):
+        self.run_mnist_2gpu('parallel_dygraph_gradient_check.py',
+                            eager_mode=False)
+
+
+class TestDataParallelWithPyLayer(TestMultipleGpus):
+
+    def test_parallel_dygraph_dataparallel_with_pylayer(self):
+        self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
+        self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py',
+                            eager_mode=False)
+
+
+class TestGradientCheckInEagerMode(TestMultipleGpus):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('parallel_dygraph_gradient_check_in_eager_mode.py')
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
+=======
+    os.environ["FLAGS_enable_eager_mode"] = "1"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     unittest.main()

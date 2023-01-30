@@ -151,9 +151,12 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable MKLDNN int8.
   virtual void EnableMkldnnInt8() {}
 
+<<<<<<< HEAD
   /// \brief Disable MKLDNN fc passes.
   virtual void DisableMkldnnFcPasses() {}
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief Check if we are using gpu.
   /// \return A bool variable implying whether we are in gpu mode.
   bool use_gpu() const { return use_gpu_; }
@@ -207,7 +210,10 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
     use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
     use_mkldnn_int8_ = other.use_mkldnn_int8_;
+<<<<<<< HEAD
     disable_mkldnn_fc_passes_ = other.disable_mkldnn_fc_passes_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;
@@ -227,6 +233,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Enable MKLDNN int8.
   void EnableMkldnnInt8() override;
 
+<<<<<<< HEAD
   /// \brief Disable MKLDNN fc passes.
   void DisableMkldnnFcPasses() override;
 
@@ -234,11 +241,17 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Erase MKLDNN fc passes.
   void EraseFcMkldnnPasses();
 
+=======
+ protected:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \cond Protected
   bool use_mkldnn_quantizer_{false};
   bool use_mkldnn_bfloat16_{false};
   bool use_mkldnn_int8_{false};
+<<<<<<< HEAD
   bool disable_mkldnn_fc_passes_{false};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \endcond
 };
 
@@ -273,9 +286,12 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnInt8() override;
 
+<<<<<<< HEAD
   /// \brief Disable MKLDNN fc passes.
   void DisableMkldnnFcPasses() override;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;
 
@@ -349,9 +365,12 @@ PD_INFER_DECL extern const std::vector<std::string> kDlnneSubgraphPasses;
 /// \brief List of lite subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;
 
+<<<<<<< HEAD
 /// \brief List of cinn compiler passes.
 PD_INFER_DECL extern const std::vector<std::string> kCINNCompilerPasses;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /// \brief TODO(inference): Most of the existing pass fusion operators do not
 /// support fp16/bf16 precision, temporarily use low precision pass to prevent
 /// running errors. After fusion operator supports low precision, delete this.

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
@@ -24,6 +25,20 @@ import paddle.static as static
 
 
 class TestDigammaOp(OpTest):
+=======
+import math
+import numpy as np
+from scipy.special import psi
+import paddle
+import paddle.fluid as fluid
+import paddle.static as static
+from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestDigammaOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         # switch to static
         paddle.enable_static()
@@ -49,6 +64,10 @@ class TestDigammaOp(OpTest):
 
 
 class TestDigammaOpFp32(TestDigammaOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.float32
 
@@ -57,6 +76,10 @@ class TestDigammaOpFp32(TestDigammaOp):
 
 
 class TestDigammaAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         # switch to static
         paddle.enable_static()
@@ -68,6 +91,10 @@ class TestDigammaAPI(unittest.TestCase):
         self._shape = [8, 3, 32, 32]
 
     def test_in_static_mode(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(dtype)
             return {'x': input}, psi(input)
@@ -94,6 +121,13 @@ class TestDigammaAPI(unittest.TestCase):
                     res = paddle.digamma(input_t).numpy()
                     np.testing.assert_allclose(res, sc_res, rtol=1e-05)
 
+<<<<<<< HEAD
+=======
+    def test_in_eager_dynamic_mode(self):
+        with _test_eager_guard():
+            self.test_in_dynamic_mode()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_name_argument(self):
         with static.program_guard(static.Program()):
             x = static.data(name="x", shape=self._shape, dtype=self.dtypes[0])
@@ -101,7 +135,11 @@ class TestDigammaAPI(unittest.TestCase):
             self.assertTrue("digamma_res" in out.name)
 
     def test_dtype_error(self):
+<<<<<<< HEAD
         # in static graph mode
+=======
+        # in static mode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with self.assertRaises(TypeError):
             with static.program_guard(static.Program()):
                 x = static.data(name="x", shape=self._shape, dtype="int32")
@@ -114,6 +152,16 @@ class TestDigammaAPI(unittest.TestCase):
                 input_t = paddle.to_tensor(input)
                 res = paddle.digamma(input_t)
 
+<<<<<<< HEAD
+=======
+        with self.assertRaises(RuntimeError):
+            with fluid.dygraph.guard():
+                with _test_eager_guard():
+                    input = np.random.random(self._shape).astype("int32")
+                    input_t = paddle.to_tensor(input)
+                    res = paddle.digamma(input_t)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == "__main__":
     unittest.main()

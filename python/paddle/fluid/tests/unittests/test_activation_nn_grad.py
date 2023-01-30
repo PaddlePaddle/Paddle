@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import gradient_checker
@@ -25,11 +26,32 @@ import paddle.nn.functional as F
 
 
 class TestSigmoidTripleGradCheck(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+
+import paddle.fluid as fluid
+import paddle
+import paddle.fluid.layers as layers
+import paddle.fluid.core as core
+import gradient_checker
+import paddle.nn.functional as F
+from paddle.fluid.framework import _test_eager_guard
+
+from decorator_helper import prog_scope
+
+
+class TestSigmoidTripleGradCheck(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = F.sigmoid(x)
@@ -38,6 +60,18 @@ class TestSigmoidTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps
         )
+=======
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = layers.sigmoid(x)
+        x_arr = np.random.random(shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.triple_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -49,14 +83,21 @@ class TestSigmoidTripleGradCheck(unittest.TestCase):
 
 
 class TestSigmoidDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
     def sigmoid_wrapper(self, x):
         return F.sigmoid(x[0])
+=======
+
+    def sigmoid_wrapper(self, x):
+        return fluid.layers.sigmoid(x[0])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = F.sigmoid(x)
@@ -68,6 +109,19 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check_for_dygraph(
             self.sigmoid_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = layers.sigmoid(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.sigmoid_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -79,6 +133,10 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
 
 
 class TestTanhTripleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def tanh_wrapper(self, x):
         return paddle.tanh(x[0])
 
@@ -87,6 +145,7 @@ class TestTanhTripleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.tanh(x)
@@ -98,6 +157,19 @@ class TestTanhTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check_for_dygraph(
             self.tanh_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = layers.tanh(x)
+        x_arr = np.random.random(shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.triple_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -109,6 +181,10 @@ class TestTanhTripleGradCheck(unittest.TestCase):
 
 
 class TestTanhDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def tanh_wrapper(self, x):
         return paddle.tanh(x[0])
 
@@ -117,17 +193,29 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype=dtype)
+=======
+        x = layers.data('x', shape, False, dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x.persistable = True
         y = paddle.tanh(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.double_grad_check(
+<<<<<<< HEAD
             [x], y, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.tanh_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+            [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -139,6 +227,10 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
 
 
 class TestAbsDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def abs_wrapper(self, x):
         return paddle.abs(x[0])
 
@@ -147,17 +239,29 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype=dtype)
+=======
+        x = layers.data('x', shape, False, dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x.persistable = True
         y = paddle.abs(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.double_grad_check(
+<<<<<<< HEAD
             [x], y, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.abs_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+            [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.abs_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -169,12 +273,17 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
 
 
 class TestReluDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
         eps = 0.005
         dtype = np.float64
 
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype)
         x.persistable = True
         y = F.relu(x)
@@ -184,6 +293,19 @@ class TestReluDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps
         )
+=======
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.relu(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.02
+
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -195,6 +317,10 @@ class TestReluDoubleGradCheck(unittest.TestCase):
 
 
 class TestLeakyReluDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def leaky_relu_wrapper(self, x):
         return paddle.nn.functional.leaky_relu(x[0], negative_slope=0.2)
 
@@ -205,6 +331,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
         alpha = 0.2
         dtype = np.float64
 
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype)
         x.persistable = True
 
@@ -218,6 +345,25 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check_for_dygraph(
             self.leaky_relu_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+
+        y = layers.leaky_relu(x, alpha=alpha)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.02
+
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(self.leaky_relu_wrapper,
+                                                       [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -229,6 +375,10 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 
 
 class TestELUDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def elu_wrapper(self, x):
         return paddle.nn.functional.elu(x[0], alpha=0.2)
 
@@ -240,6 +390,7 @@ class TestELUDoubleGradCheck(unittest.TestCase):
         dtype = np.float64
         SEED = 0
 
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype)
         x.persistable = True
 
@@ -252,6 +403,20 @@ class TestELUDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check_for_dygraph(
             self.elu_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+
+        y = layers.elu(x, alpha=alpha)
+        np.random.RandomState(SEED)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.elu_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -263,6 +428,10 @@ class TestELUDoubleGradCheck(unittest.TestCase):
 
 
 class TestCELUDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def celu_wrapper(self, x):
         return paddle.nn.functional.celu(x[0], alpha=0.2)
 
@@ -274,18 +443,30 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
         dtype = np.float64
         SEED = 0
 
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype)
+=======
+        x = layers.data('x', shape, False, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x.persistable = True
 
         y = F.celu(x, alpha=alpha)
         np.random.RandomState(SEED)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         gradient_checker.double_grad_check(
+<<<<<<< HEAD
             [x], y, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.celu_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+            [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.celu_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -297,6 +478,10 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
 
 
 class TestSqrtDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def sqrt_wrapper(self, x):
         return paddle.sqrt(x[0])
 
@@ -306,6 +491,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
         eps = 0.0001
         dtype = np.float64
 
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype)
         x.persistable = True
 
@@ -318,6 +504,23 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check_for_dygraph(
             self.sqrt_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+
+        y = layers.sqrt(x)
+        x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(self.sqrt_wrapper, [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -329,6 +532,10 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
 
 
 class TestRsqrtDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def rsqrt_wrapper(self, x):
         return paddle.rsqrt(x[0])
 
@@ -338,6 +545,7 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
         eps = 0.0001
         dtype = np.float64
 
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype)
         x.persistable = True
 
@@ -350,6 +558,23 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check_for_dygraph(
             self.rsqrt_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+
+        y = layers.rsqrt(x)
+        x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(self.rsqrt_wrapper, [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -361,6 +586,10 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
 
 
 class TestSquareDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def square_wrapper(self, x):
         return paddle.square(x[0])
 
@@ -371,6 +600,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype)
         x.persistable = True
         y = paddle.square(x)
@@ -474,6 +704,19 @@ class TestCosDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check_for_dygraph(
             self.cos_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.square(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.square_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -484,6 +727,7 @@ class TestCosDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+<<<<<<< HEAD
 class TestPowDoubleGradCheck1(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 2)
@@ -562,6 +806,31 @@ class TestSinTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check_for_dygraph(
             self.sin_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+class TestAbsDoubleGradCheck(unittest.TestCase):
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 7, 9]
+        eps = 1e-6
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.abs(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        # Because we set delta = 0.005 in calculating numeric gradient,
+        # if x is too small, the numeric gradient is inaccurate.
+        # we should avoid this
+        x_arr[np.abs(x_arr) < 0.005] = 0.02
+
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -572,6 +841,7 @@ class TestSinTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+<<<<<<< HEAD
 class TestPowTripleGradCheck1(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 1)
@@ -604,12 +874,19 @@ class TestPowTripleGradCheck1(unittest.TestCase):
 class TestPowTripleGradCheck2(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 2)
+=======
+class TestLogDoubleGradCheck(unittest.TestCase):
+
+    def log_wrapper(self, x):
+        return paddle.log(x[0])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
         eps = 1e-6
         dtype = np.float64
+<<<<<<< HEAD
         x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.pow(x, 2)
@@ -679,6 +956,21 @@ class TestCosTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check_for_dygraph(
             self.cos_wrapper, [x], y, x_init=x_arr, place=place
         )
+=======
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.log(x)
+
+        x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.log_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()

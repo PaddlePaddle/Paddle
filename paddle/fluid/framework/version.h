@@ -21,7 +21,11 @@ namespace paddle {
 namespace framework {
 
 // Note:
+<<<<<<< HEAD
 // Program and phi::DenseTensor that pass the IsXXXVersionSupported should
+=======
+// Program and Tensor that pass the IsXXXVersionSupported should
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // be supported by the current codes. Otherwise, it's a compatibility
 // bug.
 

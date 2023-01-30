@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -22,6 +23,19 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
+=======
+from auto_scan_test import PassAutoScanTest
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+from functools import partial
+import unittest
+
+import hypothesis.strategies as st
+
+
+class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         matmul_as_x = draw(st.booleans())
@@ -29,6 +43,7 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
         channel = draw(st.sampled_from([16, 32, 64]))
         input_dim = draw(st.sampled_from([16, 32, 64]))
         activation_type = draw(
+<<<<<<< HEAD
             st.sampled_from(
                 [
                     'relu',
@@ -63,12 +78,34 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
                 'use_mkldnn': True,
             },
         )
+=======
+            st.sampled_from([
+                'relu', 'gelu', 'tanh', 'sigmoid', 'swish', 'mish', 'sqrt',
+                'hard_swish', 'sigmoid', 'abs', 'relu6', 'clip', 'tanh',
+                'hard_sigmoid', 'leaky_relu'
+            ]))
+
+        def generate_input():
+            return np.random.random([batch_size, channel, input_dim,
+                                     input_dim]).astype(np.float32)
+
+        matmul_op = OpConfig(type='matmul',
+                             inputs={
+                                 'X': ['matmul_x'],
+                                 'Y': ['matmul_y']
+                             },
+                             outputs={'Out': ['matmul_output']},
+                             attrs={
+                                 'use_mkldnn': True,
+                             })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if matmul_as_x:
             inputs = {'X': ['matmul_output'], 'Y': ['elementwise_addend']}
         else:
             inputs = {'X': ['elementwise_addend'], 'Y': ['matmul_output']}
 
+<<<<<<< HEAD
         elt_add_op = OpConfig(
             type='elementwise_add',
             inputs=inputs,
@@ -97,12 +134,44 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
                 outputs={"Out": ["activation_output"]},
                 beta=draw(st.floats(min_value=0.1, max_value=1.0)),
             )
+=======
+        elt_add_op = OpConfig(type='elementwise_add',
+                              inputs=inputs,
+                              outputs={'Out': ['elementwise_add_output']},
+                              attrs={
+                                  'axis': axis,
+                                  'use_mkldnn': True
+                              })
+
+        if activation_type == "relu6":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["elementwise_add_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     threshold=draw(
+                                         st.floats(min_value=1.0,
+                                                   max_value=10.0)))
+        elif activation_type == "leaky_relu":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["elementwise_add_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     alpha=draw(
+                                         st.floats(min_value=0.1,
+                                                   max_value=1.0)))
+        elif activation_type == "swish":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["elementwise_add_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     beta=draw(
+                                         st.floats(min_value=0.1,
+                                                   max_value=1.0)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif activation_type == "clip":
             activation_op = OpConfig(
                 activation_type,
                 inputs={"X": ["elementwise_add_output"]},
                 outputs={"Out": ["activation_output"]},
                 min=draw(st.floats(min_value=0.1, max_value=0.49)),
+<<<<<<< HEAD
                 max=draw(st.floats(min_value=0.5, max_value=1.0)),
             )
         else:
@@ -111,6 +180,13 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
                 inputs={"X": ["elementwise_add_output"]},
                 outputs={"Out": ["activation_output"]},
             )
+=======
+                max=draw(st.floats(min_value=0.5, max_value=1.0)))
+        else:
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["elementwise_add_output"]},
+                                     outputs={"Out": ["activation_output"]})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_net = [matmul_op, elt_add_op, activation_op]
 
@@ -120,12 +196,19 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
             inputs={
                 'matmul_x': TensorConfig(data_gen=partial(generate_input)),
                 'matmul_y': TensorConfig(data_gen=partial(generate_input)),
+<<<<<<< HEAD
                 'elementwise_addend': TensorConfig(
                     data_gen=partial(generate_input)
                 ),
             },
             outputs=['activation_output'],
         )
+=======
+                'elementwise_addend':
+                TensorConfig(data_gen=partial(generate_input))
+            },
+            outputs=['activation_output'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
@@ -134,6 +217,7 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
             use_mkldnn=True,
             passes=[
                 'matmul_elementwise_add_mkldnn_fuse_pass',
+<<<<<<< HEAD
                 'matmul_activation_mkldnn_fuse_pass',
             ],
         )
@@ -147,6 +231,18 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
                 'matmul_activation_mkldnn_fuse_pass',
             ],
         )
+=======
+                'matmul_activation_mkldnn_fuse_pass'
+            ])
+        yield config, ['matmul'], (1e-5, 1e-5)
+
+    def test(self):
+        self.run_and_statis(quant=False,
+                            passes=[
+                                'matmul_elementwise_add_mkldnn_fuse_pass',
+                                'matmul_activation_mkldnn_fuse_pass'
+                            ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

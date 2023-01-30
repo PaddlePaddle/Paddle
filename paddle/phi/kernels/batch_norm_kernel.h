@@ -23,6 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
+<<<<<<< HEAD
                      const DenseTensor& mean,
                      const DenseTensor& variance,
                      const DenseTensor& scale,
@@ -33,6 +34,19 @@ void BatchNormKernel(const Context& dev_ctx,
                      const std::string& data_layout,
                      bool use_global_stats,
                      bool trainable_statistics,
+=======
+                     const DenseTensor& scale,
+                     const DenseTensor& bias,
+                     const DenseTensor& mean,
+                     const DenseTensor& variance,
+                     float momentum,
+                     float epsilon,
+                     const std::string& data_layout,
+                     bool is_test,
+                     bool use_global_stats,
+                     bool trainable_statistics,
+                     bool fuse_with_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      DenseTensor* y,
                      DenseTensor* mean_out,
                      DenseTensor* variance_out,
@@ -43,10 +57,17 @@ void BatchNormKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void BatchNormInferKernel(const Context& dev_ctx,
                           const DenseTensor& x,
+<<<<<<< HEAD
                           const DenseTensor& mean,
                           const DenseTensor& variance,
                           const DenseTensor& scale,
                           const DenseTensor& bias,
+=======
+                          const DenseTensor& scale,
+                          const DenseTensor& bias,
+                          const DenseTensor& mean,
+                          const DenseTensor& variance,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           float momentum,
                           float epsilon,
                           const std::string& data_layout,

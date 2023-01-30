@@ -15,7 +15,10 @@
 #include "paddle/fluid/inference/capi_exp/pd_predictor.h"
 
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+<<<<<<< HEAD
 #include "paddle/fluid/inference/capi_exp/pd_config.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/inference/capi_exp/pd_types.h"
 #include "paddle/fluid/inference/capi_exp/pd_utils.h"
 #include "paddle/fluid/inference/capi_exp/types_internal.h"
@@ -39,6 +42,10 @@ __pd_give PD_Predictor* PD_PredictorCreate(__pd_take PD_Config* pd_config) {
   paddle_infer::Config* config =
       reinterpret_cast<paddle_infer::Config*>(pd_config);
   pd_predictor->predictor = paddle_infer::CreatePredictor(*config);
+<<<<<<< HEAD
+=======
+  delete config;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return pd_predictor;
 }
 
@@ -57,6 +64,7 @@ __pd_give PD_OneDimArrayCstr* PD_PredictorGetInputNames(
   return paddle_infer::CvtVecToOneDimArrayCstr(names);
 }
 
+<<<<<<< HEAD
 __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
     __pd_keep PD_Predictor* pd_predictor) {
   CHECK_AND_CONVERT_PD_PREDICTOR;
@@ -81,6 +89,8 @@ __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
   return input_infos;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 __pd_give PD_OneDimArrayCstr* PD_PredictorGetOutputNames(
     __pd_keep PD_Predictor* pd_predictor) {
   CHECK_AND_CONVERT_PD_PREDICTOR;
@@ -88,6 +98,7 @@ __pd_give PD_OneDimArrayCstr* PD_PredictorGetOutputNames(
   return paddle_infer::CvtVecToOneDimArrayCstr(names);
 }
 
+<<<<<<< HEAD
 __pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
     __pd_keep PD_Predictor* pd_predictor) {
   CHECK_AND_CONVERT_PD_PREDICTOR;
@@ -112,6 +123,8 @@ __pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
   return output_infos;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 size_t PD_PredictorGetInputNum(__pd_keep PD_Predictor* pd_predictor) {
   CHECK_AND_CONVERT_PD_PREDICTOR;
   return predictor->GetInputNames().size();

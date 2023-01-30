@@ -39,7 +39,11 @@ namespace operators {
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
+<<<<<<< HEAD
 static phi::DenseTensor FoldInitDims(const phi::DenseTensor& input) {
+=======
+static framework::Tensor FoldInitDims(const framework::Tensor& input) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
@@ -77,7 +81,11 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
+<<<<<<< HEAD
     phi::DenseTensor* x, const phi::funcs::MatDescriptor& descriptor) {
+=======
+    framework::Tensor* x, const phi::funcs::MatDescriptor& descriptor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -91,9 +99,15 @@ static void ReshapeTensorIntoMatrixSequence(
   }
 }
 
+<<<<<<< HEAD
 static void ReshapeXYOutIntoMatrixSequence(phi::DenseTensor* x,
                                            phi::DenseTensor* y,
                                            phi::DenseTensor* out,
+=======
+static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
+                                           framework::Tensor* y,
+                                           framework::Tensor* out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                            bool trans_x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());

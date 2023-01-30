@@ -31,6 +31,10 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using DDim = framework::DDim;
 
 inline std::string GetValueName(framework::proto::VarType::Type data_type) {

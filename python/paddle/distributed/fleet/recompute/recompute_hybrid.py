@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle
 from paddle import framework
 from paddle.autograd import PyLayer
@@ -24,6 +25,20 @@ from .recompute import (
     detach_variable,
     swith_rng_state_tracker,
 )
+=======
+import contextlib
+
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid import core
+from paddle.autograd import PyLayer
+from paddle.fluid import framework
+from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.distributed import fleet
+from .recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
+from ..meta_parallel.pp_utils import utils
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -37,11 +52,16 @@ def _split_activation(tensor, mp_group):
 
     tensor_numel = paddle.numel(tensor)
     assert tensor_numel != 0, "can't recompute zero element"
+<<<<<<< HEAD
     assert (
         tensor_numel % mp_degree == 0
     ), "The capacity of the activation ({}) cannot be divisible by mp_degree({})".format(
         tensor_numel, mp_degree
     )
+=======
+    assert tensor_numel % mp_degree == 0, "The capacity of the activation ({}) cannot be divisible by mp_degree({})".format(
+        tensor_numel, mp_degree)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # use inplace operation to save memory
     data = tensor.flatten_()
@@ -77,6 +97,7 @@ class _HPRecomputeFunction(PyLayer):
     """
 
     @staticmethod
+<<<<<<< HEAD
     def forward(
         ctx,
         run_function,
@@ -87,6 +108,11 @@ class _HPRecomputeFunction(PyLayer):
         *args,
         **kwargs
     ):
+=======
+    def forward(ctx, run_function, all_outputs, mp_group, offload, partition,
+                *args, **kwargs):
+        check_recompute_necessary(args)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # store for recomputing
         ctx.run_function = run_function
@@ -95,9 +121,14 @@ class _HPRecomputeFunction(PyLayer):
 
         # store the rng states
         ctx.fwd_cuda_rng_state = paddle.get_cuda_rng_state()
+<<<<<<< HEAD
         ctx.fwd_cuda_rng_state_tracker = (
             get_rng_state_tracker().get_states_tracker()
         )
+=======
+        ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
+        ).get_states_tracker()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # save config info
         ctx.mp_group = mp_group
@@ -111,6 +142,7 @@ class _HPRecomputeFunction(PyLayer):
         tensor_inputs = []
 
         cur_device = paddle.get_device()
+<<<<<<< HEAD
         assert (
             'gpu:' in paddle.get_device()
         ), "Recompute with RNG is not support current device: {}.".format(
@@ -122,14 +154,28 @@ class _HPRecomputeFunction(PyLayer):
         ctx.is_fw_autocast = (
             False if tracer._amp_level == core.AmpLevel.O0 else True
         )
+=======
+        assert 'gpu:' in paddle.get_device(
+        ), "Recompute with RNG is not support current device: {}.".format(
+            cur_device)
+
+        # TODO support AMP
+        tracer = framework._dygraph_tracer()
+        ctx.is_fw_autocast = False if tracer._amp_level == core.AmpLevel.O0 else True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if tracer._amp_level == core.AmpLevel.O2:
             ctx.amp_level = 'O2'
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
+<<<<<<< HEAD
             raise ValueError(
                 "unsupported amp level: {}".format(tracer._amp_level)
             )
+=======
+            raise ValueError("unsupported amp level: {}".format(
+                tracer._amp_level))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -140,9 +186,14 @@ class _HPRecomputeFunction(PyLayer):
                 state = arg.stop_gradient
                 if partition:
                     ctx.tensor_shapes.append(arg.shape)
+<<<<<<< HEAD
                     partition = _split_activation(
                         arg.detach(), mp_group
                     ).clone()
+=======
+                    partition = _split_activation(arg.detach(),
+                                                  mp_group).clone()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     # TODO(shenliang03) not use calculate stream to D2H to speed
                     arg = partition.cpu() if offload else partition
                 else:
@@ -151,6 +202,7 @@ class _HPRecomputeFunction(PyLayer):
                 tensor_inputs.append(arg)
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)
+<<<<<<< HEAD
 
                 # In new dygraph mode, in some cases a subset of outputs is identity to the subset of inputs,
                 #  which is inplace operating. When the inputs' stop_gradient is True, an
@@ -163,6 +215,8 @@ class _HPRecomputeFunction(PyLayer):
                 #  See https://github.com/PaddlePaddle/Paddle/blob/9d62efb0e6e5373823039d9eda96cd5905426c0a/paddle/fluid/pybind/eager_py_layer.cc#L388
                 if framework.in_dygraph_mode() and state:
                     ctx.mark_non_differentiable(arg)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 ctx.inputs.append(arg)
 
@@ -188,6 +242,7 @@ class _HPRecomputeFunction(PyLayer):
             for i, idx in enumerate(tensor_indices):
                 if ctx.partition:
                     state = tensors[i].stop_gradient
+<<<<<<< HEAD
                     tensors[i] = (
                         _merge_activation(tensors[i], ctx.mp_group)
                         .detach()
@@ -197,11 +252,20 @@ class _HPRecomputeFunction(PyLayer):
                 inputs[idx] = (
                     tensors[i].cuda(device_id) if ctx.offload else tensors[i]
                 )
+=======
+                    tensors[i] = _merge_activation(
+                        tensors[i],
+                        ctx.mp_group).detach().reshape_(tensor_shapes[i])
+                    tensors[i].stop_gradient = state
+                inputs[idx] = tensors[i].cuda(
+                    device_id) if ctx.offload else tensors[i]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             tracer = framework._dygraph_tracer()
             tracer._has_grad = True
 
             # need restore auto_cast state as well as w/b list
+<<<<<<< HEAD
             with swith_rng_state_tracker(
                 ctx.fwd_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
             ):
@@ -211,21 +275,40 @@ class _HPRecomputeFunction(PyLayer):
                     custom_black_list=ctx.amp_black_list,
                     level=ctx.amp_level,
                 ):
+=======
+            with swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
+                                         ctx.fwd_cuda_rng_state_tracker):
+                with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
+                                          custom_white_list=ctx.amp_white_list,
+                                          custom_black_list=ctx.amp_black_list,
+                                          level=ctx.amp_level):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
             if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
+<<<<<<< HEAD
                 outputs = (outputs,)
+=======
+                outputs = (outputs, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             assert len(outputs) == len(args)
 
             forward_outputs_with_grad = []
             backward_inputs = []
 
             for i in range(len(outputs)):
+<<<<<<< HEAD
                 if (
                     isinstance(outputs[i], (core.VarBase, core.eager.Tensor))
                     and not outputs[i].stop_gradient
                 ):
+=======
+                if isinstance(
+                        outputs[i],
+                    (core.VarBase,
+                     core.eager.Tensor)) and not outputs[i].stop_gradient:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     forward_outputs_with_grad.append(outputs[i])
                     backward_inputs.append(args[i])
 
@@ -236,11 +319,16 @@ class _HPRecomputeFunction(PyLayer):
 
             # actually backward
             paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
+<<<<<<< HEAD
             grads = tuple(
                 inp._grad_ivar()
                 for inp in detached_inputs
                 if isinstance(inp, (core.VarBase, core.eager.Tensor))
             )
+=======
+            grads = tuple(inp._grad_ivar() for inp in detached_inputs
+                          if isinstance(inp, (core.VarBase, core.eager.Tensor)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return grads
 
 
@@ -269,13 +357,18 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
 
     """
     mp_group = ctx.get('mp_group', None)
+<<<<<<< HEAD
     assert (
         mp_group is not None
     ), "ctx must contains mp_group and mp_group can not be None."
+=======
+    assert mp_group is not None, "ctx must contains mp_group and mp_group can not be None."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     offload = ctx.get('offload', False)
     partition = ctx.get('partition', False)
 
+<<<<<<< HEAD
     if framework._dygraph_tracer()._has_grad:
         check_recompute_necessary(args)
 
@@ -283,6 +376,11 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
     _HPRecomputeFunction.apply(
         function, all_outputs, mp_group, offload, partition, *args, **kwargs
     )
+=======
+    all_outputs = []
+    _HPRecomputeFunction.apply(function, all_outputs, mp_group, offload,
+                               partition, *args, **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if len(all_outputs) == 1:
         return all_outputs[0]

@@ -16,11 +16,19 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/center_loss_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 namespace paddle {
 namespace operators {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+namespace paddle {
+namespace operators {
+
+using platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
 __global__ void ComputeDifferent(T *centers_diff,
@@ -75,7 +83,11 @@ __global__ void UpdateCenters(T *centers,
     const T *diff = centers_diff + idy * D;
     T *cent = centers + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
+<<<<<<< HEAD
       phi::CudaAtomicAdd(&cent[i], alpha[0] * diff[i] / count);
+=======
+      paddle::platform::CudaAtomicAdd(&cent[i], alpha[0] * diff[i] / count);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     idy += BlockDimY * GridDimX;
   }
@@ -87,10 +99,17 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &device_context = ctx.template device_context<DeviceContext>();
     auto stream = device_context.stream();
+<<<<<<< HEAD
     auto *X = ctx.Input<phi::DenseTensor>("X");  // deep feature
     auto *labels = ctx.Input<phi::DenseTensor>("Label");
     auto *centers = ctx.Input<phi::DenseTensor>("Centers");
     auto *update_rate = ctx.Input<phi::DenseTensor>("CenterUpdateRate");
+=======
+    auto *X = ctx.Input<Tensor>("X");  // deep feature
+    auto *labels = ctx.Input<Tensor>("Label");
+    auto *centers = ctx.Input<Tensor>("Centers");
+    auto *update_rate = ctx.Input<Tensor>("CenterUpdateRate");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int cluster_num = ctx.Attr<int>("cluster_num");
     auto *lr_center = update_rate->data<T>();
     bool need_update = static_cast<T>(ctx.Attr<bool>("need_update"));
@@ -102,24 +121,42 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
     int batch_size = x_dims[0];
     const int deep_feat_dim = x_dims[1];
 
+<<<<<<< HEAD
     auto *centers_diff = ctx.Output<phi::DenseTensor>("SampleCenterDiff");
+=======
+    auto *centers_diff = ctx.Output<Tensor>("SampleCenterDiff");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto centers_diff_data = centers_diff->mutable_data<T>(ctx.GetPlace());
 
     auto centers_data = centers->data<T>();
     auto centers_dim = centers->dims();
+<<<<<<< HEAD
     auto *out_loss = ctx.Output<phi::DenseTensor>("Loss");
     auto loss_data = out_loss->mutable_data<T>(ctx.GetPlace());
 
     auto *centers_out = ctx.Output<phi::DenseTensor>("CentersOut");
+=======
+    auto *out_loss = ctx.Output<Tensor>("Loss");
+    auto loss_data = out_loss->mutable_data<T>(ctx.GetPlace());
+
+    auto *centers_out = ctx.Output<Tensor>("CentersOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *centers_out_data = centers_out->mutable_data<T>(ctx.GetPlace());
 
     auto ctx_place = ctx.GetPlace();
     if (centers != centers_out) {
       framework::TensorCopy(
+<<<<<<< HEAD
           *static_cast<const phi::DenseTensor *>(centers),
           ctx_place,
           *platform::DeviceContextPool::Instance().Get(ctx_place),
           static_cast<phi::DenseTensor *>(centers_out));
+=======
+          *static_cast<const framework::Tensor *>(centers),
+          ctx_place,
+          *platform::DeviceContextPool::Instance().Get(ctx_place),
+          static_cast<framework::Tensor *>(centers_out));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     int64_t numel = X->numel();

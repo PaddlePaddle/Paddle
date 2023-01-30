@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import functools
 import sys
 import time
 import unittest
+=======
+import sys
+import time
+import unittest
+import functools
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle.reader
 
@@ -23,6 +30,10 @@ __all__ = []
 
 
 def reader_creator_10(dur):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def reader():
         for i in range(10):
             # this invocation helps testing paddle.reader.buffer
@@ -33,6 +44,10 @@ def reader_creator_10(dur):
 
 
 class TestMap(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_map(self):
         d = {"h": 0, "i": 1}
 
@@ -49,6 +64,10 @@ class TestMap(unittest.TestCase):
 
 
 class TestBuffered(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_read(self):
         for size in range(20):
             b = paddle.reader.buffered(reader_creator_10(0), size)
@@ -73,10 +92,17 @@ class TestBuffered(unittest.TestCase):
 
 
 class TestCompose(unittest.TestCase):
+<<<<<<< HEAD
     def test_compse(self):
         reader = paddle.reader.compose(
             reader_creator_10(0), reader_creator_10(0)
         )
+=======
+
+    def test_compse(self):
+        reader = paddle.reader.compose(reader_creator_10(0),
+                                       reader_creator_10(0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for idx, e in enumerate(reader()):
             self.assertEqual(e, (idx, idx))
 
@@ -84,8 +110,12 @@ class TestCompose(unittest.TestCase):
         total = 0
         reader = paddle.reader.compose(
             paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
+<<<<<<< HEAD
             reader_creator_10(0),
         )
+=======
+            reader_creator_10(0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with self.assertRaises(paddle.reader.ComposeNotAligned):
             for e in reader():
                 total += 1
@@ -94,11 +124,18 @@ class TestCompose(unittest.TestCase):
 
     def test_compose_not_aligned_no_check(self):
         total = 0
+<<<<<<< HEAD
         reader = paddle.reader.compose(
             paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
             reader_creator_10(0),
             check_alignment=False,
         )
+=======
+        reader = paddle.reader.compose(paddle.reader.chain(
+            reader_creator_10(0), reader_creator_10(0)),
+                                       reader_creator_10(0),
+                                       check_alignment=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for e in reader():
             total += 1
         # expecting 10, not 20
@@ -106,6 +143,10 @@ class TestCompose(unittest.TestCase):
 
 
 class TestChain(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_chain(self):
         c = paddle.reader.chain(reader_creator_10(0), reader_creator_10(0))
         idx = 0
@@ -116,6 +157,10 @@ class TestChain(unittest.TestCase):
 
 
 class TestShuffle(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_shuffle(self):
         case = [(0, True), (1, True), (10, False), (100, False)]
         a = reader_creator_10(0)
@@ -130,9 +175,17 @@ class TestShuffle(unittest.TestCase):
 
 
 class TestXmap(unittest.TestCase):
+<<<<<<< HEAD
     def test_xmap(self):
         def mapper(x):
             return x + 1
+=======
+
+    def test_xmap(self):
+
+        def mapper(x):
+            return (x + 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         orders = (True, False)
         thread_nums = (1, 2, 4, 8, 16)
@@ -140,9 +193,15 @@ class TestXmap(unittest.TestCase):
         for order in orders:
             for tNum in thread_nums:
                 for size in buffered_size:
+<<<<<<< HEAD
                     reader = paddle.reader.xmap_readers(
                         mapper, reader_creator_10(0), tNum, size, order
                     )
+=======
+                    reader = paddle.reader.xmap_readers(mapper,
+                                                        reader_creator_10(0),
+                                                        tNum, size, order)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     for n in range(3):
                         result = []
                         for i in reader():
@@ -154,6 +213,10 @@ class TestXmap(unittest.TestCase):
 
 
 class TestMultiProcessReader(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setup(self):
         self.samples = []
         for i in range(1000):
@@ -172,8 +235,12 @@ class TestMultiProcessReader(unittest.TestCase):
         self.setup()
         results = []
         for data in paddle.reader.multiprocess_reader(
+<<<<<<< HEAD
             [self.reader0, self.reader1, self.reader2], 100, use_pipe
         )():
+=======
+            [self.reader0, self.reader1, self.reader2], 100, use_pipe)():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             results.append(data)
         self.assertEqual(sorted(self.samples), sorted(results))
 

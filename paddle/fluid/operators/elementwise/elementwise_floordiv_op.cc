@@ -35,6 +35,7 @@ class ElementwiseFloorDivOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X // Y"; }
 
   void AddInputX() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
@@ -46,6 +47,17 @@ class ElementwiseFloorDivOpMaker : public ElementwiseOpMaker {
         "Y",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
         "should be int32, int64.");
+=======
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   std::string GetOpFuntionality() const override {

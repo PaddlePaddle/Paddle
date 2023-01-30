@@ -14,15 +14,30 @@
 """Tests for logical operators of Dynamic-to-Static.
 Only test simple cases here. The complex test samples like nested ifelse
 or nested loop have been covered in file test_ifelse.py and test_loop.py"""
+<<<<<<< HEAD
 
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+
+from paddle.utils import gast
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+<<<<<<< HEAD
 from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
 from paddle.utils import gast
+=======
+from paddle.fluid.dygraph import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import cmpop_node_to_str
+
+program_translator = ProgramTranslator()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 SEED = 2020
 np.random.seed(22)
@@ -168,6 +183,7 @@ def test_shape_not_equal(x):
 
 
 class TestLogicalBase(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.input = np.array([3]).astype('int32')
         self.place = (
@@ -175,15 +191,29 @@ class TestLogicalBase(unittest.TestCase):
             if fluid.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.input = np.array([3]).astype('int32')
+        self.place = paddle.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._set_test_func()
 
     def _set_test_func(self):
         raise NotImplementedError(
+<<<<<<< HEAD
             "Method 'set_test_func' should be implemented."
         )
 
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
+=======
+            "Method 'set_test_func' should be implemented.")
+
+    def _run(self, to_static):
+        program_translator.enable(to_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with fluid.dygraph.guard(self.place):
             result = self.dygraph_func(self.input)
             return result.numpy()
@@ -196,6 +226,10 @@ class TestLogicalBase(unittest.TestCase):
 
 
 class TestLogicalNot(TestLogicalBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _set_test_func(self):
         self.dygraph_func = test_logical_not
 
@@ -207,12 +241,20 @@ class TestLogicalNot(TestLogicalBase):
             static_res,
             rtol=1e-05,
             err_msg='dygraph result is {}\nstatic_result is {}'.format(
+<<<<<<< HEAD
                 dygraph_res, static_res
             ),
         )
 
 
 class TestLogicalNot2(TestLogicalBase):
+=======
+                dygraph_res, static_res))
+
+
+class TestLogicalNot2(TestLogicalBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_2
 
@@ -224,49 +266,85 @@ class TestLogicalNot2(TestLogicalBase):
             static_res,
             rtol=1e-05,
             err_msg='dygraph result is {}\nstatic_result is {}'.format(
+<<<<<<< HEAD
                 dygraph_res, static_res
             ),
         )
 
 
 class TestLogicalAnd(TestLogicalNot):
+=======
+                dygraph_res, static_res))
+
+
+class TestLogicalAnd(TestLogicalNot):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _set_test_func(self):
         self.dygraph_func = test_logical_and
 
 
 class TestLogicalAnd2(TestLogicalNot):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _set_test_func(self):
         self.dygraph_func = test_logical_and_2
 
 
 class TestLogicalOr(TestLogicalNot):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _set_test_func(self):
         self.dygraph_func = test_logical_or
 
 
 class TestLogicalOr2(TestLogicalNot):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _set_test_func(self):
         self.dygraph_func = test_logical_or_2
 
 
 class TestLogicalNotAndOr(TestLogicalNot):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_and_or
 
 
 class TestShapeEqual(TestLogicalNot):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _set_test_func(self):
         self.input = np.ones([1, 2, 3]).astype('float32')
         self.dygraph_func = test_shape_equal
 
 
 class TestShapeNotEqual(TestLogicalNot):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _set_test_func(self):
         self.input = np.ones([1, 2, 3]).astype('float32')
         self.dygraph_func = test_shape_not_equal
 
 
 class TestCmpopNodeToStr(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_exception(self):
         with self.assertRaises(KeyError):
             cmpop_node_to_str(gast.Or())

@@ -12,12 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.seed(10)
 
@@ -28,11 +39,16 @@ class TestCountNonzeroAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+<<<<<<< HEAD
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_api_static(self):
         paddle.enable_static()
@@ -45,9 +61,14 @@ class TestCountNonzeroAPI(unittest.TestCase):
             out4 = paddle.count_nonzero(x, axis)
             out5 = paddle.count_nonzero(x, tuple(axis))
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             res = exe.run(
                 feed={'X': self.x}, fetch_list=[out1, out2, out3, out4, out5]
             )
+=======
+            res = exe.run(feed={'X': self.x},
+                          fetch_list=[out1, out2, out3, out4, out5])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out_ref = np.count_nonzero(self.x)
         for out in res:
             np.testing.assert_allclose(out, out_ref, rtol=1e-05)

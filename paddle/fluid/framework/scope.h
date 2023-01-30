@@ -38,6 +38,20 @@ class Variable;
 
 namespace paddle {
 namespace framework {
+<<<<<<< HEAD
+=======
+
+// TODO(zhiqiu): add more function in base class
+class ScopeBase {
+ public:
+  /// Find a variable in the scope or any of its ancestors.  Returns
+  /// nullptr if cannot find.
+  /// Caller doesn't own the returned Variable.
+  virtual Variable* FindVar(const std::string& name) const = 0;
+  virtual ~ScopeBase() {}
+};
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /**
  * @brief Scope that manage all variables.
  *
@@ -46,7 +60,11 @@ namespace framework {
  * One net can run in different scopes and update different variable in the
  * scope.
  */
+<<<<<<< HEAD
 class Scope {
+=======
+class Scope : public ScopeBase {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   Scope() {}
   ~Scope();

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 from functools import partial
@@ -22,6 +23,16 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
@@ -69,11 +80,19 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
+<<<<<<< HEAD
                 "input_data": [2, 32, 64, 64],
                 "index_data": [1],
             }
             self.dynamic_shape.max_input_shape = {
                 "input_data": [2, 32, 64, 64],
+=======
+                "input_data": [1, 8, 8, 8],
+                "index_data": [1],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [4, 32, 64, 64],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "index_data": [1],
             }
             self.dynamic_shape.opt_input_shape = {
@@ -159,11 +178,19 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
+<<<<<<< HEAD
                 "input_data": [2, 32, 64, 64],
                 "index_data": [2],
             }
             self.dynamic_shape.max_input_shape = {
                 "input_data": [2, 32, 64, 64],
+=======
+                "input_data": [1, 8, 8, 8],
+                "index_data": [2],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [4, 32, 64, 64],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "index_data": [2],
             }
             self.dynamic_shape.opt_input_shape = {
@@ -249,11 +276,19 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
+<<<<<<< HEAD
                 "input_data": [2, 32, 64, 64],
                 "index_data": [2, 2],
             }
             self.dynamic_shape.max_input_shape = {
                 "input_data": [2, 32, 64, 64],
+=======
+                "input_data": [1, 8, 8, 8],
+                "index_data": [2, 2],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [4, 32, 64, 64],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "index_data": [2, 2],
             }
             self.dynamic_shape.opt_input_shape = {
@@ -339,11 +374,19 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
+<<<<<<< HEAD
                 "input_data": [2, 32, 64, 64],
                 "index_data": [2, 2, 4],
             }
             self.dynamic_shape.max_input_shape = {
                 "input_data": [2, 32, 64, 64],
+=======
+                "input_data": [1, 8, 8, 8],
+                "index_data": [2, 2, 4],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [4, 32, 64, 64],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "index_data": [2, 2, 4],
             }
             self.dynamic_shape.opt_input_shape = {
@@ -429,6 +472,7 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
+<<<<<<< HEAD
                 "input_data": [2, 32],
                 "index_data": [2, 2],
             }
@@ -438,6 +482,17 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
             }
             self.dynamic_shape.opt_input_shape = {
                 "input_data": [2, 32],
+=======
+                "input_data": [1, 4],
+                "index_data": [2, 2],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [4, 64],
+                "index_data": [2, 2],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [2, 8],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "index_data": [2, 2],
             }
 
@@ -521,6 +576,7 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
+<<<<<<< HEAD
                 "input_data": [16, 32, 256],
                 "index_data": [2, 2, 2],
             }
@@ -530,6 +586,17 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
             }
             self.dynamic_shape.opt_input_shape = {
                 "input_data": [16, 32, 256],
+=======
+                "input_data": [1, 4, 4],
+                "index_data": [1, 1, 1],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [16, 64, 512],
+                "index_data": [4, 2, 4],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [2, 8, 64],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "index_data": [2, 2, 2],
             }
 

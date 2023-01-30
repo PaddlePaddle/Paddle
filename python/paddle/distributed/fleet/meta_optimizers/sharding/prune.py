@@ -15,7 +15,12 @@
 __all__ = []
 
 
+<<<<<<< HEAD
 class ProgramDeps:
+=======
+class ProgramDeps(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, block, start_vars, end_vars):
         self._block = block
         # vars where to start to build the deps
@@ -44,9 +49,13 @@ class ProgramDeps:
         else:
             return None
 
+<<<<<<< HEAD
     def _build_deps(
         self,
     ):
+=======
+    def _build_deps(self, ):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for var_name in self._start_vars:
             self._var_to_use_op[var_name] = []
@@ -54,9 +63,14 @@ class ProgramDeps:
 
         for idx, op in enumerate(self._block.ops):
             if op.type in [
+<<<<<<< HEAD
                 "c_allreduce_sum",
                 "c_sync_comm_stream",
                 "c_calc_comm_stream",
+=======
+                    "c_allreduce_sum", "c_sync_comm_stream",
+                    "c_calc_comm_stream"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]:
                 continue
             input_vars = op.desc.input_arg_names()
@@ -79,6 +93,7 @@ class ProgramDeps:
                     self._var_to_generate_op[output_name].append(idx)
             if op.type == "conditional_block":
                 # subblock
+<<<<<<< HEAD
                 assert op.desc.has_attr("sub_block")
                 subblock_idx = op.desc.attr("sub_block").id
                 subblock_deps = ProgramDeps(
@@ -86,6 +101,13 @@ class ProgramDeps:
                     op.desc.input_arg_names(),
                     op.desc.output_arg_names(),
                 )
+=======
+                assert (op.desc.has_attr("sub_block"))
+                subblock_idx = op.desc.attr("sub_block").id
+                subblock_deps = ProgramDeps(
+                    self._block.program.block(subblock_idx),
+                    op.desc.input_arg_names(), op.desc.output_arg_names())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self._sub_block_deps[subblock_idx] = subblock_deps
                 subblock_deps._father_block_deps = self
 
@@ -97,16 +119,22 @@ class ProgramDeps:
                     raise ValueError(
                         "op_idx: {} is not in self._var_to_use_op[{}], "
                         "self._var_to_use_op[{}] is {}".format(
+<<<<<<< HEAD
                             op_idx,
                             var_name,
                             var_name,
                             self._var_to_use_op[var_name],
                         )
                     )
+=======
+                            op_idx, var_name, var_name,
+                            self._var_to_use_op[var_name]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self._var_to_use_op[var_name].remove(op_idx)
             # update _should_removed_var
             if var_name in self._start_vars:
                 self._should_removed_var.discard(var_name)
+<<<<<<< HEAD
             elif (
                 self._var_to_use_op[var_name] == []
             ):  # no more deps of this var
@@ -115,6 +143,13 @@ class ProgramDeps:
                 self._var_to_generate_op[var_name][-1]
                 >= self._var_to_use_op[var_name][-1]
             ):
+=======
+            elif self._var_to_use_op[
+                    var_name] == []:  # no more deps of this var
+                self._should_removed_var.add(var_name)
+            elif self._var_to_generate_op[var_name][-1] >= self._var_to_use_op[
+                    var_name][-1]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # there are circle in the graph
                 self._should_removed_var.add(var_name)
             else:  # input_name should not be deleted
@@ -122,6 +157,7 @@ class ProgramDeps:
 
     def crop_output_var_from_op(self, op_idx, var_name):
         if var_name in self._var_to_generate_op:
+<<<<<<< HEAD
             assert op_idx in self._var_to_generate_op[var_name]
             self._var_to_generate_op[var_name].remove(op_idx)
         if self._block.has_var(var_name):
@@ -129,6 +165,13 @@ class ProgramDeps:
                 var_name not in self._var_to_generate_op
                 or self._var_to_generate_op[var_name] == []
             ):
+=======
+            assert (op_idx in self._var_to_generate_op[var_name])
+            self._var_to_generate_op[var_name].remove(op_idx)
+        if self._block.has_var(var_name):
+            if var_name not in self._var_to_generate_op or self._var_to_generate_op[
+                    var_name] == []:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self._block._remove_var(var_name, sync=False)
 
     def remove_op(self, op_idx, reserved_vars=None):

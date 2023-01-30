@@ -13,6 +13,10 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
+=======
+from test_parallel_executor_transformer import *
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

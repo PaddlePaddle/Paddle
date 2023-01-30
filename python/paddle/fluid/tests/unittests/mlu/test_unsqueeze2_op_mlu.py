@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import sys
 
@@ -27,6 +31,10 @@ paddle.enable_static()
 
 # Correct: General.
 class TestUnsqueezeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test_case()
         self.set_mlu()
@@ -35,7 +43,11 @@ class TestUnsqueezeOp(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.ori_shape).astype("float32"),
+=======
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_mlu(self):
@@ -59,14 +71,25 @@ class TestUnsqueezeOp(OpTest):
 
 # Correct: Single input index.
 class TestUnsqueezeOp1(TestUnsqueezeOp):
+<<<<<<< HEAD
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (-1,)
+=======
+
+    def init_test_case(self):
+        self.ori_shape = (20, 5)
+        self.axes = (-1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.new_shape = (20, 5, 1)
 
 
 # Correct: Mixed input axis.
 class TestUnsqueezeOp2(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (0, -1)
@@ -75,6 +98,10 @@ class TestUnsqueezeOp2(TestUnsqueezeOp):
 
 # Correct: There is duplicated axis.
 class TestUnsqueezeOp3(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (0, 3, 3)
@@ -83,6 +110,10 @@ class TestUnsqueezeOp3(TestUnsqueezeOp):
 
 # Correct: Reversed axes.
 class TestUnsqueezeOp4(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
@@ -91,6 +122,10 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
 
 # axes is a list(with tensor)
 class TestUnsqueezeOp_AxesTensorList(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test_case()
         self.set_mlu()
@@ -98,6 +133,7 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
 
         axes_tensor_list = []
         for index, ele in enumerate(self.axes):
+<<<<<<< HEAD
             axes_tensor_list.append(
                 ("axes" + str(index), np.ones((1)).astype('int32') * ele)
             )
@@ -105,11 +141,23 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float32"),
             "AxesTensorList": axes_tensor_list,
+=======
+            axes_tensor_list.append(("axes" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs = {
+            "X": np.random.random(self.ori_shape).astype("float32"),
+            "AxesTensorList": axes_tensor_list
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.ori_shape).astype("float32"),
+=======
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_mlu(self):
@@ -132,13 +180,24 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
 
 
 class TestUnsqueezeOp1_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+<<<<<<< HEAD
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (-1,)
+=======
+
+    def init_test_case(self):
+        self.ori_shape = (20, 5)
+        self.axes = (-1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.new_shape = (20, 5, 1)
 
 
 class TestUnsqueezeOp2_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (0, -1)
@@ -146,6 +205,10 @@ class TestUnsqueezeOp2_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
 
 
 class TestUnsqueezeOp3_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (0, 3, 3)
@@ -153,6 +216,10 @@ class TestUnsqueezeOp3_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
 
 
 class TestUnsqueezeOp4_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
@@ -161,6 +228,10 @@ class TestUnsqueezeOp4_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
 
 # axes is a Tensor
 class TestUnsqueezeOp_AxesTensor(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test_case()
         self.set_mlu()
@@ -168,12 +239,20 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
 
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float32"),
+<<<<<<< HEAD
             "AxesTensor": np.array(self.axes).astype("int32"),
+=======
+            "AxesTensor": np.array(self.axes).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.ori_shape).astype("float32"),
+=======
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_mlu(self):
@@ -196,13 +275,24 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
 
 
 class TestUnsqueezeOp1_AxesTensor(TestUnsqueezeOp_AxesTensor):
+<<<<<<< HEAD
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (-1,)
+=======
+
+    def init_test_case(self):
+        self.ori_shape = (20, 5)
+        self.axes = (-1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.new_shape = (20, 5, 1)
 
 
 class TestUnsqueezeOp2_AxesTensor(TestUnsqueezeOp_AxesTensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (0, -1)
@@ -210,6 +300,10 @@ class TestUnsqueezeOp2_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
 
 class TestUnsqueezeOp3_AxesTensor(TestUnsqueezeOp_AxesTensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (0, 3, 3)
@@ -217,6 +311,10 @@ class TestUnsqueezeOp3_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
 
 class TestUnsqueezeOp4_AxesTensor(TestUnsqueezeOp_AxesTensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)

@@ -17,9 +17,12 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -32,6 +35,7 @@ void ReshapeGradKernel(const Context& dev_ctx,
   x_grad->Resize(x_dims);
 }
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_XPU
 template <>
 void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
@@ -51,6 +55,8 @@ void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
 }
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename Context>
 void ReshapeDoubleGradKernel(const Context& dev_ctx,
                              const DenseTensor& out_grad,

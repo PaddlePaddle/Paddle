@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -30,6 +31,23 @@ from paddle.fluid.tests.unittests.op_test import (
     "CUDA required dygraph so oneDNN UT must be skipped",
 )
 class TestSliceOneDNNOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle
+
+
+@OpTestTool.skip_if(core.is_compiled_with_cuda(),
+                    "CUDA required dygraph so oneDNN UT must be skipped")
+class TestSliceOneDNNOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "slice"
         self.config()
@@ -40,7 +58,11 @@ class TestSliceOneDNNOp(OpTest):
             'starts': self.starts,
             'ends': self.ends,
             'infer_flags': self.infer_flags,
+<<<<<<< HEAD
             'use_mkldnn': True,
+=======
+            'use_mkldnn': True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.set_attrs()
 
@@ -66,6 +88,10 @@ class TestSliceOneDNNOp(OpTest):
 
 
 class TestSliceOneDNNOp1(TestSliceOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-3, 0, 2]
@@ -76,6 +102,10 @@ class TestSliceOneDNNOp1(TestSliceOneDNNOp):
 
 
 class TestSliceOneDNNOp2(TestSliceOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-3, 0, 2]
@@ -86,6 +116,10 @@ class TestSliceOneDNNOp2(TestSliceOneDNNOp):
 
 
 class TestSliceDecrease1AxisOneDNNOp(TestSliceOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs['decrease_axis'] = self.decrease_axis
 
@@ -100,6 +134,10 @@ class TestSliceDecrease1AxisOneDNNOp(TestSliceOneDNNOp):
 
 
 class TestSliceDecrease2AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [1, 0, 2]
@@ -111,6 +149,10 @@ class TestSliceDecrease2AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSliceDecrease3AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-1, 0, 2]
@@ -122,6 +164,10 @@ class TestSliceDecrease3AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSliceDecrease4AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.input = np.random.random([3, 4, 5, 7]).astype("float32")
         self.starts = [0, 1, 2, 3]
@@ -133,6 +179,10 @@ class TestSliceDecrease4AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSlice5DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.input = np.random.random([3, 4, 5, 6, 7]).astype("float32")
         self.starts = [-1]
@@ -144,6 +194,10 @@ class TestSlice5DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSlice3DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.input = np.random.random([5, 4, 5]).astype("float32")
         self.starts = [-1]
@@ -155,8 +209,13 @@ class TestSlice3DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSliceOneDNNOp_decs_dim_starts_ListTensor(
+<<<<<<< HEAD
     TestSliceDecrease1AxisOneDNNOp
 ):
+=======
+        TestSliceDecrease1AxisOneDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_inputs(self):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
@@ -174,6 +233,10 @@ class TestSliceOneDNNOp_decs_dim_starts_ListTensor(
 
 
 class TestSlice4DInferDimsOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.input = np.random.random([1, 1, 10, 10]).astype("float32")
         self.starts = [1, 2]
@@ -185,6 +248,10 @@ class TestSlice4DInferDimsOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSlice4DInferDimsOneDNNOp2(TestSliceDecrease1AxisOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.input = np.random.random([1, 1, 10, 10]).astype("float32")
         self.starts = [4, 2]
@@ -197,8 +264,15 @@ class TestSlice4DInferDimsOneDNNOp2(TestSliceDecrease1AxisOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+<<<<<<< HEAD
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestSliceBF16OneDNNOp(parent):
+=======
+
+    @OpTestTool.skip_if_not_cpu_bf16()
+    class TestSliceBF16OneDNNOp(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_inputs(self):
             self.dtype = np.uint16
             self.inputs = {'Input': convert_float_to_uint16(self.input)}
@@ -213,12 +287,17 @@ def create_bf16_test_class(parent):
             for i in range(len(self.axes)):
                 begin[self.axes[i]] = self.starts[i]
                 end[self.axes[i]] = self.ends[i]
+<<<<<<< HEAD
             self.dx[
                 begin[0] : end[0],
                 begin[1] : end[1],
                 begin[2] : end[2],
                 begin[3] : end[3],
             ] = self.dout
+=======
+            self.dx[begin[0]:end[0], begin[1]:end[1], begin[2]:end[2],
+                    begin[3]:end[3]] = self.dout
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_output(self):
             self.check_output_with_place(core.CPUPlace())
@@ -226,12 +305,19 @@ def create_bf16_test_class(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
+<<<<<<< HEAD
                 core.CPUPlace(),
                 ["Input"],
                 "Out",
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
             )
+=======
+                core.CPUPlace(), ["Input"],
+                "Out",
+                user_defined_grads=[self.dx],
+                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")
     TestSliceBF16OneDNNOp.__name__ = cls_name

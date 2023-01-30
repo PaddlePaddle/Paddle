@@ -102,11 +102,14 @@ cc_test(
   SRCS api_tester.cc
   DEPS paddle_inference_api)
 
+<<<<<<< HEAD
 cc_test(
   inference_api_helper_test
   SRCS helper_test.cc
   DEPS paddle_inference_api)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.
@@ -141,6 +144,7 @@ if(WITH_TESTING)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
+<<<<<<< HEAD
   cc_test_old(
     test_analysis_predictor
     SRCS
@@ -160,6 +164,18 @@ elseif(WIN32)
     ${inference_deps}
     ARGS
     --dirname=${WORD2VEC_MODEL_DIR})
+=======
+  cc_test(
+    test_analysis_predictor
+    SRCS analysis_predictor_tester.cc
+    DEPS paddle_inference_shared ARGS --dirname=${WORD2VEC_MODEL_DIR})
+elseif(WIN32)
+  cc_test(
+    test_analysis_predictor
+    SRCS analysis_predictor_tester.cc
+    DEPS analysis_predictor benchmark ${inference_deps} ARGS
+         --dirname=${WORD2VEC_MODEL_DIR})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 if(WITH_TESTING AND WITH_MKLDNN)

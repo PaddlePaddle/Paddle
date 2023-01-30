@@ -17,6 +17,7 @@ __all__ = []
 
 def batch(reader, batch_size, drop_last=False):
     """
+<<<<<<< HEAD
     This operator creates a batched reader which combines the data from the
     input reader to batched data.
 
@@ -35,12 +36,36 @@ def batch(reader, batch_size, drop_last=False):
     Examples:
         .. code-block:: python
 
+=======
+    This operator creates a batched reader which combines the data from the 
+    input reader to batched data.
+    
+    Args:
+        reader(generator): the data reader to read from.
+        batch_size(int): size of each mini-batch.
+        drop_last(bool, optional): If set to True, the last batch is dropped when 
+            the size of last batch is not equal to batch_size, if set to False,
+            it will not. Default: False.
+    Returns:
+        The batched reader. 
+    
+    Return Type:
+        generator   
+
+    Examples:
+        .. code-block:: python
+           
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
             def reader():
                 for i in range(10):
                     yield i
             batch_reader = paddle.batch(reader, batch_size=2)
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for data in batch_reader():
                 print(data)
 
@@ -66,9 +91,14 @@ def batch(reader, batch_size, drop_last=False):
     # Batch size check
     batch_size = int(batch_size)
     if batch_size <= 0:
+<<<<<<< HEAD
         raise ValueError(
             "batch_size should be a positive integeral value, "
             "but got batch_size={}".format(batch_size)
         )
+=======
+        raise ValueError("batch_size should be a positive integeral value, "
+                         "but got batch_size={}".format(batch_size))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return batch_reader

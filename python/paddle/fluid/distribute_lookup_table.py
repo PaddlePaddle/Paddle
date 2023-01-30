@@ -70,10 +70,15 @@ def find_distributed_lookup_table(program):
                 if table_name is None:
                     table_name = op.input("W")[0]
                 if table_name != op.input("W")[0]:
+<<<<<<< HEAD
                     raise RuntimeError(
                         "all distributed lookup_table_ops"
                         " should have only one table"
                     )
+=======
+                    raise RuntimeError("all distributed lookup_table_ops"
+                                       " should have only one table")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 if table_name is not None:
                     assert op.input("W")[0] != table_name

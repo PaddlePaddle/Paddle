@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
 import numpy as np
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import math
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append("../")
 from op_test import OpTest
@@ -26,6 +35,10 @@ import paddle.fluid as fluid
 
 
 class TestSequenceReshape(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.dimension = 12
         self.x_lod = [[4, 1, 3, 3]]
@@ -59,6 +72,10 @@ class TestSequenceReshape(OpTest):
 
 
 class TestSequenceReshape_reduce(TestSequenceReshape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.dimension = 24
         self.x_lod = [[4, 2, 2, 4]]
@@ -66,6 +83,10 @@ class TestSequenceReshape_reduce(TestSequenceReshape):
 
 
 class TestSequenceReshape_same(TestSequenceReshape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.dimension = 12
         self.x_lod = [[4, 2, 2, 4]]
@@ -73,6 +94,10 @@ class TestSequenceReshape_same(TestSequenceReshape):
 
 
 class TestSequenceReshape_reduce_seq_len0(TestSequenceReshape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.dimension = 24
         self.x_lod = [[0, 6, 0, 2, 4]]
@@ -80,6 +105,10 @@ class TestSequenceReshape_reduce_seq_len0(TestSequenceReshape):
 
 
 class TestSequenceReshape_reduce_seq_len0_case1(TestSequenceReshape):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.dimension = 24
         self.x_lod = [[0, 2, 8, 2, 0]]
@@ -87,7 +116,13 @@ class TestSequenceReshape_reduce_seq_len0_case1(TestSequenceReshape):
 
 
 class TestSequenceReshapeOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_error(self):
+=======
+
+    def test_error(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_variable():
             x = np.random.random((2, 4)).astype("float32")
             fluid.layers.sequence_reshape(x=x, new_dim=4)
@@ -95,12 +130,20 @@ class TestSequenceReshapeOpError(unittest.TestCase):
         self.assertRaises(TypeError, test_variable)
 
         def test_dtype():
+<<<<<<< HEAD
             x1 = paddle.static.data(
                 name='x1',
                 shape=[-1, 2, 6],
                 dtype='float16',
                 lod_level=1,
             )
+=======
+            x1 = fluid.layers.data(name='x1',
+                                   shape=[2, 6],
+                                   append_batch_size=False,
+                                   dtype='float16',
+                                   lod_level=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             fluid.layers.sequence_reshape(x=x1, new_dim=4)
 
         self.assertRaises(TypeError, test_dtype)

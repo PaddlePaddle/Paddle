@@ -38,6 +38,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE
 
+<<<<<<< HEAD
 import glob
 import math
 import os
@@ -55,12 +56,37 @@ __all__ = []
 
 
 class LayerDesc:
+=======
+import math
+import re
+import glob
+import os
+import numpy as np
+import random
+from functools import partial
+
+import paddle
+from paddle.fluid.dygraph.layers import Layer
+from ...utils.log_util import logger, layer_to_str
+from paddle.distributed import fleet
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.incubate.distributed.fleet import recompute_hybrid
+
+__all__ = []
+
+
+class LayerDesc(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, layer_func, *inputs, **kwargs):
         self.layer_func = layer_func
         self.inputs = inputs
         self.kwargs = kwargs
 
+<<<<<<< HEAD
         if not issubclass(layer_func, nn.Layer):
+=======
+        if not issubclass(layer_func, Layer):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             raise TypeError(
                 "The input(layer_func) should be a derived class of Layer."
             )
@@ -84,13 +110,21 @@ class SharedLayerDesc(LayerDesc):
         *inputs,
         **kwargs
     ):
+<<<<<<< HEAD
         super().__init__(layer_func, *inputs, **kwargs)
+=======
+        super(SharedLayerDesc, self).__init__(layer_func, *inputs, **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.layer_name = key
         self.forward_func = forward_func
         self.shared_weight_attr = shared_weight_attr
 
 
+<<<<<<< HEAD
 class SegmentLayers:
+=======
+class SegmentLayers(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(
         self,
         layers_desc,
@@ -151,7 +185,11 @@ class SegmentLayers:
         regex = re.compile(layername, re.IGNORECASE)
         for idx, layer in enumerate(self._layers_desc):
             name = None
+<<<<<<< HEAD
             if isinstance(layer, nn.Layer):
+=======
+            if isinstance(layer, Layer):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 name = layer.__class__.__name__
             elif isinstance(layer, LayerDesc):
                 name = layer.layer_func.__name__
@@ -180,16 +218,26 @@ class SegmentLayers:
         return result
 
 
+<<<<<<< HEAD
 class PipelineLayerChunk(nn.Layer):
     def __init__(self):
         super().__init__()
+=======
+class PipelineLayerChunk(Layer):
+    def __init__(self):
+        super(PipelineLayerChunk, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.run_function = []
 
     def append(self, sublayer):
         # This method is used to unify codes in _build_layer_impl.
         # For 1f1b scheduler, it will call append method of a List.
         # For interleave scheduler, it will call append method of this class.
+<<<<<<< HEAD
         if isinstance(sublayer, nn.Layer):
+=======
+        if isinstance(sublayer, Layer):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.add_sublayer(str(len(self.run_function)), sublayer)
         self.run_function.append(sublayer)
 
@@ -206,7 +254,11 @@ class PipelineLayerChunk(nn.Layer):
         )
 
 
+<<<<<<< HEAD
 class PipelineLayer(nn.Layer):
+=======
+class PipelineLayer(Layer):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """PipelineLayer
     Args:
         layers(Iterable): A sequence of layers description to define the structure for pipeline.
@@ -220,8 +272,14 @@ class PipelineLayer(nn.Layer):
     Examples:
         .. code-block:: python
         import paddle.nn as nn
+<<<<<<< HEAD
         import paddle.nn.functional as F
         from paddle.distributed import fleet
+=======
+        from paddle.distributed import fleet
+        from paddle.fluid.dygraph.layers import Layer
+        import paddle.nn.functional as F
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 
         pipeline_parallel_size = 2
@@ -240,9 +298,15 @@ class PipelineLayer(nn.Layer):
 
         hcg = fleet.get_hybrid_communicate_group()
 
+<<<<<<< HEAD
         class ReshapeHelp(nn.Layer):
             def __init__(self, shape):
                 super().__init__()
+=======
+        class ReshapeHelp(Layer):
+            def __init__(self, shape):
+                super(ReshapeHelp, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.shape = shape
 
             def forward(self, x):
@@ -277,7 +341,11 @@ class PipelineLayer(nn.Layer):
                         ReshapeHelp, shape=[-1, 256]),
                     LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
                 ]
+<<<<<<< HEAD
                 super().__init__(
+=======
+                super(AlexNetPipeDesc, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
         model = AlexNetPipeDesc(num_stages=pipeline_parallel_size, topology=hcg._topo)
@@ -295,7 +363,11 @@ class PipelineLayer(nn.Layer):
         recompute_ctx=None,
         num_virtual_pipeline_stages=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(PipelineLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
 
@@ -499,14 +571,22 @@ class PipelineLayer(nn.Layer):
         for key, comm in self.shared_comm.items():
             param = getattr(self.shared_layers[key], comm['weight_attr'])
             # need use trace_op to allreduce weight
+<<<<<<< HEAD
             if framework.in_dygraph_mode():
+=======
+            if in_dygraph_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
                         param.grad, group=comm['group']
                     )
             else:
                 with paddle.framework.no_grad():
+<<<<<<< HEAD
                     framework._dygraph_tracer().trace_op(
+=======
+                    paddle.fluid.framework._dygraph_tracer().trace_op(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         type="c_allreduce_sum",
                         inputs={'X': param._grad_ivar()},
                         outputs={'Out': param._grad_ivar()},
@@ -626,7 +706,11 @@ class PipelineLayer(nn.Layer):
 
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
+<<<<<<< HEAD
             if isinstance(layer, nn.Layer):
+=======
+            if isinstance(layer, Layer):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 run_function.append(layer)
                 if self._num_virtual_pipeline_stages == 1:
                     # Only add sublayer for 1f1b scheduler,
@@ -722,13 +806,21 @@ class PipelineLayer(nn.Layer):
 
     def _need_recompute(self, funcs, inputs):
         if not any(
+<<<<<<< HEAD
             not input_.stop_gradient
+=======
+            input_.stop_gradient == False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for input_ in inputs
             if isinstance(input_, paddle.Tensor)
         ):
             return False
 
+<<<<<<< HEAD
         params = [f.parameters() for f in funcs if isinstance(f, nn.Layer)]
+=======
+        params = [f.parameters() for f in funcs if isinstance(f, Layer)]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return any(len(list(p)) > 0 for p in params)
 
     def save_state_dict(self, path):

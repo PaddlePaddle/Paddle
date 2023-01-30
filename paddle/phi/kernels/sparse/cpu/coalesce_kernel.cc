@@ -22,9 +22,15 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename IntT>
+<<<<<<< HEAD
 void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
                           const SparseCooTensor& x,
                           SparseCooTensor* out) {
+=======
+void CoalesceCPUKernel(const CPUContext& dev_ctx,
+                       const SparseCooTensor& x,
+                       SparseCooTensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.values();
   DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
@@ -95,6 +101,7 @@ void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void CoalesceCooKernel(const Context& dev_ctx,
                        const SparseCooTensor& x,
                        SparseCooTensor* out) {
@@ -102,15 +109,30 @@ void CoalesceCooKernel(const Context& dev_ctx,
       x.indices().dtype(), "CoalesceCooCPUKernel", ([&] {
         CoalesceCooCPUKernel<T, data_t>(dev_ctx, x, out);
       }));
+=======
+void CoalesceKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "CoalesceCPUKernel", ([&] {
+                                 CoalesceCPUKernel<T, data_t>(dev_ctx, x, out);
+                               }));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace sparse
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(coalesce_coo,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::CoalesceCooKernel,
+=======
+PD_REGISTER_KERNEL(coalesce,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::CoalesceKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::float16,

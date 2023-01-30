@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -23,10 +24,24 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMkldnnShapeOp(MkldnnAutoScanTest):
+=======
+from auto_scan_test import MkldnnAutoScanTest
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+from functools import partial
+import unittest
+from hypothesis import given
+import hypothesis.strategies as st
+
+
+class TestMkldnnShapeOp(MkldnnAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self, *args, **kwargs):
+<<<<<<< HEAD
         def generate_input(*args, **kwargs):
             return np.random.random(kwargs['in_shape']).astype(
                 kwargs['in_dtype']
@@ -37,17 +52,34 @@ class TestMkldnnShapeOp(MkldnnAutoScanTest):
             inputs={"Input": ["input_data"]},
             outputs={"Out": ["output_data"]},
         )
+=======
+
+        def generate_input(*args, **kwargs):
+            return np.random.random(kwargs['in_shape']).astype(
+                kwargs['in_dtype'])
+
+        shape_op = OpConfig(type="shape",
+                            inputs={"Input": ["input_data"]},
+                            outputs={"Out": ["output_data"]})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         program_config = ProgramConfig(
             ops=[shape_op],
             weights={},
             inputs={
+<<<<<<< HEAD
                 "input_data": TensorConfig(
                     data_gen=partial(generate_input, *args, **kwargs)
                 ),
             },
             outputs=["output_data"],
         )
+=======
+                "input_data":
+                TensorConfig(data_gen=partial(generate_input, *args, **kwargs)),
+            },
+            outputs=["output_data"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         yield program_config
 
@@ -55,12 +87,19 @@ class TestMkldnnShapeOp(MkldnnAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, (1e-5, 1e-5)
 
+<<<<<<< HEAD
     @given(
         in_shape=st.lists(
             st.integers(min_value=1, max_value=3), min_size=1, max_size=6
         ),
         in_dtype=st.sampled_from([np.float32, np.uint16, np.int8, np.uint8]),
     )
+=======
+    @given(in_shape=st.lists(st.integers(min_value=1, max_value=3),
+                             min_size=1,
+                             max_size=6),
+           in_dtype=st.sampled_from([np.float32, np.uint16, np.int8, np.uint8]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 

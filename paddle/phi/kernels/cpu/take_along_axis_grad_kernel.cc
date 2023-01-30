@@ -14,10 +14,17 @@
 
 #include "paddle/phi/kernels/take_along_axis_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
+=======
+#include "paddle/fluid/operators/gather_scatter_kernel.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -46,14 +53,22 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   const auto& index_type =
       paddle::framework::TransToProtoVarType(index.dtype());
   if (index_type == paddle::framework::proto::VarType::INT32) {
+<<<<<<< HEAD
     phi::funcs::cpu_scatter_add_kernel<T, int32_t>(
+=======
+    paddle::operators::cpu_scatter_add_kernel<T, int32_t>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         *x_grad,
         axis,
         index,
         out_grad,
         dev_ctx);  // the gradient of gather is scatter
   } else if (index_type == paddle::framework::proto::VarType::INT64) {
+<<<<<<< HEAD
     phi::funcs::cpu_scatter_add_kernel<T, int64_t>(
+=======
+    paddle::operators::cpu_scatter_add_kernel<T, int64_t>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         *x_grad, axis, index, out_grad, dev_ctx);
   }
 }

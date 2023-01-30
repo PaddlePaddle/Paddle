@@ -17,6 +17,7 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <stdio.h>
+<<<<<<< HEAD
 #include <time.h>
 #include <algorithm>
 #include <random>
@@ -65,6 +66,13 @@ inline std::vector<int> shuffle_int_vector(int n) {
   return std::move(ret);
 }
 
+=======
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #define CUDA_CHECK(cmd)                                                       \
   do {                                                                        \
     cudaError_t e = cmd;                                                      \
@@ -82,9 +90,12 @@ class CudaDeviceRestorer {
 };
 
 inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
+<<<<<<< HEAD
   if (!FLAGS_gpugraph_debug_gpu_memory) {
     return;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CudaDeviceRestorer r;
 
   size_t avail{0};
@@ -98,15 +109,22 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
   VLOG(0) << "updatex gpu memory on device " << gpu_id << ", "
           << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
           << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
+<<<<<<< HEAD
           << "use_rate=" << (total - avail) / static_cast<double>(total)
           << "%, "
+=======
+          << "use_rate=" << (total - avail) / double(total) << "%, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           << "desc=" << desc;
 }
 
 inline void debug_gpu_memory_info(const char* desc) {
+<<<<<<< HEAD
   if (!FLAGS_gpugraph_debug_gpu_memory) {
     return;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CudaDeviceRestorer r;
 
   int device_num = 0;
@@ -128,8 +146,12 @@ inline void debug_gpu_memory_info(const char* desc) {
     VLOG(0) << "update gpu memory on device " << i << ", "
             << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
             << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
+<<<<<<< HEAD
             << "use_rate=" << (total - avail) / static_cast<double>(total)
             << "%, "
+=======
+            << "use_rate=" << (total - avail) / double(total) << "%, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             << "desc=" << desc;
   }
 }

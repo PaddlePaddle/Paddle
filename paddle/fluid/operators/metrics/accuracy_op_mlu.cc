@@ -23,12 +23,21 @@ template <typename T>
 class AccuracyMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* indices = ctx.Input<phi::DenseTensor>("Indices");
     auto* label = ctx.Input<phi::DenseTensor>("Label");
 
     auto* accuracy = ctx.Output<phi::DenseTensor>("Accuracy");
     auto* correct = ctx.Output<phi::DenseTensor>("Correct");
     auto* total = ctx.Output<phi::DenseTensor>("Total");
+=======
+    auto* indices = ctx.Input<Tensor>("Indices");
+    auto* label = ctx.Input<Tensor>("Label");
+
+    auto* accuracy = ctx.Output<Tensor>("Accuracy");
+    auto* correct = ctx.Output<Tensor>("Correct");
+    auto* total = ctx.Output<Tensor>("Total");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int num_samples = indices->dims()[0];
     if (num_samples == 0) {
@@ -36,8 +45,13 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     }
 
     // cast `indices` or `label` if their type is not INT32
+<<<<<<< HEAD
     phi::DenseTensor indices_int32(framework::TransToPhiDataType(VT::INT32));
     phi::DenseTensor label_int32(framework::TransToPhiDataType(VT::INT32));
+=======
+    Tensor indices_int32(framework::TransToPhiDataType(VT::INT32));
+    Tensor label_int32(framework::TransToPhiDataType(VT::INT32));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto indices_type = framework::TransToProtoVarType(indices->type());
     if (indices_type != VT::INT32) {
       PADDLE_ENFORCE_EQ(MLUSupportsCast(indices_type, VT::INT32),
@@ -89,7 +103,11 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     // equal
     MLUCnnlTensorDesc indices_int32_desc(indices_int32);
     MLUCnnlTensorDesc label_int32_desc(label_int32);
+<<<<<<< HEAD
     phi::DenseTensor equal_tensor(framework::TransToPhiDataType(VT::BOOL));
+=======
+    Tensor equal_tensor(framework::TransToPhiDataType(VT::BOOL));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     equal_tensor.Resize(indices->dims());
     equal_tensor.mutable_data<bool>(ctx.GetPlace());
     MLUCnnlTensorDesc equal_tensor_desc(equal_tensor);
@@ -103,7 +121,11 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
                    GetBasePtr(&equal_tensor));
 
     // cast equal
+<<<<<<< HEAD
     phi::DenseTensor equal_fp32(framework::TransToPhiDataType(VT::FP32));
+=======
+    Tensor equal_fp32(framework::TransToPhiDataType(VT::FP32));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     equal_fp32.Resize(indices->dims());
     equal_fp32.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc equal_fp32_desc(equal_fp32);
@@ -117,7 +139,11 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
 
     // [correct]
     // reduce_max
+<<<<<<< HEAD
     phi::DenseTensor correct_max(framework::TransToPhiDataType(VT::FP32));
+=======
+    Tensor correct_max(framework::TransToPhiDataType(VT::FP32));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     correct_max.Resize(phi::make_ddim({num_samples}));
     correct_max.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc correct_max_desc(correct_max);
@@ -140,7 +166,11 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
                     GetBasePtr(&correct_max));
 
     // reduce_sum
+<<<<<<< HEAD
     phi::DenseTensor correct_sum(framework::TransToPhiDataType(VT::FP32));
+=======
+    Tensor correct_sum(framework::TransToPhiDataType(VT::FP32));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     correct_sum.Resize(correct->dims());
     correct_sum.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc correct_sum_desc(correct_sum);
@@ -183,7 +213,11 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
                   GetBasePtr(total));
 
     // use `total` of type `float32` for calculating accuracy
+<<<<<<< HEAD
     phi::DenseTensor total_fp32(framework::TransToPhiDataType(VT::FP32));
+=======
+    Tensor total_fp32(framework::TransToPhiDataType(VT::FP32));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     total_fp32.Resize(total->dims());
     total_fp32.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc total_fp32_desc(total_fp32);

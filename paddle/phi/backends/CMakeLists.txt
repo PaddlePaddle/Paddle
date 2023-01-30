@@ -1,4 +1,5 @@
 add_subdirectory(dynload)
+<<<<<<< HEAD
 add_subdirectory(gpu)
 
 set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc cpu/cpu_info.cc)
@@ -6,17 +7,26 @@ set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
 if(WITH_XBYAK)
   list(APPEND BACKENDS_DEPS xbyak)
 endif()
+=======
+
+set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc)
+set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(WITH_GPU OR WITH_ROCM)
   list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc
        gpu/gpu_resources.cc)
   if(WITH_GPU)
+<<<<<<< HEAD
     list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
     set_source_files_properties(
       gpu/gpu_resources.cc
       PROPERTIES COMPILE_FLAGS
                  "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
 
+=======
+    list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   endif()
   if(WITH_ROCM)
     list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)
@@ -26,8 +36,11 @@ endif()
 
 if(WITH_XPU)
   list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc)
+<<<<<<< HEAD
   list(APPEND BACKENDS_SRCS xpu/xpu_op_list.cc xpu/xpu1_op_list.cc
        xpu/xpu2_op_list.cc)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 if(WITH_MKLDNN)
@@ -69,6 +82,7 @@ if(WITH_CUSTOM_DEVICE)
     SRCS custom/capi_test.cc
     DEPS phi_capi)
 endif()
+<<<<<<< HEAD
 
 set(COMM_UTILS_DEPS process_group)
 if(WITH_NCCL OR WITH_RCCL)
@@ -81,3 +95,5 @@ cc_library(
   processgroup_comm_utils
   SRCS processgroup_comm_utils.cc
   DEPS ${COMM_UTILS_DEPS})
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

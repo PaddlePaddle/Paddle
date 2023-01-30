@@ -45,7 +45,10 @@ class StreamSafeCUDAAllocation : public Allocation {
   gpuStream_t GetOwningStream() const;
 
  private:
+<<<<<<< HEAD
   thread_local static std::once_flag once_flag_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void RecordGraphCapturingStreams();
   void RecordStreamWithNoGraphCapturing(gpuStream_t stream);
   DecoratedAllocationPtr underlying_allocation_;

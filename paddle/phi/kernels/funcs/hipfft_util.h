@@ -15,8 +15,13 @@
 #pragma once
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/dynload/hipfft.h"
 #include "paddle/phi/core/enforce.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/hipfft.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/fft.h"
 #include "paddle/phi/kernels/funcs/fft_key.h"
 

@@ -37,8 +37,13 @@ class AssignFunctor {
                 const platform::DeviceContext &dev_ctx)
       : out_(out), dev_ctx_(dev_ctx) {}
 
+<<<<<<< HEAD
   void operator()(const phi::DenseTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<phi::DenseTensor>();
+=======
+  void operator()(const framework::LoDTensor &lod_tensor) const {
+    auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     copy_tensor(lod_tensor, &out_tensor);
   }
 
@@ -69,8 +74,13 @@ class AssignFunctor {
   }
 
  private:
+<<<<<<< HEAD
   void copy_tensor(const phi::DenseTensor &lod_tensor,
                    phi::DenseTensor *out) const {
+=======
+  void copy_tensor(const framework::LoDTensor &lod_tensor,
+                   framework::LoDTensor *out) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!lod_tensor.IsInitialized()) return;
     auto &out_tensor = *out;
     paddle::framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);

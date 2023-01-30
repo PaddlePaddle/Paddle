@@ -13,10 +13,16 @@
 # limitations under the License.
 
 import numpy as np
+<<<<<<< HEAD
 
 import paddle
 from paddle.fluid.data_feeder import check_dtype, convert_dtype
 from paddle.fluid.framework import Variable
+=======
+import paddle
+from paddle.fluid.framework import Variable
+from paddle.fluid.data_feeder import check_dtype, convert_dtype
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.layers.tensor import cast
 
 
@@ -37,7 +43,11 @@ def convert_out_size_to_list(out_size):
 def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
     """
     Convert out_size(int, np.int32, np.int64, Variable) to inputs
+<<<<<<< HEAD
     and attrs in static graph mode.
+=======
+    and attrs in static mode.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     if out_size is None:
         attrs['out_size'] = [0]
@@ -45,6 +55,7 @@ def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
         attrs['out_size'] = [out_size]
     elif isinstance(out_size, Variable):
         out_size.stop_gradient = True
+<<<<<<< HEAD
         check_dtype(
             out_size.dtype,
             'out_size',
@@ -53,6 +64,11 @@ def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
             '(When type of out_size in' + op_type + ' is Variable.)',
         )
         if convert_dtype(out_size.dtype) == 'int64':
+=======
+        check_dtype(out_size.dtype, 'out_size', ['int32', 'int64'], 'op_type',
+                    '(When type of out_size in' + op_type + ' is Variable.)')
+        if (convert_dtype(out_size.dtype) == 'int64'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out_size = cast(out_size, 'int32')
         inputs["Out_size"] = out_size
     else:
@@ -75,6 +91,7 @@ def reshape_lhs_rhs(x, y):
         max_ndims = max(len(x.shape), len(y.shape))
         x_pad_ndims = max_ndims - len(x.shape)
         y_pad_ndims = max_ndims - len(y.shape)
+<<<<<<< HEAD
         new_x_shape = (
             [
                 x_shape[0],
@@ -95,6 +112,18 @@ def reshape_lhs_rhs(x, y):
             * y_pad_ndims
             + list(y_shape[1:])
         )
+=======
+        new_x_shape = [
+            x_shape[0],
+        ] + [
+            1,
+        ] * x_pad_ndims + list(x_shape[1:])
+        new_y_shape = [
+            y_shape[0],
+        ] + [
+            1,
+        ] * y_pad_ndims + list(y_shape[1:])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = paddle.reshape(x, new_x_shape)
         y = paddle.reshape(y, new_y_shape)
 

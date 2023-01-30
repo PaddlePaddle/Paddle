@@ -14,6 +14,7 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -44,4 +45,16 @@ using ScopedSpatialTransformerDescriptor =
 }  // namespace platform
 }  // namespace paddle
 
+=======
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/device/gpu/rocm/miopen_desc.h"
+#include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
+#else  // CUDA
+#include "paddle/fluid/platform/device/gpu/cuda/cudnn_desc.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+#endif
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif

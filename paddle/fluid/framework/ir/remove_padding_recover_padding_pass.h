@@ -95,6 +95,10 @@ struct Fc : public PatternBase {
 
   PATTERN_DECL_NODE(fc_input);
   PATTERN_DECL_NODE(fc_op);
+<<<<<<< HEAD
+=======
+  PATTERN_DECL_NODE(fc_out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 struct Activation : public PatternBase {
@@ -107,6 +111,7 @@ struct Activation : public PatternBase {
   PATTERN_DECL_NODE(activation_op);
   PATTERN_DECL_NODE(activation_out);
 };
+<<<<<<< HEAD
 
 struct FusedTokenPrune : public PatternBase {
   FusedTokenPrune(PDPattern *pattern, const std::string &name_scope)
@@ -118,6 +123,8 @@ struct FusedTokenPrune : public PatternBase {
   PATTERN_DECL_NODE(fused_token_prune_op);
   PATTERN_DECL_NODE(fused_token_prune_output);
 };
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace patterns
 
 class RemovePaddingRecoverPaddingPass : public FusePassBase {

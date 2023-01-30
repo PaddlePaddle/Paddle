@@ -109,10 +109,17 @@ template <typename DeviceContext, typename T>
 class IOUSimilarityKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* in_x = ctx.Input<phi::DenseTensor>("X");
     const phi::DenseTensor* in_y = ctx.Input<phi::DenseTensor>("Y");
     bool normalized = ctx.Attr<bool>("box_normalized");
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    const framework::LoDTensor* in_x = ctx.Input<framework::LoDTensor>("X");
+    const framework::Tensor* in_y = ctx.Input<framework::Tensor>("Y");
+    bool normalized = ctx.Attr<bool>("box_normalized");
+    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int x_n = in_x->dims()[0];
     int y_n = in_y->dims()[0];

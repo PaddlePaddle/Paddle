@@ -18,24 +18,34 @@ limitations under the License. */
 #include "paddle/fluid/operators/fake_quantize_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/float16.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using phi::backends::gpu::GpuLaunchConfig;
 
 constexpr int DequantKernelVecSize = 4;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 __forceinline__ __device__ int8_t quant_helper(const T input,
                                                const float scale,
                                                const int round_type,
                                                const float max_bound,
                                                const float min_bound) {
+<<<<<<< HEAD
   float quant_value = max_bound * scale * static_cast<float>(input);
 
+=======
+  float quant_value = max_bound * inverse(scale) * static_cast<float>(input);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (round_type == 0) {
     quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
   } else {
@@ -84,7 +94,11 @@ void quantize_kernel_launcher(const T* input,
                               const float min_bound,
                               gpuStream_t stream) {
   // TODO(minghaoBD): optimize the kennel launch times when m==1 or n==1
+<<<<<<< HEAD
   dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
+=======
+  dim3 grid((n + 31) / 32, (m + 31) / 32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   dim3 block(32, 32);
 
   quantize_kernel<<<grid, block, 0, stream>>>(input,
@@ -97,6 +111,7 @@ void quantize_kernel_launcher(const T* input,
                                               min_bound);
 }
 
+<<<<<<< HEAD
 template <typename T, int VecSize>
 __global__ void dequantize_kernel(T* output,
                                   const int32_t* input,
@@ -124,12 +139,33 @@ __global__ void dequantize_kernel(T* output,
     }
 
     phi::Store<T, VecSize>(out_vec, output + idx);
+=======
+// dequantize using weight scales and input scales
+template <typename T>
+__global__ void dequantize_kernel(T* output,
+                                  const int32_t* input,
+                                  const int m,  // hidden
+                                  const int n,  // batch size
+                                  const float quant_in_scale,
+                                  const float* dequant_out_scale_data,
+                                  const int quant_out_scale_offset) {
+  int m_id = blockIdx.x * blockDim.x + threadIdx.x;  // hidden
+  int n_id = blockIdx.y * blockDim.y + threadIdx.y;  // batch size
+
+  bool check = ((m_id < m) && (n_id < n));
+  if (check) {
+    float out_scale = dequant_out_scale_data[quant_out_scale_offset + m_id];
+    output[n_id * m + m_id] =
+        static_cast<T>(static_cast<float>(input[n_id * m + m_id]) *
+                       quant_in_scale / out_scale);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
 template <typename T>
 void dequantize_kernel_launcher(const int32_t* input,
                                 T* output,
+<<<<<<< HEAD
                                 const int m,  // m
                                 const int n,  // n
                                 gpuStream_t stream,
@@ -139,6 +175,24 @@ void dequantize_kernel_launcher(const int32_t* input,
   dequantize_kernel<T, DequantKernelVecSize>
       <<<gpu_config->block_per_grid, gpu_config->thread_per_block, 0, stream>>>(
           output, input, m, n, quant_in_scale, dequant_out_scale_data);
+=======
+                                const int batch_size,    // m
+                                const int hidden_units,  // n
+                                gpuStream_t stream,
+                                const float quant_in_scale,
+                                const float* dequant_out_scale_data,
+                                const int quant_out_scale_offset) {
+  dim3 grid((hidden_units + 31) / 32, (batch_size + 31) / 32);
+  dim3 block(32, 32);
+
+  dequantize_kernel<<<grid, block, 0, stream>>>(output,
+                                                input,
+                                                hidden_units,
+                                                batch_size,
+                                                quant_in_scale,
+                                                dequant_out_scale_data,
+                                                quant_out_scale_offset);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace operators

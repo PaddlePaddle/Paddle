@@ -85,10 +85,17 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return phi::KernelKey(data_type, ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -114,7 +121,11 @@ Lookup Table Dequant Operator.
 
 The `W` input is a quantized parameter for the sake of saving memories.
 This operator first index embeddings with `Ids`,
+<<<<<<< HEAD
 then dequantizes them and contact them as output (`Out`).
+=======
+then dequantizes them and contact them as output (`Out`). 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 The input Ids can carry the LoD (Level of Details) information,
 or not. And the output only shares the LoD information with input Ids.

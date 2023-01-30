@@ -19,8 +19,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -111,8 +115,15 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
                             "Scale(%f) of scale op should have positive value.",
                             scale_scale));
 
+<<<<<<< HEAD
       std::string matmul_op_input_name =
           FindInputNameByVarName(matmul_op->Op(), scale_out->Name());
+=======
+      std::string matmul_op_input_name;
+      for (auto name : matmul_op->Op()->InputNames())
+        for (auto input_name : matmul_op->Op()->Input(name))
+          if (input_name == scale_out->Name()) matmul_op_input_name = name;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       PADDLE_ENFORCE_NE(
           matmul_op_input_name.empty(),
@@ -135,8 +146,12 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_scale_matmul_fuse_count);
+<<<<<<< HEAD
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       (found_scale_matmul_fuse_count > 0))
+=======
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PrettyLogDetail("---    fused %d scale with matmul",
                     found_scale_matmul_fuse_count);
 }

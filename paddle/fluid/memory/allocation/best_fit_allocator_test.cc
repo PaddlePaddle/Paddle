@@ -22,6 +22,10 @@
 #include "gtest/gtest.h"
 #include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/memory/allocation/locked_allocator.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace memory {
@@ -99,7 +103,14 @@ TEST(BestFitAllocator, test_concurrent_cpu_allocation) {
   CPUAllocator allocator;
   auto global_allocation = allocator.Allocate(256UL * 1024 * 1024);
 
+<<<<<<< HEAD
   BestFitAllocator best_fit_allocator(global_allocation.get());
+=======
+  std::unique_ptr<Allocator> best_fit_allocator(
+      new BestFitAllocator(global_allocation.get()));
+
+  LockedAllocator locked_allocator(std::move(best_fit_allocator));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto th_main = [&](std::random_device::result_type seed) {
     std::default_random_engine engine(seed);
@@ -109,7 +120,11 @@ TEST(BestFitAllocator, test_concurrent_cpu_allocation) {
       size_t allocate_size = dist(engine);
 
       auto allocation =
+<<<<<<< HEAD
           best_fit_allocator.Allocate(sizeof(size_t) * allocate_size);
+=======
+          locked_allocator.Allocate(sizeof(size_t) * allocate_size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       size_t* data = reinterpret_cast<size_t*>(allocation->ptr());
 

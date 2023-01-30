@@ -39,6 +39,10 @@ disable_wingpu_test="^test_model$|\
 ^test_reader_reset$|\
 ^test_imperative_se_resnext$|\
 ^test_sync_batch_norm_op$|\
+<<<<<<< HEAD
+=======
+^test_imperative_static_runner_while$|\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -157,6 +161,10 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_decoupled_py_reader$|\
 ^test_generator_dataloader$|\
 ^test_py_reader_using_executor$|\
+<<<<<<< HEAD
+=======
+^test_imperative_static_runner_while$|\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_sync_batch_norm_op$|\
@@ -179,9 +187,13 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_api_impl$|\
 ^test_tensordot$|\
+<<<<<<< HEAD
 ^disable_win_inference_test$|\
 ^test_imperative_double_grad$|\
 ^test_imperative_triple_grad$"
+=======
+^disable_wingpu_test$"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -195,6 +207,10 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_imperative_resnet$|\
 ^test_imperative_resnet_sorted_gradient$|\
 ^test_imperative_se_resnext$|\
+<<<<<<< HEAD
+=======
+^test_imperative_static_runner_mnist$|\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ^test_bmn$|\
 ^test_mobile_net$|\
 ^test_resnet_v2$|\
@@ -238,6 +254,10 @@ long_time_test="^test_gru_op$|\
 ^test_sequence_conv$|\
 ^test_sgd_op$|\
 ^test_transformer$|\
+<<<<<<< HEAD
+=======
+^test_imperative_auto_mixed_precision$|\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ^test_trt_matmul_quant_dequant$|\
 ^test_strided_slice_op$"
 
@@ -250,7 +270,10 @@ NIGHTLY_MODE=$1
 PRECISION_TEST=$2
 WITH_GPU=$3
 
+<<<<<<< HEAD
 # Step1: Print disable_ut_quickly
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
     nightly_label=""
@@ -270,7 +293,12 @@ else
     disable_ut_quickly=''
 fi
 
+<<<<<<< HEAD
 # Step2: Check added ut
+=======
+# check added ut
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 set +e
 cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
 bash $PADDLE_ROOT/tools/check_added_ut_win.sh
@@ -278,7 +306,11 @@ rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
 if [ -f "$PADDLE_ROOT/added_ut" ];then
     added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
     ctest -R "(${added_uts})" -E "${disable_win_inference_test}" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+<<<<<<< HEAD
     #rm -f $PADDLE_ROOT/added_ut
+=======
+    rm -f $PADDLE_ROOT/added_ut
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if [ "$added_ut_error" != 0 ];then
         echo "========================================"
         echo "Added UT should pass three additional executions"
@@ -286,10 +318,16 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         exit 8;
     fi
 fi
+<<<<<<< HEAD
 
 
 # Step3: Get precision UT and intersect with parallel UT, generate tools/*_new file
 set -e
+=======
+set -e
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if [ ${WITH_GPU:-OFF} == "ON" ];then
     export CUDA_VISIBLE_DEVICES=0
 
@@ -436,9 +474,33 @@ function show_ut_retry_result() {
     fi
 }
 
+<<<<<<< HEAD
 # Step4: Run UT gpu or cpu
 set +e
 export FLAGS_call_stack_level=2
+=======
+set +e
+
+export FLAGS_call_stack_level=2
+
+# if nvcc --version | grep 11.2; then
+#     echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
+#     export CUDA_VISIBLE_DEVICES=0
+#     tmpfile=$tmp_dir/$RANDOM
+#     inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
+#     (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
+#     wait;
+#     collect_failed_tests
+#     set -e
+#     rm -f $tmp_dir/*
+#     if [[ "$failed_test_lists" != "" ]]; then
+#         unittests_retry
+#         show_ut_retry_result
+#     fi
+#     exit 0;
+# fi
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
 
     single_ut_mem_0_startTime_s=`date +%s`

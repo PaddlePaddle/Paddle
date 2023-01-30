@@ -30,6 +30,7 @@ the image layout as follows.
   be keep consistent between the training and inference period.
 """
 
+<<<<<<< HEAD
 import os
 
 # FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
@@ -53,15 +54,50 @@ out, err = import_cv2_proc.communicate()
 retcode = import_cv2_proc.poll()
 if retcode != 0:
     cv2 = None
+=======
+from __future__ import print_function
+
+import six
+import numpy as np
+# FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
+# https://github.com/numpy/numpy/issues/12497
+if six.PY3:
+    import subprocess
+    import sys
+    import os
+    interpreter = sys.executable
+    # Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
+    # will be the C++ execubable on Windows
+    if sys.platform == 'win32' and 'python.exe' not in interpreter:
+        interpreter = sys.exec_prefix + os.sep + 'python.exe'
+    import_cv2_proc = subprocess.Popen([interpreter, "-c", "import cv2"],
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+    out, err = import_cv2_proc.communicate()
+    retcode = import_cv2_proc.poll()
+    if retcode != 0:
+        cv2 = None
+    else:
+        try:
+            import cv2
+        except ImportError:
+            cv2 = None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 else:
     try:
         import cv2
     except ImportError:
         cv2 = None
+<<<<<<< HEAD
 
 import os
 import pickle
 import tarfile
+=======
+import os
+import tarfile
+import six.moves.cPickle as pickle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -69,7 +105,10 @@ __all__ = []
 def _check_cv2():
     if cv2 is None:
         import sys
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sys.stderr.write(
             '''Warning with paddle image module: opencv-python should be imported,
          or paddle image module could NOT work; please install opencv-python first.'''
@@ -79,9 +118,16 @@ def _check_cv2():
         return True
 
 
+<<<<<<< HEAD
 def batch_images_from_tar(
     data_file, dataset_name, img2label, num_per_batch=1024
 ):
+=======
+def batch_images_from_tar(data_file,
+                          dataset_name,
+                          img2label,
+                          num_per_batch=1024):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Read images from tar file and batch them into batch file.
 
@@ -119,11 +165,17 @@ def batch_images_from_tar(
                 output = {}
                 output['label'] = labels
                 output['data'] = data
+<<<<<<< HEAD
                 pickle.dump(
                     output,
                     open('%s/batch_%d' % (out_path, file_id), 'wb'),
                     protocol=2,
                 )
+=======
+                pickle.dump(output,
+                            open('%s/batch_%d' % (out_path, file_id), 'wb'),
+                            protocol=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 file_id += 1
                 data = []
                 labels = []
@@ -131,9 +183,15 @@ def batch_images_from_tar(
         output = {}
         output['label'] = labels
         output['data'] = data
+<<<<<<< HEAD
         pickle.dump(
             output, open('%s/batch_%d' % (out_path, file_id), 'wb'), protocol=2
         )
+=======
+        pickle.dump(output,
+                    open('%s/batch_%d' % (out_path, file_id), 'wb'),
+                    protocol=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     with open(meta_file, 'a') as meta:
         for file in os.listdir(out_path):
@@ -193,7 +251,11 @@ def load_image(file, is_color=True):
     # Here, use constant 1 and 0
     # 1: COLOR, 0: GRAYSCALE
     flag = 1 if is_color else 0
+<<<<<<< HEAD
     im = cv2.imread(file.encode('utf-8').decode('utf-8'), flag)
+=======
+    im = cv2.imread(file, flag)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return im
 
 
@@ -327,9 +389,18 @@ def left_right_flip(im, is_color=True):
         return im[:, ::-1]
 
 
+<<<<<<< HEAD
 def simple_transform(
     im, resize_size, crop_size, is_train, is_color=True, mean=None
 ):
+=======
+def simple_transform(im,
+                     resize_size,
+                     crop_size,
+                     is_train,
+                     is_color=True,
+                     mean=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Simply data argumentation for training. These operations include
     resizing, croping and flipping.
@@ -380,9 +451,18 @@ def simple_transform(
     return im
 
 
+<<<<<<< HEAD
 def load_and_transform(
     filename, resize_size, crop_size, is_train, is_color=True, mean=None
 ):
+=======
+def load_and_transform(filename,
+                       resize_size,
+                       crop_size,
+                       is_train,
+                       is_color=True,
+                       mean=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Load image from the input file `filename` and transform image for
     data argumentation. Please refer to the `simple_transform` interface

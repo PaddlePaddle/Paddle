@@ -16,12 +16,20 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_op.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using LoDTensor = phi::DenseTensor;
+=======
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 __global__ void sequence_expand_kernel(const T* x_data,
@@ -72,7 +80,11 @@ __global__ void sequence_expand_grad_kernel(const T* dout_data,
     for (int tid_y = threadIdx.y; tid_y < x_item_count; tid_y += blockDim.y) {
       for (int tid_x = threadIdx.x; tid_x < x_item_length;
            tid_x += blockDim.x) {
+<<<<<<< HEAD
         phi::CudaAtomicAdd(
+=======
+        platform::CudaAtomicAdd(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             &dx_data[(x_offset + tid_y) * x_item_length + tid_x],
             dout_data[(out_offset + tid_z * x_item_count + tid_y) *
                           x_item_length +

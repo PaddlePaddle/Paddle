@@ -154,6 +154,7 @@ void Pool2dKernel(const Context& ctx,
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2d");
 }
+<<<<<<< HEAD
 
 template <typename T, typename Context>
 void MaxPool2dWithIndexKernel(const Context& ctx,
@@ -212,10 +213,13 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                                true);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index");
 }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     pool2d, XPU, ALL_LAYOUT, phi::Pool2dKernel, float, phi::dtype::float16) {}
+<<<<<<< HEAD
 
 PD_REGISTER_KERNEL(max_pool2d_with_index,
                    XPU,
@@ -223,3 +227,5 @@ PD_REGISTER_KERNEL(max_pool2d_with_index,
                    phi::MaxPool2dWithIndexKernel,
                    float,
                    phi::dtype::float16) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

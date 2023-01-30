@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import pickle
 import tarfile
 
@@ -21,6 +22,19 @@ from PIL import Image
 import paddle
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
+=======
+from __future__ import print_function
+
+import tarfile
+import numpy as np
+import six
+from PIL import Image
+from six.moves import cPickle as pickle
+
+import paddle
+from paddle.io import Dataset
+from paddle.dataset.common import _check_exists_and_download
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -162,10 +176,19 @@ class Cifar10(Dataset):
             for name in names:
                 batch = pickle.load(f.extractfile(name), encoding='bytes')
 
+<<<<<<< HEAD
                 data = batch[b'data']
                 labels = batch.get(b'labels', batch.get(b'fine_labels', None))
                 assert labels is not None
                 for sample, label in zip(data, labels):
+=======
+                data = batch[six.b('data')]
+                labels = batch.get(
+                    six.b('labels'), batch.get(six.b('fine_labels'), None)
+                )
+                assert labels is not None
+                for sample, label in six.moves.zip(data, labels):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self.data.append((sample, label))
 
     def __getitem__(self, idx):
@@ -260,7 +283,13 @@ class Cifar100(Cifar10):
         download=True,
         backend=None,
     ):
+<<<<<<< HEAD
         super().__init__(data_file, mode, transform, download, backend)
+=======
+        super(Cifar100, self).__init__(
+            data_file, mode, transform, download, backend
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _init_url_md5_flag(self):
         self.data_url = CIFAR100_URL

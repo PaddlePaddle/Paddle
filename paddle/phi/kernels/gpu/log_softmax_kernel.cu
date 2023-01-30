@@ -16,7 +16,10 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace phi {
@@ -26,6 +29,7 @@ void LogSoftmaxKernel(const Context &dev_ctx,
                       const DenseTensor &x,
                       int axis,
                       DenseTensor *out) {
+<<<<<<< HEAD
   const int rank = x.dims().size();
 
   dev_ctx.template Alloc<T>(out);
@@ -34,6 +38,9 @@ void LogSoftmaxKernel(const Context &dev_ctx,
     phi::funcs::set_constant(dev_ctx, out, 0.0);
     return;
   }
+=======
+  dev_ctx.template Alloc<T>(out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, x, axis, out);
 }
 

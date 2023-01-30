@@ -53,7 +53,11 @@ __global__ void SoftmaxGradGpuKernel(const IntT* out_crows,
 
     mul_result += out_values[row_first + idx] * dout_values[row_first + idx];
   }
+<<<<<<< HEAD
   T sum = phi::funcs::WarpReduceSum<T>(mul_result, 0xFFFFFFFF);
+=======
+  T sum = phi::funcs::warpReduceSum<T>(mul_result, 0xFFFFFFFF);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   for (int i = 0; i < kIteration; ++i) {
     int idx = non_zero_idx + i * warpSize;

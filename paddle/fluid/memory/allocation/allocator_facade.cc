@@ -25,7 +25,10 @@
 #include "paddle/fluid/memory/allocation/stat_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/macros.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
@@ -40,7 +43,11 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+=======
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 #if CUDA_VERSION >= 10020
@@ -158,7 +165,11 @@ class CUDAGraphAllocator
 
 static bool IsCUDAGraphCapturing() {
 #ifdef PADDLE_WITH_CUDA
+<<<<<<< HEAD
   return UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing());
+=======
+  return UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #else
   return false;
 #endif
@@ -239,7 +250,11 @@ class AllocatorFacadePrivate {
         // releate to non-default stream (i.e., the stream users pass in). The
         // default stream Allocator is built in the structure of
         // AllocatorFacadePrivate, while the non-default stream is build in a
+<<<<<<< HEAD
         // manner in GetAllocator function with 'create_if_not_found = true'.
+=======
+        // manner in GetAllocator function with 'create_if_not_found = ture'.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         // We make special treatment for the default stream for performance
         // reasons. Since most Alloc calls are for default stream in
         // application, treating it separately can avoid lots of overhead of
@@ -494,8 +509,13 @@ class AllocatorFacadePrivate {
   const AllocatorMap& GetAllocatorMap() { return allocators_; }
 
   void InitNaiveBestFitCPUAllocator() {
+<<<<<<< HEAD
     // It is more efficient to use CPUAllocator directly.
     allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
+=======
+    allocators_[platform::CPUPlace()] =
+        std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1008,7 +1028,11 @@ AllocatorFacade& AllocatorFacade::Instance() {
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {
+<<<<<<< HEAD
     auto id = phi::backends::gpu::CUDAGraph::CapturingPoolID();
+=======
+    auto id = platform::CUDAGraph::CapturingPoolID();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto iter = cuda_graph_map_.find(id);
     PADDLE_ENFORCE_NE(
         iter,
@@ -1198,10 +1222,13 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
 }
 #endif
 #endif
+<<<<<<< HEAD
 
 UNUSED static std::shared_ptr<NaiveBestFitAllocator> unused_obj =
     std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

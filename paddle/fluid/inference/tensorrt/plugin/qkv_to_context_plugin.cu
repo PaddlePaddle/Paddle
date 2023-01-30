@@ -21,7 +21,10 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+<<<<<<< HEAD
 #include "paddle/fluid/inference/tensorrt/plugin/common/common.cuh"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
@@ -36,6 +39,24 @@ namespace plugin {
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
 
+<<<<<<< HEAD
+=======
+template <typename T>
+__global__ void transpose(T *src,
+                          T *dst,
+                          const int batch_size,
+                          const int seq_len,
+                          const int head_num,
+                          const int size_per_head) {
+  int batch_id = blockIdx.x / (head_num * seq_len);
+  int seq_id = blockIdx.x % seq_len;
+  int head_id = (blockIdx.x % (head_num * seq_len)) / seq_len;
+  dst[batch_id * (head_num * seq_len * size_per_head) +
+      seq_id * head_num * size_per_head + head_id * size_per_head +
+      threadIdx.x] = src[blockIdx.x * size_per_head + threadIdx.x];
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline int round_up(int seq_len, int multiple = 32) {
   PADDLE_ENFORCE_GT(
       multiple,
@@ -49,7 +70,11 @@ template <typename T>
 __global__ void reset_qk_bias(T *input, int real_seq_len, int seq_len) {
   if (threadIdx.x < seq_len) {
     int id = threadIdx.x + blockIdx.x * seq_len;
+<<<<<<< HEAD
     input[id] = threadIdx.x >= real_seq_len ? (T)0.0f : (T)1.0f;
+=======
+    input[id] = threadIdx.x >= real_seq_len ? (T)-1e20f : (T)0.0f;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -78,6 +103,11 @@ __global__ void transpose_qkv_padding(
       qkv_id * head_num * size_per_head + head_id * size_per_head;
   if (seq_id < real_seq_len) {
     dst[threadIdx.x + dst_offset] = src[threadIdx.x + src_offset];
+<<<<<<< HEAD
+=======
+  } else if (seq_id < seq_len) {
+    dst[threadIdx.x + dst_offset] = 0;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -89,6 +119,7 @@ __global__ void transpose_qkv_unpadding(const T *src,
                                         const int head_num,
                                         const int size_per_head,
                                         const int real_seq_len) {
+<<<<<<< HEAD
   int batch_id = blockIdx.y;
   int seq_id = blockIdx.x;
   int head_id = threadIdx.y;
@@ -151,6 +182,142 @@ inline void TransposeUnPadding(const half *input,
     LAUNCH_TRANSPOSE_KERNEL(half2, 2, unpadding);
   } else {
     LAUNCH_TRANSPOSE_KERNEL(half, 1, unpadding);
+=======
+  int batch_id = blockIdx.x / (head_num * real_seq_len);
+  int seq_id = blockIdx.x % real_seq_len;
+  int head_id = blockIdx.x % (head_num * real_seq_len) / real_seq_len;
+  dst[batch_id * head_num * real_seq_len * size_per_head +
+      seq_id * head_num * size_per_head + head_id * size_per_head +
+      threadIdx.x] = src[batch_id * head_num * seq_len * size_per_head +
+                         head_id * seq_len * size_per_head +
+                         seq_id * size_per_head + threadIdx.x];
+}
+
+template <typename T>
+__global__ void TransposeQkvKernel(const int H, const T *input, T *output) {
+  // Input: BxSx3xNxH
+  // Bias: 3xSxB
+  // Output: 3xBxNxSxH
+  int n = threadIdx.y;
+  int s = blockIdx.x;
+  int b = blockIdx.y;
+  int m = blockIdx.z;
+
+  const int N = blockDim.y;
+  const int S = gridDim.x;
+  const int B = gridDim.y;
+
+  const int NH = N * H;
+  const int NHS = NH * S;
+  const int in_offset = n * H + m * NH + s * 3 * NH + b * NHS * 3;
+  const int out_offset = s * H + n * S * H + b * NHS + m * NHS * B;
+
+  const int i = threadIdx.x;
+  output[out_offset + i] = input[in_offset + i];
+}
+
+inline void TransposeQKV(const int batch,
+                         const int seq_len,
+                         const int head_size,
+                         const int head_num,
+                         const float *input,
+                         float *output,
+                         cudaStream_t stream) {
+  int scratch_size = batch * head_num * seq_len * seq_len;
+  const dim3 grid(seq_len, batch, 3);
+  if (head_size % 4 == 0 && scratch_size % 4 == 0) {
+    const int h = head_size / 4;
+    const float4 *input4 = reinterpret_cast<const float4 *>(input);
+    float4 *output4 = reinterpret_cast<float4 *>(output);
+    const dim3 block(h, head_num, 1);
+    // limit h * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(h * head_num,
+                      1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num,
+                          head_size,
+                          1024 * 4));
+    TransposeQkvKernel<float4><<<grid, block, 0, stream>>>(h, input4, output4);
+  } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
+    const int h = head_size / 2;
+    const float2 *input2 = reinterpret_cast<const float2 *>(input);
+    float2 *output2 = reinterpret_cast<float2 *>(output);
+    const dim3 block(h, head_num, 1);
+    // limit h * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(h * head_num,
+                      1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num,
+                          head_size,
+                          1024 * 2));
+    TransposeQkvKernel<float2><<<grid, block, 0, stream>>>(h, input2, output2);
+  } else {
+    const dim3 block(head_size, head_num, 1);
+    // limit head_size * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(head_size * head_num,
+                      1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num,
+                          head_size,
+                          1024));
+    TransposeQkvKernel<float>
+        <<<grid, block, 0, stream>>>(head_size, input, output);
+  }
+}
+
+inline void TransposeQKV(const int batch,
+                         const int seq_len,
+                         const int head_size,
+                         const int head_num,
+                         const half *input,
+                         half *output,
+                         cudaStream_t stream) {
+  int scratch_size = batch * head_num * seq_len * seq_len;
+  const dim3 grid(seq_len, batch, 3);
+  if (head_size % 8 == 0 && scratch_size % 8 == 0) {
+    int h = head_size / 8;
+    const int4 *input4 = reinterpret_cast<const int4 *>(input);
+    int4 *output4 = reinterpret_cast<int4 *>(output);
+    dim3 block(h, head_num, 1);
+    // limit h * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(h * head_num,
+                      1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num,
+                          head_size,
+                          1024 * 8));
+    TransposeQkvKernel<int4><<<grid, block, 0, stream>>>(h, input4, output4);
+  } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
+    const int h = head_size / 2;
+    const half2 *input2 = reinterpret_cast<const half2 *>(input);
+    half2 *output2 = reinterpret_cast<half2 *>(output);
+    const dim3 block(h, head_num, 1);
+    // limit h * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(h * head_num,
+                      1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num,
+                          head_size,
+                          1024 * 2));
+    TransposeQkvKernel<half2><<<grid, block, 0, stream>>>(h, input2, output2);
+  } else {
+    const dim3 block(head_size, head_num, 1);
+    // limit head_size * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(head_size * head_num,
+                      1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num,
+                          head_size,
+                          1024));
+    TransposeQkvKernel<half>
+        <<<grid, block, 0, stream>>>(head_size, input, output);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -204,9 +371,14 @@ void QkvToContextPluginDynamic::configurePlugin(
     const phi::GPUContext &dev_ctx = *device_ctx;
     auto stream = dev_ctx.stream();
     tensor_.Resize({batch, seq_len, seq_len, head_number_});
+<<<<<<< HEAD
     if (in[0].desc.type == nvinfer1::DataType::kHALF) {
       tensor_.Resize({batch, seq_len, seq_len, 1});
       int blocks = batch * 1 * seq_len;
+=======
+    int blocks = batch * head_number_ * seq_len;
+    if (in[0].desc.type == nvinfer1::DataType::kHALF) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       mask_half_ = reinterpret_cast<half *>(
           tensor_.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
       reset_qk_bias<<<blocks, 1024, 0, stream>>>(
@@ -214,7 +386,11 @@ void QkvToContextPluginDynamic::configurePlugin(
     } else if (in[0].desc.type == nvinfer1::DataType::kFLOAT) {
       fake_qk_bias_ = reinterpret_cast<float *>(
           tensor_.mutable_data<int32_t>(platform::CUDAPlace(device_id)));
+<<<<<<< HEAD
       int64_t size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
+=======
+      long size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
@@ -309,6 +485,7 @@ __global__ void broadcast(const T *src,
   }
 }
 
+<<<<<<< HEAD
 template <typename T>
 __global__ void broadcast_batch_head_number(const T *src,
                                             T *dst,
@@ -322,6 +499,8 @@ __global__ void broadcast_batch_head_number(const T *src,
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc,
@@ -334,7 +513,11 @@ int QkvToContextPluginDynamic::enqueue(
   // input[0], (B, S, 3 * N * H, 1, 1)
   int batch = input_dims.d[0];
   int seq_len = input_dims.d[1];
+<<<<<<< HEAD
   phi::DenseTensor multihead_temp_tensor;
+=======
+  framework::Tensor multihead_temp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int scratch_size = batch * head_number_ * seq_len * seq_len * 1;
 
   int device_id;
@@ -351,7 +534,11 @@ int QkvToContextPluginDynamic::enqueue(
 
     const float *input0_data = static_cast<const float *>(inputs[0]);
     // fit to [batch, head_num, length, length] + [batch, 1, 1, length]
+<<<<<<< HEAD
     phi::DenseTensor temp_qk_bias_tensor;
+=======
+    framework::Tensor temp_qk_bias_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[1]));
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
@@ -366,6 +553,7 @@ int QkvToContextPluginDynamic::enqueue(
           head_number_);
       qk_bias = temp_qk_bias;
     }
+<<<<<<< HEAD
     // fit to [batch, head_num, length, length] + [1, 1, length, length]
     if (ProductDim(input_desc[1].dims) == (seq_len * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
@@ -382,6 +570,8 @@ int QkvToContextPluginDynamic::enqueue(
           head_number_);
       qk_bias = temp_qk_bias;
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // fake qk_bias
     if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
       qk_bias = fake_qk_bias_;
@@ -404,7 +594,10 @@ int QkvToContextPluginDynamic::enqueue(
                            head_size_,
                            qkptr,
                            input1_data,
+<<<<<<< HEAD
                            false,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            tptr,
                            scale_,
                            static_cast<float>(0.0));
@@ -437,7 +630,11 @@ int QkvToContextPluginDynamic::enqueue(
 
     const half *input0_data = static_cast<const half *>(inputs[0]);
     // fit to [batch, head_num, length, length] + [batch, 1, 1, length]
+<<<<<<< HEAD
     phi::DenseTensor temp_qk_bias_tensor;
+=======
+    framework::Tensor temp_qk_bias_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     half *qk_bias = const_cast<half *>(static_cast<const half *>(inputs[1]));
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
@@ -453,6 +650,7 @@ int QkvToContextPluginDynamic::enqueue(
           head_number_);
       qk_bias = temp_qk_bias;
     }
+<<<<<<< HEAD
     // fit to [batch, head_num, length, length] + [1, 1, length, length]
     if (ProductDim(input_desc[1].dims) == (seq_len * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
@@ -475,10 +673,17 @@ int QkvToContextPluginDynamic::enqueue(
     if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
       qk_bias = mask_half_;
       bias_is_mask = true;
+=======
+    // padding:    mask_half_ = [0,0,...-1e20f,-1e20f]
+    // no_padding: mask_half_ = [0,.....0,.........,0]
+    if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
+      qk_bias = mask_half_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     const half *input1_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     if (need_padding) {
+<<<<<<< HEAD
       TransposePadding(input0_data,
                        tptr,
                        batch,
@@ -487,6 +692,17 @@ int QkvToContextPluginDynamic::enqueue(
                        head_size_,
                        real_seq_len,
                        stream);
+=======
+      dim3 grid_p(seq_len, batch, 3);
+      dim3 block_p(head_size_, head_number_, 1);
+      transpose_qkv_padding<<<grid_p, block_p, 0, stream>>>(input0_data,
+                                                            tptr,
+                                                            batch,
+                                                            seq_len,
+                                                            head_number_,
+                                                            head_size_,
+                                                            real_seq_len);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       TransposeQKV(
           batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
@@ -512,7 +728,10 @@ int QkvToContextPluginDynamic::enqueue(
                            head_size_,
                            qkptr,
                            input1_data,
+<<<<<<< HEAD
                            bias_is_mask,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            tptr,
                            half(1.),
                            half(0.0));
@@ -521,6 +740,7 @@ int QkvToContextPluginDynamic::enqueue(
     int block = head_size_;
     half *output = static_cast<half *>(outputs[0]);
     if (need_padding) {
+<<<<<<< HEAD
       TransposeUnPadding(tptr,
                          output,
                          batch,
@@ -529,6 +749,12 @@ int QkvToContextPluginDynamic::enqueue(
                          head_size_,
                          real_seq_len,
                          stream);
+=======
+      int grid_u = batch * head_number_ * real_seq_len;
+      int block_u = head_size_;
+      transpose_qkv_unpadding<half><<<grid_u, block_u, 0, stream>>>(
+          tptr, output, batch, seq_len, head_number_, head_size_, real_seq_len);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       transpose<half><<<grid, block, 0, stream>>>(
           tptr, output, batch, seq_len, head_number_, head_size_);

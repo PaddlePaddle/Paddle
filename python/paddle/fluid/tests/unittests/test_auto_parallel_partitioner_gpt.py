@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import collections
 import unittest
 
@@ -29,6 +30,35 @@ from paddle.distributed.auto_parallel.utils import _get_comm_group
 from paddle.distributed.fleet import auto
 from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
+=======
+from __future__ import print_function
+
+import collections
+import math
+import unittest
+
+import numpy as np
+import paddle
+import paddle.nn as nn
+import paddle.nn.functional as F
+import paddle.tensor as tensor
+import paddle.utils as utils
+from paddle.fluid import layers
+from paddle.fluid.framework import _non_static_mode
+from paddle.nn.layer.transformer import _convert_param_attr_to_list
+from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
+from paddle.distributed import fleet
+import paddle.static as static
+from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
+from paddle.distributed.auto_parallel.utils import _get_comm_group
+from paddle.distributed.auto_parallel.process_group import new_process_group
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -53,6 +83,7 @@ def is_valid_completed_program(dist_context, program):
     vars_ = program.list_vars()
     for op in ops:
         op_dist_attrs = dist_context.get_op_dist_attr_for_program(op)
+<<<<<<< HEAD
         if op_dist_attrs is None:
             return False
 
@@ -64,15 +95,36 @@ def is_valid_completed_program(dist_context, program):
                 return False
         for tensor_dist_attr in op_dist_attrs.outputs_dist_attrs.values():
             if tensor_dist_attr.dims_mapping is None:
+=======
+        if op_dist_attrs == None:
+            return False
+
+        if op_dist_attrs.process_mesh == None:
+            return False
+
+        for tensor_dist_attr in op_dist_attrs.inputs_dist_attrs.values():
+            if None == tensor_dist_attr.dims_mapping:
+                return False
+        for tensor_dist_attr in op_dist_attrs.outputs_dist_attrs.values():
+            if None == tensor_dist_attr.dims_mapping:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return False
 
     for var in vars_:
         var_dist_attrs = dist_context.get_tensor_dist_attr_for_program(var)
+<<<<<<< HEAD
         if var_dist_attrs is None:
             return False
         elif var_dist_attrs.process_mesh is None:
             return False
         elif var_dist_attrs.dims_mapping is None:
+=======
+        if var_dist_attrs == None:
+            return False
+        elif var_dist_attrs.process_mesh == None:
+            return False
+        elif var_dist_attrs.dims_mapping == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
 
     return True
@@ -88,6 +140,7 @@ class MultiHeadAttention(nn.Layer):
     Cache = collections.namedtuple("Cache", ["k", "v"])
     StaticCache = collections.namedtuple("StaticCache", ["k", "v"])
 
+<<<<<<< HEAD
     def __init__(
         self,
         embed_dim,
@@ -102,6 +155,20 @@ class MultiHeadAttention(nn.Layer):
         fuse=False,
     ):
         super().__init__()
+=======
+    def __init__(self,
+                 embed_dim,
+                 num_heads,
+                 dropout=0.,
+                 kdim=None,
+                 vdim=None,
+                 need_weights=False,
+                 weight_attr=None,
+                 bias_attr=None,
+                 topo=None,
+                 fuse=False):
+        super(MultiHeadAttention, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
         self.vdim = vdim if vdim is not None else embed_dim
@@ -111,14 +178,19 @@ class MultiHeadAttention(nn.Layer):
         self.fuse = fuse
 
         self.head_dim = embed_dim // num_heads
+<<<<<<< HEAD
         assert (
             self.head_dim * num_heads == self.embed_dim
         ), "embed_dim must be divisible by num_heads"
+=======
+        assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if topo is None or topo.mp_info.size == 1:
             if self.fuse:
                 assert self.kdim == embed_dim
                 assert self.vdim == embed_dim
+<<<<<<< HEAD
                 self.qkv_proj = nn.Linear(
                     embed_dim, 3 * embed_dim, weight_attr, bias_attr=bias_attr
                 )
@@ -141,6 +213,34 @@ class MultiHeadAttention(nn.Layer):
         mix_layer = paddle.reshape_(
             mix_layer, [0, 0, self.num_heads, 3 * self.head_dim]
         )
+=======
+                self.qkv_proj = nn.Linear(embed_dim,
+                                          3 * embed_dim,
+                                          weight_attr,
+                                          bias_attr=bias_attr)
+            else:
+                self.q_proj = nn.Linear(embed_dim,
+                                        embed_dim,
+                                        weight_attr,
+                                        bias_attr=bias_attr)
+                self.k_proj = nn.Linear(self.kdim,
+                                        embed_dim,
+                                        weight_attr,
+                                        bias_attr=bias_attr)
+                self.v_proj = nn.Linear(self.vdim,
+                                        embed_dim,
+                                        weight_attr,
+                                        bias_attr=bias_attr)
+            self.out_proj = nn.Linear(embed_dim,
+                                      embed_dim,
+                                      weight_attr,
+                                      bias_attr=bias_attr)
+
+    def _fuse_prepare_qkv(self, query):
+        mix_layer = self.qkv_proj(query)
+        mix_layer = paddle.reshape_(mix_layer,
+                                    [0, 0, self.num_heads, 3 * self.head_dim])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         mix_layer = paddle.transpose(mix_layer, [0, 2, 1, 3])
         q, k, v = paddle.split(mix_layer, num_or_sections=3, axis=-1)
         return q, k, v
@@ -154,11 +254,17 @@ class MultiHeadAttention(nn.Layer):
         q = self.q_proj(query)
 
         if _global_parallel_strategy in ["mp", "dp_mp"]:
+<<<<<<< HEAD
             auto.shard_tensor(
                 self.q_proj.weight,
                 process_mesh=_global_process_mesh,
                 shard_spec=[None, "mp"],
             )
+=======
+            auto.shard_tensor(self.q_proj.weight,
+                              process_mesh=_global_process_mesh,
+                              shard_spec=[None, "mp"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
         q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
@@ -192,6 +298,7 @@ class MultiHeadAttention(nn.Layer):
         v = self.v_proj(value)
 
         if _global_parallel_strategy in ["mp", "dp_mp"]:
+<<<<<<< HEAD
             auto.shard_tensor(
                 self.k_proj.weight,
                 process_mesh=_global_process_mesh,
@@ -202,6 +309,14 @@ class MultiHeadAttention(nn.Layer):
                 process_mesh=_global_process_mesh,
                 shard_spec=[None, "mp"],
             )
+=======
+            auto.shard_tensor(self.k_proj.weight,
+                              process_mesh=_global_process_mesh,
+                              shard_spec=[None, "mp"])
+            auto.shard_tensor(self.v_proj.weight,
+                              process_mesh=_global_process_mesh,
+                              shard_spec=[None, "mp"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
         k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
@@ -223,22 +338,40 @@ class MultiHeadAttention(nn.Layer):
                 input=key,
                 shape=[-1, self.num_heads, 0, self.head_dim],
                 dtype=key.dtype,
+<<<<<<< HEAD
                 value=0,
             )
+=======
+                value=0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             v = layers.fill_constant_batch_size_like(
                 input=key,
                 shape=[-1, self.num_heads, 0, self.head_dim],
                 dtype=key.dtype,
+<<<<<<< HEAD
                 value=0,
             )
+=======
+                value=0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return self.Cache(k, v)
         else:
             # incremental_state with initial value, mainly for usage like UniLM
             return self.Cache(key, value)
 
+<<<<<<< HEAD
     def forward(
         self, query, key, value, attn_mask=None, use_cache=False, cache=None
     ):
+=======
+    def forward(self,
+                query,
+                key,
+                value,
+                attn_mask=None,
+                use_cache=False,
+                cache=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         r"""
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.
@@ -252,24 +385,41 @@ class MultiHeadAttention(nn.Layer):
             else:
                 q, k, v = self._prepare_qkv(query, key, value, use_cache, cache)
         else:
+<<<<<<< HEAD
             q, k, v, cache = self._prepare_qkv(
                 query, key, value, use_cache, cache
             )
         # scale dot product attention
         product = tensor.matmul(x=q, y=k, transpose_y=True)
         product = tensor.scale(product, scale=self.head_dim**-0.5)
+=======
+            q, k, v, cache = self._prepare_qkv(query, key, value, use_cache,
+                                               cache)
+        # scale dot product attention
+        product = layers.matmul(x=q,
+                                y=k,
+                                transpose_y=True,
+                                alpha=self.head_dim**-0.5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if attn_mask is not None:
             product = product + attn_mask
 
         weights = F.softmax(product)
         if self.dropout:
+<<<<<<< HEAD
             weights = F.dropout(
                 weights,
                 self.dropout,
                 training=self.training,
                 mode="upscale_in_train",
             )
+=======
+            weights = F.dropout(weights,
+                                self.dropout,
+                                training=self.training,
+                                mode="upscale_in_train")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         out = tensor.matmul(weights, v)
 
@@ -281,11 +431,17 @@ class MultiHeadAttention(nn.Layer):
         out = self.out_proj(out)
 
         if _global_parallel_strategy in ["mp", "dp_mp"]:
+<<<<<<< HEAD
             auto.shard_tensor(
                 self.out_proj.weight,
                 process_mesh=_global_process_mesh,
                 shard_spec=["mp", None],
             )
+=======
+            auto.shard_tensor(self.out_proj.weight,
+                              process_mesh=_global_process_mesh,
+                              shard_spec=["mp", None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         outs = [out]
         if self.need_weights:
@@ -300,21 +456,36 @@ class TransformerDecoder(nn.Layer):
     TransformerDecoder is a stack of N decoder layers.
     """
 
+<<<<<<< HEAD
     def __init__(
         self, decoder_layers, num_layers, norm=None, hidden_size=None, topo=None
     ):
         super().__init__()
+=======
+    def __init__(self,
+                 decoder_layers,
+                 num_layers,
+                 norm=None,
+                 hidden_size=None,
+                 topo=None):
+        super(TransformerDecoder, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.topo = topo
         self.num_layers = num_layers
         self.layers = decoder_layers
         self.norm = norm
+<<<<<<< HEAD
         if norm == "LayerNorm":
+=======
+        if norm is "LayerNorm":
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.norm = nn.LayerNorm(hidden_size)
         elif norm is not None:
             raise ValueError("Only support LayerNorm")
         self.checkpoints = []
 
+<<<<<<< HEAD
     def forward(
         self,
         tgt,
@@ -324,6 +495,15 @@ class TransformerDecoder(nn.Layer):
         use_cache=False,
         cache=None,
     ):
+=======
+    def forward(self,
+                tgt,
+                memory,
+                tgt_mask=None,
+                memory_mask=None,
+                use_cache=False,
+                cache=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         r"""
         Applies a stack of N Transformer decoder layers on inputs. If `norm` is
         provided, also applies layer normalization on the output of last decoder
@@ -336,6 +516,7 @@ class TransformerDecoder(nn.Layer):
         for i, mod in enumerate(self.layers):
             if cache is None:
                 if use_cache:
+<<<<<<< HEAD
                     output, new_cache = mod(
                         output,
                         memory,
@@ -361,6 +542,27 @@ class TransformerDecoder(nn.Layer):
                     use_cache=use_cache,
                     cache=cache[i],
                 )
+=======
+                    output, new_cache = mod(output,
+                                            memory,
+                                            tgt_mask=tgt_mask,
+                                            use_cache=use_cache,
+                                            cache=cache)
+                    new_caches.append(new_cache)
+                else:
+                    output = mod(output,
+                                 memory,
+                                 tgt_mask=tgt_mask,
+                                 use_cache=use_cache,
+                                 cache=cache)
+
+            else:
+                output, new_cache = mod(output,
+                                        memory,
+                                        tgt_mask=tgt_mask,
+                                        use_cache=use_cache,
+                                        cache=cache[i])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 new_caches.append(new_cache)
             self.checkpoints.append(output.name)
 
@@ -375,7 +577,11 @@ class TransformerDecoder(nn.Layer):
         produced by `TransformerDecoderLayer.gen_cache`. See `TransformerDecoderLayer.gen_cache`
         for more details. If `do_zip` is True, apply `zip` on these tuples to get
         a list with two elements.
+<<<<<<< HEAD
         """
+=======
+       """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         cache = [layer.gen_cache(memory) for layer in self.layers]
         if do_zip:
             cache = list(zip(*cache))
@@ -388,6 +594,7 @@ class TransformerDecoderLayer(nn.Layer):
     It contains multiheadattention and some linear layers.
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         d_model,
@@ -402,11 +609,29 @@ class TransformerDecoderLayer(nn.Layer):
         bias_attr=None,
         topo=None,
     ):
+=======
+    def __init__(self,
+                 d_model,
+                 nhead,
+                 dim_feedforward,
+                 dropout=0.1,
+                 activation="gelu",
+                 attn_dropout=None,
+                 act_dropout=None,
+                 normalize_before=True,
+                 weight_attr=None,
+                 bias_attr=None,
+                 topo=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._config = locals()
         self._config.pop("self")
         self._config.pop("__class__", None)  # py3
 
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(TransformerDecoderLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
         self.normalize_before = normalize_before
@@ -414,6 +639,7 @@ class TransformerDecoderLayer(nn.Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 3)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 3)
 
+<<<<<<< HEAD
         self.self_attn = MultiHeadAttention(
             d_model,
             nhead,
@@ -435,6 +661,23 @@ class TransformerDecoderLayer(nn.Layer):
                 weight_attrs[2],
                 bias_attr=bias_attrs[2],
             )
+=======
+        self.self_attn = MultiHeadAttention(d_model,
+                                            nhead,
+                                            dropout=attn_dropout,
+                                            weight_attr=weight_attrs[0],
+                                            bias_attr=bias_attrs[0],
+                                            topo=topo)
+        if topo is None or topo.mp_info.size == 1:
+            self.linear1 = nn.Linear(d_model,
+                                     dim_feedforward,
+                                     weight_attrs[2],
+                                     bias_attr=bias_attrs[2])
+            self.linear2 = nn.Linear(dim_feedforward,
+                                     d_model,
+                                     weight_attrs[2],
+                                     bias_attr=bias_attrs[2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.norm1 = nn.LayerNorm(d_model, epsilon=1e-5)
         self.norm2 = nn.LayerNorm(d_model, epsilon=1e-5)
@@ -451,9 +694,14 @@ class TransformerDecoderLayer(nn.Layer):
         if use_cache is False:
             tgt = self.self_attn(tgt, tgt, tgt, tgt_mask, use_cache, cache)
         else:
+<<<<<<< HEAD
             tgt, incremental_cache = self.self_attn(
                 tgt, tgt, tgt, tgt_mask, use_cache, cache
             )
+=======
+            tgt, incremental_cache = self.self_attn(tgt, tgt, tgt, tgt_mask,
+                                                    use_cache, cache)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         tgt = residual + self.dropout1(tgt)
         if not self.normalize_before:
             tgt = self.norm1(tgt)
@@ -463,6 +711,7 @@ class TransformerDecoderLayer(nn.Layer):
             tgt = self.norm2(tgt)
 
         if _global_parallel_strategy in ["mp", "dp_mp"]:
+<<<<<<< HEAD
             auto.shard_tensor(
                 self.linear1.weight,
                 process_mesh=_global_process_mesh,
@@ -473,6 +722,14 @@ class TransformerDecoderLayer(nn.Layer):
                 process_mesh=_global_process_mesh,
                 shard_spec=["mp", None],
             )
+=======
+            auto.shard_tensor(self.linear1.weight,
+                              process_mesh=_global_process_mesh,
+                              shard_spec=[None, "mp"])
+            auto.shard_tensor(self.linear2.weight,
+                              process_mesh=_global_process_mesh,
+                              shard_spec=["mp", None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # tgt = self.dropout2(
         #     self.linear2(F.gelu(
@@ -488,9 +745,14 @@ class TransformerDecoderLayer(nn.Layer):
         return tgt if use_cache is False else (tgt, incremental_cache)
 
     def gen_cache(self, memory):
+<<<<<<< HEAD
         incremental_cache = self.self_attn.gen_cache(
             memory, type=self.self_attn.Cache
         )
+=======
+        incremental_cache = self.self_attn.gen_cache(memory,
+                                                     type=self.self_attn.Cache)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return incremental_cache
 
 
@@ -499,6 +761,7 @@ class GPTEmbeddings(nn.Layer):
     Include embeddings from word, position and token_type embeddings
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         vocab_size,
@@ -510,10 +773,22 @@ class GPTEmbeddings(nn.Layer):
         topo=None,
     ):
         super().__init__()
+=======
+    def __init__(self,
+                 vocab_size,
+                 hidden_size=768,
+                 hidden_dropout_prob=0.1,
+                 max_position_embeddings=512,
+                 type_vocab_size=16,
+                 initializer_range=0.02,
+                 topo=None):
+        super(GPTEmbeddings, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if topo is None or topo.mp_info.size == 1:
             self.word_embeddings = nn.Embedding(
                 vocab_size,
                 hidden_size,
+<<<<<<< HEAD
                 weight_attr=paddle.ParamAttr(
                     name="word_embeddings",
                     initializer=nn.initializer.Normal(
@@ -531,6 +806,18 @@ class GPTEmbeddings(nn.Layer):
                 ),
             ),
         )
+=======
+                weight_attr=paddle.ParamAttr(name="word_embeddings",
+                                             initializer=nn.initializer.Normal(
+                                                 mean=0.0,
+                                                 std=initializer_range)))
+        self.position_embeddings = nn.Embedding(
+            max_position_embeddings,
+            hidden_size,
+            weight_attr=paddle.ParamAttr(name="pos_embeddings",
+                                         initializer=nn.initializer.Normal(
+                                             mean=0.0, std=initializer_range)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.dropout = nn.Dropout(hidden_dropout_prob)
 
@@ -543,11 +830,17 @@ class GPTEmbeddings(nn.Layer):
         input_embedings = self.word_embeddings(input_ids)
 
         if _global_parallel_strategy in ["mp", "dp_mp"]:
+<<<<<<< HEAD
             auto.shard_tensor(
                 self.word_embeddings.weight,
                 process_mesh=_global_process_mesh,
                 shard_spec=["mp", None],
             )
+=======
+            auto.shard_tensor(self.word_embeddings.weight,
+                              process_mesh=_global_process_mesh,
+                              shard_spec=["mp", None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = input_embedings + position_embeddings
@@ -560,6 +853,7 @@ class GPTModel(nn.Layer):
     The base model of gpt.
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         vocab_size,
@@ -577,6 +871,23 @@ class GPTModel(nn.Layer):
         topo=None,
     ):
         super().__init__()
+=======
+    def __init__(self,
+                 vocab_size,
+                 hidden_size=768,
+                 num_hidden_layers=4,
+                 num_attention_heads=12,
+                 intermediate_size=3072,
+                 hidden_act="gelu",
+                 hidden_dropout_prob=0.1,
+                 attention_probs_dropout_prob=0.1,
+                 max_position_embeddings=512,
+                 type_vocab_size=16,
+                 initializer_range=0.02,
+                 pad_token_id=0,
+                 topo=None):
+        super(GPTModel, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.pad_token_id = pad_token_id
         self.initializer_range = initializer_range
@@ -588,6 +899,7 @@ class GPTModel(nn.Layer):
         if self.pipline_mode:
             self.layer_per_stage = num_hidden_layers // self.topo.pp_info.size
 
+<<<<<<< HEAD
         self.embeddings = GPTEmbeddings(
             vocab_size,
             hidden_size,
@@ -597,11 +909,19 @@ class GPTModel(nn.Layer):
             self.initializer_range,
             topo,
         )
+=======
+        self.embeddings = GPTEmbeddings(vocab_size, hidden_size,
+                                        hidden_dropout_prob,
+                                        max_position_embeddings,
+                                        type_vocab_size, self.initializer_range,
+                                        topo)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         decoder_layers = nn.LayerList()
         for i in range(num_hidden_layers):
             DecoderLayer = TransformerDecoderLayer
             decoder_layers.append(
+<<<<<<< HEAD
                 DecoderLayer(
                     d_model=hidden_size,
                     nhead=num_attention_heads,
@@ -640,20 +960,57 @@ class GPTModel(nn.Layer):
         use_cache=False,
         cache=None,
     ):
+=======
+                DecoderLayer(d_model=hidden_size,
+                             nhead=num_attention_heads,
+                             dim_feedforward=intermediate_size,
+                             dropout=hidden_dropout_prob,
+                             activation=hidden_act,
+                             attn_dropout=attention_probs_dropout_prob,
+                             act_dropout=hidden_dropout_prob,
+                             weight_attr=paddle.ParamAttr(
+                                 initializer=nn.initializer.Normal(
+                                     mean=0.0, std=self.initializer_range)),
+                             bias_attr=None,
+                             topo=topo))
+
+        Decoder = TransformerDecoder
+
+        self.decoder = Decoder(decoder_layers,
+                               num_hidden_layers,
+                               norm="LayerNorm",
+                               hidden_size=hidden_size,
+                               topo=topo)
+
+        self.checkpoints = []
+
+    def forward(self,
+                input_ids,
+                position_ids=None,
+                attention_mask=None,
+                use_cache=False,
+                cache=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.checkpoints = []
         if attention_mask is None:
             length = paddle.shape(input_ids)[1]
             # Use bool mask
             attention_mask = paddle.tensor.tril(
+<<<<<<< HEAD
                 paddle.ones(
                     (length, length),
                     dtype=self.embeddings.word_embeddings.weight.dtype,
                 )
             )
+=======
+                paddle.ones((length, length),
+                            dtype=self.embeddings.word_embeddings.weight.dtype))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if position_ids is None:
             past_length = 0
             if cache is not None:
                 past_length = paddle.shape(cache[0].k)[-2]
+<<<<<<< HEAD
             position_ids = paddle.arange(
                 past_length,
                 paddle.shape(input_ids)[-1] + past_length,
@@ -674,6 +1031,23 @@ class GPTModel(nn.Layer):
             * -1e9,
             diagonal=1,
         )
+=======
+            position_ids = paddle.arange(past_length,
+                                         paddle.shape(input_ids)[-1] +
+                                         past_length,
+                                         dtype='int64')
+            position_ids = position_ids.unsqueeze(0)
+            # .expand_as(input_ids)
+            position_ids = paddle.fluid.layers.expand_as(
+                position_ids, input_ids)
+        embedding_output = self.embeddings(input_ids=input_ids,
+                                           position_ids=position_ids)
+
+        # TODO, use registered buffer
+        causal_mask = paddle.tensor.triu(paddle.ones(
+            (paddle.shape(input_ids)[-1], paddle.shape(input_ids)[-1])) * -1e9,
+                                         diagonal=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if attention_mask is not None:
             attention_mask = attention_mask + causal_mask
@@ -683,6 +1057,7 @@ class GPTModel(nn.Layer):
         # The tensor returned by triu not in static graph.
         attention_mask.stop_gradient = True
 
+<<<<<<< HEAD
         encoder_outputs = self.decoder(
             embedding_output,
             memory=None,
@@ -690,6 +1065,13 @@ class GPTModel(nn.Layer):
             use_cache=use_cache,
             cache=cache,
         )
+=======
+        encoder_outputs = self.decoder(embedding_output,
+                                       memory=None,
+                                       tgt_mask=attention_mask,
+                                       use_cache=use_cache,
+                                       cache=cache)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.checkpoints.extend(self.decoder.checkpoints)
         return encoder_outputs
 
@@ -701,7 +1083,11 @@ class GPTForPretraining(nn.Layer):
     """
 
     def __init__(self, gpt):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(GPTForPretraining, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.gpt = gpt
         self.share_param = False
         self.weight = self.gpt.embeddings.word_embeddings.weight
@@ -711,12 +1097,20 @@ class GPTForPretraining(nn.Layer):
     def parallel_matmul(self, lm_output, logit_weights, parallel_output, topo):
         if topo is not None and topo.mp_info.size > 1:
             input_parallel = paddle.distributed.collective._c_identity(
+<<<<<<< HEAD
                 lm_output, group=None
             )
 
             logits = paddle.matmul(
                 input_parallel, logit_weights, transpose_y=True
             )
+=======
+                lm_output, group=None)
+
+            logits = paddle.matmul(input_parallel,
+                                   logit_weights,
+                                   transpose_y=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if parallel_output:
                 return logits
@@ -726,6 +1120,7 @@ class GPTForPretraining(nn.Layer):
             logits = paddle.matmul(lm_output, logit_weights, transpose_y=True)
             return logits
 
+<<<<<<< HEAD
     def forward(
         self,
         input_ids,
@@ -742,13 +1137,32 @@ class GPTForPretraining(nn.Layer):
             use_cache=use_cache,
             cache=cache,
         )
+=======
+    def forward(self,
+                input_ids,
+                position_ids=None,
+                attention_mask=None,
+                masked_positions=None,
+                use_cache=False,
+                cache=None):
+        outputs = self.gpt(input_ids,
+                           position_ids=position_ids,
+                           attention_mask=attention_mask,
+                           use_cache=use_cache,
+                           cache=cache)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if use_cache:
             encoder_outputs, cached_kvs = outputs[:2]
         else:
             encoder_outputs = outputs
+<<<<<<< HEAD
         logits = self.parallel_matmul(
             encoder_outputs, self.weight, True, self.gpt.topo
         )
+=======
+        logits = self.parallel_matmul(encoder_outputs, self.weight, True,
+                                      self.gpt.topo)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if use_cache:
             return logits, cached_kvs
@@ -763,6 +1177,7 @@ class GPTPretrainingCriterion(nn.Layer):
     """
 
     def __init__(self, topo=None):
+<<<<<<< HEAD
         super().__init__()
         if topo is None or topo.mp_info.size == 1:
             self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
@@ -775,6 +1190,17 @@ class GPTPretrainingCriterion(nn.Layer):
         masked_lm_loss = self.loss_func(
             prediction_scores, masked_lm_labels.unsqueeze(2)
         )
+=======
+        super(GPTPretrainingCriterion, self).__init__()
+        if topo is None or topo.mp_info.size == 1:
+            self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
+        else:
+            self.loss_func = paddle.distributed.collective._c_softmax_with_cross_entropy
+
+    def forward(self, prediction_scores, masked_lm_labels, loss_mask):
+        masked_lm_loss = self.loss_func(prediction_scores,
+                                        masked_lm_labels.unsqueeze(2))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         loss_mask = loss_mask.reshape([-1])
         masked_lm_loss = paddle.sum(masked_lm_loss.reshape([-1]) * loss_mask)
@@ -783,6 +1209,7 @@ class GPTPretrainingCriterion(nn.Layer):
 
 
 def gpt_pretrain_forward(train_program, startup_program):
+<<<<<<< HEAD
     with static.program_guard(
         train_program, startup_program
     ), utils.unique_name.guard():
@@ -828,6 +1255,47 @@ def gpt_pretrain_forward(train_program, startup_program):
             pad_token_id=0,
             topo=None,
         )
+=======
+    with static.program_guard(train_program,
+                              startup_program), utils.unique_name.guard():
+        batch_size = 16
+        sequence_len = 512
+        input_ids = static.data(name="input_ids",
+                                shape=[batch_size, sequence_len],
+                                dtype='int64')
+        position_ids = static.data(name="position_ids",
+                                   shape=[batch_size, sequence_len],
+                                   dtype='int64')
+        attention_mask = static.data(
+            name="attention_mask",
+            shape=[batch_size, 1, sequence_len, sequence_len],
+            dtype='float64')
+        labels = static.data(name="labels",
+                             shape=[batch_size, sequence_len],
+                             dtype='int64')
+        loss_mask = static.data(name="loss_mask",
+                                shape=[batch_size, sequence_len],
+                                dtype='float64')
+
+        if _global_parallel_strategy in ["dp", "dp_mp"]:
+            auto.shard_tensor(input_ids,
+                              process_mesh=_global_process_mesh,
+                              shard_spec=["dp", None])
+
+        gpt = GPTModel(vocab_size=32768,
+                       hidden_size=768,
+                       num_hidden_layers=2,
+                       num_attention_heads=12,
+                       intermediate_size=4096,
+                       hidden_act="gelu",
+                       hidden_dropout_prob=0.1,
+                       attention_probs_dropout_prob=0.1,
+                       max_position_embeddings=1024,
+                       type_vocab_size=16,
+                       initializer_range=0.02,
+                       pad_token_id=0,
+                       topo=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model = GPTForPretraining(gpt)
 
@@ -840,27 +1308,47 @@ def gpt_pretrain_forward(train_program, startup_program):
     return train_program, startup_program, loss
 
 
+<<<<<<< HEAD
 class FakeStrategy:
+=======
+class FakeStrategy(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.amp = False
         self.recompute = False
 
 
+<<<<<<< HEAD
 class FakeFleet:
+=======
+class FakeFleet(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.user_defined_optimizer = None
         self._user_defined_strategy = FakeStrategy()
 
 
 class TestGPTPartitioner(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_gpt_dp_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
 
+<<<<<<< HEAD
         _global_process_mesh = auto.ProcessMesh(
             mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "mp"]
         )
+=======
+        _global_process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3],
+                                                      [4, 5, 6, 7]],
+                                                dim_names=["dp", "mp"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         train_program = static.Program()
         startup_program = static.Program()
@@ -869,6 +1357,7 @@ class TestGPTPartitioner(unittest.TestCase):
 
         dist_context.process_mesh = _global_process_mesh
         train_program, startup_program, loss = gpt_pretrain_forward(
+<<<<<<< HEAD
             train_program, startup_program
         )
         completer = Completer(dist_context)
@@ -896,6 +1385,26 @@ class TestGPTPartitioner(unittest.TestCase):
         ) = partitioner.partition(
             complete_train_program, startup_program, params_grads
         )
+=======
+            train_program, startup_program)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        dist_context.block_state.parse_forward_blocks(complete_train_program)
+
+        # serial backward pass
+        params_grads = parallelizer._generate_backward(complete_train_program,
+                                                       startup_program,
+                                                       loss,
+                                                       parameter_list=None,
+                                                       no_grad_set=None,
+                                                       callbacks=None)
+
+        rank_id = 3
+        partitioner = Partitioner(dist_context, rank_id)
+        auto_parallel_main_prog, auto_parallel_startup_prog, params_grads = partitioner.partition(
+            complete_train_program, startup_program, params_grads)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         nrank = 4
         # col parallel
@@ -905,6 +1414,7 @@ class TestGPTPartitioner(unittest.TestCase):
             'linear_10.w_0',
         ]
         self.assertTrue(
+<<<<<<< HEAD
             check_tensor_split(
                 auto_parallel_main_prog,
                 weights,
@@ -914,10 +1424,15 @@ class TestGPTPartitioner(unittest.TestCase):
                 nrank,
             )
         )
+=======
+            check_tensor_split(auto_parallel_main_prog, weights,
+                               complete_train_program, weights, 1, nrank))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # row parallel
         weights = ['word_embeddings', 'linear_9.w_0', 'linear_11.w_0']
         self.assertTrue(
+<<<<<<< HEAD
             check_tensor_split(
                 auto_parallel_main_prog,
                 weights,
@@ -952,11 +1467,28 @@ class TestGPTPartitioner(unittest.TestCase):
             'layer_norm_7.tmp_2',
             'layer_norm_7.tmp_2',
             'layer_norm_8.tmp_2',
+=======
+            check_tensor_split(auto_parallel_main_prog, weights,
+                               complete_train_program, weights, 0, nrank))
+
+        weights = ['pos_embeddings', 'layer_norm_0.b_0', 'layer_norm_4.w_0']
+        self.assertTrue(
+            check_tensor_split(auto_parallel_main_prog, weights,
+                               complete_train_program, weights, 0, 1))
+
+        all_params = sorted(
+            [param.name for param in startup_program.all_parameters()])
+        allreduce_grads = [
+            'layer_norm_5.tmp_2', 'layer_norm_5.tmp_2', 'layer_norm_5.tmp_2',
+            'layer_norm_6.tmp_2', 'layer_norm_7.tmp_2', 'layer_norm_7.tmp_2',
+            'layer_norm_7.tmp_2', 'layer_norm_8.tmp_2'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         process_mesh = _global_process_mesh
         mp_parallel_axis = 1
         dp_parallel_axis = 0
 
+<<<<<<< HEAD
         group_ranks = _get_comm_group(
             process_mesh.process_ids, process_mesh.shape, mp_parallel_axis, 3
         )
@@ -988,13 +1520,41 @@ class TestGPTPartitioner(unittest.TestCase):
                 )
             ]
         )
+=======
+        group_ranks = _get_comm_group(process_mesh.processes,
+                                      process_mesh.topology, mp_parallel_axis,
+                                      3)
+        mp_ring_id = new_process_group(group_ranks).id
+
+        group_ranks = _get_comm_group(process_mesh.processes,
+                                      process_mesh.topology, dp_parallel_axis,
+                                      3)
+        dp_ring_id = new_process_group(group_ranks).id
+
+        tensor_parallel_allreduce_vars = sorted([
+            op.desc.output_arg_names()[0].split("@")[0]
+            for op in auto_parallel_main_prog.global_block().ops
+            if (op.type == "c_allreduce_sum" and op.attr('op_role') == 1
+                and op.desc.attr("ring_id") == mp_ring_id)
+        ])
+        data_parallel_allreduce_vars = sorted([
+            op.desc.output_arg_names()[0].split("@")[0]
+            for op in auto_parallel_main_prog.global_block().ops
+            if (op.type == "c_allreduce_sum"
+                and op.desc.attr("ring_id") == dp_ring_id)
+        ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertTrue(all_params == data_parallel_allreduce_vars)
         self.assertTrue(allreduce_grads == tensor_parallel_allreduce_vars)
 
         self.assertTrue(
+<<<<<<< HEAD
             is_valid_completed_program(dist_context, auto_parallel_main_prog)
         )
+=======
+            is_valid_completed_program(dist_context, auto_parallel_main_prog))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

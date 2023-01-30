@@ -13,16 +13,25 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import test_collective_api_base as test_base
 
 
 class TestCollectiveReduceScatterAPI(test_base.TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_reduce_scatter_nccl_dygraph(self):
         dtypes_to_test = [
+<<<<<<< HEAD
             "float16",
             "float32",
             "float64",
@@ -31,10 +40,15 @@ class TestCollectiveReduceScatterAPI(test_base.TestDistBase):
             "int8",
             "uint8",
             "bool",
+=======
+            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
+            "bool"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         if self._nccl_version >= 2100:
             dtypes_to_test.append("bfloat16")
         for dtype in dtypes_to_test:
+<<<<<<< HEAD
             self.check_with_place(
                 "collective_reduce_scatter_api_dygraph.py",
                 "reduce_scatter",
@@ -42,6 +56,13 @@ class TestCollectiveReduceScatterAPI(test_base.TestDistBase):
                 static_mode="0",
                 dtype=dtype,
             )
+=======
+            self.check_with_place("collective_reduce_scatter_api_dygraph.py",
+                                  "reduce_scatter",
+                                  "nccl",
+                                  static_mode="0",
+                                  dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

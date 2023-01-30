@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from numpy.random import random as rand
@@ -23,6 +24,19 @@ from paddle import tensor
 
 
 class TestComplexTraceLayer(unittest.TestCase):
+=======
+import numpy as np
+import paddle
+from numpy.random import random as rand
+from paddle import tensor
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestComplexTraceLayer(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [fluid.CPUPlace()]
@@ -31,6 +45,7 @@ class TestComplexTraceLayer(unittest.TestCase):
 
     def test_basic_api(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
                 [2, 20, 2, 3]
             ).astype(dtype)
@@ -43,6 +58,23 @@ class TestComplexTraceLayer(unittest.TestCase):
                     target = np.trace(input, offset=1, axis1=0, axis2=2)
                     np.testing.assert_allclose(result, target, rtol=1e-05)
 
+=======
+            input = rand([
+                2, 20, 2, 3
+            ]).astype(dtype) + 1j * rand([2, 20, 2, 3]).astype(dtype)
+            for place in self._places:
+                with dg.guard(place):
+                    var_x = dg.to_variable(input)
+                    result = tensor.trace(var_x, offset=1, axis1=0,
+                                          axis2=2).numpy()
+                    target = np.trace(input, offset=1, axis1=0, axis2=2)
+                    np.testing.assert_allclose(result, target, rtol=1e-05)
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_basic_api()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

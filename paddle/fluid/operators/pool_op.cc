@@ -32,16 +32,21 @@ namespace operators {
 bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
   // (jczaja): oneDNN is supporting only unchangable in size pool window
+<<<<<<< HEAD
   auto src_tz = phi::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
   if (!ctx.HasAttr("ksize")) {
     return false;
   }
+=======
+  auto src_tz = phi::vectorize(ctx.Input<Tensor>("X")->dims());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
   // Fast but not exhustive check
   return ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
           (src_tz[src_tz.size() - 2] % ksize[0] == 0));
 }
 
+<<<<<<< HEAD
 phi::KernelKey PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -103,17 +108,115 @@ phi::KernelKey PoolOpGrad::GetKernelTypeForVar(
 #endif
   return phi::KernelKey(
       tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+framework::OpKernelType PoolOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = "AnyLayout";
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, data_type) && CanMKLDNNSupportPool(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
+  }
+#endif
+
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
+}
+
+framework::OpKernelType PoolOp::GetKernelTypeForVar(
+    const std::string& var_name,
+    const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    auto dl = framework::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), dl);
+    }
+  }
+#endif
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+}
+
+framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = "AnyLayout";
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+      CanMKLDNNSupportPool(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
+  }
+#endif
+
+  return framework::OpKernelType(
+      input_data_type, ctx.GetPlace(), layout_, library_);
+}
+
+framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
+    const std::string& var_name,
+    const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(),
+                                   framework::StringToDataLayout(data_format));
+  }
+#endif
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void Pool2dOpMaker::Make() {
   AddInput(
       "X",
+<<<<<<< HEAD
       "(phi::DenseTensor) The input tensor of pooling operator. "
+=======
+      "(Tensor) The input tensor of pooling operator. "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "The format of input tensor is NCHW, where N is batch size, C is the "
       "number of channels, H is the height of the feature, "
       "and W is the width of the feature.");
   AddOutput("Out",
+<<<<<<< HEAD
             "(phi::DenseTensor) The output tensor of pooling operator. "
+=======
+            "(Tensor) The output tensor of pooling operator. "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "The format of output tensor is also NCHW, "
             "where N is batch size, C is the number of channels, "
             "H is the height of the feature, "
@@ -300,14 +403,22 @@ class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
 
 void Pool3dOpMaker::Make() {
   AddInput("X",
+<<<<<<< HEAD
            "(phi::DenseTensor) The input tensor of pooling operator. "
+=======
+           "(Tensor) The input tensor of pooling operator. "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            "The format of input tensor is NCDHW or NDHWC, where N is batch "
            "size, C is "
            "the number of channels, and D, H and W is the depth, height and "
            "width of "
            "the feature, respectively.");
   AddOutput("Out",
+<<<<<<< HEAD
             "(phi::DenseTensor) The output tensor of pooling operator."
+=======
+            "(Tensor) The output tensor of pooling operator."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "The format of output tensor is also NCDHW or NDHWC, "
             "where N is batch size, C is "
             "the number of channels, and D, H and W is the depth, height and "

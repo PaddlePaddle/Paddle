@@ -50,17 +50,27 @@ class SumOpWithKernel : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {}
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const ExecutionContext &ctx) const override {
     return phi::KernelKey(proto::VarType::FP32,
                           ctx.Input<phi::DenseTensor>("X")->place());
+=======
+  OpKernelType GetExpectedKernelType(
+      const ExecutionContext &ctx) const override {
+    return OpKernelType(proto::VarType::FP32, ctx.Input<Tensor>("X")->place());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 }  // namespace framework
 }  // namespace paddle
 
+<<<<<<< HEAD
 REGISTER_OP_WITHOUT_GRADIENT(fake_sum,
+=======
+REGISTER_OP_WITHOUT_GRADIENT(sum,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                              paddle::framework::SumOpWithKernel,
                              paddle::framework::SumOpMaker);
 
@@ -114,7 +124,11 @@ void BuildStrategyApply(BuildStrategy *build_strategy, ir::Graph *graph) {
 std::unique_ptr<ir::Graph> CreateGraph() {
   ProgramDesc prog;
   auto *op = prog.MutableBlock(0)->AppendOp();
+<<<<<<< HEAD
   op->SetType("fake_sum");
+=======
+  op->SetType("sum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op->SetInput("X", {"a1"});
   op->SetOutput("Out", {"b1"});
   op->SetAttr("op_role", 1);
@@ -133,7 +147,11 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
 
   // Set contents in block_0.
   auto *op = prog.MutableBlock(0)->AppendOp();
+<<<<<<< HEAD
   op->SetType("fake_sum");
+=======
+  op->SetType("sum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
   op->SetAttr("op_role", 1);
@@ -149,7 +167,11 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
 
   // Set contents in block_1.
   op = prog.MutableBlock(1)->AppendOp();
+<<<<<<< HEAD
   op->SetType("fake_sum");
+=======
+  op->SetType("sum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op->SetInput("X", {"a1"});
   op->SetOutput("Out", {"b1"});
   op->SetAttr("op_role", 1);
@@ -159,7 +181,11 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
 
   // Set contents in block_2.
   op = prog.MutableBlock(2)->AppendOp();
+<<<<<<< HEAD
   op->SetType("fake_sum");
+=======
+  op->SetType("sum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op->SetInput("X", {"a2"});
   op->SetOutput("Out", {"b2"});
   op->SetAttr("op_role", 1);

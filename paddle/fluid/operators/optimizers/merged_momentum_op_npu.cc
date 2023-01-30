@@ -28,8 +28,13 @@ template <typename T>
 class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto params = ctx.MultiInput<phi::DenseTensor>("Param");
     auto params_out = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
+=======
+    auto params = ctx.MultiInput<framework::Tensor>("Param");
+    auto params_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     size_t n = params.size();
     PADDLE_ENFORCE_EQ(n,
                       params_out.size(),
@@ -47,7 +52,11 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
                             "must be the same Tensors."));
     }
 
+<<<<<<< HEAD
     auto grads = ctx.MultiInput<phi::DenseTensor>("Grad");
+=======
+    auto grads = ctx.MultiInput<framework::Tensor>("Grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         n,
         grads.size(),
@@ -57,7 +66,11 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
             grads.size(),
             n));
 
+<<<<<<< HEAD
     auto velocitys = ctx.MultiInput<phi::DenseTensor>("Velocity");
+=======
+    auto velocitys = ctx.MultiInput<framework::Tensor>("Velocity");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(n,
                       velocitys.size(),
                       platform::errors::InvalidArgument(
@@ -67,7 +80,11 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
                           velocitys.size(),
                           n));
 
+<<<<<<< HEAD
     auto velocitys_out = ctx.MultiOutput<phi::DenseTensor>("VelocityOut");
+=======
+    auto velocitys_out = ctx.MultiOutput<framework::Tensor>("VelocityOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         n,
         velocitys_out.size(),
@@ -86,7 +103,11 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
     }
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
+<<<<<<< HEAD
     auto lrs = ctx.MultiInput<phi::DenseTensor>("LearningRate");
+=======
+    auto lrs = ctx.MultiInput<framework::Tensor>("LearningRate");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (lrs.size() != 1) {
       PADDLE_ENFORCE_EQ(
           n,

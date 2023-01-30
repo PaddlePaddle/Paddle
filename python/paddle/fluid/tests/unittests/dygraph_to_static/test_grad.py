@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
@@ -24,6 +25,21 @@ import paddle
 class GradLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
+=======
+from __future__ import print_function
+
+import numpy as np
+import paddle
+import unittest
+import os
+import tempfile
+
+
+class GradLayer(paddle.nn.Layer):
+
+    def __init__(self):
+        super(GradLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -34,8 +50,14 @@ class GradLayer(paddle.nn.Layer):
 
 
 class GradLinearLayer(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(GradLinearLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
 
     @paddle.jit.to_static
@@ -45,15 +67,28 @@ class GradLinearLayer(paddle.nn.Layer):
         for i in range(10):
             tmp = self.linear(tmp)
         out = tmp
+<<<<<<< HEAD
         dx = paddle.grad(
             [out], [x], None, create_graph=True, allow_unused=False
         )[0]
+=======
+        dx = paddle.grad([out], [x],
+                         None,
+                         create_graph=True,
+                         allow_unused=False)[0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return dx
 
 
 class NoGradLinearLayer(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(NoGradLinearLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
 
     @paddle.jit.to_static
@@ -68,15 +103,26 @@ class NoGradLinearLayer(paddle.nn.Layer):
 
 
 class TestGrad(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.func = GradLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
     def _run(self, func, to_static):
+<<<<<<< HEAD
         paddle.jit.enable_to_static(to_static)
         ret = func(self.x).numpy()
         paddle.jit.enable_to_static(True)
+=======
+        prog_trans = paddle.jit.ProgramTranslator()
+        prog_trans.enable(to_static)
+        ret = func(self.x).numpy()
+        prog_trans.enable(True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return ret
 
     def test_forward(self):
@@ -86,18 +132,29 @@ class TestGrad(unittest.TestCase):
 
 
 class TestGradLinear(TestGrad):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.func = GradLinearLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
         self.temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         self.infer_model_path = os.path.join(
             self.temp_dir.name, 'double_grad_infer_model'
         )
         self.train_model_path = os.path.join(
             self.temp_dir.name, 'double_grad_train_model'
         )
+=======
+        self.infer_model_path = os.path.join(self.temp_dir.name,
+                                             'double_grad_infer_model')
+        self.train_model_path = os.path.join(self.temp_dir.name,
+                                             'double_grad_train_model')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -115,11 +172,17 @@ class TestGradLinear(TestGrad):
 
     def test_save_train_program(self):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
+<<<<<<< HEAD
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.01,
             grad_clip=grad_clip,
             parameters=self.func.parameters(),
         )
+=======
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                         grad_clip=grad_clip,
+                                         parameters=self.func.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for i in range(10):
             out = self.func(self.x)
             avg_loss = paddle.mean(paddle.abs(out - 1))
@@ -137,18 +200,29 @@ class TestGradLinear(TestGrad):
 
 
 class TestNoGradLinear(TestGradLinear):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.func = NoGradLinearLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
         self.temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         self.infer_model_path = os.path.join(
             self.temp_dir.name, 'no_grad_infer_model'
         )
         self.train_model_path = os.path.join(
             self.temp_dir.name, 'no_grad_train_model'
         )
+=======
+        self.infer_model_path = os.path.join(self.temp_dir.name,
+                                             'no_grad_infer_model')
+        self.train_model_path = os.path.join(self.temp_dir.name,
+                                             'no_grad_train_model')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def tearDown(self):
         self.temp_dir.cleanup()

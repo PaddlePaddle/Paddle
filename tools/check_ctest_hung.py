@@ -12,8 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import re
 import sys
+=======
+from __future__ import print_function
+
+import sys
+import re
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def escape(input):
@@ -38,7 +45,12 @@ Diff:  set(['test_parallel_executor_crf'])
     passed = set()
     with open(logfile, "r") as fn:
         for l in fn.readlines():
+<<<<<<< HEAD
             if l.find("Test ") != -1 and l.find("Passed") != -1:
+=======
+            if l.find("Test ") != -1 and \
+                l.find("Passed") != -1:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 m = re.search(r"Test\s+#[0-9]*\:\s([a-z0-9_]+)", escape(l))
                 passed.add(m.group(1))
             if l.find("Start ") != -1:

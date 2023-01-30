@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import time
 import argparse
 import os
+<<<<<<< HEAD
+=======
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
@@ -28,6 +36,7 @@ from contextlib import closing
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
+<<<<<<< HEAD
 import paddle
 
 from paddle.fluid.tests.unittests.op_test import (
@@ -38,6 +47,14 @@ from paddle.fluid.tests.unittests.op_test import (
 from paddle.fluid.tests.unittests.test_sync_batch_norm_op import (
     create_or_get_tensor,
 )
+=======
+from six import string_types
+import paddle
+
+from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+
+from paddle.fluid.tests.unittests.test_sync_batch_norm_op import create_or_get_tensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 _set_use_system_allocator(False)
 paddle.enable_static()
@@ -45,6 +62,7 @@ paddle.enable_static()
 SEED = 10
 
 
+<<<<<<< HEAD
 class TestSyncBatchNormRunnerBase:
     def get_model(
         self,
@@ -62,11 +80,29 @@ class TestSyncBatchNormRunnerBase:
 
     def wait_server_ready(self, endpoints):
         assert not isinstance(endpoints, str)
+=======
+class TestSyncBatchNormRunnerBase(object):
+
+    def get_model(self,
+                  main,
+                  startup,
+                  place,
+                  layout,
+                  seed,
+                  sync_bn=False,
+                  only_forward=False):
+        raise NotImplementedError(
+            "get model should be implemented by child class.")
+
+    def wait_server_ready(self, endpoints):
+        assert not isinstance(endpoints, string_types)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         while True:
             all_ok = True
             not_ready_endpoints = []
             for ep in endpoints:
                 ip_port = ep.split(":")
+<<<<<<< HEAD
                 with closing(
                     socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 ) as sock:
@@ -76,6 +112,15 @@ class TestSyncBatchNormRunnerBase:
                         sock.setsockopt(
                             socket.SOL_SOCKET, socket.SO_REUSEPORT, 1
                         )
+=======
+                with closing(socket.socket(socket.AF_INET,
+                                           socket.SOCK_STREAM)) as sock:
+                    sock.settimeout(2)
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    if hasattr(socket, 'SO_REUSEPORT'):
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT,
+                                        1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                     result = sock.connect_ex((ip_port[0], int(ip_port[1])))
                     if result != 0:
@@ -83,24 +128,38 @@ class TestSyncBatchNormRunnerBase:
                         not_ready_endpoints.append(ep)
             if not all_ok:
                 sys.stderr.write("server not ready, wait 3 sec to retry...\n")
+<<<<<<< HEAD
                 sys.stderr.write(
                     "not ready endpoints:" + str(not_ready_endpoints) + "\n"
                 )
+=======
+                sys.stderr.write("not ready endpoints:" +
+                                 str(not_ready_endpoints) + "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 sys.stderr.flush()
                 time.sleep(3)
             else:
                 break
 
+<<<<<<< HEAD
     # endpoints should be ["ip1:port1","ip2:port2"]
 
     def initCommunicator(
         self, program, rank, nranks, wait_port, current_endpoint, endpoints
     ):
+=======
+
+#endpoints should be ["ip1:port1","ip2:port2"]
+
+    def initCommunicator(self, program, rank, nranks, wait_port,
+                         current_endpoint, endpoints):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
         if rank == 0 and wait_port:
             self.wait_server_ready(other_endpoints)
         block = program.global_block()
+<<<<<<< HEAD
         hccl_id_var = block.create_var(
             name=nameGen.generate('hccl_id'),
             persistable=True,
@@ -127,6 +186,28 @@ class TestSyncBatchNormRunnerBase:
                 'rank_ids': nranks,
             },
         )
+=======
+        hccl_id_var = block.create_var(name=nameGen.generate('hccl_id'),
+                                       persistable=True,
+                                       type=core.VarDesc.VarType.RAW)
+        block.append_op(type='c_gen_hccl_id',
+                        inputs={},
+                        outputs={'Out': hccl_id_var},
+                        attrs={
+                            'rank': rank,
+                            'endpoint': current_endpoint,
+                            'other_endpoints': other_endpoints
+                        })
+        block.append_op(type='c_comm_init_hccl',
+                        inputs={'X': hccl_id_var},
+                        outputs={},
+                        attrs={
+                            'rank': rank,
+                            'ring_id': self.global_ring_id,
+                            'device_id': int(os.getenv("FLAGS_selected_npus")),
+                            'rank_ids': nranks
+                        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def run_trainer(self, args):
         device_id = int(os.getenv("FLAGS_selected_npus", "0"))
@@ -159,14 +240,19 @@ class TestSyncBatchNormRunnerBase:
 
         sys.stdout.buffer.write(
             pickle.dumps(
+<<<<<<< HEAD
                 'training, inference, fp32, fp16, NCHW, NHWC all passed'
             )
         )
+=======
+                'training, inference, fp32, fp16, NCHW, NHWC all passed'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _compare(self, args, place, layout, only_forward):
         scope = core.Scope()
 
         np.random.seed(SEED)
+<<<<<<< HEAD
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4.0 - 2
         sys.stderr.write("data: " + str(data) + "\n")
         data = create_or_get_tensor(
@@ -184,20 +270,44 @@ class TestSyncBatchNormRunnerBase:
             "len(sync_bn_fetches): " + str(len(sync_bn_fetches)) + "\n"
         )
         for i in range(0, len(sync_bn_fetches)):
+=======
+        data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
+        sys.stderr.write("data: " + str(data) + "\n")
+        data = create_or_get_tensor(scope, "input",
+                                    OpTest.np_dtype_to_fluid_dtype(data), place)
+
+        bn_fetches = self._cal_single_card(args, data, place, layout,
+                                           only_forward)
+        fetch_names, sync_bn_fetches = self._cal_multiple_cards(
+            args, data, place, layout, only_forward)
+
+        sys.stderr.write("len(sync_bn_fetches): " + str(len(sync_bn_fetches)) +
+                         "\n")
+        for i in six.moves.xrange(0, len(sync_bn_fetches)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sys.stderr.write("i: " + str(i) + "\n")
             sys.stderr.write("fetch_names[i]): " + fetch_names[i] + "\n")
 
             bn_val = bn_fetches[i]
             sync_bn_val = sync_bn_fetches[i]
             if sync_bn_val.shape != bn_val.shape:
+<<<<<<< HEAD
                 sync_bn_val = sync_bn_val[: bn_val.shape[0]]
+=======
+                sync_bn_val = sync_bn_val[:bn_val.shape[0]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # i = 0
             if fetch_names[i] == 'reduce_sum_0.tmp_0':
                 # sys.stderr.write("skip reduce_sum_0.tmp_0 (Out of reduce_sum op)" + "\n")
+<<<<<<< HEAD
                 sys.stderr.write(
                     "reduce_sum_0.tmp_0 (Out of reduce_sum op)" + "\n"
                 )
+=======
+                sys.stderr.write("reduce_sum_0.tmp_0 (Out of reduce_sum op)" +
+                                 "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
                 sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
 
@@ -225,8 +335,12 @@ class TestSyncBatchNormRunnerBase:
             if fetch_names[i] == 'batch_norm_0.tmp_2':
                 # sys.stderr.write("skip batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n")
                 sys.stderr.write(
+<<<<<<< HEAD
                     "batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n"
                 )
+=======
+                    "batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
                 sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
 
@@ -259,9 +373,14 @@ class TestSyncBatchNormRunnerBase:
 
             # i = 8
             if fetch_names[i] == 'batch_norm_0.tmp_1':
+<<<<<<< HEAD
                 sys.stderr.write(
                     "skip batch_norm_0.tmp_1 (SavedVariance)" + "\n"
                 )
+=======
+                sys.stderr.write("skip batch_norm_0.tmp_1 (SavedVariance)" +
+                                 "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
                 sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
 
@@ -307,6 +426,7 @@ class TestSyncBatchNormRunnerBase:
             if fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
                 atol = 1e-2
 
+<<<<<<< HEAD
             assert np.allclose(bn_val, sync_bn_val, atol=atol), (
                 "Output ("
                 + fetch_names[i]
@@ -317,6 +437,12 @@ class TestSyncBatchNormRunnerBase:
                 + "Sync BN "
                 + str(sync_bn_val)
             )
+=======
+            assert np.allclose(
+                bn_val, sync_bn_val, atol=atol), "Output (" + fetch_names[
+                    i] + ") has diff. \n" + "\nBN     " + str(
+                        bn_val) + "\n" + "Sync BN " + str(sync_bn_val)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _cal_single_card(self, args, data, place, layout, only_forward):
         # Single-NPU, N = 32 per NPU
@@ -326,13 +452,19 @@ class TestSyncBatchNormRunnerBase:
         startup_prog.global_seed(SEED)
         paddle.seed(SEED)
 
+<<<<<<< HEAD
         outs = self.get_model(
             train_prog, startup_prog, place, layout, SEED, False, only_forward
         )
+=======
+        outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
+                              False, only_forward)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         fetch_names = [v.name for v in outs] + [
+<<<<<<< HEAD
             'bn_moving_mean',
             'bn_moving_variance',
             'bn_scale',
@@ -351,6 +483,19 @@ class TestSyncBatchNormRunnerBase:
         bn_fetches = exe.run(
             program=train_prog, feed={'input': data}, fetch_list=fetch_names
         )
+=======
+            'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
+        ]
+        if not only_forward:
+            others = [
+                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
+            ]
+            fetch_names += others
+        bn_fetches = exe.run(program=train_prog,
+                             feed={'input': data},
+                             fetch_list=fetch_names)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return bn_fetches
 
@@ -372,12 +517,19 @@ class TestSyncBatchNormRunnerBase:
         current_endpoint = args["currentendpoint"]
         nranks = 2
 
+<<<<<<< HEAD
         self.initCommunicator(
             startup_prog, rank, nranks, True, current_endpoint, endpoints
         )
         sys.stderr.write(
             "after init, startup_prog: " + startup_prog.to_string(True) + "\n"
         )
+=======
+        self.initCommunicator(startup_prog, rank, nranks, True,
+                              current_endpoint, endpoints)
+        sys.stderr.write("after init, startup_prog: " +
+                         startup_prog.to_string(True) + "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         train_prog.global_seed(SEED)
         train_prog._sync_with_cpp()
         startup_prog.global_seed(SEED)
@@ -385,6 +537,7 @@ class TestSyncBatchNormRunnerBase:
         paddle.seed(SEED)
 
         self.rank = rank
+<<<<<<< HEAD
         outs = self.get_model(
             train_prog, startup_prog, place, layout, SEED, True, only_forward
         )
@@ -396,6 +549,14 @@ class TestSyncBatchNormRunnerBase:
             + startup_prog.to_string(True)
             + "\n"
         )
+=======
+        outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
+                              True, only_forward)
+        sys.stderr.write("after get_model, train_prog: " +
+                         train_prog.to_string(True) + "\n")
+        sys.stderr.write("after get_model, startup_prog: " +
+                         startup_prog.to_string(True) + "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         ops = train_prog.blocks[0].ops
         for i, op in enumerate(ops):
@@ -408,15 +569,21 @@ class TestSyncBatchNormRunnerBase:
                 sys.stderr.write("op type: " + op.type + "\n")
                 op.desc.set_type('sync_batch_norm_grad')
 
+<<<<<<< HEAD
         sys.stderr.write(
             "after update sync_batch_norm, train_prog: "
             + train_prog.to_string(True)
             + "\n"
         )
+=======
+        sys.stderr.write("after update sync_batch_norm, train_prog: " +
+                         train_prog.to_string(True) + "\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         fetch_names = [v.name for v in outs] + [
+<<<<<<< HEAD
             'bn_moving_mean',
             'bn_moving_variance',
             'bn_scale',
@@ -435,6 +602,19 @@ class TestSyncBatchNormRunnerBase:
         sync_bn_fetches = exe.run(
             program=train_prog, feed={'input': data}, fetch_list=fetch_names
         )
+=======
+            'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
+        ]
+        if not only_forward:
+            others = [
+                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
+            ]
+            fetch_names += others
+        sync_bn_fetches = exe.run(program=train_prog,
+                                  feed={'input': data},
+                                  fetch_list=fetch_names)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return fetch_names, sync_bn_fetches
 
@@ -451,15 +631,24 @@ def runtime_main(test_class, col_type, sub_type):
     model.run_trainer(args)
 
 
+<<<<<<< HEAD
+=======
+import paddle.compat as cpt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import socket
 from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+<<<<<<< HEAD
             self._find_free_port(),
             self._find_free_port(),
         )
@@ -470,6 +659,16 @@ class TestDistBase(unittest.TestCase):
             with closing(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             ) as s:
+=======
+            self._find_free_port(), self._find_free_port())
+        self._python_interp = sys.executable
+
+    def _find_free_port(self):
+
+        def __free_port():
+            with closing(socket.socket(socket.AF_INET,
+                                       socket.SOCK_STREAM)) as s:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 s.bind(('', 0))
                 return s.getsockname()[1]
 
@@ -498,7 +697,11 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w1_ep,
         }
+<<<<<<< HEAD
         # update environment
+=======
+        #update environment
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         env0.update(envs)
         env1.update(envs)
 
@@ -509,6 +712,7 @@ class TestDistBase(unittest.TestCase):
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
         # print(tr0_cmd)
         # print(tr1_cmd)
+<<<<<<< HEAD
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,
@@ -522,6 +726,17 @@ class TestDistBase(unittest.TestCase):
             stderr=tr1_pipe,
             env=env1,
         )
+=======
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
+
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -531,18 +746,29 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
+<<<<<<< HEAD
         return (
             pickle.loads(tr0_out),
             pickle.loads(tr1_out),
             tr0_proc.pid,
             tr1_proc.pid,
         )
+=======
+        return pickle.loads(tr0_out), pickle.loads(
+            tr1_out), tr0_proc.pid, tr1_proc.pid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_with_place(self, model_file, col_type, need_envs={}):
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file, need_envs)
         self.assertEqual(
+<<<<<<< HEAD
             tr0_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed'
         )
         self.assertEqual(
             tr1_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed'
         )
+=======
+            tr0_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed')
+        self.assertEqual(
+            tr1_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

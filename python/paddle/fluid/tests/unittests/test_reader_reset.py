@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 
 os.environ['CPU_NUM'] = str(1)
@@ -26,6 +27,23 @@ from paddle.fluid import compiler
 
 class TestReaderReset(unittest.TestCase):
     def prepare_data(self):
+=======
+from __future__ import print_function
+import os
+
+os.environ['CPU_NUM'] = str(1)
+import paddle.fluid as fluid
+from paddle.fluid import compiler
+import paddle
+import numpy as np
+import unittest
+
+
+class TestReaderReset(unittest.TestCase):
+
+    def prepare_data(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def fake_data_generator():
             for n in range(self.total_ins_num):
                 yield np.ones(self.ins_shape) * n, n
@@ -46,18 +64,29 @@ class TestReaderReset(unittest.TestCase):
         startup_prog = fluid.Program()
 
         with fluid.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
             image = paddle.static.data(
                 name='image', shape=[-1] + self.ins_shape, dtype='float32'
             )
             label = paddle.static.data(
                 name='label', shape=[-1, 1], dtype='int64'
             )
+=======
+            image = fluid.layers.data(name='image',
+                                      shape=self.ins_shape,
+                                      dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_reader_handle = fluid.io.PyReader(
                 feed_list=[image, label],
                 capacity=16,
                 iterable=False,
+<<<<<<< HEAD
                 use_double_buffer=with_double_buffer,
             )
+=======
+                use_double_buffer=with_double_buffer)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             fetch_list = [image.name, label.name]
 
         place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
@@ -65,12 +94,19 @@ class TestReaderReset(unittest.TestCase):
         exe.run(startup_prog)
 
         data_reader_handle.decorate_sample_list_generator(
+<<<<<<< HEAD
             paddle.batch(self.prepare_data(), batch_size=self.batch_size)
         )
 
         train_cp = compiler.CompiledProgram(main_prog).with_data_parallel(
             places=[place]
         )
+=======
+            paddle.batch(self.prepare_data(), batch_size=self.batch_size))
+
+        train_cp = compiler.CompiledProgram(main_prog).with_data_parallel(
+            places=[place])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         batch_id = 0
         pass_count = 0
@@ -78,6 +114,7 @@ class TestReaderReset(unittest.TestCase):
             data_reader_handle.start()
             try:
                 while True:
+<<<<<<< HEAD
                     data_val, label_val = exe.run(
                         train_cp, fetch_list=fetch_list, return_numpy=True
                     )
@@ -85,6 +122,15 @@ class TestReaderReset(unittest.TestCase):
                     broadcasted_label = np.ones(
                         (ins_num,) + tuple(self.ins_shape)
                     ) * label_val.reshape((ins_num, 1))
+=======
+                    data_val, label_val = exe.run(train_cp,
+                                                  fetch_list=fetch_list,
+                                                  return_numpy=True)
+                    ins_num = data_val.shape[0]
+                    broadcasted_label = np.ones((
+                        ins_num, ) + tuple(self.ins_shape)) * label_val.reshape(
+                            (ins_num, 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self.assertEqual(data_val.all(), broadcasted_label.all())
                     batch_id += 1
             except fluid.core.EOFException:

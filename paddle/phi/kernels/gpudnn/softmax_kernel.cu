@@ -16,7 +16,10 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace phi {
@@ -27,6 +30,7 @@ void SoftmaxGPUDNNKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+<<<<<<< HEAD
 
   const int rank = x.dims().size();
   // For 0D Tensor
@@ -35,6 +39,8 @@ void SoftmaxGPUDNNKernel(const Context& dev_ctx,
     return;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, x, axis, out);
 }
 

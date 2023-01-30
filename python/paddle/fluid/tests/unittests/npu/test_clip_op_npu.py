@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import paddle
@@ -24,6 +29,10 @@ from op_test import OpTest
 
 
 class TestClipOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -74,6 +83,10 @@ class TestClipOp(OpTest):
 
 
 class TestCase1(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (8, 16, 8)
         self.max = 0.7
@@ -81,6 +94,10 @@ class TestCase1(TestClipOp):
 
 
 class TestCase2(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (8, 16)
         self.max = 1.0
@@ -88,6 +105,10 @@ class TestCase2(TestClipOp):
 
 
 class TestCase3(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max = 0.7
@@ -95,6 +116,10 @@ class TestCase3(TestClipOp):
 
 
 class TestCase4(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (4, 8, 8)
         self.max = 0.7
@@ -104,6 +129,10 @@ class TestCase4(TestClipOp):
 
 
 class TestCase5(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max = 0.5
@@ -111,25 +140,42 @@ class TestCase5(TestClipOp):
 
 
 class TestClipOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             input_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
+<<<<<<< HEAD
                 paddle.clip(x=input_data, min=-1.0, max=1.0)
+=======
+                fluid.layers.clip(x=input_data, min=-1.0, max=1.0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
+<<<<<<< HEAD
                 x2 = paddle.static.data(name='x2', shape=[-1, 1], dtype='int32')
                 paddle.clip(x=x2, min=-1.0, max=1.0)
+=======
+                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
+                fluid.layers.clip(x=x2, min=-1.0, max=1.0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_dtype)
         paddle.disable_static()
 
 
 class TestClipAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, min=None, max=None):
         return paddle.clip(x, min, max)
 
@@ -141,11 +187,16 @@ class TestClipAPI(unittest.TestCase):
         min = fluid.data(name='min', shape=[1], dtype='float32')
         max = fluid.data(name='max', shape=[1], dtype='float32')
 
+<<<<<<< HEAD
         place = (
             fluid.NPUPlace(0)
             if fluid.core.is_compiled_with_npu()
             else fluid.CPUPlace()
         )
+=======
+        place = fluid.NPUPlace(
+            0) if fluid.core.is_compiled_with_npu() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         exe = fluid.Executor(place)
 
         out_1 = self._executed_api(images, min=min, max=max)
@@ -154,7 +205,11 @@ class TestClipAPI(unittest.TestCase):
         out_4 = self._executed_api(images, max=0.7)
         out_5 = self._executed_api(images, min=min)
         out_6 = self._executed_api(images, max=max)
+<<<<<<< HEAD
         out_7 = self._executed_api(images, max=-1.0)
+=======
+        out_7 = self._executed_api(images, max=-1.)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out_8 = self._executed_api(images)
 
         res1, res2, res3, res4, res5, res6, res7, res8 = exe.run(
@@ -162,10 +217,16 @@ class TestClipAPI(unittest.TestCase):
             feed={
                 "image": data,
                 "min": np.array([0.2]).astype('float32'),
+<<<<<<< HEAD
                 "max": np.array([0.8]).astype('float32'),
             },
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8],
         )
+=======
+                "max": np.array([0.8]).astype('float32')
+            },
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np.testing.assert_allclose(res1, data.clip(0.2, 0.8))
         np.testing.assert_allclose(res2, data.clip(0.2, 0.9))
@@ -179,11 +240,16 @@ class TestClipAPI(unittest.TestCase):
 
     def test_clip_dygraph(self):
         paddle.disable_static()
+<<<<<<< HEAD
         place = (
             fluid.NPUPlace(0)
             if fluid.core.is_compiled_with_npu()
             else fluid.CPUPlace()
         )
+=======
+        place = fluid.NPUPlace(
+            0) if fluid.core.is_compiled_with_npu() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.disable_static(place)
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
@@ -211,6 +277,10 @@ class TestClipAPI(unittest.TestCase):
 
 
 class TestInplaceClipAPI(TestClipAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, min=None, max=None):
         return x.clip_(min, max)
 

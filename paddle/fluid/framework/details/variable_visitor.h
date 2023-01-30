@@ -29,7 +29,11 @@ namespace details {
 
 class VariableVisitor {
  public:
+<<<<<<< HEAD
   static phi::DenseTensor &GetMutableTensor(Variable *var);
+=======
+  static Tensor &GetMutableTensor(Variable *var);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   static void ShareDimsAndLoD(const Variable &src, Variable *trg);
 

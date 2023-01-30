@@ -15,6 +15,7 @@
 import paddle
 import paddle.static as static
 from paddle.distributed import fleet
+<<<<<<< HEAD
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cost import CostEstimator
 from paddle.distributed.auto_parallel.dist_context import (
@@ -28,6 +29,16 @@ def train():
         mlp_pretrain_forward,
     )
 
+=======
+from paddle.distributed.auto_parallel.cost import CostEstimator
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
+
+
+def train():
+    from auto_parallel_relaunch_model import mlp_pretrain_forward
+    from auto_parallel_relaunch_model import batch_generator_creator
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dist_strategy = fleet.DistributedStrategy()
     # init parallel optimizer
     dist_strategy.auto_search = True
@@ -35,6 +46,7 @@ def train():
     train_program = static.Program()
     start_program = static.Program()
     loss, train_program, start_program, loader = mlp_pretrain_forward(
+<<<<<<< HEAD
         train_program, start_program
     )
 
@@ -53,6 +65,19 @@ def train():
         distributed_startup_program,
         distributed_main_program,
     ) = optimizer.minimize(loss, start_program)
+=======
+        train_program, start_program)
+
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                     beta1=0.9,
+                                                     beta2=0.999,
+                                                     epsilon=1e-08,
+                                                     grad_clip=None)
+
+    optimizer = fleet.distributed_optimizer(optimizer)
+    _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
+        loss, start_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # add cost estimator
     dist_context = get_default_distributed_context()
@@ -63,6 +88,7 @@ def train():
             dims_mapping = dist_op.dist_attr.get_input_dims_mapping(var_name)
             if dims_mapping is None:
                 dist_op.dist_attr.set_input_dims_mapping(
+<<<<<<< HEAD
                     var_name,
                     [
                         -1
@@ -75,6 +101,13 @@ def train():
                         )
                     ],
                 )
+=======
+                    var_name, [
+                        -1 for i in range(
+                            len(train_program.global_block().vars[var_name].
+                                shape))
+                    ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cluster.gen_default_config_cluster(device_count=2)
     cost_estimator = CostEstimator(train_program, cluster)
     global_cost = cost_estimator.estimate(dist_context)

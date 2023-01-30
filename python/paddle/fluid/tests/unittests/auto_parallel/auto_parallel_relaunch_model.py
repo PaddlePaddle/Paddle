@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 
 import paddle
@@ -19,6 +20,23 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.static as static
 import paddle.utils as utils
+=======
+import unittest
+import time
+import paddle.fluid as fluid
+import copy
+import os
+import numpy as np
+import subprocess
+import paddle
+import paddle.nn as nn
+import paddle.fluid as fluid
+import paddle.static as static
+import paddle.nn.functional as F
+import paddle.utils as utils
+from paddle.fluid import layers
+from paddle.io import IterableDataset, DataLoader
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
 
@@ -37,18 +55,27 @@ def get_random_inputs_and_labels(input_shape, label_shape):
 
 
 def batch_generator_creator():
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __reader__():
         for _ in range(batch_size):
             batch_input, batch_label = get_random_inputs_and_labels(
                 [batch_size, sequence_len, hidden_size],
+<<<<<<< HEAD
                 [batch_size, sequence_len, 1],
             )
+=======
+                [batch_size, sequence_len, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             yield batch_input, batch_label
 
     return __reader__
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -70,6 +97,29 @@ class MLPLayer(nn.Layer):
         self.linear1 = nn.Linear(
             dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
+        bias_attr = None
+
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear2 = nn.Linear(d_model, 1, weight_attr, bias_attr=bias_attr)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
@@ -86,6 +136,7 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_pretrain_forward(train_program, start_program):
+<<<<<<< HEAD
     with static.program_guard(
         train_program, start_program
     ), utils.unique_name.guard():
@@ -106,14 +157,37 @@ def mlp_pretrain_forward(train_program, start_program):
             dropout_ratio=0.1,
             initializer_range=0.02,
         )
+=======
+    with static.program_guard(train_program,
+                              start_program), utils.unique_name.guard():
+        input = static.data(name="input",
+                            shape=[batch_size, sequence_len, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, sequence_len, 1],
+                            dtype='float32')
+
+        auto.shard_tensor(input, _global_process_mesh, [None, None, None])
+
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       dropout_ratio=0.1,
+                       initializer_range=0.02)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
         loss = paddle.mean(error_cost)
 
+<<<<<<< HEAD
         loader = paddle.io.DataLoader.from_generator(
             feed_list=[input, label], capacity=4 * batch_size, iterable=True
         )
+=======
+        loader = paddle.io.DataLoader.from_generator(feed_list=[input, label],
+                                                     capacity=4 * batch_size,
+                                                     iterable=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return loss, train_program, start_program, loader
 
@@ -131,6 +205,7 @@ def train():
     train_program = static.Program()
     start_program = static.Program()
     loss, train_program, start_program, loader = mlp_pretrain_forward(
+<<<<<<< HEAD
         train_program, start_program
     )
 
@@ -149,6 +224,19 @@ def train():
         distributed_startup_program,
         distributed_main_program,
     ) = optimizer.minimize(loss, start_program)
+=======
+        train_program, start_program)
+
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                     beta1=0.9,
+                                                     beta2=0.999,
+                                                     epsilon=1e-08,
+                                                     grad_clip=None)
+
+    optimizer = fleet.distributed_optimizer(optimizer)
+    _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
+        loss, start_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     places = static.cuda_places()
     loader.set_batch_generator(batch_generator_creator(), places=places)

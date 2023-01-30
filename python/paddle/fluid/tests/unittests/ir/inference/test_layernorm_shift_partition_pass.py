@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import unittest
 from functools import partial
@@ -22,6 +23,20 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 import paddle.inference as paddle_infer
+=======
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import math
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume, reproduce_failure
+import hypothesis.strategies as st
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestLayernormShiftPartitionPass(PassAutoScanTest):
@@ -31,8 +46,13 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
        |
     reshape2
        |
+<<<<<<< HEAD
     reshape2
        |
+=======
+    reshape2 
+       | 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     transpose2
        |
     reshape2
@@ -50,6 +70,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
+<<<<<<< HEAD
             use_calib_mode=False,
         )
         config.set_trt_dynamic_shape_info(
@@ -63,6 +84,16 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
                 "input_data": [1, 784, 384],
             },
         )
+=======
+            use_calib_mode=False)
+        config.set_trt_dynamic_shape_info({
+            "input_data": [1, 9, 96],
+        }, {
+            "input_data": [4, 3136, 768],
+        }, {
+            "input_data": [1, 784, 384],
+        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         yield config, ['layernorm_shift_partition'], (1e-5, 1e-5)
 
         # trt dynamic_shape
@@ -73,6 +104,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Half,
             use_static=False,
+<<<<<<< HEAD
             use_calib_mode=False,
         )
         config.set_trt_dynamic_shape_info(
@@ -86,6 +118,16 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
                 "input_data": [1, 784, 384],
             },
         )
+=======
+            use_calib_mode=False)
+        config.set_trt_dynamic_shape_info({
+            "input_data": [1, 9, 96],
+        }, {
+            "input_data": [4, 3136, 768],
+        }, {
+            "input_data": [1, 784, 384],
+        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         yield config, ['layernorm_shift_partition'], (1e-3, 1e-3)
 
     def sample_program_config(self, draw):
@@ -101,6 +143,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
 
         def generate_input(attrs):
             return np.random.random(
+<<<<<<< HEAD
                 [attrs[1]["batch_size"], *attrs[1]["input_dim"]]
             ).astype(np.float32)
 
@@ -207,6 +250,97 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
                 ]
             },
         )
+=======
+                [attrs[1]["batch_size"],
+                 *attrs[1]["input_dim"]]).astype(np.float32)
+
+        def generate_weight(attrs):
+            return np.random.random(attrs[1]['input_dim'][-1]).astype(
+                np.float32)
+
+        attrs = [{
+            'begin_norm_axis': begin_norm_axis,
+            'epsilon': epsilon,
+        }, {
+            'batch_size': batch_size,
+            'input_dim': [(window_size * move_shape)**2, dim],
+        }, {
+            'axis': axis,
+            'input_resolution': window_size * move_shape,
+            'move_shape': move_shape,
+            'window_size': window_size,
+        }]
+
+        layer_norm_op = OpConfig(type="layer_norm",
+                                 inputs={
+                                     "X": ["input_data"],
+                                     "Bias": ["layer_norm_bias"],
+                                     "Scale": ["layer_norm_scale"]
+                                 },
+                                 outputs={
+                                     "Y": ["layer_norm_output1"],
+                                     "Mean": ["layer_norm_output2"],
+                                     "Variance": ["layer_norm_output3"]
+                                 },
+                                 attrs={
+                                     "begin_norm_axis":
+                                     attrs[0]["begin_norm_axis"],
+                                     "epsilon": attrs[0]["epsilon"],
+                                 })
+        reshape_op2 = OpConfig(type="reshape2",
+                               inputs={
+                                   "X": ["layer_norm_output1"],
+                               },
+                               outputs={
+                                   "Out": ["reshape_output2"],
+                                   "XShape": ["reshape_output2_xshape"],
+                               },
+                               attrs={
+                                   'shape': [
+                                       -1, attrs[2]["input_resolution"],
+                                       attrs[2]["input_resolution"],
+                                       attrs[1]["input_dim"][-1]
+                                   ]
+                               })
+        reshape_op3 = OpConfig(type="reshape2",
+                               inputs={
+                                   "X": ["reshape_output2"],
+                               },
+                               outputs={
+                                   "Out": ["reshape_output3"],
+                                   "XShape": ["reshape_output3_xshape"],
+                               },
+                               attrs={
+                                   'shape': [
+                                       -1, attrs[2]["move_shape"],
+                                       attrs[2]["window_size"],
+                                       attrs[2]["move_shape"],
+                                       attrs[2]["window_size"],
+                                       attrs[1]["input_dim"][-1]
+                                   ]
+                               })
+        transpose_op4 = OpConfig(type='transpose2',
+                                 inputs={
+                                     "X": ["reshape_output3"],
+                                 },
+                                 outputs={"Out": ["transpose_output4"]},
+                                 attrs={"axis": attrs[2]['axis']})
+        reshape_op5 = OpConfig(type="reshape2",
+                               inputs={
+                                   "X": ["transpose_output4"],
+                               },
+                               outputs={
+                                   "Out": ["reshape_output5"],
+                                   "XShape": ["reshape_output5_xshape"],
+                               },
+                               attrs={
+                                   'shape': [
+                                       -1, attrs[2]["window_size"],
+                                       attrs[2]["window_size"],
+                                       attrs[1]["input_dim"][-1]
+                                   ]
+                               })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         reshape_op6 = OpConfig(
             type="reshape2",
             inputs={
@@ -217,6 +351,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
                 "XShape": ["reshape_output6_xshape"],
             },
             attrs={
+<<<<<<< HEAD
                 'shape': [
                     -1,
                     attrs[2]["window_size"] ** 2,
@@ -249,10 +384,33 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             },
             outputs=["reshape_output6"],
         )
+=======
+                'shape':
+                [-1, attrs[2]["window_size"]**2, attrs[1]["input_dim"][-1]]
+            })
+
+        program_config = ProgramConfig(
+            ops=[
+                layer_norm_op, reshape_op2, reshape_op3, transpose_op4,
+                reshape_op5, reshape_op6
+            ],
+            weights={
+                "layer_norm_bias":
+                TensorConfig(data_gen=partial(generate_weight, attrs)),
+                "layer_norm_scale":
+                TensorConfig(data_gen=partial(generate_weight, attrs))
+            },
+            inputs={
+                "input_data":
+                TensorConfig(data_gen=partial(generate_input, attrs)),
+            },
+            outputs=["reshape_output6"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=50,
@@ -260,6 +418,13 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             max_duration=250,
             min_success_num=50,
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=50,
+                            passes=["layernorm_shift_partition_fuse_pass"],
+                            max_duration=250,
+                            min_success_num=50)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestLayernormShiftPartition2Pass(PassAutoScanTest):
@@ -290,6 +455,7 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
+<<<<<<< HEAD
             use_calib_mode=False,
         )
         config.set_trt_dynamic_shape_info(
@@ -303,6 +469,16 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
                 "input_data": [1, 784, 384],
             },
         )
+=======
+            use_calib_mode=False)
+        config.set_trt_dynamic_shape_info({
+            "input_data": [1, 9, 96],
+        }, {
+            "input_data": [4, 3136, 768],
+        }, {
+            "input_data": [1, 784, 384],
+        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         yield config, ['layernorm_shift_partition'], (1e-5, 1e-5)
 
         # trt dynamic_shape
@@ -313,6 +489,7 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Half,
             use_static=False,
+<<<<<<< HEAD
             use_calib_mode=False,
         )
         config.set_trt_dynamic_shape_info(
@@ -326,6 +503,16 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
                 "input_data": [1, 784, 384],
             },
         )
+=======
+            use_calib_mode=False)
+        config.set_trt_dynamic_shape_info({
+            "input_data": [1, 9, 96],
+        }, {
+            "input_data": [4, 3136, 768],
+        }, {
+            "input_data": [1, 784, 384],
+        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         yield config, ['layernorm_shift_partition'], (1e-3, 1e-3)
 
     def sample_program_config(self, draw):
@@ -341,6 +528,7 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
 
         def generate_input(attrs):
             return np.random.random(
+<<<<<<< HEAD
                 [attrs[1]["batch_size"], *attrs[1]["input_dim"]]
             ).astype(np.float32)
 
@@ -459,6 +647,108 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
                 ]
             },
         )
+=======
+                [attrs[1]["batch_size"],
+                 *attrs[1]["input_dim"]]).astype(np.float32)
+
+        def generate_weight(attrs):
+            return np.random.random(attrs[1]['input_dim'][-1]).astype(
+                np.float32)
+
+        attrs = [{
+            'begin_norm_axis': begin_norm_axis,
+            'epsilon': epsilon,
+        }, {
+            'batch_size': batch_size,
+            'input_dim': [(window_size * move_shape)**2, dim],
+        }, {
+            'axis': axis,
+            'input_resolution': window_size * move_shape,
+            'move_shape': move_shape,
+            'window_size': window_size,
+        }]
+
+        layer_norm_op = OpConfig(type="layer_norm",
+                                 inputs={
+                                     "X": ["input_data"],
+                                     "Bias": ["layer_norm_bias"],
+                                     "Scale": ["layer_norm_scale"]
+                                 },
+                                 outputs={
+                                     "Y": ["layer_norm_output1"],
+                                     "Mean": ["layer_norm_output2"],
+                                     "Variance": ["layer_norm_output3"]
+                                 },
+                                 attrs={
+                                     "begin_norm_axis":
+                                     attrs[0]["begin_norm_axis"],
+                                     "epsilon": attrs[0]["epsilon"],
+                                 })
+        reshape_op2 = OpConfig(type="reshape2",
+                               inputs={
+                                   "X": ["layer_norm_output1"],
+                               },
+                               outputs={
+                                   "Out": ["reshape_output2"],
+                                   "XShape": ["reshape_output2_xshape"],
+                               },
+                               attrs={
+                                   'shape': [
+                                       -1, attrs[2]["input_resolution"],
+                                       attrs[2]["input_resolution"],
+                                       attrs[1]["input_dim"][-1]
+                                   ]
+                               })
+        roll_op1 = OpConfig(type="roll",
+                            inputs={"X": ["reshape_output2"]},
+                            outputs={"Out": ["roll_output1"]},
+                            attrs={
+                                "axis": [1, 2],
+                                "shifts": [
+                                    -math.floor(
+                                        (attrs[2]["window_size"]) / 2.0),
+                                    -math.floor((attrs[2]["window_size"]) / 2.0)
+                                ]
+                            })
+        reshape_op3 = OpConfig(type="reshape2",
+                               inputs={
+                                   "X": ["roll_output1"],
+                               },
+                               outputs={
+                                   "Out": ["reshape_output3"],
+                                   "XShape": ["reshape_output3_xshape"],
+                               },
+                               attrs={
+                                   'shape': [
+                                       -1, attrs[2]["move_shape"],
+                                       attrs[2]["window_size"],
+                                       attrs[2]["move_shape"],
+                                       attrs[2]["window_size"],
+                                       attrs[1]["input_dim"][-1]
+                                   ]
+                               })
+        transpose_op4 = OpConfig(type='transpose2',
+                                 inputs={
+                                     "X": ["reshape_output3"],
+                                 },
+                                 outputs={"Out": ["transpose_output4"]},
+                                 attrs={"axis": attrs[2]['axis']})
+        reshape_op5 = OpConfig(type="reshape2",
+                               inputs={
+                                   "X": ["transpose_output4"],
+                               },
+                               outputs={
+                                   "Out": ["reshape_output5"],
+                                   "XShape": ["reshape_output5_xshape"],
+                               },
+                               attrs={
+                                   'shape': [
+                                       -1, attrs[2]["window_size"],
+                                       attrs[2]["window_size"],
+                                       attrs[1]["input_dim"][-1]
+                                   ]
+                               })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         reshape_op6 = OpConfig(
             type="reshape2",
             inputs={
@@ -469,6 +759,7 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
                 "XShape": ["reshape_output6_xshape"],
             },
             attrs={
+<<<<<<< HEAD
                 'shape': [
                     -1,
                     attrs[2]["window_size"] ** 2,
@@ -502,10 +793,33 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
             },
             outputs=["reshape_output6"],
         )
+=======
+                'shape':
+                [-1, attrs[2]["window_size"]**2, attrs[1]["input_dim"][-1]]
+            })
+
+        program_config = ProgramConfig(
+            ops=[
+                layer_norm_op, reshape_op2, roll_op1, reshape_op3,
+                transpose_op4, reshape_op5, reshape_op6
+            ],
+            weights={
+                "layer_norm_bias":
+                TensorConfig(data_gen=partial(generate_weight, attrs)),
+                "layer_norm_scale":
+                TensorConfig(data_gen=partial(generate_weight, attrs))
+            },
+            inputs={
+                "input_data":
+                TensorConfig(data_gen=partial(generate_input, attrs)),
+            },
+            outputs=["reshape_output6"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=50,
@@ -513,6 +827,13 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
             max_duration=250,
             min_success_num=50,
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=50,
+                            passes=["layernorm_shift_partition_fuse_pass"],
+                            max_duration=250,
+                            min_success_num=50)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

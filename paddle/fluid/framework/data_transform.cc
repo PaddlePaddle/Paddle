@@ -31,6 +31,7 @@ class Variable;
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 static void PassTensorData(phi::DenseTensor *from, phi::DenseTensor *to) {
   to->ShareDataWith(*from);
   *from = phi::DenseTensor();
@@ -63,10 +64,44 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
 
         auto out_format = phi::funcs::OneDNNFormatForSize(
             in.dims().size(), phi::funcs::ToOneDNNFormat(lin));
+=======
+static void PassTensorData(Tensor *from, Tensor *to) {
+  to->ShareDataWith(*from);
+  *from = Tensor();
+}
+
+void TransformData(const OpKernelType &expected_kernel_type,
+                   const OpKernelType &kernel_type_for_var,
+                   const Tensor &input_tensor,
+                   Tensor *output_tensor) {
+  bool transformed = false;
+  Tensor in;
+  in.ShareDataWith(input_tensor);
+  Tensor out;
+  const DataLayout lin = kernel_type_for_var.data_layout_;
+  const DataLayout lout = expected_kernel_type.data_layout_;
+  // do layout transform
+  if (NeedTransformLayout(lout, lin)) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (lin == DataLayout::kMKLDNN || lout == DataLayout::kMKLDNN) {
+      PADDLE_ENFORCE_EQ(
+          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN),
+          true,
+          platform::errors::PreconditionNotMet(
+              "No layout transform needed between two MKLDNN OPKernels."));
+
+      if (lin != DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN) {
+        // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
+        // Just set layout/format. No real transform occur
+
+        auto out_format = platform::MKLDNNFormatForSize(in.dims().size(),
+                                                        ToMKLDNNFormat(lin));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out.ShareDataWith(input_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
         if (lin == DataLayout::kNHWC || lin == DataLayout::kNDHWC) {
+<<<<<<< HEAD
           phi::funcs::MatchShapeToLayout(&out, lin, lout);
           // We register only NHWC assuming that model is consistent e.g. either
           // NHWC or NCHW
@@ -100,22 +135,58 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
 #else
     // Case3 - transfrom between Non-ONEDNN OPKernels
     TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out, place);
+=======
+          platform::MatchShapeToLayout(&out, lin, lout);
+          // We register only NHWC assuming that model is consistent e.g. either
+          // NHWC or NCHW
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .set_cur_paddle_data_layout(lin);
+        }
+        dnnl::memory::desc out_mem_desc(
+            vectorize(out.dims()),
+            ToMKLDNNDataType(TransToProtoVarType(in.type())),
+            out_format);
+        out.set_mem_desc(out_mem_desc);
+      } else {
+        // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
+        // Do transform via MKLDNN lib
+        TransDataLayoutFromMKLDNN(
+            kernel_type_for_var, expected_kernel_type, in, &out);
+      }
+    } else {
+      // Case3 - transfrom between Non-MKLDNN OPKernels
+      TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+    }
+#else
+    // Case3 - transfrom between Non-MKLDNN OPKernels
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
     transformed = true;
     PassTensorData(&out, &in);
   }
 
   // do data type transform
+<<<<<<< HEAD
   if (NeedTransformDataType(expected_kernel_type, kernel_type_for_var)) {
+=======
+  if (expected_kernel_type.data_type_ != kernel_type_for_var.data_type_) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TransDataType(kernel_type_for_var, expected_kernel_type, in, &out);
     transformed = true;
     PassTensorData(&out, &in);
   }
 
   // do device transform
+<<<<<<< HEAD
   if (kernel_type_for_var.backend() != phi::Backend::ALL_BACKEND &&
       !platform::is_same_place(in.place(), place)) {
     TransDataDevice(in, place, &out);
+=======
+  if (!platform::is_same_place(kernel_type_for_var.place_,
+                               expected_kernel_type.place_)) {
+    TransDataDevice(in, expected_kernel_type.place_, &out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     transformed = true;
     PassTensorData(&out, &in);
   }
@@ -130,11 +201,19 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
 }
 
 void SetTensorToVariable(const Variable &in_var,
+<<<<<<< HEAD
                          const phi::DenseTensor &tensor,
                          Variable *out_var) {
   if (in_var.IsType<phi::DenseTensor>()) {
     auto &in_lod_tensor = in_var.Get<phi::DenseTensor>();
     auto *tran_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
+=======
+                         const Tensor &tensor,
+                         Variable *out_var) {
+  if (in_var.IsType<LoDTensor>()) {
+    auto &in_lod_tensor = in_var.Get<LoDTensor>();
+    auto *tran_lod_tensor = out_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tran_lod_tensor->set_lod(in_lod_tensor.lod());
     tran_lod_tensor->set_layout(in_lod_tensor.layout());
 #ifdef PADDLE_WITH_MKLDNN
@@ -149,8 +228,12 @@ void SetTensorToVariable(const Variable &in_var,
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
+<<<<<<< HEAD
         "Unsupported variable type, only supports phi::DenseTensor or "
         "SelectedRows, "
+=======
+        "Unsupported variable type, only supports LoDTensor or SelectedRows, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "but the input variable type is %s.",
         ToTypeName(in_var.Type())));
   }

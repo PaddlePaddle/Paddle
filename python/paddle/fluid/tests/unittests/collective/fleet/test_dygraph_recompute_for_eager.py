@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -72,6 +73,59 @@ class Naive_fc_net(paddle.nn.Layer):
         recompute_kwargs={},
     ):
         super().__init__()
+=======
+from __future__ import print_function
+
+import os
+
+os.environ['FLAGS_enable_eager_mode'] = '1'
+
+import unittest
+import numpy as np
+
+import paddle
+from paddle.autograd import PyLayer
+from paddle.distributed.fleet.utils import recompute
+import random
+from paddle.incubate.distributed.fleet import recompute_sequential
+
+import paddle.fluid.layers as layers
+
+
+def get_fc_block(block_idx, input_size, is_last=False):
+    block_name = "block_" + str(block_idx)
+    block = paddle.nn.Sequential(
+        (block_name + "_fc_0",
+         paddle.nn.Linear(input_size, input_size, bias_attr=False)),
+        (block_name + "_dropout", paddle.nn.Dropout(p=0.5)),
+        (block_name + "_relu_1", paddle.nn.ReLU()),
+        (block_name + "_fc_1",
+         paddle.nn.Linear(input_size, input_size, bias_attr=False)),
+        (block_name + "_relu_2", paddle.nn.ReLU()),
+    )
+    if is_last:
+        block.add_sublayer(block_name + "_fc_2",
+                           paddle.nn.Linear(input_size, 1,
+                                            bias_attr=False))  # add sublayer
+    else:
+        block.add_sublayer(block_name + "_fc_2",
+                           paddle.nn.Linear(input_size,
+                                            input_size,
+                                            bias_attr=False))  # add sublayer
+    return block
+
+
+class Naive_fc_net(paddle.nn.Layer):
+
+    def __init__(self,
+                 input_size=10,
+                 recompute_blocks=[1, 3],
+                 use_fleet_sq=False,
+                 segments=1,
+                 use_raw_recompute=False,
+                 recompute_kwargs={}):
+        super(Naive_fc_net, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.recompute_blocks = recompute_blocks
         self.recompute_kwargs = recompute_kwargs
         self.use_fleet_sq = use_fleet_sq
@@ -85,6 +139,7 @@ class Naive_fc_net(paddle.nn.Layer):
         self.runfunc4 = get_fc_block(4, input_size, is_last=True)
 
         if self.use_fleet_sq and not use_raw_recompute:
+<<<<<<< HEAD
             self.runfuncs = paddle.nn.Sequential(
                 self.runfunc0,
                 self.runfunc1,
@@ -99,23 +154,41 @@ class Naive_fc_net(paddle.nn.Layer):
             self.runfunc2,
             self.runfunc3,
             self.runfunc4,
+=======
+            self.runfuncs = paddle.nn.Sequential(self.runfunc0, self.runfunc1,
+                                                 self.runfunc2, self.runfunc3,
+                                                 self.runfunc4)
+
+        self.layers = [
+            self.runfunc0, self.runfunc1, self.runfunc2, self.runfunc3,
+            self.runfunc4
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
         # default segments = 2
         if use_raw_recompute:
             self.layers = [
                 paddle.nn.Sequential(self.runfunc0, self.runfunc1),
+<<<<<<< HEAD
                 paddle.nn.Sequential(
                     self.runfunc2, self.runfunc3, self.runfunc4
                 ),
+=======
+                paddle.nn.Sequential(self.runfunc2, self.runfunc3,
+                                     self.runfunc4)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
 
     def forward(self, inputs):
 
         if self.use_fleet_sq and not self.use_raw_recompute:
             return paddle.incubate.distributed.fleet.recompute_sequential(
+<<<<<<< HEAD
                 {"segments": self.segments}, self.runfuncs, inputs
             )
+=======
+                {"segments": self.segments}, self.runfuncs, inputs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self.use_raw_recompute:
             inputs = recompute(self.layers[0], inputs)
@@ -123,15 +196,21 @@ class Naive_fc_net(paddle.nn.Layer):
 
         for i in range(len(self.layers)):
             if i in self.recompute_blocks:
+<<<<<<< HEAD
                 inputs = recompute(
                     self.layers[i], inputs, **self.recompute_kwargs
                 )
+=======
+                inputs = recompute(self.layers[i], inputs,
+                                   **self.recompute_kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 inputs = self.layers[i](inputs)
 
         return inputs
 
 
+<<<<<<< HEAD
 def run_model(
     recompute_block=[],
     recompute_kwargs={},
@@ -141,12 +220,22 @@ def run_model(
     enable_autocast=False,
     pure_fp16=False,
 ):
+=======
+def run_model(recompute_block=[],
+              recompute_kwargs={},
+              use_fleet_sq=False,
+              use_raw_recompute=False,
+              segments=1,
+              enable_autocast=False,
+              pure_fp16=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     gen = paddle.seed(10)
     gen.manual_seed(10)
     np.random.seed(10)
     random.seed(10)
 
     batch_size, input_size = 1, 10
+<<<<<<< HEAD
     model = Naive_fc_net(
         input_size,
         recompute_blocks=recompute_block,
@@ -163,6 +252,17 @@ def run_model(
     optimizer = paddle.optimizer.SGD(
         learning_rate=0.01, parameters=model.parameters()
     )
+=======
+    model = Naive_fc_net(input_size,
+                         recompute_blocks=recompute_block,
+                         use_fleet_sq=use_fleet_sq,
+                         use_raw_recompute=use_raw_recompute,
+                         segments=segments,
+                         recompute_kwargs=recompute_kwargs)
+    loss_fn = paddle.nn.MSELoss(reduction='mean')
+    optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                     parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if enable_autocast:
         scaler = paddle.amp.GradScaler()
@@ -174,7 +274,11 @@ def run_model(
 
         x_data = np.random.randn(batch_size, input_size).astype(np.float32)
         x = paddle.to_tensor(x_data)
+<<<<<<< HEAD
         x.stop_gradient = False
+=======
+        # x.stop_gradient = False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         level = 'O2' if pure_fp16 else 'O1'
         with paddle.amp.auto_cast(True, level=level):
             y_pred = model(x)
@@ -194,8 +298,15 @@ def run_model(
     return loss_, param_, grad_
 
 
+<<<<<<< HEAD
 class TestRecompute(unittest.TestCase):
     def test_base_case(self, enable_autocast=False, pure_fp16=False):
+=======
+class TestPyLayer(unittest.TestCase):
+
+    def test_base_case(self, enable_autocast=False, pure_fp16=False):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def check_identical(loss_ref, param_ref, grad_ref, loss, param, grad):
             self.assertEqual(loss_ref, loss)
             self.assertEqual(param_ref, param)
@@ -205,6 +316,7 @@ class TestRecompute(unittest.TestCase):
         loss_ref, param_ref, grad_ref = run_model(
             recompute_block=[],
             enable_autocast=enable_autocast,
+<<<<<<< HEAD
             pure_fp16=pure_fp16,
         )
 
@@ -257,12 +369,47 @@ class TestRecompute(unittest.TestCase):
                 recompute_kwargs={"use_reentrant": flag},
             )
             check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+=======
+            pure_fp16=pure_fp16)
+
+        # recompute second block
+        loss, param, grad = run_model(recompute_block=[1],
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute fourth block
+        loss, param, grad = run_model(recompute_block=[3],
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute second to fourth block
+        loss, param, grad = run_model(recompute_block=[1, 2, 3],
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute second & fourth block
+        loss, param, grad = run_model(recompute_block=[1, 3],
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute_sequential with segments=1 using fleet
+        loss, param, grad = run_model(recompute_block=[],
+                                      use_fleet_sq=True,
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # with base recompute, and segments=2
         loss_ref, param_ref, grad_ref = run_model(
             recompute_block=[],
             enable_autocast=enable_autocast,
             use_raw_recompute=True,
+<<<<<<< HEAD
             pure_fp16=pure_fp16,
         )
 
@@ -274,12 +421,23 @@ class TestRecompute(unittest.TestCase):
             enable_autocast=enable_autocast,
             pure_fp16=pure_fp16,
         )
+=======
+            pure_fp16=pure_fp16)
+
+        # recompute using paddle.incubate.distributed.fleet.recompute_sequential, segments=2
+        loss, param, grad = run_model(recompute_block=[],
+                                      use_fleet_sq=True,
+                                      segments=2,
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
     def test_fc_net_with_dropout(self):
         self.test_base_case()
 
     def test_fc_net_without_restore_rng(self):
+<<<<<<< HEAD
         for flag in [True, False]:
             loss_ref, param_ref, grad_ref = run_model(
                 recompute_block=[2],
@@ -289,6 +447,12 @@ class TestRecompute(unittest.TestCase):
                 },
                 enable_autocast=True,
             )
+=======
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[2],
+            recompute_kwargs={"preserve_rng_state": False},
+            enable_autocast=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_fc_net_with_amp(self):
         self.test_base_case(enable_autocast=True)
@@ -298,6 +462,7 @@ class TestRecompute(unittest.TestCase):
 
     def test_recompute_kwargs(self):
         paddle.set_device("gpu")
+<<<<<<< HEAD
         pos = paddle.randn(shape=[10, 10], dtype="float32")
         pos.stop_gradient = False
 
@@ -311,6 +476,17 @@ class TestRecompute(unittest.TestCase):
         loss_ref, param_ref, grad_ref = run_model(
             recompute_block=[2], recompute_kwargs=kwargs
         )
+=======
+        kwargs = {"is_test": False}
+        with self.assertRaises(TypeError):
+            loss_ref, param_ref, grad_ref = run_model(recompute_block=[2],
+                                                      recompute_kwargs=kwargs)
+
+    def test_recompute_cpu_rng(self):
+        paddle.set_device("cpu")
+        with self.assertRaises(RuntimeError):
+            loss_ref, param_ref, grad_ref = run_model(recompute_block=[2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

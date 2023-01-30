@@ -14,18 +14,28 @@
 
 import unittest
 
+<<<<<<< HEAD
 import config
 import numpy as np
 import parameterize
 import scipy.stats
 
 import paddle
+=======
+import numpy as np
+import paddle
+import scipy.stats
+
+import config
+import parameterize
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
+<<<<<<< HEAD
     (parameterize.TEST_CASE_NAME, 'total_count', 'probs'),
     [
         ('one-dim', 5, parameterize.xrand((3,))),
@@ -35,34 +45,60 @@ paddle.enable_static()
     ],
 )
 class TestMultinomial(unittest.TestCase):
+=======
+    (parameterize.TEST_CASE_NAME, 'total_count', 'probs'), [
+        ('one-dim', 5, parameterize.xrand((3, ))),
+        ('multi-dim', 9, parameterize.xrand((2, 3))),
+        ('prob-sum-one', 5, np.array([0.5, 0.2, 0.3])),
+        ('prob-sum-non-one', 5, np.array([2., 3., 5.])),
+    ])
+class TestMultinomial(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         executor = paddle.static.Executor(self.place)
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             probs = paddle.static.data(
                 'probs', self.probs.shape, self.probs.dtype
             )
+=======
+            probs = paddle.static.data('probs', self.probs.shape,
+                                       self.probs.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dist = paddle.distribution.Multinomial(self.total_count, probs)
             mean = dist.mean
             var = dist.variance
             entropy = dist.entropy()
+<<<<<<< HEAD
             mini_samples = dist.sample(shape=(6,))
             large_samples = dist.sample(shape=(5000,))
+=======
+            mini_samples = dist.sample(shape=(6, ))
+            large_samples = dist.sample(shape=(5000, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         fetch_list = [mean, var, entropy, mini_samples, large_samples]
         feed = {'probs': self.probs}
 
         executor.run(startup_program)
         [
+<<<<<<< HEAD
             self.mean,
             self.var,
             self.entropy,
             self.mini_samples,
             self.large_samples,
+=======
+            self.mean, self.var, self.entropy, self.mini_samples,
+            self.large_samples
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ] = executor.run(main_program, feed=feed, fetch_list=fetch_list)
 
     def test_mean(self):
         self.assertEqual(str(self.mean.dtype).split('.')[-1], self.probs.dtype)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self.mean,
             self._np_mean(),
@@ -94,6 +130,31 @@ class TestMultinomial(unittest.TestCase):
         self.assertEqual(
             str(self.mini_samples.dtype).split('.')[-1], self.probs.dtype
         )
+=======
+        np.testing.assert_allclose(self.mean,
+                                   self._np_mean(),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+
+    def test_variance(self):
+        self.assertEqual(str(self.var.dtype).split('.')[-1], self.probs.dtype)
+        np.testing.assert_allclose(self.var,
+                                   self._np_variance(),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+
+    def test_entropy(self):
+        self.assertEqual(
+            str(self.entropy.dtype).split('.')[-1], self.probs.dtype)
+        np.testing.assert_allclose(self.entropy,
+                                   self._np_entropy(),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+
+    def test_sample(self):
+        self.assertEqual(
+            str(self.mini_samples.dtype).split('.')[-1], self.probs.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertTrue(np.all(self.mini_samples.sum(-1) == self.total_count))
 
         sample_mean = self.large_samples.mean(axis=0)
@@ -116,6 +177,7 @@ class TestMultinomial(unittest.TestCase):
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'total_count', 'probs', 'value'),
     [
+<<<<<<< HEAD
         (
             'value-float',
             5,
@@ -133,24 +195,42 @@ class TestMultinomial(unittest.TestCase):
     ],
 )
 class TestMultinomialPmf(unittest.TestCase):
+=======
+        ('value-float', 5, np.array([0.2, 0.3, 0.5]), np.array([1., 1., 3.])),
+        ('value-int', 5, np.array([0.2, 0.3, 0.5]), np.array([2, 2, 1])),
+        ('value-multi-dim', 5, np.array([[0.3, 0.7], [0.5, 0.5]
+                                         ]), np.array([[1., 4.], [2., 3.]])),
+        # ('value-sum-non-n', 10, np.array([0.5, 0.2, 0.3]), np.array([4,5,2])),
+    ])
+class TestMultinomialPmf(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         executor = paddle.static.Executor(self.place)
 
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             probs = paddle.static.data(
                 'probs', self.probs.shape, self.probs.dtype
             )
             value = paddle.static.data(
                 'value', self.value.shape, self.value.dtype
             )
+=======
+            probs = paddle.static.data('probs', self.probs.shape,
+                                       self.probs.dtype)
+            value = paddle.static.data('value', self.value.shape,
+                                       self.value.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dist = paddle.distribution.Multinomial(self.total_count, probs)
             pmf = dist.prob(value)
         feed = {'probs': self.probs, 'value': self.value}
         fetch_list = [pmf]
 
         executor.run(startup_program)
+<<<<<<< HEAD
         [self.pmf] = executor.run(
             main_program, feed=feed, fetch_list=fetch_list
         )
@@ -164,10 +244,24 @@ class TestMultinomialPmf(unittest.TestCase):
             rtol=config.RTOL.get(str(self.probs.dtype)),
             atol=config.ATOL.get(str(self.probs.dtype)),
         )
+=======
+        [self.pmf] = executor.run(main_program,
+                                  feed=feed,
+                                  fetch_list=fetch_list)
+
+    def test_prob(self):
+        np.testing.assert_allclose(self.pmf,
+                                   scipy.stats.multinomial.pmf(
+                                       self.value, self.total_count,
+                                       self.probs),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
+<<<<<<< HEAD
     (parameterize.TEST_CASE_NAME, 'total_count', 'probs'),
     [
         ('total_count_le_one', 0, np.array([0.3, 0.7])),
@@ -176,11 +270,21 @@ class TestMultinomialPmf(unittest.TestCase):
     ],
 )
 class TestMultinomialException(unittest.TestCase):
+=======
+    (parameterize.TEST_CASE_NAME, 'total_count', 'probs'), [
+        ('total_count_le_one', 0, np.array([0.3, 0.7])),
+        ('total_count_float', np.array([0.3, 0.7])),
+        ('probs_zero_dim', np.array(0)),
+    ])
+class TestMultinomialException(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         startup_program = paddle.static.Program()
         self.main_program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
 
+<<<<<<< HEAD
         with paddle.static.program_guard(self.main_program, startup_program):
             probs = paddle.static.data(
                 'probs', self.probs.shape, self.probs.dtype
@@ -189,6 +293,15 @@ class TestMultinomialException(unittest.TestCase):
         self.feed = {'probs': self.probs}
 
         self.executor.run(startup_program)
+=======
+        with paddle.static.program_guard(main_program, startup_program):
+            probs = paddle.static.data('probs', self.probs.shape,
+                                       self.probs.dtype)
+            dist = paddle.distribution.Multinomial(self.total_count, probs)
+        self.feed = {'probs': self.probs}
+
+        executor.run(startup_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def TestInit(self):
         with self.assertRaises(ValueError):

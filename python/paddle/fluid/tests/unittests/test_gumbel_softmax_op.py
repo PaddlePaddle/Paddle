@@ -11,17 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+=======
+import numpy as np
+from op_test import OpTest
+import paddle.fluid.core as core
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestGumbelSoftmaxOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.shape = [20, 10]
         self.attrs = {"hard": True, "axis": -1}
@@ -50,6 +64,7 @@ class TestGumbelSoftmaxOp(OpTest):
         self.check_grad(["X"], "Out")
 
 
+<<<<<<< HEAD
 class TestGumbelSoftmax_ZeroDim(OpTest):
     def setUp(self):
         self.op_type = "gumbel_softmax"
@@ -69,6 +84,10 @@ class TestGumbelSoftmax_ZeroDim(OpTest):
 
 
 class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
+=======
+class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.shape = [20, 10]
         self.attrs = {"hard": True, "axis": 0}
@@ -77,6 +96,10 @@ class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
 
 
 class TestGumbelSoftmaxOp3(TestGumbelSoftmaxOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.shape = [100]
         self.attrs = {"hard": True, "axis": -1}
@@ -85,6 +108,10 @@ class TestGumbelSoftmaxOp3(TestGumbelSoftmaxOp):
 
 
 class TestGumbelSoftmaxOp4(TestGumbelSoftmaxOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.shape = [20, 10, 5]
         self.attrs = {"hard": True, "axis": -1}
@@ -93,6 +120,10 @@ class TestGumbelSoftmaxOp4(TestGumbelSoftmaxOp):
 
 
 class TestGumbelSoftmaxOp5(TestGumbelSoftmaxOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.shape = [20, 10, 5]
         self.attrs = {"hard": True, "axis": 1}
@@ -101,6 +132,10 @@ class TestGumbelSoftmaxOp5(TestGumbelSoftmaxOp):
 
 
 class TestGumbelSoftmaxOpSampleDistribution(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def softmax(self, x):
         x_row_max = x.max(axis=-1)
         x_row_max = x_row_max.reshape(list(x.shape)[:-1] + [1])
@@ -152,6 +187,10 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
 
 
 class TestGumbelSoftmaxOpGrad(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.shape = [20, 10]
         self.dtype = "float64"
@@ -171,13 +210,21 @@ class TestGumbelSoftmaxOpGrad(unittest.TestCase):
         out_hard.sum().backward()
         out_soft.sum().backward()
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             x_hard.grad.numpy(), x_soft.grad.numpy(), rtol=1e-5, atol=1e-8
         )
+=======
+        np.testing.assert_allclose(x_hard.grad.numpy(),
+                                   x_soft.grad.numpy(),
+                                   rtol=1e-5,
+                                   atol=1e-8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
 
 
 class TestGumbelSoftmaxAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(np.float32)
@@ -187,6 +234,16 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
             if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1., 1., self.x_shape).astype(np.float32)
+        self.count_expected = 24
+        self.place = paddle.CUDAPlace(0) \
+            if paddle.fluid.core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_api(self):
         # test static api
@@ -205,15 +262,32 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
             out_np = np.array(y)
             self.assertEqual(out_np.sum(), self.count_expected)
 
+<<<<<<< HEAD
 
 class TestGumbelSoftmaxOpError(unittest.TestCase):
+=======
+            with _test_eager_guard():
+                x = paddle.to_tensor(self.x)
+                y = paddle.nn.functional.gumbel_softmax(x, hard=True)
+                out_np = np.array(y)
+                self.assertEqual(out_np.sum(), self.count_expected)
+
+
+class TestGumbelSoftmaxOpError(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         paddle.disable_static()
 
         def test_Variable():
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(
                 np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace()
             )
+=======
+            x1 = fluid.create_lod_tensor(np.zeros((100, 784)),
+                                         [[10, 10, 10, 70]], fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.nn.functional.gumbel_softmax(x1)
 
         self.assertRaises(ValueError, test_Variable)
@@ -240,9 +314,15 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
 
         def test_dtype():
             with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
                 x_int32 = paddle.fluid.data(
                     name='x_int32', shape=[2, 3], dtype='int32'
                 )
+=======
+                x_int32 = paddle.fluid.data(name='x_int32',
+                                            shape=[2, 3],
+                                            dtype='int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 paddle.nn.functional.gumbel_softmax(x_int32)
 
         self.assertRaises(TypeError, test_dtype)

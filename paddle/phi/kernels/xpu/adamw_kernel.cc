@@ -52,7 +52,10 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       DenseTensor* beta1_pow_out,
                       DenseTensor* beta2_pow_out,
                       DenseTensor* master_param_outs) {
+<<<<<<< HEAD
   using XPUType = typename XPUTypeTrait<T>::Type;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
     PADDLE_ENFORCE_EQ(
@@ -90,6 +93,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
     beta2_pow_ptr = xpu_beta2_pow.template data<float>();
   }
   if (with_decay) {
+<<<<<<< HEAD
     int r = xpu::adamw(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(grad.template data<T>()),
@@ -126,6 +130,42 @@ void AdamwDenseKernel(const Context& dev_ctx,
         epsilon_,
         param.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
+=======
+    int r = xpu::adamw(dev_ctx.x_context(),
+                       grad.template data<T>(),
+                       moment1.template data<float>(),
+                       moment2.template data<float>(),
+                       param.template data<T>(),
+                       beta1_pow_ptr,
+                       beta2_pow_ptr,
+                       learning_rate.template data<float>(),
+                       dev_ctx.template Alloc<float>(moment1_out),
+                       dev_ctx.template Alloc<float>(moment2_out),
+                       dev_ctx.template Alloc<T>(param_out),
+                       beta1_,
+                       beta2_,
+                       epsilon_,
+                       coeff,
+                       param.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+  } else {
+    int r = xpu::adam(dev_ctx.x_context(),
+                      grad.template data<T>(),
+                      moment1.template data<float>(),
+                      moment2.template data<float>(),
+                      param.template data<T>(),
+                      beta1_pow_ptr,
+                      beta2_pow_ptr,
+                      learning_rate.template data<float>(),
+                      dev_ctx.template Alloc<float>(moment1_out),
+                      dev_ctx.template Alloc<float>(moment2_out),
+                      dev_ctx.template Alloc<T>(param_out),
+                      beta1_,
+                      beta2_,
+                      epsilon_,
+                      param.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   if (!use_global_beta_pow) {
@@ -148,7 +188,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
                          false,
                          beta1_,
                          0.0f);
+<<<<<<< HEAD
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+=======
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       r = xpu::scale(dev_ctx.x_context(),
                      beta2_pow_ptr,
                      beta2_pow_out_p,
@@ -156,15 +200,23 @@ void AdamwDenseKernel(const Context& dev_ctx,
                      false,
                      beta2_,
                      0.0f);
+<<<<<<< HEAD
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+=======
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(
     adamw, XPU, ALL_LAYOUT, phi::AdamwDenseKernel, float, phi::dtype::float16) {
+=======
+PD_REGISTER_KERNEL(adamw, XPU, ALL_LAYOUT, phi::AdamwDenseKernel, float) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

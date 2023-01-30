@@ -133,10 +133,17 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
     if (var->Persistable()) {
       auto name = var->Name();
       Variable* root_var = root_scope_->FindVar(name);
+<<<<<<< HEAD
       phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
       auto* ptr = scope->Var(name);
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+      auto* ptr = scope->Var(name);
+      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+      LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #define HeterMemcpyFunc(cpp_type, proto_type)                                 \
   do {                                                                        \
@@ -167,8 +174,13 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
+<<<<<<< HEAD
 void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
                                   phi::DenseTensor* root_tensor,
+=======
+void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
+                                  LoDTensor* root_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                   const paddle::platform::Place& thread_place,
                                   cudaStream_t stream) {
   T* thread_ptr =
@@ -194,8 +206,13 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
+<<<<<<< HEAD
 void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
                                   phi::DenseTensor* root_tensor,
+=======
+void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
+                                  LoDTensor* root_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                   const paddle::platform::Place& thread_place) {
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
@@ -319,7 +336,11 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
     if (root_var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for (size_t j = 0; j < place_scopes_.size(); j++) {
       Scope* cur_thread_scope = place_scopes_[j];
@@ -328,8 +349,12 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       if (thread_var == nullptr) {
         continue;
       }
+<<<<<<< HEAD
       phi::DenseTensor* thread_tensor =
           thread_var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //      if (root_tensor->numel() != thread_tensor->numel()) {
 //        continue;
 //      }
@@ -422,12 +447,21 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 }
 
 template <typename T>
+<<<<<<< HEAD
 void HeterXpuTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
                                        phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   phi::DenseTensor tmp_tensor;
+=======
+void HeterXpuTrainer::MergeToRootScope(LoDTensor* root_tensor,
+                                       LoDTensor* tensor) {
+  LoDTensor tmp_root;
+  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  T* tmp_root_data = tmp_root.data<T>();
+  LoDTensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {

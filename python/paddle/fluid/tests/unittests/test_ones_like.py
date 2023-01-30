@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,10 +21,25 @@ import paddle
 import paddle.fluid as fluid
 from paddle import _C_ops, ones_like
 from paddle.fluid import Program, core, program_guard
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from paddle import _C_ops, _legacy_C_ops
+from paddle import ones_like
+from paddle.fluid import core, Program, program_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestOnesLikeAPIError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = paddle.fluid.data('x', [3, 4])
@@ -31,6 +47,10 @@ class TestOnesLikeAPIError(unittest.TestCase):
 
 
 class TestOnesLikeAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api(self):
         shape = [3, 4]
         startup_program = Program()
@@ -45,6 +65,7 @@ class TestOnesLikeAPI(unittest.TestCase):
             out4 = ones_like(x, 'int32')
             out5 = ones_like(x, 'int64')
 
+<<<<<<< HEAD
         place = (
             fluid.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -60,10 +81,22 @@ class TestOnesLikeAPI(unittest.TestCase):
         for i, dtype in enumerate(
             [np.float32, np.bool_, np.float64, np.int32, np.int64]
         ):
+=======
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        outs = exe.run(train_program,
+                       feed={'X': np.ones(shape).astype('float32')},
+                       fetch_list=[out1, out2, out3, out4, out5])
+
+        for i, dtype in enumerate(
+            [np.float32, np.bool_, np.float64, np.int32, np.int64]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(outs[i].dtype, dtype)
             self.assertEqual((outs[i] == np.ones(shape, dtype)).all(), True)
 
 
+<<<<<<< HEAD
 class TestOnesAPI(unittest.TestCase):
     def test_api(self):
         shape = [3, 4]
@@ -72,6 +105,34 @@ class TestOnesAPI(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+class TestOnesLikeImpeartive(unittest.TestCase):
+
+    def test_out(self):
+        shape = [3, 4]
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+        paddle.disable_static(place)
+        x = paddle.to_tensor(np.ones(shape))
+        for dtype in [np.bool_, np.float32, np.float64, np.int32, np.int64]:
+            out = ones_like(x, dtype)
+            self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
+
+        out = paddle.tensor.ones_like(x)
+        self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
+
+        out = paddle.tensor.creation.ones_like(x)
+        self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
+        paddle.enable_static()
+
+
+class TestOnesAPI(unittest.TestCase):
+
+    def test_api(self):
+        shape = [3, 4]
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.disable_static(place)
 
         for dtype in [np.float32, np.float64, np.int32, np.int64]:

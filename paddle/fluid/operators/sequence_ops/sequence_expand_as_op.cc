@@ -20,6 +20,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class SequenceExpandAsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -47,8 +52,13 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
       framework::Variable* y_var =
           PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
+<<<<<<< HEAD
       auto& x_dim = x_var->Get<phi::DenseTensor>().dims();
       auto& y_lod = y_var->Get<phi::DenseTensor>().lod();
+=======
+      auto& x_dim = x_var->Get<LoDTensor>().dims();
+      auto& y_lod = y_var->Get<LoDTensor>().lod();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       PADDLE_ENFORCE_EQ(y_lod.size(),
                         1,
@@ -83,10 +93,17 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("Y", /*->*/ "Out");
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -94,6 +111,7 @@ class SequenceExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(phi::DenseTensor, default phi::DenseTensor<float>) A 2-D "
              "phi::DenseTensor whose lod "
              "level is at most 1.");
@@ -104,6 +122,15 @@ class SequenceExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(phi::DenseTensor, default phi::DenseTensor<float>) Output "
               "phi::DenseTensor which is "
+=======
+             "(LoDTensor, default LoDTensor<float>) A 2-D LoDTensor whose lod "
+             "level is at most 1.");
+    AddInput("Y",
+             "(LoDTensor, default LoDTensor<float>) Referred LoDTensor whose "
+             "lod (specified level) is referred by Input(X).");
+    AddOutput("Out",
+              "(LodTensor, default LoDTensor<float>) Output LoDTensor which is "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "generated from Input(X) by referring lod of Input(Y).");
     AddComment(R"DOC(
 Sequence Expand As Operator.
@@ -117,26 +144,42 @@ Following are cases to better explain how this works:
 
 Case 1:
 
+<<<<<<< HEAD
 Given a 1-level phi::DenseTensor input(X)
+=======
+Given a 1-level LoDTensor input(X)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     X.data = [[a], [b], [c], [d]]
     X.dims = [4, 1]
 and input(Y)
     Y.lod = [[0, 3, 6, 7, 8]]
 ref_level: 0
+<<<<<<< HEAD
 then we get 1-level phi::DenseTensor
+=======
+then we get 1-level LoDTensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Out.lod =  [[0,            3,              6,  7,  8]]
     Out.data = [[a], [a], [a], [b], [b], [b], [c], [d]]
     Out.dims = [8, 1]
 
 Case 2:
 
+<<<<<<< HEAD
 Given a common phi::DenseTensor input(X)
+=======
+Given a common Tensor input(X)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     X.data = [[a, b], [c, d], [e, f]]
     X.dims = [3, 2]
 and input(Y)
     Y.lod = [[0, 2, 3, 6]]
 ref_level: 0
+<<<<<<< HEAD
 then we get a common phi::DenseTensor
+=======
+then we get a common LoDTensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Out.lod =  [[0,             2,     3,                    6]]
     Out.data = [[a, b], [a, b] [c, d], [e, f], [e, f], [e, f]]
     Out.dims = [6, 2]
@@ -166,11 +209,19 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
     }
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -25,16 +26,38 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import sys
+
+sys.path.append("..")
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestFlatten2Op(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'flatten2'
         self.use_dynamic_create_class = False
 
     class TestFlatten2Op(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.set_xpu()
             self.op_type = "flatten2"
@@ -47,7 +70,11 @@ class XPUTestFlatten2Op(XPUOpTestWrapper):
             self.init_attrs()
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
                 "XShape": np.random.random(self.in_shape).astype(self.dtype),
+=======
+                "XShape": np.random.random(self.in_shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def set_xpu(self):
@@ -68,12 +95,20 @@ class XPUTestFlatten2Op(XPUOpTestWrapper):
             self.attrs = {"axis": self.axis}
 
     class TestFlatten2OpWithCornerAxis(TestFlatten2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.axis = 0
             self.new_shape = (1, 120)
 
     class TestFlatten2OpWithDefaultAxis(TestFlatten2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.in_shape = (10, 2, 2, 3)
             self.new_shape = (10, 12)
@@ -82,6 +117,10 @@ class XPUTestFlatten2Op(XPUOpTestWrapper):
             self.attrs = {}
 
     class TestFlatten2OpSixDims(TestFlatten2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.in_shape = (3, 2, 3, 2, 4, 4)
             self.axis = 4

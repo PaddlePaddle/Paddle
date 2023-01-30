@@ -30,9 +30,15 @@ template <typename T, typename Context>
 void DotDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          const DenseTensor& dout,
                          const paddle::optional<DenseTensor>& ddx_opt,
                          const paddle::optional<DenseTensor>& ddy_opt,
+=======
+                         const DenseTensor& ddx,
+                         const DenseTensor& ddy,
+                         const DenseTensor& dout,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          DenseTensor* dx,
                          DenseTensor* dy,
                          DenseTensor* ddout);
@@ -41,12 +47,21 @@ template <typename T, typename Context>
 void DotTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          const DenseTensor& dout,
                          const paddle::optional<DenseTensor>& ddx,
                          const paddle::optional<DenseTensor>& ddy,
                          const paddle::optional<DenseTensor>& d_dx,
                          const paddle::optional<DenseTensor>& d_dy,
                          const paddle::optional<DenseTensor>& d_ddout,
+=======
+                         const DenseTensor& ddx,
+                         const DenseTensor& ddy,
+                         const DenseTensor& d_dx,
+                         const DenseTensor& d_dy,
+                         const DenseTensor& dout,
+                         const DenseTensor& d_ddout,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          DenseTensor* d_x,
                          DenseTensor* d_y,
                          DenseTensor* d_ddx,

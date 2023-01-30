@@ -12,16 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle.static import Program, program_guard
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+from paddle.static import program_guard, Program
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # Test python API
 class TestRandintLikeAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x_bool = np.zeros((10, 12)).astype("bool")
         self.x_int32 = np.zeros((10, 12)).astype("int32")
@@ -31,19 +44,30 @@ class TestRandintLikeAPI(unittest.TestCase):
         self.x_float64 = np.zeros((10, 12)).astype("float64")
 
         self.dtype = ["bool", "int32", "int64", "float16", "float32", "float64"]
+<<<<<<< HEAD
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static_api(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # results are from [-100, 100).
+<<<<<<< HEAD
             x_bool = paddle.fluid.data(
                 name="x_bool", shape=[10, 12], dtype="bool"
             )
+=======
+            x_bool = paddle.fluid.data(name="x_bool",
+                                       shape=[10, 12],
+                                       dtype="bool")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = paddle.static.Executor(self.place)
             # x dtype is bool output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist1 = [
@@ -55,9 +79,15 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -10) & (out <= 10)).all(), True)
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x_int32 = paddle.fluid.data(
                 name="x_int32", shape=[10, 12], dtype="int32"
             )
+=======
+            x_int32 = paddle.fluid.data(name="x_int32",
+                                        shape=[10, 12],
+                                        dtype="int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = paddle.static.Executor(self.place)
             # x dtype is int32 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist2 = [
@@ -70,9 +100,15 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out >= -5) & (out <= 10)).all(), True)
 
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x_int64 = paddle.fluid.data(
                 name="x_int64", shape=[10, 12], dtype="int64"
             )
+=======
+            x_int64 = paddle.fluid.data(name="x_int64",
+                                        shape=[10, 12],
+                                        dtype="int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = paddle.static.Executor(self.place)
             # x dtype is int64 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist3 = [
@@ -85,52 +121,85 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(((out >= -100) & (out <= 100)).all(), True)
         if paddle.is_compiled_with_cuda():
             with program_guard(Program(), Program()):
+<<<<<<< HEAD
                 x_float16 = paddle.fluid.data(
                     name="x_float16", shape=[10, 12], dtype="float16"
                 )
+=======
+                x_float16 = paddle.fluid.data(name="x_float16",
+                                              shape=[10, 12],
+                                              dtype="float16")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 exe = paddle.static.Executor(self.place)
                 # x dtype is float16 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
                 outlist4 = [
                     paddle.randint_like(x_float16, low=-3, high=25, dtype=dtype)
                     for dtype in self.dtype
                 ]
+<<<<<<< HEAD
                 outs4 = exe.run(
                     feed={'x_float16': self.x_float16}, fetch_list=outlist4
                 )
+=======
+                outs4 = exe.run(feed={'x_float16': self.x_float16},
+                                fetch_list=outlist4)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 for out, dtype in zip(outs4, self.dtype):
                     self.assertTrue(out.dtype, np.dtype(dtype))
                     self.assertTrue(((out >= -3) & (out <= 25)).all(), True)
 
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x_float32 = paddle.fluid.data(
                 name="x_float32", shape=[10, 12], dtype="float32"
             )
+=======
+            x_float32 = paddle.fluid.data(name="x_float32",
+                                          shape=[10, 12],
+                                          dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = paddle.static.Executor(self.place)
             # x dtype is float32 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist5 = [
                 paddle.randint_like(x_float32, low=-25, high=25, dtype=dtype)
                 for dtype in self.dtype
             ]
+<<<<<<< HEAD
             outs5 = exe.run(
                 feed={'x_float32': self.x_float32}, fetch_list=outlist5
             )
+=======
+            outs5 = exe.run(feed={'x_float32': self.x_float32},
+                            fetch_list=outlist5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for out, dtype in zip(outs5, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
 
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x_float64 = paddle.fluid.data(
                 name="x_float64", shape=[10, 12], dtype="float64"
             )
+=======
+            x_float64 = paddle.fluid.data(name="x_float64",
+                                          shape=[10, 12],
+                                          dtype="float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = paddle.static.Executor(self.place)
             # x dtype is float64 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist6 = [
                 paddle.randint_like(x_float64, low=-16, high=16, dtype=dtype)
                 for dtype in self.dtype
             ]
+<<<<<<< HEAD
             outs6 = exe.run(
                 feed={'x_float64': self.x_float64}, fetch_list=outlist6
             )
+=======
+            outs6 = exe.run(feed={'x_float64': self.x_float64},
+                            fetch_list=outlist6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for out, dtype in zip(outs6, self.dtype):
                 self.assertTrue(out.dtype, dtype)
                 self.assertTrue(((out >= -16) & (out <= 16)).all(), True)
@@ -139,15 +208,21 @@ class TestRandintLikeAPI(unittest.TestCase):
         paddle.disable_static(self.place)
         # x dtype ["bool", "int32", "int64", "float32", "float64"]
         for x in [
+<<<<<<< HEAD
             self.x_bool,
             self.x_int32,
             self.x_int64,
             self.x_float32,
             self.x_float64,
+=======
+                self.x_bool, self.x_int32, self.x_int64, self.x_float32,
+                self.x_float64
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]:
             x_inputs = paddle.to_tensor(x)
             # self.dtype ["bool", "int32", "int64", "float16", "float32", "float64"]
             for dtype in self.dtype:
+<<<<<<< HEAD
                 out = paddle.randint_like(
                     x_inputs, low=-100, high=100, dtype=dtype
                 )
@@ -155,11 +230,21 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(
                     ((out.numpy() >= -100) & (out.numpy() <= 100)).all(), True
                 )
+=======
+                out = paddle.randint_like(x_inputs,
+                                          low=-100,
+                                          high=100,
+                                          dtype=dtype)
+                self.assertTrue(out.numpy().dtype, np.dtype(dtype))
+                self.assertTrue(
+                    ((out.numpy() >= -100) & (out.numpy() <= 100)).all(), True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # x dtype ["float16"]
         if paddle.is_compiled_with_cuda():
             x_inputs = paddle.to_tensor(self.x_float16)
             # self.dtype ["bool", "int32", "int64", "float16", "float32", "float64"]
             for dtype in self.dtype:
+<<<<<<< HEAD
                 out = paddle.randint_like(
                     x_inputs, low=-100, high=100, dtype=dtype
                 )
@@ -167,11 +252,21 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(
                     ((out.numpy() >= -100) & (out.numpy() <= 100)).all(), True
                 )
+=======
+                out = paddle.randint_like(x_inputs,
+                                          low=-100,
+                                          high=100,
+                                          dtype=dtype)
+                self.assertTrue(out.numpy().dtype, np.dtype(dtype))
+                self.assertTrue(
+                    ((out.numpy() >= -100) & (out.numpy() <= 100)).all(), True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
 
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x_bool = paddle.fluid.data(
                 name="x_bool", shape=[10, 12], dtype="bool"
             )
@@ -196,6 +291,34 @@ class TestRandintLikeAPI(unittest.TestCase):
             self.assertRaises(
                 ValueError, paddle.randint_like, x_bool, low=5, high=5
             )
+=======
+            x_bool = paddle.fluid.data(name="x_bool",
+                                       shape=[10, 12],
+                                       dtype="bool")
+            x_int32 = paddle.fluid.data(name="x_int32",
+                                        shape=[10, 12],
+                                        dtype="int32")
+            x_int64 = paddle.fluid.data(name="x_int64",
+                                        shape=[10, 12],
+                                        dtype="int64")
+            x_float16 = paddle.fluid.data(name="x_float16",
+                                          shape=[10, 12],
+                                          dtype="float16")
+            x_float32 = paddle.fluid.data(name="x_float32",
+                                          shape=[10, 12],
+                                          dtype="float32")
+            x_float64 = paddle.fluid.data(name="x_float64",
+                                          shape=[10, 12],
+                                          dtype="float64")
+
+            # x dtype is bool
+            # low is 5 and high is 5, low must less then high
+            self.assertRaises(ValueError,
+                              paddle.randint_like,
+                              x_bool,
+                              low=5,
+                              high=5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # low(default value) is 0 and high is -5, low must less then high
             self.assertRaises(ValueError, paddle.randint_like, x_bool, high=-5)
             # if high is None, low must be greater than 0
@@ -203,9 +326,17 @@ class TestRandintLikeAPI(unittest.TestCase):
 
             # x dtype is int32
             # low is 5 and high is 5, low must less then high
+<<<<<<< HEAD
             self.assertRaises(
                 ValueError, paddle.randint_like, x_int32, low=5, high=5
             )
+=======
+            self.assertRaises(ValueError,
+                              paddle.randint_like,
+                              x_int32,
+                              low=5,
+                              high=5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # low(default value) is 0 and high is -5, low must less then high
             self.assertRaises(ValueError, paddle.randint_like, x_int32, high=-5)
             # if high is None, low must be greater than 0
@@ -213,9 +344,17 @@ class TestRandintLikeAPI(unittest.TestCase):
 
             # x dtype is int64
             # low is 5 and high is 5, low must less then high
+<<<<<<< HEAD
             self.assertRaises(
                 ValueError, paddle.randint_like, x_int64, low=5, high=5
             )
+=======
+            self.assertRaises(ValueError,
+                              paddle.randint_like,
+                              x_int64,
+                              low=5,
+                              high=5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # low(default value) is 0 and high is -5, low must less then high
             self.assertRaises(ValueError, paddle.randint_like, x_int64, high=-5)
             # if high is None, low must be greater than 0
@@ -224,6 +363,7 @@ class TestRandintLikeAPI(unittest.TestCase):
             # x dtype is float16
             # low is 5 and high is 5, low must less then high
             if paddle.is_compiled_with_cuda():
+<<<<<<< HEAD
                 self.assertRaises(
                     ValueError, paddle.randint_like, x_float16, low=5, high=5
                 )
@@ -263,6 +403,59 @@ class TestRandintLikeAPI(unittest.TestCase):
             self.assertRaises(
                 ValueError, paddle.randint_like, x_float64, low=-5
             )
+=======
+                self.assertRaises(ValueError,
+                                  paddle.randint_like,
+                                  x_float16,
+                                  low=5,
+                                  high=5)
+                # low(default value) is 0 and high is -5, low must less then high
+                self.assertRaises(ValueError,
+                                  paddle.randint_like,
+                                  x_float16,
+                                  high=-5)
+                # if high is None, low must be greater than 0
+                self.assertRaises(ValueError,
+                                  paddle.randint_like,
+                                  x_float16,
+                                  low=-5)
+
+            # x dtype is float32
+            # low is 5 and high is 5, low must less then high
+            self.assertRaises(ValueError,
+                              paddle.randint_like,
+                              x_float32,
+                              low=5,
+                              high=5)
+            # low(default value) is 0 and high is -5, low must less then high
+            self.assertRaises(ValueError,
+                              paddle.randint_like,
+                              x_float32,
+                              high=-5)
+            # if high is None, low must be greater than 0
+            self.assertRaises(ValueError,
+                              paddle.randint_like,
+                              x_float32,
+                              low=-5)
+
+            # x dtype is float64
+            # low is 5 and high is 5, low must less then high
+            self.assertRaises(ValueError,
+                              paddle.randint_like,
+                              x_float64,
+                              low=5,
+                              high=5)
+            # low(default value) is 0 and high is -5, low must less then high
+            self.assertRaises(ValueError,
+                              paddle.randint_like,
+                              x_float64,
+                              high=-5)
+            # if high is None, low must be greater than 0
+            self.assertRaises(ValueError,
+                              paddle.randint_like,
+                              x_float64,
+                              low=-5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

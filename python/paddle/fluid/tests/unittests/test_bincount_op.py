@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
@@ -23,6 +24,20 @@ import paddle
 import paddle.fluid as fluid
 import paddle.inference as paddle_infer
 from paddle.fluid.framework import in_dygraph_mode
+=======
+from __future__ import print_function
+
+import os
+import unittest
+import tempfile
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+from op_test import OpTest
+import paddle.inference as paddle_infer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -44,6 +59,7 @@ class TestBincountOpAPI(unittest.TestCase):
             exe.run(startup_program)
             img = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
             w = np.array([0, 1, 1, 2, 2, 1, 0]).astype(np.int64)
+<<<<<<< HEAD
             res = exe.run(
                 train_program,
                 feed={'input': img, 'weights': w},
@@ -55,6 +71,18 @@ class TestBincountOpAPI(unittest.TestCase):
                 (actual == expected).all(),
                 msg='bincount output is wrong, out =' + str(actual),
             )
+=======
+            res = exe.run(train_program,
+                          feed={
+                              'input': img,
+                              'weights': w
+                          },
+                          fetch_list=[output])
+            actual = np.array(res[0])
+            expected = np.bincount(img, weights=w)
+            self.assertTrue((actual == expected).all(),
+                            msg='bincount output is wrong, out =' + str(actual))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
@@ -64,8 +92,12 @@ class TestBincountOpAPI(unittest.TestCase):
             expected = np.bincount(inputs)
             self.assertTrue(
                 (actual.numpy() == expected).all(),
+<<<<<<< HEAD
                 msg='bincount output is wrong, out =' + str(actual.numpy()),
             )
+=======
+                msg='bincount output is wrong, out =' + str(actual.numpy()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestBincountOpError(unittest.TestCase):
@@ -102,6 +134,7 @@ class TestBincountOpError(unittest.TestCase):
             input_value = paddle.to_tensor([1, 2, 3, 4, 5])
             paddle.bincount(input_value, minlength=-1)
 
+<<<<<<< HEAD
         with fluid.dygraph.guard():
             if in_dygraph_mode():
                 # InvalidArgument for phi BincountKernel
@@ -111,12 +144,20 @@ class TestBincountOpError(unittest.TestCase):
                 # OutOfRange for EqualGreaterThanChecker
                 with self.assertRaises(IndexError):
                     self.run_network(net_func)
+=======
+        with self.assertRaises(IndexError):
+            self.run_network(net_func)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_input_type_errors(self):
         """Test input tensor should only contain non-negative ints."""
 
         def net_func():
+<<<<<<< HEAD
             input_value = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
+=======
+            input_value = paddle.to_tensor([1., 2., 3., 4., 5.])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.bincount(input_value)
 
         with self.assertRaises(TypeError):
@@ -165,6 +206,7 @@ class TestCase1(TestBincountOp):
 
     def init_test_case(self):
         self.minlength = 0
+<<<<<<< HEAD
         self.np_weights = np.random.randint(low=0, high=20, size=10).astype(
             np.float32
         )
@@ -172,6 +214,14 @@ class TestCase1(TestBincountOp):
         self.Out = np.bincount(
             self.np_input, weights=self.np_weights, minlength=self.minlength
         ).astype(np.float32)
+=======
+        self.np_weights = np.random.randint(low=0, high=20,
+                                            size=10).astype(np.float32)
+        self.np_input = np.random.randint(low=0, high=20, size=10)
+        self.Out = np.bincount(self.np_input,
+                               weights=self.np_weights,
+                               minlength=self.minlength).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestCase2(TestBincountOp):
@@ -188,9 +238,15 @@ class TestCase2(TestBincountOp):
         self.minlength = 0
         self.np_weights = np.random.randint(low=0, high=20, size=10)
         self.np_input = np.random.randint(low=0, high=20, size=10)
+<<<<<<< HEAD
         self.Out = np.bincount(
             self.np_input, weights=self.np_weights, minlength=self.minlength
         )
+=======
+        self.Out = np.bincount(self.np_input,
+                               weights=self.np_weights,
+                               minlength=self.minlength)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestCase3(TestBincountOp):
@@ -205,9 +261,14 @@ class TestCase4(TestBincountOp):
     # with input(INT32)
     def init_test_case(self):
         self.minlength = 0
+<<<<<<< HEAD
         self.np_input = np.random.randint(low=0, high=20, size=10).astype(
             np.int32
         )
+=======
+        self.np_input = np.random.randint(low=0, high=20,
+                                          size=10).astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 
@@ -220,10 +281,15 @@ class TestCase5(TestBincountOp):
 
 
 class TestTensorMinlength(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.disable_static()
         paddle.seed(2022)
         self.temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         self.save_path = os.path.join(
             self.temp_dir.name, 'tensor_minlength_bincount'
         )
@@ -232,15 +298,26 @@ class TestTensorMinlength(unittest.TestCase):
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        self.save_path = os.path.join(self.temp_dir.name,
+                                      'tensor_minlength_bincount')
+        self.place = paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_dygraph(self):
         paddle.disable_static()
         x = np.random.randint(0, 10, [20])
         minlength = 2
         np_out = np.bincount(x, minlength=minlength)
+<<<<<<< HEAD
         pd_out = paddle.bincount(
             paddle.to_tensor(x), minlength=paddle.to_tensor([2], dtype='int32')
         )
+=======
+        pd_out = paddle.bincount(paddle.to_tensor(x),
+                                 minlength=paddle.to_tensor([2], dtype='int32'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(np_out, pd_out.numpy())
 
     def test_static_and_infer(self):
@@ -255,9 +332,14 @@ class TestTensorMinlength(unittest.TestCase):
             linear_out = linear(x)
             relu_out = paddle.nn.functional.relu(linear_out)
             minlength = paddle.full([1], 3, dtype='int32')
+<<<<<<< HEAD
             out = paddle.bincount(
                 paddle.cast(relu_out, 'int32'), minlength=minlength
             )
+=======
+            out = paddle.bincount(paddle.cast(relu_out, 'int32'),
+                                  minlength=minlength)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)
@@ -265,9 +347,14 @@ class TestTensorMinlength(unittest.TestCase):
 
             # run infer
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
+<<<<<<< HEAD
             config = paddle_infer.Config(
                 self.save_path + '.pdmodel', self.save_path + '.pdiparams'
             )
+=======
+            config = paddle_infer.Config(self.save_path + '.pdmodel',
+                                         self.save_path + '.pdiparams')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
             else:

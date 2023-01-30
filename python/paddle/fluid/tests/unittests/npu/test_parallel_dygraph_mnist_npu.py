@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import os
 import sys
 import unittest
@@ -46,6 +51,7 @@ rank_table_file = b"""{
 }"""
 
 need_envs = {
+<<<<<<< HEAD
     "ASCEND_AICPU_PATH": os.getenv(
         "ASCEND_AICPU_PATH", "/usr/local/Ascend/nnae/latest"
     ),
@@ -56,10 +62,28 @@ need_envs = {
     "HCCL_WHITELIST_DISABLE": "1",
     "HCCL_SECURITY_MODE": "1",
     "RANK_TABLE_FILE": "rank_table_file.json",
+=======
+    "ASCEND_AICPU_PATH":
+    os.getenv("ASCEND_AICPU_PATH", "/usr/local/Ascend/nnae/latest"),
+    "ASCEND_OPP_PATH":
+    os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/nnae/latest/opp"),
+    "HCCL_CONNECT_TIMEOUT":
+    "7200",
+    "HCCL_WHITELIST_DISABLE":
+    "1",
+    "HCCL_SECURITY_MODE":
+    "1",
+    "RANK_TABLE_FILE":
+    "rank_table_file.json",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 
 class TestParallelDygraphMnistNPU(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = False
         self._hccl_mode = True
@@ -75,11 +99,19 @@ class TestParallelDygraphMnistNPU(TestDistBase):
                 delta=1e-3,
                 check_error_log=True,
                 need_envs=need_envs,
+<<<<<<< HEAD
                 log_name=flag_name,
             )
 
 
 class TestFleetDygraphMnistNPU(TestParallelDygraphMnistNPU):
+=======
+                log_name=flag_name)
+
+
+class TestFleetDygraphMnistNPU(TestParallelDygraphMnistNPU):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = False
         self._hccl_mode = True

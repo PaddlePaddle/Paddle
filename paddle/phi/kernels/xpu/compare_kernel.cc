@@ -36,6 +36,7 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
   auto x_shape = vectorize<int>(x.dims());
   auto y_shape = vectorize<int>(y.dims());
 
+<<<<<<< HEAD
   if (x.dims().size() == 0) {
     x_shape = std::vector<int>({1});
   }
@@ -43,6 +44,8 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
     y_shape = std::vector<int>({1});
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   auto* out_data = dev_ctx.template Alloc<bool>(out);
@@ -52,6 +55,7 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "compare op");
 }
 
+<<<<<<< HEAD
 #define DEFINE_XPU_COMPARE_KERNEL(name, functor)                      \
   template <typename T, typename Context>                             \
   void name##RawKernel(const Context& dev_ctx,                        \
@@ -85,11 +89,33 @@ DEFINE_XPU_COMPARE_KERNEL(LessEqual, xpu::broadcast_less_equal<XPUType>)
 DEFINE_XPU_COMPARE_KERNEL(GreaterThan, xpu::broadcast_greater_than<XPUType>)
 DEFINE_XPU_COMPARE_KERNEL(GreaterEqual, xpu::broadcast_greater_equal<XPUType>)
 
+=======
+#define DEFINE_XPU_COMPARE_KERNEL(compare_kernel, functor)                  \
+  template <typename T, typename Context>                                   \
+  void compare_kernel(const Context& dev_ctx,                               \
+                      const DenseTensor& x,                                 \
+                      const DenseTensor& y,                                 \
+                      int axis,                                             \
+                      DenseTensor* out) {                                   \
+    using XPUType = typename XPUTypeTrait<T>::Type;                         \
+    XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, functor); \
+  }
+
+DEFINE_XPU_COMPARE_KERNEL(EqualKernel, xpu::broadcast_equal<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(NotEqualKernel, xpu::broadcast_not_equal<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(LessThanKernel, xpu::broadcast_less_than<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(LessEqualKernel, xpu::broadcast_less_equal<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(GreaterThanKernel,
+                          xpu::broadcast_greater_than<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(GreaterEqualKernel,
+                          xpu::broadcast_greater_equal<XPUType>)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #undef DEFINE_XPU_COMPARE_KERNEL
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
+<<<<<<< HEAD
     less_than, XPU, ALL_LAYOUT, phi::LessThanKernel, int, int64_t, float) {}
 
 PD_REGISTER_KERNEL(less_than_raw,
@@ -116,3 +142,26 @@ PD_REGISTER_COMPARE_KERNEL(greater_than, GreaterThan)
 PD_REGISTER_COMPARE_KERNEL(greater_equal, GreaterEqual)
 PD_REGISTER_COMPARE_KERNEL(equal, Equal)
 PD_REGISTER_COMPARE_KERNEL(not_equal, NotEqual)
+=======
+    equal, XPU, ALL_LAYOUT, phi::EqualKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(
+    not_equal, XPU, ALL_LAYOUT, phi::NotEqualKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(
+    less_than, XPU, ALL_LAYOUT, phi::LessThanKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(
+    less_equal, XPU, ALL_LAYOUT, phi::LessEqualKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(greater_than,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::GreaterThanKernel,
+                   float,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(greater_equal,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::GreaterEqualKernel,
+                   float,
+                   int,
+                   int64_t) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

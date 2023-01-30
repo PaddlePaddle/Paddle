@@ -23,6 +23,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class ChunkEvalKernel : public framework::OpKernel<T> {
  public:
@@ -185,6 +191,7 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<int>>("excluded_chunk_types").begin(),
         context.Attr<std::vector<int>>("excluded_chunk_types").end());
 
+<<<<<<< HEAD
     auto* inference = context.Input<phi::DenseTensor>("Inference");
     auto place = inference->place();
     auto* label = context.Input<phi::DenseTensor>("Label");
@@ -195,6 +202,17 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     auto* num_label_chunks = context.Output<phi::DenseTensor>("NumLabelChunks");
     auto* num_correct_chunks =
         context.Output<phi::DenseTensor>("NumCorrectChunks");
+=======
+    auto* inference = context.Input<LoDTensor>("Inference");
+    auto place = inference->place();
+    auto* label = context.Input<LoDTensor>("Label");
+    auto* precision = context.Output<Tensor>("Precision");
+    auto* recall = context.Output<Tensor>("Recall");
+    auto* f1 = context.Output<Tensor>("F1-Score");
+    auto* num_infer_chunks = context.Output<Tensor>("NumInferChunks");
+    auto* num_label_chunks = context.Output<Tensor>("NumLabelChunks");
+    auto* num_correct_chunks = context.Output<Tensor>("NumCorrectChunks");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const int64_t* inference_data = inference->data<int64_t>();
     const int64_t* label_data = label->data<int64_t>();
@@ -217,7 +235,11 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
 
     if (use_padding) {
       auto dim1 = inference->dims()[1];
+<<<<<<< HEAD
       auto* seq_length_t = context.Input<phi::DenseTensor>("SeqLength");
+=======
+      auto* seq_length_t = context.Input<Tensor>("SeqLength");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto* seq_length_data = seq_length_t->data<int64_t>();
       num_sequences = seq_length_t->dims()[0];
 

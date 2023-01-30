@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -33,10 +34,28 @@ def multi_gru(
     origin_mode,
     layers,
 ):
+=======
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.test_fusion_gru_op import fusion_gru, ACTIVATION
+from paddle.fluid.dygraph.base import disable_dygraph
+
+
+def multi_gru(
+        x,  # T x M
+        lod,  # 1 x N
+        h0,  # N x D
+        wx,  # M x 3D
+        wh,  # D x 3D
+        bias,  # 1 x 3D
+        origin_mode,
+        layers):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     act_state = ACTIVATION['tanh']
     act_gate = ACTIVATION['sigmoid']
     input = x
     for i in range(0, layers * 2, 2):
+<<<<<<< HEAD
         _, _, _, gru1_out = fusion_gru(
             input,
             lod,
@@ -61,11 +80,22 @@ def multi_gru(
             act_state,
             act_gate,
         )
+=======
+        _, _, _, gru1_out = fusion_gru(input, lod, h0[i], wx[i], wh[i], bias[i],
+                                       False, origin_mode, act_state, act_gate)
+        _, _, _, gru2_out = fusion_gru(input, lod, h0[i + 1], wx[i + 1],
+                                       wh[i + 1], bias[i + 1], True,
+                                       origin_mode, act_state, act_gate)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         input = np.concatenate((gru1_out, gru2_out), axis=1)
     return input
 
 
 class TestMultiGruMkldnnOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         pass
 
@@ -120,6 +150,7 @@ class TestMultiGruMkldnnOp(OpTest):
                 wx.append(np.random.rand(IC, 3 * OC).astype('float32'))
                 wh.append(np.random.rand(OC, 3 * OC).astype('float32'))
                 bias.append(
+<<<<<<< HEAD
                     np.random.rand(1, 3 * OC).astype('float32')
                     if self.with_bias
                     else np.zeros((1, 3 * OC), dtype='float32')
@@ -136,6 +167,19 @@ class TestMultiGruMkldnnOp(OpTest):
             self.inputs['Bias'] = [
                 ('b' + str(i), bias[i]) for i in range(self.layers * 2)
             ]
+=======
+                    np.random.rand(1, 3 * OC).astype('float32') if self.
+                    with_bias else np.zeros((1, 3 * OC), dtype='float32'))
+                h0.append(np.zeros((N, OC), dtype='float32'))
+
+        self.inputs['WeightX'] = [('wx' + str(i), wx[i])
+                                  for i in range(self.layers * 2)]
+        self.inputs['WeightH'] = [('wh' + str(i), wh[i])
+                                  for i in range(self.layers * 2)]
+        if self.with_bias:
+            self.inputs['Bias'] = [('b' + str(i), bias[i])
+                                   for i in range(self.layers * 2)]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if is_int8:
             s8_max = 127.0
@@ -143,6 +187,7 @@ class TestMultiGruMkldnnOp(OpTest):
             for layer in range(self.layers):
                 OC = self.OCs[layer]
                 for j in range(2):
+<<<<<<< HEAD
                     scale_ur = s8_max / np.max(
                         np.abs(
                             np.concatenate(
@@ -184,13 +229,45 @@ class TestMultiGruMkldnnOp(OpTest):
         hidden_f32 = multi_gru(
             x_f32, self.lod, h0, wx, wh, bias, self.origin_mode, self.layers
         )
+=======
+                    scale_ur = s8_max / np.max(np.abs(
+                        np.concatenate([
+                            wx[2 * layer + j][:, :2 * OC],
+                            wh[2 * layer + j].flatten()[:2 * OC * OC].reshape(
+                                OC, 2 * OC)
+                        ],
+                                       axis=0)),
+                                               axis=0)
+                    scale_o = s8_max / np.max(np.abs(
+                        np.concatenate([
+                            wx[2 * layer + j][:, 2 * OC:],
+                            wh[2 * layer + j].flatten()[2 * OC * OC:].reshape(
+                                OC, OC)
+                        ],
+                                       axis=0)),
+                                              axis=0)
+
+                    scale_weights.append(
+                        np.concatenate([scale_ur, scale_o]).astype('float32'))
+            self.inputs['Scale_weights'] = [('w_scale' + str(i),
+                                             scale_weights[i])
+                                            for i in range(self.layers * 2)]
+            self.error_margin = 1e-1 if self.force_fp32_output else 1
+
+        hidden_f32 = multi_gru(x_f32, self.lod, h0, wx, wh, bias,
+                               self.origin_mode, self.layers)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self.dtype == 'float32' or self.force_fp32_output:
             self.outputs = {'Hidden': (hidden_f32, self.lod)}
         else:
             hidden_u8 = np.rint(hidden_f32 * scale_data + shift_data).astype(
+<<<<<<< HEAD
                 np.uint8
             )
+=======
+                np.uint8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.outputs = {'Hidden': (hidden_u8, self.lod)}
 
         self.attrs = {
@@ -211,11 +288,19 @@ class TestMultiGruMkldnnOp(OpTest):
 
 
 class TestMultiGruMkldnnOpNoBias(TestMultiGruMkldnnOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.with_bias = False
 
 
 class TestMultiGruMkldnnOpLayers2(TestMultiGruMkldnnOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.layers = 2
         self.ICs = [2, 6]
@@ -223,6 +308,10 @@ class TestMultiGruMkldnnOpLayers2(TestMultiGruMkldnnOp):
 
 
 class TestMultiGruMkldnnOpLayers3(TestMultiGruMkldnnOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.layers = 3
         self.ICs = [2, 6, 12]
@@ -230,64 +319,112 @@ class TestMultiGruMkldnnOpLayers3(TestMultiGruMkldnnOp):
 
 
 class TestMultiGruMkldnnOpOriginMode(TestMultiGruMkldnnOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         self.origin_mode = True
 
 
 class TestMultiGruMkldnnInt8Op(TestMultiGruMkldnnOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpForceFP32Output(TestMultiGruMkldnnInt8Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
 class TestMultiGruMkldnnInt8OpNoBias(TestMultiGruMkldnnOpNoBias):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpNoBiasForceFP32Output(
+<<<<<<< HEAD
     TestMultiGruMkldnnInt8OpNoBias
 ):
+=======
+        TestMultiGruMkldnnInt8OpNoBias):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
 class TestMultiGruMkldnnInt8OpLayers2(TestMultiGruMkldnnOpLayers2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpLayers2ForceFP32Output(
+<<<<<<< HEAD
     TestMultiGruMkldnnInt8OpLayers2
 ):
+=======
+        TestMultiGruMkldnnInt8OpLayers2):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
 class TestMultiGruMkldnnInt8OpLayers3(TestMultiGruMkldnnOpLayers3):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpLayers3ForceFP32Output(
+<<<<<<< HEAD
     TestMultiGruMkldnnInt8OpLayers3
 ):
+=======
+        TestMultiGruMkldnnInt8OpLayers3):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
 class TestMultiGruMkldnnInt8OpOriginMode(TestMultiGruMkldnnOpOriginMode):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpOriginModeForceFP32Output(
+<<<<<<< HEAD
     TestMultiGruMkldnnInt8OpOriginMode
 ):
+=======
+        TestMultiGruMkldnnInt8OpOriginMode):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 

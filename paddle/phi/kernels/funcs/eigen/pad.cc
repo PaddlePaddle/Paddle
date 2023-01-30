@@ -59,7 +59,10 @@ struct EigenPad<Eigen::DefaultDevice, T, Rank> {
   template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 6>;
 
 INSTANTIATION(EigenPad, bool);
+<<<<<<< HEAD
 INSTANTIATION(EigenPad, uint8_t);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 INSTANTIATION(EigenPad, int);
 INSTANTIATION(EigenPad, int64_t);
 INSTANTIATION(EigenPad, float);

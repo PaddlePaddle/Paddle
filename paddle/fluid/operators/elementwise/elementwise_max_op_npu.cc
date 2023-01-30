@@ -18,6 +18,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
  public:
@@ -25,9 +30,15 @@ class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
 
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
 
@@ -49,7 +60,11 @@ class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
       const auto& runner = NpuOpRunner("Maximum", {*x, *y}, {*out}, {});
       runner.Run(stream);
     } else {
+<<<<<<< HEAD
       phi::DenseTensor transformed_x, transformed_y;
+=======
+      Tensor transformed_x, transformed_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       NpuElementWiseOpBroadcast<T>(
           dev_ctx, x, y, axis, &transformed_x, &transformed_y);
       const auto& runner =
@@ -65,11 +80,19 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
 
     // The ascend elementwise_max_grad op only supports broadcast
@@ -83,7 +106,11 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
     auto x_dims = x->dims();
     auto y_dims = y->dims();
     axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+<<<<<<< HEAD
     phi::DenseTensor transformed_x, transformed_y;
+=======
+    Tensor transformed_x, transformed_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     NpuElementWiseOpBroadcast<T>(
         dev_ctx, x, y, axis, &transformed_x, &transformed_y);
 
@@ -97,9 +124,15 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
     if (dx && dy) {
       dx->mutable_data<T>(ctx.GetPlace());
       dy->mutable_data<T>(ctx.GetPlace());
+<<<<<<< HEAD
       phi::DenseTensor tmp_dx;
       tmp_dx.mutable_data<T>(dout_dims, ctx.GetPlace());
       phi::DenseTensor tmp_dy;
+=======
+      Tensor tmp_dx;
+      tmp_dx.mutable_data<T>(dout_dims, ctx.GetPlace());
+      Tensor tmp_dy;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tmp_dy.mutable_data<T>(dout_dims, ctx.GetPlace());
 
       const auto& runner = NpuOpRunner("MaximumGrad",
@@ -151,12 +184,20 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
       }
 
     } else if (dx) {
+<<<<<<< HEAD
       phi::DenseTensor zero_tensor(dout->type());
+=======
+      Tensor zero_tensor(dout->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       zero_tensor.mutable_data<T>(dout_dims, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       dx->mutable_data<T>(ctx.GetPlace());
+<<<<<<< HEAD
       phi::DenseTensor tmp_dx;
+=======
+      Tensor tmp_dx;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tmp_dx.mutable_data<T>(dout_dims, ctx.GetPlace());
 
       const auto& runner = NpuOpRunner("MaximumGrad",
@@ -188,12 +229,20 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
       }
 
     } else if (dy) {
+<<<<<<< HEAD
       phi::DenseTensor zero_tensor(dout->type());
+=======
+      Tensor zero_tensor(dout->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       zero_tensor.mutable_data<T>(dout_dims, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       dy->mutable_data<T>(ctx.GetPlace());
+<<<<<<< HEAD
       phi::DenseTensor tmp_dy;
+=======
+      Tensor tmp_dy;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tmp_dy.mutable_data<T>(dout_dims, ctx.GetPlace());
 
       const auto& runner = NpuOpRunner("MaximumGrad",

@@ -56,6 +56,7 @@ class PairwiseDistance(Layer):
             y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
             dist = paddle.nn.PairwiseDistance()
             distance = dist(x, y)
+<<<<<<< HEAD
             print(distance)
             # Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        [4.99999860, 4.99999860])
@@ -64,6 +65,14 @@ class PairwiseDistance(Layer):
 
     def __init__(self, p=2.0, epsilon=1e-6, keepdim=False, name=None):
         super().__init__()
+=======
+            print(distance.numpy()) # [5. 5.]
+
+    """
+
+    def __init__(self, p=2., epsilon=1e-6, keepdim=False, name=None):
+        super(PairwiseDistance, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.p = p
         self.epsilon = epsilon
         self.keepdim = keepdim
@@ -71,16 +80,27 @@ class PairwiseDistance(Layer):
 
     def forward(self, x, y):
 
+<<<<<<< HEAD
         return F.pairwise_distance(
             x, y, self.p, self.epsilon, self.keepdim, self.name
         )
+=======
+        return F.pairwise_distance(x, y, self.p, self.epsilon, self.keepdim,
+                                   self.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def extra_repr(self):
         main_str = 'p={p}'
         if self.epsilon != 1e-6:
             main_str += ', epsilon={epsilon}'
+<<<<<<< HEAD
         if self.keepdim is not False:
             main_str += ', keepdim={keepdim}'
         if self.name is not None:
+=======
+        if self.keepdim != False:
+            main_str += ', keepdim={keepdim}'
+        if self.name != None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             main_str += ', name={name}'
         return main_str.format(**self.__dict__)

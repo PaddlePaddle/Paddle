@@ -23,38 +23,66 @@ template <typename DeviceContext, typename T>
 class Unpool2dMaxFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   phi::DenseTensor* output);
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& indices,
+                  framework::Tensor* output);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 template <typename DeviceContext, class T>
 class Unpool2dMaxGradFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   const phi::DenseTensor& output,
                   const phi::DenseTensor& output_grad,
                   phi::DenseTensor* input_grad);
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& indices,
+                  const framework::Tensor& output,
+                  const framework::Tensor& output_grad,
+                  framework::Tensor* input_grad);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename DeviceContext, typename T>
 class Unpool3dMaxFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   phi::DenseTensor* output);
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& indices,
+                  framework::Tensor* output);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 template <typename DeviceContext, class T>
 class Unpool3dMaxGradFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   const phi::DenseTensor& output,
                   const phi::DenseTensor& output_grad,
                   phi::DenseTensor* input_grad);
+=======
+                  const framework::Tensor& input,
+                  const framework::Tensor& indices,
+                  const framework::Tensor& output,
+                  const framework::Tensor& output_grad,
+                  framework::Tensor* input_grad);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 }  // namespace math
 }  // namespace operators

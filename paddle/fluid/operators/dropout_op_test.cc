@@ -35,7 +35,11 @@ USE_OP_ITSELF(dropout);
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto var = scope->Var("X");
+<<<<<<< HEAD
   auto tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor = var->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor->Resize({10, 10});
 
   std::vector<float> init;
@@ -47,12 +51,20 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   auto out_var = scope->Var("Out");
+<<<<<<< HEAD
   auto out_tensor = out_var->GetMutable<phi::DenseTensor>();
+=======
+  auto out_tensor = out_var->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   out_tensor->Resize({10, 10});
   out_tensor->mutable_data<float>(place);  // allocate
 
   auto mask_var = scope->Var("Mask");
+<<<<<<< HEAD
   auto mask_tensor = mask_var->GetMutable<phi::DenseTensor>();
+=======
+  auto mask_tensor = mask_var->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   mask_tensor->Resize({10, 10});
   mask_tensor->mutable_data<float>(place);  // allocate
 

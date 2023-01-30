@@ -31,7 +31,10 @@ void FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
   {
     std::unordered_set<std::string> in_place_act_types = {"relu_grad"};
     graph = FuseElewiseAddActInplaceGrad(graph, in_place_act_types);
+<<<<<<< HEAD
     graph = FuseActElewiseAddInplaceGrad(graph, in_place_act_types);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   // Remove the removable intermediate_out.
@@ -111,7 +114,11 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAdd(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
+<<<<<<< HEAD
     VLOG(4) << "handle FuseActElewiseAdd fuse";
+=======
+    VLOG(4) << "handle FuseElewiseAddAct fuse";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_x, ele_x, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -221,6 +228,7 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
   return graph;
 }
 
+<<<<<<< HEAD
 // the backward of act(ele_add(x,y))
 // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
 // ele_add_grad: in["Y", "Out@GRAD"], out["X@GRAD", "Y@GRAD"]
@@ -301,6 +309,8 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAddInplaceGrad(
   return graph;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 Node *FuseElewiseAddActPass::CreateFuseElewiseAddActNode(
     Graph *g,
     const Node *op_1,
@@ -445,6 +455,7 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
   GraphSafeRemoveNodes(graph, nodes2delete);
 }
 
+<<<<<<< HEAD
 void FuseElewiseAddActPass::ReLinkNodes2(Graph *graph,
                                          const Node *intermediate_out,
                                          Node *op_1,
@@ -491,6 +502,8 @@ void FuseElewiseAddActPass::ReLinkNodes2(Graph *graph,
   GraphSafeRemoveNodes(graph, nodes2delete);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 std::vector<Node *> FuseElewiseAddActPass::ReplaceNode(
     Node *cur_node, Node *new_node, const std::vector<Node *> &nodes) const {
   std::vector<Node *> new_list(nodes.size());

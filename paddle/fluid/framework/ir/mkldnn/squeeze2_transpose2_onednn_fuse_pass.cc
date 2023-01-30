@@ -13,8 +13,13 @@
 // limitations under the License.
 #include "paddle/fluid/framework/ir/mkldnn/squeeze2_transpose2_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -23,10 +28,16 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph) const {
+<<<<<<< HEAD
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::InvalidArgument(
           "Input graph pointer argument should not be nullptr."));
+=======
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          platform::errors::InvalidArgument(
+                              "Pointer to graph argument should not be NULL."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   FusePassBase::Init("squeeze2_transpose2_onednn_fuse_pass", graph);
 

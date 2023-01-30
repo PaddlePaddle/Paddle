@@ -235,6 +235,7 @@ nvinfer1::DimsExprs UnchangedInferMeta(
   return inputs[0];
 }
 
+<<<<<<< HEAD
 nvinfer1::DimsExprs MoeInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -244,6 +245,8 @@ nvinfer1::DimsExprs MoeInferMeta(
   return inputs[0];
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 nvinfer1::DimsExprs Pad3dInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -393,7 +396,10 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(unfold, UnflodInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter_nd_add, ScatterNdAddInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
+<<<<<<< HEAD
 PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
 }  // namespace tensorrt

@@ -40,7 +40,11 @@ class LoDRankTableOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+<<<<<<< HEAD
     auto x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
+=======
+    auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
     VLOG(10) << "Level = " << static_cast<size_t>(Attr<int>("level"));
@@ -52,14 +56,23 @@ class LoDRankTableOp : public framework::OperatorBase {
 class LoDRankTableOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "(phi::DenseTensor) input lod tensor, must contain lod information.");
+=======
+    AddInput("X",
+             "(LoDTensor) input lod tensor, must contain lod information.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddOutput("Out", "(LoDRankTable) The rank table of specific level.");
     AddAttr<int>("level", "(int) the specific lod level to rank.")
         .SetDefault(0)
         .EqualGreaterThan(0);
+<<<<<<< HEAD
     AddComment(R"DOC(Create LoDRanTable by phi::DenseTensor
+=======
+    AddComment(R"DOC(Create LoDRanTable by LoDTensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 LoD Rank Table stores the `level` of `lod` which is ordered by sequence
 length in descending order. It is useful when implement dynamic RNN and is

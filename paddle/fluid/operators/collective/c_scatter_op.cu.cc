@@ -27,8 +27,13 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int numel = x->numel();
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
@@ -60,15 +65,24 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
+<<<<<<< HEAD
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
+=======
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       stream = comm->stream();
     }
 
     framework::DDim x_dims = x->dims();
     framework::DDim out_dims(x_dims);
+<<<<<<< HEAD
     phi::DenseTensor temp;
+=======
+    framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto out_ptr = temp.mutable_data<T>(out_dims, place);
     if (root_id == comm->rank()) {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
@@ -79,10 +93,17 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
           comm->comm(),
           stream));
 
+<<<<<<< HEAD
       framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
                             place,
                             *platform::DeviceContextPool::Instance().Get(place),
                             static_cast<phi::DenseTensor*>(&temp));
+=======
+      framework::TensorCopy(*static_cast<const framework::Tensor*>(x),
+                            place,
+                            *platform::DeviceContextPool::Instance().Get(place),
+                            static_cast<framework::Tensor*>(&temp));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           out_ptr, numel, dtype, root_id, comm->comm(), stream));
@@ -94,9 +115,15 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     temp = temp.Slice(start_index, end_index);
     temp.Resize(out_dims);
     out->mutable_data<T>(out_dims, place);
+<<<<<<< HEAD
     framework::TensorCopySync(*static_cast<const phi::DenseTensor*>(&temp),
                               place,
                               static_cast<phi::DenseTensor*>(out));
+=======
+    framework::TensorCopySync(*static_cast<const framework::Tensor*>(&temp),
+                              place,
+                              static_cast<framework::Tensor*>(out));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->Resize(out_dims);
 #else
     PADDLE_ENFORCE_EQ(

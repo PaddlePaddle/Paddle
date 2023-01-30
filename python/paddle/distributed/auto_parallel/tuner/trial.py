@@ -18,9 +18,16 @@
 import hashlib
 import random
 import time
+<<<<<<< HEAD
 
 from .recorder import MetricsRecorder
 from .storable import Storable
+=======
+from enum import Enum
+
+from .storable import Storable
+from .recorder import MetricsRecorder
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .tunable_space import TunableSpace
 
 
@@ -32,9 +39,17 @@ class TrialStatus:
 
 
 class Trial(Storable):
+<<<<<<< HEAD
     def __init__(
         self, tunable_space, trial_id=None, status=TrialStatus.RUNNING
     ):
+=======
+
+    def __init__(self,
+                 tunable_space,
+                 trial_id=None,
+                 status=TrialStatus.RUNNING):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._id = _generate_trial_id() if trial_id is None else trial_id
         self._space = tunable_space
         self._recorder = MetricsRecorder()
@@ -113,6 +128,7 @@ class Trial(Storable):
 
 
 class OptimizationTunerTrial(Trial):
+<<<<<<< HEAD
     def __init__(
         self,
         config,
@@ -122,6 +138,16 @@ class OptimizationTunerTrial(Trial):
         status=TrialStatus.RUNNING,
     ):
         super().__init__(config, trial_id, status)
+=======
+
+    def __init__(self,
+                 config,
+                 name,
+                 changed_configs,
+                 trial_id=None,
+                 status=TrialStatus.RUNNING):
+        super(OptimizationTunerTrial, self).__init__(config, trial_id, status)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._name = name
         self._changed_configs = changed_configs
 
@@ -139,8 +165,12 @@ class OptimizationTunerTrial(Trial):
 
         h1_format = "    " + "|{{:^{}s}}|\n".format(length)
         h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
+<<<<<<< HEAD
             max_k, " " * spacing, max_v
         )
+=======
+            max_k, " " * spacing, max_v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         border = "    +" + "".join(["="] * length) + "+"
         line = "    +" + "".join(["-"] * length) + "+"
@@ -158,8 +188,12 @@ class OptimizationTunerTrial(Trial):
             keys = my_configs.to_dict().keys()
             for key in keys:
                 draws += h2_format.format(
+<<<<<<< HEAD
                     key, str(my_configs.to_dict().get(key, None))
                 )
+=======
+                    key, str(my_configs.to_dict().get(key, None)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         result_res = draws + border
         return result_res

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import argparse
 import os
@@ -21,6 +26,10 @@ sys.path.append("..")
 import signal
 import time
 from contextlib import closing
+<<<<<<< HEAD
+=======
+from six import string_types
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import math
 import paddle
 import paddle.fluid as fluid
@@ -70,12 +79,22 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
         use_cudnn = False
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
+<<<<<<< HEAD
                 data = paddle.static.data(
                     name='input',
                     shape=self.dshape,
                     dtype=self.dtype,
                 )
                 conv = paddle.static.nn.conv2d(
+=======
+                data = fluid.layers.data(
+                    name='input',
+                    shape=self.dshape,
+                    dtype=self.dtype,
+                    append_batch_size=False,
+                )
+                conv = fluid.layers.conv2d(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     input=data,
                     num_filters=32,
                     filter_size=1,
@@ -85,7 +104,11 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                 )
                 if self.bn_dtype == np.float16:
                     conv = fluid.layers.cast(conv, 'float16')
+<<<<<<< HEAD
                 bn = paddle.static.nn.batch_norm(
+=======
+                bn = fluid.layers.batch_norm(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),
@@ -96,8 +119,13 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                 )
                 if self.bn_dtype == np.float16:
                     bn = fluid.layers.cast(bn, 'float32')
+<<<<<<< HEAD
                 sigmoid = paddle.nn.functional.sigmoid(bn)
                 out = paddle.sum(sigmoid)
+=======
+                sigmoid = fluid.layers.sigmoid(bn)
+                out = fluid.layers.reduce_sum(sigmoid)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # if not sync_bn:
                 #     out = out / core.get_mlu_device_count()
                 if not only_forward:

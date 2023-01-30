@@ -14,7 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/runtime_context_cache_pass.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/ir/graph_helper.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -22,6 +25,7 @@ namespace framework {
 namespace ir {
 
 void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
+<<<<<<< HEAD
   static constexpr char kNotAllowInferShapeCahce[] =
       "@NOT_ALLOW_INFERSHAPE_CACHE@";
   VLOG(3) << "Applies Runtime Context Cache strategy.";
@@ -44,6 +48,12 @@ void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
       for (auto op_node : it.second) {
         op_node->Op()->SetAttr(kNotAllowInferShapeCahce, true);
       }
+=======
+  VLOG(3) << "Applies Runtime Context Cache strategy.";
+  for (const Node* n : graph->Nodes()) {
+    if (n->IsOp() && n->Op()) {
+      n->Op()->SetAttr(kEnableCacheRuntimeContext, true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }

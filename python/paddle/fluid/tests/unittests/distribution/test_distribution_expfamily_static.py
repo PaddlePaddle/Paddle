@@ -14,6 +14,7 @@
 
 import unittest
 
+<<<<<<< HEAD
 import config
 import mock_data as mock
 import numpy as np
@@ -21,12 +22,26 @@ import parameterize
 
 import paddle
 
+=======
+import numpy as np
+import paddle
+import scipy.stats
+
+import config
+import mock_data as mock
+import parameterize
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 np.random.seed(2022)
 paddle.enable_static()
 
 
 @parameterize.place(config.DEVICES)
 class TestExponentialFamily(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor()
@@ -44,21 +59,34 @@ class TestExponentialFamily(unittest.TestCase):
                 fetch_list=[
                     self.mock_dist.entropy(),
                     paddle.distribution.ExponentialFamily.entropy(
+<<<<<<< HEAD
                         self.mock_dist
                     ),
                 ],
             )
+=======
+                        self.mock_dist)
+                ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             np.testing.assert_allclose(
                 out1,
                 out2,
                 rtol=config.RTOL.get(config.DEFAULT_DTYPE),
+<<<<<<< HEAD
                 atol=config.ATOL.get(config.DEFAULT_DTYPE),
             )
+=======
+                atol=config.ATOL.get(config.DEFAULT_DTYPE))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_entropy_exception(self):
         with paddle.static.program_guard(self.program):
             with self.assertRaises(NotImplementedError):
                 paddle.distribution.ExponentialFamily.entropy(
+<<<<<<< HEAD
                     mock.DummyExpFamily(0.5, 0.5)
                 )
+=======
+                    mock.DummyExpFamily(0.5, 0.5))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

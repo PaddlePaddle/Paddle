@@ -35,7 +35,10 @@ void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
           ->NewNode("scale_in")
           ->assert_is_op_input("scale")
           ->assert_has_n_outputs(1)
+<<<<<<< HEAD
           ->assert_var_not_persistable()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           ->assert_more([](Node* x) {
             for (auto* op : x->inputs) {
               auto op_type = op->Op()->Type();

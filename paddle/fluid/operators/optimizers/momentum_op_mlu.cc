@@ -37,20 +37,35 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
 
+<<<<<<< HEAD
     auto learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
     auto param = ctx.Input<phi::DenseTensor>("Param");
     auto velocity = ctx.Input<phi::DenseTensor>("Velocity");
 
     auto param_out = ctx.Output<phi::DenseTensor>("ParamOut");
     auto velocity_out = ctx.Output<phi::DenseTensor>("VelocityOut");
+=======
+    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    auto param = ctx.Input<framework::Tensor>("Param");
+    auto velocity = ctx.Input<framework::Tensor>("Velocity");
+
+    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
+    auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     param_out->mutable_data<T>(ctx.GetPlace());
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
     auto* grad_var = ctx.InputVar("Grad");
+<<<<<<< HEAD
     if (grad_var->IsType<phi::DenseTensor>()) {
       auto grad = ctx.Input<phi::DenseTensor>("Grad");
       phi::DenseTensor mu_tensor =
+=======
+    if (grad_var->IsType<framework::LoDTensor>()) {
+      auto grad = ctx.Input<framework::Tensor>("Grad");
+      Tensor mu_tensor =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
       MLUCnnlTensorDesc mu_tensor_desc(mu_tensor);
       MLUCnnl::Fill(ctx,
@@ -59,7 +74,11 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
                     mu_tensor_desc.get(),
                     GetBasePtr(&mu_tensor));
 
+<<<<<<< HEAD
       phi::DenseTensor regularized_grad;
+=======
+      Tensor regularized_grad;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       MLUCnnlTensorDesc param_desc(*param);
       if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad =

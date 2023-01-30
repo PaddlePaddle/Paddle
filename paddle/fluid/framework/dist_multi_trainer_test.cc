@@ -14,7 +14,10 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/trainer.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/flags.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_GLOO
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
@@ -22,7 +25,10 @@
 #else
 #define _LINUX
 #endif
+<<<<<<< HEAD
 DECLARE_bool(enable_exit_when_partial_worker);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -55,6 +61,7 @@ TEST(DisMultiTrainerTest, test1) {
   tmp1->Finalize();
 #endif
 }
+<<<<<<< HEAD
 
 TEST(DisMultiTrainerTest, testforgpugraph) {
 #ifdef _LINUX
@@ -171,5 +178,7 @@ TEST(DisMultiTrainerTest, test3) {
 #endif
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace framework
 }  // namespace paddle

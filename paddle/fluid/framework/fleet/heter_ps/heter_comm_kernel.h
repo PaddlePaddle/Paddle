@@ -42,34 +42,59 @@ struct DynamicGradMerger {
   }
 
   template <typename GPUAccessor>
+<<<<<<< HEAD
   __device__ __forceinline__ void update_one(
       float* output,
       const float* input,
       const GPUAccessor& gpu_accessor) const {
+=======
+  __device__ __forceinline__ void update_one(float* output,
+                                             const float* input,
+                                             GPUAccessor& gpu_accessor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     gpu_accessor.PushValueFill(output, input);
   }
 
   template <typename GPUAccessor>
+<<<<<<< HEAD
   __device__ __forceinline__ void merge_one(
       float* output,
       const float* input,
       const GPUAccessor& gpu_accessor) const {
+=======
+  __device__ __forceinline__ void merge_one(float* output,
+                                            const float* input,
+                                            GPUAccessor& gpu_accessor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     gpu_accessor.MergePushValue(output, input);
   }
 
   template <typename GPUAccessor>
+<<<<<<< HEAD
   __device__ __forceinline__ void update_basic(
       float* output, const float* input, const GPUAccessor& fv_accessor) const {
+=======
+  __device__ __forceinline__ void update_basic(float* output,
+                                               const float* input,
+                                               GPUAccessor& fv_accessor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     fv_accessor.PushValueFillBasic(output, input);
   }
 
   template <typename GPUAccessor>
+<<<<<<< HEAD
   __device__ __forceinline__ void merge_basic(
       float* output, const float* input, const GPUAccessor& fv_accessor) const {
+=======
+  __device__ __forceinline__ void merge_basic(float* output,
+                                              const float* input,
+                                              GPUAccessor& fv_accessor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     fv_accessor.MergePushValueBasic(output, input);
   }
 
   template <typename GPUAccessor>
+<<<<<<< HEAD
   __device__ __forceinline__ void update_embedx(
       float* output,
       const float* input,
@@ -77,12 +102,20 @@ struct DynamicGradMerger {
       const GPUAccessor& fv_accessor) const {
     if (embedx_idx <
         static_cast<int>(output[fv_accessor.common_push_value.MfDimIndex()])) {
+=======
+  __device__ __forceinline__ void update_embedx(float* output,
+                                                const float* input,
+                                                size_t embedx_idx,
+                                                GPUAccessor& fv_accessor) {
+    if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] =
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
     }
   }
 
   template <typename GPUAccessor>
+<<<<<<< HEAD
   __device__ __forceinline__ void merge_embedx(
       float* output,
       const float* input,
@@ -90,6 +123,13 @@ struct DynamicGradMerger {
       const GPUAccessor& fv_accessor) const {
     if (embedx_idx <
         static_cast<int>(output[fv_accessor.common_push_value.MfDimIndex()])) {
+=======
+  __device__ __forceinline__ void merge_embedx(float* output,
+                                               const float* input,
+                                               size_t embedx_idx,
+                                               GPUAccessor& fv_accessor) {
+    if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] +=
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
     }
@@ -102,19 +142,31 @@ class HeterCommKernel {
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
   template <typename T, typename StreamType>
+<<<<<<< HEAD
   void fill_idx(T* idx, int64_t len, const StreamType& stream);
+=======
+  void fill_idx(T* idx, long long len, const StreamType& stream);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   template <typename T, typename StreamType>
   void calc_shard_offset(T* idx,
                          T* left,
                          T* right,
+<<<<<<< HEAD
                          int64_t len,
+=======
+                         long long len,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          int total_devs,
                          const StreamType& stream);
 
   template <typename KeyType, typename T, typename StreamType>
   void calc_shard_index(KeyType* d_keys,
+<<<<<<< HEAD
                         int64_t len,
+=======
+                        long long len,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         T* shard_index,
 
                         int total_devs,
@@ -124,7 +176,11 @@ class HeterCommKernel {
   void fill_shard_key(KeyType* d_shard_keys,
                       KeyType* d_keys,
                       T* idx,
+<<<<<<< HEAD
                       int64_t len,
+=======
+                      long long len,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       const StreamType& stream);
 
   template <typename KeyType,
@@ -136,14 +192,22 @@ class HeterCommKernel {
                         GradType* d_shard_grads,
                         GradType* d_grads,
                         T* idx,
+<<<<<<< HEAD
                         int64_t len,
+=======
+                        long long len,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         const StreamType& stream);
 
   template <typename ValType, typename T, typename StreamType>
   void fill_dvals(ValType* d_shard_vals,
                   ValType* d_vals,
                   T* idx,
+<<<<<<< HEAD
                   int64_t len,
+=======
+                  long long len,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const StreamType& stream);
 
   template <typename KeyT, typename ValueT, typename StreamType>
@@ -187,10 +251,17 @@ class HeterCommKernel {
                               float* d_shard_grads,
                               float* d_grads,
                               T* idx,
+<<<<<<< HEAD
                               int64_t len,
                               size_t grad_value_size,
                               const StreamType& stream,
                               const GPUAccessor& gpu_accessor);
+=======
+                              long long len,
+                              size_t grad_value_size,
+                              const StreamType& stream,
+                              GPUAccessor& gpu_accessor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   template <typename KeyType, typename StreamType, typename GPUAccessor>
   void merge_gradient(const KeyType* d_shard_keys,
@@ -202,15 +273,25 @@ class HeterCommKernel {
                       int n,
                       size_t grad_dim,
                       size_t grad_value_size,
+<<<<<<< HEAD
                       const DynamicGradMerger& merger,
                       const StreamType& stream,
                       const GPUAccessor& gpu_accessor);
+=======
+                      DynamicGradMerger& merger,
+                      const StreamType& stream,
+                      GPUAccessor& gpu_accessor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   template <typename T, typename StreamType>
   void dy_mf_fill_dvals(float* d_shard_vals,
                         float* d_vals,
                         T* idx,
+<<<<<<< HEAD
                         int64_t len,
+=======
+                        long long len,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         size_t val_size,
                         const StreamType& stream);
 
@@ -257,6 +338,7 @@ class HeterCommKernel {
                           size_t val_size,
                           const StreamType& stream);
 
+<<<<<<< HEAD
   template <typename KeyType, typename T, typename StreamType>
   void calc_node_shard_index(const KeyType* d_keys,
                              int64_t len,
@@ -327,6 +409,8 @@ class HeterCommKernel {
                          const float& max_bound,
                          const StreamType& stream);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   int block_size_{256};
 };

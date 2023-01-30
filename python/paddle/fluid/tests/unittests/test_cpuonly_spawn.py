@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
@@ -23,6 +24,21 @@ import paddle.optimizer as opt
 class LinearNet(nn.Layer):
     def __init__(self):
         super().__init__()
+=======
+from __future__ import print_function
+import unittest
+
+import paddle
+import paddle.nn as nn
+import paddle.optimizer as opt
+import paddle.distributed as dist
+
+
+class LinearNet(nn.Layer):
+
+    def __init__(self):
+        super(LinearNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._linear1 = nn.Linear(10, 10)
         self._linear2 = nn.Linear(10, 1)
 
@@ -57,6 +73,10 @@ def train(print_result=False):
 
 
 class TestSpawn(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_spawn(self):
         dist.spawn(train, backend='gloo', nprocs=4)
 

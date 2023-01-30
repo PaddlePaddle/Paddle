@@ -12,18 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import shutil
 import unittest
 
 from test_dist_base import TestDistBase
 
+=======
+from __future__ import print_function
+import shutil
+import os
+import unittest
+from test_dist_base import TestDistBase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
 
 class TestDistMnistFleetSave(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -79,6 +91,7 @@ class TestDistMnistFleetSave(TestDistBase):
         self._rm_temp_files(dirname)
         return True
 
+<<<<<<< HEAD
     def check_with_place(
         self,
         model_file,
@@ -87,6 +100,14 @@ class TestDistMnistFleetSave(TestDistBase):
         need_envs={},
         log_name="",
     ):
+=======
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={},
+                         log_name=""):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         tr0_losses, tr1_losses = self._run_cluster_nccl2(
@@ -94,15 +115,22 @@ class TestDistMnistFleetSave(TestDistBase):
             required_envs,
             update_method='nccl2',
             check_error_log=check_error_log,
+<<<<<<< HEAD
             log_name=log_name,
         )
+=======
+            log_name=log_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         dirname = '/tmp'
         self._test_saved_files(dirname)
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 

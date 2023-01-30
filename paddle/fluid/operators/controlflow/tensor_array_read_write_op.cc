@@ -39,7 +39,11 @@ class WriteToArrayOp : public ArrayOp {
                const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
+<<<<<<< HEAD
     auto &x_tensor = x->Get<phi::DenseTensor>();
+=======
+    auto &x_tensor = x->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     size_t offset = GetOffset(scope, place);
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
@@ -67,8 +71,12 @@ class WriteToArrayOp : public ArrayOp {
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("X",
              "(phi::DenseTensor) the tensor will be written to tensor array");
+=======
+    AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddInput(
         "I",
         "(Tensor) the subscript index in tensor array. The number of element "
@@ -77,9 +85,15 @@ class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 WriteToArray Operator.
 
+<<<<<<< HEAD
 This operator writes a phi::DenseTensor to a phi::DenseTensor array.
 
 Assume $T$ is phi::DenseTensor, $i$ is the subscript of the array, and $A$ is the array. The
+=======
+This operator writes a LoDTensor to a LoDTensor array.
+
+Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 equation is
 
 $$A[i] = T$$
@@ -159,7 +173,11 @@ class ReadFromArrayOp : public ArrayOp {
             "Output(Out) of ReadFromArrayOp is not found."));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
+<<<<<<< HEAD
       auto *out_tensor = out->GetMutable<phi::DenseTensor>();
+=======
+      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
@@ -170,7 +188,11 @@ class ReadFromArrayOp : public ArrayOp {
       // set grad of the writed tensor to 0 when used as write_to_array_grad
       auto *fw_var = scope.FindVar(Input("X_W"));
       if (fw_var == nullptr) return;
+<<<<<<< HEAD
       auto &fw_var_tensor = fw_var->Get<phi::DenseTensor>();
+=======
+      auto &fw_var_tensor = fw_var->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       framework::AttributeMap attrs;
       attrs["dtype"] = framework::TransToProtoVarType(fw_var_tensor.dtype());
@@ -180,7 +202,11 @@ class ReadFromArrayOp : public ArrayOp {
       auto zero_op = framework::OpRegistry::CreateOp(
           "fill_constant", {}, {{"Out", {Output("Out")}}}, attrs);
       zero_op->Run(scope, place);
+<<<<<<< HEAD
       auto *out_tensor = out->GetMutable<phi::DenseTensor>();
+=======
+      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       out_tensor->set_lod(fw_var_tensor.lod());
     }
   }
@@ -197,6 +223,7 @@ class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the writed tensor when used as the grad op of "
              "write_to_array. We use this to fill zero gradient.")
         .AsDispensable();
+<<<<<<< HEAD
     AddOutput("Out", "(phi::DenseTensor) the tensor will be read from.");
     AddComment(R"DOC(
 ReadFromArray Operator.
@@ -204,6 +231,15 @@ ReadFromArray Operator.
 Read a phi::DenseTensor from a phi::DenseTensor Array.
 
 Assume $T$ is phi::DenseTensor, $i$ is the subscript of the array, and $A$ is the array. The
+=======
+    AddOutput("Out", "(LoDTensor) the tensor will be read from.");
+    AddComment(R"DOC(
+ReadFromArray Operator.
+
+Read a LoDTensor from a LoDTensor Array.
+
+Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 equation is
 
 $$T = A[i]$$

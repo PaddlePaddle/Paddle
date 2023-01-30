@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import enum
 from typing import Any, Callable, Dict, List, Optional
 
@@ -32,6 +33,22 @@ from paddle.static.quantization import (
     QuantizationFreezePass,
     QuantizationTransformPass,
 )
+=======
+from typing import Optional, List, Callable, Dict, Any, Set
+import numpy as np
+import enum
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle import compat as cpt
+from paddle.fluid.initializer import NumpyArrayInitializer
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+
+from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
+from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
+from paddle.fluid.framework import IrGraph, IrNode, Operator
+from paddle.fluid.executor import global_scope
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TensorConfig:
@@ -39,6 +56,7 @@ class TensorConfig:
     A config builder for a input or a weight.
     '''
 
+<<<<<<< HEAD
     def __init__(
         self,
         lod: Optional[List[List[int]]] = None,
@@ -49,6 +67,16 @@ class TensorConfig:
         shape: The shape of the tensor.
         dtype: The data type of the tensor.
         data: The value of WeightVar. for input, it should be None
+=======
+    def __init__(self,
+                 lod: Optional[List[List[int]]] = None,
+                 data_gen: Optional[Callable[..., np.array]] = None,
+                 shape: Optional[List[List[int]]] = None):
+        '''
+        shape: The shape of the tensor.
+        dtype: The data type of the tensor.
+        data: The value of WeightVar. for input, it should be None 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         '''
         self.lod = lod
         if data_gen is not None:
@@ -57,9 +85,13 @@ class TensorConfig:
             self.dtype = data_gen().dtype
             self.shape = data_gen().shape
         else:
+<<<<<<< HEAD
             assert (
                 shape is not None
             ), "While data_gen is not defined, shape must not be None"
+=======
+            assert shape is not None, "While data_gen is not defined, shape must not be None"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.data = np.random.normal(0.0, 1.0, shape).astype(np.float32)
             self.shape = shape
             self.dtype = self.data.dtype
@@ -75,6 +107,7 @@ class VarType(enum.Enum):
 
 
 class OpConfig:
+<<<<<<< HEAD
     '''A config builder for generating a Op.'''
 
     def __init__(
@@ -87,6 +120,18 @@ class OpConfig:
         outputs_dtype: Dict[str, np.dtype] = None,
         **kwargs,
     ):
+=======
+    '''  A config builder for generating a Op.  '''
+
+    def __init__(self,
+                 type: str,
+                 inputs: Dict[str, List[str]],
+                 outputs: Dict[str, List[str]],
+                 attrs: Dict[str, Any] = None,
+                 outputs_var_type: Dict[str, VarType] = None,
+                 outputs_dtype: Dict[str, np.dtype] = None,
+                 **kwargs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.type = type
         self.inputs = inputs
         self.outputs = outputs
@@ -104,6 +149,7 @@ class OpConfig:
 
 
 _OP_WITHOUT_KERNEL_SET = {
+<<<<<<< HEAD
     'feed',
     'fetch',
     'recurrent',
@@ -134,10 +180,21 @@ _OP_WITHOUT_KERNEL_SET = {
     'c_gen_hccl_id',
     'c_comm_init_hccl',
     'copy_cross_scope',
+=======
+    'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
+    'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
+    'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
+    'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
+    'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
+    'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
+    'c_wait_comm', 'c_wait_compute', 'c_gen_hccl_id', 'c_comm_init_hccl',
+    'copy_cross_scope'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 
 class BlockConfig:
+<<<<<<< HEAD
     '''A config builder for generating a Block.'''
 
     def __init__(
@@ -148,6 +205,16 @@ class BlockConfig:
         vars_var_type: Dict[str, VarType] = None,
         vars_lod_level: Dict[str, int] = None,
     ):
+=======
+    ''' A config builder for generating a Block. '''
+
+    def __init__(self,
+                 ops: List[OpConfig],
+                 vars: List[str],
+                 vars_dtype: Dict[str, np.dtype] = None,
+                 vars_var_type: Dict[str, VarType] = None,
+                 vars_lod_level: Dict[str, int] = None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ops = ops
         self.vars = vars
         self.vars_dtype = vars_dtype
@@ -156,6 +223,7 @@ class BlockConfig:
 
     def fill_block_desc(self, block_desc):
         for name in self.vars:
+<<<<<<< HEAD
             var_desc = block_desc.var(name.encode())
             var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
             if (
@@ -166,6 +234,14 @@ class BlockConfig:
             if (
                 self.vars_var_type is not None
                 and name in self.vars_var_type.keys()
+=======
+            var_desc = block_desc.var(cpt.to_bytes(name))
+            var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+            if self.vars_lod_level is not None and name in self.vars_lod_level.keys(
+            ):
+                var_desc.set_lod_level(self.vars_lod_level[name])
+            if self.vars_var_type is not None and name in self.vars_var_type.keys(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ):
                 if self.vars_var_type[name] == VarType.LOD_TENSOR_ARRAY:
                     var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR_ARRAY)
@@ -175,8 +251,12 @@ class BlockConfig:
             var_desc.set_dtype(convert_np_dtype_to_dtype_(np.float32))
             if self.vars_dtype is not None and name in self.vars_dtype.keys():
                 var_desc.set_dtype(
+<<<<<<< HEAD
                     convert_np_dtype_to_dtype_(self.vars_dtype[name])
                 )
+=======
+                    convert_np_dtype_to_dtype_(self.vars_dtype[name]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for op_config in self.ops:
             op_desc = block_desc.append_op()
@@ -188,6 +268,7 @@ class BlockConfig:
             for name, values in op_config.outputs.items():
                 op_desc.set_output(name, values)
                 for v in values:
+<<<<<<< HEAD
                     if block_desc.has_var_recursive(v.encode()):
                         continue
                     var_desc = block_desc.var(v.encode())
@@ -218,6 +299,28 @@ class BlockConfig:
                                 op_config.outputs_dtype[v]
                             )
                         )
+=======
+                    if block_desc.has_var_recursive(cpt.to_bytes(v)):
+                        continue
+                    var_desc = block_desc.var(cpt.to_bytes(v))
+                    var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+                    if op_config.outputs_var_type is not None and v in op_config.outputs_var_type.keys(
+                    ):
+                        if op_config.outputs_var_type[
+                                v] == VarType.LOD_TENSOR_ARRAY:
+                            var_desc.set_type(
+                                core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+                        elif op_config.outputs_var_type[
+                                v] == VarType.STEP_SCOPES:
+                            var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
+                            continue
+                    var_desc.set_dtype(convert_np_dtype_to_dtype_(np.float32))
+                    if op_config.outputs_dtype is not None and v in op_config.outputs_dtype.keys(
+                    ):
+                        var_desc.set_dtype(
+                            convert_np_dtype_to_dtype_(
+                                op_config.outputs_dtype[v]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if op_config.type not in _OP_WITHOUT_KERNEL_SET:
                 op_desc.infer_var_type(block_desc)
                 op_desc.infer_shape(block_desc)
@@ -225,6 +328,7 @@ class BlockConfig:
 
 
 class ProgramConfig:
+<<<<<<< HEAD
     '''A config builder for generating a Program.'''
 
     def __init__(
@@ -234,6 +338,12 @@ class ProgramConfig:
         inputs: Dict[str, TensorConfig],
         outputs: List[str],
     ):
+=======
+    '''  A config builder for generating a Program.  '''
+
+    def __init__(self, ops: List[OpConfig], weights: Dict[str, TensorConfig],
+                 inputs: Dict[str, TensorConfig], outputs: List[str]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ops = ops
         # if no weight need to save, we create a place_holder to help seriazlie params.
         if not weights:
@@ -266,22 +376,38 @@ class ProgramConfig:
 
 
 def create_fake_model(program_config):
+<<<<<<< HEAD
     '''Create a Paddle model(in memory) according to the given config.'''
+=======
+    '''  Create a Paddle model(in memory) according to the given config.  '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle.enable_static()
     main_program_desc = core.ProgramDesc()
     util_program = fluid.Program()
     main_block_desc = main_program_desc.block(0)
 
+<<<<<<< HEAD
     var_desc = main_block_desc.var(b"feed")
+=======
+    var_desc = main_block_desc.var(cpt.to_bytes("feed"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     var_desc.set_type(core.VarDesc.VarType.FEED_MINIBATCH)
     var_desc.set_persistable(True)
 
     index = 0
     for name, tensor_config in program_config.inputs.items():
+<<<<<<< HEAD
         var_desc = main_block_desc.var(name.encode())
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
+=======
+        var_desc = main_block_desc.var(cpt.to_bytes(name))
+        var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
+        var_desc.set_shape(tensor_config.shape)
+        print(f"name: {name}; shape: {tensor_config.shape}")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         var_desc.set_need_check_feed(True)
         if tensor_config.lod is not None:
             var_desc.set_lod_level(len(tensor_config.lod))
@@ -294,7 +420,11 @@ def create_fake_model(program_config):
 
     save_var_map = {}
     for name, tensor_config in program_config.weights.items():
+<<<<<<< HEAD
         var_desc = main_block_desc.var(name.encode())
+=======
+        var_desc = main_block_desc.var(cpt.to_bytes(name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
@@ -305,13 +435,18 @@ def create_fake_model(program_config):
             shape=tensor_config.shape,
             type=core.VarDesc.VarType.LOD_TENSOR,
             name=name,
+<<<<<<< HEAD
             initializer=NumpyArrayInitializer(tensor_config.data),
         )
+=======
+            initializer=NumpyArrayInitializer(tensor_config.data))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in_vars = []
     for name in sorted(save_var_map.keys()):
         in_vars.append(save_var_map[name])
 
     out_var = util_program.global_block().create_var(
+<<<<<<< HEAD
         type=core.VarDesc.VarType.RAW, name="out_var_0"
     )
     out_var.desc.set_persistable(True)
@@ -321,6 +456,17 @@ def create_fake_model(program_config):
         outputs={'Y': out_var},
         attrs={'file_path': '', 'save_to_memory': True},
     )
+=======
+        type=core.VarDesc.VarType.RAW, name="out_var_0")
+    out_var.desc.set_persistable(True)
+    util_program.global_block().append_op(type='save_combine',
+                                          inputs={'X': in_vars},
+                                          outputs={'Y': out_var},
+                                          attrs={
+                                              'file_path': '',
+                                              'save_to_memory': True
+                                          })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for op_config in program_config.ops:
         op_desc = main_block_desc.append_op()
         op_desc.set_type(op_config.type)
@@ -336,6 +482,7 @@ def create_fake_model(program_config):
         for name, values in op_config.outputs.items():
             op_desc.set_output(name, values)
             for v in values:
+<<<<<<< HEAD
                 if main_block_desc.has_var_recursive(v.encode()):
                     continue
                 var_desc = main_block_desc.var(v.encode())
@@ -348,11 +495,22 @@ def create_fake_model(program_config):
                         op_config.outputs_var_type[v]
                         == VarType.LOD_TENSOR_ARRAY
                     ):
+=======
+                if main_block_desc.has_var_recursive(cpt.to_bytes(v)):
+                    continue
+                var_desc = main_block_desc.var(cpt.to_bytes(v))
+                var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+                if op_config.outputs_var_type is not None and v in op_config.outputs_var_type.keys(
+                ):
+                    if op_config.outputs_var_type[
+                            v] == VarType.LOD_TENSOR_ARRAY:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR_ARRAY)
                     elif op_config.outputs_var_type[v] == VarType.STEP_SCOPES:
                         var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
                         continue
                 var_desc.set_dtype(convert_np_dtype_to_dtype_(np.float32))
+<<<<<<< HEAD
                 if (
                     op_config.outputs_dtype is not None
                     and v in op_config.outputs_dtype.keys()
@@ -360,13 +518,23 @@ def create_fake_model(program_config):
                     var_desc.set_dtype(
                         convert_np_dtype_to_dtype_(op_config.outputs_dtype[v])
                     )
+=======
+                if op_config.outputs_dtype is not None and v in op_config.outputs_dtype.keys(
+                ):
+                    var_desc.set_dtype(
+                        convert_np_dtype_to_dtype_(op_config.outputs_dtype[v]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if op_config.type not in _OP_WITHOUT_KERNEL_SET:
             op_desc.infer_var_type(main_block_desc)
             op_desc.infer_shape(main_block_desc)
         op_desc.check_attrs()
 
     for index, name in enumerate(program_config.outputs):
+<<<<<<< HEAD
         var_desc = main_block_desc.var(b"fetch")
+=======
+        var_desc = main_block_desc.var(cpt.to_bytes("fetch"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         var_desc.set_type(core.VarDesc.VarType.FETCH_LIST)
         var_desc.set_need_check_feed(True)
         op_desc = main_block_desc.append_op()
@@ -391,6 +559,7 @@ def create_fake_model(program_config):
     return model, params
 
 
+<<<<<<< HEAD
 def create_quant_model(
     model,
     params,
@@ -411,6 +580,21 @@ def create_quant_model(
         model_filename=model,
         params_filename=params,
     )
+=======
+def create_quant_model(model,
+                       params,
+                       activation_quantize_type='moving_average_abs_max',
+                       weight_quantize_type='channel_wise_abs_max',
+                       save=False):
+    place = paddle.CUDAPlace(0)
+    scope = global_scope()
+    exe = paddle.static.Executor(place)
+    [inference_program, feed_target_names,
+     fetch_targets] = paddle.static.load_inference_model(path_prefix=None,
+                                                         executor=exe,
+                                                         model_filename=model,
+                                                         params_filename=params)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
 
     out_scale_op_list = [
@@ -502,11 +686,19 @@ def create_quant_model(
 
     def _get_op_output_var_names(op):
         """ """
+<<<<<<< HEAD
         assert isinstance(
             op, (IrNode, Operator)
         ), "The input op should be IrNode or Operator."
         var_names = []
         op_name = op.name() if isinstance(op, IrNode) else op.type
+=======
+        assert isinstance(op, (IrNode, Operator)), \
+            "The input op should be IrNode or Operator."
+        var_names = []
+        op_name = op.name() if isinstance(op, IrNode) \
+            else op.type
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if op_name not in op_real_in_out_name:
             return []
 
@@ -523,8 +715,12 @@ def create_quant_model(
         scope=scope,
         place=place,
         activation_quantize_type=activation_quantize_type,
+<<<<<<< HEAD
         weight_quantize_type=weight_quantize_type,
     )
+=======
+        weight_quantize_type=weight_quantize_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     transform_pass.apply(graph)
 
     op_nodes = graph.all_op_nodes()
@@ -533,18 +729,27 @@ def create_quant_model(
             var_names = _get_op_output_var_names(op_node)
             for var_name in var_names:
                 in_node = graph._find_node_by_name(op_node.outputs, var_name)
+<<<<<<< HEAD
                 if in_node.dtype() not in [
                     core.VarDesc.VarType.FP64,
                     core.VarDesc.VarType.FP32,
                 ]:
+=======
+                if in_node.dtype() not in \
+                    [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     continue
 
                 op_node.op()._set_attr("out_threshold", 3.0)
 
     # Freeze graph for inference, but the weight of fc/conv is still float type.
     freeze_pass = QuantizationFreezePass(
+<<<<<<< HEAD
         scope=scope, place=place, weight_quantize_type=weight_quantize_type
     )
+=======
+        scope=scope, place=place, weight_quantize_type=weight_quantize_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     freeze_pass.apply(graph)
 
     main_program = graph.to_program()
@@ -562,6 +767,7 @@ def create_quant_model(
             tensor.set(np.ones(tensor.shape(), dtype=np.float32), place)
 
     if save:
+<<<<<<< HEAD
         fluid.io.save_inference_model(
             'test_inference_model',
             feed_target_names,
@@ -569,14 +775,29 @@ def create_quant_model(
             exe,
             main_program=main_program,
         )
+=======
+        fluid.io.save_inference_model('test_inference_model',
+                                      feed_target_names,
+                                      fetch_targets,
+                                      exe,
+                                      main_program=main_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     feed_vars = [
         main_program.global_block().var(name) for name in feed_target_names
     ]
+<<<<<<< HEAD
     serialized_program = paddle.static.serialize_program(
         feed_vars, fetch_targets, program=main_program
     )
     serialized_params = paddle.static.serialize_persistables(
         feed_vars, fetch_targets, executor=exe, program=main_program
     )
+=======
+    serialized_program = paddle.static.serialize_program(feed_vars,
+                                                         fetch_targets,
+                                                         program=main_program)
+    serialized_params = paddle.static.serialize_persistables(
+        feed_vars, fetch_targets, executor=exe, program=main_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return serialized_program, serialized_params

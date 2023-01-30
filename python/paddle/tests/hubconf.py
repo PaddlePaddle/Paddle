@@ -14,10 +14,18 @@
 
 dependencies = ['paddle']
 
+<<<<<<< HEAD
+=======
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from test_hapi_hub_model import MM as _MM
 
 
 def MM(out_channels=8, pretrained=False):
     '''This is a test demo for paddle hub
+<<<<<<< HEAD
     '''  # fmt: skip
+=======
+    '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return _MM(out_channels)

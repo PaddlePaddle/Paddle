@@ -35,6 +35,7 @@ class SimilarityFocusOpMaker : public framework::OpProtoAndCheckerMaker {
 SimilarityFocus Operator.
 
 Generate a similarity focus mask with the same shape of input using the following method:
+<<<<<<< HEAD
 1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding
    to the axis according to the indexes. For example, if axis=1 and indexes=[a],
    it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X
@@ -46,6 +47,19 @@ Generate a similarity focus mask with the same shape of input using the followin
    next largest number will be selected from the remaining numbers. Obviously
    there will be min(B, C) numbers), and mark the corresponding position of the
    3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for
+=======
+1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding 
+   to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
+   it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X 
+   is (BatchSize, A, B, C), the shape of tensor T is (BatchSize, B, C).
+2. For each index, find the largest numbers in the tensor T, so that the same 
+   row and same column has at most one number(what it means is that if the 
+   largest number has been found in the i-th row and the j-th column, then 
+   the numbers in the i-th row or j-th column will be skipped. And then the 
+   next largest number will be selected from the remaining numbers. Obviously 
+   there will be min(B, C) numbers), and mark the corresponding position of the 
+   3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    each index.
 3. Broadcast the 3-D similarity focus mask to the same shape of input X.
 
@@ -74,10 +88,18 @@ class SimilarityFocusOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           platform::CPUPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

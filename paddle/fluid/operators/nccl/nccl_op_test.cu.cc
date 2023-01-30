@@ -106,8 +106,13 @@ class NCCLTester : public ::testing::Test {
     p::CUDAPlace place(gpu_id);
     auto &ctx = dev_ctxs_.at(gpu_id);
 
+<<<<<<< HEAD
     auto *send_tensor = scope->Var("st")->GetMutable<phi::DenseTensor>();
     auto *recv_tensor = scope->Var("rt")->GetMutable<phi::DenseTensor>();
+=======
+    auto *send_tensor = scope->Var("st")->GetMutable<f::LoDTensor>();
+    auto *recv_tensor = scope->Var("rt")->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (!send_tensor->numel()) {
       send_tensor->mutable_data<T>(kDims, place);
@@ -178,10 +183,16 @@ void NCCLTester::testNcclAllReduceOp() {
     p::CPUPlace cpu_place;
     p::CUDAPlace gpu_place(gpu_list_[i]);
 
+<<<<<<< HEAD
     auto &recv_tensor = dev_scopes[i]->FindVar("rt")->Get<phi::DenseTensor>();
     auto *rt = recv_tensor.data<float>();
     auto *result_tensor =
         dev_scopes[i]->Var("ct")->GetMutable<phi::DenseTensor>();
+=======
+    auto &recv_tensor = dev_scopes[i]->FindVar("rt")->Get<f::LoDTensor>();
+    auto *rt = recv_tensor.data<float>();
+    auto *result_tensor = dev_scopes[i]->Var("ct")->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     result_tensor->Resize(kDims);
     auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
@@ -235,10 +246,17 @@ void NCCLTester::testNcclReduceOp() {
   p::CPUPlace cpu_place;
   p::CUDAPlace gpu_place(gpu_list_[kRoot]);
 
+<<<<<<< HEAD
   auto &recv_tensor = dev_scopes[kRoot]->FindVar("rt")->Get<phi::DenseTensor>();
   auto *rt = recv_tensor.data<float>();
   auto *result_tensor =
       dev_scopes[kRoot]->Var("ct")->GetMutable<phi::DenseTensor>();
+=======
+  auto &recv_tensor = dev_scopes[kRoot]->FindVar("rt")->Get<f::LoDTensor>();
+  auto *rt = recv_tensor.data<float>();
+  auto *result_tensor =
+      dev_scopes[kRoot]->Var("ct")->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   result_tensor->Resize(kDims);
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
@@ -291,10 +309,16 @@ void NCCLTester::testNcclBcastOp() {
   if (idx == kRoot) {
     rt_str = "st";
   }
+<<<<<<< HEAD
   auto &recv_tensor = dev_scopes[idx]->FindVar(rt_str)->Get<phi::DenseTensor>();
   auto *rt = recv_tensor.data<float>();
   auto *result_tensor =
       dev_scopes[idx]->Var("ct")->GetMutable<phi::DenseTensor>();
+=======
+  auto &recv_tensor = dev_scopes[idx]->FindVar(rt_str)->Get<f::LoDTensor>();
+  auto *rt = recv_tensor.data<float>();
+  auto *result_tensor = dev_scopes[idx]->Var("ct")->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   result_tensor->Resize(kDims);
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 

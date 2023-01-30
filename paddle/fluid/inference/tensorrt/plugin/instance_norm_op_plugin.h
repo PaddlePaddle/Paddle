@@ -33,8 +33,13 @@ class InstanceNormPlugin : public PluginTensorRT {
   std::vector<float> scale_;
   std::vector<float> bias_;
 
+<<<<<<< HEAD
   phi::DenseTensor scale_t;
   phi::DenseTensor bias_t;
+=======
+  framework::Tensor scale_t;
+  framework::Tensor bias_t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   cudnnHandle_t handle_;
   cudnnTensorDescriptor_t x_desc_, y_desc_, b_desc_;
 
@@ -99,7 +104,11 @@ class InstanceNormPlugin : public PluginTensorRT {
   }
 
   const char *getPluginType() const TRT_NOEXCEPT override {
+<<<<<<< HEAD
     return "instance_norm";
+=======
+    return "instance_norm_plugin";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index,
@@ -125,7 +134,11 @@ class InstanceNormPlugin : public PluginTensorRT {
 class InstanceNormPluginCreator : public TensorRTPluginCreator {
  public:
   const char *getPluginName() const TRT_NOEXCEPT override {
+<<<<<<< HEAD
     return "instance_norm";
+=======
+    return "instance_norm_plugin";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   const char *getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
@@ -137,6 +150,7 @@ class InstanceNormPluginCreator : public TensorRTPluginCreator {
     return new InstanceNormPlugin(serial_data, serial_length);
   }
 };
+<<<<<<< HEAD
 
 class InstanceNormPluginDynamic : public DynamicPluginTensorRT {
  private:
@@ -268,6 +282,9 @@ class InstanceNormPluginDynamicCreator : public TensorRTPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(InstanceNormPluginCreator);
 REGISTER_TRT_PLUGIN_V2(InstanceNormPluginDynamicCreator);
+=======
+REGISTER_TRT_PLUGIN_V2(InstanceNormPluginCreator);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace plugin
 }  // namespace tensorrt

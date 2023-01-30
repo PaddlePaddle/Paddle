@@ -17,8 +17,13 @@
 #include <ThreadPool.h>
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/core/enforce.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/device_guard.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 

@@ -15,7 +15,10 @@
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 
 #include <cmath>
+<<<<<<< HEAD
 #include <mutex>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #include "paddle/fluid/platform/enforce.h"
 
@@ -121,7 +124,10 @@ size_t BestFitAllocator::NumFreeChunks() const {
   return num;
 }
 void BestFitAllocator::FreeImpl(phi::Allocation* allocation) {
+<<<<<<< HEAD
   std::lock_guard<SpinLock> guard(spinlock_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(
       bf_allocation,
@@ -158,7 +164,10 @@ void BestFitAllocator::FreeImpl(phi::Allocation* allocation) {
   delete allocation;
 }
 phi::Allocation* BestFitAllocator::AllocateImpl(size_t size) {
+<<<<<<< HEAD
   std::lock_guard<SpinLock> guard(spinlock_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto highest_set_bit = static_cast<size_t>(HighestBitPos(size));
   MapIt map_it;
   for (; highest_set_bit < free_chunks_.size(); ++highest_set_bit) {

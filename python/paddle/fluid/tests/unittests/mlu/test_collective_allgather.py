@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 import unittest
 import numpy as np
@@ -23,10 +27,15 @@ paddle.enable_static()
 
 
 class TestCAllgatherOp(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_allgather_fp32(self):
+<<<<<<< HEAD
         self.check_with_place(
             "collective_allgather_op.py", "allgather", "float32"
         )
@@ -45,14 +54,35 @@ class TestCAllgatherOp(TestDistBase):
         self.check_with_place(
             "collective_allgather_op.py", "allgather", "int16"
         )
+=======
+        self.check_with_place("collective_allgather_op.py", "allgather",
+                              "float32")
+
+    def test_allgather_fp16(self):
+        self.check_with_place("collective_allgather_op.py", "allgather",
+                              "float16")
+
+    def test_allgather_int32(self):
+        self.check_with_place("collective_allgather_op.py", "allgather",
+                              "int32")
+
+    def test_allgather_int16(self):
+        self.check_with_place("collective_allgather_op.py", "allgather",
+                              "int16")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_allgather_int8(self):
         self.check_with_place("collective_allgather_op.py", "allgather", "int8")
 
     def test_allgather_uint8(self):
+<<<<<<< HEAD
         self.check_with_place(
             "collective_allgather_op.py", "allgather", "uint8"
         )
+=======
+        self.check_with_place("collective_allgather_op.py", "allgather",
+                              "uint8")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

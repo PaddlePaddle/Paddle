@@ -1,6 +1,10 @@
 # Contribute Code
 
+<<<<<<< HEAD
 You are welcome to contribute to project PaddlePaddle. To contribute to PaddlePaddle, you have to agree with the
+=======
+You are welcome to contribute to project PaddlePaddle. To contribute to PaddlePaddle, you have to agree with the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 [PaddlePaddle Contributor License Agreement](https://gist.github.com/XiaoguangHu01/75018ad8e11af13df97070dd18ae6808).
 
 We sincerely appreciate your contribution.  This document explains our workflow and work style.

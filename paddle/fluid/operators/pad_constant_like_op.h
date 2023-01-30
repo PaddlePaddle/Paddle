@@ -30,9 +30,15 @@ template <typename DeviceContext, typename T>
 class PadConstantLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto in_x = context.Input<phi::DenseTensor>("X");
     auto in_y = context.Input<phi::DenseTensor>("Y");
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto in_x = context.Input<framework::Tensor>("X");
+    auto in_y = context.Input<framework::Tensor>("Y");
+    auto* out = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (in_x->dims() == in_y->dims()) {
       framework::TensorCopy(*in_y, context.GetPlace(), out);
@@ -42,7 +48,11 @@ class PadConstantLikeKernel : public framework::OpKernel<T> {
     T pad_value = static_cast<T>(context.Attr<float>("pad_value"));
     out->mutable_data<T>(context.GetPlace());
 
+<<<<<<< HEAD
     int rank = context.Input<phi::DenseTensor>("X")->dims().size();
+=======
+    int rank = context.Input<framework::Tensor>("X")->dims().size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     std::vector<int> pads(rank * 2, 0);
 
@@ -65,10 +75,17 @@ template <typename DeviceContext, typename T>
 class PadConstantLikeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto in_y = context.Input<phi::DenseTensor>("Y");
     auto in_dout =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* d_y = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+    auto in_y = context.Input<framework::Tensor>("Y");
+    auto in_dout =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_y = context.Output<framework::Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (d_y == nullptr) {
       return;

@@ -14,10 +14,15 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/slice_grad_kernel.h"
 
@@ -352,6 +357,7 @@ void SliceGradRawKernel(const Context& ctx,
   }
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void SliceArrayGradKernel(const Context& dev_ctx,
                           const TensorArray& input,
@@ -410,4 +416,6 @@ void SliceArrayDenseGradKernel(const Context& dev_ctx,
       dev_ctx, out_grad, dev_ctx.GetPlace(), false, &input_grad->at(start));
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

@@ -12,20 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import (
     _get_optimizer_input_shape,
 )
+=======
+from __future__ import print_function
+
+import unittest
+from paddle.fluid.framework import default_main_program
+from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import _get_optimizer_input_shape
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 main_program = default_main_program()
 
 
 class TestFleetPS(unittest.TestCase):
+<<<<<<< HEAD
     def test_version(self):
         from paddle.fluid.incubate.fleet.parameter_server import version
 
+=======
+
+    def test_version(self):
+        from paddle.fluid.incubate.fleet.parameter_server import version
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         transpiler = version.is_transpiler()
         self.assertEqual(transpiler, True)
 
@@ -46,9 +60,14 @@ class TestFleetPS(unittest.TestCase):
 
         for attrs in optimizers:
             op_type, varkey, orig_shape, param_shape = attrs
+<<<<<<< HEAD
             new_shape = _get_optimizer_input_shape(
                 op_type, varkey, orig_shape, param_shape
             )
+=======
+            new_shape = _get_optimizer_input_shape(op_type, varkey, orig_shape,
+                                                   param_shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertListEqual(new_shape, param_shape)
 
         optimizers = []
@@ -56,9 +75,14 @@ class TestFleetPS(unittest.TestCase):
 
         for attrs in optimizers:
             op_type, varkey, orig_shape, param_shape = attrs
+<<<<<<< HEAD
             new_shape = _get_optimizer_input_shape(
                 op_type, varkey, orig_shape, param_shape
             )
+=======
+            new_shape = _get_optimizer_input_shape(op_type, varkey, orig_shape,
+                                                   param_shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertListEqual(new_shape, orig_shape)
 
         with self.assertRaises(ValueError):
@@ -67,9 +91,14 @@ class TestFleetPS(unittest.TestCase):
 
             for attrs in optimizers:
                 op_type, varkey, orig_shape, param_shape = attrs
+<<<<<<< HEAD
                 _get_optimizer_input_shape(
                     op_type, varkey, orig_shape, param_shape
                 )
+=======
+                _get_optimizer_input_shape(op_type, varkey, orig_shape,
+                                           param_shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

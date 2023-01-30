@@ -12,16 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
 
+=======
+from __future__ import print_function
+
+import os
+import sys
+import subprocess
+import unittest
+import paddle
+import tempfile
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid import core
 
 
 class TestGPUPackagePaddle(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -34,9 +50,14 @@ class TestGPUPackagePaddle(unittest.TestCase):
                 os.environ['HIP_VISIBLE_DEVICES'] = ''
             else:
                 os.environ['CUDA_VISIBLE_DEVICES'] = ''
+<<<<<<< HEAD
             test_file = os.path.join(
                 self.temp_dir.name, 'test_no_gpu_run_rand.py'
             )
+=======
+            test_file = os.path.join(self.temp_dir.name,
+                                     'test_no_gpu_run_rand.py')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             with open(test_file, 'w') as wb:
                 cmd_test = """
 import paddle
@@ -49,12 +70,19 @@ assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's p
             _python = sys.executable
 
             ps_cmd = '{} {}'.format(_python, test_file)
+<<<<<<< HEAD
             ps_proc = subprocess.Popen(
                 ps_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=os.environ,
             )
+=======
+            ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       env=os.environ)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             stdout, stderr = ps_proc.communicate()
 
             assert 'CPU device will be used by default' in str(

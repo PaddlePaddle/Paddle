@@ -18,7 +18,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 int SetMeta(const phi::DenseTensor& srcTensor, phi::DenseTensor* dstTensor) {
+=======
+int SetMeta(const LoDTensor& srcTensor, LoDTensor* dstTensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (srcTensor.dtype() == paddle::experimental::DataType::INT32 ||
       srcTensor.dtype() == paddle::experimental::DataType::INT64 ||
       srcTensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
@@ -33,8 +37,13 @@ int SetMeta(const phi::DenseTensor& srcTensor, phi::DenseTensor* dstTensor) {
   return xpu::Error_t::SUCCESS;
 }
 template <typename T>
+<<<<<<< HEAD
 int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
                     phi::DenseTensor* dstTensor,
+=======
+int CopyTensorByXPU(const LoDTensor& srcTensor,
+                    LoDTensor* dstTensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     int flag,
                     const Place& place) {
   const T* srcData = srcTensor.template data<T>();
@@ -67,8 +76,13 @@ int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
   return xpu::Error_t::SUCCESS;
 }
 
+<<<<<<< HEAD
 const int CopyTensorByType(const phi::DenseTensor& srcTensor,
                            phi::DenseTensor* dstTensor,
+=======
+const int CopyTensorByType(const LoDTensor& srcTensor,
+                           LoDTensor* dstTensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            int flag,
                            const Place& place) {
   int r = 0;
@@ -97,8 +111,13 @@ const int CopyTensorByType(const phi::DenseTensor& srcTensor,
 struct BeamSearchDecodeXPUFunctor {
   BeamSearchDecodeXPUFunctor(const LoDTensorArray& step_ids,
                              const LoDTensorArray& step_scores,
+<<<<<<< HEAD
                              phi::DenseTensor* id_tensor,
                              phi::DenseTensor* score_tensor,
+=======
+                             LoDTensor* id_tensor,
+                             LoDTensor* score_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                              size_t beam_size,
                              int end_id)
       : beam_size_(beam_size),
@@ -111,7 +130,11 @@ struct BeamSearchDecodeXPUFunctor {
     if (platform::is_xpu_place(step_ids[0].place())) {
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids) {
+<<<<<<< HEAD
         phi::DenseTensor out;
+=======
+        framework::LoDTensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (step_id.numel() > 0) {
           r = CopyTensorByType(step_id, &out, 0, step_ids[0].place());
           PADDLE_ENFORCE_EQ(
@@ -129,7 +152,11 @@ struct BeamSearchDecodeXPUFunctor {
     if (platform::is_xpu_place(step_scores[0].place())) {
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores) {
+<<<<<<< HEAD
         phi::DenseTensor out;
+=======
+        framework::LoDTensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (step_score.numel() > 0) {
           r = CopyTensorByType(step_score, &out, 0, step_scores[0].place());
           PADDLE_ENFORCE_EQ(
@@ -164,8 +191,13 @@ struct BeamSearchDecodeXPUFunctor {
   // scenarios.
   LoDTensorArray step_ids_ = LoDTensorArray();
   LoDTensorArray step_scores_ = LoDTensorArray();
+<<<<<<< HEAD
   phi::DenseTensor* id_tensor_;
   phi::DenseTensor* score_tensor_;
+=======
+  LoDTensor* id_tensor_;
+  LoDTensor* score_tensor_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace operators

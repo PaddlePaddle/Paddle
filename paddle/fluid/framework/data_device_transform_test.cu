@@ -47,6 +47,7 @@ class TestOpWithKernel : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     if (Attr<bool>("use_gpu")) {
@@ -58,6 +59,17 @@ class TestOpWithKernel : public OperatorWithKernel {
       VLOG(3) << "use default kernel";
       return phi::KernelKey(proto::VarType::FP32,
                             ctx.Input<phi::DenseTensor>("input")->place());
+=======
+  OpKernelType GetExpectedKernelType(
+      const ExecutionContext& ctx) const override {
+    if (Attr<bool>("use_gpu")) {
+      VLOG(3) << "force use gpu kernel";
+      return OpKernelType(proto::VarType::FP32, platform::CUDAPlace(0));
+    } else {
+      VLOG(3) << "use default kernel";
+      return OpKernelType(proto::VarType::FP32,
+                          ctx.Input<Tensor>("input")->place());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };
@@ -68,10 +80,17 @@ class TestKernel : public OpKernel<float> {
   void Compute(const ExecutionContext& ctx) const {
     std::cout << ctx.DebugString() << std::endl;
 
+<<<<<<< HEAD
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("input");
 
     std::cout << "input place:" << input->place() << std::endl;
     auto* output = ctx.Output<phi::DenseTensor>("output");
+=======
+    const Tensor* input = ctx.Input<Tensor>("input");
+
+    std::cout << "input place:" << input->place() << std::endl;
+    auto* output = ctx.Output<framework::LoDTensor>("output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     output->Resize(input->dims());
     output->mutable_data<T>(ctx.GetPlace());
 
@@ -120,7 +139,11 @@ TEST(Operator, CPUtoGPU) {
 
   auto cpu_op = paddle::framework::OpRegistry::CreateOp(cpu_op_desc);
   // prepare input
+<<<<<<< HEAD
   auto* in_t = scope.Var("IN1")->GetMutable<phi::DenseTensor>();
+=======
+  auto* in_t = scope.Var("IN1")->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* src_ptr =
       in_t->mutable_data<float>({2, 3}, paddle::platform::CPUPlace());
   for (int i = 0; i < 2 * 3; ++i) {
@@ -131,7 +154,11 @@ TEST(Operator, CPUtoGPU) {
   auto* output = scope.Var("OUT1");
   cpu_op->Run(scope, cpu_place);
 
+<<<<<<< HEAD
   auto* output_ptr = output->Get<phi::DenseTensor>().data<float>();
+=======
+  auto* output_ptr = output->Get<paddle::framework::LoDTensor>().data<float>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (int i = 0; i < 2 * 3; ++i) {
     ASSERT_EQ(output_ptr[i], static_cast<float>(i) * 2);
   }
@@ -155,13 +182,22 @@ TEST(Operator, CPUtoGPU) {
   gpu_op->Run(scope, cuda_place);
   VLOG(3) << "after gpu_op run";
 
+<<<<<<< HEAD
   // auto* output2_ptr = output2->Get<phi::DenseTensor>().data<float>();
+=======
+  // auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   auto dev_ctx = pool.Get(cuda_place);
 
+<<<<<<< HEAD
   phi::DenseTensor output_tensor;
   paddle::framework::TensorCopy(output2->Get<phi::DenseTensor>(),
+=======
+  paddle::framework::Tensor output_tensor;
+  paddle::framework::TensorCopy(output2->Get<paddle::framework::LoDTensor>(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                 paddle::platform::CPUPlace(),
                                 *dev_ctx,
                                 &output_tensor);

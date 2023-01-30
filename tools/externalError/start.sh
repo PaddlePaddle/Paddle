@@ -29,7 +29,11 @@ else
     echo "please run on Mac/Linux"
     exit 1
 fi
+<<<<<<< HEAD
 protobuf/bin/protoc -I../../paddle/phi/core/ --python_out . ../../paddle/phi/core/external_error.proto
+=======
+protobuf/bin/protoc -I../../paddle/fluid/platform/ --python_out . ../../paddle/fluid/platform/external_error.proto
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 python3.7 spider.py
 tar czvf externalErrorMsg_$(date +'%Y%m%d').tar.gz externalErrorMsg.pb

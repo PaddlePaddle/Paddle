@@ -12,23 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_collective_base import TestDistBase
 
 import paddle
 
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_base import TestDistBase
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
 class TestReduceScatterOp(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_reducescatter(self):
+<<<<<<< HEAD
         self.check_with_place(
             "collective_reducescatter_op.py", "reduce_scatter"
         )
+=======
+        self.check_with_place("collective_reducescatter_op.py",
+                              "reduce_scatter")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

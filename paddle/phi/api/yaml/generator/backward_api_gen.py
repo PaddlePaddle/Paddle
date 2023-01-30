@@ -12,16 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 import re
 
 import yaml
+=======
+import os
+import yaml
+import argparse
+import re
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from api_base import BaseAPI
 
 
 class BackwardAPI(BaseAPI):
+<<<<<<< HEAD
     def __init__(self, backward_item_yaml):
         super().__init__(backward_item_yaml)
+=======
+
+    def __init__(self, backward_item_yaml):
+        super(BackwardAPI, self).__init__(backward_item_yaml)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.check_args(backward_item_yaml['forward'])
         self.no_need_buffer = self.parse_no_need_buffer(backward_item_yaml)
 
@@ -32,6 +46,7 @@ class BackwardAPI(BaseAPI):
         # api_name (const Tensor& input, ... , int attr, ...) -> Tensor(out)
         result = re.search(
             r"(?P<op>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
+<<<<<<< HEAD
             forward_config,
         )
         api = result.group('op')
@@ -44,6 +59,14 @@ class BackwardAPI(BaseAPI):
         fw_inputs, fw_attrs = self.parse_input_and_attr(
             api, result.group('args')
         )
+=======
+            forward_config)
+        api = result.group('op')
+        _, outputs, _, = self.parse_output(self.api, result.group('outputs'))
+        outputs = [item.split('@')[0] for item in outputs]
+        fw_inputs, fw_attrs = self.parse_input_and_attr(api,
+                                                        result.group('args'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return api, fw_inputs, fw_attrs, outputs
 
@@ -59,21 +82,31 @@ class BackwardAPI(BaseAPI):
     def check_args(self, forward_config):
         # parse the forward and backward config
         _, fw_inputs, fw_attrs, fw_outputs = self.parse_forward_config(
+<<<<<<< HEAD
             forward_config
         )
+=======
+            forward_config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # check the inputs of backward
         for input in self.inputs['names']:
             if input not in fw_inputs['names'] and input not in fw_outputs:
                 if input.endswith('_grad'):
                     original_name = input[:-5]
+<<<<<<< HEAD
                     assert (
                         original_name in fw_outputs
                     ), f"{self.api} : Input Tensor error: the input tensor({input}) of backward should be an input or output or grad of output in forward api. \
+=======
+                    assert original_name in fw_outputs, \
+                        f"{self.api} : Input Tensor error: the input tensor({input}) of backward should be an input or output or grad of output in forward api. \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          Please check the forward of {self.api} in yaml."
 
         # check the attributes of backward
         for attr in self.attrs['names']:
+<<<<<<< HEAD
             assert (
                 attr in fw_attrs['names']
                 and self.attrs['attr_info'][attr][0]
@@ -87,6 +120,16 @@ class BackwardAPI(BaseAPI):
         assert len(self.outputs['types']) <= len(
             fw_inputs['names']
         ), f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
+=======
+            assert (attr in fw_attrs['names'] and self.attrs['attr_info'][attr][0] == fw_attrs['attr_info'][attr][0]) or \
+                 self.attrs['attr_info'][attr][1] is not None, \
+                f"{self.api} : Attribute error: The attribute({attr}) of backward isn't consistent with forward api or doesn't have default value. \
+                 Please check the args of {self.api} in yaml."
+
+        # check the output of backward
+        assert len(self.outputs['types']) <= len(fw_inputs['names']), \
+            f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              Please check the output of {self.api} in yaml."
 
     def get_declare_args(self, inplace_flag=False):
@@ -95,6 +138,7 @@ class BackwardAPI(BaseAPI):
     def get_define_args(self, inplace_flag=False):
         out_type_map = {
             'Tensor': 'Tensor*',
+<<<<<<< HEAD
             'std::vector<Tensor>': 'std::vector<Tensor*>',
         }
         intputs_and_attrs = super().get_define_args()
@@ -105,6 +149,15 @@ class BackwardAPI(BaseAPI):
                 + ' '
                 + name.split('@')[0]
             )
+=======
+            'std::vector<Tensor>': 'std::vector<Tensor*>'
+        }
+        intputs_and_attrs = super(BackwardAPI, self).get_define_args()
+        outs = []
+        for i, name in enumerate(self.outputs['names']):
+            outs.append(out_type_map[self.outputs['types'][i]] + ' ' +
+                        name.split('@')[0])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         result = intputs_and_attrs + ', ' + ", ".join(outs)
         return result
 
@@ -115,8 +168,12 @@ class BackwardAPI(BaseAPI):
         if not self.is_base_api:
             invoke_func_name = self.invoke.split('(')[0]
             if (not invoke_func_name.endswith("_grad")) and (
+<<<<<<< HEAD
                 not invoke_func_name.endswith('_impl')
             ):
+=======
+                    not invoke_func_name.endswith('_impl')):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return ""
         api_func_name = self.get_api_func_name()
         api_declaration = f"""
@@ -140,6 +197,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
     def get_return_type(self, inplace_flag=False):
         return 'void'
 
+<<<<<<< HEAD
     def gene_output(
         self,
         out_dtype_list,
@@ -147,6 +205,13 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
         code_indent='',
         inplace_flag=False,
     ):
+=======
+    def gene_output(self,
+                    out_dtype_list,
+                    out_tensor_type_list=None,
+                    code_indent='',
+                    inplace_flag=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         kernel_output = []
         output_names = []
         output_create = ""
@@ -154,6 +219,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
         if len(out_dtype_list) == 1:
             kernel_output.append('kernel_out')
             output_names.append('kernel_out')
+<<<<<<< HEAD
             inplace_assign = (
                 " = " + self.inplace_map[self.outputs['names'][0]]
                 if inplace_flag
@@ -184,12 +250,30 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                     + f"""
 {code_indent}  auto kernel_out = {set_out_func}({self.outputs['names'][0]});"""
                 )
+=======
+            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
+                0]] if inplace_flag and self.inplace_map is not None and self.outputs[
+                    'names'][0] in self.inplace_map else ""
+            output_create = ""
+            set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
+                0] == 'dense' else 'SetSelectedRowsKernelOutput'
+            if out_dtype_list[0] == 'std::vector<Tensor>':
+                assert self.outputs['out_size_expr'] is not None, \
+                     f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                output_create = output_create + f"""
+{code_indent}  auto kernel_out = {set_out_func}(&{self.outputs['names'][0]});"""
+
+            else:
+                output_create = output_create + f"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['names'][0]});"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         elif len(out_dtype_list) > 1:
             output_create = ""
             for i, out_type_item in enumerate(out_dtype_list):
                 kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
+<<<<<<< HEAD
                 set_out_func = (
                     'SetKernelOutput'
                     if out_tensor_type_list is None
@@ -234,21 +318,52 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                         + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(&{self.outputs['names'][i]});"""
                     )
+=======
+                set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
+                    i] == 'dense' else 'SetSelectedRowsKernelOutput'
+                if out_type_item == 'Tensor':
+                    if inplace_flag and self.inplace_map is not None and self.outputs[
+                            'names'][i] in self.inplace_map:
+                        output_create = output_create + f"""
+{code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
+
+                    output_create = output_create + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i]});"""
+
+                else:
+                    if inplace_flag and self.inplace_map is not None and self.outputs[
+                            'names'][i] in self.inplace_map:
+                        output_create = output_create + f"""
+{code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
+
+                    assert self.outputs['out_size_expr'][i] is not None, \
+                        f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    output_create = output_create + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}(&{self.outputs['names'][i]});"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
+<<<<<<< HEAD
                     self.api
                 )
             )
+=======
+                    self.api))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return kernel_output, output_names, output_create
 
     def gene_invoke_code(self, invoke_code, params_code):
         invoke_func_name = invoke_code.split('(')[0].strip()
         if invoke_func_name.endswith('_grad') or invoke_func_name.endswith(
+<<<<<<< HEAD
             '_impl'
         ):
+=======
+                '_impl'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return f"""
 PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
   {invoke_code};
@@ -280,21 +395,32 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/type_traits.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
+<<<<<<< HEAD
 DECLARE_int32(low_precision_op_list);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 """
 
 
 def backward_api_namespace():
+<<<<<<< HEAD
     return (
         """
 namespace paddle {
@@ -312,6 +438,21 @@ namespace experimental {
 def generate_backward_api(
     backward_yaml_path, header_file_path, source_file_path
 ):
+=======
+    return ("""
+namespace paddle {
+namespace experimental {
+
+""", """
+
+}  // namespace experimental
+}  // namespace paddle
+""")
+
+
+def generate_backward_api(backward_yaml_path, header_file_path,
+                          source_file_path):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     bw_apis = []
     for each_api_yaml in backward_yaml_path:
@@ -347,6 +488,7 @@ def generate_backward_api(
 
 def main():
     parser = argparse.ArgumentParser(
+<<<<<<< HEAD
         description='Generate PaddlePaddle C++ backward API files'
     )
     parser.add_argument(
@@ -366,6 +508,20 @@ def main():
         help='output of generated backward source code file',
         default='paddle/phi/api/lib/backward_api.cc',
     )
+=======
+        description='Generate PaddlePaddle C++ backward API files')
+    parser.add_argument('--backward_yaml_path',
+                        help='path to backward yaml file',
+                        nargs='+',
+                        default='paddle/phi/api/yaml/backward.yaml')
+    parser.add_argument('--backward_header_path',
+                        help='output of generated backward header code file',
+                        default='paddle/phi/api/backward/backward_api.h')
+
+    parser.add_argument('--backward_source_path',
+                        help='output of generated backward source code file',
+                        default='paddle/phi/api/lib/backward_api.cc')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     options = parser.parse_args()
 
@@ -373,9 +529,14 @@ def main():
     header_file_path = options.backward_header_path
     source_file_path = options.backward_source_path
 
+<<<<<<< HEAD
     generate_backward_api(
         backward_yaml_path, header_file_path, source_file_path
     )
+=======
+    generate_backward_api(backward_yaml_path, header_file_path,
+                          source_file_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -22,6 +22,7 @@ set(SETUP_LOG_FILE "setup.py.log")
 
 set(FLUID_CORE_NAME "libpaddle")
 
+<<<<<<< HEAD
 if(WITH_SETUP_INSTALL)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
                  ${CMAKE_CURRENT_BINARY_DIR}/env_dict.py)
@@ -29,6 +30,10 @@ else()
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
                  ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 endif()
+=======
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+               ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
 
@@ -53,6 +58,7 @@ set(FLUID_CORE_DEPS ${FLUID_CORE})
 
 add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 
+<<<<<<< HEAD
 # Standard op(phi op) description is defined in ops.yaml and legacy_ops.yaml.
 # When users define composite rules of some nonbasic op, as for defination of args,
 # they are supposed to refer to standard op description. However, there exists
@@ -135,6 +141,28 @@ else()
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
   endif()
+=======
+if(WIN32)
+  add_custom_command(
+    OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+    COMMAND
+      ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
+      ${PADDLE_BINARY_DIR}/python/paddle/
+    COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
+            bdist_wheel
+    COMMENT "Packing whl packages------>>>"
+    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+            pass_desc_py_proto ${PY_FILES})
+else()
+  add_custom_command(
+    OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+    COMMAND touch stub.cc
+    COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
+    COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+    COMMENT "Packing whl packages------>>>"
+    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+            pass_desc_py_proto ${PY_FILES})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 add_custom_target(paddle_python ALL
@@ -148,6 +176,7 @@ if(WITH_TESTING)
   add_subdirectory(paddle/tests)
   add_subdirectory(paddle/fluid/tests)
   add_subdirectory(paddle/fluid/contrib/tests)
+<<<<<<< HEAD
   add_subdirectory(paddle/static/quantization/tests)
 endif()
 
@@ -155,6 +184,12 @@ if(NOT WITH_SETUP_INSTALL)
   install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
           DESTINATION opt/paddle/share/wheels)
 endif()
+=======
+  add_subdirectory(paddle/fluid/contrib/slim/tests)
+endif()
+install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
+        DESTINATION opt/paddle/share/wheels)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(APPLE)
   find_program(INSTALL_NAME_TOOL_EXECUTABLE install_name_tool)

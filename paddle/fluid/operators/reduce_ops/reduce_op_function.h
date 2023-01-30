@@ -21,6 +21,10 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using DDim = framework::DDim;
 template <typename T,
           size_t D,
@@ -42,8 +46,13 @@ template <typename DeviceContext,
           size_t R_D,
           typename Functor>
 void ReduceFunctor(const DeviceContext& context,
+<<<<<<< HEAD
                    const phi::DenseTensor& input,
                    phi::DenseTensor* output,
+=======
+                   const framework::Tensor& input,
+                   framework::Tensor* output,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    const std::vector<int>& dims,
                    bool keep_dim) {
   auto x = EigenTensor<T, D>::From(input);
@@ -80,10 +89,17 @@ void ReduceFunctor(const DeviceContext& context,
 
 template <typename DeviceContext, typename T, size_t D, typename Functor>
 void ReduceGradFunctor(const DeviceContext& context,
+<<<<<<< HEAD
                        const phi::DenseTensor& input0,
                        const phi::DenseTensor& input1,
                        const phi::DenseTensor& input2,
                        phi::DenseTensor* output,
+=======
+                       const framework::Tensor& input0,
+                       const framework::Tensor& input1,
+                       const framework::Tensor& input2,
+                       framework::Tensor* output,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                        Functor functor,
                        const std::vector<int>& dims) {
   auto x = EigenTensor<T, D>::From(input0);

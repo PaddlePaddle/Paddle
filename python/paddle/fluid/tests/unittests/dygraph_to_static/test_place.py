@@ -12,17 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
 
 
 class TestPlace(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import numpy as np
+import paddle
+import unittest
+
+
+class TestPlace(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_place(self):
 
         paddle.enable_static()
         x = paddle.to_tensor([1, 2, 3, 4])
+<<<<<<< HEAD
         self.assertIsNone(x.place())
+=======
+        self.assertTrue(x.place() == None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

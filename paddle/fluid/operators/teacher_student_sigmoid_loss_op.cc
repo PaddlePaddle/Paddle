@@ -21,6 +21,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -74,10 +79,18 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
   // Explicitly set that the data type of computation kernel of
   // teacher_student_sigmoid_loss
   // is determined by its input "X".
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -185,10 +198,18 @@ class TeacherStudentSigmoidLossGradientOp
   // Explicitly set that the data type of computation kernel of
   // teacher_student_sigmoid_loss
   // is determined by its input "X".
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -197,17 +218,28 @@ class TeacherStudentSigmoidLossOpMaker
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(phi::DenseTensor, default phi::DenseTensor<float>), a 2-D "
              "tensor with shape [N x 1],"
+=======
+             "(Tensor, default Tensor<float>), a 2-D tensor with shape [N x 1],"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              " where N is the batch size and D is the output. "
              "This input is a probability computed by the previous operator, "
              "which is almost always the result of a softmax operator.");
     AddInput("Label",
+<<<<<<< HEAD
              "(phi::DenseTensor), the ground truth which is a 2-D tensor. "
              "Label is a phi::DenseTensor<float> with shape [N x 1]. ");
     AddOutput("Y",
               "(phi::DenseTensor, default phi::DenseTensor<float>), a 2-D "
               "tensor with shape "
+=======
+             "(Tensor), the ground truth which is a 2-D tensor. "
+             "Label is a Tensor<float> with shape [N x 1]. ");
+    AddOutput("Y",
+              "(Tensor, default Tensor<float>), a 2-D tensor with shape "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "[N x 1]. The teacher student sigmoid loss.");
     AddAttr<float>(
         "soft_max_up_bound",
@@ -224,7 +256,11 @@ It's similarity to SigmoidCrossEntropyWithLogits Operator. The difference is tha
 we add another label(z') to original.
         loss = max(x, 0) - x * z + log(1 + exp(-abs(x))) + max(x, 0) - x * z' + log(1 + exp(-abs(x)))
         z is click or not
+<<<<<<< HEAD
         z' is teacher value
+=======
+        z' is teacher value 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         label = {-2, -1, [0, 2]}
         when z' is not exist, clk = 0 : label = -2;
         when z' is not exist, clk = 1 : label = -1;

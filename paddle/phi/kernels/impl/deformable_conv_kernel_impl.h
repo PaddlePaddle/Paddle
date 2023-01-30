@@ -19,7 +19,10 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/transpose_kernel.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/utils/optional.h"
 
 namespace phi {
@@ -39,11 +42,14 @@ void DeformableConvKernel(const Context& dev_ctx,
                           DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
 
+<<<<<<< HEAD
   int temp_step = std::min(64, batch_size);
   if (batch_size % temp_step == 0) {
     im2col_step = temp_step;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<int64_t> filter_shape_vec(phi::vectorize(filter.dims()));
   std::vector<int64_t> output_shape_vec(phi::vectorize(out->dims()));
 
@@ -107,11 +113,16 @@ void DeformableConvKernel(const Context& dev_ctx,
         dilations,
         deformable_groups,
         col_buffer_ptr);
+<<<<<<< HEAD
     DenseTensor output_3d = output_4d.Slice(i, i + 1).Resize(phi::slice_ddim(
         output_4d.dims(),
         1,
         output_4d.dims().size()));  // group * C/group * (im2step * H * W)
 
+=======
+    DenseTensor output_3d = output_4d.Slice(i, i + 1).Resize(
+        phi::slice_ddim(output_4d.dims(), 1, output_4d.dims().size()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // get the product of pixel and weight
     for (int g = 0; g < groups; ++g) {
       DenseTensor weight_3d_slice = weight_3d.Slice(g, g + 1).Resize(
@@ -119,11 +130,16 @@ void DeformableConvKernel(const Context& dev_ctx,
       DenseTensor col_buffer_3d_slice =
           col_buffer_3d.Slice(g, g + 1).Resize(phi::slice_ddim(
               col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
+<<<<<<< HEAD
       DenseTensor output_3d_slice =
           output_3d.Slice(g, g + 1).Resize(phi::slice_ddim(
               output_3d.dims(),
               1,
               output_3d.dims().size()));  // C * ((im2col_step)*H*W))
+=======
+      DenseTensor output_3d_slice = output_3d.Slice(g, g + 1).Resize(
+          phi::slice_ddim(output_3d.dims(), 1, output_3d.dims().size()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       blas.MatMul(weight_3d_slice,
                   false,
                   col_buffer_3d_slice,
@@ -133,6 +149,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                   T(0.0));
     }
   }
+<<<<<<< HEAD
 
   //  swap axis to get the right result when im2col_step is greater than 1
   if (im2col_step > 1) {
@@ -156,6 +173,9 @@ void DeformableConvKernel(const Context& dev_ctx,
   } else {
     out->ShareDataWith(output_buffer).Resize(phi::make_ddim(output_shape_vec));
   }
+=======
+  out->ShareDataWith(output_buffer).Resize(phi::make_ddim(output_shape_vec));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

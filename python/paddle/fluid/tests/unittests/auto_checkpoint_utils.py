@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -22,11 +23,33 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 from paddle.fluid import unique_name
 from paddle.fluid.framework import program_guard
+=======
+import unittest
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
+import os
+import sys
+
+from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
+from paddle.fluid.framework import program_guard
+from paddle.fluid import unique_name
+
+import numpy as np
+from paddle.io import Dataset, BatchSampler, DataLoader
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 BATCH_NUM = 4
 BATCH_SIZE = 1
 
+<<<<<<< HEAD
 # IMAGE_SIZE = 128
+=======
+#IMAGE_SIZE = 128
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 CLASS_NUM = 2
 
 USE_GPU = False  # whether use GPU to run model
@@ -48,6 +71,10 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def sample_list_generator_creator():
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __reader__():
         for _ in range(BATCH_NUM):
             sample_list = []
@@ -61,18 +88,36 @@ def sample_list_generator_creator():
 
 
 class AutoCheckpointBase(unittest.TestCase):
+<<<<<<< HEAD
     def _init_env(
         self, exe, main_prog, startup_prog, minimize=True, iterable=True
     ):
+=======
+
+    def _init_env(self,
+                  exe,
+                  main_prog,
+                  startup_prog,
+                  minimize=True,
+                  iterable=True):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def simple_net():
             image = fluid.data(name='image', shape=[-1, 4, 4], dtype='float32')
             label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
 
+<<<<<<< HEAD
             fc_tmp = paddle.static.nn.fc(image, size=CLASS_NUM)
             cross_entropy = paddle.nn.functional.softmax_with_cross_entropy(
                 fc_tmp, label
             )
             loss = paddle.mean(cross_entropy)
+=======
+            fc_tmp = fluid.layers.fc(image, size=CLASS_NUM)
+            cross_entropy = fluid.layers.softmax_with_cross_entropy(
+                fc_tmp, label)
+            loss = fluid.layers.reduce_mean(cross_entropy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
             if minimize:
                 sgd.minimize(loss)
@@ -83,20 +128,31 @@ class AutoCheckpointBase(unittest.TestCase):
 
             if minimize:
                 compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
+<<<<<<< HEAD
                     loss_name=loss.name
                 )
+=======
+                    loss_name=loss.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 compiled = None
             loader = fluid.io.DataLoader.from_generator(
                 feed_list=[image, label],
                 capacity=64,
                 use_double_buffer=True,
+<<<<<<< HEAD
                 iterable=iterable,
             )
 
             loader.set_sample_list_generator(
                 sample_list_generator_creator(), places[0]
             )
+=======
+                iterable=iterable)
+
+            loader.set_sample_list_generator(sample_list_generator_creator(),
+                                             places[0])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if minimize:
             exe.run(startup_prog)

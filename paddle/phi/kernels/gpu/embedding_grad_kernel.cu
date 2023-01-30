@@ -16,15 +16,23 @@
 
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/memory/memcpy.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
+<<<<<<< HEAD
 DECLARE_bool(cudnn_deterministic);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace phi {
 
 template <typename InT, typename OutT>
@@ -51,10 +59,17 @@ __global__ void EmbeddingGrad(T* table,
     const T* out = output + idy * D;
     T* tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
+<<<<<<< HEAD
     phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int i = idx; i < D; i += blockDim.x) {
       phi::CudaAtomicAdd(&tab[i], out[i]);
+=======
+    paddle::platform::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+#else
+    for (int i = idx; i < D; i += blockDim.x) {
+      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 #endif
     idy += blockDim.y * gridDim.x;
@@ -103,12 +118,15 @@ struct EmbeddingGradCUDAFunctor {
       const int gridx = 2 * dev_ctx_.GetSMCount();
       dim3 threads(128, 8);
       dim3 grids(gridx, 1);
+<<<<<<< HEAD
 
       if (FLAGS_cudnn_deterministic) {
         VLOG(2) << "Run grad kernel of embedding with single thread.";
         grids.x = 1;
         threads.y = 1;
       }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
           d_table, d_output, ids, N, K, D);
     }

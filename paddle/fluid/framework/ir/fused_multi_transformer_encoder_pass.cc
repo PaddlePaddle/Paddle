@@ -25,6 +25,7 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
+<<<<<<< HEAD
 static const std::unordered_set<std::string> FFN_ACTS{"relu", "gelu"};
 
 PDNode* FusedMultiTransformerEncoderPattern::operator()() {
@@ -38,6 +39,45 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
                          return false;
                        }
                      });
+=======
+PDNode* FusedMultiTransformerEncoderPattern::operator()() {
+  auto* input0 = pattern->NewNode(input0_repr());
+  input0->assert_is_op_input("layer_norm", "X");
+
+  // pre-LayerNorm
+  auto* layer_norm =
+      pattern->NewNode(layer_norm_repr())->assert_is_op("layer_norm");
+  auto* layer_norm_scale_var = pattern->NewNode(layer_norm_scale_repr())
+                                   ->AsInput()
+                                   ->assert_is_persistable_var()
+                                   ->assert_is_op_input("layer_norm", "Scale");
+  auto* layer_norm_bias_var = pattern->NewNode(layer_norm_bias_repr())
+                                  ->AsInput()
+                                  ->assert_is_persistable_var()
+                                  ->assert_is_op_input("layer_norm", "Bias");
+  auto* layer_norm_mean_var = pattern->NewNode(layer_norm_mean_repr())
+                                  ->AsOutput()
+                                  ->assert_is_op_output("layer_norm", "Mean");
+  auto* layer_norm_variance_var =
+      pattern->NewNode(layer_norm_variance_repr())
+          ->AsOutput()
+          ->assert_is_op_output("layer_norm", "Variance");
+  auto* layer_norm_out_var = pattern->NewNode(layer_norm_out_repr())
+                                 ->AsIntermediate()
+                                 ->assert_is_op_output("layer_norm", "Y")
+                                 ->assert_is_op_input("matmul_v2", "X")
+                                 ->assert_more([](Node* x) {
+                                   if (x->outputs.size() == 3) {
+                                     return true;
+                                   } else {
+                                     return false;
+                                   }
+                                 });
+
+  layer_norm->LinksFrom({input0, layer_norm_bias_var, layer_norm_scale_var})
+      .LinksTo(
+          {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Q path Nodes
   auto* matmul0 = pattern->NewNode(matmul0_repr())->assert_is_op("matmul_v2");
@@ -71,6 +111,7 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
   auto* transpose2_0_out_var = pattern->NewNode(transpose2_0_out_repr())
                                    ->assert_is_op_output("transpose2")
                                    ->AsIntermediate()
+<<<<<<< HEAD
                                    ->assert_is_op_input("scale");
   auto* scale_q = pattern->NewNode(scale_q_repr())->assert_is_op("scale");
   auto* scale_q_out_var = pattern->NewNode(scale_q_out_repr())
@@ -80,11 +121,21 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
 
   // Q path Links
   matmul0->LinksFrom({input0, matmul0_w_var}).LinksTo({matmul0_out_var});
+=======
+                                   ->assert_is_op_input("matmul", "X");
+
+  // Q path Links
+  matmul0->LinksFrom({layer_norm_out_var, matmul0_w_var})
+      .LinksTo({matmul0_out_var});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   eltadd0->LinksFrom({matmul0_out_var, eltadd0_b_var})
       .LinksTo({eltadd0_out_var});
   reshape2_0->LinksFrom({eltadd0_out_var}).LinksTo({reshape2_0_out_var});
   transpose2_0->LinksFrom({reshape2_0_out_var}).LinksTo({transpose2_0_out_var});
+<<<<<<< HEAD
   scale_q->LinksFrom({transpose2_0_out_var}).LinksTo({scale_q_out_var});
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // K path Nodes
   auto* matmul1 = pattern->NewNode(matmul1_repr())->assert_is_op("matmul_v2");
@@ -118,11 +169,28 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
       pattern->NewNode(transpose2_1_repr())->assert_is_op("transpose2");
   auto* transpose2_1_out_var = pattern->NewNode(transpose2_1_out_repr())
                                    ->assert_is_op_output("transpose2")
+<<<<<<< HEAD
                                    ->AsIntermediate()
                                    ->assert_is_op_input("matmul_v2", "Y");
 
   // K path Links
   matmul1->LinksFrom({input0, matmul1_w_var}).LinksTo({matmul1_out_var});
+=======
+                                   ->AsOutput()
+                                   ->assert_is_op_input("matmul", "Y")
+                                   ->assert_is_op_input("while")
+                                   ->assert_more([](Node* x) {
+                                     if (x->outputs.size() == 2) {
+                                       return true;
+                                     } else {
+                                       return false;
+                                     }
+                                   });
+
+  // K path Links
+  matmul1->LinksFrom({layer_norm_out_var, matmul1_w_var})
+      .LinksTo({matmul1_out_var});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   eltadd1->LinksFrom({matmul1_out_var, eltadd1_b_var})
       .LinksTo({eltadd1_out_var});
   reshape2_1->LinksFrom({eltadd1_out_var}).LinksTo({reshape2_1_out_var});
@@ -159,21 +227,44 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
       pattern->NewNode(transpose2_2_repr())->assert_is_op("transpose2");
   auto* transpose2_2_out_var = pattern->NewNode(transpose2_2_out_repr())
                                    ->assert_is_op_output("transpose2")
+<<<<<<< HEAD
                                    ->AsIntermediate()
                                    ->assert_is_op_input("matmul_v2", "Y");
 
   // V path Links
   matmul2->LinksFrom({input0, matmul2_w_var}).LinksTo({matmul2_out_var});
+=======
+                                   ->AsOutput()
+                                   ->assert_is_op_input("matmul_v2", "Y")
+                                   ->assert_is_op_input("while")
+                                   ->assert_more([](Node* x) {
+                                     if (x->outputs.size() == 2) {
+                                       return true;
+                                     } else {
+                                       return false;
+                                     }
+                                   });
+
+  // V path Links
+  matmul2->LinksFrom({layer_norm_out_var, matmul2_w_var})
+      .LinksTo({matmul2_out_var});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   eltadd2->LinksFrom({matmul2_out_var, eltadd2_b_var})
       .LinksTo({eltadd2_out_var});
   reshape2_2->LinksFrom({eltadd2_out_var}).LinksTo({reshape2_2_out_var});
   transpose2_2->LinksFrom({reshape2_2_out_var}).LinksTo({transpose2_2_out_var});
 
   // QK path Nodes
+<<<<<<< HEAD
   auto* matmul_qk =
       pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul_v2");
   auto* matmul_qk_out_var =
       pattern->NewNode(matmul_qk_out_repr())->assert_is_op_output("matmul_v2");
+=======
+  auto* matmul_qk = pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul");
+  auto* matmul_qk_out_var =
+      pattern->NewNode(matmul_qk_out_repr())->assert_is_op_output("matmul");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   matmul_qk_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
 
   auto* eltadd_qk =
@@ -194,7 +285,11 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
                                  ->assert_is_op_input("matmul_v2", "X");
 
   // QK path Linsk
+<<<<<<< HEAD
   matmul_qk->LinksFrom({scale_q_out_var, transpose2_1_out_var})
+=======
+  matmul_qk->LinksFrom({transpose2_0_out_var, transpose2_1_out_var})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .LinksTo({matmul_qk_out_var});
   eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
       .LinksTo({eltadd_qk_out_var});
@@ -261,6 +356,7 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
   eltadd_out->LinksFrom({input0, eltadd_linear_out_var})
       .LinksTo({attention_output});
 
+<<<<<<< HEAD
   // post-LayerNorm
   auto* layer_norm =
       pattern->NewNode(layer_norm_repr())->assert_is_op("layer_norm");
@@ -296,6 +392,44 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
       ->LinksFrom({attention_output, layer_norm_bias_var, layer_norm_scale_var})
       .LinksTo(
           {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
+=======
+  // while loop
+  auto* while0 = pattern->NewNode(while0_repr())->assert_is_op("while");
+  while0->LinksFrom({transpose2_1_out_var, transpose2_2_out_var});
+
+  // Feed Forward LayerNorm Nodes
+  auto* ffn_layer_norm =
+      pattern->NewNode(ffn_layer_norm_repr())->assert_is_op("layer_norm");
+  auto* ffn_layer_norm_scale_var =
+      pattern->NewNode(ffn_layer_norm_scale_repr())
+          ->AsInput()
+          ->assert_is_persistable_var()
+          ->assert_is_op_input("layer_norm", "Scale");
+  auto* ffn_layer_norm_bias_var =
+      pattern->NewNode(ffn_layer_norm_bias_repr())
+          ->AsInput()
+          ->assert_is_persistable_var()
+          ->assert_is_op_input("layer_norm", "Bias");
+  auto* ffn_layer_norm_mean_var =
+      pattern->NewNode(ffn_layer_norm_mean_repr())
+          ->AsOutput()
+          ->assert_is_op_output("layer_norm", "Mean");
+  auto* ffn_layer_norm_variance_var =
+      pattern->NewNode(ffn_layer_norm_variance_repr())
+          ->AsOutput()
+          ->assert_is_op_output("layer_norm", "Variance");
+  auto* ffn_layer_norm_out_var = pattern->NewNode(ffn_layer_norm_out_repr())
+                                     ->AsIntermediate()
+                                     ->assert_is_op_output("layer_norm", "Y")
+                                     ->assert_is_op_input("matmul_v2", "X");
+
+  ffn_layer_norm
+      ->LinksFrom(
+          {attention_output, ffn_layer_norm_bias_var, ffn_layer_norm_scale_var})
+      .LinksTo({ffn_layer_norm_out_var,
+                ffn_layer_norm_mean_var,
+                ffn_layer_norm_variance_var});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Feed Forward fc1 -> gelu -> fc2
   auto* ffn_matmul0 =
@@ -316,6 +450,7 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
   auto* ffn_eltadd0_out_var = pattern->NewNode(ffn_eltadd0_out_repr())
                                   ->assert_is_op_output("elementwise_add")
                                   ->AsIntermediate()
+<<<<<<< HEAD
                                   ->assert_is_ops_input(FFN_ACTS);
 
   auto* ffn_act = pattern->NewNode(ffn_act_repr())->assert_is_ops(FFN_ACTS);
@@ -323,6 +458,15 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
                               ->assert_is_ops_output(FFN_ACTS)
                               ->AsIntermediate()
                               ->assert_is_op_input("matmul_v2");
+=======
+                                  ->assert_is_op_input("gelu");
+
+  auto* ffn_gelu = pattern->NewNode(ffn_gelu_repr())->assert_is_op("gelu");
+  auto* ffn_gelu_out_var = pattern->NewNode(ffn_gelu_out_repr())
+                               ->assert_is_op_output("gelu")
+                               ->AsIntermediate()
+                               ->assert_is_op_input("matmul_v2");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto* ffn_matmul1 =
       pattern->NewNode(ffn_matmul1_repr())->assert_is_op("matmul_v2");
@@ -348,6 +492,7 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
       pattern->NewNode(ffn_eltadd_out_repr())->assert_is_op("elementwise_add");
   auto* ffn_output = pattern->NewNode(ffn_output_repr())
                          ->assert_is_op_output("elementwise_add")
+<<<<<<< HEAD
                          ->AsIntermediate()
                          ->assert_is_op_input("layer_norm");
 
@@ -357,10 +502,21 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
       .LinksTo({ffn_eltadd0_out_var});
   ffn_act->LinksFrom({ffn_eltadd0_out_var}).LinksTo({ffn_act_out_var});
   ffn_matmul1->LinksFrom({ffn_act_out_var, ffn_matmul1_w_var})
+=======
+                         ->AsOutput();
+
+  ffn_matmul0->LinksFrom({ffn_layer_norm_out_var, ffn_matmul0_w_var})
+      .LinksTo({ffn_matmul0_out_var});
+  ffn_eltadd0->LinksFrom({ffn_matmul0_out_var, ffn_eltadd0_b_var})
+      .LinksTo({ffn_eltadd0_out_var});
+  ffn_gelu->LinksFrom({ffn_eltadd0_out_var}).LinksTo({ffn_gelu_out_var});
+  ffn_matmul1->LinksFrom({ffn_gelu_out_var, ffn_matmul1_w_var})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .LinksTo({ffn_matmul1_out_var});
   ffn_eltadd1->LinksFrom({ffn_matmul1_out_var, ffn_eltadd1_b_var})
       .LinksTo({ffn_eltadd1_out_var});
 
+<<<<<<< HEAD
   ffn_eltadd_out->LinksFrom({layer_norm_out_var, ffn_eltadd1_out_var})
       .LinksTo({ffn_output});
 
@@ -397,6 +553,12 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
                 ffn_layer_norm_variance_var});
 
   return ffn_layer_norm_out_var;
+=======
+  ffn_eltadd_out->LinksFrom({attention_output, ffn_eltadd1_out_var})
+      .LinksTo({ffn_output});
+
+  return ffn_output;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
@@ -468,11 +630,19 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   auto* split0_q_out_var = pattern->NewNode(split0_q_out_repr())
                                ->assert_is_op_output("split")
                                ->AsIntermediate()
+<<<<<<< HEAD
                                ->assert_is_op_input("matmul_v2", "X");
   auto* split0_k_out_var = pattern->NewNode(split0_k_out_repr())
                                ->assert_is_op_output("split")
                                ->AsOutput()
                                ->assert_is_op_input("matmul_v2", "Y")
+=======
+                               ->assert_is_op_input("matmul", "X");
+  auto* split0_k_out_var = pattern->NewNode(split0_k_out_repr())
+                               ->assert_is_op_output("split")
+                               ->AsOutput()
+                               ->assert_is_op_input("matmul", "Y")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                ->assert_is_op_input("while");
   auto* split0_v_out_var = pattern->NewNode(split0_v_out_repr())
                                ->assert_is_op_output("split")
@@ -495,6 +665,7 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   while0->LinksFrom({split0_k_out_var, split0_v_out_var});
 
   // QK path Nodes
+<<<<<<< HEAD
   auto* matmul_qk =
       pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul_v2");
   auto* matmul_qk_out_var =
@@ -506,6 +677,12 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
                                ->assert_is_op_output("scale")
                                ->AsIntermediate()
                                ->assert_is_op_input("elementwise_add", "X");
+=======
+  auto* matmul_qk = pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul");
+  auto* matmul_qk_out_var =
+      pattern->NewNode(matmul_qk_out_repr())->assert_is_op_output("matmul");
+  matmul_qk_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto* eltadd_qk =
       pattern->NewNode(eltadd_qk_repr())->assert_is_op("elementwise_add");
@@ -527,8 +704,12 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   // QK path Linsk
   matmul_qk->LinksFrom({split0_q_out_var, split0_k_out_var})
       .LinksTo({matmul_qk_out_var});
+<<<<<<< HEAD
   scale_qk->LinksFrom({matmul_qk_out_var}).LinksTo({scale_qk_out_var});
   eltadd_qk->LinksFrom({scale_qk_out_var, eltadd_qk_b_var})
+=======
+  eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
 
@@ -645,6 +826,7 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   auto* ffn_eltadd0_out_var = pattern->NewNode(ffn_eltadd0_out_repr())
                                   ->assert_is_op_output("elementwise_add")
                                   ->AsIntermediate()
+<<<<<<< HEAD
                                   ->assert_is_ops_input(FFN_ACTS);
 
   auto* ffn_act = pattern->NewNode(ffn_act_repr())->assert_is_ops(FFN_ACTS);
@@ -652,6 +834,15 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
                               ->assert_is_ops_output(FFN_ACTS)
                               ->AsIntermediate()
                               ->assert_is_op_input("matmul_v2");
+=======
+                                  ->assert_is_op_input("gelu");
+
+  auto* ffn_gelu = pattern->NewNode(ffn_gelu_repr())->assert_is_op("gelu");
+  auto* ffn_gelu_out_var = pattern->NewNode(ffn_gelu_out_repr())
+                               ->assert_is_op_output("gelu")
+                               ->AsIntermediate()
+                               ->assert_is_op_input("matmul_v2");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto* ffn_matmul1 =
       pattern->NewNode(ffn_matmul1_repr())->assert_is_op("matmul_v2");
@@ -683,8 +874,13 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
       .LinksTo({ffn_matmul0_out_var});
   ffn_eltadd0->LinksFrom({ffn_matmul0_out_var, ffn_eltadd0_b_var})
       .LinksTo({ffn_eltadd0_out_var});
+<<<<<<< HEAD
   ffn_act->LinksFrom({ffn_eltadd0_out_var}).LinksTo({ffn_act_out_var});
   ffn_matmul1->LinksFrom({ffn_act_out_var, ffn_matmul1_w_var})
+=======
+  ffn_gelu->LinksFrom({ffn_eltadd0_out_var}).LinksTo({ffn_gelu_out_var});
+  ffn_matmul1->LinksFrom({ffn_gelu_out_var, ffn_matmul1_w_var})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .LinksTo({ffn_matmul1_out_var});
   ffn_eltadd1->LinksFrom({ffn_matmul1_out_var, ffn_eltadd1_b_var})
       .LinksTo({ffn_eltadd1_out_var});
@@ -695,6 +891,7 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   return ffn_output;
 }
 
+<<<<<<< HEAD
 PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
   auto* input0 = pattern->NewNode(input0_repr())
                      ->assert_is_op_input("c_identity", "X")
@@ -730,6 +927,49 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
   c_identity2->LinksFrom({input0}).LinksTo({c_identity2_out_var});
 
   // Q path Nodes
+=======
+PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
+  auto* input0 = pattern->NewNode(input0_repr());
+  input0->assert_is_op_input("layer_norm", "X");
+
+  // pre-LayerNorm
+  auto* layer_norm =
+      pattern->NewNode(layer_norm_repr())->assert_is_op("layer_norm");
+  auto* layer_norm_scale_var = pattern->NewNode(layer_norm_scale_repr())
+                                   ->AsInput()
+                                   ->assert_is_persistable_var()
+                                   ->assert_is_op_input("layer_norm", "Scale");
+  auto* layer_norm_bias_var = pattern->NewNode(layer_norm_bias_repr())
+                                  ->AsInput()
+                                  ->assert_is_persistable_var()
+                                  ->assert_is_op_input("layer_norm", "Bias");
+  auto* layer_norm_mean_var = pattern->NewNode(layer_norm_mean_repr())
+                                  ->AsOutput()
+                                  ->assert_is_op_output("layer_norm", "Mean");
+  auto* layer_norm_variance_var =
+      pattern->NewNode(layer_norm_variance_repr())
+          ->AsOutput()
+          ->assert_is_op_output("layer_norm", "Variance");
+  auto* layer_norm_out_var = pattern->NewNode(layer_norm_out_repr())
+                                 ->AsIntermediate()
+                                 ->assert_is_op_output("layer_norm", "Y")
+                                 ->assert_is_op_input("c_identity", "X");
+
+  layer_norm->LinksFrom({input0, layer_norm_bias_var, layer_norm_scale_var})
+      .LinksTo(
+          {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
+
+  // communication c_identity
+  auto* c_identity =
+      pattern->NewNode(c_identity_repr())->assert_is_op("c_identity");
+  auto* c_identity_out_var = pattern->NewNode(c_identity_out_repr())
+                                 ->AsIntermediate()
+                                 ->assert_is_op_output("c_identity", "Out")
+                                 ->assert_is_op_input("matmul_v2", "X");
+  c_identity->LinksFrom({layer_norm_out_var}).LinksTo({c_identity_out_var});
+
+  // QKV fused path Nodes
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* matmul0 = pattern->NewNode(matmul0_repr())->assert_is_op("matmul_v2");
   auto* matmul0_w_var = pattern->NewNode(matmul0_w_repr())
                             ->AsInput()
@@ -761,6 +1001,7 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
   auto* transpose2_0_out_var = pattern->NewNode(transpose2_0_out_repr())
                                    ->assert_is_op_output("transpose2")
                                    ->AsIntermediate()
+<<<<<<< HEAD
                                    ->assert_is_op_input("scale");
   auto* scale_q = pattern->NewNode(scale_q_repr())->assert_is_op("scale");
   auto* scale_q_out_var = pattern->NewNode(scale_q_out_repr())
@@ -770,11 +1011,34 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
 
   // Q path Links
   matmul0->LinksFrom({c_identity0_out_var, matmul0_w_var})
+=======
+                                   ->assert_is_op_input("split", "X");
+
+  auto* split0 = pattern->NewNode(split0_repr())->assert_is_op("split");
+  auto* split0_q_out_var = pattern->NewNode(split0_q_out_repr())
+                               ->assert_is_op_output("split")
+                               ->AsIntermediate()
+                               ->assert_is_op_input("matmul", "X");
+  auto* split0_k_out_var = pattern->NewNode(split0_k_out_repr())
+                               ->assert_is_op_output("split")
+                               ->AsOutput()
+                               ->assert_is_op_input("matmul", "Y")
+                               ->assert_is_op_input("while");
+  auto* split0_v_out_var = pattern->NewNode(split0_v_out_repr())
+                               ->assert_is_op_output("split")
+                               ->AsOutput()
+                               ->assert_is_op_input("matmul_v2", "Y")
+                               ->assert_is_op_input("while");
+
+  // QKV fused path Links
+  matmul0->LinksFrom({c_identity_out_var, matmul0_w_var})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .LinksTo({matmul0_out_var});
   eltadd0->LinksFrom({matmul0_out_var, eltadd0_b_var})
       .LinksTo({eltadd0_out_var});
   reshape2_0->LinksFrom({eltadd0_out_var}).LinksTo({reshape2_0_out_var});
   transpose2_0->LinksFrom({reshape2_0_out_var}).LinksTo({transpose2_0_out_var});
+<<<<<<< HEAD
   scale_q->LinksFrom({transpose2_0_out_var}).LinksTo({scale_q_out_var});
 
   // K path Nodes
@@ -888,6 +1152,40 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
 
   // QK path Linsk
   matmul_qk->LinksFrom({scale_q_out_var, transpose2_1_out_var})
+=======
+  split0->LinksFrom({transpose2_0_out_var})
+      .LinksTo({split0_q_out_var, split0_k_out_var, split0_v_out_var});
+
+  // while loop
+  auto* while0 = pattern->NewNode(while0_repr())->assert_is_op("while");
+  while0->LinksFrom({split0_k_out_var, split0_v_out_var});
+
+  // QK path Nodes
+  auto* matmul_qk = pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul");
+  auto* matmul_qk_out_var =
+      pattern->NewNode(matmul_qk_out_repr())->assert_is_op_output("matmul");
+  matmul_qk_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+
+  auto* eltadd_qk =
+      pattern->NewNode(eltadd_qk_repr())->assert_is_op("elementwise_add");
+  auto* eltadd_qk_b_var = pattern->NewNode(eltadd_qk_b_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("elementwise_add", "Y");
+  auto* eltadd_qk_out_var = pattern->NewNode(eltadd_qk_out_repr())
+                                ->assert_is_op_output("elementwise_add")
+                                ->AsIntermediate()
+                                ->assert_is_op_input("softmax");
+
+  auto* softmax_qk =
+      pattern->NewNode(softmax_qk_repr())->assert_is_op("softmax");
+  auto* softmax_qk_out_var = pattern->NewNode(softmax_qk_out_repr())
+                                 ->assert_is_op_output("softmax")
+                                 ->AsIntermediate()
+                                 ->assert_is_op_input("matmul_v2", "X");
+
+  // QK path Linsk
+  matmul_qk->LinksFrom({split0_q_out_var, split0_k_out_var})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .LinksTo({matmul_qk_out_var});
   eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
       .LinksTo({eltadd_qk_out_var});
@@ -949,7 +1247,11 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
                                ->AsIntermediate();
 
   // QKV path Links
+<<<<<<< HEAD
   matmul_qkv->LinksFrom({softmax_qk_out_var, transpose2_2_out_var})
+=======
+  matmul_qkv->LinksFrom({softmax_qk_out_var, split0_v_out_var})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .LinksTo({matmul_qkv_out_var});
   transpose2_qkv->LinksFrom({matmul_qkv_out_var})
       .LinksTo({transpose2_qkv_out_var});
@@ -964,6 +1266,7 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
   eltadd_out->LinksFrom({input0, eltadd_linear_out_var})
       .LinksTo({attention_output});
 
+<<<<<<< HEAD
   // post-LayerNorm
   auto* layer_norm =
       pattern->NewNode(layer_norm_repr())->assert_is_op("layer_norm");
@@ -999,6 +1302,40 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
       ->LinksFrom({attention_output, layer_norm_bias_var, layer_norm_scale_var})
       .LinksTo(
           {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
+=======
+  // Feed Forward LayerNorm Nodes
+  auto* ffn_layer_norm =
+      pattern->NewNode(ffn_layer_norm_repr())->assert_is_op("layer_norm");
+  auto* ffn_layer_norm_scale_var =
+      pattern->NewNode(ffn_layer_norm_scale_repr())
+          ->AsInput()
+          ->assert_is_persistable_var()
+          ->assert_is_op_input("layer_norm", "Scale");
+  auto* ffn_layer_norm_bias_var =
+      pattern->NewNode(ffn_layer_norm_bias_repr())
+          ->AsInput()
+          ->assert_is_persistable_var()
+          ->assert_is_op_input("layer_norm", "Bias");
+  auto* ffn_layer_norm_mean_var =
+      pattern->NewNode(ffn_layer_norm_mean_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("layer_norm", "Mean");
+  auto* ffn_layer_norm_variance_var =
+      pattern->NewNode(ffn_layer_norm_variance_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("layer_norm", "Variance");
+  auto* ffn_layer_norm_out_var = pattern->NewNode(ffn_layer_norm_out_repr())
+                                     ->AsIntermediate()
+                                     ->assert_is_op_output("layer_norm", "Y")
+                                     ->assert_is_op_input("c_identity", "X");
+
+  ffn_layer_norm
+      ->LinksFrom(
+          {attention_output, ffn_layer_norm_bias_var, ffn_layer_norm_scale_var})
+      .LinksTo({ffn_layer_norm_out_var,
+                ffn_layer_norm_mean_var,
+                ffn_layer_norm_variance_var});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // communication c_identity
   auto* ffn_c_identity =
@@ -1007,7 +1344,11 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
                                      ->assert_is_op_output("c_identity", "Out")
                                      ->AsIntermediate()
                                      ->assert_is_op_input("matmul_v2", "X");
+<<<<<<< HEAD
   ffn_c_identity->LinksFrom({layer_norm_out_var})
+=======
+  ffn_c_identity->LinksFrom({ffn_layer_norm_out_var})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .LinksTo({ffn_c_identity_out_var});
 
   // Feed Forward fc1 -> gelu -> fc2
@@ -1029,6 +1370,7 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
   auto* ffn_eltadd0_out_var = pattern->NewNode(ffn_eltadd0_out_repr())
                                   ->assert_is_op_output("elementwise_add")
                                   ->AsIntermediate()
+<<<<<<< HEAD
                                   ->assert_is_ops_input(FFN_ACTS);
 
   auto* ffn_act = pattern->NewNode(ffn_act_repr())->assert_is_ops(FFN_ACTS);
@@ -1036,6 +1378,15 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
                               ->assert_is_ops_output(FFN_ACTS)
                               ->AsIntermediate()
                               ->assert_is_op_input("matmul_v2");
+=======
+                                  ->assert_is_op_input("gelu");
+
+  auto* ffn_gelu = pattern->NewNode(ffn_gelu_repr())->assert_is_op("gelu");
+  auto* ffn_gelu_out_var = pattern->NewNode(ffn_gelu_out_repr())
+                               ->assert_is_op_output("gelu")
+                               ->AsIntermediate()
+                               ->assert_is_op_input("matmul_v2");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto* ffn_matmul1 =
       pattern->NewNode(ffn_matmul1_repr())->assert_is_op("matmul_v2");
@@ -1070,21 +1421,31 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
       pattern->NewNode(ffn_eltadd_out_repr())->assert_is_op("elementwise_add");
   auto* ffn_output = pattern->NewNode(ffn_output_repr())
                          ->assert_is_op_output("elementwise_add")
+<<<<<<< HEAD
                          ->AsIntermediate()
                          ->assert_is_op_input("layer_norm");
+=======
+                         ->AsOutput();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ffn_matmul0->LinksFrom({ffn_c_identity_out_var, ffn_matmul0_w_var})
       .LinksTo({ffn_matmul0_out_var});
   ffn_eltadd0->LinksFrom({ffn_matmul0_out_var, ffn_eltadd0_b_var})
       .LinksTo({ffn_eltadd0_out_var});
+<<<<<<< HEAD
   ffn_act->LinksFrom({ffn_eltadd0_out_var}).LinksTo({ffn_act_out_var});
   ffn_matmul1->LinksFrom({ffn_act_out_var, ffn_matmul1_w_var})
+=======
+  ffn_gelu->LinksFrom({ffn_eltadd0_out_var}).LinksTo({ffn_gelu_out_var});
+  ffn_matmul1->LinksFrom({ffn_gelu_out_var, ffn_matmul1_w_var})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .LinksTo({ffn_matmul1_out_var});
   ffn_c_allreduce_sum->LinksFrom({ffn_matmul1_out_var})
       .LinksTo({ffn_c_allreduce_sum_out_var});
   ffn_eltadd1->LinksFrom({ffn_c_allreduce_sum_out_var, ffn_eltadd1_b_var})
       .LinksTo({ffn_eltadd1_out_var});
 
+<<<<<<< HEAD
   ffn_eltadd_out->LinksFrom({layer_norm_out_var, ffn_eltadd1_out_var})
       .LinksTo({ffn_output});
 
@@ -2568,6 +2929,153 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
   patterns::FusedMultiTransformerEncoderFuseQKVPattern
       fused_multi_transformer_fuse_qkv_pattern(pattern, name_scope);
   fused_multi_transformer_fuse_qkv_pattern();
+=======
+  ffn_eltadd_out->LinksFrom({attention_output, ffn_eltadd1_out_var})
+      .LinksTo({ffn_output});
+
+  return ffn_output;
+}
+
+}  // namespace patterns
+
+template <typename T>
+inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
+                              framework::LoDTensor* wk_tensor,
+                              framework::LoDTensor* wv_tensor,
+                              framework::LoDTensor* bq_tensor,
+                              framework::LoDTensor* bk_tensor,
+                              framework::LoDTensor* bv_tensor,
+                              const int num_head,
+                              const int dim_head,
+                              const int dim_embed) {
+  auto* wq_data = wq_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* wk_data = wk_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* wv_data = wv_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* bq_data = bq_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* bk_data = bk_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* bv_data = bv_tensor->mutable_data<T>(platform::CPUPlace());
+
+  auto combined_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
+  auto combined_bias_dims = phi::make_ddim({3, num_head, dim_head});
+
+  framework::LoDTensor tmp_combined_w_tensor;
+  tmp_combined_w_tensor.Resize(combined_w_dims);
+  auto* tmp_combined_w_data =
+      tmp_combined_w_tensor.mutable_data<T>(platform::CPUPlace());
+
+  std::vector<T*> w_vec = {wq_data, wk_data, wv_data};
+  // Combine the three fc weights together.
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < num_head; j++) {
+      for (int k = 0; k < dim_head; k++) {
+        for (int l = 0; l < dim_embed; l++) {
+          int out_idx = i * num_head * dim_head * dim_embed +
+                        j * dim_head * dim_embed + k * dim_embed + l;
+          int in_idx = l * num_head * dim_head + j * dim_head + k;
+          tmp_combined_w_data[out_idx] = w_vec[i][in_idx];
+        }
+      }
+    }
+  }
+
+  wq_tensor->Resize(combined_w_dims);
+  auto* new_combined_w_data = wq_tensor->mutable_data<T>(platform::CPUPlace());
+  memcpy(
+      new_combined_w_data, tmp_combined_w_data, sizeof(T) * wq_tensor->numel());
+
+  framework::LoDTensor tmp_combined_bias_tensor;
+  tmp_combined_bias_tensor.Resize(combined_bias_dims);
+  auto* tmp_combined_bias_data =
+      tmp_combined_bias_tensor.mutable_data<T>(platform::CPUPlace());
+
+  size_t bias_size = bq_tensor->numel();
+  memcpy(tmp_combined_bias_data, bq_data, sizeof(T) * bias_size);
+  memcpy(tmp_combined_bias_data + bias_size, bk_data, sizeof(T) * bias_size);
+  memcpy(
+      tmp_combined_bias_data + 2 * bias_size, bv_data, sizeof(T) * bias_size);
+
+  bq_tensor->Resize(combined_bias_dims);
+  auto* new_combined_bias_data =
+      bq_tensor->mutable_data<T>(platform::CPUPlace());
+  memcpy(new_combined_bias_data,
+         tmp_combined_bias_data,
+         sizeof(T) * bq_tensor->numel());
+}
+
+template <typename T>
+inline void QKVWeightsProcessFuseQKV(framework::LoDTensor* qkv_w_tensor,
+                                     framework::LoDTensor* qkv_b_tensor,
+                                     const int num_head,
+                                     const int dim_head,
+                                     const int dim_embed) {
+  auto* qkv_w_data = qkv_w_tensor->mutable_data<T>(platform::CPUPlace());
+  auto transpose_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
+
+  framework::LoDTensor tmp_transpose_w_tensor;
+  tmp_transpose_w_tensor.Resize(transpose_w_dims);
+  auto* tmp_transpose_w_data =
+      tmp_transpose_w_tensor.mutable_data<T>(platform::CPUPlace());
+
+  // transpose qkv matmul Y to QKVWeights
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < num_head; j++) {
+      for (int k = 0; k < dim_head; k++) {
+        for (int l = 0; l < dim_embed; l++) {
+          int out_idx = i * num_head * dim_head * dim_embed +
+                        j * dim_head * dim_embed + k * dim_embed + l;
+          int in_idx =
+              l * num_head * 3 * dim_head + j * 3 * dim_head + i * dim_head + k;
+          tmp_transpose_w_data[out_idx] = qkv_w_data[in_idx];
+        }
+      }
+    }
+  }
+
+  qkv_w_tensor->Resize(transpose_w_dims);
+  auto* new_transpose_w_data =
+      qkv_w_tensor->mutable_data<T>(platform::CPUPlace());
+  memcpy(new_transpose_w_data,
+         tmp_transpose_w_data,
+         sizeof(T) * qkv_w_tensor->numel());
+
+  auto* qkv_b_data = qkv_b_tensor->mutable_data<T>(platform::CPUPlace());
+  auto transpose_b_dims = phi::make_ddim({3, num_head, dim_head});
+
+  framework::LoDTensor tmp_transpose_b_tensor;
+  tmp_transpose_b_tensor.Resize(transpose_b_dims);
+  auto* tmp_transpose_b_data =
+      tmp_transpose_b_tensor.mutable_data<T>(platform::CPUPlace());
+
+  // transpose qkv elemenwise_add Y to QKVBias
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < num_head; j++) {
+      for (int k = 0; k < dim_head; k++) {
+        int out_idx = i * num_head * dim_head + j * dim_head + k;
+        int in_idx = j * 3 * dim_head + i * dim_head + k;
+        tmp_transpose_b_data[out_idx] = qkv_b_data[in_idx];
+      }
+    }
+  }
+
+  qkv_b_tensor->Resize({3, num_head, dim_head});
+  auto* new_transpose_b_data =
+      qkv_b_tensor->mutable_data<T>(platform::CPUPlace());
+  memcpy(new_transpose_b_data,
+         tmp_transpose_b_data,
+         sizeof(T) * qkv_b_tensor->numel());
+}
+
+int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
+                                                  const std::string& name_scope,
+                                                  Scope* scope) const {
+  GraphPatternDetector gpd;
+  auto* pattern = gpd.mutable_pattern();
+
+  // Create pattern.
+  patterns::FusedMultiTransformerEncoderPattern fused_multi_transformer_pattern(
+      pattern, name_scope);
+  fused_multi_transformer_pattern();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Create New OpDesc
   auto fuse_creater = [&](Node* input0,
@@ -2576,6 +3084,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                           Node* layer_norm_bias,
                           Node* layer_norm_mean,
                           Node* layer_norm_variance,
+<<<<<<< HEAD
                           Node* matmul0,
                           Node* matmul0_w,
                           Node* eltadd0_b,
@@ -2584,6 +3093,18 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                           Node* eltadd_qk_b,
                           Node* reshape2_0,
                           Node* matmul_linear,
+=======
+                          Node* matmul0_w,
+                          Node* matmul1_w,
+                          Node* matmul2_w,
+                          Node* eltadd0_b,
+                          Node* eltadd1_b,
+                          Node* eltadd2_b,
+                          Node* transpose2_1_out,
+                          Node* transpose2_2_out,
+                          Node* eltadd_qk_b,
+                          Node* reshape2_0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           Node* matmul_linear_w,
                           Node* eltadd_linear_b,
                           Node* while0,
@@ -2592,6 +3113,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                           Node* ffn_layer_norm_bias,
                           Node* ffn_layer_norm_mean,
                           Node* ffn_layer_norm_variance,
+<<<<<<< HEAD
                           Node* ffn_matmul0,
                           Node* ffn_matmul0_w,
                           Node* ffn_matmul1,
@@ -2604,6 +3126,21 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto* matmul_linear_op = matmul_linear->Op();
     auto* ffn_matmul_0_op = ffn_matmul0->Op();
     auto* ffn_matmul_1_op = ffn_matmul1->Op();
+=======
+                          Node* ffn_matmul0_w,
+                          Node* ffn_matmul1_w,
+                          Node* ffn_eltadd0_b,
+                          Node* ffn_eltadd1_b,
+                          Node* ffn_output) {
+    auto reshape_desc = reshape2_0->Op();
+    int num_head =
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
+    int dim_head =
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(3);
+    int dim_embed = num_head * dim_head;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // Calc index of transformer layer by LayerNorm Scale name
     // This calculation assumes:
@@ -2614,6 +3151,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto ln_idx_str = ln_name.substr(ln_name.rfind('_') + 1);
     int layer_idx = atoi(ln_idx_str.c_str()) / 2;
 
+<<<<<<< HEAD
     auto* qkv_w_tensor =
         scope->FindVar(matmul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* qkv_b_tensor =
@@ -2655,6 +3193,63 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     fused_multi_transformer_op_desc.SetType(enable_int8
                                                 ? "fused_multi_transformer_int8"
                                                 : "fused_multi_transformer");
+=======
+    auto* wq_tensor =
+        scope->FindVar(matmul0_w->Name())->GetMutable<LoDTensor>();
+    auto* wk_tensor =
+        scope->FindVar(matmul1_w->Name())->GetMutable<LoDTensor>();
+    auto* wv_tensor =
+        scope->FindVar(matmul2_w->Name())->GetMutable<LoDTensor>();
+
+    auto* bq_tensor =
+        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+    auto* bk_tensor =
+        scope->FindVar(eltadd1_b->Name())->GetMutable<LoDTensor>();
+    auto* bv_tensor =
+        scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
+
+    if (wq_tensor->dtype() == phi::DataType::FLOAT32) {
+      QKVWeightsProcess<float>(wq_tensor,
+                               wk_tensor,
+                               wv_tensor,
+                               bq_tensor,
+                               bk_tensor,
+                               bv_tensor,
+                               num_head,
+                               dim_head,
+                               dim_embed);
+    } else if (wq_tensor->dtype() == phi::DataType::FLOAT16) {
+      QKVWeightsProcess<platform::float16>(wq_tensor,
+                                           wk_tensor,
+                                           wv_tensor,
+                                           bq_tensor,
+                                           bk_tensor,
+                                           bv_tensor,
+                                           num_head,
+                                           dim_head,
+                                           dim_embed);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "fused_multi_transformer not supported weight dtype. "
+          "we now only support fp32 and fp16."));
+    }
+
+    // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
+    auto* combined_w_desc = matmul0_w->Var();
+    combined_w_desc->SetShape({3, num_head, dim_head, dim_embed});
+    combined_w_desc->SetPersistable(true);
+
+    auto* combined_bias_desc = eltadd0_b->Var();
+    combined_bias_desc->SetShape({3, num_head, dim_head});
+    combined_bias_desc->SetPersistable(true);
+
+    scope->EraseVars({matmul1_w->Name(), matmul2_w->Name()});
+    scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
+
+    // create fused_multi_transformer
+    OpDesc fused_multi_transformer_op_desc(layer_norm->Op()->Block());
+    fused_multi_transformer_op_desc.SetType("fused_multi_transformer");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // 1. Input setting
     fused_multi_transformer_op_desc.SetInput("X", {input0->Name()});
@@ -2674,7 +3269,11 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
     // FIXME: only support max_seq_len <= 1024
     cache_kv_desc.SetDataType(
+<<<<<<< HEAD
         framework::TransToProtoVarType(qkv_b_tensor->dtype()));
+=======
+        framework::TransToProtoVarType(wq_tensor->dtype()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cache_kv_desc.SetPersistable(false);
     auto* cache_kv = graph->CreateVarNode(&cache_kv_desc);
 
@@ -2687,9 +3286,15 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     fill_const_op_desc.SetAttr("input_dim_idx", 0);
     fill_const_op_desc.SetAttr("output_dim_idx", 1);
     fill_const_op_desc.SetAttr("value", 0);
+<<<<<<< HEAD
     fill_const_op_desc.SetAttr("dtype",
                                static_cast<int>(framework::TransToProtoVarType(
                                    qkv_b_tensor->dtype())));
+=======
+    fill_const_op_desc.SetAttr(
+        "dtype",
+        static_cast<int>(framework::TransToProtoVarType(wq_tensor->dtype())));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* fill_const_op = graph->CreateOpNode(&fill_const_op_desc);
 
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv->Name()});
@@ -2722,6 +3327,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     fused_multi_transformer_op_desc.SetAttr("pre_layer_norm", true);
     fused_multi_transformer_op_desc.SetAttr(
         "epsilon", layer_norm->Op()->GetAttr("epsilon"));
+<<<<<<< HEAD
     fused_multi_transformer_op_desc.SetAttr("act_method",
                                             ffn_act->Op()->Type());
 
@@ -2858,6 +3464,14 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       IR_NODE_LINK_TO(ffn1_out_scale_node, fused_multi_transformer);
     }
 
+=======
+
+    fused_multi_transformer_op_desc.SetAttr("is_test", true);
+    fused_multi_transformer_op_desc.SetAttr("dropout_rate", 0.0f);
+
+    auto* fused_multi_transformer =
+        graph->CreateOpNode(&fused_multi_transformer_op_desc);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     IR_NODE_LINK_TO(input0, fused_multi_transformer);
     IR_NODE_LINK_TO(layer_norm_scale, fused_multi_transformer);
     IR_NODE_LINK_TO(layer_norm_bias, fused_multi_transformer);
@@ -2888,11 +3502,35 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto while_Xs = while0->Op()->Input("X");
     while_Xs.erase(
         std::remove(
+<<<<<<< HEAD
             std::begin(while_Xs), std::end(while_Xs), split0_k_out->Name()),
         std::end(while_Xs));
     while_Xs.erase(
         std::remove(
             std::begin(while_Xs), std::end(while_Xs), split0_v_out->Name()),
+=======
+            std::begin(while_Xs), std::end(while_Xs), transpose2_1_out->Name()),
+        std::end(while_Xs));
+    while_Xs.erase(
+        std::remove(
+            std::begin(while_Xs), std::end(while_Xs), transpose2_2_out->Name()),
+        std::end(while_Xs));
+    while_Xs.erase(
+        std::remove(
+            std::begin(while_Xs), std::end(while_Xs), matmul1_w->Name()),
+        std::end(while_Xs));
+    while_Xs.erase(
+        std::remove(
+            std::begin(while_Xs), std::end(while_Xs), matmul2_w->Name()),
+        std::end(while_Xs));
+    while_Xs.erase(
+        std::remove(
+            std::begin(while_Xs), std::end(while_Xs), eltadd1_b->Name()),
+        std::end(while_Xs));
+    while_Xs.erase(
+        std::remove(
+            std::begin(while_Xs), std::end(while_Xs), eltadd2_b->Name()),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         std::end(while_Xs));
     while_Xs.emplace_back(cache_kv->Name());
     while0->Op()->SetInput("X", while_Xs);
@@ -2901,6 +3539,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     //  1. delete k, v
     //  2. add cache_kv
     auto while_Outs = while0->Op()->Output("Out");
+<<<<<<< HEAD
     while_Outs.erase(
         std::remove(
             std::begin(while_Outs), std::end(while_Outs), split0_k_out->Name()),
@@ -2909,22 +3548,45 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
         std::remove(
             std::begin(while_Outs), std::end(while_Outs), split0_v_out->Name()),
         std::end(while_Outs));
+=======
+    while_Outs.erase(std::remove(std::begin(while_Outs),
+                                 std::end(while_Outs),
+                                 transpose2_1_out->Name()),
+                     std::end(while_Outs));
+    while_Outs.erase(std::remove(std::begin(while_Outs),
+                                 std::end(while_Outs),
+                                 transpose2_2_out->Name()),
+                     std::end(while_Outs));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     while_Outs.emplace_back(cache_kv->Name());
     while0->Op()->SetOutput("Out", while_Outs);
 
     // link CacheKV to while
     IR_NODE_LINK_TO(cache_kv, while0)
     // unlink origin KV output to while
+<<<<<<< HEAD
     IR_NODE_UNLINK(split0_k_out, while0);
     IR_NODE_UNLINK(split0_v_out, while0);
     IR_NODE_UNLINK(while0, split0_k_out);
     IR_NODE_UNLINK(while0, split0_v_out);
+=======
+    IR_NODE_UNLINK(transpose2_1_out, while0);
+    IR_NODE_UNLINK(transpose2_2_out, while0);
+    IR_NODE_UNLINK(while0, transpose2_1_out);
+    IR_NODE_UNLINK(while0, transpose2_2_out);
+    // unlink KV weight/bias to while after merged into Q weight/bias
+    IR_NODE_UNLINK(matmul1_w, while0);
+    IR_NODE_UNLINK(matmul2_w, while0);
+    IR_NODE_UNLINK(eltadd1_b, while0);
+    IR_NODE_UNLINK(eltadd2_b, while0);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   };
 
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
     if (!IsCompat(subgraph, graph)) {
+<<<<<<< HEAD
       LOG(WARNING) << "fused_multi_transformer_encoder_fuse_qkv "
                       "pass in op compat failed.";
       return;
@@ -3109,6 +3771,200 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
 
     GET_IR_NODE_FROM_SUBGRAPH(
         while0, while0, fused_multi_transformer_fuse_qkv_pattern)
+=======
+      LOG(WARNING) << "fused_multi_transformer_encoder pass in "
+                      "op compat failed.";
+      return;
+    }
+
+    VLOG(4) << "handle MultiTransformer encoder fuse";
+    GET_IR_NODE_FROM_SUBGRAPH(input0, input0, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm, layer_norm, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_bias, layer_norm_bias, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_mean, layer_norm_mean, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance,
+                              layer_norm_variance,
+                              fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_out, layer_norm_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul0, matmul0, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul0_out, matmul0_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul0_w, matmul0_w, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_0, reshape2_0, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_0_out, reshape2_0_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_0, transpose2_0, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_0_out, transpose2_0_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul1, matmul1, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul1_out, matmul1_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul1_w, matmul1_w, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_1, reshape2_1, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_1_out, reshape2_1_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_1, transpose2_1, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_1_out, transpose2_1_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul2, matmul2, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul2_out, matmul2_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul2_w, matmul2_w, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_2, reshape2_2, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_2_out, reshape2_2_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_2, transpose2_2, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_2_out, transpose2_2_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        attention_output, attention_output, fused_multi_transformer_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(while0, while0, fused_multi_transformer_pattern)
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_layer_norm, ffn_layer_norm, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_scale,
+                              ffn_layer_norm_scale,
+                              fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_bias,
+                              ffn_layer_norm_bias,
+                              fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_mean,
+                              ffn_layer_norm_mean,
+                              fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_variance,
+                              ffn_layer_norm_variance,
+                              fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_out,
+                              ffn_layer_norm_out,
+                              fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul0, ffn_matmul0, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul0_out, ffn_matmul0_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul0_w, ffn_matmul0_w, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd0, ffn_eltadd0, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd0_b, ffn_eltadd0_b, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd0_out, ffn_eltadd0_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_gelu, ffn_gelu, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_gelu_out, ffn_gelu_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul1, ffn_matmul1, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul1_out, ffn_matmul1_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul1_w, ffn_matmul1_w, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd1, ffn_eltadd1, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd1_b, ffn_eltadd1_b, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd1_out, ffn_eltadd1_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd_out, ffn_eltadd_out, fused_multi_transformer_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_output, ffn_output, fused_multi_transformer_pattern)
+
+    // nodes need be removed
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd0, eltadd0, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd0_b, eltadd0_b, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd0_out, eltadd0_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd1, eltadd1, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd1_b, eltadd1_b, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd1_out, eltadd1_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd2, eltadd2, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd2_b, eltadd2_b, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd2_out, eltadd2_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qk, matmul_qk, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qk_out, matmul_qk_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_qk, eltadd_qk, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_qk_b, eltadd_qk_b, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_qk_out, eltadd_qk_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softmax_qk, softmax_qk, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softmax_qk_out, softmax_qk_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qkv, matmul_qkv, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qkv_out, matmul_qkv_out, fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_qkv, reshape2_qkv, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_qkv_out, reshape2_qkv_out, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_qkv, transpose2_qkv, fused_multi_transformer_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out,
+                              transpose2_qkv_out,
+                              fused_multi_transformer_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_linear, matmul_linear, fused_multi_transformer_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_linear_w, matmul_linear_w, fused_multi_transformer_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_linear_out, matmul_linear_out, fused_multi_transformer_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_linear, eltadd_linear, fused_multi_transformer_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_linear_b, eltadd_linear_b, fused_multi_transformer_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_linear_out, eltadd_linear_out, fused_multi_transformer_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_out, eltadd_out, fused_multi_transformer_pattern)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     fuse_creater(input0,
                  layer_norm,
@@ -3116,6 +3972,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  layer_norm_bias,
                  layer_norm_mean,
                  layer_norm_variance,
+<<<<<<< HEAD
                  matmul0,
                  matmul0_w,
                  eltadd0_b,
@@ -3124,6 +3981,18 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  eltadd_qk_b,
                  reshape2_0,
                  matmul_linear,
+=======
+                 matmul0_w,
+                 matmul1_w,
+                 matmul2_w,
+                 eltadd0_b,
+                 eltadd1_b,
+                 eltadd2_b,
+                 transpose2_1_out,
+                 transpose2_2_out,
+                 eltadd_qk_b,
+                 reshape2_0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  matmul_linear_w,
                  eltadd_linear_b,
                  while0,
@@ -3132,6 +4001,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  ffn_layer_norm_bias,
                  ffn_layer_norm_mean,
                  ffn_layer_norm_variance,
+<<<<<<< HEAD
                  ffn_matmul0,
                  ffn_matmul0_w,
                  ffn_matmul1,
@@ -3139,6 +4009,12 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  ffn_eltadd0_b,
                  ffn_eltadd1_b,
                  ffn_act,
+=======
+                 ffn_matmul0_w,
+                 ffn_matmul1_w,
+                 ffn_eltadd0_b,
+                 ffn_eltadd1_b,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  ffn_output);
 
     std::unordered_set<const Node*> marked_nodes({layer_norm,
@@ -3146,6 +4022,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                                                   layer_norm_variance,
                                                   layer_norm_out,
                                                   matmul0,
+<<<<<<< HEAD
                                                   matmul0_out,
                                                   eltadd0,
                                                   eltadd0_out,
@@ -3161,6 +4038,33 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                                                   matmul_qk_out,
                                                   scale_qk,
                                                   scale_qk_out,
+=======
+                                                  matmul1,
+                                                  matmul2,
+                                                  matmul0_out,
+                                                  matmul1_out,
+                                                  matmul2_out,
+                                                  eltadd0,
+                                                  eltadd1,
+                                                  eltadd2,
+                                                  eltadd0_out,
+                                                  eltadd1_out,
+                                                  eltadd2_out,
+                                                  reshape2_0,
+                                                  reshape2_1,
+                                                  reshape2_2,
+                                                  reshape2_0_out,
+                                                  reshape2_1_out,
+                                                  reshape2_2_out,
+                                                  transpose2_0,
+                                                  transpose2_1,
+                                                  transpose2_2,
+                                                  transpose2_0_out,
+                                                  transpose2_1_out,
+                                                  transpose2_2_out,
+                                                  matmul_qk,
+                                                  matmul_qk_out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   eltadd_qk,
                                                   eltadd_qk_out,
                                                   softmax_qk,
@@ -3189,8 +4093,13 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                                                   ffn_eltadd1,
                                                   ffn_eltadd0_out,
                                                   ffn_eltadd1_out,
+<<<<<<< HEAD
                                                   ffn_act,
                                                   ffn_act_out,
+=======
+                                                  ffn_gelu,
+                                                  ffn_gelu_out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   ffn_eltadd_out});
 
     // Remove unneeded nodes.
@@ -3202,25 +4111,41 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
   return fusion_count;
 }
 
+<<<<<<< HEAD
 void FusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(Graph* graph) const {
+=======
+void FusedMultiTransformerEncoderPass::ApplyImpl(Graph* graph) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal(
+<<<<<<< HEAD
           "During the fused_multi_transformer_encoder pass, "
           "The scope should not be null."));
 
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderFuseQKVPass, new bool(true));
+=======
+          "During the multi_transformer pass, The scope should not be null."));
+
+  int fusion_count = BuildFusion(graph, name_scope_, scope);
+  if (fusion_count > 0) {
+    graph->Set(kFusedMultiTransformerEncoderPass, new bool(true));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     graph->Set(kFusedMultiTransformerEncoderFusionCount, new int(fusion_count));
   }
   AddStatis(fusion_count);
 }
 
+<<<<<<< HEAD
 FusedMultiTransformerEncoderFuseQKVPass::
     FusedMultiTransformerEncoderFuseQKVPass() {
+=======
+FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddOpCompat(OpCompat("layer_norm"))
       .AddInput("X")
       .IsTensor()
@@ -3248,6 +4173,7 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .IsNumGT(0)
       .End();
 
+<<<<<<< HEAD
   AddOpCompat(OpCompat("scale"))
       .AddInput("X")
       .IsTensor()
@@ -3265,6 +4191,8 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .IsType<bool>()
       .End();
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddOpCompat(OpCompat("matmul_v2"))
       .AddInput("X")  // the shape shoule be (B, S, N*H)
       .IsTensor()
@@ -3392,12 +4320,17 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .End();
 }
 
+<<<<<<< HEAD
 int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
+=======
+int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Graph* graph, const std::string& name_scope, Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
   // Create pattern.
+<<<<<<< HEAD
   patterns::MultiDevicesFusedMultiTransformerEncoderPattern
       multi_devices_fused_multi_transformer_pattern(pattern, name_scope);
   multi_devices_fused_multi_transformer_pattern();
@@ -3405,12 +4338,21 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
   // Create New OpDesc
   auto fuse_creater = [&](Node* input0,
                           Node* c_identity,
+=======
+  patterns::FusedMultiTransformerEncoderFuseQKVPattern
+      fused_multi_transformer_fuse_qkv_pattern(pattern, name_scope);
+  fused_multi_transformer_fuse_qkv_pattern();
+
+  // Create New OpDesc
+  auto fuse_creater = [&](Node* input0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           Node* layer_norm,
                           Node* layer_norm_scale,
                           Node* layer_norm_bias,
                           Node* layer_norm_mean,
                           Node* layer_norm_variance,
                           Node* matmul0_w,
+<<<<<<< HEAD
                           Node* matmul1_w,
                           Node* matmul2_w,
                           Node* eltadd0_b,
@@ -3418,10 +4360,19 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
                           Node* eltadd2_b,
                           Node* transpose2_1_out,
                           Node* transpose2_2_out,
+=======
+                          Node* eltadd0_b,
+                          Node* split0_k_out,
+                          Node* split0_v_out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           Node* eltadd_qk_b,
                           Node* reshape2_0,
                           Node* matmul_linear_w,
                           Node* eltadd_linear_b,
+<<<<<<< HEAD
+=======
+                          Node* while0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           Node* ffn_layer_norm,
                           Node* ffn_layer_norm_scale,
                           Node* ffn_layer_norm_bias,
@@ -3431,15 +4382,25 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
                           Node* ffn_matmul1_w,
                           Node* ffn_eltadd0_b,
                           Node* ffn_eltadd1_b,
+<<<<<<< HEAD
                           Node* ffn_act,
                           Node* ffn_layer_norm_out) {
+=======
+                          Node* ffn_output) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto reshape_desc = reshape2_0->Op();
     int num_head =
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
             .at(2);
     int dim_head =
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+<<<<<<< HEAD
             .at(3);
+=======
+            .at(3) /
+        3;  // 3 for qkv
+    int dim_embed = num_head * dim_head;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // Calc index of transformer layer by LayerNorm Scale name
     // This calculation assumes:
@@ -3450,6 +4411,7 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
     auto ln_idx_str = ln_name.substr(ln_name.rfind('_') + 1);
     int layer_idx = atoi(ln_idx_str.c_str()) / 2;
 
+<<<<<<< HEAD
     auto* wq_tensor =
         scope->FindVar(matmul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* wk_tensor =
@@ -3487,6 +4449,24 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
 
     scope->EraseVars({matmul1_w->Name(), matmul2_w->Name()});
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
+=======
+    auto* qkv_w_tensor =
+        scope->FindVar(matmul0_w->Name())->GetMutable<LoDTensor>();
+    auto* qkv_b_tensor =
+        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+
+    if (qkv_w_tensor->dtype() == phi::DataType::FLOAT32) {
+      QKVWeightsProcessFuseQKV<float>(
+          qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    } else if (qkv_w_tensor->dtype() == phi::DataType::FLOAT16) {
+      QKVWeightsProcessFuseQKV<platform::float16>(
+          qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "fused_multi_transformer not supported weight dtype. "
+          "we now only support fp32 and fp16."));
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // create fused_multi_transformer
     OpDesc fused_multi_transformer_op_desc(layer_norm->Op()->Block());
@@ -3510,7 +4490,11 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
     // FIXME: only support max_seq_len <= 1024
     cache_kv_desc.SetDataType(
+<<<<<<< HEAD
         framework::TransToProtoVarType(wq_tensor->dtype()));
+=======
+        framework::TransToProtoVarType(qkv_w_tensor->dtype()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cache_kv_desc.SetPersistable(false);
     auto* cache_kv = graph->CreateVarNode(&cache_kv_desc);
 
@@ -3523,9 +4507,15 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
     fill_const_op_desc.SetAttr("input_dim_idx", 0);
     fill_const_op_desc.SetAttr("output_dim_idx", 1);
     fill_const_op_desc.SetAttr("value", 0);
+<<<<<<< HEAD
     fill_const_op_desc.SetAttr(
         "dtype",
         static_cast<int>(framework::TransToProtoVarType(wq_tensor->dtype())));
+=======
+    fill_const_op_desc.SetAttr("dtype",
+                               static_cast<int>(framework::TransToProtoVarType(
+                                   qkv_w_tensor->dtype())));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* fill_const_op = graph->CreateOpNode(&fill_const_op_desc);
 
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv->Name()});
@@ -3551,6 +4541,7 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
                                              {ffn_eltadd1_b->Name()});
 
     // 2. Output setting
+<<<<<<< HEAD
     fused_multi_transformer_op_desc.SetOutput("Out",
                                               {ffn_layer_norm_out->Name()});
     fused_multi_transformer_op_desc.SetOutput("CacheKVOut", {cache_kv->Name()});
@@ -3569,6 +4560,19 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
     auto* c_identity_op = c_identity->Op();
     fused_multi_transformer_op_desc.SetAttr("ring_id",
                                             c_identity_op->GetAttr("ring_id"));
+=======
+    fused_multi_transformer_op_desc.SetOutput("Out", {ffn_output->Name()});
+    fused_multi_transformer_op_desc.SetOutput("CacheKVOut", {cache_kv->Name()});
+
+    // Attribute setting
+    fused_multi_transformer_op_desc.SetAttr("pre_layer_norm", true);
+    fused_multi_transformer_op_desc.SetAttr(
+        "epsilon", layer_norm->Op()->GetAttr("epsilon"));
+
+    // output dropout attribute
+    fused_multi_transformer_op_desc.SetAttr("is_test", true);
+    fused_multi_transformer_op_desc.SetAttr("dropout_rate", 0.0f);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto* fused_multi_transformer =
         graph->CreateOpNode(&fused_multi_transformer_op_desc);
@@ -3593,13 +4597,57 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
     IR_NODE_LINK_TO(ffn_matmul1_w, fused_multi_transformer);
     IR_NODE_LINK_TO(ffn_eltadd1_b, fused_multi_transformer);
 
+<<<<<<< HEAD
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_layer_norm_out);
+=======
+    IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
+
+    // rewrite while OP input
+    //  1. delete k, v
+    //  2. delete matmul1/2_w eltadd1/2_w
+    //  3. add cache_kv
+    auto while_Xs = while0->Op()->Input("X");
+    while_Xs.erase(
+        std::remove(
+            std::begin(while_Xs), std::end(while_Xs), split0_k_out->Name()),
+        std::end(while_Xs));
+    while_Xs.erase(
+        std::remove(
+            std::begin(while_Xs), std::end(while_Xs), split0_v_out->Name()),
+        std::end(while_Xs));
+    while_Xs.emplace_back(cache_kv->Name());
+    while0->Op()->SetInput("X", while_Xs);
+
+    // rewrite while OP output
+    //  1. delete k, v
+    //  2. add cache_kv
+    auto while_Outs = while0->Op()->Output("Out");
+    while_Outs.erase(
+        std::remove(
+            std::begin(while_Outs), std::end(while_Outs), split0_k_out->Name()),
+        std::end(while_Outs));
+    while_Outs.erase(
+        std::remove(
+            std::begin(while_Outs), std::end(while_Outs), split0_v_out->Name()),
+        std::end(while_Outs));
+    while_Outs.emplace_back(cache_kv->Name());
+    while0->Op()->SetOutput("Out", while_Outs);
+
+    // link CacheKV to while
+    IR_NODE_LINK_TO(cache_kv, while0)
+    // unlink origin KV output to while
+    IR_NODE_UNLINK(split0_k_out, while0);
+    IR_NODE_UNLINK(split0_v_out, while0);
+    IR_NODE_UNLINK(while0, split0_k_out);
+    IR_NODE_UNLINK(while0, split0_v_out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   };
 
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
     if (!IsCompat(subgraph, graph)) {
+<<<<<<< HEAD
       LOG(WARNING) << "fused_multi_transformer_encoder pass in "
                       "op compat failed.";
       return;
@@ -3890,12 +4938,196 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
 
     fuse_creater(input0,
                  c_identity0,
+=======
+      LOG(WARNING) << "fused_multi_transformer_encoder_fuse_qkv "
+                      "pass in op compat failed.";
+      return;
+    }
+
+    VLOG(4) << "handle MultiTransformer encoder(Fuse-QKV) fuse";
+    GET_IR_NODE_FROM_SUBGRAPH(
+        input0, input0, fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm, layer_norm, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale,
+                              layer_norm_scale,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias,
+                              layer_norm_bias,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean,
+                              layer_norm_mean,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance,
+                              layer_norm_variance,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out,
+                              layer_norm_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul0, matmul0, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul0_out, matmul0_out, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul0_w, matmul0_w, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_0, reshape2_0, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0_out,
+                              reshape2_0_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_0, transpose2_0, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose2_0_out,
+                              transpose2_0_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        split0, split0, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        split0_q_out, split0_q_out, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        split0_k_out, split0_k_out, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        split0_v_out, split0_v_out, fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm,
+                              ffn_layer_norm,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_scale,
+                              ffn_layer_norm_scale,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_bias,
+                              ffn_layer_norm_bias,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_mean,
+                              ffn_layer_norm_mean,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_variance,
+                              ffn_layer_norm_variance,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_out,
+                              ffn_layer_norm_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul0, ffn_matmul0, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_matmul0_out,
+                              ffn_matmul0_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul0_w, ffn_matmul0_w, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd0, ffn_eltadd0, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd0_b, ffn_eltadd0_b, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_eltadd0_out,
+                              ffn_eltadd0_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_gelu, ffn_gelu, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_gelu_out, ffn_gelu_out, fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul1, ffn_matmul1, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_matmul1_out,
+                              ffn_matmul1_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_matmul1_w, ffn_matmul1_w, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd1, ffn_eltadd1, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_eltadd1_b, ffn_eltadd1_b, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_eltadd1_out,
+                              ffn_eltadd1_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(ffn_eltadd_out,
+                              ffn_eltadd_out,
+                              fused_multi_transformer_fuse_qkv_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_output, ffn_output, fused_multi_transformer_fuse_qkv_pattern)
+
+    // nodes need be removed
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd0, eltadd0, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd0_b, eltadd0_b, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd0_out, eltadd0_out, fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qk, matmul_qk, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qk_out, matmul_qk_out, fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_qk, eltadd_qk, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_qk_b, eltadd_qk_b, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_qk_out, eltadd_qk_out, fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softmax_qk, softmax_qk, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out,
+                              softmax_qk_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qkv, matmul_qkv, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv_out,
+                              matmul_qkv_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_qkv, reshape2_qkv, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv_out,
+                              reshape2_qkv_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv,
+                              transpose2_qkv,
+                              fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out,
+                              transpose2_qkv_out,
+                              fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_linear, matmul_linear, fused_multi_transformer_fuse_qkv_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_linear_w,
+                              matmul_linear_w,
+                              fused_multi_transformer_fuse_qkv_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_linear_out,
+                              matmul_linear_out,
+                              fused_multi_transformer_fuse_qkv_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_linear, eltadd_linear, fused_multi_transformer_fuse_qkv_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd_linear_b,
+                              eltadd_linear_b,
+                              fused_multi_transformer_fuse_qkv_pattern)
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd_linear_out,
+                              eltadd_linear_out,
+                              fused_multi_transformer_fuse_qkv_pattern)
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltadd_out, eltadd_out, fused_multi_transformer_fuse_qkv_pattern)
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        while0, while0, fused_multi_transformer_fuse_qkv_pattern)
+
+    fuse_creater(input0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  layer_norm,
                  layer_norm_scale,
                  layer_norm_bias,
                  layer_norm_mean,
                  layer_norm_variance,
                  matmul0_w,
+<<<<<<< HEAD
                  matmul1_w,
                  matmul2_w,
                  eltadd0_b,
@@ -3903,10 +5135,19 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
                  eltadd2_b,
                  transpose2_1_out,
                  transpose2_2_out,
+=======
+                 eltadd0_b,
+                 split0_k_out,
+                 split0_v_out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  eltadd_qk_b,
                  reshape2_0,
                  matmul_linear_w,
                  eltadd_linear_b,
+<<<<<<< HEAD
+=======
+                 while0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  ffn_layer_norm,
                  ffn_layer_norm_scale,
                  ffn_layer_norm_bias,
@@ -3916,6 +5157,7 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
                  ffn_matmul1_w,
                  ffn_eltadd0_b,
                  ffn_eltadd1_b,
+<<<<<<< HEAD
                  ffn_act,
                  ffn_layer_norm_out);
 
@@ -3926,10 +5168,16 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
                                                   c_identity2,
                                                   c_identity2_out,
                                                   layer_norm,
+=======
+                 ffn_output);
+
+    std::unordered_set<const Node*> marked_nodes({layer_norm,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   layer_norm_mean,
                                                   layer_norm_variance,
                                                   layer_norm_out,
                                                   matmul0,
+<<<<<<< HEAD
                                                   matmul1,
                                                   matmul2,
                                                   matmul0_out,
@@ -3955,6 +5203,19 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
                                                   transpose2_2_out,
                                                   scale_q,
                                                   scale_q_out,
+=======
+                                                  matmul0_out,
+                                                  eltadd0,
+                                                  eltadd0_out,
+                                                  reshape2_0,
+                                                  reshape2_0_out,
+                                                  transpose2_0,
+                                                  transpose2_0_out,
+                                                  split0,
+                                                  split0_q_out,
+                                                  split0_k_out,
+                                                  split0_v_out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   matmul_qk,
                                                   matmul_qk_out,
                                                   eltadd_qk,
@@ -3970,29 +5231,44 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
                                                   transpose2_qkv_out,
                                                   matmul_linear,
                                                   matmul_linear_out,
+<<<<<<< HEAD
                                                   c_allreduce_sum,
                                                   c_allreduce_sum_out,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   eltadd_linear,
                                                   eltadd_linear_out,
                                                   eltadd_out,
                                                   ffn_layer_norm,
                                                   ffn_layer_norm_mean,
                                                   ffn_layer_norm_variance,
+<<<<<<< HEAD
                                                   ffn_c_identity,
                                                   ffn_c_identity_out,
+=======
+                                                  ffn_layer_norm_out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   ffn_matmul0,
                                                   ffn_matmul1,
                                                   ffn_matmul0_out,
                                                   ffn_matmul1_out,
+<<<<<<< HEAD
                                                   ffn_c_allreduce_sum,
                                                   ffn_c_allreduce_sum_out,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   ffn_eltadd0,
                                                   ffn_eltadd1,
                                                   ffn_eltadd0_out,
                                                   ffn_eltadd1_out,
+<<<<<<< HEAD
                                                   ffn_act,
                                                   ffn_act_out,
                                                   ffn_output,
+=======
+                                                  ffn_gelu,
+                                                  ffn_gelu_out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   ffn_eltadd_out});
 
     // Remove unneeded nodes.
@@ -4004,25 +5280,43 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
   return fusion_count;
 }
 
+<<<<<<< HEAD
 void MultiDevicesFusedMultiTransformerEncoderPass::ApplyImpl(
     Graph* graph) const {
+=======
+void FusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(Graph* graph) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal(
+<<<<<<< HEAD
           "During the multi_transformer pass, The scope should not be null."));
 
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderPass, new bool(true));
+=======
+          "During the fused_multi_transformer_encoder pass, "
+          "The scope should not be null."));
+
+  int fusion_count = BuildFusion(graph, name_scope_, scope);
+  if (fusion_count > 0) {
+    graph->Set(kFusedMultiTransformerEncoderFuseQKVPass, new bool(true));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     graph->Set(kFusedMultiTransformerEncoderFusionCount, new int(fusion_count));
   }
   AddStatis(fusion_count);
 }
 
+<<<<<<< HEAD
 MultiDevicesFusedMultiTransformerEncoderPass::
     MultiDevicesFusedMultiTransformerEncoderPass() {
+=======
+FusedMultiTransformerEncoderFuseQKVPass::
+    FusedMultiTransformerEncoderFuseQKVPass() {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddOpCompat(OpCompat("layer_norm"))
       .AddInput("X")
       .IsTensor()
@@ -4119,6 +5413,7 @@ MultiDevicesFusedMultiTransformerEncoderPass::
       .IsType<std::vector<int>>()
       .End();
 
+<<<<<<< HEAD
   AddOpCompat(OpCompat("scale"))
       .AddInput("X")
       .IsTensor()
@@ -4133,6 +5428,26 @@ MultiDevicesFusedMultiTransformerEncoderPass::
       .IsNumEQ(0.f)
       .End()
       .AddAttr("bias_after_scale")  // bias is 0, so unconstrained.
+=======
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGE(0.0f)
+      .IsNumLE(1.0f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .IsType<bool>()
       .End();
 
@@ -4158,12 +5473,27 @@ MultiDevicesFusedMultiTransformerEncoderPass::
       .IsType<bool>()
       .End();
 
+<<<<<<< HEAD
   AddOpCompat(OpCompat("relu"))
       .AddInput("X")
       .IsTensor()
       .End()
       .AddOutput("Out")
       .IsTensor()
+=======
+  AddOpCompat(OpCompat("while"))
+      .AddInput("X")  // A set of variables, unconstrained
+      .End()
+      .AddInput("Condition")  // An scalar
+      .IsTensor()
+      .End()
+      .AddOutput("Out")  // A set of variables, unconstrained
+      .End()
+      .AddOutput("StepScopes")  // A vector of local scope, unconstrained
+      .End()
+      .AddAttr("sub_block")
+      .IsType<framework::BlockDesc*>()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .End();
 }
 
@@ -4171,12 +5501,15 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     Graph* graph, const std::string& name_scope, Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
+<<<<<<< HEAD
   bool enable_int8 = graph->Get<bool>("enable_int8");
   if (enable_int8) {
     VLOG(3) << "MultiDevicesFusedMultiTransformerEncoderFuseQKVPass with int8";
   } else {
     VLOG(3) << "MultiDevicesFusedMultiTransformerEncoderFuseQKVPass with fp";
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Create pattern.
   patterns::MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern
@@ -4191,14 +5524,20 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                           Node* layer_norm_mean,
                           Node* layer_norm_variance,
                           Node* c_identity,
+<<<<<<< HEAD
                           Node* matmul0,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           Node* matmul0_w,
                           Node* eltadd0_b,
                           Node* split0_k_out,
                           Node* split0_v_out,
                           Node* eltadd_qk_b,
                           Node* reshape2_0,
+<<<<<<< HEAD
                           Node* matmul_linear,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           Node* matmul_linear_w,
                           Node* eltadd_linear_b,
                           Node* while0,
@@ -4207,6 +5546,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                           Node* ffn_layer_norm_bias,
                           Node* ffn_layer_norm_mean,
                           Node* ffn_layer_norm_variance,
+<<<<<<< HEAD
                           Node* ffn_c_identity,
                           Node* ffn_matmul0,
                           Node* ffn_matmul0_w,
@@ -4220,6 +5560,21 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto* matmul_linear_op = matmul_linear->Op();
     auto* ffn_matmul_0_op = ffn_matmul0->Op();
     auto* ffn_matmul_1_op = ffn_matmul1->Op();
+=======
+                          Node* ffn_matmul0_w,
+                          Node* ffn_matmul1_w,
+                          Node* ffn_eltadd0_b,
+                          Node* ffn_eltadd1_b,
+                          Node* ffn_output) {
+    auto reshape_desc = reshape2_0->Op();
+    int num_head =
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
+    int dim_head =
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(3) /
+        3;  // 3 for qkv
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // Calc index of transformer layer by LayerNorm Scale name
     // This calculation assumes:
@@ -4231,6 +5586,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     int layer_idx = atoi(ln_idx_str.c_str()) / 2;
 
     auto* qkv_w_tensor =
+<<<<<<< HEAD
         scope->FindVar(matmul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* qkv_b_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
@@ -4264,13 +5620,35 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       TransposeWeights(out_linear_w_tensor);
       TransposeWeights(ffn0_w_tensor);
       TransposeWeights(ffn1_w_tensor);
+=======
+        scope->FindVar(matmul0_w->Name())->GetMutable<LoDTensor>();
+    auto* qkv_b_tensor =
+        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+
+    int dim_embed = qkv_w_tensor->dims()[0];
+
+    if (qkv_w_tensor->dtype() == phi::DataType::FLOAT32) {
+      QKVWeightsProcessFuseQKV<float>(
+          qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    } else if (qkv_w_tensor->dtype() == phi::DataType::FLOAT16) {
+      QKVWeightsProcessFuseQKV<platform::float16>(
+          qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "fused_multi_transformer not supported weight dtype. "
+          "we now only support fp32 and fp16."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     // create fused_multi_transformer
     OpDesc fused_multi_transformer_op_desc(layer_norm->Op()->Block());
+<<<<<<< HEAD
     fused_multi_transformer_op_desc.SetType(enable_int8
                                                 ? "fused_multi_transformer_int8"
                                                 : "fused_multi_transformer");
+=======
+    fused_multi_transformer_op_desc.SetType("fused_multi_transformer");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // 1. Input setting
     fused_multi_transformer_op_desc.SetInput("X", {input0->Name()});
@@ -4290,7 +5668,11 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
     // FIXME: only support max_seq_len <= 1024
     cache_kv_desc.SetDataType(
+<<<<<<< HEAD
         framework::TransToProtoVarType(qkv_b_tensor->dtype()));
+=======
+        framework::TransToProtoVarType(qkv_w_tensor->dtype()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cache_kv_desc.SetPersistable(false);
     auto* cache_kv = graph->CreateVarNode(&cache_kv_desc);
 
@@ -4305,7 +5687,11 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     fill_const_op_desc.SetAttr("value", 0);
     fill_const_op_desc.SetAttr("dtype",
                                static_cast<int>(framework::TransToProtoVarType(
+<<<<<<< HEAD
                                    qkv_b_tensor->dtype())));
+=======
+                                   qkv_w_tensor->dtype())));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* fill_const_op = graph->CreateOpNode(&fill_const_op_desc);
 
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv->Name()});
@@ -4338,8 +5724,11 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     fused_multi_transformer_op_desc.SetAttr("pre_layer_norm", true);
     fused_multi_transformer_op_desc.SetAttr(
         "epsilon", layer_norm->Op()->GetAttr("epsilon"));
+<<<<<<< HEAD
     fused_multi_transformer_op_desc.SetAttr("act_method",
                                             ffn_act->Op()->Type());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // output dropout attribute
     fused_multi_transformer_op_desc.SetAttr("dropout_rate", 0.0f);
@@ -4350,6 +5739,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     fused_multi_transformer_op_desc.SetAttr("ring_id",
                                             c_identity_op->GetAttr("ring_id"));
 
+<<<<<<< HEAD
     // Quantization attribute/Input
     if (enable_int8) {
       auto* dev_ctx = static_cast<phi::CPUContext*>(
@@ -4483,6 +5873,10 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       IR_NODE_LINK_TO(ffn1_out_scale_node, fused_multi_transformer);
     }
 
+=======
+    auto* fused_multi_transformer =
+        graph->CreateOpNode(&fused_multi_transformer_op_desc);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     IR_NODE_LINK_TO(input0, fused_multi_transformer);
     IR_NODE_LINK_TO(layer_norm_scale, fused_multi_transformer);
     IR_NODE_LINK_TO(layer_norm_bias, fused_multi_transformer);
@@ -4651,9 +6045,15 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                               fused_multi_transformer_fuse_qkv_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
+<<<<<<< HEAD
         ffn_act, ffn_act, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         ffn_act_out, ffn_act_out, fused_multi_transformer_fuse_qkv_pattern);
+=======
+        ffn_gelu, ffn_gelu, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ffn_gelu_out, ffn_gelu_out, fused_multi_transformer_fuse_qkv_pattern);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     GET_IR_NODE_FROM_SUBGRAPH(
         ffn_matmul1, ffn_matmul1, fused_multi_transformer_fuse_qkv_pattern);
@@ -4696,11 +6096,14 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
         matmul_qk_out, matmul_qk_out, fused_multi_transformer_fuse_qkv_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
+<<<<<<< HEAD
         scale_qk, scale_qk, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         scale_qk_out, scale_qk_out, fused_multi_transformer_fuse_qkv_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         eltadd_qk, eltadd_qk, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_qk_b, eltadd_qk_b, fused_multi_transformer_fuse_qkv_pattern);
@@ -4767,14 +6170,20 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  layer_norm_mean,
                  layer_norm_variance,
                  c_identity,
+<<<<<<< HEAD
                  matmul0,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  matmul0_w,
                  eltadd0_b,
                  split0_k_out,
                  split0_v_out,
                  eltadd_qk_b,
                  reshape2_0,
+<<<<<<< HEAD
                  matmul_linear,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  matmul_linear_w,
                  eltadd_linear_b,
                  while0,
@@ -4783,6 +6192,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  ffn_layer_norm_bias,
                  ffn_layer_norm_mean,
                  ffn_layer_norm_variance,
+<<<<<<< HEAD
                  ffn_c_identity,
                  ffn_matmul0,
                  ffn_matmul0_w,
@@ -4791,6 +6201,12 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  ffn_eltadd0_b,
                  ffn_eltadd1_b,
                  ffn_act,
+=======
+                 ffn_matmul0_w,
+                 ffn_matmul1_w,
+                 ffn_eltadd0_b,
+                 ffn_eltadd1_b,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  ffn_output);
 
     std::unordered_set<const Node*> marked_nodes({layer_norm,
@@ -4813,8 +6229,11 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                                                   split0_v_out,
                                                   matmul_qk,
                                                   matmul_qk_out,
+<<<<<<< HEAD
                                                   scale_qk,
                                                   scale_qk_out,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   eltadd_qk,
                                                   eltadd_qk_out,
                                                   softmax_qk,
@@ -4849,8 +6268,13 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                                                   ffn_eltadd1,
                                                   ffn_eltadd0_out,
                                                   ffn_eltadd1_out,
+<<<<<<< HEAD
                                                   ffn_act,
                                                   ffn_act_out,
+=======
+                                                  ffn_gelu,
+                                                  ffn_gelu_out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   ffn_eltadd_out});
 
     // Remove unneeded nodes.
@@ -4910,6 +6334,7 @@ MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::
       .IsNumGT(0)
       .End();
 
+<<<<<<< HEAD
   AddOpCompat(OpCompat("scale"))
       .AddInput("X")
       .IsTensor()
@@ -4927,6 +6352,8 @@ MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::
       .IsType<bool>()
       .End();
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddOpCompat(OpCompat("matmul_v2"))
       .AddInput("X")  // the shape shoule be (B, S, N*H)
       .IsTensor()
@@ -5063,9 +6490,12 @@ REGISTER_PASS(fused_multi_transformer_encoder_pass,
 REGISTER_PASS(fused_multi_transformer_encoder_fuse_qkv_pass,
               paddle::framework::ir::FusedMultiTransformerEncoderFuseQKVPass);
 REGISTER_PASS(
+<<<<<<< HEAD
     multi_devices_fused_multi_transformer_encoder_pass,
     paddle::framework::ir::MultiDevicesFusedMultiTransformerEncoderPass);
 REGISTER_PASS(
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass,
     paddle::framework::ir::MultiDevicesFusedMultiTransformerEncoderFuseQKVPass);
 
@@ -5089,6 +6519,7 @@ REGISTER_PASS_CAPABILITY(fused_multi_transformer_encoder_fuse_qkv_pass)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("softmax", 0));
+<<<<<<< HEAD
 REGISTER_PASS_CAPABILITY(multi_devices_fused_multi_transformer_encoder_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
@@ -5099,6 +6530,8 @@ REGISTER_PASS_CAPABILITY(multi_devices_fused_multi_transformer_encoder_pass)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("softmax", 0));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 REGISTER_PASS_CAPABILITY(
     multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass)
     .AddCombination(

@@ -12,12 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.layers.nn import _pull_gpups_sparse
 
 paddle.enable_static()
@@ -32,6 +43,7 @@ class TestPullGpupsSparse(unittest.TestCase):
         slots = []
         with fluid.program_guard(train_program, startup_program):
 
+<<<<<<< HEAD
             l = paddle.static.data(
                 name='input', shape=[-1, 1], dtype="int64", lod_level=1
             )
@@ -39,6 +51,17 @@ class TestPullGpupsSparse(unittest.TestCase):
             output = _pull_gpups_sparse(
                 slots, size=[11], is_distributed=True, is_sparse=True
             )
+=======
+            l = fluid.layers.data(name='input',
+                                  shape=[1],
+                                  dtype="int64",
+                                  lod_level=1)
+            slots.append(l)
+            output = _pull_gpups_sparse(slots,
+                                        size=[11],
+                                        is_distributed=True,
+                                        is_sparse=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             cost = paddle.mean(output)
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(cost, train_program)
@@ -49,9 +72,15 @@ class TestPullGpupsSparse(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup_program)
             img = np.array([1]).astype(np.int64)
+<<<<<<< HEAD
             res = exe.run(
                 train_program, feed={'input': img}, fetch_list=[output]
             )
+=======
+            res = exe.run(train_program,
+                          feed={'input': img},
+                          fetch_list=[output])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

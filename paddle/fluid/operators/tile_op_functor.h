@@ -25,9 +25,15 @@ namespace operators {
 inline std::vector<int> get_repeat_times(
     const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("RepeatTimes")) {
+<<<<<<< HEAD
     auto* repeat_tensor = ctx.Input<phi::DenseTensor>("RepeatTimes");
     auto* repeat_data = repeat_tensor->data<int>();
     phi::DenseTensor cpu_repeat_tensor;
+=======
+    auto* repeat_tensor = ctx.Input<framework::LoDTensor>("RepeatTimes");
+    auto* repeat_data = repeat_tensor->data<int>();
+    framework::Tensor cpu_repeat_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (platform::is_gpu_place(repeat_tensor->place()) ||
         platform::is_xpu_place(repeat_tensor->place()) ||
         platform::is_mlu_place(repeat_tensor->place()) ||
@@ -42,7 +48,11 @@ inline std::vector<int> get_repeat_times(
   }
 
   auto list_repeat_times_tensor =
+<<<<<<< HEAD
       ctx.MultiInput<phi::DenseTensor>("repeat_times_tensor");
+=======
+      ctx.MultiInput<framework::Tensor>("repeat_times_tensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (list_repeat_times_tensor.size() > 0) {
     // get tensor from
     std::vector<int> vec_repeat_times;
@@ -52,7 +62,11 @@ inline std::vector<int> get_repeat_times(
           platform::is_xpu_place(tensor->place()) ||
           platform::is_mlu_place(tensor->place()) ||
           platform::is_npu_place(tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_repeat_times.push_back(*temp.data<int32_t>());
       } else {

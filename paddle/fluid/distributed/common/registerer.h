@@ -29,8 +29,12 @@ class Any {
   Any() : content_(NULL) {}
 
   template <typename ValueType>
+<<<<<<< HEAD
   explicit Any(const ValueType &value)
       : content_(new Holder<ValueType>(value)) {}
+=======
+  Any(const ValueType &value) : content_(new Holder<ValueType>(value)) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   Any(const Any &other)
       : content_(other.content_ ? other.content_->clone() : NULL) {}
@@ -39,9 +43,13 @@ class Any {
 
   template <typename ValueType>
   ValueType *any_cast() {
+<<<<<<< HEAD
     return content_
                ? &static_cast<Holder<ValueType> *>(content_)->held_  // NOLINT
                : NULL;
+=======
+    return content_ ? &static_cast<Holder<ValueType> *>(content_)->held_ : NULL;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
  private:

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import unittest
 
 import paddle.fluid.core as core
@@ -20,12 +21,29 @@ import paddle.fluid.core as core
 os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
 
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+=======
+import sys
+import unittest
+from timeit import default_timer as timer
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.dataset.wmt16 as wmt16
+
+os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
+
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from test_parallel_executor_transformer import get_feed_data_reader, transformer
 
 
 # NOTE(dzhwinter): test diferent strategy colisions.
 # open the eager delete tensor strategy by default.
 class TestTransformerWithIR(TestParallelExecutorBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         if core.is_compiled_with_cuda():
             # check python transpiler
@@ -34,16 +52,24 @@ class TestTransformerWithIR(TestParallelExecutorBase):
                 use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader(),
                 use_ir_memory_optimize=False,
+<<<<<<< HEAD
                 iter=2,
             )
+=======
+                iter=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # check IR memory optimize
             self.check_network_convergence(
                 transformer,
                 use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader(),
                 use_ir_memory_optimize=True,
+<<<<<<< HEAD
                 iter=2,
             )
+=======
+                iter=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

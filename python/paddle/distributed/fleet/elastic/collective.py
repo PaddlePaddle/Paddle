@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import shutil
 import tempfile
@@ -26,6 +27,20 @@ from paddle.distributed.fleet.launch_utils import (
 
 
 class CollectiveLauncher(LauncherInterface):
+=======
+import tempfile
+from paddle.distributed.fleet import launch_utils
+from paddle.distributed.fleet import cloud_utils
+from paddle.distributed.fleet import ascend_utils
+
+from paddle.distributed.fleet.launch_utils import *
+
+from paddle.distributed.fleet.elastic.manager import LauncherInterface
+
+
+class CollectiveLauncher(LauncherInterface):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, args):
         self.args = args
         self.procs = []
@@ -36,8 +51,12 @@ class CollectiveLauncher(LauncherInterface):
         self.tmp_dir = tempfile.mkdtemp()
         cluster, pod = paddle.distributed.fleet.launch.get_cluster_info(args)
         global_envs = paddle.distributed.fleet.launch.get_global_envs(
+<<<<<<< HEAD
             args, self.tmp_dir
         )
+=======
+            args, self.tmp_dir)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.procs = start_local_trainers(
             cluster,
@@ -45,8 +64,12 @@ class CollectiveLauncher(LauncherInterface):
             training_script=args.training_script,
             training_script_args=args.training_script_args,
             log_dir=args.log_dir,
+<<<<<<< HEAD
             envs=global_envs,
         )
+=======
+            envs=global_envs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for idx, proc in enumerate(self.procs):
             logger.info("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))

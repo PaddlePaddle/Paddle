@@ -31,6 +31,7 @@ class DGCClipByNormOp : public ClipByNormOp {
     return ClipByNormOp::InferShape(ctx);
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
@@ -40,6 +41,15 @@ class DGCClipByNormOp : public ClipByNormOp {
       return phi::KernelKey(phi::Backend::ALL_BACKEND,
                             expected_kernel_type.layout(),
                             expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "current_step") {
+      VLOG(10) << "var_name:" << var_name << " need not to transform";
+      return expected_kernel_type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     return framework::OperatorWithKernel::GetKernelTypeForVar(

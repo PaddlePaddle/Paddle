@@ -53,6 +53,7 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("X",
              "(phi::DenseTensor) The variable-length input of SequencePoolOp");
     AddOutput(
@@ -62,6 +63,14 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("MaxIndex",
               "(phi::DenseTensor<int>) This tensor is used for the sequence "
               "max-pooling "
+=======
+    AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
+    AddOutput("Out",
+              "(Tensor) The output of SequencePoolOp does not contain LoD "
+              "information.");
+    AddOutput("MaxIndex",
+              "(Tensor<int>) This tensor is used for the sequence max-pooling "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "to record the max indexes.")
         .AsIntermediate();
     AddAttr<bool>("is_test",
@@ -95,11 +104,19 @@ The following example explains how this works:
 For a mini-batch of 3 variable-length sentences,
 containing 2, 3, and 2 time-steps:
 
+<<<<<<< HEAD
 Assume X is a [7,M,N] phi::DenseTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
 Besides, for the sake of simplicity, we assume M=1 and N=1,
 and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
 Thus, Out is a [3,1,1] phi::DenseTensor without LoD information.
+=======
+Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
+Besides, for the sake of simplicity, we assume M=1 and N=1,
+and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
+
+Thus, Out is a [3,1,1] Tensor without LoD information.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 And for different pooltype, the value of Out is as follows:
 
 - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
@@ -154,11 +171,19 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

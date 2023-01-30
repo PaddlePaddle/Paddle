@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import gradient_checker
@@ -29,6 +30,26 @@ class TestTileOpRank1(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard, core
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
+
+
+#Situation 1: repeat_times is a list (without tensor)
+class TestTileOpRank1(OpTest):
+
+    def setUp(self):
+        self.op_type = "tile"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.init_data()
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
@@ -47,6 +68,7 @@ class TestTileOpRank1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+<<<<<<< HEAD
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
     def init_data(self):
         self.ori_shape = []
@@ -67,36 +89,61 @@ class TestTileOpRank_ZeroDim3(TestTileOpRank1):
 
 # with dimension expanding
 class TestTileOpRank2Expanding(TestTileOpRank1):
+=======
+# with dimension expanding
+class TestTileOpRank2Expanding(TestTileOpRank1):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = [120]
         self.repeat_times = [2, 2]
 
 
 class TestTileOpRank2(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
 
 
 class TestTileOpRank3_Corner(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (1, 1, 1)
 
 
 class TestTileOpRank3_Corner2(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (2, 2)
 
 
 class TestTileOpRank3(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (2, 4, 15)
         self.repeat_times = (2, 1, 4)
 
 
 class TestTileOpRank4(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (2, 4, 5, 7)
         self.repeat_times = (3, 2, 1, 2)
@@ -104,6 +151,7 @@ class TestTileOpRank4(TestTileOpRank1):
 
 # Situation 2: repeat_times is a list (with tensor)
 class TestTileOpRank1_tensor_attr(OpTest):
+<<<<<<< HEAD
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
@@ -113,6 +161,16 @@ class TestTileOpRank1_tensor_attr(OpTest):
             repeat_times_tensor.append(
                 ("x" + str(index), np.ones((1)).astype('int32') * ele)
             )
+=======
+
+    def setUp(self):
+        self.op_type = "tile"
+        self.init_data()
+        repeat_times_tensor = []
+        for index, ele in enumerate(self.repeat_times):
+            repeat_times_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype("float64"),
@@ -135,6 +193,10 @@ class TestTileOpRank1_tensor_attr(OpTest):
 
 
 class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [1, 1]
@@ -142,6 +204,10 @@ class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
 
 
 class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
@@ -150,9 +216,15 @@ class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
 
 # Situation 3: repeat_times is a tensor
 class TestTileOpRank1_tensor(OpTest):
+<<<<<<< HEAD
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+=======
+
+    def setUp(self):
+        self.op_type = "tile"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.init_data()
 
         self.inputs = {
@@ -175,6 +247,10 @@ class TestTileOpRank1_tensor(OpTest):
 
 
 class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
@@ -182,9 +258,15 @@ class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
 
 # Situation 4: input x is Integer
 class TestTileOpInteger(OpTest):
+<<<<<<< HEAD
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+=======
+
+    def setUp(self):
+        self.op_type = "tile"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {
             'X': np.random.randint(10, size=(4, 4, 5)).astype("int32")
         }
@@ -198,9 +280,15 @@ class TestTileOpInteger(OpTest):
 
 # Situation 5: input x is Bool
 class TestTileOpBoolean(OpTest):
+<<<<<<< HEAD
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+=======
+
+    def setUp(self):
+        self.op_type = "tile"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
@@ -212,9 +300,15 @@ class TestTileOpBoolean(OpTest):
 
 # Situation 56: input x is Integer
 class TestTileOpInt64_t(OpTest):
+<<<<<<< HEAD
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+=======
+
+    def setUp(self):
+        self.op_type = "tile"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
@@ -227,6 +321,7 @@ class TestTileOpInt64_t(OpTest):
 
 
 class TestTileError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         with program_guard(Program(), Program()):
             x1 = fluid.create_lod_tensor(
@@ -237,15 +332,35 @@ class TestTileError(unittest.TestCase):
             x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
             self.assertRaises(TypeError, paddle.tile, x2, repeat_times)
             x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
+=======
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
+            repeat_times = [2, 2]
+            self.assertRaises(TypeError, paddle.tile, x1, repeat_times)
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, paddle.tile, x2, repeat_times)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tile, x3, repeat_times)
 
 
 class TestTileAPIStatic(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
         with program_guard(Program(), Program()):
             repeat_times = [2, 2]
             x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="int32")
+=======
+
+    def test_api(self):
+        with program_guard(Program(), Program()):
+            repeat_times = [2, 2]
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype="int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out = paddle.tile(x1, repeat_times)
             positive_2 = fluid.layers.fill_constant([1], dtype="int32", value=2)
             out2 = paddle.tile(x1, repeat_times=[positive_2, 2])
@@ -253,6 +368,10 @@ class TestTileAPIStatic(unittest.TestCase):
 
 # Test python API
 class TestTileAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api(self):
         with fluid.dygraph.guard():
             np_x = np.random.random([12, 14]).astype("float32")
@@ -274,6 +393,10 @@ class TestTileAPI(unittest.TestCase):
 
 
 class TestTileDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
@@ -283,17 +406,35 @@ class TestTileDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
+<<<<<<< HEAD
         data = paddle.static.data('data', [1, 2], dtype)
+=======
+        data = layers.data('data', [1, 2], False, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data.persistable = True
         out = paddle.tile(data, [2, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.tile_wrapper, [data], out, x_init=[data_arr], place=place
         )
+=======
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.tile_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -305,6 +446,10 @@ class TestTileDoubleGradCheck(unittest.TestCase):
 
 
 class TestTileTripleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
@@ -314,17 +459,35 @@ class TestTileTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
+<<<<<<< HEAD
         data = paddle.static.data('data', [1, 2], dtype)
+=======
+        data = layers.data('data', [1, 2], False, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data.persistable = True
         out = paddle.tile(data, [2, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
         gradient_checker.triple_grad_check_for_dygraph(
             self.tile_wrapper, [data], out, x_init=[data_arr], place=place
         )
+=======
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.tile_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -335,6 +498,7 @@ class TestTileTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+<<<<<<< HEAD
 class TestTileAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
@@ -366,6 +530,8 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

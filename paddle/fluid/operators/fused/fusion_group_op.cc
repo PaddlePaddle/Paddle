@@ -76,10 +76,17 @@ class FusionGroupOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(framework::proto::VarType::FP32,
                           platform::CUDAPlace(0));
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   platform::CUDAPlace(0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   };
 };
 
@@ -87,10 +94,17 @@ class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Inputs",
+<<<<<<< HEAD
              "(std::vector<phi::DenseTensor>) The inputs of fusion_group op.")
         .AsDuplicable();
     AddOutput("Outs",
               "(std::vector<phi::DenseTensor>) The outputs of fusion_group op.")
+=======
+             "(std::vector<LoDTensor>) The inputs of fusion_group op.")
+        .AsDuplicable();
+    AddOutput("Outs",
+              "(std::vector<LoDTensor>) The outputs of fusion_group op.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .AsDuplicable();
     AddAttr<std::vector<int>>("outs_dtype",
                               "The data type of Outputs in fusion_group op.")

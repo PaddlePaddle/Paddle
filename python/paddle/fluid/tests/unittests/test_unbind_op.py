@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -24,6 +25,22 @@ from paddle.fluid import Program, program_guard
 
 
 class TestUnbind(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest, convert_float_to_uint16
+import paddle
+import paddle.fluid as fluid
+import paddle.tensor as tensor
+from paddle.fluid import compiler, Program, program_guard, core
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestUnbind(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_unbind(self):
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
@@ -32,11 +49,20 @@ class TestUnbind(unittest.TestCase):
         axis = fluid.data(shape=[1], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
+<<<<<<< HEAD
         [res_1, res_2] = exe.run(
             fluid.default_main_program(),
             feed={"x_1": input_1, "axis": 0},
             fetch_list=[out_0, out_1],
         )
+=======
+        [res_1, res_2] = exe.run(fluid.default_main_program(),
+                                 feed={
+                                     "x_1": input_1,
+                                     "axis": 0
+                                 },
+                                 fetch_list=[out_0, out_1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         assert np.array_equal(res_1, input_1[0, 0:100])
         assert np.array_equal(res_2, input_1[1, 0:100])
@@ -56,27 +82,54 @@ class TestUnbind(unittest.TestCase):
             out.backward()
             np.testing.assert_array_equal(x.grad.numpy(), np_grad)
 
+<<<<<<< HEAD
 
 class TestLayersUnbind(unittest.TestCase):
     def test_layers_unbind(self):
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
+=======
+    def test_unbind_dygraph_final_state(self):
+        with _test_eager_guard():
+            self.test_unbind_dygraph()
+
+
+class TestLayersUnbind(unittest.TestCase):
+
+    def test_layers_unbind(self):
+
+        x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
+        [out_0, out_1] = fluid.layers.unbind(input=x_1, axis=0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         input_1 = np.random.random([2, 3]).astype("float32")
         axis = fluid.data(shape=[1], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
+<<<<<<< HEAD
         [res_1, res_2] = exe.run(
             fluid.default_main_program(),
             feed={"x_1": input_1, "axis": 0},
             fetch_list=[out_0, out_1],
         )
+=======
+        [res_1, res_2] = exe.run(fluid.default_main_program(),
+                                 feed={
+                                     "x_1": input_1,
+                                     "axis": 0
+                                 },
+                                 fetch_list=[out_0, out_1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         assert np.array_equal(res_1, input_1[0, 0:100])
         assert np.array_equal(res_2, input_1[1, 0:100])
 
 
 class TestUnbindOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         pass
 
@@ -98,9 +151,14 @@ class TestUnbindOp(OpTest):
         self.inputs = {'X': x}
         self.attrs = {'axis': self.axis}
         self.setAxis()
+<<<<<<< HEAD
         self.outputs = {
             'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
         }
+=======
+        self.outputs = {'Out': [('out%d' % i, self.out[i]) \
+            for i in range(len(self.out))]}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_dtype(self):
         return "float64"
@@ -116,6 +174,10 @@ class TestUnbindOp(OpTest):
 
 
 class TestUnbindOp1(TestUnbindOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 1
         self.num = 2
@@ -129,6 +191,10 @@ class TestUnbindOp1(TestUnbindOp):
 
 
 class TestUnbindOp2(TestUnbindOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 2
         self.num = 2
@@ -142,6 +208,10 @@ class TestUnbindOp2(TestUnbindOp):
 
 
 class TestUnbindOp3(TestUnbindOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 2
         self.num = 2
@@ -158,6 +228,10 @@ class TestUnbindOp3(TestUnbindOp):
 
 
 class TestUnbindOp4(TestUnbindOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 1
         self.num = 2
@@ -174,6 +248,10 @@ class TestUnbindOp4(TestUnbindOp):
 
 
 class TestUnbindBF16Op(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._set_op_type()
         self.python_api = paddle.unbind
@@ -184,12 +262,17 @@ class TestUnbindBF16Op(OpTest):
         self.out = np.split(x, self.num, self.axis)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {'axis': self.axis}
+<<<<<<< HEAD
         self.outputs = {
             'Out': [
                 ('out%d' % i, convert_float_to_uint16(self.out[i]))
                 for i in range(len(self.out))
             ]
         }
+=======
+        self.outputs = {'Out': [('out%d' % i, convert_float_to_uint16(self.out[i])) \
+            for i in range(len(self.out))]}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_dtype(self):
         return np.uint16
@@ -205,6 +288,10 @@ class TestUnbindBF16Op(OpTest):
 
 
 class TestUnbindAxisError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = fluid.data(shape=[2, 3], dtype='float32', name='x')

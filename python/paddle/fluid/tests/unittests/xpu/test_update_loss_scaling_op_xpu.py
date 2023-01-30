@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -27,16 +28,39 @@ from xpu.get_test_cover_info import (
 import paddle
 import paddle.fluid as fluid
 import paddle.static.amp.amp_nn as amp_nn
+=======
+import unittest
+import sys
+
+sys.path.append("..")
+import numpy as np
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = "update_loss_scaling"
         self.use_dynamic_create_class = False
 
     class TestUpdateLossScalingOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "update_loss_scaling"
             self.init()
@@ -48,14 +72,22 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                 'FoundInfinite': found_inf,
                 'PrevLossScaling': self.prev_loss_scaling,
                 'InGoodSteps': self.num_good_steps,
+<<<<<<< HEAD
                 'InBadSteps': self.num_bad_steps,
+=======
+                'InBadSteps': self.num_bad_steps
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.outputs = {
                 'Out': [('out0', x)],
                 'LossScaling': self.prev_loss_scaling * self.incr_ratio,
                 'OutGoodSteps': self.zero_steps,
+<<<<<<< HEAD
                 'OutBadSteps': self.zero_steps,
+=======
+                'OutBadSteps': self.zero_steps
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def init(self):
@@ -79,6 +111,10 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                 self.check_output_with_place(place, no_check_set=['Out'])
 
     class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "update_loss_scaling"
             self.init()
@@ -93,28 +129,44 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                 'FoundInfinite': found_inf,
                 'PrevLossScaling': self.prev_loss_scaling,
                 'InGoodSteps': self.num_good_steps,
+<<<<<<< HEAD
                 'InBadSteps': self.num_bad_steps,
+=======
+                'InBadSteps': self.num_bad_steps
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             self.outputs = {
                 'Out': [('out0', np.zeros_like(x))],
                 'LossScaling': self.prev_loss_scaling * self.decr_ratio,
                 'OutGoodSteps': self.zero_steps,
+<<<<<<< HEAD
                 'OutBadSteps': self.zero_steps,
+=======
+                'OutBadSteps': self.zero_steps
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_output_with_place(place)
+<<<<<<< HEAD
             # self.check_output()
 
     class TestUpdateLossScalingLayer(unittest.TestCase):
+=======
+            #self.check_output()
+
+    class TestUpdateLossScalingLayer(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def loss_scaling_check(self, scope=fluid.Scope()):
             a = fluid.data(name="a", shape=[1024, 1024], dtype='float32')
             b = fluid.data(name="b", shape=[512, 128], dtype='float32')
             x = [a, b]
             found_inf = fluid.data(name="found_inf", shape=[1], dtype='bool')
+<<<<<<< HEAD
             prev_loss_scaling = fluid.data(
                 name="prev_loss_scaling", shape=[1], dtype='float32'
             )
@@ -124,6 +176,17 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
             num_bad_steps = fluid.data(
                 name="num_bad_steps", shape=[1], dtype='int32'
             )
+=======
+            prev_loss_scaling = fluid.data(name="prev_loss_scaling",
+                                           shape=[1],
+                                           dtype='float32')
+            num_good_steps = fluid.data(name="num_good_steps",
+                                        shape=[1],
+                                        dtype='int32')
+            num_bad_steps = fluid.data(name="num_bad_steps",
+                                       shape=[1],
+                                       dtype='int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             a_v = np.random.random([1024, 1024]).astype('float32')
             b_v = np.random.random([512, 128]).astype('float32')
@@ -137,6 +200,7 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
             incr_ratio = 2
             decr_ratio = 0.8
 
+<<<<<<< HEAD
             result = amp_nn.update_loss_scaling(
                 x,
                 found_inf,
@@ -149,11 +213,24 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                 decr_ratio,
                 name="update_loss_scaling",
             )
+=======
+            result = amp_nn.update_loss_scaling(x,
+                                                found_inf,
+                                                prev_loss_scaling,
+                                                num_good_steps,
+                                                num_bad_steps,
+                                                incr_every_n_steps,
+                                                decr_every_n_nan_or_inf,
+                                                incr_ratio,
+                                                decr_ratio,
+                                                name="update_loss_scaling")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             place = fluid.XPUPlace(0)
             exe = fluid.Executor(place)
             with fluid.scope_guard(scope):
                 exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
                 result_v = exe.run(
                     feed={
                         'a': a_v,
@@ -172,6 +249,20 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                         num_bad_steps,
                     ],
                 )
+=======
+                result_v = exe.run(feed={
+                    'a': a_v,
+                    'b': b_v,
+                    'found_inf': found_inf_v,
+                    'prev_loss_scaling': prev_loss_scaling_v,
+                    'num_good_steps': num_good_steps_v,
+                    'num_bad_steps': num_bad_steps_v
+                },
+                                   fetch_list=[
+                                       result, x, found_inf, prev_loss_scaling,
+                                       num_good_steps, num_bad_steps
+                                   ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             assert np.array_equal(result_v[0], a_v)
             assert np.array_equal(result_v[1], b_v)
             assert np.array_equal(result_v[0], result_v[2])
@@ -186,6 +277,7 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
             b = fluid.data(name="b", shape=[512, 128], dtype='float32')
             x = [a, b]
             found_inf = fluid.data(name="found_inf", shape=[1], dtype='bool')
+<<<<<<< HEAD
             prev_loss_scaling = fluid.data(
                 name="prev_loss_scaling", shape=[1], dtype='float32'
             )
@@ -195,6 +287,17 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
             num_bad_steps = fluid.data(
                 name="num_bad_steps", shape=[1], dtype='int32'
             )
+=======
+            prev_loss_scaling = fluid.data(name="prev_loss_scaling",
+                                           shape=[1],
+                                           dtype='float32')
+            num_good_steps = fluid.data(name="num_good_steps",
+                                        shape=[1],
+                                        dtype='int32')
+            num_bad_steps = fluid.data(name="num_bad_steps",
+                                       shape=[1],
+                                       dtype='int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             a_v = np.random.random([1024, 1024]).astype('float32')
             b_v = np.random.random([512, 128]).astype('float32')
@@ -211,6 +314,7 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
             incr_ratio = 2
             decr_ratio = 0.8
 
+<<<<<<< HEAD
             result = amp_nn.update_loss_scaling(
                 x,
                 found_inf,
@@ -223,11 +327,24 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                 decr_ratio,
                 name="update_loss_scaling",
             )
+=======
+            result = amp_nn.update_loss_scaling(x,
+                                                found_inf,
+                                                prev_loss_scaling,
+                                                num_good_steps,
+                                                num_bad_steps,
+                                                incr_every_n_steps,
+                                                decr_every_n_nan_or_inf,
+                                                incr_ratio,
+                                                decr_ratio,
+                                                name="update_loss_scaling")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             place = fluid.XPUPlace(0)
             exe = fluid.Executor(place)
             with fluid.scope_guard(scope):
                 exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
                 result_v = exe.run(
                     feed={
                         'a': a_v,
@@ -246,6 +363,20 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                         num_bad_steps,
                     ],
                 )
+=======
+                result_v = exe.run(feed={
+                    'a': a_v,
+                    'b': b_v,
+                    'found_inf': found_inf_v,
+                    'prev_loss_scaling': prev_loss_scaling_v,
+                    'num_good_steps': num_good_steps_v,
+                    'num_bad_steps': num_bad_steps_v
+                },
+                                   fetch_list=[
+                                       result, x, found_inf, prev_loss_scaling,
+                                       num_good_steps, num_bad_steps
+                                   ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             assert np.array_equal(result_v[0], np.zeros_like(a_v))
             assert np.array_equal(result_v[1], np.zeros_like(b_v))
             assert np.array_equal(result_v[2], np.zeros_like(a_v))

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -29,6 +34,7 @@ paddle.enable_static()
 
 
 def resnet_cifar10(input, depth=32):
+<<<<<<< HEAD
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
@@ -42,6 +48,24 @@ def resnet_cifar10(input, depth=32):
             bias_attr=bias_attr,
         )
         return paddle.static.nn.batch_norm(input=tmp, act=act)
+=======
+
+    def conv_bn_layer(input,
+                      ch_out,
+                      filter_size,
+                      stride,
+                      padding,
+                      act='relu',
+                      bias_attr=False):
+        tmp = fluid.layers.conv2d(input=input,
+                                  filter_size=filter_size,
+                                  num_filters=ch_out,
+                                  stride=stride,
+                                  padding=padding,
+                                  act=None,
+                                  bias_attr=bias_attr)
+        return fluid.layers.batch_norm(input=tmp, act=act)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
@@ -53,7 +77,11 @@ def resnet_cifar10(input, depth=32):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
         tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
+<<<<<<< HEAD
         return paddle.nn.functional.relu(paddle.add(x=tmp, y=short))
+=======
+        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def layer_warp(block_func, input, ch_in, ch_out, count, stride):
         tmp = block_func(input, ch_in, ch_out, stride)
@@ -63,6 +91,7 @@ def resnet_cifar10(input, depth=32):
 
     assert (depth - 2) % 6 == 0
     n = (depth - 2) // 6
+<<<<<<< HEAD
     conv1 = conv_bn_layer(
         input=input, ch_out=16, filter_size=3, stride=1, padding=1
     )
@@ -70,10 +99,25 @@ def resnet_cifar10(input, depth=32):
     res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
     res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
     pool = paddle.nn.functional.avg_pool2d(x=res3, kernel_size=8, stride=1)
+=======
+    conv1 = conv_bn_layer(input=input,
+                          ch_out=16,
+                          filter_size=3,
+                          stride=1,
+                          padding=1)
+    res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
+    res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
+    res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
+    pool = fluid.layers.pool2d(input=res3,
+                               pool_size=8,
+                               pool_type='avg',
+                               pool_stride=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return pool
 
 
 def vgg16_bn_drop(input):
+<<<<<<< HEAD
     def conv_block(input, num_filter, groups, dropouts):
         return fluid.nets.img_conv_group(
             input=input,
@@ -86,6 +130,19 @@ def vgg16_bn_drop(input):
             conv_batchnorm_drop_rate=dropouts,
             pool_type='max',
         )
+=======
+
+    def conv_block(input, num_filter, groups, dropouts):
+        return fluid.nets.img_conv_group(input=input,
+                                         pool_size=2,
+                                         pool_stride=2,
+                                         conv_num_filter=[num_filter] * groups,
+                                         conv_filter_size=3,
+                                         conv_act='relu',
+                                         conv_with_batchnorm=True,
+                                         conv_batchnorm_drop_rate=dropouts,
+                                         pool_type='max')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     conv1 = conv_block(input, 64, 2, [0.3, 0])
     conv2 = conv_block(conv1, 128, 2, [0.4, 0])
@@ -93,11 +150,19 @@ def vgg16_bn_drop(input):
     conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
     conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
+<<<<<<< HEAD
     drop = paddle.nn.functional.dropout(x=conv5, p=0.5)
     fc1 = paddle.static.nn.fc(x=drop, size=4096, activation=None)
     bn = paddle.static.nn.batch_norm(input=fc1, act='relu')
     drop2 = paddle.nn.functional.dropout(x=bn, p=0.5)
     fc2 = paddle.static.nn.fc(x=drop2, size=4096, activation=None)
+=======
+    drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
+    fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
+    bn = fluid.layers.batch_norm(input=fc1, act='relu')
+    drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
+    fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return fc2
 
 
@@ -110,10 +175,17 @@ def train(net_type, use_cuda, save_dirname, is_local):
     train_program.random_seed = 123
     startup_prog.random_seed = 456
     with fluid.program_guard(train_program, startup_prog):
+<<<<<<< HEAD
         images = paddle.static.data(
             name='pixel', shape=[-1] + data_shape, dtype='float32'
         )
         label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
+=======
+        images = fluid.layers.data(name='pixel',
+                                   shape=data_shape,
+                                   dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if net_type == "vgg":
             print("train vgg net")
@@ -124,18 +196,27 @@ def train(net_type, use_cuda, save_dirname, is_local):
         else:
             raise ValueError("%s network is not supported" % net_type)
 
+<<<<<<< HEAD
         logits = paddle.static.nn.fc(x=net, size=classdim, activation="softmax")
         cost, predict = paddle.nn.functional.softmax_with_cross_entropy(
             logits, label, return_softmax=True
         )
         avg_cost = paddle.mean(cost)
         acc = paddle.static.accuracy(input=predict, label=label)
+=======
+        logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
+        cost, predict = fluid.layers.softmax_with_cross_entropy(
+            logits, label, return_softmax=True)
+        avg_cost = paddle.mean(cost)
+        acc = fluid.layers.accuracy(input=predict, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # Test program
         test_program = train_program.clone(for_test=True)
 
         optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
 
+<<<<<<< HEAD
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_varnames={"loss", "conv2d_0.w_0"}
         )
@@ -145,6 +226,14 @@ def train(net_type, use_cuda, save_dirname, is_local):
             init_loss_scaling=8.0,
             use_dynamic_loss_scaling=True,
         )
+=======
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_varnames={"loss", "conv2d_0.w_0"})
+        mp_optimizer = decorate(optimizer=optimizer,
+                                amp_lists=amp_lists,
+                                init_loss_scaling=8.0,
+                                use_dynamic_loss_scaling=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         mp_optimizer.minimize(avg_cost)
         loss_scaling = mp_optimizer.get_loss_scaling()
@@ -154,6 +243,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     PASS_NUM = 1
 
     # no shuffle for unit test
+<<<<<<< HEAD
     train_reader = paddle.batch(
         paddle.dataset.cifar.train10(), batch_size=BATCH_SIZE
     )
@@ -161,6 +251,13 @@ def train(net_type, use_cuda, save_dirname, is_local):
     test_reader = paddle.batch(
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE
     )
+=======
+    train_reader = paddle.batch(paddle.dataset.cifar.train10(),
+                                batch_size=BATCH_SIZE)
+
+    test_reader = paddle.batch(paddle.dataset.cifar.test10(),
+                               batch_size=BATCH_SIZE)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
@@ -174,6 +271,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                 np_scaled_loss, loss = exe.run(
                     main_program,
                     feed=feeder.feed(data),
+<<<<<<< HEAD
                     fetch_list=[scaled_loss, avg_cost],
                 )
                 print(
@@ -184,15 +282,28 @@ def train(net_type, use_cuda, save_dirname, is_local):
                         float(np_scaled_loss),
                     )
                 )
+=======
+                    fetch_list=[scaled_loss, avg_cost])
+                print(
+                    'PassID {0:1}, BatchID {1:04}, train loss {2:2.4}, scaled train closs {3:2.4}'
+                    .format(pass_id, batch_id + 1, float(loss),
+                            float(np_scaled_loss)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if (batch_id % 10) == 0:
                     acc_list = []
                     avg_loss_list = []
                     for tid, test_data in enumerate(test_reader()):
+<<<<<<< HEAD
                         loss_t, acc_t = exe.run(
                             program=test_program,
                             feed=feeder.feed(test_data),
                             fetch_list=[avg_cost, acc],
                         )
+=======
+                        loss_t, acc_t = exe.run(program=test_program,
+                                                feed=feeder.feed(test_data),
+                                                fetch_list=[avg_cost, acc])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         if math.isnan(float(loss_t)):
                             sys.exit("got NaN loss, training failed.")
                         acc_list.append(float(acc_t))
@@ -203,6 +314,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     avg_loss_value = numpy.array(avg_loss_list).mean()
 
                     print(
+<<<<<<< HEAD
                         'PassID {0:1}, BatchID {1:04}, test loss {2:2.2}, acc {3:2.2}'.format(
                             pass_id,
                             batch_id + 1,
@@ -220,6 +332,18 @@ def train(net_type, use_cuda, save_dirname, is_local):
                             main_program=train_program,
                             clip_extra=True,
                         )
+=======
+                        'PassID {0:1}, BatchID {1:04}, test loss {2:2.2}, acc {3:2.2}'
+                        .format(pass_id, batch_id + 1, float(avg_loss_value),
+                                float(acc_value)))
+
+                    if acc_value > 0.08:  # Low threshold for speeding up CI
+                        fluid.io.save_inference_model(
+                            save_dirname, ["pixel"], [predict],
+                            exe,
+                            main_program=train_program,
+                            clip_extra=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         return
 
     if is_local:
@@ -239,9 +363,14 @@ def train(net_type, use_cuda, save_dirname, is_local):
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
+<<<<<<< HEAD
             pserver_startup = t.get_startup_program(
                 current_endpoint, pserver_prog
             )
+=======
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe.run(pserver_startup)
             exe.run(pserver_prog)
         elif training_role == "TRAINER":
@@ -261,11 +390,16 @@ def infer(use_cuda, save_dirname=None):
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
+<<<<<<< HEAD
         [
             inference_program,
             feed_target_names,
             fetch_targets,
         ] = fluid.io.load_inference_model(save_dirname, exe)
+=======
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # The input's dimension of conv should be 4-D or 5-D.
         # Use normilized image pixels as input data, which should be in the range [0, 1.0].
@@ -274,6 +408,7 @@ def infer(use_cuda, save_dirname=None):
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
+<<<<<<< HEAD
         results = exe.run(
             inference_program,
             feed={feed_target_names[0]: tensor_img},
@@ -293,6 +428,24 @@ def infer(use_cuda, save_dirname=None):
 
 
 class TestImageClassification(unittest.TestCase):
+=======
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: tensor_img},
+                          fetch_list=fetch_targets)
+
+        print("infer results: ", results[0])
+
+        fluid.io.save_inference_model(save_dirname,
+                                      feed_target_names,
+                                      fetch_targets,
+                                      exe,
+                                      inference_program,
+                                      clip_extra=True)
+
+
+class TestImageClassification(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -306,6 +459,7 @@ class TestImageClassification(unittest.TestCase):
         # Directory for saving the trained model
         save_dirname = os.path.join(
             self.temp_dir.name,
+<<<<<<< HEAD
             "image_classification_" + net_type + ".inference.model",
         )
 
@@ -318,94 +472,194 @@ class TestImageClassification(unittest.TestCase):
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists()
+=======
+            "image_classification_" + net_type + ".inference.model")
+
+        train(net_type, use_cuda, save_dirname, is_local)
+        #infer(use_cuda, save_dirname)
+
+    def test_amp_lists(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_1(self):
+<<<<<<< HEAD
         white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
+=======
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # 1. w={'exp}, b=None
         white_list.add('exp')
         black_list.remove('exp')
 
+<<<<<<< HEAD
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists({'exp'})
+=======
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            {'exp'})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_2(self):
+<<<<<<< HEAD
         white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
+=======
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # 2. w={'tanh'}, b=None
         white_list.add('tanh')
         gray_list.remove('tanh')
 
+<<<<<<< HEAD
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists({'tanh'})
+=======
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            {'tanh'})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_3(self):
+<<<<<<< HEAD
         white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
+=======
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # 3. w={'lstm'}, b=None
         white_list.add('lstm')
 
+<<<<<<< HEAD
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists({'lstm'})
+=======
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            {'lstm'})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_4(self):
+<<<<<<< HEAD
         white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
+=======
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # 4. w=None, b={'conv2d'}
         white_list.remove('conv2d')
         black_list.add('conv2d')
 
+<<<<<<< HEAD
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_list={'conv2d'}
         )
+=======
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_list={'conv2d'})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_5(self):
+<<<<<<< HEAD
         white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
+=======
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # 5. w=None, b={'tanh'}
         black_list.add('tanh')
         gray_list.remove('tanh')
 
+<<<<<<< HEAD
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_list={'tanh'}
         )
+=======
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_list={'tanh'})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_6(self):
+<<<<<<< HEAD
         white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
+=======
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # 6. w=None, b={'lstm'}
         black_list.add('lstm')
 
+<<<<<<< HEAD
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_list={'lstm'}
         )
+=======
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_list={'lstm'})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
@@ -413,12 +667,18 @@ class TestImageClassification(unittest.TestCase):
     def test_amp_lists_7(self):
         # 7. w={'lstm'} b={'lstm'}
         # raise ValueError
+<<<<<<< HEAD
         self.assertRaises(
             ValueError,
             paddle.static.amp.AutoMixedPrecisionLists,
             {'lstm'},
             {'lstm'},
         )
+=======
+        self.assertRaises(ValueError,
+                          fluid.contrib.mixed_precision.AutoMixedPrecisionLists,
+                          {'lstm'}, {'lstm'})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_vgg_cuda(self):
         with self.scope_prog_guard():
@@ -439,21 +699,35 @@ class TestImageClassification(unittest.TestCase):
 
 
 class TestAmpWithNonIterableDataLoader(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def decorate_with_data_loader(self):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
             with paddle.fluid.unique_name.guard():
+<<<<<<< HEAD
                 image = paddle.static.data(
                     name='image', shape=[-1, 3, 224, 224], dtype='float32'
                 )
                 label = paddle.static.data(
                     name='label', shape=[-1, 1], dtype='int64'
                 )
+=======
+                image = fluid.layers.data(name='image',
+                                          shape=[3, 224, 224],
+                                          dtype='float32')
+                label = fluid.layers.data(name='label',
+                                          shape=[1],
+                                          dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 py_reader = fluid.io.DataLoader.from_generator(
                     feed_list=[image, label],
                     capacity=4,
                     iterable=False,
+<<<<<<< HEAD
                     use_double_buffer=False,
                 )
 
@@ -476,6 +750,23 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                     init_loss_scaling=8.0,
                     use_dynamic_loss_scaling=True,
                 )
+=======
+                    use_double_buffer=False)
+
+                net = vgg16_bn_drop(image)
+                logits = fluid.layers.fc(input=net, size=10, act="softmax")
+                cost, predict = fluid.layers.softmax_with_cross_entropy(
+                    logits, label, return_softmax=True)
+                avg_cost = paddle.mean(cost)
+
+                optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+                amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+                    custom_black_varnames={"loss", "conv2d_0.w_0"})
+                mp_optimizer = decorate(optimizer=optimizer,
+                                        amp_lists=amp_lists,
+                                        init_loss_scaling=8.0,
+                                        use_dynamic_loss_scaling=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 mp_optimizer.minimize(avg_cost)
 

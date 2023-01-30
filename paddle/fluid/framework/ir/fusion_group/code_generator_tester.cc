@@ -89,7 +89,11 @@ inline float elementwise_mul_grad_dy(float x, float y, float out, float dout) {
 }
 
 void CheckOutput(const std::vector<OperationExpression>& expressions,
+<<<<<<< HEAD
                  const std::vector<phi::DenseTensor> cpu_tensors,
+=======
+                 const std::vector<LoDTensor> cpu_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                  const std::vector<int> input_ids_of_subgraph,
                  const std::vector<int> output_ids_of_subgraph,
                  int i,
@@ -152,7 +156,11 @@ void CheckOutput(const std::vector<OperationExpression>& expressions,
 }
 
 template <typename T>
+<<<<<<< HEAD
 void SetupRandomCPUTensor(phi::DenseTensor* tensor) {
+=======
+void SetupRandomCPUTensor(LoDTensor* tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
@@ -174,7 +182,11 @@ namespace fusion_group = paddle::framework::ir::fusion_group;
 template <typename T>
 void TestMainImpl(std::string func_name,
                   std::string code_str,
+<<<<<<< HEAD
                   std::vector<phi::DenseTensor> cpu_tensors,
+=======
+                  std::vector<paddle::framework::LoDTensor> cpu_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int n,
                   std::vector<int> input_ids,
                   std::vector<int> output_ids) {
@@ -189,8 +201,13 @@ void TestMainImpl(std::string func_name,
   device_code.Compile(is_float16);
 #endif
 
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> gpu_tensors(cpu_tensors.size());
   std::vector<phi::DenseTensor> tmp_cpu_tensors(cpu_tensors.size());
+=======
+  std::vector<paddle::framework::LoDTensor> gpu_tensors(cpu_tensors.size());
+  std::vector<paddle::framework::LoDTensor> tmp_cpu_tensors(cpu_tensors.size());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<T*> gpu_ptrs(gpu_tensors.size());
   std::vector<void*> args;
@@ -270,7 +287,11 @@ void TestElementwiseMain(
   }
 
   // Prepare CPU tensors which always hold float.
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> cpu_tensors(ids.size());
+=======
+  std::vector<paddle::framework::LoDTensor> cpu_tensors(ids.size());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto dims =
       phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   for (size_t i = 0; i < cpu_tensors.size(); ++i) {

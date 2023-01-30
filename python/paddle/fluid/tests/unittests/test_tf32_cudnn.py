@@ -13,11 +13,22 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+import six
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid.core as core
 
 
 class TestTF32Switch(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_on_off(self):
         if core.is_compiled_with_cuda():
             self.assertTrue(core.get_cudnn_switch())  # default

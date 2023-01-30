@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -22,6 +23,19 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
+=======
+from auto_scan_test import PassAutoScanTest
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+from functools import partial
+import unittest
+
+import hypothesis.strategies as st
+
+
+class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         matmul_as_x = draw(st.booleans())
@@ -30,6 +44,7 @@ class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
         input_dim = draw(st.sampled_from([16, 32, 64]))
 
         def generate_input():
+<<<<<<< HEAD
             return np.random.random(
                 [batch_size, channel, input_dim, input_dim]
             ).astype(np.float32)
@@ -42,18 +57,42 @@ class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
                 'use_mkldnn': True,
             },
         )
+=======
+            return np.random.random([batch_size, channel, input_dim,
+                                     input_dim]).astype(np.float32)
+
+        matmul_op = OpConfig(type='matmul',
+                             inputs={
+                                 'X': ['matmul_x'],
+                                 'Y': ['matmul_y']
+                             },
+                             outputs={'Out': ['matmul_output']},
+                             attrs={
+                                 'use_mkldnn': True,
+                             })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if matmul_as_x:
             inputs = {'X': ['matmul_output'], 'Y': ['elementwise_addend']}
         else:
             inputs = {'X': ['elementwise_addend'], 'Y': ['matmul_output']}
 
+<<<<<<< HEAD
         elt_add_op = OpConfig(
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
             attrs={'axis': axis, 'use_mkldnn': True},
         )
+=======
+        elt_add_op = OpConfig(type='elementwise_add',
+                              inputs=inputs,
+                              outputs={'Out': ['elementwise_add_output']},
+                              attrs={
+                                  'axis': axis,
+                                  'use_mkldnn': True
+                              })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_net = [matmul_op, elt_add_op]
 
@@ -63,17 +102,25 @@ class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
             inputs={
                 'matmul_x': TensorConfig(data_gen=partial(generate_input)),
                 'matmul_y': TensorConfig(data_gen=partial(generate_input)),
+<<<<<<< HEAD
                 'elementwise_addend': TensorConfig(
                     data_gen=partial(generate_input)
                 ),
             },
             outputs=['elementwise_add_output'],
         )
+=======
+                'elementwise_addend':
+                TensorConfig(data_gen=partial(generate_input))
+            },
+            outputs=['elementwise_add_output'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
+<<<<<<< HEAD
             use_mkldnn=True, passes=['matmul_elementwise_add_mkldnn_fuse_pass']
         )
         yield config, ['matmul'], (1e-5, 1e-5)
@@ -82,6 +129,14 @@ class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False, passes=['matmul_elementwise_add_mkldnn_fuse_pass']
         )
+=======
+            use_mkldnn=True, passes=['matmul_elementwise_add_mkldnn_fuse_pass'])
+        yield config, ['matmul'], (1e-5, 1e-5)
+
+    def test(self):
+        self.run_and_statis(quant=False,
+                            passes=['matmul_elementwise_add_mkldnn_fuse_pass'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

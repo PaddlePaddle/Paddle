@@ -19,6 +19,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class RankAttentionOp : public framework::OperatorWithKernel {
  public:
@@ -79,10 +83,18 @@ class RankAttentionOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -117,11 +129,19 @@ class RankAttentionGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -144,7 +164,11 @@ class RankAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddComment(R"DOC(
 RankAttention Operator.
+<<<<<<< HEAD
 This Op can calculate rank attention between input and rank_param,
+=======
+This Op can calculate rank attention between input and rank_param, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 and rank_param gives the organization of data. Notice: It currently supports GPU device.
 This Op exists in contrib, which means that it is not shown to the public.
 )DOC");

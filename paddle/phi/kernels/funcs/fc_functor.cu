@@ -15,7 +15,10 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/platform/device_context.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 
@@ -128,6 +131,7 @@ void AddReluKernel(
 }
 
 #if defined(PADDLE_WITH_CUDA)
+<<<<<<< HEAD
 template <bool DoRelu, int Half2VecSize>
 __global__ void bias_relu_v4_half2(const int num,
                                    const half2* bias,
@@ -176,6 +180,39 @@ __global__ void bias_relu_v4_half2(const int num,
       }
     }
     phi::Store<half2, Half2VecSize>(data_vec, &data[linear_idx]);
+=======
+template <bool DoRelu>
+__global__ void bias_relu_v2(const int num,
+                             const half2* bias,
+                             half2* data,
+                             int K) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (tid < num) {
+    int bias_idx = tid % K;
+    const half2 bias_ptr = bias[bias_idx];
+    const half2 in_ptr = data[tid];
+    half2 packed_val;
+#if __CUDA_ARCH__ >= 530
+    packed_val = __hadd2(bias_ptr, in_ptr);
+#else
+    packed_val.x = __hadd(bias_ptr.x, in_ptr.x);
+    packed_val.y = __hadd(bias_ptr.y, in_ptr.y);
+#endif
+    if (DoRelu) {
+#if __CUDA_ARCH__ >= 800
+      packed_val = __hmax2(__half2(0, 0), packed_val);
+#elif __CUDA_ARCH__ >= 530
+      packed_val = __hmul2(__hgt2(packed_val, __half2(0, 0)), packed_val);
+#else
+      packed_val.x = static_cast<int>(static_cast<float>(packed_val.x) > 0) *
+                     static_cast<float>(packed_val.x);
+      packed_val.y = static_cast<int>(static_cast<float>(packed_val.y) > 0) *
+                     static_cast<float>(packed_val.y);
+#endif
+    }
+    data[tid] = packed_val;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -206,6 +243,7 @@ __global__ void InplaceAddReluKernel(const int N,
   }
 }
 
+<<<<<<< HEAD
 /**
  * brief: Launch BiasAddReluKernel with relu or not.
  **/
@@ -253,6 +291,8 @@ void DispatchBiasAddReluKernelHalf2VecSize(cudaStream_t stream,
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <>
 void AddReluKernel(cudaStream_t stream,
                    const int M,
@@ -261,7 +301,23 @@ void AddReluKernel(cudaStream_t stream,
                    const float16* B,
                    bool relu) {
   if (N % 2 == 0) {
+<<<<<<< HEAD
     DispatchBiasAddReluKernelHalf2VecSize(stream, M, N, Y, B, relu);
+=======
+    const int threads = 256;
+    const int num = M * N / 2;
+    const int blocks = (num + threads - 1) / threads;
+    typedef typename FcTypeTraits<float16>::Type trans_type;
+    auto* bias_ptr_v2 = reinterpret_cast<const trans_type*>(B);
+    auto* data_ptr_v2 = reinterpret_cast<trans_type*>(Y);
+    if (relu) {
+      bias_relu_v2<true><<<blocks, threads, 0, stream>>>(
+          num, bias_ptr_v2, data_ptr_v2, N / 2);
+    } else {
+      bias_relu_v2<false><<<blocks, threads, 0, stream>>>(
+          num, bias_ptr_v2, data_ptr_v2, N / 2);
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     const int threads = 256;
     const int blocks = M;

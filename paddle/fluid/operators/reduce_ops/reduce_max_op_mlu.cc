@@ -22,8 +22,13 @@ template <typename T>
 class ReduceMaxMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* input = context.Input<phi::DenseTensor>("X");
     auto* output = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = context.Input<Tensor>("X");
+    auto* output = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int out_dtype = context.Attr<int>("out_dtype");
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto dims = context.Attr<std::vector<int>>("dim");
@@ -45,7 +50,11 @@ class ReduceMaxMLUKernel : public framework::OpKernel<T> {
     }
 
     auto place = context.GetPlace();
+<<<<<<< HEAD
     phi::DenseTensor cast_out(input->type());
+=======
+    framework::Tensor cast_out(input->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cast_out.Resize(output->dims());
     cast_out.mutable_data<T>(place);
 
@@ -96,10 +105,16 @@ template <typename T>
 class ReduceMaxGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* out = context.Input<phi::DenseTensor>("Out");
     auto* out_grad =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    auto* x = context.Input<Tensor>("X");
+    auto* out = context.Input<Tensor>("Out");
+    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto reduce_dims = context.Attr<std::vector<int>>("dim");
     bool reduce_all = context.Attr<bool>("reduce_all");
     int in_dtype = context.Attr<int>("in_dtype");
@@ -109,8 +124,12 @@ class ReduceMaxGradMLUKernel : public framework::OpKernel<T> {
         true,
         platform::errors::InvalidArgument(
             "MLU only support in_dtype == -1 in reduce_max_grad op."));
+<<<<<<< HEAD
     auto* x_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_grad->mutable_data<T>(context.GetPlace());
 
     auto place = context.GetPlace();
@@ -124,7 +143,11 @@ class ReduceMaxGradMLUKernel : public framework::OpKernel<T> {
       }
     }
 
+<<<<<<< HEAD
     phi::DenseTensor tmp_out, tmp_out_grad;
+=======
+    Tensor tmp_out, tmp_out_grad;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto tmp_out_dims_vec = x_dims_vec;
     for (auto d : reduce_dims) {
       if (d < 0) {
@@ -138,7 +161,11 @@ class ReduceMaxGradMLUKernel : public framework::OpKernel<T> {
     tmp_out_grad.ShareDataWith(*out_grad);
     tmp_out_grad.Resize(phi::make_ddim(tmp_out_dims_vec));
 
+<<<<<<< HEAD
     phi::DenseTensor transformed_out(x->type());
+=======
+    Tensor transformed_out(x->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     transformed_out.Resize(phi::make_ddim(x_dims_vec));
     transformed_out.mutable_data<T>(place);
 
@@ -151,7 +178,11 @@ class ReduceMaxGradMLUKernel : public framework::OpKernel<T> {
                          transformed_out_desc.get(),
                          GetBasePtr(&transformed_out));
 
+<<<<<<< HEAD
     phi::DenseTensor transformed_out_grad(x->type());
+=======
+    Tensor transformed_out_grad(x->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     transformed_out_grad.Resize(phi::make_ddim(x_dims_vec));
     transformed_out_grad.mutable_data<T>(place);
     MLUCnnlTensorDesc tmp_out_grad_desc(tmp_out_grad);
@@ -164,7 +195,11 @@ class ReduceMaxGradMLUKernel : public framework::OpKernel<T> {
                          GetBasePtr(&transformed_out_grad));
 
     // compare
+<<<<<<< HEAD
     phi::DenseTensor equal_cond;
+=======
+    Tensor equal_cond;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     equal_cond.mutable_data<bool>(x_grad->dims(), place);
 
     MLUCnnlTensorDesc x_desc(*x);
@@ -180,7 +215,11 @@ class ReduceMaxGradMLUKernel : public framework::OpKernel<T> {
                    GetBasePtr(&equal_cond));
 
     // select
+<<<<<<< HEAD
     phi::DenseTensor t_zero;
+=======
+    Tensor t_zero;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     t_zero.mutable_data<T>(x_grad->dims(), place);
     FillMLUTensorWithHostValue<T>(context, static_cast<T>(0), &t_zero);
     t_zero.Resize(x_grad->dims());

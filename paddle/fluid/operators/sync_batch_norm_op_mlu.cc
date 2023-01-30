@@ -26,6 +26,10 @@ namespace operators {
 #define NO_USE_CNCL 0
 #define GET_LAYOUT_OFFSET 2
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 static std::vector<cnnlTensorLayout_t> supported_input_layout = {
     CNNL_LAYOUT_NC, CNNL_LAYOUT_NLC, CNNL_LAYOUT_NHWC, CNNL_LAYOUT_NDHWC};
 
@@ -41,7 +45,11 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
+<<<<<<< HEAD
     const DataLayout layout = phi::StringToDataLayout(layout_str);
+=======
+    const DataLayout layout = framework::StringToDataLayout(layout_str);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ(use_global_stats,
                       false,
@@ -50,6 +58,7 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                           "to set use_global_stats True. Please use batch_norm "
                           "in this case."));
 
+<<<<<<< HEAD
     const auto *x = ctx.Input<phi::DenseTensor>("X");
     const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
     const auto *bias = ctx.Input<phi::DenseTensor>("Bias");
@@ -60,6 +69,18 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
     auto *saved_mean = ctx.Output<phi::DenseTensor>("SavedMean");
     auto *saved_variance = ctx.Output<phi::DenseTensor>("SavedVariance");
     auto *y = ctx.Output<phi::DenseTensor>("Y");
+=======
+    const auto *x = ctx.Input<Tensor>("X");
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
+    const auto *mean = ctx.Input<Tensor>("Mean");
+    const auto *variance = ctx.Input<Tensor>("Variance");
+    auto *mean_out = ctx.Output<Tensor>("MeanOut");
+    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
+    auto *saved_mean = ctx.Output<Tensor>("SavedMean");
+    auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
+    auto *y = ctx.Output<Tensor>("Y");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(x_dims.size(),
@@ -72,7 +93,11 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                           "The Input dim size should be less than 6."));
 
     int N, C, H, W, D;
+<<<<<<< HEAD
     phi::funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+=======
+    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     y->mutable_data<T>(ctx.GetPlace());
     mean_out->mutable_data<MPDType>(ctx.GetPlace());
@@ -80,8 +105,13 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
     saved_mean->mutable_data<MPDType>(ctx.GetPlace());
     saved_variance->mutable_data<MPDType>(ctx.GetPlace());
 
+<<<<<<< HEAD
     phi::DenseTensor trans_x;
     phi::DenseTensor trans_y;
+=======
+    Tensor trans_x;
+    Tensor trans_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<int> forward_perm;
     std::vector<int> backward_perm;
     std::vector<int> trans_shape;
@@ -135,14 +165,23 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                               nullptr);
     } else {  // training
       if (ctx.HasInput("MomentumTensor")) {
+<<<<<<< HEAD
         const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
         phi::DenseTensor mom_cpu;
+=======
+        const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+        Tensor mom_cpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(
             *mom_tensor, platform::CPUPlace(), &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
       }
 
+<<<<<<< HEAD
       phi::DenseTensor local_mean, local_var;
+=======
+      Tensor local_mean, local_var;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       local_mean.mutable_data<MPDType>(mean->dims(), ctx.GetPlace());
       local_var.mutable_data<MPDType>(variance->dims(), ctx.GetPlace());
       MLUCnnlTensorDesc desc_mean_var(*mean_out);
@@ -157,14 +196,24 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                                   desc_mean_var.get(),
                                   GetBasePtr(&local_var));
 
+<<<<<<< HEAD
       phi::DenseTensor input_count;
+=======
+      Tensor input_count;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       input_count.mutable_data<MPDType>(phi::make_ddim({1}), ctx.GetPlace());
       FillMLUTensorWithHostValue<MPDType>(
           ctx, static_cast<MPDType>(x->numel() / C), &input_count);
 
+<<<<<<< HEAD
       phi::DenseTensor count_all;
       phi::DenseTensor mean_all(mean->dtype());
       phi::DenseTensor invstd_all(variance->dtype());
+=======
+      Tensor count_all;
+      Tensor mean_all(mean->dtype());
+      Tensor invstd_all(variance->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #ifdef PADDLE_WITH_CNCL
       auto &dev_ctx =
@@ -284,6 +333,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
+<<<<<<< HEAD
     const DataLayout layout = phi::StringToDataLayout(layout_str);
 
     const auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
@@ -300,13 +350,34 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
     const auto *saved_inv_var = ctx.Input<phi::DenseTensor>("SavedVariance");
 
     const phi::DenseTensor *x;
+=======
+    const DataLayout layout = framework::StringToDataLayout(layout_str);
+
+    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
+
+    // init output
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
+    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+    const auto *saved_inv_var = ctx.Input<Tensor>("SavedVariance");
+
+    const Tensor *x;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (ctx.HasInput("Y")) {
       PADDLE_ENFORCE_EQ(true,
                         false,
                         platform::errors::InvalidArgument(
                             "sync_batch_norm_grad doesn't support input Y"));
     } else {
+<<<<<<< HEAD
       x = ctx.Input<phi::DenseTensor>("X");
+=======
+      x = ctx.Input<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     const auto &x_dims = x->dims();
@@ -320,7 +391,11 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                           "The Input X dim size should be less than 6."));
 
     int N, C, H, W, D;
+<<<<<<< HEAD
     phi::funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+=======
+    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(scale->dims()[0],
                       C,
                       platform::errors::InvalidArgument(
@@ -341,9 +416,15 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                           "OP(sync_batch_norm) be (1), but given (%d).",
                           scale->dims().size()));
 
+<<<<<<< HEAD
     phi::DenseTensor trans_x;
     phi::DenseTensor trans_dy;
     phi::DenseTensor trans_dx;
+=======
+    Tensor trans_x;
+    Tensor trans_dy;
+    Tensor trans_dx;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<int> forward_perm;
     std::vector<int> backward_perm;
     std::vector<int> trans_shape;
@@ -383,7 +464,11 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
         supported_input_layout[x_dims.size() - GET_LAYOUT_OFFSET],
         ToCnnlDataType<T>());
 
+<<<<<<< HEAD
     phi::DenseTensor sum_dy, sum_dy_xmu;
+=======
+    Tensor sum_dy, sum_dy_xmu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sum_dy.mutable_data<MPDType>(bias->dims(), ctx.GetPlace());
     sum_dy_xmu.mutable_data<MPDType>(bias->dims(), ctx.GetPlace());
     MLUCnnlTensorDesc desc_other_param(*bias);
@@ -410,7 +495,11 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
         d_scale ? true : false /*compute d_scale*/,
         d_bias ? true : false /*compute d_bias*/);
 
+<<<<<<< HEAD
     phi::DenseTensor numel_count;
+=======
+    Tensor numel_count;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     numel_count.mutable_data<int32_t>(phi::make_ddim({1}), ctx.GetPlace());
     FillMLUTensorWithHostValue<int32_t>(
         ctx, static_cast<int32_t>(x->numel() / C), &numel_count);

@@ -12,12 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle.static import Program, program_guard
+=======
+from __future__ import print_function, division
+
+import unittest
+import numpy as np
+
+import paddle
+from paddle.static import program_guard
+from paddle.static import Program
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # Support types are ref from `paddle.tensor.math`
 # - Related paddle dtypes:
@@ -29,6 +40,10 @@ from paddle.static import Program, program_guard
 
 
 class TestTensorScalarTypePromotionStatic(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
 

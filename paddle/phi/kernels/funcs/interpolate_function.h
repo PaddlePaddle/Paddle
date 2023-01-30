@@ -20,7 +20,11 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+<<<<<<< HEAD
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
+=======
+#include "paddle/fluid/platform/fast_divmod.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 namespace phi {
@@ -142,7 +146,11 @@ inline std::vector<T> get_new_data_from_tensor(
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+<<<<<<< HEAD
 using phi::kps::details::FastDivMod;
+=======
+using paddle::platform::FastDivMod;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 struct FastDivModForInterpolate {
  public:

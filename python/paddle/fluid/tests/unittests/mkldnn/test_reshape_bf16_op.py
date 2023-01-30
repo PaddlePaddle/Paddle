@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -25,6 +26,23 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestReshapeBf16Op(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import struct
+
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle import enable_static
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestReshapeBf16Op(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "reshape2"
         self.use_mkldnn = False
@@ -36,11 +54,19 @@ class TestReshapeBf16Op(OpTest):
         self.attrs = {
             'shape': self.new_shape,
             'use_mkldnn': self.use_mkldnn,
+<<<<<<< HEAD
             'mkldnn_data_type': self.mkldnn_data_type,
         }
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
             'XShape': np.random.random(self.ori_shape).astype(np.float32),
+=======
+            'mkldnn_data_type': self.mkldnn_data_type
+        }
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_data(self):
@@ -50,14 +76,19 @@ class TestReshapeBf16Op(OpTest):
 
     def init_input_data(self):
         self.input_data_fp32 = np.random.random(self.ori_shape).astype(
+<<<<<<< HEAD
             np.float32
         )
+=======
+            np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.input_data = convert_float_to_uint16(self.input_data_fp32)
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), no_check_set=['XShape'])
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             core.CPUPlace(),
             ["X"],
@@ -68,6 +99,16 @@ class TestReshapeBf16Op(OpTest):
                 self.inputs["X"].reshape(self.infered_shape)
             ],
         )
+=======
+        self.check_grad_with_place(core.CPUPlace(), ["X"],
+                                   "Out",
+                                   check_dygraph=False,
+                                   user_defined_grads=[self.input_data_fp32],
+                                   user_defined_grad_outputs=[
+                                       self.inputs["X"].reshape(
+                                           self.infered_shape)
+                                   ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

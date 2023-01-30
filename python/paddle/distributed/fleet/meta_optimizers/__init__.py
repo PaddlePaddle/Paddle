@@ -24,7 +24,10 @@ from .localsgd_optimizer import AdaptiveLocalSGDOptimizer
 from .lars_optimizer import LarsOptimizer
 from .parameter_server_graph_optimizer import ParameterServerGraphOptimizer
 from .dgc_optimizer import DGCOptimizer
+<<<<<<< HEAD
 from .dgc_optimizer import DGCMomentumOptimizer
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .lamb_optimizer import LambOptimizer
 from .fp16_allreduce_optimizer import FP16AllReduceOptimizer
 from .sharding_optimizer import ShardingOptimizer

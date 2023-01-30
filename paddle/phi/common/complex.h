@@ -20,7 +20,10 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+<<<<<<< HEAD
 #include "paddle/phi/core/hostdevice.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_CUDA
 #include <cuComplex.h>
 #include <thrust/complex.h>
@@ -37,6 +40,19 @@
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
+<<<<<<< HEAD
+=======
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+#define HOSTDEVICE __host__ __device__
+#define DEVICE __device__
+#define HOST __host__
+#else
+#define HOSTDEVICE
+#define DEVICE
+#define HOST
+#endif
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // todo
 #define PADDLE_WITH_CUDA_OR_HIP_COMPLEX

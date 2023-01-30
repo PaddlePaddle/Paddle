@@ -31,6 +31,7 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
@@ -38,10 +39,19 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
     if (data_type >= 0) {
       kt.set_dtype(phi::TransToPhiDataType(
           static_cast<framework::proto::VarType::Type>(data_type)));
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    const auto &data_type = ctx.Attr<int>("dtype");
+    if (data_type >= 0) {
+      kt.data_type_ = static_cast<framework::proto::VarType::Type>(data_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     return kt;
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
@@ -49,6 +59,15 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           tensor.layout(),
                           expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

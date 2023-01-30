@@ -13,8 +13,16 @@
 # limitations under the License.
 
 import contextlib
+<<<<<<< HEAD
 
 import paddle.fluid as fluid
+=======
+import unittest
+import numpy as np
+
+import paddle.fluid as fluid
+from paddle.fluid import core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @contextlib.contextmanager

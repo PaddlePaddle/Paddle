@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -20,6 +21,20 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+
+import paddle
+import numpy as np
+import random
+import paddle.distributed as dist
+import paddle.fluid as fluid
+import paddle.distributed.fleet as fleet
+from paddle import framework
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def set_random_seed(seed):
@@ -31,9 +46,17 @@ def set_random_seed(seed):
 
 
 class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         fleet.init(is_collective=True, strategy=strategy)
+=======
+
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        fleet.init(is_collective=True, strategy=strategy)
+        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_parallel_margin_softmax_cross_entropy(self):
         margin1s = [1.0, 1.0, 1.35]
@@ -59,6 +82,7 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
 
                 num_class = np.sum(num_class_per_card)
                 for margin1, margin2, margin3, scale in zip(
+<<<<<<< HEAD
                     margin1s, margin2s, margin3s, scales
                 ):
 
@@ -77,10 +101,27 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                                 paddle.square(input), axis=1, keepdim=True
                             )
                         )
+=======
+                        margin1s, margin2s, margin3s, scales):
+
+                    for _ in range(5):
+                        np_label = np.random.randint(0, num_class,
+                                                     (batch_size, ))
+                        label = paddle.to_tensor(np_label, dtype="int64")
+
+                        input = paddle.randn(shape=[batch_size, feature_length],
+                                             dtype=dtype)
+                        input.stop_gradient = False
+                        input_l2 = paddle.sqrt(
+                            paddle.sum(paddle.square(input),
+                                       axis=1,
+                                       keepdim=True))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         norm_input = paddle.divide(input, input_l2)
 
                         weight = paddle.randn(
                             shape=[feature_length, num_class_per_card[rank_id]],
+<<<<<<< HEAD
                             dtype=dtype,
                         )
                         weight.stop_gradient = False
@@ -111,21 +152,53 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                         integral_data = paddle.to_tensor(
                             integral_data, dtype=dtype
                         )
+=======
+                            dtype=dtype)
+                        weight.stop_gradient = False
+                        weight_l2 = paddle.sqrt(
+                            paddle.sum(paddle.square(weight),
+                                       axis=0,
+                                       keepdim=True))
+                        norm_weight = paddle.divide(weight, weight_l2)
+
+                        data = paddle.matmul(norm_input, norm_weight)
+                        data.stop_gradient = False
+
+                        sta = np.sum(
+                            num_class_per_card[:rank_id]) if rank_id > 0 else 0
+                        end = np.sum(num_class_per_card[:rank_id + 1])
+
+                        integral_data = np.zeros((batch_size, num_class),
+                                                 dtype=dtype)
+                        integral_data[:,
+                                      sta:end] = data.clone().detach().numpy()
+                        integral_data = paddle.to_tensor(integral_data,
+                                                         dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                         paddle.distributed.all_reduce(
                             integral_data,
                             op=paddle.distributed.ReduceOp.SUM,
+<<<<<<< HEAD
                             group=check_group,
                         )
                         integral_data = integral_data.detach().clone()
                         integral_data.retain_grads()
+=======
+                            group=check_group)
+                        integral_data = integral_data.detach().clone()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         integral_data.stop_gradient = False
 
                         # add arcface margin to logit
                         theta = paddle.acos(integral_data)
                         one_hot_label = paddle.nn.functional.one_hot(
+<<<<<<< HEAD
                             label, num_classes=num_class
                         )
+=======
+                            label, num_classes=num_class)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         one_hot_label.stop_gradient = False
 
                         if margin1 != 1.0:
@@ -138,10 +211,14 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                         diff = one_hot_label * (margin_cos - integral_data)
                         arc_data = (integral_data + diff) * scale
 
+<<<<<<< HEAD
                         (
                             loss_a,
                             softmax_a,
                         ) = paddle.nn.functional.margin_cross_entropy(
+=======
+                        loss_a, softmax_a = paddle.nn.functional.margin_cross_entropy(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             data,
                             label,
                             margin1=margin1,
@@ -150,6 +227,7 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                             scale=scale,
                             group=check_group,
                             return_softmax=True,
+<<<<<<< HEAD
                             reduction=None,
                         )
                         (
@@ -188,12 +266,43 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                             rtol=1e-5,
                             atol=1e-6,
                         )
+=======
+                            reduction=None)
+                        loss_b, softmax_b = paddle.nn.functional.softmax_with_cross_entropy(
+                            logits=arc_data,
+                            label=paddle.reshape(label, (-1, 1)),
+                            return_softmax=True)
+
+                        np.testing.assert_allclose(loss_a.numpy(),
+                                                   loss_b.numpy(),
+                                                   rtol=1e-5,
+                                                   atol=1e-7)
+
+                        integral_prob = np.zeros((batch_size, num_class),
+                                                 dtype=dtype)
+                        integral_prob[:, sta:end] = softmax_a.clone().detach(
+                        ).numpy()
+                        integral_prob = paddle.to_tensor(integral_prob,
+                                                         dtype=dtype)
+                        paddle.distributed.all_reduce(
+                            integral_prob,
+                            op=paddle.distributed.ReduceOp.SUM,
+                            group=check_group)
+                        integral_prob = integral_prob.detach().clone()
+                        integral_prob.stop_gradient = False
+
+                        np.testing.assert_allclose(integral_prob.numpy(),
+                                                   softmax_b.numpy(),
+                                                   rtol=1e-5,
+                                                   atol=1e-6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                         loss_a = loss_a.sum() / batch_size
                         loss_b = loss_b.sum() / batch_size
                         loss_a.backward()
                         loss_b.backward()
 
+<<<<<<< HEAD
                         integral_grad = np.zeros(
                             (batch_size, num_class), dtype=dtype
                         )
@@ -213,6 +322,22 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                             rtol=1e-5,
                             atol=1e-7,
                         )
+=======
+                        integral_grad = np.zeros((batch_size, num_class),
+                                                 dtype=dtype)
+                        integral_grad[:, sta:end] = data.grad.clone().detach()
+                        integral_grad = paddle.to_tensor(integral_grad,
+                                                         dtype=dtype)
+                        paddle.distributed.all_reduce(
+                            integral_grad,
+                            op=paddle.distributed.ReduceOp.SUM,
+                            group=check_group)
+
+                        np.testing.assert_allclose(integral_data.grad.numpy(),
+                                                   integral_grad.numpy(),
+                                                   rtol=1e-5,
+                                                   atol=1e-7)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

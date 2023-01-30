@@ -16,14 +16,25 @@ from paddle.fluid import core
 __all__ = []
 
 
+<<<<<<< HEAD
 class Index:
+=======
+class Index(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, name):
         self._name = name
 
 
 class TreeIndex(Index):
+<<<<<<< HEAD
     def __init__(self, name, path):
         super().__init__(name)
+=======
+
+    def __init__(self, name, path):
+        super(TreeIndex, self).__init__(name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._wrapper = core.IndexWrapper()
         self._wrapper.insert_tree_index(name, path)
         self._tree = self._wrapper.get_tree_index(name)
@@ -65,7 +76,11 @@ class TreeIndex(Index):
 
     def get_travel_path(self, child, ancestor):
         res = []
+<<<<<<< HEAD
         while child > ancestor:
+=======
+        while (child > ancestor):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             res.append(child)
             child = int((child - 1) / self._branch)
         return res
@@ -74,6 +89,7 @@ class TreeIndex(Index):
         codes = self.get_ancestor_codes(ids, level)
         return dict(zip(ids, codes))
 
+<<<<<<< HEAD
     def init_layerwise_sampler(
         self, layer_sample_counts, start_sample_layer=1, seed=0
     ):
@@ -82,10 +98,25 @@ class TreeIndex(Index):
         self._layerwise_sampler.init_layerwise_conf(
             layer_sample_counts, start_sample_layer, seed
         )
+=======
+    def init_layerwise_sampler(self,
+                               layer_sample_counts,
+                               start_sample_layer=1,
+                               seed=0):
+        assert self._layerwise_sampler is None
+        self._layerwise_sampler = core.IndexSampler("by_layerwise", self._name)
+        self._layerwise_sampler.init_layerwise_conf(layer_sample_counts,
+                                                    start_sample_layer, seed)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def layerwise_sample(self, user_input, index_input, with_hierarchy=False):
         if self._layerwise_sampler is None:
             raise ValueError("please init layerwise_sampler first.")
+<<<<<<< HEAD
         return self._layerwise_sampler.sample(
             user_input, index_input, with_hierarchy
         )
+=======
+        return self._layerwise_sampler.sample(user_input, index_input,
+                                              with_hierarchy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

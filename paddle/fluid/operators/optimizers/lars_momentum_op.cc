@@ -37,12 +37,21 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
                    "Output",
                    "VelocityOut",
                    "LarsMomentum");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
                       framework::proto::VarType::LOD_TENSOR,
                       platform::errors::InvalidArgument(
                           "The input var's type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx->GetInputsVarType("Param").front()));
+=======
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Param").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->GetInputsVarType("Param").front()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto lr_dims = ctx->GetInputsDim("LearningRate");
     auto grad_dim = ctx->GetInputsDim("Grad");
@@ -102,7 +111,11 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Grad")[i],
                         framework::proto::VarType::LOD_TENSOR,
                         platform::errors::InvalidArgument(
+<<<<<<< HEAD
                             "The Var(%s)'s type should be phi::DenseTensor, "
+=======
+                            "The Var(%s)'s type should be LoDTensor, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             "but the received is %s",
                             ctx->Inputs("Grad")[i].front(),
                             ctx->GetInputsVarType("Grad")[i]));
@@ -133,11 +146,19 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return phi::KernelKey(input_data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -145,6 +166,7 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
+<<<<<<< HEAD
              "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input parameter that has to be updated")
         .AsDuplicable();
@@ -154,22 +176,45 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddInput("Velocity",
              "(phi::DenseTensor, default phi::DenseTensor<float>) "
+=======
+             "(LoDTensor, default LoDTensor<float>) "
+             "Input parameter that has to be updated")
+        .AsDuplicable();
+    AddInput("Grad",
+             "(LoDTensor, default LoDTensor<float>) "
+             "Input gradient of the parameter")
+        .AsDuplicable();
+    AddInput("Velocity",
+             "(LoDTensor, default LoDTensor<float>) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "Input velocity (corresponding to the parameter) "
              "that has to be updated")
         .AsDuplicable();
     AddInput("LearningRate",
+<<<<<<< HEAD
              "(phi::DenseTensor, default phi::DenseTensor<float>) "
+=======
+             "(LoDTensor, default LoDTensor<float>) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "Input learning rate")
         .AsDuplicable();
     AddInput("MasterParam", "FP32 master weight for AMP.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("ParamOut",
+<<<<<<< HEAD
               "(phi::DenseTensor) This output is updated parameter. "
               "It shared memory with Input(Param).")
         .AsDuplicable();
     AddOutput("VelocityOut",
               "(phi::DenseTensor) This output is updated velocity. "
+=======
+              "(LoDTensor) This output is updated parameter. "
+              "It shared memory with Input(Param).")
+        .AsDuplicable();
+    AddOutput("VelocityOut",
+              "(LoDTensor) This output is updated velocity. "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "It shared memory with Input(Velocity).")
         .AsDuplicable();
     AddOutput("MasterParamOut",

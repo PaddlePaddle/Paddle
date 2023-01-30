@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,15 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.io import DataLoader, Dataset
+=======
+import sys
+import unittest
+import numpy as np
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.io import Dataset, DataLoader
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -28,24 +38,40 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def batch_generator_creator(batch_size, batch_num):
+<<<<<<< HEAD
     def __reader__():
         for _ in range(batch_num):
             batch_image, batch_label = get_random_images_and_labels(
                 [batch_size, 784], [batch_size, 1]
             )
+=======
+
+    def __reader__():
+        for _ in range(batch_num):
+            batch_image, batch_label = get_random_images_and_labels(
+                [batch_size, 784], [batch_size, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             yield batch_image, batch_label
 
     return __reader__
 
 
 class RandomDataset(Dataset):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([784]).astype('float32')
+<<<<<<< HEAD
         label = np.random.randint(0, 9, (1,)).astype('int64')
+=======
+        label = np.random.randint(0, 9, (1, )).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return image, label
 
     def __len__(self):
@@ -53,6 +79,10 @@ class RandomDataset(Dataset):
 
 
 class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 100
@@ -60,6 +90,7 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
         self.capacity = 50
 
     def prepare_data_loader(self):
+<<<<<<< HEAD
         loader = fluid.io.DataLoader.from_generator(
             capacity=self.capacity, use_multiprocess=True
         )
@@ -67,37 +98,73 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
             batch_generator_creator(self.batch_size, self.batch_num),
             places=fluid.CPUPlace(),
         )
+=======
+        loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                    use_multiprocess=True)
+        loader.set_batch_generator(batch_generator_creator(
+            self.batch_size, self.batch_num),
+                                   places=fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return loader
 
     def run_one_epoch_with_break(self, loader):
         for step_id, data in enumerate(loader()):
             image, label = data
+<<<<<<< HEAD
             relu = F.relu(image)
+=======
+            relu = fluid.layers.relu(image)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual(image.shape, [self.batch_size, 784])
             self.assertEqual(label.shape, [self.batch_size, 1])
             self.assertEqual(relu.shape, [self.batch_size, 784])
             if step_id == 30:
                 break
 
+<<<<<<< HEAD
     def test_data_loader_break(self):
+=======
+    def func_test_data_loader_break(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with fluid.dygraph.guard():
             loader = self.prepare_data_loader()
             for _ in range(self.epoch_num):
                 self.run_one_epoch_with_break(loader)
                 break
 
+<<<<<<< HEAD
     def test_data_loader_continue_break(self):
+=======
+    def test_data_loader_break(self):
+        with _test_eager_guard():
+            self.func_test_data_loader_break()
+        self.func_test_data_loader_break()
+
+    def func_test_data_loader_continue_break(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with fluid.dygraph.guard():
             loader = self.prepare_data_loader()
             for _ in range(self.epoch_num):
                 self.run_one_epoch_with_break(loader)
 
+<<<<<<< HEAD
 
 class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
+=======
+    def test_data_loader_continue_break(self):
+        with _test_eager_guard():
+            self.func_test_data_loader_continue_break()
+        self.func_test_data_loader_continue_break()
+
+
+class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def prepare_data_loader(self):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             dataset = RandomDataset(self.batch_size * self.batch_num)
+<<<<<<< HEAD
             loader = DataLoader(
                 dataset,
                 places=place,
@@ -105,6 +172,13 @@ class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
                 drop_last=True,
                 num_workers=2,
             )
+=======
+            loader = DataLoader(dataset,
+                                places=place,
+                                batch_size=self.batch_size,
+                                drop_last=True,
+                                num_workers=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return loader
 
 

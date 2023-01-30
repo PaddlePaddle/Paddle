@@ -67,7 +67,11 @@ class PSClient {
   PSClient(PSClient &&) = delete;
   PSClient(const PSClient &) = delete;
 
+<<<<<<< HEAD
   virtual int32_t Configure(  // NOLINT
+=======
+  virtual int32_t Configure(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const PSParameter &config,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>
           &regions,
@@ -148,12 +152,19 @@ class PSClient {
     return fut;
   }
 
+<<<<<<< HEAD
   virtual ::std::future<int32_t> PullSparsePtr(int shard_id,
                                                char **select_values,
                                                size_t table_id,
                                                const uint64_t *keys,
                                                size_t num,
                                                uint16_t pass_id) {
+=======
+  virtual ::std::future<int32_t> PullSparsePtr(char **select_values,
+                                               size_t table_id,
+                                               const uint64_t *keys,
+                                               size_t num) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -162,6 +173,7 @@ class PSClient {
   }
 
   virtual std::future<int32_t> PrintTableStat(uint32_t table_id) = 0;
+<<<<<<< HEAD
   virtual std::future<int32_t> SaveCacheTable(uint32_t table_id,
                                               uint16_t pass_id,
                                               size_t threshold) {
@@ -171,6 +183,8 @@ class PSClient {
     promise.set_value(-1);
     return fut;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // 确保所有积攒中的请求都发起发送
   virtual std::future<int32_t> Flush() = 0;

@@ -2,11 +2,19 @@
 
 There are several demos:
 
+<<<<<<< HEAD
 - simple_on_word2vec:
   - Follow the C++ codes is in `simple_on_word2vec.cc`.
   - It is suitable for word2vec model.
 - vis_demo:
   - Follow the C++ codes is in `vis_demo.cc`.
+=======
+- simple_on_word2vec: 
+  - Follow the C++ codes is in `simple_on_word2vec.cc`. 
+  - It is suitable for word2vec model.
+- vis_demo: 
+  - Follow the C++ codes is in `vis_demo.cc`. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   - It is suitable for mobilenet, se_resnext50 and ocr three models.
   - Input data format:
     - Each line contains a single record
@@ -15,7 +23,11 @@ There are several demos:
     <space split floats as data>\t<space split ints as shape>
     ```
 
+<<<<<<< HEAD
 To build and execute the demos, simply run
+=======
+To build and execute the demos, simply run 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ```
 ./run.sh $PADDLE_ROOT $TURN_ON_MKL $TEST_GPU_CPU
 ```

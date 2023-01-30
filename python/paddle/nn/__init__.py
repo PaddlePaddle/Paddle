@@ -15,9 +15,15 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 from ..fluid.dygraph.layers import Layer  # noqa: F401
+<<<<<<< HEAD
 from .layer.container import LayerList  # noqa: F401
 from .layer.container import ParameterList  # noqa: F401
 from .layer.container import Sequential  # noqa: F401
+=======
+from ..fluid.dygraph.container import LayerList  # noqa: F401
+from ..fluid.dygraph.container import ParameterList  # noqa: F401
+from ..fluid.dygraph.container import Sequential  # noqa: F401
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from .clip import ClipGradByGlobalNorm  # noqa: F401
 from .clip import ClipGradByNorm  # noqa: F401
@@ -106,11 +112,17 @@ from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
 from .layer.loss import MultiLabelSoftMarginLoss
 from .layer.loss import CTCLoss  # noqa: F401
+<<<<<<< HEAD
 from .layer.loss import RNNTLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
 from .layer.loss import CosineEmbeddingLoss  # noqa: F401
 from .layer.loss import MultiMarginLoss
+=======
+from .layer.loss import SmoothL1Loss  # noqa: F401
+from .layer.loss import HingeEmbeddingLoss  # noqa: F401
+from .layer.loss import CosineEmbeddingLoss  # noqa: F401
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .layer.loss import TripletMarginWithDistanceLoss
 from .layer.loss import TripletMarginLoss
 from .layer.loss import SoftMarginLoss
@@ -164,6 +176,7 @@ from . import quant  # noqa: F401
 import paddle.utils.deprecated as deprecated
 
 
+<<<<<<< HEAD
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.funcitional.diag_embed",
@@ -173,10 +186,20 @@ import paddle.utils.deprecated as deprecated
 def diag_embed(*args):
     '''
     alias name of paddle.nn.functional.diag_embed
+=======
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.funcitional.diag_embed",
+            level=1,
+            reason="diag_embed in paddle.nn will be removed in future")
+def diag_embed(*args):
+    '''
+        alias name of paddle.nn.functional.diag_embed
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     '''
     return functional.diag_embed(*args)
 
 
+<<<<<<< HEAD
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.remove_weight_norm",
@@ -186,10 +209,20 @@ def diag_embed(*args):
 def remove_weight_norm(*args):
     '''
     alias name of paddle.nn.utils.remove_weight_norm
+=======
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.utils.remove_weight_norm",
+            level=1,
+            reason="remove_weight_norm in paddle.nn will be removed in future")
+def remove_weight_norm(*args):
+    '''
+        alias name of paddle.nn.utils.remove_weight_norm
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     '''
     return utils.remove_weight_norm(*args)
 
 
+<<<<<<< HEAD
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.weight_norm",
@@ -199,6 +232,15 @@ def remove_weight_norm(*args):
 def weight_norm(*args):
     '''
     alias name of paddle.nn.utils.weight_norm
+=======
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.utils.weight_norm",
+            level=1,
+            reason="weight_norm in paddle.nn will be removed in future")
+def weight_norm(*args):
+    '''
+        alias name of paddle.nn.utils.weight_norm
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     '''
     return utils.weight_norm(*args)
 
@@ -286,7 +328,10 @@ __all__ = [  # noqa
     'Silu',
     'Conv2DTranspose',
     'CTCLoss',
+<<<<<<< HEAD
     'RNNTLoss',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'ThresholdedReLU',
     'AdaptiveAvgPool2D',
     'MaxPool1D',
@@ -328,7 +373,10 @@ __all__ = [  # noqa
     'Identity',
     'CosineEmbeddingLoss',
     'RReLU',
+<<<<<<< HEAD
     'MultiMarginLoss',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'TripletMarginWithDistanceLoss',
     'TripletMarginLoss',
     'SoftMarginLoss',

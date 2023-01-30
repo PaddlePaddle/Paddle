@@ -24,6 +24,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
@@ -35,6 +36,17 @@ from paddle.fluid.incubate.fleet.collective import (
 
 
 class CollectiveOptimizerTest(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, DistributedStrategy
+
+
+class CollectiveOptimizerTest(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_ds_as_None(self):
         optimizer = fluid.optimizer.AdamOptimizer()
         dist_optimizer = CollectiveOptimizer(optimizer, strategy=None)
@@ -44,9 +56,14 @@ class CollectiveOptimizerTest(unittest.TestCase):
         dist_strategy = DistributedStrategy()
         dist_strategy.forward_recompute = True
         dist_strategy.recompute_checkpoints = "NoneListTest"
+<<<<<<< HEAD
         self.assertRaises(
             ValueError, CollectiveOptimizer, optimizer, dist_strategy
         )
+=======
+        self.assertRaises(ValueError, CollectiveOptimizer, optimizer,
+                          dist_strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dist_strategy.recompute_checkpoints = []
         dist_optimizer = CollectiveOptimizer(optimizer, dist_strategy)
         self.assertRaises(ValueError, dist_optimizer.minimize, None)
@@ -62,9 +79,14 @@ class CollectiveOptimizerTest(unittest.TestCase):
 
     def test_amp_strategy(self):
         optimizer = fluid.optimizer.AdamOptimizer()
+<<<<<<< HEAD
         optimizer = paddle.static.amp.decorate(
             optimizer, init_loss_scaling=1.0, use_dynamic_loss_scaling=True
         )
+=======
+        optimizer = fluid.contrib.mixed_precision.decorate(
+            optimizer, init_loss_scaling=1.0, use_dynamic_loss_scaling=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dist_strategy = DistributedStrategy()
         dist_strategy.use_amp = True
         dist_optimizer = CollectiveOptimizer(optimizer, strategy=dist_strategy)

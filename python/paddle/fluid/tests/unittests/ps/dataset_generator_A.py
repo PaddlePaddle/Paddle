@@ -23,6 +23,10 @@ categorical_range_ = range(14, 40)
 
 
 class CriteoDataset(dg.MultiSlotDataGenerator):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def generate_sample(self, line):
         """
         Read the data line by line and process it as a dictionary
@@ -37,8 +41,12 @@ class CriteoDataset(dg.MultiSlotDataGenerator):
             sparse_feature = []
             for idx in categorical_range_:
                 sparse_feature.append(
+<<<<<<< HEAD
                     [hash(str(idx) + features[idx]) % hash_dim_]
                 )
+=======
+                    [hash(str(idx) + features[idx]) % hash_dim_])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for idx in categorical_range_:
                 feature_name.append("C" + str(idx - 13))
             yield list(zip(feature_name, sparse_feature))

@@ -61,9 +61,15 @@ class InfRtPredictor {
   void Run();
   int Init(const InfRtConfig& config);
   int GetInputNum();
+<<<<<<< HEAD
   ::Tensor* GetInput(int i);
   int GetOutputNum();
   ::Tensor* GetOutput(int i);
+=======
+  ::phi::DenseTensor* GetInput(int i);
+  int GetOutputNum();
+  ::phi::DenseTensor* GetOutput(int i);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  protected:
   struct Impl;

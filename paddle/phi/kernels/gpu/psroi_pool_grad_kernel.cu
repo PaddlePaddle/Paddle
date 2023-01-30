@@ -16,7 +16,11 @@
 #include <vector>
 
 #include "paddle/fluid/memory/memory.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -97,7 +101,11 @@ __global__ void GPUPSROIPoolBackward(const int nthreads,
     for (int ih = hstart; ih < hend; ++ih) {
       for (int iw = wstart; iw < wend; ++iw) {
         int input_index = ih * width + iw;
+<<<<<<< HEAD
         phi::CudaAtomicAdd(offset_dx_data + input_index, diff_val);
+=======
+        paddle::platform::CudaAtomicAdd(offset_dx_data + input_index, diff_val);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     }
   }

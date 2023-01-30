@@ -15,7 +15,10 @@
 
 STATIC_MODE_TESTING_LIST = [
     'test_affine_channel_op',
+<<<<<<< HEAD
     'test_block_rename_var',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_transfer_dtype_op',
     'test_transfer_layout_op',
     'test_concat_op',
@@ -71,6 +74,10 @@ STATIC_MODE_TESTING_LIST = [
     'test_auc_single_pred_op',
     'test_avoid_twice_initialization',
     'test_backward',
+<<<<<<< HEAD
+=======
+    'test_basic_rnn_name',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_batch_norm_op',
     'test_batch_norm_op_v2',
     'test_bce_loss',
@@ -161,6 +168,11 @@ STATIC_MODE_TESTING_LIST = [
     'test_dynrnn_static_input',
     'test_eager_deletion_conditional_block',
     'test_eager_deletion_delete_vars',
+<<<<<<< HEAD
+=======
+    'test_eager_deletion_gru_net',
+    'test_eager_deletion_lstm_net',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_eager_deletion_padding_rnn',
     'test_eager_deletion_recurrent_op',
     'test_eager_deletion_while_op',
@@ -260,6 +272,10 @@ STATIC_MODE_TESTING_LIST = [
     'test_huber_loss_op',
     'test_im2sequence_op',
     'test_image_classification_layer',
+<<<<<<< HEAD
+=======
+    'test_imperative_basic',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_imperative_deepcf',
     'test_imperative_framework',
     'test_imperative_gan',
@@ -289,6 +305,10 @@ STATIC_MODE_TESTING_LIST = [
     'test_inverse_op',
     'test_io_save_load',
     'test_iou_similarity_op',
+<<<<<<< HEAD
+=======
+    'test_ir_memory_optimize_ifelse_op',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_ir_memory_optimize_pass',
     'test_is_empty_op',
     'test_isfinite_op',
@@ -309,7 +329,13 @@ STATIC_MODE_TESTING_LIST = [
     'test_load_op',
     'test_load_vars_shape_check',
     'test_locality_aware_nms_op',
+<<<<<<< HEAD
     'test_lod_array_length_op',
+=======
+    'test_lod_append_op',
+    'test_lod_array_length_op',
+    'test_lod_rank_table',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_lod_tensor_array_ops',
     'test_log_loss_op',
     'test_log_softmax',
@@ -434,6 +460,10 @@ STATIC_MODE_TESTING_LIST = [
     'test_registry',
     'test_regularizer',
     'test_regularizer_api',
+<<<<<<< HEAD
+=======
+    'test_reorder_lod_tensor',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_reshape_op',
     'test_reshape_bf16_op',
     'test_retinanet_detection_output',
@@ -465,6 +495,10 @@ STATIC_MODE_TESTING_LIST = [
     'test_sgd_op',
     'test_shape_op',
     'test_shard_index_op',
+<<<<<<< HEAD
+=======
+    'test_shrink_rnn_memory',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_shuffle_batch_op',
     'test_shuffle_channel_op',
     'test_sigmoid_cross_entropy_with_logits_op',
@@ -477,6 +511,10 @@ STATIC_MODE_TESTING_LIST = [
     'test_smooth_l1_loss_op',
     'test_softmax_with_cross_entropy_op',
     'test_spectral_norm_op',
+<<<<<<< HEAD
+=======
+    'test_split_and_merge_lod_tensor_op',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_split_ids_op',
     'test_split_op',
     'test_split_mkldnn_op',
@@ -533,10 +571,19 @@ STATIC_MODE_TESTING_LIST = [
     'test_imperative_mnist_sorted_gradient',
     'test_imperative_se_resnext',
     'test_imperative_ocr_attention_model',
+<<<<<<< HEAD
+=======
+    'test_imperative_static_runner_mnist',
+    'test_imperative_static_runner_while',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_recv_save_op',
     'test_transpiler_ops',
     'test_communicator_sync',
     'test_collective_optimizer',
+<<<<<<< HEAD
+=======
+    'test_parallel_executor_crf',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_parallel_executor_profiler',
     'test_parallel_executor_transformer',
     'test_parallel_executor_transformer_auto_growth',
@@ -580,6 +627,11 @@ STATIC_MODE_TESTING_LIST = [
     'test_conv_elementwise_add_act_fuse_pass',
     'test_conv_elementwise_add_fuse_pass',
     'test_fc_fuse_pass',
+<<<<<<< HEAD
+=======
+    'test_fc_gru_fuse_pass',
+    'test_fc_lstm_fuse_pass',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_repeated_fc_relu_fuse_pass',
     'test_seqconv_eltadd_relu_fuse_pass',
     'test_squared_mat_sub_fuse_pass',
@@ -647,6 +699,10 @@ STATIC_MODE_TESTING_LIST = [
     'test_mkldnn_matmul_op_output_fuse_pass',
     'test_mkldnn_matmul_transpose_reshape_fuse_pass',
     'test_mkldnn_scale_matmul_fuse_pass',
+<<<<<<< HEAD
+=======
+    'test_mkldnn_inplace_fuse_pass',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_mkldnn_conv_affine_channel_fuse_pass',
     'test_batch_fc_op',
     'test_c_comm_init_all_op',
@@ -675,6 +731,10 @@ STATIC_MODE_TESTING_LIST = [
     'test_fleet_rolemaker_new',
     'test_fused_fc_elementwise_layernorm_op',
     'test_fusion_transpose_flatten_concat_op',
+<<<<<<< HEAD
+=======
+    'test_ir_memory_optimize_nlp',
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'test_nvprof',
     'test_pipeline',
     'test_weight_decay',

@@ -38,7 +38,11 @@ endif()
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
+<<<<<<< HEAD
 set(utils_modules pretty_log string_helper benchmark)
+=======
+set(utils_modules stringpiece pretty_log string_helper benchmark)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(WITH_CUSTOM_DEVICE)
   set(fluid_modules ${fluid_modules} phi_capi)
@@ -71,11 +75,14 @@ if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} phi ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
+<<<<<<< HEAD
   # message("${fluid_modules}")
   # message("PHI_MODULES ${phi_modules}")
   # message("${phi_kernels}")
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   create_static_lib(paddle_inference ${fluid_modules} ${phi_modules}
                     ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
@@ -117,11 +124,16 @@ if(WITH_CRYPTO)
 endif()
 
 if(WITH_PSCORE)
+<<<<<<< HEAD
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
 endif()
 
 if(WITH_INFERENCE_NVTX AND NOT WIN32)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} cuda_profiler)
+=======
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service
+                            tensor_table)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 if(WITH_ONNXRUNTIME)
@@ -130,12 +142,15 @@ if(WITH_ONNXRUNTIME)
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
 endif()
 
+<<<<<<< HEAD
 #export all symbols for paddle/phi/api/include/api.h on paddle_inference_shared, only for UNIX
 if(UNIX)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS}
                             $<TARGET_OBJECTS:phi_function_api>)
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # Create shared inference library
 cc_library(
   paddle_inference_shared SHARED

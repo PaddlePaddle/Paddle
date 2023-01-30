@@ -16,6 +16,7 @@ import os
 
 os.environ['CPU_NUM'] = '2'
 
+<<<<<<< HEAD
 import unittest
 
 from fake_reader import fake_imdb_reader
@@ -24,6 +25,17 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import compiler
+=======
+import six
+import unittest
+
+import paddle
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import compiler
+import numpy as np
+from fake_reader import fake_imdb_reader
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
@@ -41,11 +53,20 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     reader = fake_imdb_reader(word_dict_size, batch_size * 40)
     train_reader = paddle.batch(reader, batch_size=batch_size)
 
+<<<<<<< HEAD
     data = paddle.static.data(
         name="words", shape=[-1, 1], dtype="int64", lod_level=1
     )
 
     label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+=======
+    data = fluid.layers.data(name="words",
+                             shape=[1],
+                             dtype="int64",
+                             lod_level=1)
+
+    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cost = network(data, label, word_dict_size)
     cost.persistable = True
@@ -54,9 +75,14 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
+<<<<<<< HEAD
     reader = feeder.decorate_reader(
         train_reader, multi_devices=use_parallel_executor
     )
+=======
+    reader = feeder.decorate_reader(train_reader,
+                                    multi_devices=use_parallel_executor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     exe = fluid.Executor(place)
     fluid.default_startup_program().random_seed = 1
@@ -66,12 +92,18 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     train_cp = fluid.default_main_program()
     if use_parallel_executor:
         train_cp = compiler.CompiledProgram(
+<<<<<<< HEAD
             fluid.default_main_program()
         ).with_data_parallel(loss_name=cost.name)
+=======
+            fluid.default_main_program()).with_data_parallel(
+                loss_name=cost.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         fetch_list = [cost.name]
     else:
         fetch_list = [cost]
 
+<<<<<<< HEAD
     for pass_id in range(pass_num):
         batch_id = 0
         for data in reader():
@@ -80,12 +112,24 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
                 feed=data,
                 fetch_list=fetch_list if batch_id % 4 == 0 else [],
             )
+=======
+    for pass_id in six.moves.xrange(pass_num):
+        batch_id = 0
+        for data in reader():
+            exe.run(train_cp,
+                    feed=data,
+                    fetch_list=fetch_list if batch_id % 4 == 0 else [])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             batch_id += 1
             if batch_id > 16:
                 break
 
 
 class TestBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.net = None
 
@@ -95,11 +139,17 @@ class TestBase(unittest.TestCase):
 
         for use_cuda in [True, False]:
             for use_parallel_executor in [False, True]:
+<<<<<<< HEAD
                 print(
                     'network: {}, use_cuda: {}, use_parallel_executor: {}'.format(
                         self.net.__name__, use_cuda, use_parallel_executor
                     )
                 )
+=======
+                print('network: {}, use_cuda: {}, use_parallel_executor: {}'.
+                      format(self.net.__name__, use_cuda,
+                             use_parallel_executor))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
                     with fluid.scope_guard(core.Scope()):
                         train(self.net, use_cuda, use_parallel_executor)

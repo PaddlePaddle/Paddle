@@ -90,7 +90,11 @@ std::future<int32_t> DensePullThread::pull_dense(uint64_t table_id) {
   for (auto i = 0u; i < variables.size(); ++i) {
     auto& t = variables[i];
     Variable* var = _root_scope->FindVar(t);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     float* w = tensor->data<float>();
     paddle::ps::Region reg(w, tensor->numel());
@@ -219,8 +223,12 @@ void ExecutorThreadWorker::SetDevice() {
 }
 
 template <typename T>
+<<<<<<< HEAD
 void print_lod_tensor(std::string var_name,
                       const phi::DenseTensor& lod_tensor) {
+=======
+void print_lod_tensor(std::string var_name, const LoDTensor& lod_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto inspect = lod_tensor.data<T>();
   auto element_num = lod_tensor.numel();
 
@@ -236,7 +244,11 @@ void print_lod_tensor(std::string var_name,
 }
 
 static void print_fetch_var(Scope* scope, const std::string& var_name) {
+<<<<<<< HEAD
   auto& tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
+=======
+  auto& tensor = scope->FindVar(var_name)->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #define PrintLoDTensorCallback(cpp_type, proto_type)                    \
   do {                                                                  \
@@ -479,7 +491,11 @@ void AsyncExecutorThreadWorker::PushDense(int table_id) {
   for (auto& t : _param_config->dense_gradient_variable_name[table_id]) {
     Variable* var = thread_scope_->FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int count = tensor->numel();
     float* g = tensor->data<float>();
     paddle::ps::Region reg(g, count);
@@ -503,7 +519,11 @@ void AsyncExecutorThreadWorker::PullSparse(int table_id) {
   // slot_idx = 0 is label TODO
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
@@ -547,12 +567,20 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
   // slot_idx = 0 is label TODO
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     Variable* var_emb = thread_scope_->FindVar(
         _param_config->slot_input_vec[table_id][slot_idx - 1]);
+<<<<<<< HEAD
     phi::DenseTensor* tensor_emb = var_emb->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* ptr =
         tensor_emb->mutable_data<float>({len, slot_dim}, platform::CPUPlace());
     memset(ptr, 0, sizeof(float) * len * slot_dim);
@@ -604,7 +632,11 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
     CHECK(g_var != nullptr)
         << "var[" << _param_config->gradient_var[table_id][slot_idx - 1]
         << "] not found";
+<<<<<<< HEAD
     phi::DenseTensor* g_tensor = g_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (g_tensor == NULL) {
       LOG(ERROR) << "var["
                  << _param_config->gradient_var[table_id][slot_idx - 1]
@@ -615,7 +647,11 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
 
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
     CHECK(var != nullptr) << "var[" << feed_vec[slot_idx] << "] not found";
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (tensor == NULL) {
       LOG(ERROR) << "var[" << feed_vec[slot_idx] << "] not found";
       exit(-1);
@@ -662,13 +698,21 @@ void AsyncExecutorThreadWorker::collect_feasign_info(int table_id) {
   fea_info.resize(feature.size());
   const std::vector<std::string>& feed_vec = thread_reader_->GetUseSlotAlias();
   Variable* var = thread_scope_->FindVar(feed_vec[0]);
+<<<<<<< HEAD
   phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int64_t* label = tensor->data<int64_t>();
 
   int global_index = 0;
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int64_t* ids = tensor->data<int64_t>();
 
     int fea_idx = 0;

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 import unittest
 
@@ -21,10 +22,24 @@ import paddle
 import paddle.fluid as fluid
 import paddle.sparse as sparse
 from paddle.sparse import nn
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+from paddle.sparse import nn
+import paddle.sparse as sparse
+import paddle.fluid as fluid
+import copy
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestSparseBatchNorm(unittest.TestCase):
     def test(self):
+<<<<<<< HEAD
+=======
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.seed(0)
         channels = 4
         shape = [2, 3, 6, 6, channels]
@@ -40,7 +55,10 @@ class TestSparseBatchNorm(unittest.TestCase):
         dense_x2 = copy.deepcopy(dense_x)
         dense_x2.stop_gradient = False
         sparse_x = dense_x2.to_sparse_coo(sparse_dim)
+<<<<<<< HEAD
         sparse_x.retain_grads()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sparse_batch_norm = paddle.sparse.nn.BatchNorm(channels)
         # set same params
         sparse_batch_norm._mean.set_value(batch_norm._mean)
@@ -64,6 +82,10 @@ class TestSparseBatchNorm(unittest.TestCase):
             atol=1e-5,
             rtol=1e-5,
         )
+<<<<<<< HEAD
+=======
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_error_layout(self):
         with self.assertRaises(ValueError):

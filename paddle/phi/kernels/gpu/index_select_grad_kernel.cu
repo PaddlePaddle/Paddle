@@ -14,9 +14,15 @@
 
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -25,7 +31,11 @@ DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
+<<<<<<< HEAD
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
@@ -42,7 +52,11 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
     IndexT src_dim_idx = index[dim_idx];
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
+<<<<<<< HEAD
     phi::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
+=======
+    paddle::platform::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -87,7 +101,11 @@ void IndexSelectGradKernel(const Context& ctx,
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
+<<<<<<< HEAD
   phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+=======
+  paddle::platform::LimitGridDim(ctx, &grid_dim);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   phi::funcs::SetConstant<phi::GPUContext, T> index_select_grad_init;
   index_select_grad_init(ctx, x_grad, static_cast<T>(0));

@@ -15,19 +15,26 @@
 
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/dense_tensor.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/complex_kernel.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/impl/einsum_impl.h"
 #include "paddle/phi/kernels/tile_kernel.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace phi {
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, typename Context>
 DenseTensor PerformTileAndReduction(const Context& dev_ctx,
                                     const LabelMap& label2type,
                                     const LabelMap& label2shape,
                                     const std::vector<int>& broadcast_dims,
                                     const std::vector<int>& ellipsis_dims,
+<<<<<<< HEAD
                                     std::string equ,   // value pass
                                     DenseTensor& t) {  // NOLINT
   auto tmp_label = equ;
@@ -35,6 +42,11 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   auto tmp_union = unique_labels(tmp_label);
   auto op_label = std::string(tmp_union.begin(), tmp_union.end());
   VLOG(5) << "Start PerformTileAndReduction" << equ;
+=======
+                                    std::string op_label,  // value pass
+                                    DenseTensor& t) {      // NOLINT
+  ReplaceEllipsis(op_label);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   DenseTensor ret;
   std::vector<int> repeat_times;
   std::vector<int> resize_dims;
@@ -67,8 +79,11 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
       })) {
     after_tile = t;
   } else {
+<<<<<<< HEAD
     VLOG(4) << "do TileKernel with repeat_times="
             << paddle::string::join_strings(repeat_times, ",");
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TileKernel<T, Context>(dev_ctx, t, repeat_times, &after_tile);
   }
   size_t n_ellipsis_idx = op_label.find(".", 0);
@@ -100,11 +115,15 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   VLOG(5) << "PermformTileAndReduction: recover shape: "
           << paddle::string::join_strings(recover_shape, ",");
   ret.Resize(make_ddim(recover_shape));
+<<<<<<< HEAD
   // undiagonalize by einsum equation. only contain undiagonal operations.
   DenseTensor out;
   VLOG(5) << "Undiagonal by einsum with args: " << op_label + "->" + equ;
   EinsumInferKernel<T, Context>(dev_ctx, {&ret}, op_label + "->" + equ, &out);
   return out;
+=======
+  return ret;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T, typename Context>
@@ -127,7 +146,10 @@ void EinsumGradKernel(const Context& dev_ctx,
   for (auto& i : x) {
     input_dims.push_back(i->dims());
   }
+<<<<<<< HEAD
   std::vector<std::string> input_strs;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::string right;
   ParseEinsumEquation(equation,
                       input_dims,
@@ -138,15 +160,23 @@ void EinsumGradKernel(const Context& dev_ctx,
                       &ellipsis_dims,
                       &broadcast_dims,
                       &output_dims,
+<<<<<<< HEAD
                       &right,
                       &input_strs);
+=======
+                      &right);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto gather_labels_except_reduction = [&labeltype](std::string all) {
     std::string res("");
     for (auto c : all)
       if (labeltype[static_cast<int>(c)] != LabelType::Reduction) res += c;
+<<<<<<< HEAD
     auto tmp_unique = unique_labels(res);
     return std::string(tmp_unique.begin(), tmp_unique.end());
+=======
+    return res;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   };
   if (x.size() == 1) {  // Unary
     auto splits = paddle::string::split_string(equation, "->");
@@ -156,9 +186,13 @@ void EinsumGradKernel(const Context& dev_ctx,
     auto new_operands = std::vector<const DenseTensor*>();
     new_operands.push_back(&out_grad);
     DenseTensor before_tile;
+<<<<<<< HEAD
     VLOG(5) << "new_equation is " << new_equation;
     EinsumInferKernel<T, Context>(
         dev_ctx, new_operands, new_equation, &before_tile);
+=======
+    EinsumKernel<T, Context>(dev_ctx, new_operands, new_equation, &before_tile);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     *(x_grad[0]) = PerformTileAndReduction<T, Context>(dev_ctx,
                                                        labeltype,
                                                        labelshape,
@@ -179,12 +213,20 @@ void EinsumGradKernel(const Context& dev_ctx,
     auto operands_for_A = std::vector<const DenseTensor*>();
     auto operands_for_B = std::vector<const DenseTensor*>();
     DenseTensor dA, dB;
+<<<<<<< HEAD
     auto out_grad_conj = Conj<T, Context>(dev_ctx, out_grad);
     // dA = einsum(B, dC)
     operands_for_A.push_back(x[1]);
     operands_for_A.push_back(&out_grad_conj);
     // dB = einsum(dC, A)
     operands_for_B.push_back(&out_grad_conj);
+=======
+    // dA = einsum(B, dC)
+    operands_for_A.push_back(x[1]);
+    operands_for_A.push_back(&out_grad);
+    // dB = einsum(dC, A)
+    operands_for_B.push_back(&out_grad);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     operands_for_B.push_back(x[0]);
 
     DenseTensor before_tile;
@@ -222,7 +264,10 @@ void EinsumGradKernel(const Context& dev_ctx,
                                                          ellipsis_dims[0],
                                                          ops[0],
                                                          dA);
+<<<<<<< HEAD
       *(x_grad[0]) = Conj<T, Context>(dev_ctx, *x_grad[0]);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     if (x_grad[1]) {
       *(x_grad[1]) = PerformTileAndReduction<T, Context>(dev_ctx,
@@ -232,7 +277,10 @@ void EinsumGradKernel(const Context& dev_ctx,
                                                          ellipsis_dims[1],
                                                          ops[1],
                                                          dB);
+<<<<<<< HEAD
       *(x_grad[1]) = Conj<T, Context>(dev_ctx, *x_grad[1]);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }

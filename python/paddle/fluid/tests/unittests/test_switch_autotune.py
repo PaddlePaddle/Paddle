@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import json
 import os
 import tempfile
@@ -26,6 +27,21 @@ import paddle
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
+=======
+import paddle
+import unittest
+import numpy as np
+import tempfile
+import warnings
+import json
+import os
+
+
+class SimpleNet(paddle.nn.Layer):
+
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.conv = paddle.nn.Conv2D(1, 2, (3, 3))
 
     def forward(self, image, label=None):
@@ -52,6 +68,10 @@ def static_program(net, data):
 
 
 class TestAutoTune(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_flags(self, enable_autotune):
         if paddle.is_compiled_with_cuda():
             if enable_autotune:
@@ -67,7 +87,11 @@ class TestAutoTune(unittest.TestCase):
         expected_res = {
             "step_id": step_id,
             "cache_size": 0,
+<<<<<<< HEAD
             "cache_hit_rate": 0,
+=======
+            "cache_hit_rate": 0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         if paddle.is_compiled_with_cuda():
             # Total 3 * num_iters cache accesses, only iter 2 hits the cache.
@@ -77,8 +101,14 @@ class TestAutoTune(unittest.TestCase):
 
     def test_autotune(self):
         paddle.incubate.autotune.set_config(
+<<<<<<< HEAD
             config={"kernel": {"enable": False}}
         )
+=======
+            config={"kernel": {
+                "enable": False
+            }})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(self.get_flags("FLAGS_use_autotune"), False)
 
         paddle.incubate.autotune.set_config(config={"kernel": {"enable": True}})
@@ -95,10 +125,15 @@ class TestAutoTune(unittest.TestCase):
 
 
 class TestDygraphAutoTuneStatus(TestAutoTune):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def run_program(self, enable_autotune):
         self.set_flags(enable_autotune)
         if enable_autotune:
             paddle.incubate.autotune.set_config(
+<<<<<<< HEAD
                 config={"kernel": {"enable": True, "tuning_range": [1, 2]}}
             )
         else:
@@ -106,12 +141,25 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
                 config={"kernel": {"enable": False}}
             )
         x_var = paddle.uniform((1, 1, 8, 8), dtype='float32', min=-1.0, max=1.0)
+=======
+                config={"kernel": {
+                    "enable": True,
+                    "tuning_range": [1, 2]
+                }})
+        else:
+            paddle.incubate.autotune.set_config(
+                config={"kernel": {
+                    "enable": False
+                }})
+        x_var = paddle.uniform((1, 1, 8, 8), dtype='float32', min=-1., max=1.)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         net = SimpleNet()
         for i in range(3):
             train_dygraph(net, x_var)
             expected_res = self.get_expected_res(i, enable_autotune)
             self.check_status(expected_res)
 
+<<<<<<< HEAD
     def test_enable_autotune(self):
         self.run_program(enable_autotune=True)
 
@@ -120,6 +168,27 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
 
 
 class TestStaticAutoTuneStatus(TestAutoTune):
+=======
+    def func_enable_autotune(self):
+        self.run_program(enable_autotune=True)
+
+    def test_enable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_enable_autotune()
+        self.func_enable_autotune()
+
+    def func_disable_autotune(self):
+        self.run_program(enable_autotune=False)
+
+    def test_disable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_disable_autotune()
+        self.func_disable_autotune()
+
+
+class TestStaticAutoTuneStatus(TestAutoTune):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def run_program(self, enable_autotune):
         paddle.enable_static()
 
@@ -127,6 +196,7 @@ class TestStaticAutoTuneStatus(TestAutoTune):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             data = paddle.static.data(
                 name='X', shape=data_shape, dtype='float32'
             )
@@ -137,6 +207,15 @@ class TestStaticAutoTuneStatus(TestAutoTune):
             if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+            data = paddle.static.data(name='X',
+                                      shape=data_shape,
+                                      dtype='float32')
+            net = SimpleNet()
+            loss = static_program(net, data)
+        place = paddle.CUDAPlace(0) if paddle.fluid.core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         exe = paddle.static.Executor(place)
         exe.run(startup_program)
         x = np.random.random(size=data_shape).astype('float32')
@@ -151,8 +230,15 @@ class TestStaticAutoTuneStatus(TestAutoTune):
             os.remove(tfile.name)
         else:
             paddle.incubate.autotune.set_config(
+<<<<<<< HEAD
                 config={"kernel": {"enable": False, "tuning_range": [1, 2]}}
             )
+=======
+                config={"kernel": {
+                    "enable": False,
+                    "tuning_range": [1, 2]
+                }})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for i in range(3):
             exe.run(program=main_program, feed={'X': x}, fetch_list=[loss])
@@ -175,6 +261,10 @@ class TestStaticAutoTuneStatus(TestAutoTune):
 
 
 class TestAutoTuneAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_set_config_warnings(self):
         with warnings.catch_warnings(record=True) as w:
             config = {"kernel": {"enable": 1, "tuning_range": 1}}
@@ -188,8 +278,12 @@ class TestAutoTuneAPI(unittest.TestCase):
     def test_set_config_attr(self):
         paddle.incubate.autotune.set_config(config=None)
         self.assertEqual(
+<<<<<<< HEAD
             paddle.get_flags("FLAGS_use_autotune")["FLAGS_use_autotune"], True
         )
+=======
+            paddle.get_flags("FLAGS_use_autotune")["FLAGS_use_autotune"], True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

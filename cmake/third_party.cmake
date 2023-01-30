@@ -254,7 +254,10 @@ include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack
 include(external/xxhash) # download, build, install xxhash
 include(external/warpctc) # download, build, install warpctc
+<<<<<<< HEAD
 include(external/warprnnt) # download, build, install warprnnt
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 include(external/utf8proc) # download, build, install utf8proc
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
@@ -265,7 +268,10 @@ list(
   extern_zlib
   extern_dlpack
   extern_warpctc
+<<<<<<< HEAD
   extern_warprnnt
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   extern_threadpool
   extern_utf8proc)
 include(external/lapack) # download, build, install lapack
@@ -278,7 +284,10 @@ list(
   extern_zlib
   extern_dlpack
   extern_warpctc
+<<<<<<< HEAD
   extern_warprnnt
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   extern_threadpool
   extern_lapack)
 
@@ -320,8 +329,13 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
+<<<<<<< HEAD
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0
      OR (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6))
+=======
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0 OR ${CMAKE_CUDA_COMPILER_VERSION}
+                                                 GREATER_EQUAL 11.6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
   endif()
@@ -425,6 +439,7 @@ if(WITH_PSCORE)
 
   include(external/rocksdb) # download, build, install rocksdb
   list(APPEND third_party_deps extern_rocksdb)
+<<<<<<< HEAD
 
   include(external/jemalloc) # download, build, install jemalloc
   list(APPEND third_party_deps extern_jemalloc)
@@ -454,6 +469,8 @@ if(WITH_DISTRIBUTE
   list(APPEND third_party_deps extern_leveldb)
   include(external/brpc)
   list(APPEND third_party_deps extern_brpc)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 if(WITH_XBYAK)
@@ -524,6 +541,7 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
+<<<<<<< HEAD
 if(WITH_GPU
    AND NOT WITH_ARM
    AND NOT WIN32
@@ -540,4 +558,6 @@ if(WITH_CUDNN_FRONTEND)
   list(APPEND third_party_deps extern_cudnn_frontend)
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

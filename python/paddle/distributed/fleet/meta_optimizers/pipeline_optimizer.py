@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+<<<<<<< HEAD
 import paddle
 from paddle.fluid.optimizer import PipelineOptimizer as PO
 
@@ -23,13 +24,31 @@ from .common import (
     is_loss_grad_op,
 )
 from .meta_optimizer_base import MetaOptimizerBase
+=======
+from __future__ import print_function
+from __future__ import division
+import os
+
+import paddle.fluid as fluid
+from paddle.fluid import core, unique_name
+from ..base.private_helper_function import wait_server_ready
+from paddle.fluid.optimizer import PipelineOptimizer as PO
+from .meta_optimizer_base import MetaOptimizerBase
+from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_loss_grad_op, is_backward_op, is_optimizer_op
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
 class PipelineOptimizer(MetaOptimizerBase):
+<<<<<<< HEAD
     def __init__(self, optimizer):
         super().__init__(optimizer)
+=======
+
+    def __init__(self, optimizer):
+        super(PipelineOptimizer, self).__init__(optimizer)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",
@@ -42,6 +61,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.dp_ring_id = 2
         self.start_pipeline_ring_id = 20  # Just a magic number
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
@@ -57,6 +77,19 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.schedule_mode = user_defined_strategy.pipeline_configs[
             'schedule_mode'
         ]
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(PipelineOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+        self.micro_batch_size = user_defined_strategy.pipeline_configs[
+            'micro_batch_size']
+        self.num_microbatches = user_defined_strategy.pipeline_configs[
+            'accumulate_steps']
+        self.schedule_mode = user_defined_strategy.pipeline_configs[
+            'schedule_mode']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.use_sharding = user_defined_strategy.sharding
 
     def _can_apply(self):
@@ -67,7 +100,11 @@ class PipelineOptimizer(MetaOptimizerBase):
         if self.use_sharding:
             return False
 
+<<<<<<< HEAD
         if self.user_defined_strategy.pipeline:
+=======
+        if self.user_defined_strategy.pipeline == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return True
         return False
 
@@ -94,6 +131,7 @@ class PipelineOptimizer(MetaOptimizerBase):
             if param.is_distributed:
                 continue
 
+<<<<<<< HEAD
             block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -113,6 +151,25 @@ class PipelineOptimizer(MetaOptimizerBase):
             outputs={'Out': param},
             attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Forward},
         )
+=======
+            block.append_op(type='c_broadcast',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': ring_id,
+                                'root': 0,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+
+        if not param: return  # no parameter on this device
+        block.append_op(type='c_sync_comm_stream',
+                        inputs={'X': param},
+                        outputs={'Out': param},
+                        attrs={
+                            'ring_id': ring_id,
+                            OP_ROLE_KEY: OpRole.Forward
+                        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _get_process_group_info(self):
         # global ring info
@@ -134,6 +191,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         self._get_process_group_info()
         collective_helper = CollectiveHelper(self.role_maker, wait_port=False)
         # Create global ring for all gpus (ring_id = 0)
+<<<<<<< HEAD
         collective_helper._init_communicator(
             self.startup_program,
             self.current_endpoint,
@@ -144,6 +202,14 @@ class PipelineOptimizer(MetaOptimizerBase):
             self.global_ring_id,
             True,
         )
+=======
+        collective_helper._init_communicator(self.startup_program,
+                                             self.current_endpoint,
+                                             self.global_endpoints,
+                                             self.global_rank,
+                                             self.global_ring_id, True,
+                                             self.global_ring_id, True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # Create pipeline rings
         if self.inner_parallelism > 1:
             pipeline_id = self.rank // self.inner_parallelism
@@ -156,6 +222,7 @@ class PipelineOptimizer(MetaOptimizerBase):
                 second_node = pair[1] + start_index
                 if self.rank != first_node and self.rank != second_node:
                     collective_helper._init_communicator(
+<<<<<<< HEAD
                         self.startup_program,
                         None,
                         None,
@@ -182,10 +249,27 @@ class PipelineOptimizer(MetaOptimizerBase):
                     self.global_ring_id,
                     True,
                 )
+=======
+                        self.startup_program, None, None, None, None, False,
+                        self.global_ring_id, True)
+                    continue
+                pipeline_endpoints = [
+                    self.endpoints[first_node], self.endpoints[second_node]
+                ]
+                pipeline_rank = 0 if self.rank == first_node else 1
+                pipeline_nranks = 2
+                collective_helper._init_communicator(self.startup_program,
+                                                     self.current_endpoint,
+                                                     pipeline_endpoints,
+                                                     pipeline_rank, ring_id,
+                                                     False, self.global_ring_id,
+                                                     True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # Create dp rings
         if self.pipeline_num > 1:
             collective_helper._init_communicator(
+<<<<<<< HEAD
                 self.startup_program,
                 self.current_endpoint,
                 self.dp_endpoints,
@@ -200,11 +284,23 @@ class PipelineOptimizer(MetaOptimizerBase):
     def minimize_impl(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
+=======
+                self.startup_program, self.current_endpoint, self.dp_endpoints,
+                self.dp_rank, self.dp_ring_id, True, self.global_ring_id, True)
+            self._broadcast_params(self.dp_ring_id)
+
+    def minimize_impl(self,
+                      loss,
+                      startup_program=None,
+                      parameter_list=None,
+                      no_grad_set=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.endpoints = self.role_maker._get_trainer_endpoints()
         self.current_endpoint = self.endpoints[self.role_maker._worker_index()]
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
 
+<<<<<<< HEAD
         self.wrapped_opt = PO(
             self.inner_opt, num_microbatches=self.num_microbatches
         )
@@ -212,6 +308,11 @@ class PipelineOptimizer(MetaOptimizerBase):
             startup_program
             if startup_program
             else paddle.static.default_startup_program()
+=======
+        self.wrapped_opt = PO(self.inner_opt,
+                              num_microbatches=self.num_microbatches)
+        orig_startup_program = startup_program if startup_program else fluid.default_startup_program(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
         block = loss.block
         program = block.program
@@ -225,6 +326,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         program._pipeline_opt['use_sharding'] = False
         program._pipeline_opt['mp_degree'] = 1
         program._pipeline_opt['mp_rank'] = 0
+<<<<<<< HEAD
         (
             optimize_ops,
             params_grads,
@@ -237,6 +339,12 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.startup_program = orig_startup_program._pipeline_opt[
             'startup_program'
         ]
+=======
+        optimize_ops, params_grads, prog_list, pp_pair, ring_map = self.wrapped_opt.minimize(
+            loss, startup_program, parameter_list, no_grad_set)
+        self.startup_program = orig_startup_program._pipeline_opt[
+            'startup_program']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inner_parallelism = program._pipeline_opt['inner_parallelism']
         assert self.nranks % self.inner_parallelism == 0
         assert prog_list
@@ -263,6 +371,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_loss_grad_op(op):
                 loss_grad_var = block.vars[op.output_arg_names[0]]
+<<<<<<< HEAD
                 block._insert_op(
                     idx + 1,
                     type='scale',
@@ -278,6 +387,20 @@ class PipelineOptimizer(MetaOptimizerBase):
         block = self.main_program._pipeline_opt[
             'section_program'
         ].global_block()
+=======
+                block._insert_op(idx + 1,
+                                 type='scale',
+                                 inputs={'X': loss_grad_var},
+                                 outputs={'Out': loss_grad_var},
+                                 attrs={
+                                     'scale': 1.0 / pipeline_num,
+                                     OP_ROLE_KEY: OpRole.Backward
+                                 })
+
+    def _insert_allreduce_ops(self, ring_id):
+        block = self.main_program._pipeline_opt['section_program'].global_block(
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         origin_block = self.main_program.global_block()
         grad = None
         processed_param_name = set()
@@ -286,9 +409,15 @@ class PipelineOptimizer(MetaOptimizerBase):
             if is_backward_op(op) and not first_optimize_op_idx:
                 first_optimize_op_idx = idx + 1
                 # no optimize phase
+<<<<<<< HEAD
                 if first_optimize_op_idx == len(block.ops):
                     return
             if is_backward_op(op) and OP_ROLE_VAR_KEY in op.attr_names:
+=======
+                if first_optimize_op_idx == len(block.ops): return
+            if is_backward_op(op) and \
+                    OP_ROLE_VAR_KEY in op.attr_names:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
                 if len(op_role_var) == 0:
                     continue
@@ -297,17 +426,25 @@ class PipelineOptimizer(MetaOptimizerBase):
                 for i in range(0, len(op_role_var), 2):
                     param_name = op_role_var[i]
                     param = block.vars[op_role_var[i]]
+<<<<<<< HEAD
                     if param_name in processed_param_name:
                         continue
                     processed_param_name.add(param_name)
                     grad_name = op_role_var[i + 1]
                     if 'MERGED' not in grad_name:
                         grad_name += '@MERGED'
+=======
+                    if param_name in processed_param_name: continue
+                    processed_param_name.add(param_name)
+                    grad_name = op_role_var[i + 1]
+                    if not 'MERGED' in grad_name: grad_name += '@MERGED'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     grad = block.vars[grad_name]
                     origin_param = origin_block.vars[op_role_var[i]]
                     if origin_param.is_distributed:
                         continue
 
+<<<<<<< HEAD
                     block._insert_op(
                         first_optimize_op_idx + offset,
                         type='c_allreduce_sum',
@@ -319,3 +456,14 @@ class PipelineOptimizer(MetaOptimizerBase):
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
+=======
+                    block._insert_op(first_optimize_op_idx + offset,
+                                     type='c_allreduce_sum',
+                                     inputs={'X': grad},
+                                     outputs={'Out': grad},
+                                     attrs={
+                                         'ring_id': ring_id,
+                                         'use_calc_stream': True,
+                                         OP_ROLE_KEY: OpRole.Optimize
+                                     })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -18,7 +18,11 @@ foreach(src ${OPS})
 endforeach()
 
 if(WITH_GLOO)
+<<<<<<< HEAD
   set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper comm_context_manager)
+=======
+  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 register_operators(
@@ -34,8 +38,12 @@ register_operators(
   ${COLLECTIVE_DEPS})
 
 if(WITH_NCCL OR WITH_RCCL)
+<<<<<<< HEAD
   set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper
                       comm_context_manager nccl_comm_context)
+=======
+  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op_library(c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
   op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()

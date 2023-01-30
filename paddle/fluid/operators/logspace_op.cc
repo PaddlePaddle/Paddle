@@ -28,9 +28,15 @@ class LogspaceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -54,11 +60,19 @@ class LogspaceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype", "The output data type.");
     AddOutput("Out", "A sequence of numbers.");
     AddComment(R"DOC(
+<<<<<<< HEAD
         Return fixed number of logarithmical-evenly spaced values within a given
         interval. First entry is exponential of Start with base Base, and last
         entry is exponential of Stop with base Base. In the case when Num is 1,
         only exponential of Start with base Base is returned. If dtype is int32
         or int64, the decimal part of values will be truncated.
+=======
+        Return fixed number of logarithmical-evenly spaced values within a given 
+        interval. First entry is exponential of Start with base Base, and last 
+        entry is exponential of Stop with base Base. In the case when Num is 1, 
+        only exponential of Start with base Base is returned. If dtype is int32 
+        or int64, the decimal part of values will be truncated. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Like logspace function of numpy.
     )DOC");
   }

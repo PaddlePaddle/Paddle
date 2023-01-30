@@ -12,16 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
 import numpy as np
+=======
+import unittest
+import numpy as np
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append("../")
 from op_test import OpTest
 
 
 class TestSequenceScatterOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_lod(self):
         return [[30, 50, 40]]
 
@@ -45,7 +55,11 @@ class TestSequenceScatterOp(OpTest):
         self.inputs = {
             'X': X_data,
             'Ids': (Ids_data, Ids_lod),
+<<<<<<< HEAD
             'Updates': (Updates_data, Updates_lod),
+=======
+            'Updates': (Updates_data, Updates_lod)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': Out_data}
 
@@ -57,31 +71,55 @@ class TestSequenceScatterOp(OpTest):
 
 
 class TestSequenceScatterOpSeqLen0(TestSequenceScatterOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_lod(self):
         return [[60, 60, 00]]
 
 
 class TestSequenceScatterOpSeqLen0Case1(TestSequenceScatterOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_lod(self):
         return [[0, 60, 60]]
 
 
 class TestSequenceScatterOpSeqLen0Case2(TestSequenceScatterOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_lod(self):
         return [[60, 0, 60]]
 
 
 class TestSequenceScatterOpSeqLen0Case3(TestSequenceScatterOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_lod(self):
         return [[120, 0, 0]]
 
 
 class TestSequenceScatterOpSeqLen0Case4(TestSequenceScatterOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_lod(self):
         return [[0, 120, 0]]
 
 
 class TestSequenceScatterOpSeqLen0Case5(TestSequenceScatterOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_lod(self):
         return [[0, 0, 120]]
 

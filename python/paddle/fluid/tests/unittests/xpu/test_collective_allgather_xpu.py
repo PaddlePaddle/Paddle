@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -27,33 +28,67 @@ from xpu.get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+=======
+from __future__ import print_function
+import unittest
+import paddle
+from paddle.fluid import core
+
+from test_collective_base_xpu import TestDistBase
+
+import sys
+
+sys.path.append("..")
+
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestCAllgatherOP(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'c_allgather'
         self.use_dynamic_create_class = False
 
     class TestCAllgatherOp(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def _setup_config(self):
             pass
 
         def test_allgather(self):
+<<<<<<< HEAD
             self.check_with_place(
                 "collective_allgather_op_xpu.py", "allgather", self.in_type_str
             )
+=======
+            self.check_with_place("collective_allgather_op_xpu.py", "allgather",
+                                  self.in_type_str)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 support_types = get_xpu_op_support_types('c_allgather')
 for stype in support_types:
+<<<<<<< HEAD
     create_test_class(
         globals(),
         XPUTestCAllgatherOP,
         stype,
         ignore_device_version=[core.XPUVersion.XPU1],
     )
+=======
+    create_test_class(globals(),
+                      XPUTestCAllgatherOP,
+                      stype,
+                      ignore_device_version=[core.XPUVersion.XPU1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

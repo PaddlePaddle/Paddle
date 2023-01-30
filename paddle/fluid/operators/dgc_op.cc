@@ -45,6 +45,7 @@ class DGCOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
@@ -54,6 +55,15 @@ class DGCOp : public framework::OperatorWithKernel {
       return phi::KernelKey(phi::Backend::ALL_BACKEND,
                             expected_kernel_type.layout(),
                             expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "current_step" || var_name == "k" || var_name == "nranks") {
+      VLOG(10) << "var_name:" << var_name << " need not to transform";
+      return expected_kernel_type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     return framework::OperatorWithKernel::GetKernelTypeForVar(
@@ -128,10 +138,17 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
     This optimizer will do two things:
+<<<<<<< HEAD
 
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
 
+=======
+        
+        1. Compress the gradient by get TopK import value from tensor \
+            and use it for allreduce to reduce network bandwidth.
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         2. Call momentum to optimize on the cost.
 
 )DOC");

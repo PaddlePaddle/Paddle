@@ -12,16 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 
 import numpy as np
 from scipy.special import expit, erf
 
+<<<<<<< HEAD
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
     skip_check_grad_ci,
 )
+=======
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -33,7 +41,13 @@ paddle.enable_static()
 
 
 def test_class(op_type, typename):
+<<<<<<< HEAD
     class TestSin(OpTest):
+=======
+
+    class TestSin(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "sin"
             self.__class__.use_npu = True
@@ -55,11 +69,19 @@ def test_class(op_type, typename):
         def test_out_name(self):
             with fluid.program_guard(fluid.Program()):
                 np_x = np.array([0.1])
+<<<<<<< HEAD
                 data = paddle.static.data(name="X", shape=[-1, 1])
                 out = eval("paddle.%s(data, name='Y')" % self.op_type)
                 place = fluid.NPUPlace(0)
                 exe = fluid.Executor(place)
                 (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
+=======
+                data = fluid.layers.data(name="X", shape=[1])
+                out = eval("paddle.%s(data, name='Y')" % self.op_type)
+                place = fluid.NPUPlace(0)
+                exe = fluid.Executor(place)
+                result, = exe.run(feed={"X": np_x}, fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 expected = eval("np.%s(np_x)" % self.op_type)
                 self.assertEqual(result, expected)
 

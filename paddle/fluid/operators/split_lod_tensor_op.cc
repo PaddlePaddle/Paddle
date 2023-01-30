@@ -52,12 +52,21 @@ class SplitLoDTensorOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+<<<<<<< HEAD
     auto &x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
     auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
     auto *out_true =
         scope.FindVar(Output("OutTrue"))->GetMutable<phi::DenseTensor>();
     auto *out_false =
         scope.FindVar(Output("OutFalse"))->GetMutable<phi::DenseTensor>();
+=======
+    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
+    auto *out_true =
+        scope.FindVar(Output("OutTrue"))->GetMutable<framework::LoDTensor>();
+    auto *out_false =
+        scope.FindVar(Output("OutFalse"))->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto level = static_cast<size_t>(Attr<int>("level"));
     auto &x_lod = x.lod();
     auto &mask_dim = mask.dims();
@@ -65,7 +74,11 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
+<<<<<<< HEAD
     std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
+=======
+    std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
@@ -107,7 +120,11 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     }
 
     for (size_t t = 0; t < 2; ++t) {
+<<<<<<< HEAD
       phi::DenseTensor *out;
+=======
+      framework::LoDTensor *out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (t == 0) {
         out = out_false;
       } else {
@@ -145,20 +162,35 @@ class SplitLoDTensorOp : public framework::OperatorBase {
 class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("X", "The input phi::DenseTensor");
     AddInput("Mask", "A bool column vector which mask the input");
     AddOutput("OutTrue", "True branch of input phi::DenseTensor");
     AddOutput("OutFalse", "False branch of input phi::DenseTensor");
+=======
+    AddInput("X", "The input LoDTensor");
+    AddInput("Mask", "A bool column vector which mask the input");
+    AddOutput("OutTrue", "True branch of input LoDTensor");
+    AddOutput("OutFalse", "False branch of input LoDTensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<int>("level", "(int) the specific lod level to split.")
         .SetDefault(0)
         .EqualGreaterThan(0);
     AddComment(
         R"DOC(
+<<<<<<< HEAD
         Split a phi::DenseTensor with a Mask at certain level. The input phi::DenseTensor
         has 3 sequence at certain lod level. The Mask is a bool column vector,
         such as [0, 1, 0] at the same level. The first and third sequence will
         be send to False Output phi::DenseTensor; whereas the second sequence will
         be send to True Output phi::DenseTensor. Please refer to MergeLoDTensorOp.)DOC");
+=======
+        Split a LoDTensor with a Mask at certain level. The input LoDTensor
+        has 3 sequence at certain lod level. The Mask is a bool column vector,
+        such as [0, 1, 0] at the same level. The first and third sequence will
+        be send to False Output LoDTensor; whereas the second sequence will
+        be send to True Output LoDTensor. Please refer to MergeLoDTensorOp.)DOC");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

@@ -21,8 +21,13 @@ template <typename T>
 class Flatten2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *in = context.Input<phi::DenseTensor>("X");
     auto *out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto *in = context.Input<framework::LoDTensor>("X");
+    auto *out = context.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto &axis = context.Attr<int>("axis");
     out->mutable_data(context.GetPlace(), in->type());
     framework::NPUAttributeMap attr_input = {{"axis", axis}};
@@ -39,10 +44,18 @@ template <typename T>
 class Flatten2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
+=======
+    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *d_out =
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+
+    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
@@ -55,12 +68,22 @@ class Flatten2GradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class FlattenContiguousRangeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *X = ctx.Input<phi::DenseTensor>("X");
     auto *Out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto *X = ctx.Input<Tensor>("X");
+    auto *Out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int start_axis = ctx.Attr<int>("start_axis");
     int stop_axis = ctx.Attr<int>("stop_axis");
 
@@ -83,10 +106,18 @@ template <typename DeviceContext, typename T>
 class FlattenContiguousRangeGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
+=======
+    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *d_out =
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+
+    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());

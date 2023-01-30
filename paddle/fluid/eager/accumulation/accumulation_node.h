@@ -46,7 +46,11 @@ class GradNodeAccumulation : public GradNodeBase {
 
   void ClearTensorWrappers() override { VLOG(5) << "Do nothing here now"; }
 
+<<<<<<< HEAD
   std::string name() override { return "GradNodeAccumulation"; }
+=======
+  std::string name() { return "GradNodeAccumulation"; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   /**
    * Register ReduceHook

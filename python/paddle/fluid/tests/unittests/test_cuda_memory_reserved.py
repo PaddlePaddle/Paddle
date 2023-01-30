@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
@@ -20,6 +21,18 @@ from paddle.fluid import core
 
 
 class TestMemoryreserved(unittest.TestCase):
+=======
+import paddle
+import unittest
+import numpy as np
+from paddle.fluid import core
+from paddle.device.cuda import device_count, memory_reserved
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+
+
+class TestMemoryreserved(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def func_test_memory_reserved(self, device=None):
         if core.is_compiled_with_cuda():
             tensor = paddle.zeros(shape=[256])
@@ -27,7 +40,16 @@ class TestMemoryreserved(unittest.TestCase):
             memory_reserved_size = memory_reserved(device)
             self.assertEqual(memory_reserved_size, alloc_size)
 
+<<<<<<< HEAD
     def test_memory_reserved_for_all_places(self):
+=======
+    def test_memory_reserved(self):
+        with _test_eager_guard():
+            self.func_test_memory_reserved()
+        self.func_test_memory_reserved()
+
+    def func_test_memory_reserved_for_all_places(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if core.is_compiled_with_cuda():
             gpu_num = device_count()
             for i in range(gpu_num):
@@ -36,6 +58,7 @@ class TestMemoryreserved(unittest.TestCase):
                 self.func_test_memory_reserved(i)
                 self.func_test_memory_reserved("gpu:" + str(i))
 
+<<<<<<< HEAD
     def test_memory_reserved_exception(self):
         if core.is_compiled_with_cuda():
             wrong_device = [
@@ -45,6 +68,18 @@ class TestMemoryreserved(unittest.TestCase):
                 0.5,
                 "gpu1",
                 "npu",
+=======
+    def test_memory_reserved_for_all_places(self):
+        with _test_eager_guard():
+            self.func_test_memory_reserved_for_all_places()
+        self.func_test_memory_reserved_for_all_places()
+
+    def func_test_memory_reserved_exception(self):
+        if core.is_compiled_with_cuda():
+            wrong_device = [
+                core.CPUPlace(),
+                device_count() + 1, -2, 0.5, "gpu1", "npu"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
             for device in wrong_device:
                 with self.assertRaises(BaseException):
@@ -53,6 +88,14 @@ class TestMemoryreserved(unittest.TestCase):
             with self.assertRaises(BaseException):
                 memory_reserved()
 
+<<<<<<< HEAD
+=======
+    def test_memory_reserved_exception(self):
+        with _test_eager_guard():
+            self.func_test_memory_reserved_exception()
+        self.func_test_memory_reserved_exception()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == "__main__":
     unittest.main()

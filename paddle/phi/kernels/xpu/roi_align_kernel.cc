@@ -137,7 +137,11 @@ void RoiAlignKernel(const Context& dev_ctx,
                              sampling_ratio,
                              true,
                              aligned);
+<<<<<<< HEAD
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "roi_align");
+=======
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "roi_align_grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (dev_ctx.x_context()->xpu_stream) {
     dev_ctx.Wait();
   }

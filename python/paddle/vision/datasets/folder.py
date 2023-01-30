@@ -13,7 +13,11 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 
+=======
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from PIL import Image
 
 import paddle
@@ -33,9 +37,14 @@ def has_valid_extension(filename, extensions):
     Returns:
         bool: True if the filename ends with one of given extensions
     """
+<<<<<<< HEAD
     assert isinstance(
         extensions, (list, tuple)
     ), "`extensions` must be list or tuple."
+=======
+    assert isinstance(extensions,
+                      (list, tuple)), ("`extensions` must be list or tuple.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     extensions = tuple([x.lower() for x in extensions])
     return filename.lower().endswith(extensions)
 
@@ -200,6 +209,7 @@ class DatasetFolder(Dataset):
             shutil.rmtree(fake_data_dir)
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         root,
@@ -208,11 +218,20 @@ class DatasetFolder(Dataset):
         transform=None,
         is_valid_file=None,
     ):
+=======
+    def __init__(self,
+                 root,
+                 loader=None,
+                 extensions=None,
+                 transform=None,
+                 is_valid_file=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.root = root
         self.transform = transform
         if extensions is None:
             extensions = IMG_EXTENSIONS
         classes, class_to_idx = self._find_classes(self.root)
+<<<<<<< HEAD
         samples = make_dataset(
             self.root, class_to_idx, extensions, is_valid_file
         )
@@ -223,6 +242,15 @@ class DatasetFolder(Dataset):
                     "Supported extensions are: " + ",".join(extensions)
                 )
             )
+=======
+        samples = make_dataset(self.root, class_to_idx, extensions,
+                               is_valid_file)
+        if len(samples) == 0:
+            raise (RuntimeError("Found 0 directories in subfolders of: " +
+                                self.root + "\n"
+                                "Supported extensions are: " +
+                                ",".join(extensions)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.loader = default_loader if loader is None else loader
         self.extensions = extensions
@@ -242,11 +270,26 @@ class DatasetFolder(Dataset):
             dir (string): Root directory path.
 
         Returns:
+<<<<<<< HEAD
             tuple: (classes, class_to_idx) where classes are relative to (dir),
                     and class_to_idx is a dictionary.
 
         """
         classes = [d.name for d in os.scandir(dir) if d.is_dir()]
+=======
+            tuple: (classes, class_to_idx) where classes are relative to (dir), 
+                    and class_to_idx is a dictionary.
+
+        """
+        if sys.version_info >= (3, 5):
+            # Faster and available in Python 3.5 and above
+            classes = [d.name for d in os.scandir(dir) if d.is_dir()]
+        else:
+            classes = [
+                d for d in os.listdir(dir)
+                if os.path.isdir(os.path.join(dir, d))
+            ]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         classes.sort()
         class_to_idx = {classes[i]: i for i in range(len(classes))}
         return classes, class_to_idx
@@ -270,6 +313,7 @@ class DatasetFolder(Dataset):
         return len(self.samples)
 
 
+<<<<<<< HEAD
 IMG_EXTENSIONS = (
     '.jpg',
     '.jpeg',
@@ -281,6 +325,10 @@ IMG_EXTENSIONS = (
     '.tiff',
     '.webp',
 )
+=======
+IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif',
+                  '.tiff', '.webp')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def pil_loader(path):
@@ -296,7 +344,10 @@ def cv2_loader(path):
 
 def default_loader(path):
     from paddle.vision import get_image_backend
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if get_image_backend() == 'cv2':
         return cv2_loader(path)
     else:
@@ -421,6 +472,7 @@ class ImageFolder(Dataset):
                 # <class 'paddle.Tensor'> [3, 64, 64]
 
             shutil.rmtree(fake_data_dir)
+<<<<<<< HEAD
     """
 
     def __init__(
@@ -431,6 +483,16 @@ class ImageFolder(Dataset):
         transform=None,
         is_valid_file=None,
     ):
+=======
+     """
+
+    def __init__(self,
+                 root,
+                 loader=None,
+                 extensions=None,
+                 transform=None,
+                 is_valid_file=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.root = root
         if extensions is None:
             extensions = IMG_EXTENSIONS
@@ -450,12 +512,19 @@ class ImageFolder(Dataset):
                     samples.append(f)
 
         if len(samples) == 0:
+<<<<<<< HEAD
             raise (
                 RuntimeError(
                     "Found 0 files in subfolders of: " + self.root + "\n"
                     "Supported extensions are: " + ",".join(extensions)
                 )
             )
+=======
+            raise (RuntimeError("Found 0 files in subfolders of: " + self.root +
+                                "\n"
+                                "Supported extensions are: " +
+                                ",".join(extensions)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.loader = default_loader if loader is None else loader
         self.extensions = extensions

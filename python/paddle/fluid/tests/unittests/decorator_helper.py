@@ -12,13 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 
 __all__ = ['many_times', 'prog_scope']
 
 
 def many_times(times):
+<<<<<<< HEAD
     def __impl__(fn):
+=======
+
+    def __impl__(fn):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def __fn__(*args, **kwargs):
             for _ in range(times):
                 fn(*args, **kwargs)
@@ -29,7 +40,13 @@ def many_times(times):
 
 
 def prog_scope():
+<<<<<<< HEAD
     def __impl__(fn):
+=======
+
+    def __impl__(fn):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def __fn__(*args, **kwargs):
             prog = fluid.Program()
             startup_prog = fluid.Program()

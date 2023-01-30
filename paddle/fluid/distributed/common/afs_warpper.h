@@ -66,10 +66,13 @@ class FsReadChannel {
     return 0;
   }
 
+<<<<<<< HEAD
   inline int read(char* data, size_t size) {
     return fread(data, 1, size, _file.get());
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   uint32_t _buffer_size;
   FsChannelConfig _config;
@@ -118,6 +121,7 @@ class FsWriteChannel {
     return write_line(data.c_str(), data.size());
   }
 
+<<<<<<< HEAD
   inline uint32_t write(const char* data, size_t size) {
     size_t write_count = fwrite(data, 1, size, _file.get());
     if (write_count != size) {
@@ -126,6 +130,8 @@ class FsWriteChannel {
     return 0;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   uint32_t _buffer_size;
   FsChannelConfig _config;

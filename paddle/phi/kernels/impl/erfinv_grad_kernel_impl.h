@@ -13,6 +13,12 @@
 // limitations under the License.
 
 #pragma once
+<<<<<<< HEAD
+=======
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES  // use M_2_SQRTPI on Windows
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

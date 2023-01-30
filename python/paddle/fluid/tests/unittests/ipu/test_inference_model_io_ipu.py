@@ -16,13 +16,20 @@ import tempfile
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -60,12 +67,17 @@ class TestBase(IPUOpTest):
         startup_prog.random_seed = self.SEED
         generator = paddle.fluid.unique_name.UniqueNameGenerator()
         self.full_name = '/'.join(
+<<<<<<< HEAD
             [self.attrs['path'].name, self.attrs['model_name']]
         )
+=======
+            [self.attrs['path'].name, self.attrs['model_name']])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         with paddle.fluid.unique_name.guard(generator):
             with paddle.static.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                     x = paddle.static.data(
                         name=self.feed_list[0],
                         shape=self.feed_shape[0],
@@ -78,6 +90,16 @@ class TestBase(IPUOpTest):
                         bias_attr=False,
                         name='conv2d',
                     )
+=======
+                    x = paddle.static.data(name=self.feed_list[0],
+                                           shape=self.feed_shape[0],
+                                           dtype='float32')
+                    conv1 = paddle.static.nn.conv2d(x,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False,
+                                                    name='conv2d')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     loss = paddle.mean(conv1)
 
                     if self.attrs['is_training']:
@@ -98,6 +120,7 @@ class TestBase(IPUOpTest):
 
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(
+<<<<<<< HEAD
                     is_training=self.attrs['is_training']
                 )
                 program = paddle.static.IpuCompiledProgram(
@@ -114,6 +137,26 @@ class TestBase(IPUOpTest):
                 paddle.static.save_inference_model(
                     self.full_name, x, loss, exe, program=program.org_program
                 )
+=======
+                    is_training=self.attrs['is_training'])
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(self.feed_list,
+                                                       fetch_list)
+
+                result = []
+                for i in range(self.attrs['steps']):
+                    tmp = exe.run(program,
+                                  feed=self.feed,
+                                  fetch_list=fetch_list)
+                    result.append(tmp)
+
+                paddle.static.save_inference_model(self.full_name,
+                                                   x,
+                                                   loss,
+                                                   exe,
+                                                   program=program.org_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _test_load(self, run_ipu):
         if run_ipu:
@@ -122,11 +165,16 @@ class TestBase(IPUOpTest):
             place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
+<<<<<<< HEAD
         [
             inference_program,
             feed_target_names,
             fetch_targets,
         ] = paddle.static.load_inference_model(self.full_name, exe)
+=======
+        [inference_program, feed_target_names, fetch_targets
+         ] = (paddle.static.load_inference_model(self.full_name, exe))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if run_ipu:
             feed_list = feed_target_names
@@ -134,8 +182,13 @@ class TestBase(IPUOpTest):
             ipu_strategy = paddle.static.IpuStrategy()
             ipu_strategy.set_graph_config(is_training=False)
             program = paddle.static.IpuCompiledProgram(
+<<<<<<< HEAD
                 inference_program, ipu_strategy=ipu_strategy
             ).compile(feed_list, fetch_list)
+=======
+                inference_program,
+                ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             program = inference_program
 
@@ -153,6 +206,10 @@ class TestBase(IPUOpTest):
 
 
 class TestAdam(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
@@ -163,6 +220,10 @@ class TestAdam(TestBase):
 
 
 class TestLamb(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100

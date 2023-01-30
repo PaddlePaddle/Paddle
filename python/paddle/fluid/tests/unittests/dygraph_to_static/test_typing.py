@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import tempfile
+<<<<<<< HEAD
 import unittest
 from typing import Dict, List, Tuple
 
@@ -24,6 +25,18 @@ import paddle
 class BaseLayer(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
         super().__init__()
+=======
+import paddle
+import unittest
+import numpy as np
+from typing import Tuple, List, Dict, TypeVar
+
+
+class BaseLayer(paddle.nn.Layer):
+
+    def __init__(self, in_size, out_size):
+        super(BaseLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._linear = paddle.nn.Linear(in_size, out_size)
 
     def build(self, x):
@@ -33,8 +46,14 @@ class BaseLayer(paddle.nn.Layer):
 
 
 class LinearNetWithTuple(BaseLayer):
+<<<<<<< HEAD
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
+=======
+
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithTuple, self).__init__(in_size, out_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x) -> Tuple[paddle.Tensor, str]:
         out1, out2 = self.build(x)
@@ -42,8 +61,14 @@ class LinearNetWithTuple(BaseLayer):
 
 
 class LinearNetWithTuple2(BaseLayer):
+<<<<<<< HEAD
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
+=======
+
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithTuple2, self).__init__(in_size, out_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x) -> Tuple[paddle.Tensor, np.array]:
         out1, out2 = self.build(x)
@@ -51,8 +76,14 @@ class LinearNetWithTuple2(BaseLayer):
 
 
 class LinearNetWithList(BaseLayer):
+<<<<<<< HEAD
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
+=======
+
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithList, self).__init__(in_size, out_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x) -> List[paddle.Tensor]:
         out1, out2 = self.build(x)
@@ -60,8 +91,14 @@ class LinearNetWithList(BaseLayer):
 
 
 class LinearNetWithDict(BaseLayer):
+<<<<<<< HEAD
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
+=======
+
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithDict, self).__init__(in_size, out_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x) -> Dict[str, paddle.Tensor]:
         out1, out2 = self.build(x)
@@ -69,6 +106,10 @@ class LinearNetWithDict(BaseLayer):
 
 
 class TestTyping(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -101,6 +142,10 @@ class TestTyping(unittest.TestCase):
 
 
 class TestTypingTuple(TestTyping):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def build_net(self):
         return LinearNetWithTuple2(self.in_num, self.out_num)
 
@@ -111,6 +156,10 @@ class TestTypingTuple(TestTyping):
 
 
 class TestTypingList(TestTyping):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def build_net(self):
         return LinearNetWithList(self.in_num, self.out_num)
 
@@ -120,6 +169,10 @@ class TestTypingList(TestTyping):
 
 
 class TestTypingDict(TestTyping):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def build_net(self):
         return LinearNetWithDict(self.in_num, self.out_num)
 

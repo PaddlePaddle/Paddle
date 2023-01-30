@@ -56,9 +56,12 @@ void Copy(const Context& dev_ctx,
   void* dst_ptr = nullptr;
   if (paddle::platform::is_cpu_place(dst_place)) {
     dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_MKLDNN
     dst->set_layout(src.layout());
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (paddle::platform::is_gpu_place(dst_place) ||
              paddle::platform::is_cuda_pinned_place(dst_place)) {
@@ -84,7 +87,11 @@ void Copy(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       dst->place(),
       dst_place,
+<<<<<<< HEAD
       errors::Unavailable(
+=======
+      phi::errors::Unavailable(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           "The Dst Tensor's place and dst_place do not match, Tensor's place "
           "place is %s, dst_place is %s.",
           dst->place(),
@@ -115,13 +122,21 @@ void Copy(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
         true,
+<<<<<<< HEAD
         errors::PreconditionNotMet(
+=======
+        phi::errors::PreconditionNotMet(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
+<<<<<<< HEAD
                       errors::Unavailable(
+=======
+                      phi::errors::Unavailable(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           "Source place and context place do not match, source "
                           "place is %s, context place is %s.",
                           src_gpu_place,
@@ -140,6 +155,7 @@ void Copy(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
         true,
+<<<<<<< HEAD
         errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
@@ -151,6 +167,19 @@ void Copy(const Context& dev_ctx,
                             "destination place is %s, context place is %s.",
                             dst_gpu_place,
                             ctx_gpu_place));
+=======
+        phi::errors::PreconditionNotMet(
+            "Context place error, excepted GPUPlace, but actually %s.",
+            ctx_place));
+    auto ctx_gpu_place = ctx_place;
+    PADDLE_ENFORCE_EQ(dst_gpu_place,
+                      ctx_gpu_place,
+                      phi::errors::Unavailable(
+                          "Destination place and context place do not match, "
+                          "destination place is %s, context place is %s.",
+                          dst_gpu_place,
+                          ctx_gpu_place));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto stream =
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
@@ -164,7 +193,11 @@ void Copy(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
         true,
+<<<<<<< HEAD
         errors::PreconditionNotMet(
+=======
+        phi::errors::PreconditionNotMet(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto stream =
@@ -187,7 +220,11 @@ void Copy(const Context& dev_ctx,
         paddle::memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
       } else {
+<<<<<<< HEAD
         PADDLE_THROW(errors::Unavailable(
+=======
+        PADDLE_THROW(phi::errors::Unavailable(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "Context place dose not match the source and destination place."));
       }
     }
@@ -199,13 +236,21 @@ void Copy(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
         true,
+<<<<<<< HEAD
         errors::PreconditionNotMet(
+=======
+        phi::errors::PreconditionNotMet(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
+<<<<<<< HEAD
                       errors::Unavailable(
+=======
+                      phi::errors::Unavailable(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           "Source place and context place do not match, source "
                           "place is %s, context place is %s.",
                           src_gpu_place,
@@ -262,7 +307,11 @@ void Copy(const Context& dev_ctx,
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
 #endif
   } else {
+<<<<<<< HEAD
     PADDLE_THROW(errors::Unimplemented(
+=======
+    PADDLE_THROW(phi::errors::Unimplemented(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 }
@@ -414,6 +463,7 @@ template void Copy(const CustomContext& dev_ctx,
                    bool blocking,
                    DenseTensor* dst);
 #endif
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
 template void Copy(const OneDNNContext& dev_ctx,
@@ -422,4 +472,6 @@ template void Copy(const OneDNNContext& dev_ctx,
                    bool blocking,
                    DenseTensor* dst);
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

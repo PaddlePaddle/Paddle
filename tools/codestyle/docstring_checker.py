@@ -13,6 +13,7 @@
 # limitations under the License.
 """DocstringChecker is used to check python doc string's style."""
 
+<<<<<<< HEAD
 import re
 from collections import defaultdict
 
@@ -20,17 +21,37 @@ import astroid
 from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker
 
+=======
+import six
+import astroid
+
+from pylint.checkers import BaseChecker, utils
+from pylint.interfaces import IAstroidChecker
+
+from collections import defaultdict
+import re
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 def register(linter):
     """Register checkers."""
     linter.register_checker(DocstringChecker(linter))
 
 
+<<<<<<< HEAD
 class Docstring:
     """Docstring class holds the parsed doc string elements."""
 
     def __init__(self):
         self.d = defaultdict(list)  # name->[]
+=======
+class Docstring(object):
+    """Docstring class holds the parsed doc string elements.
+    """
+
+    def __init__(self):
+        self.d = defaultdict(list)  #name->[]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.clear()
 
     def clear(self):
@@ -38,7 +59,11 @@ class Docstring:
         self.d['Examples'] = []
         self.d['Returns'] = []
         self.d['Raises'] = []
+<<<<<<< HEAD
         self.args = {}  # arg_name->arg_type
+=======
+        self.args = {}  #arg_name->arg_type
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_level(self, string, indent='    '):
         level = 0
@@ -109,8 +134,12 @@ class DocstringChecker(BaseChecker):
     """DosstringChecker is pylint checker to
     check docstring style.
     """
+<<<<<<< HEAD
 
     __implements__ = (IAstroidChecker,)
+=======
+    __implements__ = (IAstroidChecker, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     POSITIONAL_MESSAGE_ID = 'str-used-on-positional-format-argument'
     KEYWORD_MESSAGE_ID = 'str-used-on-keyword-format-argument'
@@ -119,6 +148,7 @@ class DocstringChecker(BaseChecker):
     symbol = "doc-string"
     priority = -1
     msgs = {
+<<<<<<< HEAD
         'W9001': (
             'One line doc string on > 1 lines',
             symbol + "-one-line",
@@ -154,6 +184,27 @@ class DocstringChecker(BaseChecker):
             symbol + "-with-raises",
             'There should be a `Raises` section in comments',
         ),
+=======
+        'W9001': ('One line doc string on > 1 lines', symbol + "-one-line",
+                  'Used when a short doc string is on multiple lines'),
+        'W9002':
+        ('Doc string does not end with "." period', symbol + "-end-with",
+         'Used when a doc string does not end with a period'),
+        'W9003':
+        ('All args with their types must be mentioned in doc string %s',
+         symbol + "-with-all-args",
+         'Used when not all arguments are in the doc string '),
+        'W9005': ('Missing docstring or docstring is too short',
+                  symbol + "-missing", 'Add docstring longer >=10'),
+        'W9006': ('Docstring indent error, use 4 space for indent',
+                  symbol + "-indent-error", 'Use 4 space for indent'),
+        'W9007':
+        ('You should add `Returns` in comments', symbol + "-with-returns",
+         'There should be a `Returns` section in comments'),
+        'W9008':
+        ('You should add `Raises` section in comments', symbol + "-with-raises",
+         'There should be a `Raises` section in comments'),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     options = ()
 
@@ -336,7 +387,12 @@ class DocstringChecker(BaseChecker):
             return True
         args = []
         for arg in node.args.get_children():
+<<<<<<< HEAD
             if (not isinstance(arg, astroid.AssignName)) or arg.name == "self":
+=======
+            if (not isinstance(arg, astroid.AssignName)) \
+                or arg.name == "self":
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 continue
             args.append(arg.name)
 
@@ -346,16 +402,24 @@ class DocstringChecker(BaseChecker):
         parsed_args = doc.args
         args_not_documented = set(args) - set(parsed_args)
         if len(args) > 0 and len(parsed_args) <= 0:
+<<<<<<< HEAD
             self.add_message(
                 'W9003',
                 node=node,
                 line=node.fromlineno,
                 args=list(args_not_documented),
             )
+=======
+            self.add_message('W9003',
+                             node=node,
+                             line=node.fromlineno,
+                             args=list(args_not_documented))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
 
         for t in args:
             if t not in parsed_args:
+<<<<<<< HEAD
                 self.add_message(
                     'W9003',
                     node=node,
@@ -364,6 +428,14 @@ class DocstringChecker(BaseChecker):
                         t,
                     ],
                 )
+=======
+                self.add_message('W9003',
+                                 node=node,
+                                 line=node.fromlineno,
+                                 args=[
+                                     t,
+                                 ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return False
 
         return True

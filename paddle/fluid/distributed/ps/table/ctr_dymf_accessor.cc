@@ -43,12 +43,15 @@ int CtrDymfAccessor::Initialize() {
   if (_config.ctr_accessor_param().show_scale()) {
     _show_scale = true;
   }
+<<<<<<< HEAD
   for (int i = 0; i < _config.ctr_accessor_param().load_filter_slots_size();
        i++) {
     _filtered_slots.insert(_config.ctr_accessor_param().load_filter_slots(i));
     VLOG(0) << "CtrDymfAccessor::Initialize() load filter slot:"
             << _config.ctr_accessor_param().load_filter_slots(i);
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:"
           << common_feature_value.embed_sgd_dim
           << " embedx_dim:" << common_feature_value.embedx_dim
@@ -110,6 +113,7 @@ bool CtrDymfAccessor::SaveSSD(float* value) {
   return false;
 }
 
+<<<<<<< HEAD
 bool CtrDymfAccessor::FilterSlot(float* value) {
   // 热启时过滤掉_filtered_slots中的feasign
   if (_filtered_slots.find(common_feature_value.Slot(value)) !=
@@ -119,6 +123,8 @@ bool CtrDymfAccessor::FilterSlot(float* value) {
   return false;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool CtrDymfAccessor::Save(float* value, int param) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
@@ -192,8 +198,12 @@ void CtrDymfAccessor::UpdateStatAfterSave(float* value, int param) {
 int32_t CtrDymfAccessor::Create(float** values, size_t num) {
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
+<<<<<<< HEAD
     common_feature_value.UnseenDays(value) = 0;
     common_feature_value.PassId(value) = 0;
+=======
+    value[common_feature_value.UnseenDaysIndex()] = 0;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     value[common_feature_value.DeltaScoreIndex()] = 0;
     value[common_feature_value.ShowIndex()] = 0;
     value[common_feature_value.ClickIndex()] = 0;
@@ -308,8 +318,12 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
+<<<<<<< HEAD
   os << common_feature_value.UnseenDays(const_cast<float*>(v)) << " " << v[1]
      << " " << v[2] << " " << v[3] << " " << v[4];
+=======
+  os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   //    << v[5] << " " << v[6];
   for (int i = common_feature_value.EmbedG2SumIndex();
        i < common_feature_value.EmbedxG2SumIndex();
@@ -319,8 +333,12 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   auto show = common_feature_value.Show(const_cast<float*>(v));
   auto click = common_feature_value.Click(const_cast<float*>(v));
   auto score = ShowClickScore(show, click);
+<<<<<<< HEAD
   auto mf_dim =
       static_cast<int>(common_feature_value.MfDim(const_cast<float*>(v)));
+=======
+  auto mf_dim = int(common_feature_value.MfDim(const_cast<float*>(v)));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
     for (auto i = common_feature_value.EmbedxG2SumIndex();
@@ -334,13 +352,17 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
 
 int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
   auto ret = paddle::string::str_to_float(str.data(), value);
+<<<<<<< HEAD
   float unseen_day = value[common_feature_value.UnseenDaysIndex()];
   common_feature_value.UnseenDays(value) = (uint16_t)(unseen_day);
   common_feature_value.PassId(value) = 0;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CHECK(ret >= 7) << "expect more than 7 real:" << ret;
   return ret;
 }
 
+<<<<<<< HEAD
 bool CtrDymfAccessor::SaveMemCache(float* value,
                                    int param,
                                    double global_cache_threshold,
@@ -353,5 +375,7 @@ void CtrDymfAccessor::UpdatePassId(float* value, uint16_t pass_id) {
   common_feature_value.PassId(value) = pass_id;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace distributed
 }  // namespace paddle

@@ -13,10 +13,19 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 import warnings
 
 import paddle
 from paddle.static.nn import cond
+=======
+import paddle
+import warnings
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    convert_to_static,
+)
+from paddle.fluid.layers.control_flow import cond
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @paddle.jit.to_static

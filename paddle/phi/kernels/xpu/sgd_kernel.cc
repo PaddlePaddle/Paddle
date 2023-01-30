@@ -20,6 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
@@ -28,6 +29,16 @@ void SGDDenseKernel(const Context& dev_ctx,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
+=======
+void SGDDenseKernel(const Context &dev_ctx,
+                    const DenseTensor &param,
+                    const DenseTensor &learning_rate,
+                    const DenseTensor &grad,
+                    const paddle::optional<DenseTensor> &master_param,
+                    bool multi_precision,
+                    DenseTensor *param_out,
+                    DenseTensor *master_param_out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto sz = param_out->numel();
   PADDLE_ENFORCE_EQ(
@@ -49,6 +60,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                               grad.numel(),
                               sz));
 
+<<<<<<< HEAD
   const T* lr_t = learning_rate.data<T>();
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   const float* lr = nullptr;
@@ -75,10 +87,40 @@ void SGDDenseKernel(const Context& dev_ctx,
                    reinterpret_cast<const XPUType*>(param_data),
                    lr,
                    reinterpret_cast<XPUType*>(out_data),
+=======
+  const T *lr_t = learning_rate.data<T>();
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  const float *lr = nullptr;
+  if (std::is_same<T, dtype::float16>::value) {
+    float *lr_float = RAII_GUARD.alloc_l3_or_gm<float>(learning_rate.numel());
+    int r =
+        xpu::cast_v2<XPUType, float>(dev_ctx.x_context(),
+                                     reinterpret_cast<const XPUType *>(lr_t),
+                                     lr_float,
+                                     learning_rate.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
+    lr = lr_float;
+  } else {
+    lr = reinterpret_cast<const float *>(lr_t);
+  }
+
+  const T *param_data = param.data<T>();
+  const T *grad_data = grad.data<T>();
+
+  dev_ctx.template Alloc<T>(param_out);
+  T *out_data = param_out->data<T>();
+
+  int r = xpu::sgd(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType *>(grad_data),
+                   reinterpret_cast<const XPUType *>(param_data),
+                   lr,
+                   reinterpret_cast<XPUType *>(out_data),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    sz);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "sgd");
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void SGDDenseParamSparseGradKernel(
     const Context& dev_ctx,
@@ -139,13 +181,18 @@ void SGDDenseParamSparseGradKernel(
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "sparse_sgd");
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     sgd, XPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::dtype::float16, float) {}
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::SGDDenseParamSparseGradKernel,
                    phi::dtype::float16,
                    float) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

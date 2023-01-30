@@ -17,7 +17,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/slogdeterminant_grad_kernel_impl.h"
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(slogdet_grad,
+=======
+PD_REGISTER_KERNEL(slogdeterminant_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    GPU,
                    ALL_LAYOUT,
                    phi::SlogDeterminantGradKernel,

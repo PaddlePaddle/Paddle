@@ -14,7 +14,12 @@
 
 from .all_gather import all_gather
 from .all_reduce import all_reduce
+<<<<<<< HEAD
 from .all_to_all import alltoall, alltoall_single
+=======
+from .alltoall import alltoall
+from .alltoall_single import alltoall_single
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .broadcast import broadcast
 from .reduce import reduce
 from .reduce_scatter import reduce_scatter
@@ -23,6 +28,7 @@ from .scatter import scatter
 from .send import send
 
 __all__ = [
+<<<<<<< HEAD
     "all_gather",
     "all_reduce",
     "alltoall",
@@ -33,4 +39,8 @@ __all__ = [
     "recv",
     "scatter",
     "send",
+=======
+    "all_gather", "all_reduce", "alltoall", "alltoall_single", "broadcast",
+    "reduce", "reduce_scatter", "recv", "scatter", "send"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

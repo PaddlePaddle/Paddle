@@ -1,5 +1,6 @@
 # compatible utils used for fluid op system
 add_subdirectory(compat)
+<<<<<<< HEAD
 add_subdirectory(distributed)
 
 if(WITH_GPU)
@@ -10,6 +11,8 @@ cc_library(
   flags
   SRCS flags.cc
   DEPS gflags)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 cc_library(errors SRCS errors.cc)
 set(phi_enforce_deps errors flags)
@@ -21,6 +24,7 @@ cc_library(
   SRCS enforce.cc
   DEPS ${phi_enforce_deps})
 
+<<<<<<< HEAD
 if(WITH_XPU)
   cc_library(
     kernel_factory
@@ -32,6 +36,12 @@ else()
     SRCS kernel_factory.cc
     DEPS phi_enforce convert_utils)
 endif()
+=======
+cc_library(
+  kernel_factory
+  SRCS kernel_factory.cc
+  DEPS phi_enforce fluid_convert_utils)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 cc_library(
   kernel_context
   SRCS kernel_context.cc
@@ -53,15 +63,22 @@ cc_library(
   lod_utils
   SRCS lod_utils.cc
   DEPS phi_enforce)
+<<<<<<< HEAD
 cc_library(
   threadpool
   SRCS threadpool.cc
   DEPS phi_enforce)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 cc_library(
   dense_tensor
   SRCS dense_tensor.cc dense_tensor_impl.cc
+<<<<<<< HEAD
   DEPS convert_utils tensor_meta tensor_base ddim)
+=======
+  DEPS convert_utils fluid_convert_utils tensor_meta tensor_base ddim)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 target_link_libraries(dense_tensor malloc)
 
@@ -84,11 +101,14 @@ cc_library(
   DEPS dense_tensor tensor_base)
 
 cc_library(
+<<<<<<< HEAD
   extended_tensor
   SRCS extended_tensor.cc
   DEPS tensor_base)
 
 cc_library(
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   meta_tensor
   SRCS meta_tensor.cc
   DEPS tensor_base tensor_meta dense_tensor)

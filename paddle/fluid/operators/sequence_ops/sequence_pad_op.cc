@@ -56,7 +56,10 @@ class SequencePadOp : public framework::OperatorWithKernel {
     auto pad_value_dims = ctx->GetInputDim("PadValue");
     PADDLE_ENFORCE_EQ(
         pad_value_dims == phi::make_ddim({1}) ||
+<<<<<<< HEAD
             pad_value_dims == phi::make_ddim({}) ||
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             pad_value_dims == time_step_dims,
         true,
         platform::errors::InvalidArgument(
@@ -70,7 +73,11 @@ class SequencePadOp : public framework::OperatorWithKernel {
       // run time
       framework::Variable* x_var =
           PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+<<<<<<< HEAD
       const auto& x_lod = x_var->Get<phi::DenseTensor>().lod();
+=======
+      const auto& x_lod = x_var->Get<LoDTensor>().lod();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_EQ(x_lod.empty(),
                         false,
                         platform::errors::NotFound(
@@ -135,10 +142,17 @@ class SequencePadOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -146,6 +160,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(phi::DenseTensor, default phi::DenseTensor<float>) Input "
              "variable which "
              "should contain lod information.");
@@ -162,6 +177,22 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
               "(phi::DenseTensor) The output vairable, which contains the "
               "actual length of "
               "sequences before padding.");
+=======
+             "(LoDTensor, default LoDTensor<float>) Input variable which "
+             "should contain lod information.");
+    AddInput("PadValue",
+             "(LoDTensor), this Tensor holds values that will be fill into "
+             "padded steps. It can be a scalar or a tensor whose shape equals "
+             "to time steps in sequences. If it's a scalar, it will be "
+             "automatically broadcasted to the shape of time step.");
+    AddOutput(
+        "Out",
+        "(LoDTensor) The output vairable, which contains padded sequences.");
+    AddOutput(
+        "Length",
+        "(LoDTensor) The output vairable, which contains the actual length of "
+        "sequences before padding.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<int>(
         "padded_length",
         "The length of padded sequences. It can be set to -1 or "
@@ -173,21 +204,32 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
       Sequence Pad Operator
 
+<<<<<<< HEAD
       This operator pads sequences in a same batch to a consistent length.
       The length is specified by attribute 'padded_length'. New elements,
       whose values are specified by input 'PadValue', will be appended to
+=======
+      This operator pads sequences in a same batch to a consistent length. 
+      The length is specified by attribute 'padded_length'. New elements, 
+      whose values are specified by input 'PadValue', will be appended to 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       the end of each sequence, to make their final lengths consistent.
 
       Following are cases to better explain how this works:
 
       Case 1:
 
+<<<<<<< HEAD
       Given a 1-level phi::DenseTensor input(X):
+=======
+      Given a 1-level LoDTensor input(X):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           X.lod = [[0, 2,       5]]
           X.data = [a, b, c, d, e]
       and Input(PadValue):
           PadValue.data = [0]
       and attribite 'padded_length' = 4,
+<<<<<<< HEAD
       then we get phi::DenseTensor:
           Out.data = [[a, b, 0, 0],
                       [c, d, e, 0]]
@@ -196,10 +238,21 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
       Case 2:
 
       Given a 1-level phi::DenseTensor input(X):
+=======
+      then we get LoDTensor:
+          Out.data = [[a, b, 0, 0], 
+                      [c, d, e, 0]]
+          Length.data = [2, 3]
+      
+      Case 2:
+
+      Given a 1-level LoDTensor input(X):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           X.lod = [[0,               2,                           5]]
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [0]
+<<<<<<< HEAD
       and attribite 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
       then we get phi::DenseTensor:
@@ -210,14 +263,33 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
       Case 3:
 
       Given a 1-level phi::DenseTensor input(X):
+=======
+      and attribite 'padded_length' = -1, which mean using the length 
+      of longest input sequence(3 in this case),
+      then we get LoDTensor:
+          Out.data = [[[a1, a2], [b1, b2], [0, 0]], 
+                      [[c1, c2], [d1, d2], [e1, e2]]]
+          Length.data = [2, 3]
+ 
+      Case 3:
+
+      Given a 1-level LoDTensor input(X):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           X.lod = [[0,               2,                           5]]
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [p1, p2]
+<<<<<<< HEAD
       and attribite 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
       then we get phi::DenseTensor:
           Out.data = [[[a1, a2], [b1, b2], [p1, p2]],
+=======
+      and attribite 'padded_length' = -1, which mean using the length 
+      of longest input sequence(3 in this case),
+      then we get LoDTensor:
+          Out.data = [[[a1, a2], [b1, b2], [p1, p2]], 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       [[c1, c2], [d1, d2], [e1, e2]]]
           Length.data = [2, 3]
 
@@ -247,11 +319,19 @@ class SequencePadGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

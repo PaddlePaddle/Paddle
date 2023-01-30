@@ -17,7 +17,10 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 TEST(Device, Init) {
   using paddle::platform::CUDAPlace;
@@ -39,10 +42,13 @@ TEST(Device, Init) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(CUDAPlace(i))
             .get());
+<<<<<<< HEAD
     device_context->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(paddle::platform::CPUPlace())
             .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     device_context->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(paddle::platform::CUDAPinnedPlace())
@@ -74,10 +80,13 @@ TEST(Device, GPUContext) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(CUDAPlace(i))
             .get());
+<<<<<<< HEAD
     device_context->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(paddle::platform::CPUPlace())
             .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     device_context->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(paddle::platform::CUDAPinnedPlace())
@@ -101,6 +110,7 @@ TEST(Device, GPUContext) {
   }
 }
 
+<<<<<<< HEAD
 TEST(Device, HostZeroAllocator) {
   using paddle::platform::CUDAPlace;
 
@@ -140,6 +150,8 @@ TEST(Device, HostZeroAllocator) {
   ASSERT_EQ(tensor.place().GetType(), phi::AllocationType::CPU);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 TEST(Device, DeviceContextPool) {
   using paddle::platform::CPUPlace;
   using paddle::platform::CUDAPlace;

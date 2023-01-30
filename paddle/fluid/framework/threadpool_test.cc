@@ -26,7 +26,11 @@ void do_sum(std::vector<std::future<void>>* fs,
             int cnt) {
   for (int i = 0; i < cnt; ++i) {
     std::lock_guard<std::mutex> l(*mu);
+<<<<<<< HEAD
     fs->push_back(phi::Async([sum]() { sum->fetch_add(1); }));
+=======
+    fs->push_back(framework::Async([sum]() { sum->fetch_add(1); }));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

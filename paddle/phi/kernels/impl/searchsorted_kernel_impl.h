@@ -147,7 +147,11 @@ class SearchSortedFunctor {
 };
 
 template <typename Visitor>
+<<<<<<< HEAD
 void VisitDataTypeForSearchSorted(DataType type, Visitor visitor) {
+=======
+static void VisitDataType(DataType type, Visitor visitor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (type == DataType::FLOAT32) {
     visitor.template apply<float>();
   } else if (type == DataType::FLOAT64) {
@@ -178,13 +182,21 @@ void SearchsortedKernel(const Context& ctx,
     int* out_data = out->data<int>();
     SearchSortedFunctor<Context, T, int> functor(
         ctx, &sorted_sequence, &value, right, out_data);
+<<<<<<< HEAD
     VisitDataTypeForSearchSorted(value.dtype(), functor);
+=======
+    VisitDataType(value.dtype(), functor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     ctx.template Alloc<int64_t>(out);
     int64_t* out_data = out->data<int64_t>();
     SearchSortedFunctor<Context, T, int64_t> functor(
         ctx, &sorted_sequence, &value, right, out_data);
+<<<<<<< HEAD
     VisitDataTypeForSearchSorted(value.dtype(), functor);
+=======
+    VisitDataType(value.dtype(), functor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

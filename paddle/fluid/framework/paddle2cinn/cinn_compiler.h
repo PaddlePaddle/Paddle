@@ -75,13 +75,21 @@ class CinnCompiler {
 
   const CinnCompiledObject& Compile(
       const ir::Graph& graph,
+<<<<<<< HEAD
       const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+=======
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const ::cinn::common::Target& target,
       void* stream = nullptr);
 
   const CinnCompiledObject& Compile(
       int64_t compilation_key,
+<<<<<<< HEAD
       const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+=======
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const ::cinn::common::Target& target,
       void* stream = nullptr);
 
@@ -109,7 +117,11 @@ class CinnCompiler {
   CinnCompiler() = default;
   std::unique_ptr<CinnCompiledObject> CompileGraph(
       const ir::Graph& graph,
+<<<<<<< HEAD
       const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+=======
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const ::cinn::common::Target& target,
       std::int64_t compiled_num,
       void* stream = nullptr) const;
@@ -118,7 +130,11 @@ class CinnCompiler {
   // the consistency of external variables of the subgraph
   void CheckCompiledValid(
       const ir::Graph& graph,
+<<<<<<< HEAD
       const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+=======
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const CinnCompiledObject& compiled_obj) const;
 
   std::unordered_map<int64_t, std::unique_ptr<ir::Graph>> graphs_;

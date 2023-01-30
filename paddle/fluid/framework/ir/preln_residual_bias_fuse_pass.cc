@@ -33,6 +33,7 @@ namespace ir {
 namespace patterns {
 
 struct PrelnResidualBias : public PatternBase {
+<<<<<<< HEAD
   PrelnResidualBias(PDPattern *pattern,
                     const std::string &name_scope,
                     bool with_bias)
@@ -43,6 +44,13 @@ struct PrelnResidualBias : public PatternBase {
   void operator()(PDNode *x, PDNode *y);
 
   bool with_bias_;
+=======
+  PrelnResidualBias(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "preln_residual_bias") {}
+
+  void operator()(PDNode *x, PDNode *y);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // declare operator node's name
   PATTERN_DECL_NODE(elementwise_bias);
   PATTERN_DECL_NODE(elementwise0);
@@ -60,6 +68,7 @@ struct PrelnResidualBias : public PatternBase {
 };
 
 void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
+<<<<<<< HEAD
   PDNode *elementwise0 = nullptr;
   PDNode *elementwise_bias_var = nullptr;
   PDNode *elementwise0_out_var = nullptr;
@@ -95,6 +104,34 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
     elementwise1_out_var->assert_is_op_output("elementwise_add");
   }
 
+=======
+  // Create nodes for elementwise add op.
+  x->assert_is_op_input("elementwise_add");
+  y->assert_is_op_input("elementwise_add", "X");
+  auto *elementwise0 =
+      pattern->NewNode(elementwise0_repr())->assert_is_op("elementwise_add");
+  auto *elementwise_bias_var = pattern->NewNode(elementwise_bias_repr())
+                                   ->assert_is_op_input("elementwise_add", "Y")
+                                   ->assert_is_persistable_var();
+  auto *elementwise0_out_var = pattern->NewNode(elementwise0_out_repr())
+                                   ->assert_is_op_output("elementwise_add")
+                                   ->assert_is_op_input("elementwise_add")
+                                   ->assert_more([](Node *x) {
+                                     if (x->outputs.size() == 1) {
+                                       return true;
+                                     } else {
+                                       return false;
+                                     }
+                                   });
+  auto *elementwise1 =
+      pattern->NewNode(elementwise1_repr())->assert_is_op("elementwise_add");
+  auto *elementwise1_out_var = pattern->NewNode(elementwise1_out_repr())
+                                   ->assert_is_op_output("elementwise_add")
+                                   ->assert_is_op_input("layer_norm", "X");
+  // Add links for elementwise_add op.
+  elementwise0->LinksFrom({y, elementwise_bias_var})
+      .LinksTo({elementwise0_out_var});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   elementwise1->LinksFrom({x, elementwise0_out_var})
       .LinksTo({elementwise1_out_var});
   // Create nodes for layer_norm op.
@@ -129,8 +166,12 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
 
 }  // namespace patterns
 
+<<<<<<< HEAD
 int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
                                             bool with_bias) const {
+=======
+void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_residual_bias_fuse", graph);
@@ -138,6 +179,7 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
+<<<<<<< HEAD
   PDNode *x = nullptr;
   PDNode *y = nullptr;
   if (with_bias) {
@@ -166,6 +208,20 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
   }
   patterns::PrelnResidualBias fused_pattern(
       gpd.mutable_pattern(), "preln_residual_bias_fuse", with_bias);
+=======
+  auto *x = gpd.mutable_pattern()
+                ->NewNode("preln_residual_bias_fuse/x")
+                ->AsInput()
+                ->assert_is_op_input("elementwise_add")
+                ->assert_var_not_persistable();
+  auto *y = gpd.mutable_pattern()
+                ->NewNode("preln_residual_bias_fuse/y")
+                ->AsInput()
+                ->assert_is_op_input("elementwise_add", "X")
+                ->assert_var_not_persistable();
+  patterns::PrelnResidualBias fused_pattern(gpd.mutable_pattern(),
+                                            "preln_residual_bias_fuse");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   fused_pattern(x, y);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -176,6 +232,7 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     }
 
     VLOG(4) << "handle PrelnResidualBias fuse";
+<<<<<<< HEAD
     Node *elementwise_bias = nullptr;
     Node *elementwise0 = nullptr;
     Node *elementwise0_out = nullptr;
@@ -189,6 +246,13 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
       elementwise0 = tmp_elementwise0;
       elementwise0_out = tmp_elementwise0_out;
     }
+=======
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_bias, elementwise_bias, fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise0, elementwise0, fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise0_out, elementwise0_out, fused_pattern);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     GET_IR_NODE_FROM_SUBGRAPH(elementwise1, elementwise1, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         elementwise1_out, elementwise1_out, fused_pattern);
@@ -224,9 +288,13 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     new_desc.SetInput("Y", {subgraph.at(y)->Name()});
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
+<<<<<<< HEAD
     if (with_bias) {
       new_desc.SetInput("EleBias", {elementwise_bias->Name()});
     }
+=======
+    new_desc.SetInput("EleBias", {elementwise_bias->Name()});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // outputs
     new_desc.SetOutput("Out_0", {layer_norm_out->Name()});
     new_desc.SetOutput("Out_1", {elementwise1_out->Name()});
@@ -235,20 +303,30 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     new_desc.SetAttr("begin_norm_axis",
                      layer_norm->Op()->GetAttr("begin_norm_axis"));
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
+<<<<<<< HEAD
     if (with_bias) {
       del_node_set.insert(elementwise0);
       del_node_set.insert(elementwise0_out);
     }
     del_node_set.insert(elementwise1);
+=======
+    del_node_set.insert(elementwise0);
+    del_node_set.insert(elementwise1);
+    del_node_set.insert(elementwise0_out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     del_node_set.insert(layer_norm);
     del_node_set.insert(layer_norm_mean);
     del_node_set.insert(layer_norm_variance);
     GraphSafeRemoveNodes(graph, del_node_set);
     IR_NODE_LINK_TO(subgraph.at(x), fused_node);
     IR_NODE_LINK_TO(subgraph.at(y), fused_node);
+<<<<<<< HEAD
     if (with_bias) {
       IR_NODE_LINK_TO(elementwise_bias, fused_node);
     }
+=======
+    IR_NODE_LINK_TO(elementwise_bias, fused_node);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     IR_NODE_LINK_TO(layer_norm_scale, fused_node);
     IR_NODE_LINK_TO(layer_norm_bias, fused_node);
     IR_NODE_LINK_TO(fused_node, layer_norm_out);
@@ -257,6 +335,7 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
   };
 
   gpd(graph, handler);
+<<<<<<< HEAD
   return found_subgraph_count;
 }
 
@@ -268,6 +347,8 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
   int found_subgraph_count = 0;
   found_subgraph_count = ApplyPattern(graph, true);
   found_subgraph_count += ApplyPattern(graph, false);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddStatis(found_subgraph_count);
 }
 

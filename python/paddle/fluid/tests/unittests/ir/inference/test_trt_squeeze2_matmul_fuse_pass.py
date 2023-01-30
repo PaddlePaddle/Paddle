@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import hypothesis.strategies as st
@@ -26,12 +27,36 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
         x_var
           |
        squeeze2
+=======
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume, reproduce_failure
+import hypothesis.strategies as st
+
+
+class TestSqueeze2MatmulFusePass(PassAutoScanTest):
+    """
+        x_var  
+          |          
+       squeeze2 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           \
     squeeze2_out_var    y_var
              \           /
                  matmul      bias_var
                     \          /
+<<<<<<< HEAD
                    elementwise_add
+=======
+                   elementwise_add  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def sample_predictor_configs(self, program_config):

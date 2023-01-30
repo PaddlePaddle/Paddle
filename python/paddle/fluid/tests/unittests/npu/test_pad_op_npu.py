@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -27,6 +32,10 @@ paddle.enable_static()
 
 
 class TestPadOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "pad"
         self.set_npu()
@@ -40,12 +49,20 @@ class TestPadOp(OpTest):
         self.attrs['paddings'] = np.array(self.paddings).flatten()
         self.attrs['pad_value'] = self.pad_value
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.pad(
                 self.inputs['X'],
                 self.paddings,
                 mode='constant',
                 constant_values=self.pad_value,
             )
+=======
+            'Out':
+            np.pad(self.inputs['X'],
+                   self.paddings,
+                   mode='constant',
+                   constant_values=self.pad_value)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -53,9 +70,15 @@ class TestPadOp(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place, ['X'], 'Out', max_relative_error=0.6
             )
+=======
+            self.check_grad_with_place(self.place, ['X'],
+                                       'Out',
+                                       max_relative_error=0.6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
@@ -73,6 +96,10 @@ class TestPadOp(OpTest):
 
 
 class TestCase1(TestPadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1)]
@@ -80,6 +107,10 @@ class TestCase1(TestPadOp):
 
 
 class TestCase2(TestPadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (5, 5, 5)
         self.paddings = [(0, 0), (0, 0), (1, 2)]
@@ -87,17 +118,33 @@ class TestCase2(TestPadOp):
 
 
 class TestCase3(TestPadOp):
+<<<<<<< HEAD
     def initTestCase(self):
         self.shape = 100
+=======
+
+    def initTestCase(self):
+        self.shape = (100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.paddings = [(0, 1)]
         self.pad_value = 0.0
 
 
+<<<<<<< HEAD
 # ----------------Pad Fp16----------------
 
 
 def create_test_fp16(parent):
     class TestPadFp16(parent):
+=======
+#----------------Pad Fp16----------------
+
+
+def create_test_fp16(parent):
+
+    class TestPadFp16(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -113,17 +160,29 @@ create_test_fp16(TestCase3)
 
 
 class TestPadOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.random((2, 2)).astype("float32")
 
             def test_Variable():
+<<<<<<< HEAD
                 paddle.nn.functional.pad(x=input_data, pad=[1, 1, 1, 1])
+=======
+                fluid.layers.pad(x=input_data, paddings=[1, 1, 1, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_Variable)
 
             data = fluid.data(name='data', shape=[4], dtype='float16')
+<<<<<<< HEAD
             paddle.nn.functional.pad(x=data, pad=[0, 1])
+=======
+            fluid.layers.pad(x=data, paddings=[0, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

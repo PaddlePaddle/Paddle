@@ -17,6 +17,10 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+<<<<<<< HEAD
+=======
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
@@ -30,6 +34,10 @@ paddle.enable_static()
 
 
 class TestBatchNorm(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_name(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_mlu():
@@ -43,7 +51,11 @@ class TestBatchNorm(unittest.TestCase):
         if core.is_compiled_with_mlu():
             places.append(fluid.MLUPlace(0))
         for p in places:
+<<<<<<< HEAD
             # paddle.disable_static()
+=======
+            #paddle.disable_static()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
             x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
 
@@ -94,11 +106,18 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v1(x, is_test, trainable_statistics):
                 with fluid.dygraph.guard(p):
+<<<<<<< HEAD
                     bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
                     )
+=======
+                    bn = fluid.dygraph.BatchNorm(
+                        shape[1],
+                        is_test=is_test,
+                        trainable_statistics=trainable_statistics)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -110,11 +129,16 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v3(x, is_test, trainable_statistics):
                 with fluid.dygraph.guard(p):
+<<<<<<< HEAD
                     bn = paddle.nn.BatchNorm(
+=======
+                    bn = fluid.dygraph.BatchNorm(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         shape[1],
                         is_test=is_test,
                         param_attr=fluid.ParamAttr(
                             initializer=fluid.initializer.Constant(1.0),
+<<<<<<< HEAD
                             trainable=False,
                         ),
                         bias_attr=fluid.ParamAttr(
@@ -123,14 +147,27 @@ class TestBatchNorm(unittest.TestCase):
                         ),
                         trainable_statistics=trainable_statistics,
                     )
+=======
+                            trainable=False),
+                        bias_attr=fluid.ParamAttr(
+                            initializer=fluid.initializer.Constant(0.0),
+                            trainable=False),
+                        trainable_statistics=trainable_statistics)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
             def compute_v4(x):
                 with fluid.dygraph.guard(p):
+<<<<<<< HEAD
                     bn = paddle.nn.BatchNorm2D(
                         shape[1], weight_attr=False, bias_attr=False
                     )
+=======
+                    bn = paddle.nn.BatchNorm2D(shape[1],
+                                               weight_attr=False,
+                                               bias_attr=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -152,11 +189,18 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v1(x_np, is_test, trainable_statistics):
                 with program_guard(Program(), Program()):
+<<<<<<< HEAD
                     bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
                     )
+=======
+                    bn = fluid.dygraph.BatchNorm(
+                        shape[1],
+                        is_test=is_test,
+                        trainable_statistics=trainable_statistics)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = bn(x)
                     exe.run(fluid.default_startup_program())
@@ -179,6 +223,10 @@ class TestBatchNorm(unittest.TestCase):
 
 
 class TestBatchNormChannelLast(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.original_dtyep = paddle.get_default_dtype()
         paddle.set_default_dtype("float32")
@@ -201,9 +249,16 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 2, 1])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 1])
+<<<<<<< HEAD
                 np.testing.assert_allclose(
                     y1.numpy(), y2.numpy(), rtol=1e-05, atol=1e-07
                 )
+=======
+                np.testing.assert_allclose(y1.numpy(),
+                                           y2.numpy(),
+                                           rtol=1e-05,
+                                           atol=1e-07)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_2d(self):
         for p in self.places:
@@ -217,9 +272,16 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 3, 1, 2])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 3, 1])
+<<<<<<< HEAD
                 np.testing.assert_allclose(
                     y1.numpy(), y2.numpy(), rtol=1e-05, atol=1e-07
                 )
+=======
+                np.testing.assert_allclose(y1.numpy(),
+                                           y2.numpy(),
+                                           rtol=1e-05,
+                                           atol=1e-07)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_3d(self):
         for p in self.places:
@@ -233,9 +295,16 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 4, 1, 2, 3])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 3, 4, 1])
+<<<<<<< HEAD
                 np.testing.assert_allclose(
                     y1.numpy(), y2.numpy(), rtol=1e-05, atol=1e-07
                 )
+=======
+                np.testing.assert_allclose(y1.numpy(),
+                                           y2.numpy(),
+                                           rtol=1e-05,
+                                           atol=1e-07)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # res = np.allclose(y1.numpy(), y2.numpy())
                 # if res == False:
                 #   np.savetxt("./y1.txt", y1.numpy().flatten(), fmt='%.10f', delimiter='\n')
@@ -244,6 +313,10 @@ class TestBatchNormChannelLast(unittest.TestCase):
 
 
 class TestBatchNormUseGlobalStats(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_mlu():
@@ -259,6 +332,7 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
         for p in self.places:
             with fluid.dygraph.guard(p):
                 x = paddle.randn([2, 6, 6, 4])
+<<<<<<< HEAD
                 net1 = paddle.nn.BatchNorm(
                     6,
                     param_attr=fluid.ParamAttr(
@@ -270,6 +344,16 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
                 net2 = paddle.nn.BatchNorm2D(
                     6, use_global_stats=self.use_global_stats
                 )
+=======
+                net1 = paddle.fluid.dygraph.BatchNorm(
+                    6,
+                    param_attr=fluid.ParamAttr(
+                        initializer=fluid.initializer.Constant(1.0)),
+                    use_global_stats=self.use_global_stats,
+                    trainable_statistics=self.trainable_statistics)
+                net2 = paddle.nn.BatchNorm2D(
+                    6, use_global_stats=self.use_global_stats)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 net2.weight = net1.weight
                 net2.bias = net1.bias
                 if self.trainable_statistics == True:

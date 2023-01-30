@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,12 +20,26 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 # Correct: General.
 class TestUnsqueezeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze2"
@@ -34,7 +49,11 @@ class TestUnsqueezeOp(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.ori_shape).astype("float64"),
+=======
+            "XShape": np.random.random(self.ori_shape).astype("float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -54,14 +73,25 @@ class TestUnsqueezeOp(OpTest):
 
 # Correct: Single input index.
 class TestUnsqueezeOp1(TestUnsqueezeOp):
+<<<<<<< HEAD
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (-1,)
+=======
+
+    def init_test_case(self):
+        self.ori_shape = (20, 5)
+        self.axes = (-1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.new_shape = (20, 5, 1)
 
 
 # Correct: Mixed input axis.
 class TestUnsqueezeOp2(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (0, -1)
@@ -70,6 +100,10 @@ class TestUnsqueezeOp2(TestUnsqueezeOp):
 
 # Correct: There is duplicated axis.
 class TestUnsqueezeOp3(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (0, 3, 3)
@@ -78,12 +112,17 @@ class TestUnsqueezeOp3(TestUnsqueezeOp):
 
 # Correct: Reversed axes.
 class TestUnsqueezeOp4(TestUnsqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (10, 1, 1, 2, 5, 1)
 
 
+<<<<<<< HEAD
 class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
     def init_test_case(self):
         self.ori_shape = ()
@@ -107,6 +146,11 @@ class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
 
 # axes is a list(with tensor)
 class TestUnsqueezeOp_AxesTensorList(OpTest):
+=======
+# axes is a list(with tensor)
+class TestUnsqueezeOp_AxesTensorList(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze2"
@@ -115,6 +159,7 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
 
         axes_tensor_list = []
         for index, ele in enumerate(self.axes):
+<<<<<<< HEAD
             axes_tensor_list.append(
                 ("axes" + str(index), np.ones((1)).astype('int32') * ele)
             )
@@ -122,11 +167,23 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float64"),
             "AxesTensorList": axes_tensor_list,
+=======
+            axes_tensor_list.append(("axes" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs = {
+            "X": np.random.random(self.ori_shape).astype("float64"),
+            "AxesTensorList": axes_tensor_list
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.ori_shape).astype("float64"),
+=======
+            "XShape": np.random.random(self.ori_shape).astype("float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -145,13 +202,24 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
 
 
 class TestUnsqueezeOp1_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+<<<<<<< HEAD
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (-1,)
+=======
+
+    def init_test_case(self):
+        self.ori_shape = (20, 5)
+        self.axes = (-1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.new_shape = (20, 5, 1)
 
 
 class TestUnsqueezeOp2_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (0, -1)
@@ -159,6 +227,10 @@ class TestUnsqueezeOp2_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
 
 
 class TestUnsqueezeOp3_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (0, 3, 3)
@@ -166,6 +238,10 @@ class TestUnsqueezeOp3_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
 
 
 class TestUnsqueezeOp4_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
@@ -174,6 +250,10 @@ class TestUnsqueezeOp4_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
 
 # axes is a Tensor
 class TestUnsqueezeOp_AxesTensor(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze2"
@@ -182,12 +262,20 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
 
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float64"),
+<<<<<<< HEAD
             "AxesTensor": np.array(self.axes).astype("int32"),
+=======
+            "AxesTensor": np.array(self.axes).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.ori_shape).astype("float64"),
+=======
+            "XShape": np.random.random(self.ori_shape).astype("float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -206,13 +294,24 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
 
 
 class TestUnsqueezeOp1_AxesTensor(TestUnsqueezeOp_AxesTensor):
+<<<<<<< HEAD
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (-1,)
+=======
+
+    def init_test_case(self):
+        self.ori_shape = (20, 5)
+        self.axes = (-1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.new_shape = (20, 5, 1)
 
 
 class TestUnsqueezeOp2_AxesTensor(TestUnsqueezeOp_AxesTensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (0, -1)
@@ -220,6 +319,10 @@ class TestUnsqueezeOp2_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
 
 class TestUnsqueezeOp3_AxesTensor(TestUnsqueezeOp_AxesTensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (0, 3, 3)
@@ -227,6 +330,10 @@ class TestUnsqueezeOp3_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
 
 class TestUnsqueezeOp4_AxesTensor(TestUnsqueezeOp_AxesTensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
@@ -235,6 +342,10 @@ class TestUnsqueezeOp4_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
 # test api
 class TestUnsqueezeAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.executed_api()
 
@@ -246,12 +357,21 @@ class TestUnsqueezeAPI(unittest.TestCase):
         x = paddle.static.data(name='x', shape=[3, 2, 5], dtype="float64")
         positive_3_int32 = fluid.layers.fill_constant([1], "int32", 3)
         positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
+<<<<<<< HEAD
         axes_tensor_int32 = paddle.static.data(
             name='axes_tensor_int32', shape=[3], dtype="int32"
         )
         axes_tensor_int64 = paddle.static.data(
             name='axes_tensor_int64', shape=[3], dtype="int64"
         )
+=======
+        axes_tensor_int32 = paddle.static.data(name='axes_tensor_int32',
+                                               shape=[3],
+                                               dtype="int32")
+        axes_tensor_int64 = paddle.static.data(name='axes_tensor_int64',
+                                               shape=[3],
+                                               dtype="int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         out_1 = self.unsqueeze(x, axis=[3, 1, 1])
         out_2 = self.unsqueeze(x, axis=[positive_3_int32, positive_1_int64, 1])
@@ -265,10 +385,16 @@ class TestUnsqueezeAPI(unittest.TestCase):
             feed={
                 "x": input,
                 "axes_tensor_int32": np.array([3, 1, 1]).astype("int32"),
+<<<<<<< HEAD
                 "axes_tensor_int64": np.array([3, 1, 1]).astype("int64"),
             },
             fetch_list=[out_1, out_2, out_3, out_4, out_5],
         )
+=======
+                "axes_tensor_int64": np.array([3, 1, 1]).astype("int64")
+            },
+            fetch_list=[out_1, out_2, out_3, out_4, out_5])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         assert np.array_equal(res_1, input.reshape([3, 1, 1, 2, 5, 1]))
         assert np.array_equal(res_2, input.reshape([3, 1, 1, 2, 5, 1]))
@@ -277,6 +403,10 @@ class TestUnsqueezeAPI(unittest.TestCase):
         assert np.array_equal(res_5, input.reshape([3, 1, 1, 2, 5, 1]))
 
     def test_error(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_axes_type():
             x2 = paddle.static.data(name="x2", shape=[2, 25], dtype="int32")
             self.unsqueeze(x2, axis=2.1)
@@ -285,10 +415,15 @@ class TestUnsqueezeAPI(unittest.TestCase):
 
 
 class TestUnsqueezeInplaceAPI(TestUnsqueezeAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def executed_api(self):
         self.unsqueeze = paddle.unsqueeze_
 
 
+<<<<<<< HEAD
 class TestUnsqueezeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
@@ -320,5 +455,7 @@ class TestUnsqueezeAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

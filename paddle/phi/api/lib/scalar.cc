@@ -31,8 +31,12 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
                         "now Tensor has `%d` elements",
                         tensor_in.numel()));
   auto tensor_in_place = tensor_in.place().GetType();
+<<<<<<< HEAD
   if (tensor_in_place == phi::AllocationType::XPU ||
       tensor_in_place == phi::AllocationType::GPU) {
+=======
+  if (tensor_in_place == phi::AllocationType::GPU) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Tensor dst_tensor;
     copy(tensor_in, phi::CPUPlace(), true, &dst_tensor);
     GetDataFromTensor(dst_tensor);

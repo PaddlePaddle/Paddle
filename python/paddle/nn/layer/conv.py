@@ -17,6 +17,7 @@
 import numpy as np
 
 from paddle import get_flags
+<<<<<<< HEAD
 
 from ...device import (
     get_cudnn_version,
@@ -28,6 +29,16 @@ from .. import Layer
 from .. import functional as F
 from ..functional.conv import _update_padding_nd
 from ..initializer import Normal
+=======
+from ...device import get_cudnn_version
+from .. import Layer
+from ..initializer import Normal
+from .. import functional as F
+from ...fluid.layers import utils
+from ..functional.conv import _update_padding_nd
+from ...device import is_compiled_with_cuda
+from ...device import is_compiled_with_rocm
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -64,7 +75,11 @@ class _ConvNd(Layer):
         bias_attr=None,
         data_format="NCHW",
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(_ConvNd, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert (
             weight_attr is not False
         ), "weight_attr should not be False in Conv."
@@ -221,7 +236,11 @@ class Conv1D(_ConvNd):
     Output are in NCL format or NLC format, where N is batch size, C is the number of
     the feature map, L is the length of the feature map.
     Filter's shape is [MCK] , where M is the number of output feature map,
+<<<<<<< HEAD
     C is the number of input feature map, K is the size of the kernel.
+=======
+    C is the number of input feature map, K is the size of the kernel. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     If the groups is greater than 1, C will equal the number of input feature map divided by the groups.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
@@ -237,9 +256,15 @@ class Conv1D(_ConvNd):
 
     * :math:`X`: Input value, a ``Tensor`` with 'NCL' format or 'NLC' format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCK] .
+<<<<<<< HEAD
     * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\sigma`: Activation function.
+=======
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
+    * :math:`\\sigma`: Activation function.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -258,7 +283,11 @@ class Conv1D(_ConvNd):
 
         .. math::
 
+<<<<<<< HEAD
             L_{out}&= \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
+=======
+            L_{out}&= \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1 \\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Parameters:
         in_channels(int): The number of channels in the input image.
@@ -348,7 +377,11 @@ class Conv1D(_ConvNd):
         bias_attr=None,
         data_format="NCL",
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Conv1D, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in_channels,
             out_channels,
             kernel_size,
@@ -413,9 +446,15 @@ class Conv1DTranspose(_ConvNd):
 
     * :math:`X`: Input value, a 3-D Tensor with 'NCL' format or 'NLC' format.
     * :math:`W`: Kernel value, a 3-D Tensor with 'MCK' format.
+<<<<<<< HEAD
     * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
     * :math:`\sigma`: Activation function.
+=======
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     * :math:`Out`: Output value, a 3-D Tensor with data format 'NCL' of 'NLC', the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -434,7 +473,11 @@ class Conv1DTranspose(_ConvNd):
 
         .. math::
 
+<<<<<<< HEAD
            L^\prime_{out} &= (L_{in} - 1) * stride - 2 * padding + dilation * (L_f - 1) + 1 \\
+=======
+           L^\prime_{out} &= (L_{in} - 1) * stride - pad_top - pad_bottom + dilation * (L_f - 1) + 1 \\\\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            L_{out} &\in [ L^\prime_{out}, L^\prime_{out} + stride ]
 
     Note:
@@ -449,7 +492,11 @@ class Conv1DTranspose(_ConvNd):
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of the filter. It is as same as the output
             feature map.
+<<<<<<< HEAD
         kernel_size(int|tuple|list): The filter size. If kernel_size is a tuple/list,
+=======
+        kernel_size(int|tuple|list, optional): The filter size. If kernel_size is a tuple/list,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             it must contain one integers, (kernel_size). None if
             use output size to calculate kernel_size. Default: None. kernel_size and
             output_size should not be None at the same time.
@@ -530,7 +577,11 @@ class Conv1DTranspose(_ConvNd):
         bias_attr=None,
         data_format="NCL",
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Conv1DTranspose, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in_channels,
             out_channels,
             kernel_size,
@@ -590,15 +641,25 @@ class Conv2D(_ConvNd):
 
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
+<<<<<<< HEAD
     * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\sigma`: Activation function.
+=======
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
+    * :math:`\\sigma`: Activation function.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
+<<<<<<< HEAD
         kernel_size(int|list|tuple): The size of the convolving kernel.
+=======
+        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
@@ -668,8 +729,14 @@ class Conv2D(_ConvNd):
 
           conv = nn.Conv2D(4, 6, (3, 3))
           y_var = conv(x_var)
+<<<<<<< HEAD
           print(y_var.shape)
           # [2, 6, 6, 6]
+=======
+          y_np = y_var.numpy()
+          print(y_np.shape)
+          # (2, 6, 6, 6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def __init__(
@@ -686,7 +753,11 @@ class Conv2D(_ConvNd):
         bias_attr=None,
         data_format="NCHW",
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Conv2D, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in_channels,
             out_channels,
             kernel_size,
@@ -755,9 +826,15 @@ class Conv2DTranspose(_ConvNd):
 
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [CMHW] .
+<<<<<<< HEAD
     * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\sigma`: Activation function.
+=======
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
+    * :math:`\\sigma`: Activation function.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Parameters:
@@ -840,8 +917,14 @@ class Conv2DTranspose(_ConvNd):
 
           conv = nn.Conv2DTranspose(4, 6, (3, 3))
           y_var = conv(x_var)
+<<<<<<< HEAD
           print(y_var.shape)
           # [2, 6, 10, 10]
+=======
+          y_np = y_var.numpy()
+          print(y_np.shape)
+          # (2, 6, 10, 10)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def __init__(
@@ -858,7 +941,11 @@ class Conv2DTranspose(_ConvNd):
         bias_attr=None,
         data_format="NCHW",
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Conv2DTranspose, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in_channels,
             out_channels,
             kernel_size,
@@ -917,15 +1004,25 @@ class Conv3D(_ConvNd):
 
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
+<<<<<<< HEAD
     * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D tensor with shape [M].
     * :math:`\sigma`: Activation function.
+=======
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
+    * :math:`\\sigma`: Activation function.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
+<<<<<<< HEAD
         kernel_size(int|list|tuple): The size of the convolving kernel.
+=======
+        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
             stride_D = stride_H = stride_W = stride. The default value is 1.
@@ -997,8 +1094,14 @@ class Conv3D(_ConvNd):
 
           conv = nn.Conv3D(4, 6, (3, 3, 3))
           y_var = conv(x_var)
+<<<<<<< HEAD
           print(y_var.shape)
           # [2, 6, 6, 6, 6]
+=======
+          y_np = y_var.numpy()
+          print(y_np.shape)
+          # (2, 6, 6, 6, 6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def __init__(
@@ -1015,7 +1118,11 @@ class Conv3D(_ConvNd):
         bias_attr=None,
         data_format="NCDHW",
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Conv3D, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in_channels,
             out_channels,
             kernel_size,
@@ -1072,7 +1179,11 @@ class Conv3DTranspose(_ConvNd):
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
     For each input :math:`X`, the equation is:
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ..  math::
 
         Out = \sigma (W \ast X + b)
@@ -1081,6 +1192,7 @@ class Conv3DTranspose(_ConvNd):
 
     * :math:`X`: Input value, a tensor with NCDHW format.
     * :math:`W`: Filter value, a tensor with CMDHW format.
+<<<<<<< HEAD
     * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D tensor with shape [M].
     * :math:`\sigma`: Activation function.
@@ -1096,6 +1208,25 @@ class Conv3DTranspose(_ConvNd):
         between :math:`H^\prime_{out}` and :math:`H^\prime_{out} + strides[1]`, and the
         :math:`W_{out}` of the output size must between :math:`W^\prime_{out}` and
         :math:`W^\prime_{out} + strides[2]`, conv3d_transpose can compute the kernel size automatically.
+=======
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    **Note**:
+
+          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
+          when stride > 1, conv3d maps multiple input shape to the same output shape, 
+          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
+          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
+          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output 
+          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
+          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
+          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
+          conv3d_transpose can compute the kernel size automatically.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Parameters:
         in_channels(int): The number of channels in the input image.
@@ -1103,6 +1234,7 @@ class Conv3DTranspose(_ConvNd):
         kernel_size(int|list|tuple): The kernel size. If kernel_size is a list/tuple,
             it must contain three integers, (kernel_size_D, kernel_size_H, kernel_size_W).
             Otherwise, the kernel will be a square.
+<<<<<<< HEAD
         stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution.
             If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height,
             stride_width). Otherwise, stride_depth = stride_height = stride_width = stride.
@@ -1114,10 +1246,24 @@ class Conv3DTranspose(_ConvNd):
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             Default: 0.
+=======
+        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
+            If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height, 
+            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
+            The default value is 1.
+        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+            1. a string in ['valid', 'same'].
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
+            4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
+            5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
+            The default value is 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
         dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
+<<<<<<< HEAD
             dilation_D = dilation_H = dilation_W = dilation. Default: 1.
         groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
             grouped convolution in `Alex Krizhevsky's Deep CNN paper <https://papers.nips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_, in which
@@ -1129,11 +1275,28 @@ class Conv3DTranspose(_ConvNd):
             of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
+=======
+            dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
+        groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
+            grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
+            when group=2, the first half of the filters is only connected to the
+            first half of the input channels, while the second half of the
+            filters is only connected to the second half of the input channels.
+            The default value is 1.
+        weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
+            of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. The default value is None.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv3d_transpose.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv3d_transpose
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+<<<<<<< HEAD
             is not set, the bias is initialized zero. Default: None.
+=======
+            is not set, the bias is initialized zero. The default value is None.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data_format(str, optional): Data format that specifies the layout of input.
             It can be "NCDHW" or "NDHWC". Default: "NCDHW".
 
@@ -1158,17 +1321,25 @@ class Conv3DTranspose(_ConvNd):
         ..  math::
 
            D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1
+<<<<<<< HEAD
 
            H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1
 
            W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel\_size[2] - 1) + 1
 
+=======
+           
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1
+           
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel\_size[2] - 1) + 1
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
 
        .. code-block:: python
 
           import paddle
           import paddle.nn as nn
+<<<<<<< HEAD
 
           paddle.disable_static()
 
@@ -1178,6 +1349,18 @@ class Conv3DTranspose(_ConvNd):
           y_var = conv(x_var)
           print(y_var.shape)
           # [2, 6, 10, 10, 10]
+=======
+          
+          paddle.disable_static()
+
+          x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
+          
+          conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
+          y_var = conv(x_var)
+          y_np = y_var.numpy()
+          print(y_np.shape)
+          # (2, 6, 10, 10, 10)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def __init__(
@@ -1194,7 +1377,11 @@ class Conv3DTranspose(_ConvNd):
         bias_attr=None,
         data_format="NCDHW",
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Conv3DTranspose, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in_channels,
             out_channels,
             kernel_size,

@@ -49,7 +49,11 @@ template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (var.Type()) {
     case proto::VarType::LOD_TENSOR:
+<<<<<<< HEAD
       visitor(var.Get<phi::DenseTensor>());
+=======
+      visitor(var.Get<LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       return;
     case proto::VarType::LOD_RANK_TABLE:
       visitor(var.Get<LoDRankTable>());

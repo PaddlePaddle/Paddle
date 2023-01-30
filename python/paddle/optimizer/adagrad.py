@@ -12,15 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from ..fluid import framework
 from .optimizer import Optimizer
+=======
+from .optimizer import Optimizer
+from ..fluid import core
+from ..fluid import framework
+from ..fluid.framework import Variable
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
 class Adagrad(Optimizer):
     r"""
+<<<<<<< HEAD
     The Adaptive Gradient optimizer (Adagrad for short) use an optimization described
+=======
+    The Adaptive Gradient optimizer (Adagrad for short) use an optimization described 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in paper: `Adaptive Subgradient Methods for Online Learning and
     Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
 
@@ -43,6 +54,7 @@ class Adagrad(Optimizer):
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
+<<<<<<< HEAD
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
@@ -59,6 +71,24 @@ class Adagrad(Optimizer):
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies,
             ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None,
+=======
+	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+	    This parameter is required in dygraph mode. And you can specify different options for \
+            different parameter groups such as the learning rate, weight decay, etc, \
+            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            represents the scale of base learning_rate. \
+	    The default value is None in static mode, at this time all parameters will be updated.
+	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
+	    It canbe a float value as coeff of L2 regularization or \
+	    :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+	    If a parameter has set regularizer using :ref:`api_paddle_fluid_param_attr_aramAttr` already, \
+	    the regularization setting here in optimizer will be ignored for this parameter. \
+	    Otherwise, the regularization setting here in optimizer will take effect. \
+	    Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies, 
+            ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -97,7 +127,11 @@ class Adagrad(Optimizer):
                     'weight_decay': 0.001,
                     'learning_rate': 0.1,
                 }],
+<<<<<<< HEAD
                 weight_decay=0.01)
+=======
+                weight_decay=0.01)                   
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out.backward()
             adagrad.step()
             adagrad.clear_grad()
@@ -117,7 +151,11 @@ class Adagrad(Optimizer):
     ):
         assert learning_rate is not None
         assert epsilon is not None
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(Adagrad, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,

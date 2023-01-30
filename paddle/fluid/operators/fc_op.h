@@ -22,6 +22,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+enum { kFCMKLDNNFP32 = 1, kFCMKLDNNINT8 = 2 };
+
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 inline void FCOutputSize(const framework::DDim& in_dims,
                          const framework::DDim& w_dims,
@@ -55,10 +61,17 @@ template <typename DeviceContext, typename T>
 class FCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* w = ctx.Input<phi::DenseTensor>("W");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<framework::LoDTensor>("Input");
+    auto* w = ctx.Input<Tensor>("W");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* output = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     bool with_relu =
         (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;

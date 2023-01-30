@@ -24,14 +24,24 @@ namespace paddle {
 namespace imperative {
 template <typename VarType>
 void SetOutDataLayout(std::shared_ptr<VarType> var,
+<<<<<<< HEAD
                       const phi::DataLayout layout) {
+=======
+                      const paddle::experimental::DataLayout layout) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (var != nullptr && var->Var().IsInitialized()) {
     paddle::imperative::SetDataLayout(var, layout);
     // set out_tensor's layout
     if (var->MutableVar()->IsInitialized()) {
       paddle::framework::Variable* tmp_var = var->MutableVar();
+<<<<<<< HEAD
       auto* out = tmp_var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(static_cast<phi::DenseTensor*>(out))
+=======
+      auto* out = tmp_var->GetMutable<framework::LoDTensor>();
+      phi::DenseTensorUtils::GetMutableMeta(
+          static_cast<framework::LoDTensor*>(out))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           ->layout = layout;
     }
   }
@@ -61,10 +71,19 @@ std::shared_ptr<VarType> TraceTransposeOp(
   tracer->TraceOp("transpose2", ins, outs, std::move(attrs));
   paddle::imperative::SetDataLayout(out, layout);
   VLOG(4) << "Transpose " << paddle::imperative::GetNameFromVar(var) << "["
+<<<<<<< HEAD
           << phi::DataLayoutToString(paddle::imperative::GetDataLayout(var))
           << "]"
           << " to " << paddle::imperative::GetNameFromVar(out) << "["
           << phi::DataLayoutToString(paddle::imperative::GetDataLayout(out))
+=======
+          << paddle::framework::DataLayoutToString(
+                 paddle::imperative::GetDataLayout(var))
+          << "]"
+          << " to " << paddle::imperative::GetNameFromVar(out) << "["
+          << paddle::framework::DataLayoutToString(
+                 paddle::imperative::GetDataLayout(out))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           << "]";
   return out;
 }
@@ -101,7 +120,11 @@ class LayoutTransformer {
       }
     }
     VLOG(3) << "Optimze Layout agnostic op: " << type_ << " "
+<<<<<<< HEAD
             << phi::DataLayoutToString(in_layout);
+=======
+            << paddle::framework::DataLayoutToString(in_layout);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (in_layout != DataLayout::UNDEFINED) {
       SetVarsLayout(outs, in_layout);
     }
@@ -183,8 +206,13 @@ class HeavilyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
 
     // Step 1: Adjust the data_layout attr to the desired layout
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
+<<<<<<< HEAD
     std::string desired_layout_str =
         phi::DataLayoutToString(LayoutAutoTune::Instance().GetDesiredLayout());
+=======
+    std::string desired_layout_str = paddle::framework::DataLayoutToString(
+        LayoutAutoTune::Instance().GetDesiredLayout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (attrs->find("data_format") != attrs->end() &&
         PADDLE_GET_CONST(std::string, (*attrs)["data_format"]) !=
             desired_layout_str) {
@@ -250,10 +278,17 @@ class LightlyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
       for (auto& var : pair.second) {
         if (var != nullptr) {
           VLOG(3) << "Tune the layout from "
+<<<<<<< HEAD
                   << phi::DataLayoutToString(
                          paddle::imperative::GetDataLayout(var))
                   << " to "
                   << phi::DataLayoutToString(
+=======
+                  << paddle::framework::DataLayoutToString(
+                         paddle::imperative::GetDataLayout(var))
+                  << " to "
+                  << paddle::framework::DataLayoutToString(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          LayoutAutoTune::Instance().GetDesiredLayout());
         }
         if (var != nullptr &&

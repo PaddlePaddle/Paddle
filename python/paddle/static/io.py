@@ -12,16 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import errno
 import inspect
 import logging
 import os
 import warnings
+<<<<<<< HEAD
 
+=======
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 import paddle
 from paddle.fluid import (
+<<<<<<< HEAD
     CompiledProgram,
     Program,
     Variable,
@@ -33,6 +43,20 @@ from paddle.fluid import (
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Parameter, static_only
 from paddle.fluid.io import append_fetch_ops, prepend_feed_ops
+=======
+    core,
+    Variable,
+    CompiledProgram,
+    default_main_program,
+    Program,
+    layers,
+    unique_name,
+    program_guard,
+)
+from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
+from paddle.fluid.framework import static_only, Parameter
+from paddle.fluid.executor import Executor, global_scope
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.log_helper import get_logger
 
 __all__ = []
@@ -73,7 +97,11 @@ def _normalize_path_prefix(path_prefix):
     """
     convert path_prefix to absolute path.
     """
+<<<<<<< HEAD
     if not isinstance(path_prefix, str):
+=======
+    if not isinstance(path_prefix, six.string_types):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         raise ValueError("'path_prefix' should be a string.")
     if path_prefix.endswith("/"):
         raise ValueError("'path_prefix' should not be a directory")
@@ -128,13 +156,22 @@ def _clone_var_in_block(block, var):
 
 def normalize_program(program, feed_vars, fetch_vars):
     """
+<<<<<<< HEAD
+=======
+    :api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Normalize/Optimize a program according to feed_vars and fetch_vars.
 
     Args:
         program(Program): Specify a program you want to optimize.
+<<<<<<< HEAD
         feed_vars(Tensor | list[Tensor]): Variables needed by inference.
         fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
+=======
+        feed_vars(Variable | list[Variable]): Variables needed by inference.
+        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         Program: Normalized/Optimized program.
@@ -200,7 +237,11 @@ def normalize_program(program, feed_vars, fetch_vars):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
             if var.dtype != paddle.bool:
+<<<<<<< HEAD
                 var = paddle.scale(
+=======
+                var = layers.scale(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     var, 1.0, name="save_infer_model/scale_{}".format(i)
                 )
             uniq_fetch_vars.append(var)
@@ -232,7 +273,10 @@ def normalize_program(program, feed_vars, fetch_vars):
 
 def is_persistable(var):
     """
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Check whether the given variable is persistable.
 
     Args:
@@ -264,15 +308,26 @@ def is_persistable(var):
 @static_only
 def serialize_program(feed_vars, fetch_vars, **kwargs):
     """
+<<<<<<< HEAD
+=======
+    :api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Serialize default main program according to feed_vars and fetch_vars.
 
     Args:
+<<<<<<< HEAD
         feed_vars(Tensor | list[Tensor]): Tensor needed by inference.
         fetch_vars(Tensor | list[Tensor]): Tensor returned by inference.
         kwargs: Supported keys including ``program``. Attention please, kwargs is used for backward compatibility mainly.
 
             - program(Program): specify a program if you don't want to use default main program.
+=======
+        feed_vars(Variable | list[Variable]): Variables needed by inference.
+        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+        kwargs: Supported keys including 'program'.Attention please, kwargs is used for backward compatibility mainly.
+          - program(Program): specify a program if you don't want to use default main program.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         bytes: serialized program.
@@ -323,15 +378,26 @@ def _serialize_program(program):
 @static_only
 def serialize_persistables(feed_vars, fetch_vars, executor, **kwargs):
     """
+<<<<<<< HEAD
+=======
+    :api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Serialize parameters using given executor and default main program according to feed_vars and fetch_vars.
 
     Args:
+<<<<<<< HEAD
         feed_vars(Tensor | list[Tensor]): Tensor needed by inference.
         fetch_vars(Tensor | list[Tensor]): Tensor returned by inference.
         kwargs: Supported keys including ``program``. Attention please, kwargs is used for backward compatibility mainly.
 
             - program(Program): specify a program if you don't want to use default main program.
+=======
+        feed_vars(Variable | list[Variable]): Variables needed by inference.
+        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+        kwargs: Supported keys including 'program'.Attention please, kwargs is used for backward compatibility mainly.
+          - program(Program): specify a program if you don't want to use default main program.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         bytes: serialized program.
@@ -423,11 +489,17 @@ def _serialize_persistables(program, executor):
 def save_to_file(path, content):
     """
     Save content to given path.
+<<<<<<< HEAD
 
     Args:
         path(str): Path to write content to.
         content(bytes): Content to write.
 
+=======
+    Args:
+        path(str): Path to write content to.
+        content(bytes): Content to write.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         None
 
@@ -463,6 +535,7 @@ def save_inference_model(
 ):
     """
     Save current model and its parameters to given path. i.e.
+<<<<<<< HEAD
     Given ``path_prefix = "PATH/modelname"``, after invoking
     ``save_inference_model(path_prefix, feed_vars, fetch_vars, executor)``,
     you will find two files named ``modelname.pdmodel`` and ``modelname.pdiparams``
@@ -472,6 +545,17 @@ def save_inference_model(
         path_prefix(str): Directory path to save model + model name without suffix.
         feed_vars(Tensor | list[Tensor]): Variables needed by inference.
         fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
+=======
+    Given path_prefix = "/path/to/modelname", after invoking
+    save_inference_model(path_prefix, feed_vars, fetch_vars, executor),
+    you will find two files named modelname.pdmodel and modelname.pdiparams
+    under "/path/to", which represent your model and parameters respectively.
+
+    Args:
+        path_prefix(str): Directory path to save model + model name without suffix.
+        feed_vars(Variable | list[Variable]): Variables needed by inference.
+        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
         kwargs: Supported keys including 'program' and "clip_extra". Attention please, kwargs is used for backward compatibility mainly.
@@ -553,6 +637,10 @@ def save_inference_model(
 @static_only
 def deserialize_program(data):
     """
+<<<<<<< HEAD
+=======
+    :api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Deserialize given data to a program.
 
@@ -599,6 +687,10 @@ def deserialize_program(data):
 @static_only
 def deserialize_persistables(program, data, executor):
     """
+<<<<<<< HEAD
+=======
+    :api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Deserialize given data to parameters according to given program and executor.
 
@@ -688,7 +780,11 @@ def deserialize_persistables(program, data, executor):
         if not isinstance(var, Parameter):
             continue
         var_tmp = paddle.fluid.global_scope().find_var(var.name)
+<<<<<<< HEAD
         assert var_tmp is not None, "can't not find var: " + var.name
+=======
+        assert var_tmp != None, "can't not find var: " + var.name
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         new_shape = (np.array(var_tmp.get_tensor())).shape
         assert var.name in origin_shape_map, var.name + " MUST in var list."
         origin_shape = origin_shape_map.get(var.name)
@@ -704,10 +800,15 @@ def deserialize_persistables(program, data, executor):
 def load_from_file(path):
     """
     Load file in binary mode.
+<<<<<<< HEAD
 
     Args:
         path(str): Path of an existed file.
 
+=======
+    Args:
+        path(str): Path of an existed file.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         bytes: Content of file.
 
@@ -741,6 +842,10 @@ def load_from_file(path):
 @static_only
 def load_inference_model(path_prefix, executor, **kwargs):
     """
+<<<<<<< HEAD
+=======
+    :api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Load inference model from a given path. By this API, you can get the model
     structure(Inference Program) and model parameters.
@@ -751,11 +856,17 @@ def load_inference_model(path_prefix, executor, **kwargs):
           - Set to None when reading the model from memory.
         executor(Executor): The executor to run for loading inference model.
                             See :ref:`api_guide_executor_en` for more details about it.
+<<<<<<< HEAD
         kwargs: Supported keys including 'model_filename', 'params_filename'. Attention please, kwargs is used for backward compatibility mainly.
 
             - model_filename(str): specify model_filename if you don't want to use default name.
 
             - params_filename(str): specify params_filename if you don't want to use default name.
+=======
+        kwargs: Supported keys including 'model_filename', 'params_filename'.Attention please, kwargs is used for backward compatibility mainly.
+          - model_filename(str): specify model_filename if you don't want to use default name.
+          - params_filename(str): specify params_filename if you don't want to use default name.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         list: The return of this API is a list with three elements:

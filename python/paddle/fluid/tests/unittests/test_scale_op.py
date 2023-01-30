@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import gradient_checker
@@ -19,14 +20,31 @@ import numpy as np
 from decorator_helper import prog_scope
 from op_test import OpTest, convert_float_to_uint16
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest, convert_float_to_uint16
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.static import Program, program_guard
+<<<<<<< HEAD
 
 
 class TestScaleOp(OpTest):
+=======
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
+
+
+class TestScaleOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -49,6 +67,10 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpScaleVariable(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -57,7 +79,11 @@ class TestScaleOpScaleVariable(OpTest):
         self.scale = -2.3
         self.inputs = {
             'X': np.random.random((10, 10)).astype(self.dtype),
+<<<<<<< HEAD
             'ScaleTensor': np.array([self.scale]).astype('float64'),
+=======
+            'ScaleTensor': np.array([self.scale]).astype('float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {}
         self.outputs = {'Out': self.inputs['X'] * self.dtype(self.scale)}
@@ -73,6 +99,10 @@ class TestScaleOpScaleVariable(OpTest):
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         pass
 
@@ -91,9 +121,14 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         in_selected_rows = scope.var(in_name).get_selected_rows()
         in_selected_rows.set_height(in_height)
         in_selected_rows.set_rows(in_rows)
+<<<<<<< HEAD
         in_array = np.random.random((len(in_rows), in_row_numel)).astype(
             self.dtype
         )
+=======
+        in_array = np.random.random(
+            (len(in_rows), in_row_numel)).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         in_tensor = in_selected_rows.get_tensor()
         in_tensor.set(in_array, place)
@@ -132,18 +167,33 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         def test_type():
             paddle.scale([10])
+=======
+
+    def test_errors(self):
+
+        def test_type():
+            fluid.layers.scale([10])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(TypeError, test_type)
 
 
 # Add FP16 test
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestScaleFp16Op(TestScaleOp):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestScaleFp16Op(TestScaleOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -155,12 +205,23 @@ class TestScaleFp16Op(TestScaleOp):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place, ["X"], "Out", max_relative_error=0.05, check_eager=True
             )
 
 
 class TestScaleBF16Op(OpTest):
+=======
+            self.check_grad_with_place(place, ["X"],
+                                       "Out",
+                                       max_relative_error=0.05,
+                                       check_eager=True)
+
+
+class TestScaleBF16Op(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -178,10 +239,17 @@ class TestScaleBF16Op(OpTest):
         self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_eager=True)
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -197,6 +265,10 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
 
 
 class TestScaleApiStatic(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -214,11 +286,19 @@ class TestScaleApiStatic(unittest.TestCase):
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -232,11 +312,19 @@ class TestScaleApiDygraph(unittest.TestCase):
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
@@ -246,17 +334,35 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
+<<<<<<< HEAD
         data = paddle.static.data('data', [2, 3], dtype)
+=======
+        data = layers.data('data', [2, 3], False, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data.persistable = True
         out = paddle.scale(data, 2.0)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.scale_wrapper, [data], out, x_init=[data_arr], place=place
         )
+=======
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.scale_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -268,6 +374,10 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
 
 
 class TestScaleTripleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
@@ -277,17 +387,35 @@ class TestScaleTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
+<<<<<<< HEAD
         data = paddle.static.data('data', [2, 3], dtype)
+=======
+        data = layers.data('data', [2, 3], False, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data.persistable = True
         out = paddle.scale(data, 2.0)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
         gradient_checker.triple_grad_check_for_dygraph(
             self.scale_wrapper, [data], out, x_init=[data_arr], place=place
         )
+=======
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.scale_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -298,6 +426,7 @@ class TestScaleTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+<<<<<<< HEAD
 class TestScaleOpZeroNumelVariable(unittest.TestCase):
     def test_check_zero_numel_cpu(self):
         paddle.set_device('cpu')
@@ -312,5 +441,7 @@ class TestScaleOpZeroNumelVariable(unittest.TestCase):
             self.assertEqual(out, data)
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

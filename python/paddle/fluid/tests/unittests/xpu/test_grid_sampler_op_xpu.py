@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -28,6 +29,22 @@ from xpu.get_test_cover_info import (
 
 import paddle
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+
+import paddle
+
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
@@ -35,6 +52,7 @@ def AffineGrid(theta, grid_shape):
     n = grid_shape[0]
     h = grid_shape[1]
     w = grid_shape[2]
+<<<<<<< HEAD
     h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w, axis=0).T[
         :, :, np.newaxis
     ]
@@ -44,6 +62,14 @@ def AffineGrid(theta, grid_shape):
     grid = np.concatenate(
         [w_idx, h_idx, np.ones([h, w, 1])], axis=2
     )  # h * w * 3
+=======
+    h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w,
+                      axis=0).T[:, :, np.newaxis]
+    w_idx = np.repeat(np.linspace(-1, 1, w)[np.newaxis, :], h,
+                      axis=0)[:, :, np.newaxis]
+    grid = np.concatenate([w_idx, h_idx, np.ones([h, w, 1])],
+                          axis=2)  # h * w * 3
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     grid = np.repeat(grid[np.newaxis, :], n, axis=0)  # n * h * w *3
 
     ret = np.zeros([n, h * w, 2])
@@ -63,17 +89,26 @@ def getGridPointValue(data, x, y):
     out_H = x.shape[1]
     out_W = x.shape[2]
 
+<<<<<<< HEAD
     # out = np.zeros(data_shape, dtype='float64')
+=======
+    #out = np.zeros(data_shape, dtype='float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out = np.zeros([N, C, out_H, out_W], dtype='float64')
     for i in range(N):
         for j in range(out_H):
             for k in range(out_W):
+<<<<<<< HEAD
                 if (
                     y[i, j, k] < 0
                     or y[i, j, k] > in_H - 1
                     or x[i, j, k] < 0
                     or x[i, j, k] > in_W - 1
                 ):
+=======
+                if y[i, j, k] < 0 or y[i, j, k] > in_H - 1 or x[
+                        i, j, k] < 0 or x[i, j, k] > in_W - 1:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     out[i, :, j, k] = 0
                 else:
                     out[i, :, j, k] = data[i, :, y[i, j, k], x[i, j, k]]
@@ -89,14 +124,20 @@ def unnormalizeAndClip(grid_slice, max_val, align_corners, padding_mode):
     if align_corners:
         grid_slice = 0.5 * ((grid_slice.astype('float64') + 1.0) * max_val)
     else:
+<<<<<<< HEAD
         grid_slice = (
             0.5 * ((grid_slice.astype('float64') + 1.0) * (max_val + 1)) - 0.5
         )
+=======
+        grid_slice = 0.5 * ((grid_slice.astype('float64') + 1.0) *
+                            (max_val + 1)) - 0.5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if padding_mode == "border":
         grid_slice = clip(grid_slice, 0, max_val)
     elif padding_mode == "reflection":
         double_range = 2 * max_val if align_corners else (max_val + 1) * 2
+<<<<<<< HEAD
         grid_abs = (
             np.abs(grid_slice) if align_corners else np.abs(grid_slice + 0.5)
         )
@@ -111,6 +152,22 @@ def unnormalizeAndClip(grid_slice, max_val, align_corners, padding_mode):
 def GridSampler(
     data, grid, align_corners=True, mode="bilinear", padding_mode="zeros"
 ):
+=======
+        grid_abs = np.abs(grid_slice) if align_corners else np.abs(grid_slice +
+                                                                   0.5)
+        extra = grid_abs - np.floor(grid_abs / double_range) * double_range
+        grid_slice = np.minimum(extra, double_range - extra)
+        grid_slice = grid_slice if align_corners else clip(
+            grid_slice - 0.5, 0, max_val)
+    return grid_slice
+
+
+def GridSampler(data,
+                grid,
+                align_corners=True,
+                mode="bilinear",
+                padding_mode="zeros"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dims = data.shape
     N = dims[0]
     in_C = dims[1]
@@ -134,6 +191,7 @@ def GridSampler(
         y0 = np.floor(y).astype('int32')
         y1 = y0 + 1
 
+<<<<<<< HEAD
         wa = np.tile(
             ((x1 - x) * (y1 - y)).reshape((N, 1, out_H, out_W)), (1, in_C, 1, 1)
         )
@@ -146,6 +204,16 @@ def GridSampler(
         wd = np.tile(
             ((x - x0) * (y - y0)).reshape((N, 1, out_H, out_W)), (1, in_C, 1, 1)
         )
+=======
+        wa = np.tile(((x1 - x) * (y1 - y)).reshape((N, 1, out_H, out_W)),
+                     (1, in_C, 1, 1))
+        wb = np.tile(((x1 - x) * (y - y0)).reshape((N, 1, out_H, out_W)),
+                     (1, in_C, 1, 1))
+        wc = np.tile(((x - x0) * (y1 - y)).reshape((N, 1, out_H, out_W)),
+                     (1, in_C, 1, 1))
+        wd = np.tile(((x - x0) * (y - y0)).reshape((N, 1, out_H, out_W)),
+                     (1, in_C, 1, 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         va = getGridPointValue(data, x0, y0)
         vb = getGridPointValue(data, x0, y1)
@@ -161,11 +229,19 @@ def GridSampler(
 
 
 class XPUTestGridSamplerOP(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'grid_sampler'
         self.use_dynamic_create_class = False
 
     class TestXPUGridSamplerOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_dtype()
@@ -195,9 +271,15 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
                 "mode": self.mode,
             }
             self.outputs = {
+<<<<<<< HEAD
                 'Output': GridSampler(
                     x, grid, self.align_corners, self.mode, self.padding_mode
                 )
+=======
+                'Output':
+                GridSampler(x, grid, self.align_corners, self.mode,
+                            self.padding_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def initTestCase(self):
@@ -218,6 +300,10 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X', 'Grid'], 'Output')
 
     class TestGridSample1(TestXPUGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (2, 3, 5, 6)
             self.grid_shape = (2, 8, 9, 2)
@@ -227,6 +313,10 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
             self.mode = "bilinear"
 
     class TestGridSample2(TestXPUGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (2, 3, 5, 6)
             self.grid_shape = (2, 8, 9, 2)
@@ -236,6 +326,10 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
             self.mode = "bilinear"
 
     class TestGridSample3(TestXPUGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (2, 3, 5, 6)
             self.grid_shape = (2, 8, 9, 2)
@@ -245,6 +339,10 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
             self.mode = "bilinear"
 
     class TestGridSample4(TestXPUGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (2, 3, 5, 6)
             self.grid_shape = (2, 8, 9, 2)
@@ -254,6 +352,10 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
             self.mode = "bilinear"
 
     class TestGridSample5(TestXPUGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (2, 3, 5, 6)
             self.grid_shape = (2, 8, 9, 2)
@@ -263,6 +365,10 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
             self.mode = "nearest"
 
     class TestGridSample6(TestXPUGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (2, 3, 128, 128)
             self.grid_shape = (2, 130, 130, 2)
@@ -272,6 +378,10 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
             self.mode = "bilinear"
 
     class TestGridSample7(TestXPUGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def initTestCase(self):
             self.x_shape = (2, 3, 128, 128)
             self.grid_shape = (2, 130, 130, 2)

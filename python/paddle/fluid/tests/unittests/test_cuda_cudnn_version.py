@@ -13,11 +13,18 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
 class TestCPUVersion(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_cuda_cudnn_version_in_cpu_package(self):
         if not paddle.is_compiled_with_cuda():
             self.assertEqual(paddle.version.cuda(), 'False')

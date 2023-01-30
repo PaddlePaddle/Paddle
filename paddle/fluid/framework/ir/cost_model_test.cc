@@ -49,7 +49,11 @@ class FakeTestOp : public OperatorBase {
     // Fake RunImpl, for test only
     Variable *var = scope.FindVar("X");
     if (var != nullptr) {
+<<<<<<< HEAD
       phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor *tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tensor->mutable_data<float>(place);
     }
     int count = 0;

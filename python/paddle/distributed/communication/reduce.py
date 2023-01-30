@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle
 import paddle.distributed.communication.stream as stream
 import paddle.framework as framework
+=======
+import paddle.fluid.framework as framework
+import paddle.fluid.core as core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class ReduceOp:
@@ -47,7 +52,10 @@ class ReduceOp:
             print(data)
             # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
     """
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     SUM = 0
     MAX = 1
     MIN = 2
@@ -58,6 +66,7 @@ class ReduceOp:
 def _get_reduce_op(reduce_op, func_name):
     if framework.in_dygraph_mode():
         if reduce_op == ReduceOp.SUM:
+<<<<<<< HEAD
             return framework.core.ReduceOp.SUM
         elif reduce_op == ReduceOp.MAX:
             return framework.core.ReduceOp.MAX
@@ -183,3 +192,23 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
         )
     else:
         raise ValueError("Unknown parameter: {}.".format(op))
+=======
+            return core.ReduceOp.SUM
+        elif reduce_op == ReduceOp.MAX:
+            return core.ReduceOp.MAX
+        elif reduce_op == ReduceOp.MIN:
+            return core.ReduceOp.MIN
+        elif reduce_op == ReduceOp.PROD:
+            return core.ReduceOp.PRODUCT
+    else:
+        if reduce_op == ReduceOp.SUM:
+            return 'c_allreduce_sum'
+        elif reduce_op == ReduceOp.MAX:
+            return 'c_allreduce_max'
+        elif reduce_op == ReduceOp.MIN:
+            return 'c_allreduce_min'
+        elif reduce_op == ReduceOp.PROD:
+            return 'c_allreduce_prod'
+
+    raise ValueError("Unknown reduce_op type for {}.".format(func_name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

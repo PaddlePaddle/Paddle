@@ -13,7 +13,12 @@
 # limitations under the License.
 
 import paddle
+<<<<<<< HEAD
 from paddle import _legacy_C_ops
+=======
+from paddle.fluid import core
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -28,7 +33,11 @@ PADDLE_TO_NUMBER = {
     paddle.float32: 1,
     paddle.float64: 2,
     paddle.int32: 3,
+<<<<<<< HEAD
     paddle.int64: 4,
+=======
+    paddle.int64: 4
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 NUMBER_TO_DTYPE = {
@@ -36,7 +45,11 @@ NUMBER_TO_DTYPE = {
     1: "float32",
     2: "float64",
     3: "int32",
+<<<<<<< HEAD
     4: "int64",
+=======
+    4: "int64"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 
@@ -82,12 +95,17 @@ def get_tensor_bytes(tensor):
 
 def _all_gather(tensor, group=None, use_calc_stream=True):
     """
+<<<<<<< HEAD
     The main difference with paddle.distributed.all_gather:
+=======
+    The main difference with paddle.distributed.all_gather: 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     no need to pass in tensor_list, the returned tensor is spliced
     """
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
+<<<<<<< HEAD
     nranks = (
         paddle.distributed.collective._get_global_group().nranks
         if group is None
@@ -102,3 +120,9 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
         'nranks',
         nranks,
     )
+=======
+    nranks = paddle.distributed.collective._get_global_group(
+    ).nranks if group is None else group.nranks
+    return _legacy_C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
+                                     'ring_id', ring_id, 'nranks', nranks)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

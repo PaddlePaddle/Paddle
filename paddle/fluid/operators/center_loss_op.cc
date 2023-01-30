@@ -53,10 +53,18 @@ class CenterLossOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -79,10 +87,17 @@ class CenterLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("need_update", "whether need to update center info.");
     AddComment(R"DOC(
 **CenterLoss operator**
+<<<<<<< HEAD
 implemention of the center loss function in the papper<<A Discriminative
 Feature Learning Approach for Deep Face Recognition>>, equations in this  implement
 is:loss = 1/2 * (x-y)^2 ,where x(X) means the deep feature(output of last hidden layer )
 and y(Label) the target label
+=======
+implemention of the center loss function in the papper<<A Discriminative 
+Feature Learning Approach for Deep Face Recognition>>, equations in this  implement
+is:loss = 1/2 * (x-y)^2 ,where x(X) means the deep feature(output of last hidden layer )
+and y(Label) the target label 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
   }
 };
@@ -114,11 +129,19 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "SampleCenterDiff"),
         ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "SampleCenterDiff"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

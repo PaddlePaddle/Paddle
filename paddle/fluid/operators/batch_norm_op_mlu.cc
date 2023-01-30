@@ -36,9 +36,15 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     bool global_stats = test_mode || use_global_stats;
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+<<<<<<< HEAD
     DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<phi::DenseTensor>("X");
+=======
+    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+
+    const auto *x = ctx.Input<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(
         x_dims.size(),
@@ -60,6 +66,7 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
                                           : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
+<<<<<<< HEAD
     const auto *running_mean = ctx.Input<phi::DenseTensor>("Mean");
     const auto *running_var = ctx.Input<phi::DenseTensor>("Variance");
     const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
@@ -70,6 +77,18 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     auto *variance_out = ctx.Output<phi::DenseTensor>("VarianceOut");
     auto *saved_mean = ctx.Output<phi::DenseTensor>("SavedMean");
     auto *saved_variance = ctx.Output<phi::DenseTensor>("SavedVariance");
+=======
+    const auto *running_mean = ctx.Input<Tensor>("Mean");
+    const auto *running_var = ctx.Input<Tensor>("Variance");
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
+
+    auto *y = ctx.Output<Tensor>("Y");
+    auto *mean_out = ctx.Output<Tensor>("MeanOut");
+    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
+    auto *saved_mean = ctx.Output<Tensor>("SavedMean");
+    auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // alloc memory
     y->mutable_data<T>(place);
@@ -78,8 +97,13 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     saved_mean->mutable_data<MPDType>(place);
     saved_variance->mutable_data<MPDType>(place);
 
+<<<<<<< HEAD
     phi::DenseTensor transformed_x;
     phi::DenseTensor transformed_y;
+=======
+    Tensor transformed_x;
+    Tensor transformed_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int transformed_dim_size = 4;
     const int transformed_shape[transformed_dim_size] = {N, sample_size, 1, C};
     MLUCnnlTensorDesc transformed_desc(transformed_dim_size,
@@ -115,8 +139,13 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("MomentumTensor")) {
+<<<<<<< HEAD
       const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
       phi::DenseTensor mom_cpu;
+=======
+      const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+      Tensor mom_cpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
       momentum = mom_cpu.data<float>()[0];
     }
@@ -161,6 +190,7 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     const auto *x = ctx.Input<phi::DenseTensor>("X");
     const auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
@@ -169,16 +199,33 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
     // SavedVariance have been reverted in forward operator
     const auto *saved_inv_variance =
         ctx.Input<phi::DenseTensor>("SavedVariance");
+=======
+    const auto *x = ctx.Input<Tensor>("X");
+    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
+    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+    // SavedVariance have been reverted in forward operator
+    const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
+<<<<<<< HEAD
     DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *d_scale =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+=======
+    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto &dev_ctx = ctx.template device_context<MLUDeviceContext>();
     auto d_x_tmp =
@@ -226,9 +273,15 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
                                           : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
+<<<<<<< HEAD
     phi::DenseTensor transformed_d_y;
     phi::DenseTensor transformed_x;
     phi::DenseTensor transformed_d_x;
+=======
+    Tensor transformed_d_y;
+    Tensor transformed_x;
+    Tensor transformed_d_x;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int transformed_dim_size = 4;
     const int transformed_shape[transformed_dim_size] = {N, sample_size, 1, C};
 
@@ -272,8 +325,13 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
     }
 
     if (use_global_stats) {
+<<<<<<< HEAD
       const auto *running_mean = ctx.Input<phi::DenseTensor>("Mean");
       const auto *running_variance = ctx.Input<phi::DenseTensor>("Variance");
+=======
+      const auto *running_mean = ctx.Input<Tensor>("Mean");
+      const auto *running_variance = ctx.Input<Tensor>("Variance");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       MLUCnnl::FusedBatchNormGrad(ctx,
                                   false /*is_training*/,
                                   transformed_desc.get(),

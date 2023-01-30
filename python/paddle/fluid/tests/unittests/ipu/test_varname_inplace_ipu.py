@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -54,6 +61,7 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
@@ -65,6 +73,17 @@ class TestBase(IPUOpTest):
                 scale1 = paddle.scale(add2)
                 scale2 = paddle.scale(scale1, scale=1.3, bias=0.5)
                 scale3 = paddle.scale(scale2, scale=2, bias=0.7)
+=======
+                x = paddle.static.data(name=self.feed_list[0],
+                                       shape=self.feed_shape[0],
+                                       dtype=self.feed_dtype[0])
+                add1 = paddle.fluid.layers.elementwise_add(x, x)
+                reshape = paddle.fluid.layers.reshape(add1, **self.attrs)
+                add2 = paddle.fluid.layers.elementwise_add(reshape, reshape)
+                scale1 = paddle.fluid.layers.scale(add2)
+                scale2 = paddle.fluid.layers.scale(scale1, scale=1.3, bias=0.5)
+                scale3 = paddle.fluid.layers.scale(scale2, scale=2, bias=0.7)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             fetch_list = [scale3.name]
 
@@ -77,8 +96,12 @@ class TestBase(IPUOpTest):
             exe.run(startup_prog)
             scale1_out = main_prog.global_block().ops[4].output("Out")[0]
             main_prog.global_block().ops[4]._rename_output(
+<<<<<<< HEAD
                 scale1_out, add2.name
             )
+=======
+                scale1_out, add2.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             main_prog.global_block().ops[5]._rename_input(scale1_out, add2.name)
 
             if run_ipu:
@@ -86,8 +109,13 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=self.is_training)
                 program = paddle.static.IpuCompiledProgram(
+<<<<<<< HEAD
                     main_prog, ipu_strategy=ipu_strategy
                 ).compile(feed_list, fetch_list)
+=======
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 program = main_prog
 
@@ -98,9 +126,16 @@ class TestBase(IPUOpTest):
         res0 = self._test_base(True)
         res1 = self._test_base(False)
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             res0.flatten(), res1.flatten(), rtol=1e-05, atol=self.atol
         )
+=======
+        np.testing.assert_allclose(res0.flatten(),
+                                   res1.flatten(),
+                                   rtol=1e-05,
+                                   atol=self.atol)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertTrue(res0.shape == res1.shape)
 

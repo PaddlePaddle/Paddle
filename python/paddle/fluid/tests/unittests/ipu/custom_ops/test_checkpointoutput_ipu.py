@@ -13,11 +13,18 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import sys
 import unittest
 
 import numpy as np
 
+=======
+import unittest
+import sys
+
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.utils.cpp_extension import load
@@ -28,6 +35,7 @@ from op_test_ipu import IPUOpTest
 
 def load_custom_ops():
     cur_dir = os.path.dirname(os.path.realpath(__file__))
+<<<<<<< HEAD
     custom_ops = load(
         name="checkpointoutput",
         sources=[
@@ -35,10 +43,21 @@ def load_custom_ops():
         ],
         extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
     )
+=======
+    custom_ops = load(name="checkpointoutput",
+                      sources=[
+                          f"{cur_dir}/custom_checkpointoutput.cc",
+                      ],
+                      extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return custom_ops
 
 
 class TestCheckpointoutput(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.load_custom_ops()
         self.set_atol()
@@ -68,9 +87,15 @@ class TestCheckpointoutput(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = paddle.add(x, x)
         x = self.op(x, **self.op_attrs)
         x = paddle.mean(x)

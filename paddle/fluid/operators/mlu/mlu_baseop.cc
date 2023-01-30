@@ -206,7 +206,11 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const int tensor_dim,
       cnnlSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
+<<<<<<< HEAD
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
+=======
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                      const cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype) {
   auto dims = phi::vectorize<int>(tensor.dims());
@@ -227,11 +231,19 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
   }
 }
 
+<<<<<<< HEAD
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor)
     : MLUCnnlTensorDesc(
           tensor, CNNL_LAYOUT_ARRAY, ToCnnlDataType(tensor.dtype())) {}
 
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
+=======
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor)
+    : MLUCnnlTensorDesc(
+          tensor, CNNL_LAYOUT_ARRAY, ToCnnlDataType(tensor.dtype())) {}
+
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                      cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype,
                                      int position)
@@ -240,7 +252,11 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
       cnnlSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
+<<<<<<< HEAD
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
+=======
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                      cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype,
                                      int position,
@@ -386,7 +402,11 @@ MLUOpTensorDesc::MLUOpTensorDesc(const int tensor_dim,
       mluOpSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
+<<<<<<< HEAD
 MLUOpTensorDesc::MLUOpTensorDesc(const phi::DenseTensor& tensor,
+=======
+MLUOpTensorDesc::MLUOpTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  const mluOpTensorLayout_t layout,
                                  const mluOpDataType_t tensor_dtype) {
   auto dims = phi::vectorize<int>(tensor.dims());
@@ -407,11 +427,19 @@ MLUOpTensorDesc::MLUOpTensorDesc(const phi::DenseTensor& tensor,
   }
 }
 
+<<<<<<< HEAD
 MLUOpTensorDesc::MLUOpTensorDesc(const phi::DenseTensor& tensor)
     : MLUOpTensorDesc(
           tensor, MLUOP_LAYOUT_ARRAY, ToMluOpDataType(tensor.dtype())) {}
 
 MLUOpTensorDesc::MLUOpTensorDesc(const phi::DenseTensor& tensor,
+=======
+MLUOpTensorDesc::MLUOpTensorDesc(const Tensor& tensor)
+    : MLUOpTensorDesc(
+          tensor, MLUOP_LAYOUT_ARRAY, ToMluOpDataType(tensor.dtype())) {}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  mluOpTensorLayout_t layout,
                                  const mluOpDataType_t tensor_dtype,
                                  int position)
@@ -420,7 +448,11 @@ MLUOpTensorDesc::MLUOpTensorDesc(const phi::DenseTensor& tensor,
       mluOpSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
+<<<<<<< HEAD
 MLUOpTensorDesc::MLUOpTensorDesc(const phi::DenseTensor& tensor,
+=======
+MLUOpTensorDesc::MLUOpTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  mluOpTensorLayout_t layout,
                                  const mluOpDataType_t tensor_dtype,
                                  int position,
@@ -562,7 +594,11 @@ const cnnlRandGenerator_t MLUCnnlRandomGeneratorDesc::get() const {
   return mlu_generator;
 }
 
+<<<<<<< HEAD
 phi::DenseTensor& MLUCnnlRandomGeneratorDesc::get_state() { return mlu_state; }
+=======
+Tensor& MLUCnnlRandomGeneratorDesc::get_state() { return mlu_state; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 MLUCnnlRandomGeneratorDesc::~MLUCnnlRandomGeneratorDesc() {
   if (mlu_generator) {
@@ -953,7 +989,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetConcatWorkspaceSize(handle, pack_num, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -981,7 +1021,11 @@ MLURNNDesc::~MLURNNDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(
       cnnlGetConcatWorkspaceSize(handle, pack_num, &workspace_size));
 
+<<<<<<< HEAD
   phi::DenseTensor workspace(paddle::experimental::DataType::INT8);
+=======
+  Tensor workspace(paddle::experimental::DataType::INT8);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   workspace.Resize(framework::DDim({static_cast<int64_t>(workspace_size)}));
   void* workspace_ptr = workspace.mutable_data(dev_ctx.GetPlace());
 
@@ -1011,7 +1055,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, in0_desc, in1_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -1067,7 +1115,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input_quant_desc, output_desc, local_size, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -1104,7 +1156,11 @@ MLURNNDesc::~MLURNNDesc() {
 
   // use ctx allocate interface for profiling purpose
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -1580,7 +1636,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, in0_desc, in1_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -1610,9 +1670,15 @@ MLURNNDesc::~MLURNNDesc() {
     const float alpha1_float,
     const float alpha2_float,
     const float beta_float) {
+<<<<<<< HEAD
   const int alpha1_int = static_cast<int>(alpha1_float);
   const int alpha2_int = static_cast<int>(alpha2_float);
   const int beta_int = static_cast<int>(beta_float);
+=======
+  const int alpha1_int = static_cast<const int>(alpha1_float);
+  const int alpha2_int = static_cast<const int>(alpha2_float);
+  const int beta_int = static_cast<const int>(beta_float);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   const void* alpha1_ptr = static_cast<const void*>(&alpha1_float);
   const void* alpha2_ptr = static_cast<const void*>(&alpha2_float);
@@ -1634,7 +1700,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, a_desc, b_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -1665,7 +1735,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetAxWorkspaceSize(handle, alpha_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -1754,7 +1828,11 @@ MLURNNDesc::~MLURNNDesc() {
                                                             &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -1803,7 +1881,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetSplitWorkspaceSize(handle, split_num, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -1831,7 +1913,11 @@ MLURNNDesc::~MLURNNDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(
       cnnlGetSplitWorkspaceSize(handle, split_num, &workspace_size));
 
+<<<<<<< HEAD
   phi::DenseTensor workspace(paddle::experimental::DataType::INT8);
+=======
+  Tensor workspace(paddle::experimental::DataType::INT8);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   workspace.Resize(framework::DDim({static_cast<int64_t>(workspace_size)}));
   void* workspace_ptr = workspace.mutable_data(dev_ctx.GetPlace());
 
@@ -1947,7 +2033,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input1_desc, input2_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -1979,7 +2069,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, condition_desc, then_desc, else_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2023,7 +2117,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2162,7 +2260,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, pool_mode, output_w, output_h, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2217,7 +2319,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, pool_mode, output_shape[2], output_shape[1], &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2270,7 +2376,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, data_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2359,7 +2469,11 @@ MLURNNDesc::~MLURNNDesc() {
                                              &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2433,7 +2547,11 @@ MLURNNDesc::~MLURNNDesc() {
 
   size_t workspace_size = 0;
   void* workspace_ptr = nullptr;
+<<<<<<< HEAD
   phi::DenseTensor workspace;
+=======
+  Tensor workspace;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (need_workspace) {
     PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetReduceOpWorkspaceSize(
         handle, input_desc, output_desc, reduction_desc, &workspace_size));
@@ -2473,7 +2591,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input1_desc, input2_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2502,7 +2624,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input1_desc, input2_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2530,7 +2656,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetMaximumWorkspaceSize(handle, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2558,7 +2688,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetMinimumWorkspaceSize(handle, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2587,7 +2721,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input1_desc, input2_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2617,7 +2755,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input1_desc, input2_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2647,7 +2789,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input1_desc, input2_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2677,7 +2823,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input1_desc, input2_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -2944,7 +3094,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetDynamicStitchWorkspaceSize(handle, size, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3203,7 +3357,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetNmsWorkspaceSize_v2(handle, confidence_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3252,7 +3410,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3427,7 +3589,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetLayerNormOpWorkspaceSize(handle, axis, x_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3499,7 +3665,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetQuantizeParamWorkspaceSize(handle, input_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3565,7 +3735,11 @@ MLURNNDesc::~MLURNNDesc() {
                                              &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3708,7 +3882,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlMakeFusedOpsPlan(handle, fusion_plan, cparam_pack, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3773,7 +3951,11 @@ MLURNNDesc::~MLURNNDesc() {
                                                   &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3839,7 +4021,11 @@ MLURNNDesc::~MLURNNDesc() {
                                                   &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3899,7 +4085,11 @@ MLURNNDesc::~MLURNNDesc() {
                                                     &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -3967,7 +4157,11 @@ MLURNNDesc::~MLURNNDesc() {
                                                     &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4021,7 +4215,11 @@ MLURNNDesc::~MLURNNDesc() {
                                                             &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4079,7 +4277,11 @@ MLURNNDesc::~MLURNNDesc() {
                                           &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4135,7 +4337,11 @@ MLURNNDesc::~MLURNNDesc() {
                                             &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4207,7 +4413,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, matmul_desc, a_desc, b_desc, output_desc, algo, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4295,7 +4505,11 @@ MLURNNDesc::~MLURNNDesc() {
                                               &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4399,7 +4613,11 @@ MLURNNDesc::~MLURNNDesc() {
                                                    &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4450,7 +4668,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input_desc, perm_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4517,7 +4739,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetWhereWorkspaceSize(handle, num_true_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4593,7 +4819,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input1_desc, input2_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4623,7 +4853,11 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlGetQRWorkspaceSize(handle, a_desc, some, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4667,7 +4901,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input_desc, weight_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4705,7 +4943,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, target_desc, weight_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4742,7 +4984,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, x_desc, algorithm, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4778,7 +5024,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, x_desc, algorithm, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4857,7 +5107,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, diff_desc, output_desc, scale_grad_by_freq, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -4903,7 +5157,11 @@ MLURNNDesc::~MLURNNDesc() {
           "MLU RNNForward failed. x_desc initializing failed."));
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
   size_t workspace_size, reservespace_size;
+<<<<<<< HEAD
   phi::DenseTensor workspace;
+=======
+  Tensor workspace;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetRNNTempSizes(
       handle, rnn_desc, x_desc, &workspace_size, &reservespace_size));
   workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
@@ -4967,7 +5225,11 @@ MLURNNDesc::~MLURNNDesc() {
           "MLU RNNForward failed. x_desc initializing failed."));
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
   size_t workspace_size;
+<<<<<<< HEAD
   phi::DenseTensor workspace;
+=======
+  Tensor workspace;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetRNNTempSizes(
       handle, rnn_desc, x_desc, &workspace_size, &reservespace_size));
   workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
@@ -5028,7 +5290,11 @@ MLURNNDesc::~MLURNNDesc() {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
   size_t workspace_size;
+<<<<<<< HEAD
   phi::DenseTensor workspace;
+=======
+  Tensor workspace;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetMaskedWorkspaceSize(handle,
                                                         masked_mode,
                                                         input_desc,
@@ -5075,7 +5341,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input_desc, weight_desc, pos_weight_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -5119,7 +5389,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, target_desc, weight_desc, pos_weight_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
@@ -5227,7 +5501,11 @@ MLURNNDesc::~MLURNNDesc() {
       handle, input_desc, grid_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
+<<<<<<< HEAD
   phi::DenseTensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+=======
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 

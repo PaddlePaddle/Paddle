@@ -24,6 +24,7 @@ TEST(DataTypeTransform, GPUTransform) {
                            .GetAllocator(gpu_place, context.stream())
                            .get());
   context.PartialInitWithAllocator();
+<<<<<<< HEAD
 
   auto kernel_fp16 = phi::KernelKey(
       gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT16);
@@ -49,6 +50,50 @@ TEST(DataTypeTransform, GPUTransform) {
     phi::DenseTensor in_gpu;
     phi::DenseTensor out_gpu;
     phi::DenseTensor out;
+=======
+  auto kernel_fp16 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP16,
+                                      gpu_place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
+
+  auto kernel_fp32 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
+                                      gpu_place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
+
+  auto kernel_fp64 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP64,
+                                      gpu_place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
+
+  auto kernel_int32 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT32,
+                                      gpu_place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
+
+  auto kernel_int64 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT64,
+                                      gpu_place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
+
+  auto kernel_bool =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::BOOL,
+                                      gpu_place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
+
+  // data type transform from float32
+  {
+    paddle::framework::Tensor in;
+    paddle::framework::Tensor in_gpu;
+    paddle::framework::Tensor out_gpu;
+    paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     float* in_ptr = in.mutable_data<float>(phi::make_ddim({2, 3}), cpu_place);
     float arr[6] = {0, 1, 2, 3, 4, 5};
@@ -80,10 +125,17 @@ TEST(DataTypeTransform, GPUTransform) {
 
   // data type transform from/to float16
   {
+<<<<<<< HEAD
     phi::DenseTensor in;
     phi::DenseTensor in_gpu;
     phi::DenseTensor out_gpu;
     phi::DenseTensor out;
+=======
+    paddle::framework::Tensor in;
+    paddle::framework::Tensor in_gpu;
+    paddle::framework::Tensor out_gpu;
+    paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     paddle::platform::float16* ptr = in.mutable_data<paddle::platform::float16>(
         phi::make_ddim({2, 3}), cpu_place);

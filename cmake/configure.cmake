@@ -222,10 +222,13 @@ if(WITH_PSCORE)
   add_definitions(-DPADDLE_WITH_PSCORE)
 endif()
 
+<<<<<<< HEAD
 if(WITH_RPC)
   add_definitions(-DPADDLE_WITH_RPC)
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_HETERPS)
   add_definitions(-DPADDLE_WITH_HETERPS)
 endif()
@@ -248,7 +251,10 @@ endif()
 if(WITH_GPU_GRAPH)
   add_definitions(-DPADDLE_WITH_GPU_GRAPH)
 endif()
+<<<<<<< HEAD
 
 if(WITH_CUDNN_FRONTEND)
   add_definitions(-DPADDLE_WITH_CUDNN_FRONTEND)
 endif()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

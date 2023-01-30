@@ -28,4 +28,8 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
                             bool exclusive,
                             bool reverse,
                             DenseTensor* d_x);
+<<<<<<< HEAD
 }  // namespace phi
+=======
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

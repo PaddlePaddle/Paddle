@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import time
 import warnings
 from multiprocessing import Manager  # noqa: F401
@@ -50,6 +51,41 @@ from paddle.framework import (
     in_dygraph_mode,
     parallel_helper,
 )
+=======
+import six
+import warnings
+from multiprocessing import Process  # noqa: F401
+from multiprocessing import Manager  # noqa: F401
+import time
+import sys
+import paddle
+
+from paddle import compat as cpt
+
+# deprecated module import
+from paddle.fluid import core
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _set_expected_place
+from paddle.fluid.dygraph import parallel_helper
+from paddle.distributed.fleet.launch_utils import check_backend
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.fleet.base.private_helper_function import (
+    wait_server_ready,
+)  # noqa: F401
+from paddle.distributed import collective
+from paddle.distributed.collective import _set_group_map
+from paddle.distributed.collective import _set_group_map_by_name
+from paddle.distributed.collective import _get_group_map_by_name
+from paddle.distributed.collective import _group_map_by_name
+from paddle.distributed.collective import _default_group_name
+from paddle.distributed.collective import _valid_backend_list
+from paddle.distributed.collective import _set_default_backend
+from paddle.distributed.collective import _set_default_store
+from paddle.distributed.collective import _new_process_group_impl
+from paddle.distributed.collective import Group
+from paddle.distributed.collective import _set_group_map_backend
+from paddle.distributed.communication.group import _add_new_group
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -88,7 +124,11 @@ def _is_cpuonly(backend):
             or core.is_compiled_with_npu()
             or core.is_compiled_with_mlu()
         )
+<<<<<<< HEAD
     ) or backend == 'xccl':
+=======
+    ) or backend is 'xccl':
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
@@ -132,7 +172,11 @@ def init_parallel_env():
 
             class LinearNet(nn.Layer):
                 def __init__(self):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(LinearNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -189,7 +233,10 @@ def init_parallel_env():
         or core.is_compiled_with_xpu()
         or core.is_compiled_with_npu()
         or core.is_compiled_with_mlu()
+<<<<<<< HEAD
         or backend == "xccl"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend"
@@ -243,7 +290,10 @@ def init_parallel_env():
     _set_expected_place(place)
 
     group = None
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if backend in _valid_backend_list and in_dygraph_mode():
         if _default_group_name in _get_group_map_by_name():
             return _get_group_map_by_name()[_default_group_name]

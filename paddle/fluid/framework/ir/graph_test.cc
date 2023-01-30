@@ -74,7 +74,11 @@ class DummyOpVarTypeInference : public VarTypeInference {
 }  // namespace framework
 }  // namespace paddle
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(fake_sum,
+=======
+REGISTER_OPERATOR(sum,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   paddle::framework::NOP,
                   paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
@@ -92,7 +96,11 @@ namespace framework {
 TEST(GraphTest, Basic) {
   ProgramDesc prog;
   auto *op = prog.MutableBlock(0)->AppendOp();
+<<<<<<< HEAD
   op->SetType("fake_sum");
+=======
+  op->SetType("sum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
   op->SetAttr("op_role", 1);
@@ -115,7 +123,11 @@ TEST(GraphTest, Basic) {
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   std::vector<ir::Node *> nodes(g->Nodes().begin(), g->Nodes().end());
   for (ir::Node *n : nodes) {
+<<<<<<< HEAD
     if (n->Name() == "fake_sum") {
+=======
+    if (n->Name() == "sum") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       ASSERT_EQ(n->inputs.size(), 3UL);
       ASSERT_EQ(n->outputs.size(), 1UL);
     } else if (n->Name() == "test_a" || n->Name() == "test_b" ||
@@ -242,7 +254,11 @@ TEST(GraphTest, TestMultiBlock) {
 
   // Set contents in block_0.
   auto *op = prog.MutableBlock(0)->AppendOp();
+<<<<<<< HEAD
   op->SetType("fake_sum");
+=======
+  op->SetType("sum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
   op->SetAttr("op_role", 1);
@@ -262,7 +278,11 @@ TEST(GraphTest, TestMultiBlock) {
 
   // Set contents in block_1.
   op = prog.MutableBlock(1)->AppendOp();
+<<<<<<< HEAD
   op->SetType("fake_sum");
+=======
+  op->SetType("sum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op->SetInput("X", {"a"});
   op->SetOutput("Out", {"b"});
   op->SetAttr("op_role", 1);
@@ -280,7 +300,11 @@ TEST(GraphTest, TestMultiBlock) {
 
   // Set contents in block_2.
   op = prog.MutableBlock(2)->AppendOp();
+<<<<<<< HEAD
   op->SetType("fake_sum");
+=======
+  op->SetType("sum");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op->SetInput("X", {"a"});
   op->SetOutput("Out", {"b"});
   op->SetAttr("op_role", 1);
@@ -305,7 +329,11 @@ TEST(GraphTest, TestMultiBlock) {
   const ir::Graph *g0 = g->GetSubGraph(0);
   std::vector<ir::Node *> nodes(g0->Nodes().begin(), g0->Nodes().end());
   for (ir::Node *n : nodes) {
+<<<<<<< HEAD
     if (n->Name() == "fake_sum") {
+=======
+    if (n->Name() == "sum") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       ASSERT_EQ(n->inputs.size(), 3UL);
       ASSERT_EQ(n->outputs.size(), 1UL);
     } else if (n->Name() == "test_a" || n->Name() == "test_b" ||
@@ -322,7 +350,11 @@ TEST(GraphTest, TestMultiBlock) {
   // Check contents in sub_graph_1.
   const ir::Graph *g1 = g->GetSubGraph(1);
   for (ir::Node *n : g1->Nodes()) {
+<<<<<<< HEAD
     if (n->Name() == "fake_sum") {
+=======
+    if (n->Name() == "sum") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       ASSERT_EQ(n->outputs[0]->Name(), "b");
       ASSERT_EQ(n->outputs.size(), 1UL);
     }
@@ -335,7 +367,11 @@ TEST(GraphTest, TestMultiBlock) {
   // Check contents in sub_graph_2.
   const ir::Graph *g2 = g->GetSubGraph(2);
   for (ir::Node *n : g2->Nodes()) {
+<<<<<<< HEAD
     if (n->Name() == "fake_sum") {
+=======
+    if (n->Name() == "sum") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       ASSERT_EQ(n->outputs[0]->Name(), "b");
       ASSERT_EQ(n->outputs.size(), 1UL);
     }

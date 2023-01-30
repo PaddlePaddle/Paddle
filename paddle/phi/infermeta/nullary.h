@@ -48,12 +48,21 @@ void EyeInferMeta(const Scalar& num_rows,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
 
+<<<<<<< HEAD
 void GaussianInferMeta(const IntArray& shape,
                        float mean,
                        float std,
                        int seed,
                        DataType dtype,
                        MetaTensor* out);
+=======
+void GaussianRandomInferMeta(const IntArray& shape,
+                             float mean,
+                             float std,
+                             int seed,
+                             DataType dtype,
+                             MetaTensor* out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
 

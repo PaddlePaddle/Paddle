@@ -15,7 +15,10 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+<<<<<<< HEAD
 #include "paddle/phi/infermeta/binary.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -28,6 +31,7 @@ void FillDiagonalTensorKernel(const Context& ctx,
                               int dim2,
                               DenseTensor* out);
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 DenseTensor FillDiagonalTensor(const Context& ctx,
                                const DenseTensor& x,
@@ -43,6 +47,8 @@ DenseTensor FillDiagonalTensor(const Context& ctx,
   return dense_out;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void CalMatDims(phi::DDim out_dims,
                 int dim1,
                 int dim2,

@@ -20,7 +20,11 @@ namespace paddle {
 namespace framework {
 
 bool IsProgramVersionSupported(int64_t version) {
+<<<<<<< HEAD
   /* So far, all old versions of phi::DenseTensor are supported in the
+=======
+  /* So far, all old versions of Tensor are supported in the
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    * new version. The compatibility judgment cannot be made only
    * by the version number. Please do not use this interface,
    * it may be discarded because backward compatibility.
@@ -29,7 +33,11 @@ bool IsProgramVersionSupported(int64_t version) {
 }
 
 bool IsTensorVersionSupported(uint32_t version) {
+<<<<<<< HEAD
   /* So far, all old versions of phi::DenseTensor are supported in the
+=======
+  /* So far, all old versions of Tensor are supported in the
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    * new version. The compatibility judgment cannot be made only
    * by the version number. Please do not use this interface,
    * it may be discarded because backward compatibility.

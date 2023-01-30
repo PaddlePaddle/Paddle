@@ -20,6 +20,7 @@ template <typename T>
 class GPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     phi::DenseTensor* tensor = nullptr;
     auto out_var = context.OutputVar("Out");
     std::vector<int64_t> new_shape;
@@ -28,6 +29,16 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     if (list_new_shape_tensor.size() > 0 || context.HasInput("ShapeTensor")) {
       if (context.HasInput("ShapeTensor")) {
         auto* shape_tensor = context.Input<phi::DenseTensor>("ShapeTensor");
+=======
+    framework::Tensor* tensor = nullptr;
+    auto out_var = context.OutputVar("Out");
+    std::vector<int64_t> new_shape;
+    auto list_new_shape_tensor =
+        context.MultiInput<framework::Tensor>("ShapeTensorList");
+    if (list_new_shape_tensor.size() > 0 || context.HasInput("ShapeTensor")) {
+      if (context.HasInput("ShapeTensor")) {
+        auto* shape_tensor = context.Input<framework::Tensor>("ShapeTensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         new_shape = GetNewDataFromShapeTensor(shape_tensor);
       } else if (list_new_shape_tensor.size() > 0) {
         new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);
@@ -41,6 +52,7 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
       if (!new_shape.empty()) shape = new_shape;
       tensor->Resize(phi::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
+<<<<<<< HEAD
     } else if (out_var->IsType<phi::DenseTensor>()) {
       tensor = out_var->GetMutable<phi::DenseTensor>();
       if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
@@ -48,6 +60,14 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of Output(out) in uniform_random_op must be "
           "phi::DenseTensor, "
+=======
+    } else if (out_var->IsType<framework::LoDTensor>()) {
+      tensor = out_var->GetMutable<framework::LoDTensor>();
+      if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected type of Output(out) in uniform_random_op must be Tensor, "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           "SelectedRows. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));

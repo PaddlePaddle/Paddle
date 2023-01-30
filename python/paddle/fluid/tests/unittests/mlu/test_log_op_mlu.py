@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -26,6 +31,10 @@ SEED = 2021
 
 
 class TestActivation(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "exp"
@@ -56,6 +65,10 @@ class TestActivation(OpTest):
 
 
 class TestLog(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "log"
@@ -70,18 +83,33 @@ class TestLog(TestActivation):
         self.outputs = {'Out': out}
 
     def test_error(self):
+<<<<<<< HEAD
         in1 = paddle.static.data(
             name="in1", shape=[11, 17], dtype="int32"
         )
         in2 = paddle.static.data(
             name="in2", shape=[-1, 11, 17], dtype="int64"
         )
+=======
+        in1 = fluid.layers.data(name="in1",
+                                shape=[11, 17],
+                                append_batch_size=False,
+                                dtype="int32")
+        in2 = fluid.layers.data(name="in2",
+                                shape=[11, 17],
+                                append_batch_size=False,
+                                dtype="int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(TypeError, fluid.layers.log, in1)
         self.assertRaises(TypeError, fluid.layers.log, in2)
 
 
 class TestLog2(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "log2"
@@ -102,6 +130,7 @@ class TestLog2(TestActivation):
         self.assertRaises(TypeError, paddle.log2, in2)
 
     def test_api(self):
+<<<<<<< HEAD
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
@@ -109,15 +138,29 @@ class TestLog2(TestActivation):
             data_x = paddle.static.data(
                 name="data_x", shape=[11, 17], dtype="float32"
             )
+=======
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float32")
+            data_x = paddle.static.data(name="data_x",
+                                        shape=[11, 17],
+                                        dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             out1 = paddle.log2(data_x)
             exe = paddle.static.Executor(place=fluid.CPUPlace())
             exe.run(paddle.static.default_startup_program())
+<<<<<<< HEAD
             res1 = exe.run(
                 paddle.static.default_main_program(),
                 feed={"data_x": input_x},
                 fetch_list=[out1],
             )
+=======
+            res1 = exe.run(paddle.static.default_main_program(),
+                           feed={"data_x": input_x},
+                           fetch_list=[out1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         expected_res = np.log2(input_x)
         np.testing.assert_allclose(res1[0], expected_res, rtol=1e-6)
 
@@ -134,6 +177,10 @@ class TestLog2(TestActivation):
 
 
 class TestLog10(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "log10"
@@ -154,6 +201,7 @@ class TestLog10(TestActivation):
         self.assertRaises(TypeError, paddle.log10, in2)
 
     def test_api(self):
+<<<<<<< HEAD
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
@@ -161,15 +209,29 @@ class TestLog10(TestActivation):
             data_x = paddle.static.data(
                 name="data_x", shape=[11, 17], dtype="float32"
             )
+=======
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float32")
+            data_x = paddle.static.data(name="data_x",
+                                        shape=[11, 17],
+                                        dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             out1 = paddle.log10(data_x)
             exe = paddle.static.Executor(place=paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
+<<<<<<< HEAD
             res1 = exe.run(
                 paddle.static.default_main_program(),
                 feed={"data_x": input_x},
                 fetch_list=[out1],
             )
+=======
+            res1 = exe.run(paddle.static.default_main_program(),
+                           feed={"data_x": input_x},
+                           fetch_list=[out1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         expected_res = np.log10(input_x)
         np.testing.assert_allclose(res1[0], expected_res, rtol=1e-6)
 
@@ -184,6 +246,10 @@ class TestLog10(TestActivation):
 
 
 class TestLogHalf(TestLog):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -192,6 +258,10 @@ class TestLogHalf(TestLog):
 
 
 class TestLog2Half(TestLog2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -200,6 +270,10 @@ class TestLog2Half(TestLog2):
 
 
 class TestLog10Half(TestLog10):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 

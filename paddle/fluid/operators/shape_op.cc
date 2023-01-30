@@ -26,6 +26,7 @@ class ShapeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
@@ -41,17 +42,51 @@ class ShapeOp : public framework::OperatorWithKernel {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           tensor.layout(),
                           expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+ protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("Input", "(phi::DenseTensor), The input tensor.");
     AddOutput("Out",
               "(phi::DenseTensor), The shape of input tensor, the data type of "
               "the shape"
               " is int32_t, will be on the same device with the input Tensor.");
+=======
+    AddInput("Input", "(LoDTensor), The input tensor.");
+    AddOutput(
+        "Out",
+        "(LoDTensor), The shape of input tensor, the data type of the shape"
+        " is int32_t, will be on the same device with the input Tensor.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddComment(R"DOC(
 Shape Operator.
 
@@ -60,8 +95,11 @@ Return the shape of the input.
   }
 };
 
+<<<<<<< HEAD
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ShapeNoNeedBufferVarsInferer, "Input");
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace operators
 }  // namespace paddle
 
@@ -78,5 +116,8 @@ REGISTER_OPERATOR(
     ops::ShapeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+<<<<<<< HEAD
     ops::ShapeNoNeedBufferVarsInferer,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ShapeInferShapeFunctor);

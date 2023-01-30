@@ -41,26 +41,45 @@ class ConditionalOp : public framework::OperatorBase {
   static const char kSkipEagerDeletionVars[];
 
  protected:
+<<<<<<< HEAD
   std::vector<const phi::DenseTensor *> InputTensors(
       const framework::Scope &scope, const std::string &in_name) const {
     std::vector<const phi::DenseTensor *> retv;
+=======
+  std::vector<const framework::LoDTensor *> InputTensors(
+      const framework::Scope &scope, const std::string &in_name) const {
+    std::vector<const framework::LoDTensor *> retv;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto xs = Inputs(in_name);
     retv.resize(xs.size(), nullptr);
     std::transform(
         xs.begin(),
         xs.end(),
         retv.begin(),
+<<<<<<< HEAD
         [&scope](const std::string &var_name) -> const phi::DenseTensor * {
+=======
+        [&scope](const std::string &var_name) -> const framework::LoDTensor * {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           auto *var = scope.FindVar(var_name);
           PADDLE_ENFORCE_NOT_NULL(var,
                                   platform::errors::InvalidArgument(
                                       "Cannot find variable %s", var_name));
+<<<<<<< HEAD
           return &var->Get<phi::DenseTensor>();
+=======
+          return &var->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         });
     return retv;
   }
 
+<<<<<<< HEAD
   bool ScalarCondition(const std::vector<const phi::DenseTensor *> &ips) const {
+=======
+  bool ScalarCondition(
+      const std::vector<const framework::LoDTensor *> &ips) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         ips.size() == 1UL && ips[0]->IsInitialized(),
         true,
@@ -78,13 +97,18 @@ class ConditionalOp : public framework::OperatorBase {
     bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
       phi::DenseTensor cpu_tensor;
+=======
+      framework::LoDTensor cpu_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
       platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];
 #endif
     } else if (platform::is_npu_place(ips[0]->place())) {
 #ifdef PADDLE_WITH_ASCEND_CL
+<<<<<<< HEAD
       phi::DenseTensor cpu_tensor;
       framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
       platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
@@ -93,6 +117,9 @@ class ConditionalOp : public framework::OperatorBase {
     } else if (platform::is_custom_place(ips[0]->place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
+=======
+      framework::LoDTensor cpu_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
       platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];

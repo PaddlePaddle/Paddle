@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -22,6 +23,24 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestRepeatedFcReluFusePass(PassAutoScanTest):
+=======
+from auto_scan_test import PassAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
+from functools import reduce
+
+
+class TestRepeatedFcReluFusePass(PassAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -38,6 +57,7 @@ class TestRepeatedFcReluFusePass(PassAutoScanTest):
         def generate_weight(shape):
             return np.random.random(shape).astype(np.float32)
 
+<<<<<<< HEAD
         attrs = [
             {"x_col": x_col, "y_col": y_col},
             {"axis": axis},
@@ -85,12 +105,72 @@ class TestRepeatedFcReluFusePass(PassAutoScanTest):
             outputs={"Out": ["relu2_output"]},
             attrs={},
         )
+=======
+        attrs = [{
+            "x_col": x_col,
+            "y_col": y_col
+        }, {
+            "axis": axis
+        }, {
+            'batch_size': batch_size,
+            'dim': dim
+        }]
+
+        mul_op1 = OpConfig(type="mul",
+                           inputs={
+                               "X": ["input_data"],
+                               "Y": ["mul1_weight"]
+                           },
+                           outputs={"Out": ["mul1_output"]},
+                           attrs={
+                               "x_num_col_dims": x_col,
+                               "y_num_col_dims": y_col
+                           })
+
+        elt_op1 = OpConfig(type="elementwise_add",
+                           inputs={
+                               "X": ["mul1_output"],
+                               "Y": ["elementwise1_weight"]
+                           },
+                           outputs={"Out": ["elementwise1_output"]},
+                           attrs={"axis": axis})
+
+        relu_op1 = OpConfig(type="relu",
+                            inputs={"X": ["elementwise1_output"]},
+                            outputs={"Out": ["relu1_output"]},
+                            attrs={})
+
+        mul_op2 = OpConfig(type="mul",
+                           inputs={
+                               "X": ["relu1_output"],
+                               "Y": ["mul2_weight"]
+                           },
+                           outputs={"Out": ["mul2_output"]},
+                           attrs={
+                               "x_num_col_dims": x_col,
+                               "y_num_col_dims": y_col
+                           })
+
+        elt_op2 = OpConfig(type="elementwise_add",
+                           inputs={
+                               "X": ["mul2_output"],
+                               "Y": ["elementwise2_weight"]
+                           },
+                           outputs={"Out": ["elementwise2_output"]},
+                           attrs={"axis": axis})
+
+        relu_op2 = OpConfig(type="relu",
+                            inputs={"X": ["elementwise2_output"]},
+                            outputs={"Out": ["relu2_output"]},
+                            attrs={})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_net = [mul_op1, elt_op1, relu_op1, mul_op2, elt_op2, relu_op2]
 
         program_config = ProgramConfig(
             ops=model_net,
             weights={
+<<<<<<< HEAD
                 "mul1_weight": TensorConfig(
                     data_gen=partial(generate_weight, [dim, 32])
                 ),
@@ -103,12 +183,26 @@ class TestRepeatedFcReluFusePass(PassAutoScanTest):
                 "elementwise2_weight": TensorConfig(
                     data_gen=partial(generate_weight, [128])
                 ),
+=======
+                "mul1_weight":
+                TensorConfig(data_gen=partial(generate_weight, [dim, 32])),
+                "mul2_weight":
+                TensorConfig(data_gen=partial(generate_weight, [32, 128])),
+                "elementwise1_weight":
+                TensorConfig(data_gen=partial(generate_weight, [32])),
+                "elementwise2_weight":
+                TensorConfig(data_gen=partial(generate_weight, [128]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             },
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
+<<<<<<< HEAD
             outputs=["relu2_output"],
         )
+=======
+            outputs=["relu2_output"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 

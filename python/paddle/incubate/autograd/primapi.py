@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 import typing
 
 import paddle
 from paddle.fluid import backward, core, framework
+=======
+import typing
+
+from paddle.fluid import backward, framework
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.incubate.autograd import primx, utils
 
 
@@ -25,7 +31,11 @@ def forward_grad(outputs, inputs, grad_inputs=None):
     """Forward mode of automatic differentiation.
 
     Note:
+<<<<<<< HEAD
         **ONLY available in the static graph mode and primitive operators.**
+=======
+        **ONLY available in the static mode and primitive operators.**
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output tensor or tensors.
@@ -108,7 +118,11 @@ def grad(outputs, inputs, grad_outputs=None):
     """Reverse mode of automatic differentiation.
 
     Note:
+<<<<<<< HEAD
         **ONLY available in the static graph mode and primitive operators**
+=======
+        **ONLY available in the static mode and primitive operators**
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output Tensor or Tensors.
@@ -213,6 +227,7 @@ def grad(outputs, inputs, grad_outputs=None):
     ad.erase_dots(xs_dot)
 
     return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+<<<<<<< HEAD
 
 
 @framework.static_only
@@ -238,3 +253,5 @@ def to_prim(blocks):
         print("Running lowering for forward...")
         primx._lower_composite(blocks)
     return
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

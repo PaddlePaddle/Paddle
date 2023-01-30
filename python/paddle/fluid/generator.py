@@ -27,7 +27,11 @@ class Generator(core.Generator):
         Create a generator object which manages the random number generation. ( Experimental Feature )
 
         Parameters:
+<<<<<<< HEAD
             place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str,optional): The place to allocate Tensor. Can be
+=======
+            place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str,optional): The place to allocate Tensor. Can be  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
                 string, it can be ``cpu`` and ``gpu:x``, where ``x`` is the index of the GPUs.
 
@@ -39,9 +43,17 @@ class Generator(core.Generator):
         if not place:
             place = core.CPUPlace()
         if isinstance(place, core.CPUPlace):
+<<<<<<< HEAD
             super().__init__()
         else:
             raise ValueError(
                 "Generator class with %s does is not supported yet, currently only support generator with CPUPlace "
                 % place
             )
+=======
+            super(Generator, self).__init__()
+        else:
+            raise ValueError(
+                "Generator class with %s does is not supported yet, currently only support generator with CPUPlace "
+                % place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

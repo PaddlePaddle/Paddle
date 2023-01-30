@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -21,6 +22,15 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import unittest
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
@@ -35,6 +45,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
             return np.random.random([3, 4]).astype(np.float32)
 
         def generate_input3(attrs: List[Dict[str, Any]], batch):
+<<<<<<< HEAD
             if batch == 1:
                 return np.array([3]).astype(np.int32)
             if batch == 2:
@@ -49,6 +60,9 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                 return [[0, 1, 3]]
             if batch == 4:
                 return [[0, 1, 2, 2, 3]]
+=======
+            return np.random.random([batch]).astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for num_input in [0, 1]:
             for batch in [1, 2, 4]:
@@ -109,7 +123,11 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                                                 data_gen=partial(
                                                     generate_input2, dics, batch
                                                 ),
+<<<<<<< HEAD
                                                 lod=generate_lod(batch),
+=======
+                                                lod=[[32, 3]],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                             ),
                                         },
                                     ]
@@ -174,10 +192,17 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if self.num_input == 0:
+<<<<<<< HEAD
                 if dynamic_shape:
                     return 0, 5
             elif self.num_input == 1:
                 if dynamic_shape:
+=======
+                if dynamic_shape == True:
+                    return 0, 5
+            elif self.num_input == 1:
+                if dynamic_shape == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     return 1, 3
                 else:
                     return 0, 4

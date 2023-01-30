@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,10 +20,24 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestShuffleChannelOneDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "shuffle_channel"
         self.set_dtype()
@@ -31,9 +46,14 @@ class TestShuffleChannelOneDNNOp(OpTest):
         self.attrs = {'use_mkldnn': True, 'group': self.group}
 
         _, c, h, w = self.inputs['X'].shape
+<<<<<<< HEAD
         input_reshaped = np.reshape(
             self.inputs['X'], (-1, self.group, c // self.group, h, w)
         )
+=======
+        input_reshaped = np.reshape(self.inputs['X'],
+                                    (-1, self.group, c // self.group, h, w))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         input_transposed = np.transpose(input_reshaped, (0, 2, 1, 3, 4))
         self.outputs = {'Out': np.reshape(input_transposed, (-1, c, h, w))}
 
@@ -48,11 +68,19 @@ class TestShuffleChannelOneDNNOp(OpTest):
 
 
 class TestShuffleChannelSingleGroupOneDNNOp(TestShuffleChannelOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_group(self):
         self.group = 1
 
 
 class TestShuffleChannelBF16OneDNNOp(TestShuffleChannelOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.uint16
 

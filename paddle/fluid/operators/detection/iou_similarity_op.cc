@@ -59,6 +59,7 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
 class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "(phi::DenseTensor, default phi::DenseTensor<float>) "
@@ -71,6 +72,19 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
         "This tensor can contain LoD information to represent a batch "
         "of inputs. One instance of this batch can contain different "
         "numbers of entities.");
+=======
+    AddInput("X",
+             "(LoDTensor, default LoDTensor<float>) "
+             "Box list X is a 2-D LoDTensor with shape [N, 4] holds N boxes, "
+             "each box is represented as [xmin, ymin, xmax, ymax], "
+             "the shape of X is [N, 4]. [xmin, ymin] is the left top "
+             "coordinate of the box if the input is image feature map, they "
+             "are close to the origin of the coordinate system. "
+             "[xmax, ymax] is the right bottom coordinate of the box. "
+             "This tensor can contain LoD information to represent a batch "
+             "of inputs. One instance of this batch can contain different "
+             "numbers of entities.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddInput("Y",
              "(Tensor, default Tensor<float>) "
              "Box list Y holds M boxes, each box is represented as "
@@ -83,7 +97,11 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
                   "whether treat the priorbox as a normalized box")
         .SetDefault(true);
     AddOutput("Out",
+<<<<<<< HEAD
               "(phi::DenseTensor, the lod is same as input X) The output of "
+=======
+              "(LoDTensor, the lod is same as input X) The output of "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "iou_similarity op, a tensor with shape [N, M] "
               "representing pairwise iou scores.");
 
@@ -91,12 +109,20 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
 **IOU Similarity Operator**
 
 Computes intersection-over-union (IOU) between two box lists.
+<<<<<<< HEAD
 Box list 'X' should be a phi::DenseTensor and 'Y' is a common Tensor,
+=======
+Box list 'X' should be a LoDTensor and 'Y' is a common Tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 boxes in 'Y' are shared by all instance of the batched inputs of X.
 Given two boxes A and B, the calculation of IOU is as follows:
 
 $$
+<<<<<<< HEAD
 IOU(A, B) =
+=======
+IOU(A, B) = 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 \\frac{area(A\\cap B)}{area(A)+area(B)-area(A\\cap B)}
 $$
 

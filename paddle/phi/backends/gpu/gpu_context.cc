@@ -21,7 +21,10 @@ limitations under the License. */
 #include <future>
 #include <memory>
 #include <mutex>
+<<<<<<< HEAD
 #include <unordered_map>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #include "glog/logging.h"
 #include "paddle/phi/api/ext/exception.h"
@@ -55,7 +58,12 @@ limitations under the License. */
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
+=======
+// TODO(phi): remove fluid header.
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -218,7 +226,11 @@ struct GPUContext::Impl {
     InitDnnWorkspace();
   }
 
+<<<<<<< HEAD
   void PartialInitWithoutAllocator(int stream_priority) {
+=======
+  void PartialInitWithoutAllocator() {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     owned_ = true;
     stream_owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
@@ -230,7 +242,11 @@ struct GPUContext::Impl {
                            &max_threads_per_mp_,
                            &max_threads_per_block_,
                            &max_grid_dim_size_);
+<<<<<<< HEAD
     stream_ = new CUDAStream(place_, stream_priority);
+=======
+    stream_ = new CUDAStream(place_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   void PartialInitWithAllocator() {
@@ -252,6 +268,7 @@ struct GPUContext::Impl {
       phi::DestroyDnnHandle(dnn_handle_);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (nccl_comm_) {
+<<<<<<< HEAD
         // NOTE(liyurui): It is not recommend calling CUDA runtime API
         // in destructor. Since we can not ensure the release order of
         // static object, calling ncclCommDestroy in static object destructor
@@ -259,6 +276,9 @@ struct GPUContext::Impl {
         // from process.
         // If you really need to release the resource of nccl_comm,
         // try to get the nccl_comm out and use ncclCommDestroy outside.
+=======
+        PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
 #endif
       phi::DestroyBlasHandle(blas_handle_);
@@ -723,6 +743,7 @@ struct GPUContext::Impl {
     }
   }
 
+<<<<<<< HEAD
   bool HasDnnAttr(const std::string& attr_name) const {
     return dnn_attrs_.count(attr_name) != 0UL;
   }
@@ -742,6 +763,8 @@ struct GPUContext::Impl {
 
   void ClearDnnAttr() { dnn_attrs_.clear(); }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // use one flag for all handles?
   // they should be accessed consistently
   bool owned_{false};
@@ -805,6 +828,7 @@ struct GPUContext::Impl {
   Allocator* allocator_{nullptr};  // external resource.
   // A internal resouce to initinalize eigen_device.
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
+<<<<<<< HEAD
 
   // Holds some attributes only used by the gpudnn kernel calculation
   // Because DeviceContext is a global singleton, you need to ensure thread
@@ -814,14 +838,25 @@ struct GPUContext::Impl {
 
 thread_local AttributeMap GPUContext::Impl::dnn_attrs_ = {};
 
+=======
+};
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 GPUContext::GPUContext(GPUContext&&) = default;
 
 GPUContext& GPUContext::operator=(GPUContext&&) = default;
 
+<<<<<<< HEAD
 GPUContext::GPUContext(const GPUPlace& place, bool init, int stream_priority)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
   if (init) {
     impl_->PartialInitWithoutAllocator(stream_priority);
+=======
+GPUContext::GPUContext(const GPUPlace& place, bool init)
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  if (init) {
+    impl_->PartialInitWithoutAllocator();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -1001,8 +1036,13 @@ void GPUContext::SetDnnWorkspaceHandle(DnnWorkspaceHandle* handle) {
   impl_->workspace_ = handle;
 }
 
+<<<<<<< HEAD
 void GPUContext::PartialInitWithoutAllocator(int stream_priority) {
   impl_->PartialInitWithoutAllocator(stream_priority);
+=======
+void GPUContext::PartialInitWithoutAllocator() {
+  impl_->PartialInitWithoutAllocator();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void GPUContext::PartialInitWithAllocator() {
@@ -1032,6 +1072,7 @@ void GPUContext::SetDriverVersion(int val) { impl_->driver_version_ = val; }
 
 void GPUContext::SetRuntimeVersion(int val) { impl_->runtime_version_ = val; }
 
+<<<<<<< HEAD
 bool GPUContext::HasDnnAttr(const std::string& attr_name) const {
   return impl_->HasDnnAttr(attr_name);
 }
@@ -1046,4 +1087,6 @@ void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
 
 void GPUContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,13 +23,28 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.nn as nn
 from paddle.distributed.passes import PassManager, new_pass
+=======
+import paddle
+import paddle.distributed.fleet as fleet
+import numpy as np
+import paddle.nn as nn
+from paddle.distributed.passes import new_pass, PassManager
+import unittest
+from dist_pass_test_base import DistPassTestBase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class BatchNormAddActNet(nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(BatchNormAddActNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.conv1 = nn.Conv2D(3, 8, (3, 3), data_format="NHWC")
         self.conv2 = nn.Conv2D(3, 8, (3, 3), data_format="NHWC")
@@ -47,14 +63,24 @@ class BatchNormAddActNet(nn.Layer):
 
 
 class TestFuseBatchNormAddActPass(DistPassTestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
+<<<<<<< HEAD
         image = paddle.static.data(
             shape=[batch_size] + image_shape, dtype='float32', name='image'
         )
+=======
+        image = paddle.static.data(shape=[batch_size] + image_shape,
+                                   dtype='float32',
+                                   name='image')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model = BatchNormAddActNet()
         pred_out = model(image)

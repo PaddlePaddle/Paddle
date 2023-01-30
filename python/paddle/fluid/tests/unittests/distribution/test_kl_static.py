@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import config
@@ -24,12 +25,28 @@ import scipy.stats
 import paddle
 from paddle.distribution import kl
 
+=======
+import numbers
+import unittest
+
+import numpy as np
+import paddle
+import scipy.special
+import scipy.stats
+from paddle.distribution import kl
+
+import config
+import parameterize as param
+import mock_data as mock
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 np.random.seed(2022)
 paddle.seed(2022)
 paddle.enable_static()
 
 
 @param.place(config.DEVICES)
+<<<<<<< HEAD
 @param.param_cls(
     (param.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'),
     [
@@ -43,6 +60,16 @@ paddle.enable_static()
     ],
 )
 class TestKLBetaBeta(unittest.TestCase):
+=======
+@param.param_cls((param.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'), [
+    ('test_regular_input', 6.0 * np.random.random(
+        (4, 5)) + 1e-4, 6.0 * np.random.random(
+            (4, 5)) + 1e-4, 6.0 * np.random.random(
+                (4, 5)) + 1e-4, 6.0 * np.random.random((4, 5)) + 1e-4),
+])
+class TestKLBetaBeta(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.mp = paddle.static.Program()
         self.sp = paddle.static.Program()
@@ -60,13 +87,18 @@ class TestKLBetaBeta(unittest.TestCase):
                 'a1': self.a1,
                 'b1': self.b1,
                 'a2': self.a2,
+<<<<<<< HEAD
                 'b2': self.b2,
+=======
+                'b2': self.b2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
     def test_kl_divergence(self):
         with paddle.static.program_guard(self.mp, self.sp):
             out = paddle.distribution.kl_divergence(self.p, self.q)
             self.executor.run(self.sp)
+<<<<<<< HEAD
             [out] = self.executor.run(
                 self.mp, feed=self.feeds, fetch_list=[out]
             )
@@ -100,17 +132,50 @@ class TestKLBetaBeta(unittest.TestCase):
     ],
 )
 class TestKLDirichletDirichlet(unittest.TestCase):
+=======
+            [out] = self.executor.run(self.mp,
+                                      feed=self.feeds,
+                                      fetch_list=[out])
+
+            np.testing.assert_allclose(out,
+                                       self.scipy_kl_beta_beta(
+                                           self.a1, self.b1, self.a2, self.b2),
+                                       rtol=config.RTOL.get(str(self.a1.dtype)),
+                                       atol=config.ATOL.get(str(self.a1.dtype)))
+
+    def scipy_kl_beta_beta(self, a1, b1, a2, b2):
+        return (scipy.special.betaln(a2, b2) - scipy.special.betaln(a1, b1) +
+                (a1 - a2) * scipy.special.digamma(a1) +
+                (b1 - b2) * scipy.special.digamma(b1) +
+                (a2 - a1 + b2 - b1) * scipy.special.digamma(a1 + b1))
+
+
+@param.place(config.DEVICES)
+@param.param_cls((param.TEST_CASE_NAME, 'conc1', 'conc2'), [
+    ('test-regular-input', np.random.random(
+        (5, 7, 8, 10)), np.random.random((5, 7, 8, 10))),
+])
+class TestKLDirichletDirichlet(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.mp = paddle.static.Program()
         self.sp = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
         with paddle.static.program_guard(self.mp, self.sp):
+<<<<<<< HEAD
             conc1 = paddle.static.data(
                 'conc1', self.conc1.shape, self.conc1.dtype
             )
             conc2 = paddle.static.data(
                 'conc2', self.conc2.shape, self.conc2.dtype
             )
+=======
+            conc1 = paddle.static.data('conc1', self.conc1.shape,
+                                       self.conc1.dtype)
+            conc2 = paddle.static.data('conc2', self.conc2.shape,
+                                       self.conc2.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.p = paddle.distribution.Dirichlet(conc1)
             self.q = paddle.distribution.Dirichlet(conc2)
             self.feeds = {'conc1': self.conc1, 'conc2': self.conc2}
@@ -120,13 +185,20 @@ class TestKLDirichletDirichlet(unittest.TestCase):
         with paddle.static.program_guard(self.mp, self.sp):
             out = paddle.distribution.kl_divergence(self.p, self.q)
             self.executor.run(self.sp)
+<<<<<<< HEAD
             [out] = self.executor.run(
                 self.mp, feed=self.feeds, fetch_list=[out]
             )
+=======
+            [out] = self.executor.run(self.mp,
+                                      feed=self.feeds,
+                                      fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(
                 out,
                 self.scipy_kl_diric_diric(self.conc1, self.conc2),
                 rtol=config.RTOL.get(str(self.conc1.dtype)),
+<<<<<<< HEAD
                 atol=config.ATOL.get(str(self.conc1.dtype)),
             )
 
@@ -146,6 +218,19 @@ class TestKLDirichletDirichlet(unittest.TestCase):
                 -1,
             )
         )
+=======
+                atol=config.ATOL.get(str(self.conc1.dtype)))
+
+    def scipy_kl_diric_diric(self, conc1, conc2):
+        return (
+            scipy.special.gammaln(np.sum(conc1, -1)) -
+            scipy.special.gammaln(np.sum(conc2, -1)) - np.sum(
+                scipy.special.gammaln(conc1) - scipy.special.gammaln(conc2), -1)
+            + np.sum(
+                (conc1 - conc2) *
+                (scipy.special.digamma(conc1) -
+                 scipy.special.digamma(np.sum(conc1, -1, keepdims=True))), -1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class DummyDistribution(paddle.distribution.Distribution):
@@ -153,10 +238,17 @@ class DummyDistribution(paddle.distribution.Distribution):
 
 
 @param.place(config.DEVICES)
+<<<<<<< HEAD
 @param.param_cls(
     (param.TEST_CASE_NAME, 'p', 'q'), [('test-dispatch-exception')]
 )
 class TestDispatch(unittest.TestCase):
+=======
+@param.param_cls((param.TEST_CASE_NAME, 'p', 'q'),
+                 [('test-dispatch-exception')])
+class TestDispatch(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.mp = paddle.static.Program()
         self.sp = paddle.static.Program()
@@ -174,6 +266,7 @@ class TestDispatch(unittest.TestCase):
 
 
 @param.place(config.DEVICES)
+<<<<<<< HEAD
 @param.param_cls(
     (config.TEST_CASE_NAME, 'rate1', 'rate2'),
     [
@@ -186,17 +279,34 @@ class TestDispatch(unittest.TestCase):
     ],
 )
 class TestKLExpfamilyExpFamily(unittest.TestCase):
+=======
+@param.param_cls((config.TEST_CASE_NAME, 'rate1', 'rate2'),
+                 [('test-diff-dist', np.random.rand(100, 200, 100) + 1.0,
+                   np.random.rand(100, 200, 100) + 2.0),
+                  ('test-same-dist', np.array([1.0]), np.array([1.0]))])
+class TestKLExpfamilyExpFamily(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.mp = paddle.static.Program()
         self.sp = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
         with paddle.static.program_guard(self.mp, self.sp):
+<<<<<<< HEAD
             rate1 = paddle.static.data(
                 'rate1', shape=self.rate1.shape, dtype=self.rate1.dtype
             )
             rate2 = paddle.static.data(
                 'rate2', shape=self.rate2.shape, dtype=self.rate2.dtype
             )
+=======
+            rate1 = paddle.static.data('rate1',
+                                       shape=self.rate1.shape,
+                                       dtype=self.rate1.dtype)
+            rate2 = paddle.static.data('rate2',
+                                       shape=self.rate2.shape,
+                                       dtype=self.rate2.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.p = mock.Exponential(rate1)
             self.q = mock.Exponential(rate2)
             self.feeds = {'rate1': self.rate1, 'rate2': self.rate2}
@@ -206,16 +316,26 @@ class TestKLExpfamilyExpFamily(unittest.TestCase):
             out1 = paddle.distribution.kl_divergence(self.p, self.q)
             out2 = kl._kl_expfamily_expfamily(self.p, self.q)
             self.executor.run(self.sp)
+<<<<<<< HEAD
             [out1, out2] = self.executor.run(
                 self.mp, feed=self.feeds, fetch_list=[out1, out2]
             )
+=======
+            [out1, out2] = self.executor.run(self.mp,
+                                             feed=self.feeds,
+                                             fetch_list=[out1, out2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             np.testing.assert_allclose(
                 out1,
                 out2,
                 rtol=config.RTOL.get(config.DEFAULT_DTYPE),
+<<<<<<< HEAD
                 atol=config.ATOL.get(config.DEFAULT_DTYPE),
             )
+=======
+                atol=config.ATOL.get(config.DEFAULT_DTYPE))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

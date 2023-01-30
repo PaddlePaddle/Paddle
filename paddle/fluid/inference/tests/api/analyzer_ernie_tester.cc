@@ -39,31 +39,42 @@ void profile(bool use_mkldnn = false, bool use_gpu = false) {
                  FLAGS_num_threads);
 }
 
+<<<<<<< HEAD
 TEST(Analyzer_ernie, profile) {
 #if !defined(_WIN32)
   setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
 #endif
   profile();
 }
+=======
+TEST(Analyzer_ernie, profile) { profile(); }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_ernie, profile_mkldnn) { profile(true, false); }
 #endif
 
 // Check the model by gpu
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
 TEST(Analyzer_ernie, profile_gpu) {
 #if !defined(_WIN32)
   setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
 #endif
   profile(false, true);
 }
+=======
+TEST(Analyzer_ernie, profile_gpu) { profile(false, true); }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 // Check the fuse status
 TEST(Analyzer_Ernie, fuse_statis) {
+<<<<<<< HEAD
 #if !defined(_WIN32)
   setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
@@ -78,8 +89,15 @@ TEST(Analyzer_Ernie, fuse_statis) {
   LOG(INFO) << "num_ops: " << num_ops;
   if (FLAGS_ernie_large) {
     ASSERT_EQ(fuse_statis.at("fc_fuse"), 146);
+<<<<<<< HEAD
   } else {
     ASSERT_EQ(fuse_statis.at("fc_fuse"), 74);
+=======
+    EXPECT_EQ(num_ops, 859);
+  } else {
+    ASSERT_EQ(fuse_statis.at("fc_fuse"), 74);
+    EXPECT_EQ(num_ops, 295);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -90,28 +108,38 @@ void compare(bool use_mkldnn = false) {
 
   AnalysisConfig cfg;
   SetConfig(&cfg, use_mkldnn, false);
+<<<<<<< HEAD
   cfg.DisableMkldnnFcPasses();  // fc passes caused loss in accuracy
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto pass_builder = cfg.pass_builder();
   pass_builder->DeletePass("constant_folding_pass");
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
 }
 
+<<<<<<< HEAD
 TEST(Analyzer_ernie, compare) {
 #if !defined(_WIN32)
   setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
 #endif
   compare();
 }
+=======
+TEST(Analyzer_ernie, compare) { compare(); }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_ernie, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
 // Compare Deterministic result
 TEST(Analyzer_Ernie, compare_determine) {
+<<<<<<< HEAD
 #if !defined(_WIN32)
   setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AnalysisConfig cfg;
   SetConfig(&cfg);
   auto pass_builder = cfg.pass_builder();
@@ -124,9 +152,12 @@ TEST(Analyzer_Ernie, compare_determine) {
 
 // Compare results
 TEST(Analyzer_Ernie, compare_results) {
+<<<<<<< HEAD
 #if !defined(_WIN32)
   setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AnalysisConfig cfg;
   SetConfig(&cfg);
   auto pass_builder = cfg.pass_builder();
@@ -173,9 +204,12 @@ TEST(Analyzer_Ernie_ipu, ipu_compare_determine) {
 
 // IPU: Compare results
 TEST(Analyzer_Ernie_ipu, ipu_compare_results) {
+<<<<<<< HEAD
 #if !defined(_WIN32)
   setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AnalysisConfig cfg;
   SetIpuConfig(&cfg);
 

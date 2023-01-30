@@ -14,11 +14,19 @@
 
 import numpy as np
 
+<<<<<<< HEAD
 from paddle import _C_ops
 from paddle.fluid.framework import (
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
+=======
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import (
+    dygraph_only,
+    core,
+    convert_np_dtype_to_dtype_,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )
 
 __all__ = []
@@ -552,8 +560,13 @@ def coalesce(x, name=None):
 
 @dygraph_only
 def rad2deg(x, name=None):
+<<<<<<< HEAD
     r"""
     Convert each of the elements of input x from radian to degree,
+=======
+    """
+    Convert each of the elements of input x from angles in radians to degrees,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -585,8 +598,13 @@ def rad2deg(x, name=None):
 
 @dygraph_only
 def deg2rad(x, name=None):
+<<<<<<< HEAD
     r"""
     Convert each of the elements of input x from degree to radian,
+=======
+    """
+    Convert each of the elements of input x from degrees to angles in radians,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::

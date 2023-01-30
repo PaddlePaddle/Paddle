@@ -38,6 +38,7 @@ class FusedTokenPruneOpConverter : public OpConverter {
     auto output_name = op_desc.Output("SlimmedX")[0];
     auto out_inds_name = op_desc.Output("CLSInds")[0];
     if (engine_->with_dynamic_shape()) {
+<<<<<<< HEAD
       // reduce_sum: (-1,headsize,token_length,token_length) ->
       // (-1,token_length)
       uint32_t reduce_dim = 0;
@@ -49,6 +50,8 @@ class FusedTokenPruneOpConverter : public OpConverter {
           engine_, Reduce, *Attn, reduce_type, reduce_dim, keep_dim);
       auto* Reduced = reduce_sum_layer->getOutput(0);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
@@ -63,11 +66,17 @@ class FusedTokenPruneOpConverter : public OpConverter {
         auto* word_id = engine_->GetITensor("word_id");
         auto* pos_id = engine_->GetITensor("pos_id");
         auto* mask_id = engine_->GetITensor("mask_id");
+<<<<<<< HEAD
 
         std::vector<nvinfer1::ITensor*> itensors = {
             Reduced, X, Mask, NewMask, word_id, pos_id, mask_id};
         layer = engine_->AddDynamicPlugin(
             itensors.data(), itensors.size(), plugin);  // inputs'number: 7
+=======
+        std::vector<nvinfer1::ITensor*> itensors = {
+            Attn, X, Mask, NewMask, word_id, pos_id, mask_id};
+        layer = engine_->AddDynamicPlugin(itensors.data(), 7, plugin);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         layer->getOutput(0)->setName(output_name.c_str());
         engine_->SetITensor(output_name, layer->getOutput(0));
@@ -87,6 +96,7 @@ class FusedTokenPruneOpConverter : public OpConverter {
         layer->getOutput(4)->setName("mask_id_after_token_prune");
         engine_->SetITensor("mask_id", layer->getOutput(4));
       } else {
+<<<<<<< HEAD
         std::vector<nvinfer1::ITensor*> itensors = {Reduced, X, Mask, NewMask};
         layer = engine_->AddDynamicPlugin(
             itensors.data(), itensors.size(), plugin);  // inputs'number: 4
@@ -94,6 +104,12 @@ class FusedTokenPruneOpConverter : public OpConverter {
         layer->getOutput(0)->setName(output_name.c_str());
         engine_->SetITensor(output_name, layer->getOutput(0));
 
+=======
+        std::vector<nvinfer1::ITensor*> itensors = {Attn, X, Mask, NewMask};
+        layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
+        layer->getOutput(0)->setName(output_name.c_str());
+        engine_->SetITensor(output_name, layer->getOutput(0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         layer->getOutput(1)->setName(out_inds_name.c_str());
         engine_->SetITensor(out_inds_name, layer->getOutput(1));
       }

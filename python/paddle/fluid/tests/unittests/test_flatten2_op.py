@@ -12,13 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid as fluid
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from op_test import OpTest
 
 
 class TestFlattenOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "flatten2"
         self.init_test_case()
@@ -26,7 +39,11 @@ class TestFlattenOp(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.in_shape).astype("float32"),
+=======
+            "XShape": np.random.random(self.in_shape).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -45,6 +62,10 @@ class TestFlattenOp(OpTest):
 
 
 class TestFlattenOp1(TestFlattenOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.axis = 0
@@ -52,6 +73,10 @@ class TestFlattenOp1(TestFlattenOp):
 
 
 class TestFlattenOpWithDefaultAxis(TestFlattenOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (10, 2, 2, 3)
         self.new_shape = (10, 12)
@@ -61,11 +86,56 @@ class TestFlattenOpWithDefaultAxis(TestFlattenOp):
 
 
 class TestFlattenOpSixDims(TestFlattenOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4
         self.new_shape = (36, 16)
 
 
+<<<<<<< HEAD
+=======
+class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
+
+    def execute_api(self, x, axis=1):
+        return fluid.layers.flatten(x, axis=axis)
+
+    def test_static_api(self):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            x = paddle.static.data(name="x",
+                                   shape=[-1, 3, -1, -1],
+                                   dtype='float32')
+            out = self.execute_api(x, axis=2)
+        self.assertTrue((-1, -1) == out.shape)
+
+
+class TestFlatten2OpError(unittest.TestCase):
+
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_data = np.random.random((3, 2, 4, 5)).astype("float64")
+
+        def test_Variable():
+            # the input type must be Variable
+            fluid.layers.flatten(input_data, axis=1)
+
+        self.assertRaises(TypeError, test_Variable)
+
+        def test_type():
+            # dtype must be float32, float64, int8, int32, int64, uint8.
+            x2 = fluid.layers.data(name='x2',
+                                   shape=[3, 2, 4, 5],
+                                   dtype='float16')
+            fluid.layers.flatten(x2, axis=1)
+
+        self.assertRaises(TypeError, test_type)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

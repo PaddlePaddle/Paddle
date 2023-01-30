@@ -21,11 +21,19 @@ sample lines from API_DEV.spec:
     paddle.autograd.PyLayer (paddle.autograd.py_layer.PyLayer, ('document', 'c26adbbf5f1eb43d16d4a399242c979e'))
     paddle.autograd.PyLayer.apply (ArgSpec(args=['cls'], varargs=args, keywords=kwargs, defaults=None), ('document', 'cb78696dc032fb8af2cba8504153154d'))
 """
+<<<<<<< HEAD
 import functools
 import hashlib
 import unittest
 
 from print_signatures import is_primitive, md5
+=======
+import unittest
+import hashlib
+import functools
+from print_signatures import md5
+from print_signatures import is_primitive
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def func_example(param_a, param_b):
@@ -42,7 +50,11 @@ def func_example_2(func=functools.partial(func_example, 1)):
     pass
 
 
+<<<<<<< HEAD
 class ClassExample:
+=======
+class ClassExample():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     example Class
     """
@@ -55,6 +67,10 @@ class ClassExample:
 
 
 class Test_all_in_print_signatures(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_md5(self):
         algo = hashlib.md5()
         algo.update(func_example.__doc__.encode('utf-8'))
@@ -63,11 +79,20 @@ class Test_all_in_print_signatures(unittest.TestCase):
 
 
 class Test_is_primitive(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_single(self):
         self.assertTrue(is_primitive(2))
         self.assertTrue(is_primitive(2.1))
         self.assertTrue(is_primitive("2.1.1"))
+<<<<<<< HEAD
         self.assertFalse(is_primitive("hello paddle".encode('UTF-8')))
+=======
+        self.assertFalse(is_primitive(
+            "hello paddle".encode('UTF-8')))  # True for python2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertFalse(is_primitive(1j))
         self.assertTrue(is_primitive(True))
 
@@ -78,7 +103,11 @@ class Test_is_primitive(unittest.TestCase):
         self.assertTrue(is_primitive([1, 2]))
         self.assertTrue(is_primitive((1.1, 2.2)))
         self.assertTrue(is_primitive(set([1, 2.3])))
+<<<<<<< HEAD
         self.assertFalse(is_primitive(range(3)))
+=======
+        self.assertFalse(is_primitive(range(3)))  # True for python2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertFalse(is_primitive({}))
         self.assertFalse(is_primitive([1, 1j]))
 

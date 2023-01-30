@@ -31,6 +31,7 @@ static void FullTopK(Type input_height,
                      const int& k,
                      const bool& largest,
                      const bool& sorted) {
+<<<<<<< HEAD
   PADDLE_ENFORCE_LE(
       k,
       input_width,
@@ -39,6 +40,8 @@ static void FullTopK(Type input_height,
                               k,
                               input_width));
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // when the k is small, will the partial sort
   bool partial_sort_flag = (k * 64) < input_width;
 
@@ -235,4 +238,8 @@ void TopkKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
+<<<<<<< HEAD
     topk, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {}
+=======
+    top_k, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

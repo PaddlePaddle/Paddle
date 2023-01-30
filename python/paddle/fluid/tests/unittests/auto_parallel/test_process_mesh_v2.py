@@ -13,6 +13,7 @@
 # limitations under the License
 
 import unittest
+<<<<<<< HEAD
 
 from paddle.distributed.auto_parallel.process_mesh_v2 import (
     ProcessMesh,
@@ -22,6 +23,14 @@ from paddle.distributed.auto_parallel.process_mesh_v2 import (
 
 
 class TestProcessMesh(unittest.TestCase):
+=======
+from paddle.distributed.auto_parallel.process_mesh_v2 import (
+    ProcessMesh, compute_compatible_process_mesh, merge_process_mesh)
+
+
+class TestProcessMesh(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_process_mesh(self):
         mesh = [[0, 1, 2], [3, 4, 5]]
         mesh2 = [[0, 1], [2, 3]]
@@ -44,6 +53,7 @@ class TestProcessMesh(unittest.TestCase):
         self.assertEqual(str(process_mesh), str(process_mesh))
 
     def test_compute_compatible_process_mesh(self):
+<<<<<<< HEAD
         process_mesh1 = ProcessMesh(
             [[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"]
         )
@@ -54,23 +64,41 @@ class TestProcessMesh(unittest.TestCase):
         compatible_process_mesh = compute_compatible_process_mesh(
             [None, process_mesh1]
         )
+=======
+        process_mesh1 = ProcessMesh([[0, 1, 2], [3, 4, 5]],
+                                    dim_names=["x", "y"])
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [process_mesh1, None])
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [None, process_mesh1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(compatible_process_mesh, process_mesh1)
 
         process_mesh2 = ProcessMesh([[0, 1, 2], [3, 4, 5]])
         compatible_process_mesh = compute_compatible_process_mesh(
+<<<<<<< HEAD
             [process_mesh1, process_mesh2]
         )
+=======
+            [process_mesh1, process_mesh2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(compatible_process_mesh, process_mesh1)
         self.assertEqual(compatible_process_mesh, process_mesh2)
 
         process_mesh2 = ProcessMesh([[0, 1, 2, 3, 4, 5]])
         compatible_process_mesh = compute_compatible_process_mesh(
+<<<<<<< HEAD
             [process_mesh1, process_mesh2]
         )
+=======
+            [process_mesh1, process_mesh2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(compatible_process_mesh, process_mesh1)
 
         process_mesh2 = ProcessMesh([[0, 1, 2]])
         compatible_process_mesh = compute_compatible_process_mesh(
+<<<<<<< HEAD
             [process_mesh1, process_mesh2]
         )
         self.assertEqual(compatible_process_mesh, process_mesh1)
@@ -80,6 +108,16 @@ class TestProcessMesh(unittest.TestCase):
             [[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"]
         )
         merged_process_mesh = merge_process_mesh([process_mesh1, None])
+=======
+            [process_mesh1, process_mesh2])
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+
+    def test_merge_process_mesh(self):
+        process_mesh1 = ProcessMesh([[0, 1, 2], [3, 4, 5]],
+                                    dim_names=["x", "y"])
+        merged_process_mesh = merge_process_mesh([process_mesh1, None])
+        print(merged_process_mesh)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
         merged_process_mesh = merge_process_mesh([None, process_mesh1])
         self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
@@ -94,9 +132,14 @@ class TestProcessMesh(unittest.TestCase):
 
         process_mesh2 = ProcessMesh([[6, 7]])
         merged_process_mesh = merge_process_mesh([process_mesh1, process_mesh2])
+<<<<<<< HEAD
         self.assertEqual(
             merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7])
         )
+=======
+        self.assertEqual(merged_process_mesh,
+                         ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

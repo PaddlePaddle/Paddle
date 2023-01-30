@@ -87,15 +87,24 @@
     layout : x
   backward : atanh_grad
 
+<<<<<<< HEAD
 - op : batch_norm_
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
+=======
+- op : batch_norm
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta :
     func : BatchNormInferMeta
   kernel :
     func : batch_norm_coo {sparse_coo, dense, dense, dense, dense -> sparse_coo, dense, dense, dense, dense, dense}
     data_type : x
+<<<<<<< HEAD
   inplace : (mean -> mean_out), (variance -> variance_out)
+=======
+  view : (mean -> mean_out), (variance -> variance_out)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   backward : batch_norm_grad
 
 - op : cast
@@ -140,8 +149,13 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
+<<<<<<< HEAD
     func : divide_scalar_coo{sparse_coo -> sparse_coo},
            divide_scalar_csr{sparse_csr -> sparse_csr}
+=======
+    func : divide_coo_scalar{sparse_coo -> sparse_coo},
+           divide_csr_scalar{sparse_csr -> sparse_csr}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   backward : divide_scalar_grad
 
 - op : expm1
@@ -213,7 +227,11 @@
   backward : relu_grad
 
 - op : relu6
+<<<<<<< HEAD
   args : (Tensor x)
+=======
+  args : (Tensor x, float threshold)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -224,6 +242,7 @@
     layout : x
   backward : relu6_grad
 
+<<<<<<< HEAD
 - op : reshape
   args : (Tensor x,  IntArray shape)
   output : Tensor(out)
@@ -235,6 +254,8 @@
     layout : x
   backward : reshape_grad
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - op : scale
   args : (Tensor x, float scale, float bias, bool bias_after_scale)
   output : Tensor(out)
@@ -323,6 +344,7 @@
     layout : x
   backward : subtract_grad
 
+<<<<<<< HEAD
 - op : sync_batch_norm_
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
@@ -334,6 +356,8 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - op : tan
   args : (Tensor x)
   output : Tensor(out)
@@ -386,6 +410,7 @@
     func : dense_to_csr {dense -> sparse_csr},
            coo_to_csr {sparse_coo -> sparse_csr}
 
+<<<<<<< HEAD
 - op : transpose
   args : (Tensor x, int[] perm)
   output : Tensor(out)
@@ -398,6 +423,8 @@
     layout : x
   backward : transpose_grad
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - op : values
   args : (Tensor x)
   output : Tensor(out)
@@ -410,7 +437,11 @@
   backward : values_grad
 
 - op: addmm
+<<<<<<< HEAD
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+=======
+  args : (Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -429,7 +460,11 @@
   infer_meta :
     func : UnchangedInferMeta
   kernel :
+<<<<<<< HEAD
     func: coalesce_coo{sparse_coo -> sparse_coo}
+=======
+    func: coalesce{sparse_coo -> sparse_coo}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     layout : x
 
 - op: full_like
@@ -439,8 +474,13 @@
     func : CreateLikeInferMeta
     param : [x, dtype]
   kernel :
+<<<<<<< HEAD
     func : full_like_coo{sparse_coo -> sparse_coo},
            full_like_csr{sparse_csr -> sparse_csr}
+=======
+    func : coo_full_like{sparse_coo -> sparse_coo},
+           csr_full_like{sparse_csr -> sparse_csr}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     layout : x
     data_type : dtype
 
@@ -503,3 +543,40 @@
            mv_csr{sparse_csr, dense -> dense}
     layout : x
   backward: mv_grad
+<<<<<<< HEAD
+=======
+
+- op : transpose
+  args : (Tensor x, int[] perm)
+  output : Tensor(out)
+  infer_meta :
+    func : TransposeInferMeta
+    param: [ x, perm ]
+  kernel :
+    func : transpose_coo{sparse_coo -> sparse_coo},
+           transpose_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : transpose_grad
+
+- op : sync_batch_norm_
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta :
+    func : BatchNormInferMeta
+  kernel :
+    func : sync_batch_norm_coo{sparse_coo, dense, dense, dense, dense -> sparse_coo, dense, dense, dense, dense, dense}
+    data_type : x
+  backward : sync_batch_norm_grad
+  inplace : (mean -> mean_out), (variance -> variance_out)
+
+- op : reshape
+  args : (Tensor x,  IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+  kernel :
+    func : reshape_coo{sparse_coo -> sparse_coo},
+           reshape_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : reshape_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

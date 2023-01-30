@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import inspect
 import unittest
 
@@ -21,6 +22,18 @@ import paddle
 import paddle.fluid as fluid
 from paddle.jit.dy2static import NodeVarType, StaticAnalysisVisitor
 from paddle.utils import gast
+=======
+from __future__ import print_function
+
+from paddle.utils import gast
+import inspect
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import unittest
+
+from paddle.fluid.dygraph.dygraph_to_static import NodeVarType, StaticAnalysisVisitor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def func_to_test1(a, b):
@@ -72,7 +85,11 @@ result_var_type3 = {
     'i': {NodeVarType.BOOLEAN},
     'j': {NodeVarType.UNKNOWN},
     'k': {NodeVarType.FLOAT},
+<<<<<<< HEAD
     'l': {NodeVarType.PADDLE_RETURN_TYPES},
+=======
+    'l': {NodeVarType.PADDLE_RETURN_TYPES}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 
@@ -88,11 +105,19 @@ result_var_type4 = {
     'a': {NodeVarType.NUMPY_NDARRAY},
     'b': {NodeVarType.NUMPY_NDARRAY},
     'c': {NodeVarType.TENSOR},
+<<<<<<< HEAD
     'd': {NodeVarType.TENSOR},
+=======
+    'd': {NodeVarType.TENSOR}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 
 def func_to_test5():
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def inner_int_func():
         return 1
 
@@ -139,7 +164,11 @@ result_var_type6 = {
     'i': {NodeVarType.INT},
     'x': {NodeVarType.INT},
     'y': {NodeVarType.INT},
+<<<<<<< HEAD
     'add': {NodeVarType.INT},
+=======
+    'add': {NodeVarType.INT}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 
@@ -156,6 +185,7 @@ result_var_type7 = {
     'd': {NodeVarType.STRING},
     'e': {NodeVarType.PADDLE_RETURN_TYPES},
     'f': {NodeVarType.PADDLE_RETURN_TYPES},
+<<<<<<< HEAD
     'g': {NodeVarType.TENSOR},
 }
 
@@ -176,10 +206,26 @@ result_var_type = [
     result_var_type5,
     result_var_type6,
     result_var_type7,
+=======
+    'g': {NodeVarType.TENSOR}
+}
+
+test_funcs = [
+    func_to_test1, func_to_test2, func_to_test3, func_to_test4, func_to_test5,
+    func_to_test6, func_to_test7
+]
+result_var_type = [
+    result_var_type1, result_var_type2, result_var_type3, result_var_type4,
+    result_var_type5, result_var_type6, result_var_type7
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]
 
 
 class TestStaticAnalysis(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _check_wrapper(self, wrapper, node_to_wrapper_map):
         self.assertEqual(node_to_wrapper_map[wrapper.node], wrapper)
         if wrapper.parent is not None:

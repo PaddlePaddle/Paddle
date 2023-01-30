@@ -37,7 +37,11 @@ limitations under the License. */
 #include "xpu/kernel/math.h"            // NOLINT
 #else
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 #include "paddle/fluid/operators/pull_box_sparse_op.h"
@@ -46,6 +50,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 #ifdef PADDLE_WITH_XPU_KP
+<<<<<<< HEAD
 REGISTER_OP_KERNEL(pull_box_sparse,
                    KP,
                    plat::XPUPlace,
@@ -53,6 +58,11 @@ REGISTER_OP_KERNEL(pull_box_sparse,
 REGISTER_OP_KERNEL(push_box_sparse,
                    KP,
                    plat::XPUPlace,
+=======
+REGISTER_OP_KERNEL(pull_box_sparse, KP, plat::XPUPlace,
+                   ops::PullBoxSparseKernel<float>);
+REGISTER_OP_KERNEL(push_box_sparse, KP, plat::XPUPlace,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    ops::PushBoxSparseKernel<float>);
 #else
 REGISTER_OP_CUDA_KERNEL(pull_box_sparse, ops::PullBoxSparseKernel<float>);

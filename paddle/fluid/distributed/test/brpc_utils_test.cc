@@ -36,7 +36,11 @@ void CreateVarsOnScope(framework::Scope* scope,
                        const platform::DeviceContext& ctx) {
   // var 1
   framework::Variable* var1 = scope->Var("x1");
+<<<<<<< HEAD
   auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor1 = var1->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor1->Resize(phi::make_ddim({512, 8, 4, 2}));
   framework::LoD lod1;
   lod1.push_back(framework::Vector<size_t>({1, 3, 8}));
@@ -46,7 +50,11 @@ void CreateVarsOnScope(framework::Scope* scope,
 
   // var 2
   framework::Variable* var2 = scope->Var("x2");
+<<<<<<< HEAD
   auto* tensor2 = var2->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor2 = var2->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor2->Resize(phi::make_ddim({1000, 64}));
   framework::LoD lod2;
   lod2.push_back(framework::Vector<size_t>({1, 1}));
@@ -96,7 +104,11 @@ void RunMultiVarMsg(platform::Place place) {
 
   // check var1
   framework::Variable* var1 = scope_recv.FindVar("x1");
+<<<<<<< HEAD
   auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor1 = var1->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   EXPECT_EQ(tensor1->dims(), phi::make_ddim({512, 8, 4, 2}));
   // EXPECT_EQ(tensor1->lod(), framework::Vector<size_t>({1, 3, 8}));
   auto* tensor_data1 = const_cast<float*>(tensor1->data<float>());
@@ -106,7 +118,11 @@ void RunMultiVarMsg(platform::Place place) {
 
   // check var2
   framework::Variable* var2 = scope_recv.FindVar("x2");
+<<<<<<< HEAD
   auto* tensor2 = var2->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor2 = var2->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   EXPECT_EQ(tensor2->dims(), phi::make_ddim({1000, 64}));
   // EXPECT_EQ(tensor2->lod(), framework::Vector<size_t>({1, 1}));
   auto* tensor_data2 = const_cast<int*>(tensor2->data<int>());
@@ -116,7 +132,11 @@ void RunMultiVarMsg(platform::Place place) {
   // check var3
   framework::Variable* var3 = scope_recv.FindVar("x3");
   auto* slr = var3->GetMutable<phi::SelectedRows>();
+<<<<<<< HEAD
   EXPECT_EQ(slr->rows().size(), 564UL);
+=======
+  EXPECT_EQ(slr->rows().size(), 564);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (int i = 0; i < 564; ++i) {
     EXPECT_EQ(slr->rows()[i], i);
   }

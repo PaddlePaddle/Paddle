@@ -12,22 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 import paddle.nn.functional as functional
 
 
 class EmbeddingStatic(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_1(self):
         prog = fluid.Program()
         with fluid.program_guard(prog):
 
             def test_bad_x():
                 initializer = fluid.initializer.NumpyArrayInitializer(
+<<<<<<< HEAD
                     np.random.random(size=(128, 100))
                 )
 
@@ -51,6 +63,28 @@ class EmbeddingStatic(unittest.TestCase):
                 emb = functional.embedding(
                     x=label, weight=weight, sparse=True, name="embedding"
                 )
+=======
+                    np.random.random(size=(128, 100)))
+
+                param_attr = fluid.ParamAttr(name="emb_weight",
+                                             learning_rate=0.5,
+                                             initializer=initializer,
+                                             trainable=True)
+
+                weight = prog.global_block().create_parameter((128, 100),
+                                                              attr=param_attr,
+                                                              dtype="float32")
+
+                label = fluid.layers.data(name="label",
+                                          shape=[4],
+                                          append_batch_size=False,
+                                          dtype="int64")
+
+                emb = functional.embedding(x=label,
+                                           weight=weight,
+                                           sparse=True,
+                                           name="embedding")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             test_bad_x()
 
@@ -60,6 +94,7 @@ class EmbeddingStatic(unittest.TestCase):
 
             def test_bad_x():
                 initializer = fluid.initializer.NumpyArrayInitializer(
+<<<<<<< HEAD
                     np.random.random(size=(128, 100))
                 )
 
@@ -87,6 +122,29 @@ class EmbeddingStatic(unittest.TestCase):
                     sparse=True,
                     name="embedding",
                 )
+=======
+                    np.random.random(size=(128, 100)))
+
+                param_attr = fluid.ParamAttr(name="emb_weight",
+                                             learning_rate=0.5,
+                                             initializer=initializer,
+                                             trainable=True)
+
+                weight = prog.global_block().create_parameter((128, 100),
+                                                              attr=param_attr,
+                                                              dtype="float32")
+
+                label = fluid.layers.data(name="label",
+                                          shape=[4],
+                                          append_batch_size=False,
+                                          dtype="int32")
+
+                emb = functional.embedding(x=label,
+                                           weight=weight,
+                                           padding_idx=129,
+                                           sparse=True,
+                                           name="embedding")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         with self.assertRaises(ValueError):
             test_bad_x()

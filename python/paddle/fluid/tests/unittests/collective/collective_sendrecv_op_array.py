@@ -12,22 +12,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import numpy as np
+import argparse
+import os
+import sys
+import signal
+import time
+import socket
+from contextlib import closing
+from six import string_types
+import math
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.profiler as profiler
+import paddle.fluid.unique_name as nameGen
+from paddle.fluid import core
+import unittest
+from multiprocessing import Process
+import paddle.fluid.layers as layers
+from functools import reduce
+from test_collective_base import TestCollectiveRunnerBase, runtime_main
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestCollectiveSendRecv(TestCollectiveRunnerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program):
         ring_id = self.global_ring_id
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = paddle.static.data(
                 name="tindata",
                 shape=[10, 1000],
@@ -62,6 +92,34 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                         'use_calc_stream': True,
                     },
                 )
+=======
+            tindata = layers.data(name="tindata",
+                                  shape=[10, 1000],
+                                  dtype='float64',
+                                  append_batch_size=False)
+            if self.rank == 0:
+                data1 = fluid.layers.assign(
+                    np.array([[0, 1, 2]], dtype='float32'))
+                data2 = fluid.layers.assign(
+                    np.array([[3, 4, 5]], dtype='float32'))
+            elif self.rank == 1:
+                data1 = fluid.layers.assign(
+                    np.array([[3, 4, 5]], dtype='float32'))
+                data2 = fluid.layers.assign(
+                    np.array([[0, 1, 2]], dtype='float32'))
+            tensor_array = fluid.layers.create_array(dtype='float32')
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            fluid.layers.array_write(data1, i, tensor_array)
+            fluid.layers.array_write(data2, i + 1, tensor_array)
+            if self.rank == 0:
+                main_prog.global_block().append_op(type="send_v2",
+                                                   inputs={'X': tensor_array},
+                                                   attrs={
+                                                       'ring_id': ring_id,
+                                                       'peer': 1,
+                                                       'use_calc_stream': True
+                                                   })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 main_prog.global_block().append_op(
                     type="recv_v2",
@@ -72,8 +130,12 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                         'dtype': data1.dtype,
                         'out_shape': [1, 3],
                         'use_calc_stream': True,
+<<<<<<< HEAD
                     },
                 )
+=======
+                    })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return tensor_array
 
 

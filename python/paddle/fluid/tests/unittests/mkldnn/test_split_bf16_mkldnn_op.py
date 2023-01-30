@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -29,6 +30,23 @@ from paddle.fluid.tests.unittests.op_test import OpTest
     "core is compiled with CUDA which has no BF implementation",
 )
 class TestSplitSectionsBF16OneDNNOp(OpTest):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard, core
+from paddle.fluid.tests.unittests.op_test import OpTest
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+@unittest.skipIf(core.is_compiled_with_cuda(),
+                 "core is compiled with CUDA which has no BF implementation")
+class TestSplitSectionsBF16OneDNNOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = 1
@@ -47,7 +65,11 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
         self.attrs = {
             'use_mkldnn': True,
             'num': self.num,
+<<<<<<< HEAD
             'mkldnn_data_type': "bfloat16",
+=======
+            'mkldnn_data_type': "bfloat16"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         if self.axis is not None:
@@ -59,9 +81,14 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
         if self.sections_tensor_list is not None:
             self.inputs['SectionsTensorList'] = self.sections_tensor_list
 
+<<<<<<< HEAD
         self.outputs = {
             'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
         }
+=======
+        self.outputs = {'Out': [('out%d' % i, self.out[i]) \
+            for i in range(len(self.out))]}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
@@ -78,47 +105,82 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
 
 
 class TestSplitNumBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x = np.random.random((4, 8, 5, 3)).astype("uint16")
         self.axis = 1
         self.sections = []
         self.num = 4
+<<<<<<< HEAD
         indices_or_sections = 4  # indices
+=======
+        indices_or_sections = 4  #indices
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
 
 class TestSplitNumAxisTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = None
         self.sections = []
         self.num = 3
+<<<<<<< HEAD
         indices_or_sections = 3  # indices
+=======
+        indices_or_sections = 3  #indices
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.axis_tensor = np.array([2]).astype("int32")
         self.out = np.split(self.x, indices_or_sections, 2)
 
 
 class TestSplitSectionsTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = 1
         self.sections = [2, 1, 2]
         self.sections_tensor_list = []
         for index, ele in enumerate(self.sections):
+<<<<<<< HEAD
             self.sections_tensor_list.append(
                 ("x" + str(index), np.ones((1)).astype('int32') * ele)
             )
         self.sections = [-1, -1, -1]
         indices_or_sections = [2, 3]  # sections
+=======
+            self.sections_tensor_list.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+        self.sections = [-1, -1, -1]
+        indices_or_sections = [2, 3]  #sections
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
 
 class TestSplitOpUnknownSectionBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = 2
         self.sections = [2, 2, -1]
+<<<<<<< HEAD
         indices_or_sections = [2, 4]  # sections
+=======
+        indices_or_sections = [2, 4]  #sections
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
 

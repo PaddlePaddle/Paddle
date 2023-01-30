@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,11 +23,28 @@ import paddle.fluid as fluid
 
 
 class TestElementwiseOp(OpTest):
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+
+
+class TestElementwiseOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+<<<<<<< HEAD
             'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+=======
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -37,6 +55,7 @@ class TestElementwiseOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X")
         )
@@ -78,6 +97,22 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
 
 
 class TestBF16ElementwiseOp(OpTest):
+=======
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set('Y'))
+
+
+class TestBF16ElementwiseOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
@@ -87,7 +122,11 @@ class TestBF16ElementwiseOp(OpTest):
 
         self.inputs = {
             'X': convert_float_to_uint16(x),
+<<<<<<< HEAD
             'Y': convert_float_to_uint16(y),
+=======
+            'Y': convert_float_to_uint16(y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
@@ -105,34 +144,61 @@ class TestBF16ElementwiseOp(OpTest):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestElementwiseSubOp_scalar(TestElementwiseOp):
+=======
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestElementwiseSubOp_scalar(TestElementwiseOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(10, 3, 4).astype(np.float64),
+<<<<<<< HEAD
             'Y': np.random.rand(1).astype(np.float64),
+=======
+            'Y': np.random.rand(1).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_Vector(TestElementwiseOp):
+<<<<<<< HEAD
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.random((100,)).astype("float64"),
             'Y': np.random.random((100,)).astype("float64"),
+=======
+
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.random((100, )).astype("float64"),
+            'Y': np.random.random((100, )).astype("float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(100, 3, 2).astype(np.float64),
+<<<<<<< HEAD
             'Y': np.random.rand(100).astype(np.float64),
+=======
+            'Y': np.random.rand(100).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {'axis': 0}
@@ -142,11 +208,19 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
 
 
 class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 100, 3).astype(np.float64),
+<<<<<<< HEAD
             'Y': np.random.rand(100).astype(np.float64),
+=======
+            'Y': np.random.rand(100).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {'axis': 1}
@@ -156,11 +230,19 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
 
 
 class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
+<<<<<<< HEAD
             'Y': np.random.rand(100).astype(np.float64),
+=======
+            'Y': np.random.rand(100).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.outputs = {
@@ -169,11 +251,19 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
 
 
 class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 10, 12, 3).astype(np.float64),
+<<<<<<< HEAD
             'Y': np.random.rand(10, 12).astype(np.float64),
+=======
+            'Y': np.random.rand(10, 12).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {'axis': 1}
@@ -183,41 +273,73 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
 
 
 class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 5, 3, 12).astype(np.float64),
+<<<<<<< HEAD
             'Y': np.random.rand(2, 5, 1, 12).astype(np.float64),
+=======
+            'Y': np.random.rand(2, 5, 1, 12).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
+<<<<<<< HEAD
             'Y': np.random.rand(1, 1, 100).astype(np.float64),
+=======
+            'Y': np.random.rand(1, 1, 100).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(10, 3, 1, 4).astype(np.float64),
+<<<<<<< HEAD
             'Y': np.random.rand(10, 1, 12, 1).astype(np.float64),
+=======
+            'Y': np.random.rand(10, 1, 12, 1).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(10, 12).astype(np.float64),
+<<<<<<< HEAD
             'Y': np.random.rand(2, 3, 10, 12).astype(np.float64),
+=======
+            'Y': np.random.rand(2, 3, 10, 12).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {'axis': 2}
@@ -228,6 +350,10 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
 
 
 class TestComplexElementwiseSubOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.float64
@@ -237,7 +363,11 @@ class TestComplexElementwiseSubOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+=======
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -247,6 +377,7 @@ class TestComplexElementwiseSubOp(OpTest):
 
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(
+<<<<<<< HEAD
             self.dtype
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.y = np.random.random(self.shape).astype(
@@ -258,6 +389,16 @@ class TestComplexElementwiseSubOp(OpTest):
         self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
             self.shape, self.dtype
         )
+=======
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.out = self.x - self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(
+            self.shape, self.dtype) + 1J * np.ones(self.shape, self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.grad_x = self.grad_out
         self.grad_y = -self.grad_out
 
@@ -265,6 +406,7 @@ class TestComplexElementwiseSubOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X', 'Y'],
             'Out',
@@ -303,11 +445,48 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
         self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
             self.shape, self.dtype
         )
+=======
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out])
+
+
+class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
+
+    def init_input_output(self):
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.out = self.x - self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(
+            self.shape, self.dtype) + 1J * np.ones(self.shape, self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.grad_x = np.real(self.grad_out)
         self.grad_y = -self.grad_out
 
 
 class TestSubtractApi(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, y, name=None):
         return paddle.subtract(x, y, name)
 
@@ -325,7 +504,11 @@ class TestSubtractApi(unittest.TestCase):
             def gen_data():
                 return {
                     "x": np.array([2, 3, 4]).astype('float32'),
+<<<<<<< HEAD
                     "y": np.array([1, 5, 2]).astype('float32'),
+=======
+                    "y": np.array([1, 5, 2]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
@@ -334,7 +517,11 @@ class TestSubtractApi(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+<<<<<<< HEAD
             z_expected = np.array([1.0, -2.0, 2.0])
+=======
+            z_expected = np.array([1., -2., 2.])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
@@ -345,16 +532,28 @@ class TestSubtractApi(unittest.TestCase):
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
+<<<<<<< HEAD
             z_expected = np.array([1.0, -2.0, 2.0])
+=======
+            z_expected = np.array([1., -2., 2.])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertEqual((np_z == z_expected).all(), True)
 
 
 class TestSubtractInplaceApi(TestSubtractApi):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _executed_api(self, x, y, name=None):
         return x.subtract_(y, name)
 
 
 class TestSubtractInplaceBroadcastSuccess(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 4).astype('float')
         self.y_numpy = np.random.rand(3, 4).astype('float')
@@ -371,18 +570,30 @@ class TestSubtractInplaceBroadcastSuccess(unittest.TestCase):
 
 
 class TestSubtractInplaceBroadcastSuccess2(TestSubtractInplaceBroadcastSuccess):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
         self.y_numpy = np.random.rand(3, 1).astype('float')
 
 
 class TestSubtractInplaceBroadcastSuccess3(TestSubtractInplaceBroadcastSuccess):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
 
 
 class TestSubtractInplaceBroadcastError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(3, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
@@ -401,17 +612,26 @@ class TestSubtractInplaceBroadcastError(unittest.TestCase):
 
 
 class TestSubtractInplaceBroadcastError2(TestSubtractInplaceBroadcastError):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
 class TestSubtractInplaceBroadcastError3(TestSubtractInplaceBroadcastError):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
+<<<<<<< HEAD
 class TestFloatElementwiseSubop(unittest.TestCase):
     def test_dygraph_sub(self):
         paddle.disable_static()
@@ -472,6 +692,8 @@ class TestFloatElementwiseSubop1(unittest.TestCase):
         paddle.enable_static()
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

@@ -11,12 +11,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
 import paddle
+=======
+from __future__ import division
+
+import paddle
+import unittest
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.nn.functional import kl_div
 
 
@@ -38,6 +47,10 @@ def kldiv_loss(x, target, reduction):
 
 
 class TestKLDivLossOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.initTestCase()
         self.op_type = 'kldiv_loss'
@@ -58,9 +71,16 @@ class TestKLDivLossOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'], 'Loss', no_grad_set=set(["Target"]), check_eager=True
         )
+=======
+        self.check_grad(['X'],
+                        'Loss',
+                        no_grad_set=set(["Target"]),
+                        check_eager=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def initTestCase(self):
         self.x_shape = (4, 5, 5)
@@ -68,24 +88,40 @@ class TestKLDivLossOp(OpTest):
 
 
 class TestKLDivLossOp2(TestKLDivLossOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (3, 2, 7, 7)
         self.reduction = 'none'
 
 
 class TestKLDivLossOp3(TestKLDivLossOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 7, 9)
         self.reduction = 'mean'
 
 
 class TestKLDivLossOp4(TestKLDivLossOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (5, 20)
         self.reduction = 'sum'
 
 
 class TestKLDivLossDygraph(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def run_kl_loss(self, reduction, shape=(5, 20)):
         x = np.random.uniform(-10, 10, shape).astype('float64')
         target = np.random.uniform(-10, 10, shape).astype('float64')
@@ -93,9 +129,14 @@ class TestKLDivLossDygraph(unittest.TestCase):
 
         with paddle.fluid.dygraph.guard():
             kldiv_criterion = paddle.nn.KLDivLoss(reduction)
+<<<<<<< HEAD
             pred_loss = kldiv_criterion(
                 paddle.to_tensor(x), paddle.to_tensor(target)
             )
+=======
+            pred_loss = kldiv_criterion(paddle.to_tensor(x),
+                                        paddle.to_tensor(target))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(pred_loss.numpy(), gt_loss, rtol=1e-05)
 
     def test_kl_loss_batchmean(self):
@@ -123,6 +164,10 @@ class TestKLDivLossDygraph(unittest.TestCase):
 
 
 class TestKLDivLossTypePromotion(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_kl_div_promotion(self):
 
         with paddle.fluid.dygraph.guard():

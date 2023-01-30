@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,6 +23,20 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid import Program
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid as fluid
+import six
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+from op_test import OpTest, skip_check_grad_ci
+import paddle
+import paddle.nn.functional as F
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def ref_prelu(x, weight):
@@ -39,6 +54,7 @@ def ref_prelu_nn(x, num_parameters, init):
 
 
 class TestFunctionalPReluAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.place = (
             paddle.CUDAPlace(0)
@@ -46,6 +62,13 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
         self.x_np = np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float32')
+=======
+
+    def setUp(self):
+        self.place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+        self.x_np = np.random.uniform(-1., 1., [1, 2, 3, 4]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.weight_np_0 = np.random.randn(1).astype('float32')
         self.weight_np_1 = np.random.randn(self.x_np.shape[1]).astype('float32')
 
@@ -55,9 +78,17 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             weight = paddle.fluid.data('Alpha', weight_np.shape, 'float32')
             out = F.prelu(x, weight)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             res = exe.run(
                 feed={'X': self.x_np, 'Alpha': weight_np}, fetch_list=[out]
             )
+=======
+            res = exe.run(feed={
+                'X': self.x_np,
+                'Alpha': weight_np
+            },
+                          fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out_ref = ref_prelu(self.x_np, weight_np)
         np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
@@ -78,6 +109,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
 
+<<<<<<< HEAD
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             weight_fp32 = paddle.fluid.data(
@@ -94,32 +126,73 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[2, 3], dtype='float16'
             )
+=======
+    def test_dygraph_api_eager(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
+
+    def test_error(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            weight_fp32 = paddle.fluid.data(name='weight_fp32',
+                                            shape=[1],
+                                            dtype='float32')
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.prelu, x=1, weight=weight_fp32)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.fluid.data(name='x_int32',
+                                        shape=[2, 3],
+                                        dtype='int32')
+            self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
+            # support the input dtype is float16
+            x_fp16 = paddle.fluid.data(name='x_fp16',
+                                       shape=[2, 3],
+                                       dtype='float16')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             F.prelu(x=x_fp16, weight=weight_fp32)
 
 
 class TestNNPReluAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
     def test_static_api(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
         with paddle.static.program_guard(train_program, startup_program):
+<<<<<<< HEAD
             x = paddle.fluid.data(
                 name='X', shape=self.x_np.shape, dtype='float32'
             )
+=======
+            x = paddle.fluid.data(name='X',
+                                  shape=self.x_np.shape,
+                                  dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             m = paddle.nn.PReLU()
             out = m(x)
             exe = paddle.static.Executor(self.place)
             exe.run(startup_program)
+<<<<<<< HEAD
             res = exe.run(
                 train_program, feed={'X': self.x_np}, fetch_list=[out]
             )
+=======
+            res = exe.run(train_program,
+                          feed={'X': self.x_np},
+                          fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
         np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
@@ -151,11 +224,16 @@ class TestNNPReluAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
+<<<<<<< HEAD
         m = paddle.nn.PReLU(
             weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(0.5)
             )
         )
+=======
+        m = paddle.nn.PReLU(weight_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(0.5)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.5)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
@@ -169,6 +247,10 @@ def prelu_api_wrapper(x, weight, data_format="NCHW"):
 
 
 class PReluTest(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_dtype()
         self.init_input_shape()
@@ -183,9 +265,18 @@ class PReluTest(OpTest):
         x_np[np.abs(x_np) < 0.005] = 0.02
 
         if self.attrs == {
+<<<<<<< HEAD
             'mode': "all",
             "data_format": "NCHW",
         } or self.attrs == {'mode': "all", "data_format": "NHWC"}:
+=======
+                'mode': "all",
+                "data_format": "NCHW"
+        } or self.attrs == {
+                'mode': "all",
+                "data_format": "NHWC"
+        }:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             alpha_np = np.random.uniform(-1, -0.5, (1))
         elif self.attrs == {'mode': "channel", "data_format": "NCHW"}:
             alpha_np = np.random.uniform(-1, -0.5, [1, self.x_shape[1], 1, 1])
@@ -203,6 +294,7 @@ class PReluTest(OpTest):
         # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1)
         reshaped_alpha = self.inputs['Alpha']
         if self.attrs == {'mode': "channel", "data_format": "NCHW"}:
+<<<<<<< HEAD
             reshaped_alpha = np.reshape(
                 self.inputs['Alpha'],
                 [1, self.x_shape[1]] + [1] * len(self.x_shape[2:]),
@@ -214,6 +306,17 @@ class PReluTest(OpTest):
             )
         out_np = np.maximum(self.inputs['X'], 0.0)
         out_np = out_np + np.minimum(self.inputs['X'], 0.0) * reshaped_alpha
+=======
+            reshaped_alpha = np.reshape(self.inputs['Alpha'],
+                                        [1, self.x_shape[1]] +
+                                        [1] * len(self.x_shape[2:]))
+        elif self.attrs == {'mode': "channel", "data_format": "NHWC"}:
+            reshaped_alpha = np.reshape(self.inputs['Alpha'],
+                                        [1] + [1] * len(self.x_shape[1:-1]) +
+                                        [self.x_shape[-1]])
+        out_np = np.maximum(self.inputs['X'], 0.)
+        out_np = out_np + np.minimum(self.inputs['X'], 0.) * reshaped_alpha
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert out_np is not self.inputs['X']
         self.outputs = {'Out': out_np}
 
@@ -234,9 +337,17 @@ class PReluTest(OpTest):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAll(PReluTest):
+=======
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
+class TestModeAll(PReluTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [2, 3, 4, 5]
 
@@ -245,9 +356,17 @@ class TestModeAll(PReluTest):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllNHWC(PReluTest):
+=======
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
+class TestModeAllNHWC(PReluTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [2, 3, 4, 50]
 
@@ -256,6 +375,10 @@ class TestModeAllNHWC(PReluTest):
 
 
 class TestModeElt(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [3, 2, 5, 10]
 
@@ -264,6 +387,10 @@ class TestModeElt(PReluTest):
 
 
 class TestModeEltNHWC(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [3, 2, 5, 10]
 
@@ -272,9 +399,17 @@ class TestModeEltNHWC(PReluTest):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllRank3(PReluTest):
+=======
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
+class TestModeAllRank3(PReluTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [1, 200, 3]
 
@@ -283,9 +418,17 @@ class TestModeAllRank3(PReluTest):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllRank3NHWC(PReluTest):
+=======
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
+class TestModeAllRank3NHWC(PReluTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [1, 200, 3]
 
@@ -294,9 +437,17 @@ class TestModeAllRank3NHWC(PReluTest):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllRank6(PReluTest):
+=======
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
+class TestModeAllRank6(PReluTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [1, 2, 3, 4, 5, 6]
 
@@ -305,9 +456,17 @@ class TestModeAllRank6(PReluTest):
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllRank6NHWC(PReluTest):
+=======
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
+class TestModeAllRank6NHWC(PReluTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [1, 2, 3, 4, 5, 6]
 
@@ -316,6 +475,10 @@ class TestModeAllRank6NHWC(PReluTest):
 
 
 class TestModeChannelRank3(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [1, 200, 3]
 
@@ -324,6 +487,10 @@ class TestModeChannelRank3(PReluTest):
 
 
 class TestModeChannelRank3NHWC(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [1, 3, 100]
 
@@ -332,6 +499,10 @@ class TestModeChannelRank3NHWC(PReluTest):
 
 
 class TestModeChannelRank6(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [1, 100, 2, 2, 2, 2]
 
@@ -340,6 +511,10 @@ class TestModeChannelRank6(PReluTest):
 
 
 class TestModeChannelRank6NHWC(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [1, 2, 2, 2, 2, 100]
 
@@ -348,6 +523,10 @@ class TestModeChannelRank6NHWC(PReluTest):
 
 
 class TestModeElementRank3(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [3, 10, 10]
 
@@ -356,6 +535,10 @@ class TestModeElementRank3(PReluTest):
 
 
 class TestModeElementRank3NHWC(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [3, 10, 10]
 
@@ -364,6 +547,10 @@ class TestModeElementRank3NHWC(PReluTest):
 
 
 class TestModeElementRank6(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [3, 2, 2, 4, 5, 2]
 
@@ -372,6 +559,10 @@ class TestModeElementRank6(PReluTest):
 
 
 class TestModeElementRank6NHWC(PReluTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_shape(self):
         self.x_shape = [3, 2, 2, 4, 5, 2]
 
@@ -379,6 +570,7 @@ class TestModeElementRank6NHWC(PReluTest):
         self.attrs = {'mode': "element", "data_format": "NHWC"}
 
 
+<<<<<<< HEAD
 def create_test_fp16_class(
     parent, check_grad=True, atol=1e-3, max_relative_error=0.05
 ):
@@ -386,6 +578,17 @@ def create_test_fp16_class(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
     class TestPReluFp16Case(parent):
+=======
+def create_test_fp16_class(parent,
+                           check_grad=True,
+                           atol=1e-3,
+                           max_relative_error=0.05):
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestPReluFp16Case(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -393,20 +596,33 @@ def create_test_fp16_class(
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
+<<<<<<< HEAD
                     self.check_output_with_place(
                         place, atol=atol, check_eager=self.eager_mode
                     )
+=======
+                    self.check_output_with_place(place,
+                                                 atol=atol,
+                                                 check_eager=self.eager_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and check_grad:
                 self.check_grad_with_place(
+<<<<<<< HEAD
                     place,
                     ['X', 'Alpha'],
                     'Out',
                     max_relative_error=max_relative_error,
                     check_eager=self.eager_mode,
                 )
+=======
+                    place, ['X', 'Alpha'],
+                    'Out',
+                    max_relative_error=max_relative_error,
+                    check_eager=self.eager_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
     TestPReluFp16Case.__name__ = cls_name
@@ -438,6 +654,7 @@ def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
         shape=alpha_shape,
         dtype='float32',
         is_bias=False,
+<<<<<<< HEAD
         default_initializer=fluid.initializer.ConstantInitializer(0.25),
     )
     out = helper.create_variable_for_type_inference(dtype)
@@ -447,17 +664,38 @@ def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
         attrs={"mode": mode, 'data_format': data_format},
         outputs={"Out": out},
     )
+=======
+        default_initializer=fluid.initializer.ConstantInitializer(0.25))
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="prelu",
+                     inputs={
+                         "X": x,
+                         'Alpha': alpha
+                     },
+                     attrs={
+                         "mode": mode,
+                         'data_format': data_format
+                     },
+                     outputs={"Out": out})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return out
 
 
 # error message test if mode is not one of 'all', 'channel', 'element'
 class TestModeError(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
     def test_mode_error(self):
@@ -467,7 +705,11 @@ class TestModeError(unittest.TestCase):
             try:
                 y = prelu_t(x, 'any')
             except Exception as e:
+<<<<<<< HEAD
                 assert e.args[0].find('InvalidArgument') != -1
+=======
+                assert (e.args[0].find('InvalidArgument') != -1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_data_format_error1(self):
         main_program = Program()
@@ -476,7 +718,11 @@ class TestModeError(unittest.TestCase):
             try:
                 y = prelu_t(x, 'channel', data_format='N')
             except Exception as e:
+<<<<<<< HEAD
                 assert e.args[0].find('InvalidArgument') != -1
+=======
+                assert (e.args[0].find('InvalidArgument') != -1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_data_format_error2(self):
         main_program = Program()

@@ -17,7 +17,10 @@
 #include <memory>
 
 #include "paddle/phi/api/ext/exception.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/place.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
@@ -60,6 +63,7 @@ struct XPUContext::Impl {
 
   ~Impl() {
     if (owned_ && context_ != nullptr) {
+<<<<<<< HEAD
       backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
       xpu_wait(context_->xpu_stream);
       if (context_->xpu_stream) {
@@ -68,6 +72,8 @@ struct XPUContext::Impl {
         xpu_stream_destroy(context_->xpu_stream);
         context_->xpu_stream = nullptr;
       }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       xpu::destroy_context(context_);
       context_ = nullptr;
     }
@@ -75,7 +81,17 @@ struct XPUContext::Impl {
 
   const Place& GetPlace() const { return place_; }
 
+<<<<<<< HEAD
   XPUStream stream() const { return context_->xpu_stream; }
+=======
+  void SetStream(XPUStream stream) { context_->xpu_stream = stream; }
+
+  XPUStream stream() const {
+    auto s = context_->xpu_stream;
+    PD_CHECK(s != nullptr, "the xpu stream is nullptr.");
+    return s;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   xpu::Context* GetXContext() const {
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
@@ -88,7 +104,11 @@ struct XPUContext::Impl {
   }
 
   void Wait() const {
+<<<<<<< HEAD
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
+=======
+    backends::xpu::SetXPUDeviceId(place_.GetDeviceId());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     xpu_wait(context_->xpu_stream);
   }
@@ -107,6 +127,7 @@ struct XPUContext::Impl {
 
   void SetBkclContext(xpu::BKCLContext_t context) { bkcl_context_ = context; }
 
+<<<<<<< HEAD
   void CreateStream() {
     if (context_->xpu_stream) {
       VLOG(3) << "xpu stream is already created for current context";
@@ -115,6 +136,8 @@ struct XPUContext::Impl {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool owned_{false};
   Place place_;
   backends::xpu::XPUVersion xpu_version_;
@@ -134,6 +157,11 @@ XPUContext::~XPUContext() = default;
 
 const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
 
+<<<<<<< HEAD
+=======
+void XPUContext::SetXPUStream(XPUStream stream) { impl_->SetStream(stream); }
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 XPUStream XPUContext::stream() const { return impl_->stream(); }
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {
@@ -158,8 +186,11 @@ void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
   impl_->SetBkclContext(context);
 }
 
+<<<<<<< HEAD
 void XPUContext::CreateStream() { impl_->CreateStream(); }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void XPUContext::Init() { impl_->Init(); }
 
 }  // namespace phi

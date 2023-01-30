@@ -49,11 +49,19 @@ void GetLinearOp(const std::vector<T> &x,
                  std::vector<T> *out) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
+<<<<<<< HEAD
   auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   auto var_y = scope.Var("Y");
   auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
   auto var_out = scope.Var("Out");
   auto tensor_out = var_out->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto var_y = scope.Var("Y");
+  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto var_out = scope.Var("Out");
+  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   tensor_x->Resize(x_dim);
   tensor_y->Resize(y_dim);
@@ -91,11 +99,19 @@ void GetElementwiseAddOp(const std::vector<T> &x,
                          std::vector<T> *out) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
+<<<<<<< HEAD
   auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   auto var_y = scope.Var("Y");
   auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
   auto var_out = scope.Var("Out");
   auto tensor_out = var_out->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto var_y = scope.Var("Y");
+  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto var_out = scope.Var("Out");
+  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   tensor_x->Resize({bsz_seq, output_size});
   tensor_y->Resize({output_size});
@@ -136,19 +152,33 @@ void GetLinearOpGrad(const std::vector<T> &x_vec,
                      std::vector<T> *dweight_vec) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
+<<<<<<< HEAD
   auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   auto var_y = scope.Var("Y");
   auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
   auto var_dout = scope.Var("DOut");
   auto tensor_dout = var_dout->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto var_y = scope.Var("Y");
+  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto var_dout = scope.Var("DOut");
+  auto tensor_dout = var_dout->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_x->Resize(x_dim);
   tensor_y->Resize(y_dim);
   tensor_dout->Resize(out_dim);
 
   auto var_dx = scope.Var("DX");
+<<<<<<< HEAD
   auto tensor_dx = var_dx->GetMutable<phi::DenseTensor>();
   auto var_dy = scope.Var("DY");
   auto tensor_dy = var_dy->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_dx = var_dx->GetMutable<framework::LoDTensor>();
+  auto var_dy = scope.Var("DY");
+  auto tensor_dy = var_dy->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_dx->Resize(x_dim);
   tensor_dy->Resize(y_dim);
 
@@ -222,19 +252,33 @@ void GetElementwiseAddOpGrad(const std::vector<T> &dout_vec,
                              std::vector<T> *dy_vec) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
+<<<<<<< HEAD
   auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   auto var_y = scope.Var("Y");
   auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
   auto var_dout = scope.Var("DOut");
   auto tensor_dout = var_dout->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto var_y = scope.Var("Y");
+  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto var_dout = scope.Var("DOut");
+  auto tensor_dout = var_dout->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_x->Resize({bsz_seq, output_size});
   tensor_y->Resize({output_size});
   tensor_dout->Resize({bsz_seq, output_size});
 
   auto var_dx = scope.Var("DX");
+<<<<<<< HEAD
   auto tensor_dx = var_dx->GetMutable<phi::DenseTensor>();
   auto var_dy = scope.Var("DY");
   auto tensor_dy = var_dy->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_dx = var_dx->GetMutable<framework::LoDTensor>();
+  auto var_dy = scope.Var("DY");
+  auto tensor_dy = var_dy->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_dx->Resize({bsz_seq, output_size});
   tensor_dy->Resize({output_size});
 
@@ -549,8 +593,13 @@ class TestFeedForward {
   bool has_bias_;
   int size_src_, size_weight_, size_bias_, size_output_;
 
+<<<<<<< HEAD
   phi::DenseTensor src_, weight_, bias_, out_, bias_out_;
   phi::DenseTensor dinput_, dweight_, dbias_, doutput_;
+=======
+  framework::Tensor src_, weight_, bias_, out_, bias_out_;
+  framework::Tensor dinput_, dweight_, dbias_, doutput_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<T> src_vec_, weight_vec_, bias_vec_, out_vec_, bias_out_vec_;
   std::vector<T> dinput_vec_, dweight_vec_, dbias_vec_, doutput_vec_;
 

@@ -37,8 +37,11 @@ static constexpr uint32_t kProfileGPUOptionBit = 1;
 static constexpr uint32_t kProfileMLUOptionBit = 2;
 static constexpr uint32_t kProfileCustomDeviceOptionBit = 3;
 
+<<<<<<< HEAD
 void SynchronizeDevice();
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct ProfilerOptions {
   uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu, bit 2: mlu
   uint32_t trace_level = FLAGS_host_trace_level;

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import gradient_checker
@@ -23,11 +24,29 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+import paddle.fluid.core as core
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestTransposeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -39,7 +58,11 @@ class TestTransposeOp(OpTest):
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_op_type(self):
@@ -58,65 +81,109 @@ class TestTransposeOp(OpTest):
 
 
 class TestCase0(TestTransposeOp):
+<<<<<<< HEAD
     def initTestCase(self):
         self.shape = (100,)
         self.axis = (0,)
 
 
 class TestCase1(TestTransposeOp):
+=======
+
+    def initTestCase(self):
+        self.shape = (100, )
+        self.axis = (0, )
+
+
+class TestCase1(TestTransposeOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
 class TestCase2(TestTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
 class TestCase3(TestTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
 class TestCase4(TestTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
 class TestCase5(TestTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 16, 96)
         self.axis = (0, 2, 1)
 
 
 class TestCase6(TestTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 10, 12, 16)
         self.axis = (3, 1, 2, 0)
 
 
 class TestCase7(TestTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 10, 2, 16)
         self.axis = (0, 1, 3, 2)
 
 
 class TestCase8(TestTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (0, 1, 3, 2, 4, 5, 6, 7)
 
 
 class TestCase9(TestTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
+<<<<<<< HEAD
 class TestCase_ZeroDim(TestTransposeOp):
     def initTestCase(self):
         self.shape = ()
@@ -124,6 +191,10 @@ class TestCase_ZeroDim(TestTransposeOp):
 
 
 class TestAutoTuneTransposeOp(OpTest):
+=======
+class TestAutoTuneTransposeOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -135,7 +206,11 @@ class TestAutoTuneTransposeOp(OpTest):
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def initTestCase(self):
@@ -158,6 +233,10 @@ class TestAutoTuneTransposeOp(OpTest):
 
 
 class TestTransposeBF16Op(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -170,10 +249,18 @@ class TestTransposeBF16Op(OpTest):
             'use_mkldnn': self.use_mkldnn,
         }
         self.outputs = {
+<<<<<<< HEAD
             'XShape': convert_float_to_uint16(
                 np.random.random(self.shape).astype("float32")
             ),
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'XShape':
+            convert_float_to_uint16(
+                np.random.random(self.shape).astype("float32")),
+            'Out':
+            self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_op_type(self):
@@ -192,11 +279,16 @@ class TestTransposeBF16Op(OpTest):
 
 
 class TestTransposeOpBool(TestTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_grad(self):
         pass
 
 
 class TestTransposeOpBool1D(TestTransposeOpBool):
+<<<<<<< HEAD
     def initTestCase(self):
         self.shape = (100,)
         self.axis = (0,)
@@ -204,87 +296,154 @@ class TestTransposeOpBool1D(TestTransposeOpBool):
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("bool"),
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+
+    def initTestCase(self):
+        self.shape = (100, )
+        self.axis = (0, )
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestTransposeOpBool2D(TestTransposeOpBool):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (3, 40)
         self.axis = (1, 0)
         self.inputs = {'X': np.random.random(self.shape).astype("bool")}
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("bool"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestTransposeOpBool3D(TestTransposeOpBool):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
         self.inputs = {'X': np.random.random(self.shape).astype("bool")}
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("bool"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestTransposeOpBool4D(TestTransposeOpBool):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
         self.inputs = {'X': np.random.random(self.shape).astype("bool")}
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("bool"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestTransposeOpBool5D(TestTransposeOpBool):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
         self.inputs = {'X': np.random.random(self.shape).astype("bool")}
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("bool"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestTransposeOpBool6D(TestTransposeOpBool):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
         self.inputs = {'X': np.random.random(self.shape).astype("bool")}
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("bool"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestTransposeOpBool7D(TestTransposeOpBool):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3)
         self.axis = (0, 1, 3, 2, 4, 5, 6)
         self.inputs = {'X': np.random.random(self.shape).astype("bool")}
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("bool"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestTransposeOpBool8D(TestTransposeOpBool):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
         self.inputs = {'X': np.random.random(self.shape).astype("bool")}
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("bool"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestTransposeOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -295,39 +454,73 @@ class TestTransposeOpError(unittest.TestCase):
             def test_x_Variable_check():
                 # the Input(x)'s type must be Variable
                 paddle.transpose("not_variable", perm=[1, 0, 2])
+=======
+
+    def test_errors(self):
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
+            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float64')
+
+            def test_x_Variable_check():
+                # the Input(x)'s type must be Variable
+                fluid.layers.transpose("not_variable", perm=[1, 0, 2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_x_Variable_check)
 
             def test_x_dtype_check():
                 # the Input(x)'s dtype must be one of [bool, float16, float32, float64, int32, int64]
+<<<<<<< HEAD
                 x1 = paddle.static.data(
                     name='x1', shape=[-1, 10, 5, 3], dtype='int8'
                 )
                 paddle.transpose(x1, perm=[1, 0, 2])
+=======
+                x1 = fluid.layers.data(name='x1',
+                                       shape=[10, 5, 3],
+                                       dtype='int8')
+                fluid.layers.transpose(x1, perm=[1, 0, 2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_x_dtype_check)
 
             def test_perm_list_check():
                 # Input(perm)'s type must be list
+<<<<<<< HEAD
                 paddle.transpose(x, perm="[1, 0, 2]")
+=======
+                fluid.layers.transpose(x, perm="[1, 0, 2]")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_perm_list_check)
 
             def test_perm_length_and_x_dim_check():
                 # Input(perm) is the permutation of dimensions of Input(input)
                 # its length should be equal to dimensions of Input(input)
+<<<<<<< HEAD
                 paddle.transpose(x, perm=[1, 0, 2, 3, 4])
+=======
+                fluid.layers.transpose(x, perm=[1, 0, 2, 3, 4])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(ValueError, test_perm_length_and_x_dim_check)
 
             def test_each_elem_value_check():
                 # Each element in Input(perm) should be less than Input(x)'s dimension
+<<<<<<< HEAD
                 paddle.transpose(x, perm=[3, 5, 7])
+=======
+                fluid.layers.transpose(x, perm=[3, 5, 7])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(ValueError, test_each_elem_value_check)
 
 
 class TestTransposeApi(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_static_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -337,9 +530,14 @@ class TestTransposeApi(unittest.TestCase):
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             x_np = np.random.random([2, 3, 4]).astype("float32")
+<<<<<<< HEAD
             result1, result2 = exe.run(
                 feed={"x": x_np}, fetch_list=[x_trans1, x_trans2]
             )
+=======
+            result1, result2 = exe.run(feed={"x": x_np},
+                                       fetch_list=[x_trans1, x_trans2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result1 = np.transpose(x_np, [1, 0, 2])
             expected_result2 = np.transpose(x_np, (2, 1, 0))
 
@@ -365,6 +563,10 @@ class TestTransposeApi(unittest.TestCase):
 
 
 class TestTAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10], dtype="float64", name="data")
@@ -372,7 +574,11 @@ class TestTAPI(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             data_np = np.random.random([10]).astype("float64")
+<<<<<<< HEAD
             (result,) = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+=======
+            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.transpose(data_np)
         self.assertEqual((result == expected_result).all(), True)
 
@@ -382,7 +588,11 @@ class TestTAPI(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             data_np = np.random.random([10, 5]).astype("float64")
+<<<<<<< HEAD
             (result,) = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+=======
+            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.transpose(data_np)
         self.assertEqual((result == expected_result).all(), True)
 
@@ -392,7 +602,11 @@ class TestTAPI(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             data_np = np.random.random([1, 5]).astype("float64")
+<<<<<<< HEAD
             (result,) = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+=======
+            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.transpose(data_np)
         self.assertEqual((result == expected_result).all(), True)
 
@@ -431,6 +645,10 @@ class TestTAPI(unittest.TestCase):
 
 
 class TestMoveAxis(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_moveaxis1(self):
         x_np = np.random.randn(2, 3, 4, 5, 7)
         expected = np.moveaxis(x_np, [0, 4, 3, 2], [1, 3, 2, 0])
@@ -473,9 +691,14 @@ class TestMoveAxis(unittest.TestCase):
 
     def test_moveaxis3(self):
         paddle.disable_static()
+<<<<<<< HEAD
         x = paddle.to_tensor(
             [[1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j]]
         )
+=======
+        x = paddle.to_tensor([[1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j],
+                              [1 + 1j, -1 - 1j]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = x.moveaxis(0, 1)
         self.assertEqual(out.shape, [2, 3])
         paddle.enable_static()
@@ -512,6 +735,10 @@ class TestMoveAxis(unittest.TestCase):
 
 
 class TestTransposeDoubleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def transpose_wrapper(self, x):
         return paddle.transpose(x[0], [1, 0, 2])
 
@@ -521,17 +748,35 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
+<<<<<<< HEAD
         data = paddle.static.data('data', [2, 3, 4], dtype)
+=======
+        data = layers.data('data', [2, 3, 4], False, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data.persistable = True
         out = paddle.transpose(data, [1, 0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.transpose_wrapper, [data], out, x_init=[data_arr], place=place
         )
+=======
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.transpose_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -543,6 +788,10 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
 
 
 class TestTransposeTripleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def transpose_wrapper(self, x):
         return paddle.transpose(x[0], [1, 0, 2])
 
@@ -552,17 +801,35 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
+<<<<<<< HEAD
         data = paddle.static.data('data', [2, 3, 4], dtype)
+=======
+        data = layers.data('data', [2, 3, 4], False, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data.persistable = True
         out = paddle.transpose(data, [1, 0, 2])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
         gradient_checker.triple_grad_check_for_dygraph(
             self.transpose_wrapper, [data], out, x_init=[data_arr], place=place
         )
+=======
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.transpose_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -573,6 +840,7 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+<<<<<<< HEAD
 class TestTransposeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
@@ -590,6 +858,8 @@ class TestTransposeAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

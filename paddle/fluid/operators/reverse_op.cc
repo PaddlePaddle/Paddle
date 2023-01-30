@@ -28,12 +28,20 @@ class ReverseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
+<<<<<<< HEAD
     return phi::KernelKey(input_data_type, ctx.GetPlace());
+=======
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -48,15 +56,24 @@ class ReverseOpVarTypeInference : public framework::VarTypeInference {
 class ReverseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("X", "The phi::DenseTensor to be flipped.");
     AddOutput("Out", "The phi::DenseTensor after flipping.");
+=======
+    AddInput("X", "The LoDTensor to be flipped.");
+    AddOutput("Out", "The LoDTensor after flipping.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<std::vector<int>>(
         "axis", "The axises that along which order of elements is reversed.")
         .SupportTensor();
     AddComment(R"DOC(
       Reverse Operator.
 
+<<<<<<< HEAD
       Reverse the order of elements in the input phi::DenseTensor along given axises.
+=======
+      Reverse the order of elements in the input LoDTensor along given axises.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       Case 1:
         Given
@@ -69,7 +86,11 @@ class ReverseOpMaker : public framework::OpProtoAndCheckerMaker {
             Out = [[11, 12, 13, 14, 15]
                    [6, 7, 8, 9, 10]
                    [1, 2, 3, 4, 5]].
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       Case 2:
         Given
             X = [[[1, 2, 3, 4]

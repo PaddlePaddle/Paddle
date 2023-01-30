@@ -20,8 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 TEST(CudnnHelper, ScopedTensorDescriptor) {
+<<<<<<< HEAD
   using phi::backends::gpu::DataLayout;
   using phi::backends::gpu::ScopedTensorDescriptor;
+=======
+  using paddle::platform::DataLayout;
+  using paddle::platform::ScopedTensorDescriptor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
@@ -31,7 +36,11 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
   int nd;
   std::vector<int> dims(4);
   std::vector<int> strides(4);
+<<<<<<< HEAD
   phi::dynload::cudnnGetTensorNdDescriptor(
+=======
+  paddle::platform::dynload::cudnnGetTensorNdDescriptor(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       desc, 4, &type, &nd, dims.data(), strides.data());
 
   EXPECT_EQ(nd, 4);
@@ -50,7 +59,11 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
 
   std::vector<int> dims_5d(5);
   std::vector<int> strides_5d(5);
+<<<<<<< HEAD
   phi::dynload::cudnnGetTensorNdDescriptor(
+=======
+  paddle::platform::dynload::cudnnGetTensorNdDescriptor(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       desc_5d, 5, &type, &nd, dims_5d.data(), strides_5d.data());
 
   EXPECT_EQ(nd, 5);
@@ -65,8 +78,13 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedFilterDescriptor) {
+<<<<<<< HEAD
   using phi::backends::gpu::DataLayout;
   using phi::backends::gpu::ScopedFilterDescriptor;
+=======
+  using paddle::platform::DataLayout;
+  using paddle::platform::ScopedFilterDescriptor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ScopedFilterDescriptor filter_desc;
   std::vector<int> shape = {2, 3, 3};
@@ -76,7 +94,11 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
   int nd;
   cudnnTensorFormat_t format;
   std::vector<int> kernel(3);
+<<<<<<< HEAD
   phi::dynload::cudnnGetFilterNdDescriptor(
+=======
+  paddle::platform::dynload::cudnnGetFilterNdDescriptor(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       desc, 3, &type, &format, &nd, kernel.data());
 
   EXPECT_EQ(GetCudnnTensorFormat(DataLayout::kNCHW), format);
@@ -90,7 +112,11 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
   auto desc_4d = filter_desc.descriptor<float>(DataLayout::kNCDHW, shape_4d);
 
   std::vector<int> kernel_4d(4);
+<<<<<<< HEAD
   phi::dynload::cudnnGetFilterNdDescriptor(
+=======
+  paddle::platform::dynload::cudnnGetFilterNdDescriptor(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       desc_4d, 4, &type, &format, &nd, kernel_4d.data());
 
   EXPECT_EQ(GetCudnnTensorFormat(DataLayout::kNCHW), format);
@@ -101,7 +127,11 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedConvolutionDescriptor) {
+<<<<<<< HEAD
   using phi::backends::gpu::ScopedConvolutionDescriptor;
+=======
+  using paddle::platform::ScopedConvolutionDescriptor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ScopedConvolutionDescriptor conv_desc;
   std::vector<int> src_pads = {2, 2, 2};
@@ -115,6 +145,7 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
   std::vector<int> pads(3);
   std::vector<int> strides(3);
   std::vector<int> dilations(3);
+<<<<<<< HEAD
   phi::dynload::cudnnGetConvolutionNdDescriptor(desc,
                                                 3,
                                                 &nd,
@@ -123,6 +154,16 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
                                                 dilations.data(),
                                                 &mode,
                                                 &type);
+=======
+  paddle::platform::dynload::cudnnGetConvolutionNdDescriptor(desc,
+                                                             3,
+                                                             &nd,
+                                                             pads.data(),
+                                                             strides.data(),
+                                                             dilations.data(),
+                                                             &mode,
+                                                             &type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   EXPECT_EQ(nd, 3);
   for (size_t i = 0; i < src_pads.size(); ++i) {
@@ -134,8 +175,13 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedPoolingDescriptor) {
+<<<<<<< HEAD
   using phi::backends::gpu::PoolingMode;
   using phi::backends::gpu::ScopedPoolingDescriptor;
+=======
+  using paddle::platform::PoolingMode;
+  using paddle::platform::ScopedPoolingDescriptor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ScopedPoolingDescriptor pool_desc;
   std::vector<int> src_kernel = {2, 2, 5};
@@ -150,7 +196,11 @@ TEST(CudnnHelper, ScopedPoolingDescriptor) {
   std::vector<int> kernel(3);
   std::vector<int> pads(3);
   std::vector<int> strides(3);
+<<<<<<< HEAD
   phi::dynload::cudnnGetPoolingNdDescriptor(
+=======
+  paddle::platform::dynload::cudnnGetPoolingNdDescriptor(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       desc, 3, &mode, &nan_t, &nd, kernel.data(), pads.data(), strides.data());
 
   EXPECT_EQ(nd, 3);

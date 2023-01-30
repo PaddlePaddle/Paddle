@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,15 @@ from paddle_bfloat import bfloat16
 
 
 class TestBF16DataType(unittest.TestCase):
+=======
+import numpy as np
+from paddle_bfloat import bfloat16
+import unittest
+
+
+class TestBF16DataType(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_matmul(self):
         a_bf16 = np.random.random((6, 7)).astype(bfloat16)
         b_bf16 = np.random.random((7, 8)).astype(bfloat16)

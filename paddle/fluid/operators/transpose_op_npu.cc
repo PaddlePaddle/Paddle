@@ -24,8 +24,13 @@ template <typename DeviceContext, typename T>
 class TransposeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
     out->mutable_data<T>(ctx.device_context().GetPlace());
     NpuOpRunner runner;
@@ -44,8 +49,15 @@ template <typename T>
 class TransposeGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out_grad =
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* x_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
     std::vector<int> reversed_axis(axis);
     for (size_t i = 0; i < axis.size(); i++) {

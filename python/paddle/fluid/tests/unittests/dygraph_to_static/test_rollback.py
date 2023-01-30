@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -24,6 +25,18 @@ from paddle.jit.dy2static.utils import func_to_source_code
 class Net(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
+=======
+import paddle
+import numpy as np
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
+
+
+class Net(paddle.nn.Layer):
+
+    def __init__(self):
+        super(Net, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.sub = SubNet()
 
     def forward(self, x):
@@ -39,8 +52,14 @@ class Net(paddle.nn.Layer):
 
 
 class SubNet(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(SubNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x, flag=True):
         if flag:
@@ -59,14 +78,24 @@ class SubNet(paddle.nn.Layer):
 
 def foo(x, flag=False):
     if flag:
+<<<<<<< HEAD
         out = x * 2.0
     else:
         out = x / 2.0
+=======
+        out = x * 2.
+    else:
+        out = x / 2.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return out
 
 
 class TestRollBackPlainFunction(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.set_device("cpu")
 
@@ -85,6 +114,10 @@ class TestRollBackPlainFunction(unittest.TestCase):
 
 
 class TestRollBackNet(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.set_device("cpu")
 
@@ -116,9 +149,14 @@ class TestRollBackNet(unittest.TestCase):
         self.assertFalse(isinstance(net.infer, StaticFunction))
         self.assertFalse("true_fn" in func_to_source_code(net.sub.forward))
         dy_infer_out = net.infer(x)
+<<<<<<< HEAD
         np.testing.assert_array_equal(
             st_infer_out.numpy(), dy_infer_out.numpy()
         )
+=======
+        np.testing.assert_array_equal(st_infer_out.numpy(),
+                                      dy_infer_out.numpy())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

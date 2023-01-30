@@ -12,8 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from .. import Layer
 from .. import functional as F
+=======
+from ...fluid.layer_helper import LayerHelper
+from .. import functional as F
+from .. import Layer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -84,7 +90,11 @@ class AvgPool1D(Layer):
         ceil_mode=False,
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AvgPool1D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
@@ -192,7 +202,11 @@ class AvgPool2D(Layer):
         data_format="NCHW",
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AvgPool2D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -291,7 +305,11 @@ class AvgPool3D(Layer):
         data_format="NCDHW",
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AvgPool3D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -389,7 +407,11 @@ class MaxPool1D(Layer):
         ceil_mode=False,
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MaxPool1D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
@@ -497,7 +519,11 @@ class MaxPool2D(Layer):
         data_format="NCHW",
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MaxPool2D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -594,7 +620,11 @@ class MaxPool3D(Layer):
         data_format="NCDHW",
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MaxPool3D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -672,7 +702,11 @@ class AdaptiveAvgPool1D(Layer):
     """
 
     def __init__(self, output_size, name=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AdaptiveAvgPool1D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.output_size = output_size
         self.name = name
 
@@ -751,7 +785,11 @@ class AdaptiveAvgPool2D(Layer):
     """
 
     def __init__(self, output_size, data_format="NCHW", name=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AdaptiveAvgPool2D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._output_size = output_size
         self._data_format = data_format
         self._name = name
@@ -843,7 +881,11 @@ class AdaptiveAvgPool3D(Layer):
     """
 
     def __init__(self, output_size, data_format="NCDHW", name=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AdaptiveAvgPool3D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._output_size = output_size
         self._data_format = data_format
         self._name = name
@@ -926,7 +968,11 @@ class AdaptiveMaxPool1D(Layer):
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AdaptiveMaxPool1D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.output_size = output_size
         self.return_mask = return_mask
         self.name = name
@@ -1005,7 +1051,11 @@ class AdaptiveMaxPool2D(Layer):
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AdaptiveMaxPool2D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._output_size = output_size
         self._return_mask = return_mask
         self._name = name
@@ -1098,7 +1148,11 @@ class AdaptiveMaxPool3D(Layer):
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(AdaptiveMaxPool3D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._output_size = output_size
         self._return_mask = return_mask
         self._name = name
@@ -1177,7 +1231,11 @@ class MaxUnPool1D(Layer):
         output_size=None,
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MaxUnPool1D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -1265,7 +1323,11 @@ class MaxUnPool2D(Layer):
         output_size=None,
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MaxUnPool2D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -1356,7 +1418,11 @@ class MaxUnPool3D(Layer):
         output_size=None,
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MaxUnPool3D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding

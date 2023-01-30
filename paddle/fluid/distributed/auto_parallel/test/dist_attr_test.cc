@@ -67,39 +67,64 @@ TEST(DistAttr, ctor) {
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1}));
   x_dist_attr.set_batch_dim(0);
   x_dist_attr.set_dynamic_dims(std::vector<bool>({true, false}));
+<<<<<<< HEAD
   x_dist_attr.mark_annotated("process_mesh");
   x_dist_attr.mark_annotated("dims_mapping");
+=======
+  x_dist_attr.annotate("process_mesh");
+  x_dist_attr.annotate("dims_mapping");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   EXPECT_EQ(x_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(x_dist_attr.dims_mapping(), std::vector<int64_t>({0, -1}));
   EXPECT_EQ(x_dist_attr.batch_dim(), 0);
   EXPECT_EQ(x_dist_attr.dynamic_dims(), std::vector<bool>({true, false}));
   EXPECT_EQ(x_dist_attr.is_annotated("process_mesh"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dims_mapping"), true);
+<<<<<<< HEAD
   EXPECT_EQ(x_dist_attr.verify(x), true);
   x_dist_attr.clear_annotated();
   EXPECT_EQ(x_dist_attr.annotated().empty(), true);
+=======
+  EXPECT_EQ(x_dist_attr.verify(), true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::stringstream x_sstream;
   x_sstream << x_dist_attr;
   EXPECT_EQ(x_sstream.str(), x_dist_attr.to_string());
   auto x_proto = x_dist_attr.to_proto();
+<<<<<<< HEAD
   TensorDistAttr new_x_dist_attr(*x);
   new_x_dist_attr.from_proto(x_proto);
   EXPECT_EQ(x_dist_attr, new_x_dist_attr);
+=======
+  TensorDistAttr new_x_dist_attr = TensorDistAttr::from_proto(x_proto);
+  EXPECT_EQ(x_dist_attr, new_x_dist_attr);
+  // new_x_dist_attr is not valid since it does not bind to an var_desc
+  EXPECT_EQ(new_x_dist_attr.verify(), false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   y_dist_attr.set_process_mesh(process_mesh);
   y_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0}));
   y_dist_attr.set_batch_dim(-1);
   y_dist_attr.set_dynamic_dims(std::vector<bool>({false, true}));
+<<<<<<< HEAD
   x_dist_attr.mark_annotated("batch_dim");
   x_dist_attr.mark_annotated("dynamic_dims");
+=======
+  x_dist_attr.annotate("batch_dim");
+  x_dist_attr.annotate("dynamic_dims");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   EXPECT_EQ(y_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(y_dist_attr.dims_mapping(), std::vector<int64_t>({-1, 0}));
   EXPECT_EQ(y_dist_attr.batch_dim(), 1);
   EXPECT_EQ(y_dist_attr.dynamic_dims(), std::vector<bool>({false, true}));
   EXPECT_EQ(x_dist_attr.is_annotated("batch_dim"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dynamic_dims"), true);
+<<<<<<< HEAD
   EXPECT_EQ(x_dist_attr.verify(y), true);
+=======
+  EXPECT_EQ(x_dist_attr.verify(), true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   out_dist_attr.set_process_mesh(process_mesh);
   out_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1}));
@@ -109,6 +134,7 @@ TEST(DistAttr, ctor) {
   EXPECT_EQ(out_dist_attr.dims_mapping(), std::vector<int64_t>({0, 1}));
   EXPECT_EQ(out_dist_attr.batch_dim(), 1);
   EXPECT_EQ(out_dist_attr.dynamic_dims(), std::vector<bool>({false, false}));
+<<<<<<< HEAD
   EXPECT_EQ(out_dist_attr.verify(out), true);
 
   OperatorDistAttr mul_dist_attr(*op);
@@ -118,16 +144,27 @@ TEST(DistAttr, ctor) {
   EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), false);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), false);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_idx"), false);
+=======
+  EXPECT_EQ(out_dist_attr.verify(), true);
+
+  OperatorDistAttr mul_dist_attr(*op);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   mul_dist_attr.set_input_dist_attr(x->Name(), x_dist_attr);
   mul_dist_attr.set_input_dist_attr(y->Name(), y_dist_attr);
   mul_dist_attr.set_output_dist_attr(out->Name(), out_dist_attr);
   mul_dist_attr.set_process_mesh(process_mesh2);
   mul_dist_attr.set_impl_type("dist_mul");
   mul_dist_attr.set_impl_idx(0);
+<<<<<<< HEAD
   mul_dist_attr.set_is_recompute(true);
   mul_dist_attr.mark_annotated("process_mesh");
   mul_dist_attr.mark_annotated("impl_type");
   mul_dist_attr.mark_annotated("impl_idx");
+=======
+  mul_dist_attr.annotate("process_mesh");
+  mul_dist_attr.annotate("impl_type");
+  mul_dist_attr.annotate("impl_idx");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   EXPECT_NE(mul_dist_attr.input_dist_attr(x->Name()), x_dist_attr);
   EXPECT_NE(mul_dist_attr.input_dist_attr(y->Name()), y_dist_attr);
   EXPECT_NE(mul_dist_attr.output_dist_attr(out->Name()), out_dist_attr);
@@ -138,6 +175,7 @@ TEST(DistAttr, ctor) {
             process_mesh2);
   EXPECT_EQ(mul_dist_attr.impl_type(), "dist_mul");
   EXPECT_EQ(mul_dist_attr.impl_idx(), 0);
+<<<<<<< HEAD
   EXPECT_EQ(mul_dist_attr.is_recompute(), true);
   EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), true);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), true);
@@ -145,14 +183,27 @@ TEST(DistAttr, ctor) {
   EXPECT_EQ(mul_dist_attr.verify(op), true);
   mul_dist_attr.clear_annotated();
   EXPECT_EQ(mul_dist_attr.annotated().empty(), true);
+=======
+  EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), true);
+  EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), true);
+  EXPECT_EQ(mul_dist_attr.is_annotated("impl_idx"), true);
+  EXPECT_EQ(mul_dist_attr.verify(), true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::stringstream mul_sstream;
   mul_sstream << mul_dist_attr;
   EXPECT_EQ(mul_sstream.str(), mul_dist_attr.to_string());
   auto mul_proto = mul_dist_attr.to_proto();
+<<<<<<< HEAD
   OperatorDistAttr new_mul_dist_attr(*op);
   new_mul_dist_attr.from_proto(mul_proto);
   EXPECT_EQ(mul_dist_attr, new_mul_dist_attr);
+=======
+  OperatorDistAttr new_mul_dist_attr = OperatorDistAttr::from_proto(mul_proto);
+  EXPECT_EQ(mul_dist_attr, new_mul_dist_attr);
+  // new_mul_dist_attr is not valid since it does not bind to an op_desc
+  EXPECT_EQ(new_mul_dist_attr.verify(), false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace auto_parallel

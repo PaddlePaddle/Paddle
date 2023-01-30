@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,12 +21,33 @@ import paddle
 
 
 class ApiOnesTest(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+import numpy as np
+
+
+class ApiOnesTest(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_paddle_ones(self):
         with paddle.static.program_guard(paddle.static.Program()):
             ones = paddle.ones(shape=[10])
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             (result,) = exe.run(fetch_list=[ones])
+=======
+            result, = exe.run(fetch_list=[ones])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.ones(10, dtype="float32")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -33,7 +55,11 @@ class ApiOnesTest(unittest.TestCase):
             ones = paddle.ones(shape=[10], dtype="float64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             (result,) = exe.run(fetch_list=[ones])
+=======
+            result, = exe.run(fetch_list=[ones])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.ones(10, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -41,22 +67,39 @@ class ApiOnesTest(unittest.TestCase):
             ones = paddle.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             (result,) = exe.run(fetch_list=[ones])
+=======
+            result, = exe.run(fetch_list=[ones])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
     def test_fluid_ones(self):
         with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
             ones = paddle.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             (result,) = exe.run(fetch_list=[ones])
+=======
+            ones = fluid.layers.ones(shape=[10], dtype="int64")
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            result, = exe.run(fetch_list=[ones])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
 
 class ApiOnesZerosError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
+=======
+
+    def test_errors(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_error1():
             with paddle.static.program_guard(paddle.static.Program()):
                 ones = paddle.ones(shape=10, dtype="int64")
@@ -71,13 +114,21 @@ class ApiOnesZerosError(unittest.TestCase):
 
         def test_error3():
             with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
                 ones = paddle.ones(shape=10, dtype="int64")
+=======
+                ones = fluid.layers.ones(shape=10, dtype="int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(TypeError, test_error3)
 
         def test_error4():
             with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
                 ones = paddle.ones(shape=[10], dtype="int8")
+=======
+                ones = fluid.layers.ones(shape=[10], dtype="int8")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(TypeError, test_error4)
 

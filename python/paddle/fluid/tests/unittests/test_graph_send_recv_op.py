@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 from op_test import OpTest
 
 import paddle
@@ -29,6 +30,27 @@ def graph_send_recv_wrapper(
 
 
 class TestGraphSendRecvMaxOp(OpTest):
+=======
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
+
+from op_test import OpTest
+
+
+def graph_send_recv_wrapper(x,
+                            src_index,
+                            dst_index,
+                            reduce_op="sum",
+                            out_size=None,
+                            name=None):
+    return paddle.geometric.send_u_recv(x, src_index, dst_index,
+                                        reduce_op.lower(), out_size, name)
+
+
+class TestGraphSendRecvMaxOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         self.python_api = graph_send_recv_wrapper
@@ -44,20 +66,35 @@ class TestGraphSendRecvMaxOp(OpTest):
         self.attrs = {'reduce_op': 'MAX'}
 
         out, self.gradient = compute_graph_send_recv_for_min_max(
+<<<<<<< HEAD
             self.inputs, self.attrs
         )
+=======
+            self.inputs, self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True
         )
 
 
 class TestGraphSendRecvMinOp(OpTest):
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[self.gradient],
+                        check_eager=True)
+
+
+class TestGraphSendRecvMinOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         self.python_api = graph_send_recv_wrapper
@@ -73,8 +110,12 @@ class TestGraphSendRecvMinOp(OpTest):
         self.attrs = {'reduce_op': 'MIN'}
 
         out, self.gradient = compute_graph_send_recv_for_min_max(
+<<<<<<< HEAD
             self.inputs, self.attrs
         )
+=======
+            self.inputs, self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.outputs = {'Out': out}
 
@@ -82,12 +123,23 @@ class TestGraphSendRecvMinOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True
         )
 
 
 class TestGraphSendRecvSumOp(OpTest):
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[self.gradient],
+                        check_eager=True)
+
+
+class TestGraphSendRecvSumOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         self.python_api = graph_send_recv_wrapper
@@ -114,6 +166,10 @@ class TestGraphSendRecvSumOp(OpTest):
 
 
 class TestGraphSendRecvMeanOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         self.python_api = graph_send_recv_wrapper
@@ -129,8 +185,12 @@ class TestGraphSendRecvMeanOp(OpTest):
         self.attrs = {'reduce_op': 'MEAN'}
 
         out, dst_count = compute_graph_send_recv_for_sum_mean(
+<<<<<<< HEAD
             self.inputs, self.attrs
         )
+=======
+            self.inputs, self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.outputs = {'Out': out, 'Dst_count': dst_count}
 
@@ -191,9 +251,14 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
                 results[s_id, :] += gather_x[index, :]
                 first_set.add(s_id)
             else:
+<<<<<<< HEAD
                 results[s_id, :] = np.maximum(
                     results[s_id, :], gather_x[index, :]
                 )
+=======
+                results[s_id, :] = np.maximum(results[s_id, :],
+                                              gather_x[index, :])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif reduce_op == "MIN":
         first_set = set()
         for index, s_id in enumerate(dst_index):
@@ -201,9 +266,14 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
                 results[s_id, :] += gather_x[index, :]
                 first_set.add(s_id)
             else:
+<<<<<<< HEAD
                 results[s_id, :] = np.minimum(
                     results[s_id, :], gather_x[index, :]
                 )
+=======
+                results[s_id, :] = np.minimum(results[s_id, :],
+                                              gather_x[index, :])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         raise ValueError("Invalid reduce_op, only MAX, MIN supported!")
 
@@ -212,14 +282,23 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
     for i in range(index_size):
         forward_src_idx = src_index[i]
         forward_dst_idx = dst_index[i]
+<<<<<<< HEAD
         gradient[forward_src_idx] += 1 * (
             x[forward_src_idx] == results[forward_dst_idx]
         )
+=======
+        gradient[forward_src_idx] += 1 * (x[forward_src_idx]
+                                          == results[forward_dst_idx])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return results, gradient / results.size
 
 
 class API_GraphSendRecvOpTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -227,6 +306,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
             src_index = paddle.static.data(name="src", shape=[4], dtype="int32")
             dst_index = paddle.static.data(name="dst", shape=[4], dtype="int32")
 
+<<<<<<< HEAD
             res_sum = paddle.incubate.graph_send_recv(
                 x, src_index, dst_index, "sum"
             )
@@ -239,12 +319,23 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
             res_min = paddle.incubate.graph_send_recv(
                 x, src_index, dst_index, "min"
             )
+=======
+            res_sum = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "sum")
+            res_mean = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                       "mean")
+            res_max = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "max")
+            res_min = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "min")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype='float32')
             data2 = np.array([0, 1, 2, 0], dtype="int32")
             data3 = np.array([1, 2, 1, 0], dtype="int32")
 
+<<<<<<< HEAD
             np_sum = np.array(
                 [[0, 2, 3], [2, 8, 10], [1, 4, 5]], dtype="float32"
             )
@@ -262,12 +353,30 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
                 feed={'x': data1, 'src': data2, 'dst': data3},
                 fetch_list=[res_sum, res_mean, res_max, res_min],
             )
+=======
+            np_sum = np.array([[0, 2, 3], [2, 8, 10], [1, 4, 5]],
+                              dtype="float32")
+            np_mean = np.array([[0, 2, 3], [1, 4, 5], [1, 4, 5]],
+                               dtype="float32")
+            np_max = np.array([[0, 2, 3], [2, 6, 7], [1, 4, 5]],
+                              dtype="float32")
+            np_min = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]],
+                              dtype="float32")
+
+            ret = exe.run(feed={
+                'x': data1,
+                'src': data2,
+                'dst': data3
+            },
+                          fetch_list=[res_sum, res_mean, res_max, res_min])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
             np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
 
     def test_dygraph(self):
         paddle.disable_static()
+<<<<<<< HEAD
         x = paddle.to_tensor(
             np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]), dtype="float32"
         )
@@ -285,6 +394,20 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
         res_min = paddle.incubate.graph_send_recv(
             x, src_index, dst_index, "min"
         )
+=======
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]),
+                             dtype="float32")
+        src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
+        dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
+        res_sum = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                  "sum")
+        res_mean = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                   "mean")
+        res_max = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                  "max")
+        res_min = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                  "min")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np_sum = np.array([[0, 2, 3], [2, 8, 10], [1, 4, 5]], dtype="float32")
         np_mean = np.array([[0, 2, 3], [1, 4, 5], [1, 4, 5]], dtype="float32")
@@ -298,6 +421,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
 
     def test_int32_input(self):
         paddle.disable_static()
+<<<<<<< HEAD
         x = paddle.to_tensor(
             np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]), dtype="int32"
         )
@@ -315,6 +439,20 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
         res_min = paddle.incubate.graph_send_recv(
             x, src_index, dst_index, "min"
         )
+=======
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]),
+                             dtype="int32")
+        src_index = paddle.to_tensor(np.array([0, 1, 2, 0, 1]), dtype="int32")
+        dst_index = paddle.to_tensor(np.array([1, 2, 1, 0, 1]), dtype="int32")
+        res_sum = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                  "sum")
+        res_mean = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                   "mean")
+        res_max = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                  "max")
+        res_min = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                  "min")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np_sum = np.array([[0, 2, 3], [3, 12, 14], [1, 4, 5]], dtype="int32")
         np_mean = np.array([[0, 2, 3], [1, 4, 4], [1, 4, 5]], dtype="int32")
@@ -328,24 +466,40 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
 
     def test_set_outsize_gpu(self):
         paddle.disable_static()
+<<<<<<< HEAD
         x = paddle.to_tensor(
             np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]), dtype="float32"
         )
+=======
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]),
+                             dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         src_index = paddle.to_tensor(np.array([0, 0, 1]), dtype="int32")
         dst_index = paddle.to_tensor(np.array([0, 1, 1]), dtype="int32")
         res = paddle.incubate.graph_send_recv(x, src_index, dst_index, "sum")
         out_size = paddle.max(dst_index) + 1
         res_set_outsize = paddle.incubate.graph_send_recv(
+<<<<<<< HEAD
             x, src_index, dst_index, "sum", out_size
         )
+=======
+            x, src_index, dst_index, "sum", out_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np_res = np.array([[0, 2, 3], [1, 6, 8], [0, 0, 0]], dtype="float32")
         np_res_set_outsize = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
 
         np.testing.assert_allclose(np_res, res, rtol=1e-05, atol=1e-06)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             np_res_set_outsize, res_set_outsize, rtol=1e-05, atol=1e-06
         )
+=======
+        np.testing.assert_allclose(np_res_set_outsize,
+                                   res_set_outsize,
+                                   rtol=1e-05,
+                                   atol=1e-06)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_out_size_tensor_static(self):
         paddle.enable_static()
@@ -353,6 +507,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
             src_index = paddle.static.data(name="src", shape=[3], dtype="int32")
             dst_index = paddle.static.data(name="dst", shape=[3], dtype="int32")
+<<<<<<< HEAD
             out_size = paddle.static.data(
                 name="out_size", shape=[1], dtype="int32"
             )
@@ -360,6 +515,14 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
             res_sum = paddle.incubate.graph_send_recv(
                 x, src_index, dst_index, "sum", out_size
             )
+=======
+            out_size = paddle.static.data(name="out_size",
+                                          shape=[1],
+                                          dtype="int32")
+
+            res_sum = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                      "sum", out_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]], dtype='float32')
@@ -369,6 +532,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
 
             np_sum = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
 
+<<<<<<< HEAD
             ret = exe.run(
                 feed={
                     'x': data1,
@@ -382,6 +546,26 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
 
 
 class API_GeometricSendURecvTest(unittest.TestCase):
+=======
+            ret = exe.run(feed={
+                'x': data1,
+                'src': data2,
+                'dst': data3,
+                'out_size': data4,
+            },
+                          fetch_list=[res_sum])
+        np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_dygraph()
+            self.test_int32_input()
+            self.test_set_outsize_gpu()
+
+
+class API_GeometricSendURecvTest(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -389,6 +573,7 @@ class API_GeometricSendURecvTest(unittest.TestCase):
             src_index = paddle.static.data(name="src", shape=[4], dtype="int32")
             dst_index = paddle.static.data(name="dst", shape=[4], dtype="int32")
 
+<<<<<<< HEAD
             res_sum = paddle.geometric.send_u_recv(
                 x, src_index, dst_index, "sum"
             )
@@ -401,12 +586,23 @@ class API_GeometricSendURecvTest(unittest.TestCase):
             res_min = paddle.geometric.send_u_recv(
                 x, src_index, dst_index, "min"
             )
+=======
+            res_sum = paddle.geometric.send_u_recv(x, src_index, dst_index,
+                                                   "sum")
+            res_mean = paddle.geometric.send_u_recv(x, src_index, dst_index,
+                                                    "mean")
+            res_max = paddle.geometric.send_u_recv(x, src_index, dst_index,
+                                                   "max")
+            res_min = paddle.geometric.send_u_recv(x, src_index, dst_index,
+                                                   "min")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype='float32')
             data2 = np.array([0, 1, 2, 0], dtype="int32")
             data3 = np.array([1, 2, 1, 0], dtype="int32")
 
+<<<<<<< HEAD
             np_sum = np.array(
                 [[0, 2, 3], [2, 8, 10], [1, 4, 5]], dtype="float32"
             )
@@ -424,15 +620,37 @@ class API_GeometricSendURecvTest(unittest.TestCase):
                 feed={'x': data1, 'src': data2, 'dst': data3},
                 fetch_list=[res_sum, res_mean, res_max, res_min],
             )
+=======
+            np_sum = np.array([[0, 2, 3], [2, 8, 10], [1, 4, 5]],
+                              dtype="float32")
+            np_mean = np.array([[0, 2, 3], [1, 4, 5], [1, 4, 5]],
+                               dtype="float32")
+            np_max = np.array([[0, 2, 3], [2, 6, 7], [1, 4, 5]],
+                              dtype="float32")
+            np_min = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]],
+                              dtype="float32")
+
+            ret = exe.run(feed={
+                'x': data1,
+                'src': data2,
+                'dst': data3
+            },
+                          fetch_list=[res_sum, res_mean, res_max, res_min])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
             np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
 
     def test_dygraph(self):
         paddle.disable_static()
+<<<<<<< HEAD
         x = paddle.to_tensor(
             np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]), dtype="float32"
         )
+=======
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]),
+                             dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
         dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
         res_sum = paddle.geometric.send_u_recv(x, src_index, dst_index, "sum")
@@ -452,9 +670,14 @@ class API_GeometricSendURecvTest(unittest.TestCase):
 
     def test_int32_input(self):
         paddle.disable_static()
+<<<<<<< HEAD
         x = paddle.to_tensor(
             np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]), dtype="int32"
         )
+=======
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]),
+                             dtype="int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         src_index = paddle.to_tensor(np.array([0, 1, 2, 0, 1]), dtype="int32")
         dst_index = paddle.to_tensor(np.array([1, 2, 1, 0, 1]), dtype="int32")
         res_sum = paddle.geometric.send_u_recv(x, src_index, dst_index, "sum")
@@ -474,24 +697,41 @@ class API_GeometricSendURecvTest(unittest.TestCase):
 
     def test_set_outsize_gpu(self):
         paddle.disable_static()
+<<<<<<< HEAD
         x = paddle.to_tensor(
             np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]), dtype="float32"
         )
+=======
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]),
+                             dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         src_index = paddle.to_tensor(np.array([0, 0, 1]), dtype="int32")
         dst_index = paddle.to_tensor(np.array([0, 1, 1]), dtype="int32")
         res = paddle.geometric.send_u_recv(x, src_index, dst_index, "sum")
         out_size = paddle.max(dst_index) + 1
+<<<<<<< HEAD
         res_set_outsize = paddle.geometric.send_u_recv(
             x, src_index, dst_index, "sum", out_size
         )
+=======
+        res_set_outsize = paddle.geometric.send_u_recv(x, src_index, dst_index,
+                                                       "sum", out_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np_res = np.array([[0, 2, 3], [1, 6, 8], [0, 0, 0]], dtype="float32")
         np_res_set_outsize = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
 
         np.testing.assert_allclose(np_res, res, rtol=1e-05, atol=1e-06)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             np_res_set_outsize, res_set_outsize, rtol=1e-05, atol=1e-06
         )
+=======
+        np.testing.assert_allclose(np_res_set_outsize,
+                                   res_set_outsize,
+                                   rtol=1e-05,
+                                   atol=1e-06)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_out_size_tensor_static(self):
         paddle.enable_static()
@@ -499,6 +739,7 @@ class API_GeometricSendURecvTest(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
             src_index = paddle.static.data(name="src", shape=[3], dtype="int32")
             dst_index = paddle.static.data(name="dst", shape=[3], dtype="int32")
+<<<<<<< HEAD
             out_size = paddle.static.data(
                 name="out_size", shape=[1], dtype="int32"
             )
@@ -506,6 +747,14 @@ class API_GeometricSendURecvTest(unittest.TestCase):
             res_sum = paddle.geometric.send_u_recv(
                 x, src_index, dst_index, "sum", out_size
             )
+=======
+            out_size = paddle.static.data(name="out_size",
+                                          shape=[1],
+                                          dtype="int32")
+
+            res_sum = paddle.geometric.send_u_recv(x, src_index, dst_index,
+                                                   "sum", out_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]], dtype='float32')
@@ -515,6 +764,7 @@ class API_GeometricSendURecvTest(unittest.TestCase):
 
             np_sum = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
 
+<<<<<<< HEAD
             ret = exe.run(
                 feed={
                     'x': data1,
@@ -526,6 +776,23 @@ class API_GeometricSendURecvTest(unittest.TestCase):
             )
         np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
 
+=======
+            ret = exe.run(feed={
+                'x': data1,
+                'src': data2,
+                'dst': data3,
+                'out_size': data4,
+            },
+                          fetch_list=[res_sum])
+        np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_dygraph()
+            self.test_int32_input()
+            self.test_set_outsize_gpu()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

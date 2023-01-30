@@ -3,13 +3,21 @@ if(WITH_UNITY_BUILD)
   # Load Unity Build rules for operators in paddle/fluid/operators/controlflow.
   include(unity_build_rule.cmake)
 endif()
+<<<<<<< HEAD
 register_operators(EXCLUDES conditional_block_op DEPS naive_executor
                    standalone_executor)
+=======
+register_operators(EXCLUDES conditional_block_op DEPS naive_executor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 cc_library(
   conditional_block_op
   SRCS conditional_block_op.cc
+<<<<<<< HEAD
   DEPS standalone_executor executor)
+=======
+  DEPS executor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 cc_library(
   op_variant
   SRCS op_variant.cc
@@ -30,7 +38,11 @@ cc_library(
 cc_test(
   conditional_block_op_test
   SRCS conditional_block_op_test.cc
+<<<<<<< HEAD
   DEPS conditional_block_op standalone_executor executor)
+=======
+  DEPS conditional_block_op executor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(WITH_UNITY_BUILD)
   target_link_libraries(paddle_operators_controlflow_unity conditional_block_op)

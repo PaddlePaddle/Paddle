@@ -52,8 +52,13 @@ class Node;
 void recompute_bias_and_weights(const Scope* scope,
                                 ir::Node* conv_weight,
                                 const ir::Node& ac_scale,
+<<<<<<< HEAD
                                 const phi::DenseTensor& ac_bias_tensor,
                                 phi::DenseTensor* eltwise_y_in_tensor) {
+=======
+                                const LoDTensor& ac_bias_tensor,
+                                LoDTensor* eltwise_y_in_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   using EigenVectorArrayMap =
       Eigen::Map<Eigen::Array<float, Eigen::Dynamic, 1>>;
   using ConstEigenVectorArrayMap =
@@ -62,6 +67,7 @@ void recompute_bias_and_weights(const Scope* scope,
       Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
 
   // Re-compute bias of conv2d from AffineChannel
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(),
                     ac_bias_tensor.dims(),
                     platform::errors::InvalidArgument(
@@ -73,6 +79,18 @@ void recompute_bias_and_weights(const Scope* scope,
 
   auto* scale_tensor =
       scope->FindVar(ac_scale.Name())->GetMutable<phi::DenseTensor>();
+=======
+  PADDLE_ENFORCE_EQ(
+      eltwise_y_in_tensor->dims(),
+      ac_bias_tensor.dims(),
+      platform::errors::InvalidArgument(
+          "Tensor elementwise y(%d) and activation bias(%d) must have same "
+          "dimension.",
+          eltwise_y_in_tensor->dims().size(),
+          ac_bias_tensor.dims().size()));
+
+  auto* scale_tensor = scope->FindVar(ac_scale.Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ConstEigenVectorArrayMap scale_array(
       scale_tensor->data<float>(), scale_tensor->numel(), 1);
@@ -80,18 +98,29 @@ void recompute_bias_and_weights(const Scope* scope,
       ac_bias_tensor.data<float>(), ac_bias_tensor.numel(), 1);
 
   EigenVectorArrayMap eltwise_y_in_array(
+<<<<<<< HEAD
       eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
+=======
+      eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       eltwise_y_in_tensor->numel(),
       1);
 
   eltwise_y_in_array = (eltwise_y_in_array * scale_array) + ac_bias_array;
 
   // Re-compute weight of conv2d from AffineChannel
+<<<<<<< HEAD
   auto* weights =
       scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
   auto weights_shape = weights->dims();
   auto weights_shape_2d = phi::flatten_to_2d(weights_shape, 1);
   auto* weights_data = weights->mutable_data<float>(phi::CPUPlace());
+=======
+  auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
+  auto weights_shape = weights->dims();
+  auto weights_shape_2d = phi::flatten_to_2d(weights_shape, 1);
+  auto* weights_data = weights->mutable_data<float>(platform::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   EigenMatrixArrayMap weights_array_2d(
       weights_data, weights_shape_2d[0], weights_shape_2d[1]);
@@ -143,6 +172,7 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
+<<<<<<< HEAD
   AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -181,6 +211,8 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddOpCompat(OpCompat("affine_channel"))
       .AddInput("X")
       .IsTensor()
@@ -215,12 +247,15 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
 }
 
 void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
+<<<<<<< HEAD
   FuseConvAffineChannel(graph, "conv2d");
   FuseConvAffineChannel(graph, "fused_conv2d");
 }
 
 void ConvAffineChannelFusePass::FuseConvAffineChannel(
     ir::Graph* graph, const std::string& conv_type) const {
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
@@ -234,10 +269,17 @@ void ConvAffineChannelFusePass::FuseConvAffineChannel(
       gpd.mutable_pattern()
           ->NewNode(patterns::PDNodeName(name_scope_, "conv_input"))
           ->AsInput()
+<<<<<<< HEAD
           ->assert_is_op_input(conv_type, "Input");
   patterns::ConvAffineChannel conv_ac_pattern(gpd.mutable_pattern(),
                                               name_scope_);
   conv_ac_pattern(conv_input, conv_type, false /*with_eltwise_add*/);
+=======
+          ->assert_is_op_input("conv2d", "Input");
+  patterns::ConvAffineChannel conv_ac_pattern(gpd.mutable_pattern(),
+                                              name_scope_);
+  conv_ac_pattern(conv_input, false /*with_eltwise_add*/);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int found_conv_ac_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -260,7 +302,11 @@ void ConvAffineChannelFusePass::FuseConvAffineChannel(
 
     // Get affine_channel bias for resizing eltwise_y!
     auto* ac_bias_tensor =
+<<<<<<< HEAD
         scope->FindVar(ac_bias->Name())->GetMutable<phi::DenseTensor>();
+=======
+        scope->FindVar(ac_bias->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
@@ -275,9 +321,15 @@ void ConvAffineChannelFusePass::FuseConvAffineChannel(
     // Initialize eltwise_y
     auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
     auto* eltwise_y_in_tensor =
+<<<<<<< HEAD
         scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
     eltwise_y_in_tensor->Resize(ac_bias_tensor->dims());
     std::fill_n(eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
+=======
+        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
+    eltwise_y_in_tensor->Resize(ac_bias_tensor->dims());
+    std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 eltwise_y_in_tensor->numel(),
                 0.0f);
 

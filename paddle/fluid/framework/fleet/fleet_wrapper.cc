@@ -172,7 +172,11 @@ void FleetWrapper::HeterPullSparseVars(
     if (var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -269,7 +273,11 @@ void FleetWrapper::HeterPushSparseVars(
     if (var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -284,7 +292,11 @@ void FleetWrapper::HeterPushSparseVars(
     if (g_var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* g_tensor = g_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -334,7 +346,11 @@ void FleetWrapper::HeterPushSparseVars(
     if (var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -444,7 +460,11 @@ void FleetWrapper::PullSparseVarsFromLocal(
     if (var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -508,7 +528,11 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     if (var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -553,7 +577,11 @@ void FleetWrapper::PullSparseVarsSync(
     if (var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
@@ -615,6 +643,7 @@ void FleetWrapper::PullSparseVarsSync(
 #endif
 }
 
+<<<<<<< HEAD
 void FleetWrapper::PullSparseToTensorSync(
     const uint64_t table_id,
     int fea_dim,
@@ -622,18 +651,34 @@ void FleetWrapper::PullSparseToTensorSync(
     platform::Place place,
     std::vector<const phi::DenseTensor*>* inputs,
     std::vector<phi::DenseTensor*>* outputs) {
+=======
+void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id,
+                                          int fea_dim,
+                                          uint64_t padding_id,
+                                          platform::Place place,
+                                          std::vector<const LoDTensor*>* inputs,
+                                          std::vector<LoDTensor*>* outputs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_PSLIB
   std::vector<uint64_t> fea_keys;
   std::vector<float*> pull_result_ptr;
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
+<<<<<<< HEAD
   phi::DenseTensor* output = nullptr;
+=======
+  framework::LoDTensor* output = nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
+<<<<<<< HEAD
     const phi::DenseTensor* tensor = inputs->at(index);
+=======
+    const framework::LoDTensor* tensor = inputs->at(index);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -696,7 +741,11 @@ void FleetWrapper::PullDenseVarsAsync(
       varname = var_names[i] + "pin";
     }
     Variable* var = scope.FindVar(varname);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* w = tensor->data<float>();
     paddle::ps::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
@@ -717,7 +766,11 @@ void FleetWrapper::PullDenseVarsSync(
   regions.reserve(var_names.size());
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* w = tensor->data<float>();
     paddle::ps::Region reg(w, tensor->numel());
     regions.emplace_back(std::move(reg));
@@ -765,7 +818,11 @@ void FleetWrapper::PushDenseParamSync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* g = tensor->mutable_data<float>(place);
     paddle::ps::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
@@ -798,12 +855,20 @@ void FleetWrapper::PushDenseVarsAsync(
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int count = tensor->numel();
     float* g_data = tensor->data<float>();
 
     Variable* pin_var = scope.FindVar(t + "pin");
+<<<<<<< HEAD
     phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* pin_g = pin_tensor->mutable_data<float>(tensor->dims(),
                                                    platform::CUDAPinnedPlace());
     memory::Copy(platform::CUDAPinnedPlace(),
@@ -860,12 +925,20 @@ void FleetWrapper::PushDenseVarsAsync(
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int count = tensor->numel();
     float* g_data = tensor->data<float>();
 
     Variable* pin_var = scope.FindVar(t + "pin");
+<<<<<<< HEAD
     phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* pin_g =
         pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
     memory::Copy(
@@ -909,7 +982,11 @@ void FleetWrapper::PushDenseVarsAsync(
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int count = tensor->numel();
     float* g = tensor->data<float>();
     if (scale_datanorm >= 0) {
@@ -989,7 +1066,11 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -1016,7 +1097,11 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (g_var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* g_tensor = g_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -1066,7 +1151,11 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (var == nullptr) {
       continue;
     }
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -1110,8 +1199,13 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     const std::string& click_name,
     platform::Place place,
     const std::vector<std::string>& input_names,
+<<<<<<< HEAD
     std::vector<const phi::DenseTensor*>* inputs,
     std::vector<const phi::DenseTensor*>* outputs) {
+=======
+    std::vector<const LoDTensor*>* inputs,
+    std::vector<const LoDTensor*>* outputs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_PSLIB
   int show_index = 0;
   int click_index = 1;
@@ -1151,7 +1245,11 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   CHECK(batch_size > 0);  // NOLINT
 
   std::vector<float> g;
+<<<<<<< HEAD
   for (const phi::DenseTensor* g_tensor : *outputs) {
+=======
+  for (const framework::LoDTensor* g_tensor : *outputs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     size_t origin = g.size();
     size_t add = g_tensor->numel();
     g.resize(origin + add);
@@ -1171,7 +1269,12 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   size_t global_idx = 0;
   if (click_name != "") {
     CHECK(var != nullptr);  // NOLINT
+<<<<<<< HEAD
     phi::DenseTensor* label_tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    framework::LoDTensor* label_tensor =
+        var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     CHECK(label_tensor != nullptr);  // NOLINT
     int64_t* label_ptr = label_tensor->data<int64_t>();
 
@@ -1200,7 +1303,11 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   size_t output_len = 0;
   size_t input_idx = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
+<<<<<<< HEAD
     const phi::DenseTensor* tensor = inputs->at(index);
+=======
+    const framework::LoDTensor* tensor = inputs->at(index);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -1303,12 +1410,20 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope,
   for (auto& t : old_param_list) {
     Variable* old_var = old_scope->Var(t);
     // old model data, here we assume data type is float
+<<<<<<< HEAD
     phi::DenseTensor* old_tensor = old_var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* old_tensor = old_var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* old_data = old_tensor->data<float>();
     // new model data, here we assume data type is float
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
+<<<<<<< HEAD
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float* data = tensor->data<float>();
     // copy from old data to new data
     if (old_tensor->numel() > tensor->numel()) {
@@ -1620,7 +1735,11 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
       VLOG(0) << "prepare shrink dense batch_sum";
+<<<<<<< HEAD
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       float* g = tensor->data<float>();
 
       // show_batch_sum += N * log(decay)
@@ -1630,7 +1749,11 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
       Variable* var_size = scope->FindVar(size_name);
       CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
       VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
+<<<<<<< HEAD
       float* g_size = var_size->GetMutable<phi::DenseTensor>()->data<float>();
+=======
+      float* g_size = var_size->GetMutable<LoDTensor>()->data<float>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       for (int k = 0; k < tensor->numel(); k += emb_dim) {
         g[k] = g[k] + g_size[k] * log(decay);
@@ -1640,7 +1763,11 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
     } else {
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
+<<<<<<< HEAD
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       float* g = tensor->data<float>();
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));

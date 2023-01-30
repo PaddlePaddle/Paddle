@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
 import numpy as np
+=======
+import unittest
+import six
+import numpy as np
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append("../")
 from op_test import OpTest
@@ -24,6 +31,10 @@ import paddle.fluid as fluid
 
 
 class TestSequenceUnpadOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.length = [2, 3, 4]
         self.x_shape = (3, 40)
@@ -34,6 +45,7 @@ class TestSequenceUnpadOp(OpTest):
         x = np.random.random(self.x_shape).astype(self.dtype)
         out_lod = [self.length]
 
+<<<<<<< HEAD
         out = x[0, 0 : self.length[0]]
         for i in range(1, x.shape[0]):
             out = np.append(out, x[i, 0 : self.length[i]], axis=0)
@@ -41,6 +53,15 @@ class TestSequenceUnpadOp(OpTest):
         out_shape = (sum(self.length),)
         if len(self.x_shape) == 2:
             out_shape = out_shape + (1,)
+=======
+        out = x[0, 0:self.length[0]]
+        for i in six.moves.xrange(1, x.shape[0]):
+            out = np.append(out, x[i, 0:self.length[i]], axis=0)
+
+        out_shape = (sum(self.length), )
+        if len(self.x_shape) == 2:
+            out_shape = out_shape + (1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             out_shape = out_shape + self.x_shape[2:]
 
@@ -60,6 +81,10 @@ class TestSequenceUnpadOp(OpTest):
 
 
 class TestSequenceUnpadOp2(TestSequenceUnpadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.length = [2, 3, 4]
         self.x_shape = (3, 5, 4, 3)
@@ -67,6 +92,10 @@ class TestSequenceUnpadOp2(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOp3(TestSequenceUnpadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.length = [5, 2, 3, 4]
         self.x_shape = (4, 5, 3, 3, 6)
@@ -74,6 +103,10 @@ class TestSequenceUnpadOp3(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOp4(TestSequenceUnpadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.length = [5, 0, 0, 4]
         self.x_shape = (4, 5, 3, 3, 6)
@@ -81,6 +114,10 @@ class TestSequenceUnpadOp4(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOp5(TestSequenceUnpadOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.length = [0, 4, 3, 0]
         self.x_shape = (4, 5, 3, 3, 6)
@@ -88,7 +125,13 @@ class TestSequenceUnpadOp5(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_error(self):
+=======
+
+    def test_error(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_x_variable():
             x = np.random.random((10, 5)).astype("float64")
             len = fluid.data(name='length2', shape=[10], dtype='int64')

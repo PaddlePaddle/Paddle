@@ -28,6 +28,7 @@ class OpKernelType;
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
+<<<<<<< HEAD
 void TransDataType(const phi::KernelKey& kernel_type_for_var,
                    const phi::KernelKey& expected_kernel_type,
                    const phi::DenseTensor& in,
@@ -35,6 +36,15 @@ void TransDataType(const phi::KernelKey& kernel_type_for_var,
 void TransDataType(const phi::DenseTensor& in,
                    const paddle::framework::proto::VarType::Type& type,
                    phi::DenseTensor* out);
+=======
+void TransDataType(const OpKernelType& kernel_type_for_var,
+                   const OpKernelType& expected_kernel_type,
+                   const Tensor& in,
+                   Tensor* out);
+void TransDataType(const Tensor& in,
+                   const paddle::framework::proto::VarType::Type& type,
+                   Tensor* out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 /**
  * Transform complex gradient to real data type.
@@ -49,8 +59,13 @@ void TransDataType(const phi::DenseTensor& in,
  */
 void TransComplexToReal(const proto::VarType::Type& dst_type,
                         const proto::VarType::Type& src_type,
+<<<<<<< HEAD
                         const phi::DenseTensor& in,
                         phi::DenseTensor* out);
+=======
+                        const Tensor& in,
+                        Tensor* out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace framework
 }  // namespace paddle

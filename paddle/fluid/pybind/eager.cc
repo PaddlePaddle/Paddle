@@ -206,7 +206,11 @@ void InitTensorWithTensor(TensorObject* self,
 }
 
 void InitTensorWithFrameworkTensor(TensorObject* self,
+<<<<<<< HEAD
                                    const phi::DenseTensor& src,
+=======
+                                   const framework::Tensor& src,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                    const paddle::platform::Place& place,
                                    const std::string& name) {
   self->tensor.set_name(name);
@@ -382,7 +386,11 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
 }
 
+<<<<<<< HEAD
 // initialize Tensor by Tensor or phi::DenseTensor (mix args and
+=======
+// initialize Tensor by Tensor or framework::Tensor (mix args and
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // kwargs) automatically.
 void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
                             std::unordered_map<std::string, PyObject*> kws_map,
@@ -428,7 +436,11 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
     InitTensorWithTensor(py_tensor_ptr, src_tensor, place, act_name);
   } else {
     // init by framework tensor
+<<<<<<< HEAD
     phi::DenseTensor src_tensor;
+=======
+    framework::Tensor src_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (kw_order_map["value"] <= args_num) {
       src_tensor = CastPyArg2FrameworkTensor(
           PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
@@ -438,8 +450,13 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
         src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
+<<<<<<< HEAD
             "The first expected arguments is {value: phi::DenseTensor}, "
             "but could not parse the first argument {value: phi::DenseTensor} "
+=======
+            "The first expected arguments is {value: framework::Tensor}, "
+            "but could not parse the first argument {value: framework::Tensor} "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "successfully. "
             "Please check your input first and make sure you are on the right "
             "way."));
@@ -687,7 +704,11 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "Could not parse the first keyword argument successfully, "
               "the first keyword argument is value, but it should be PyArray "
+<<<<<<< HEAD
               "or Tensor or phi::DenseTensor. "
+=======
+              "or Tensor or framework::Tensor. "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "Please check your input first and make sure you are on the "
               "right way."));
         }
@@ -753,7 +774,11 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "We not only support construct Tensor from numpy value "
+<<<<<<< HEAD
             "or tensor(Tensor or phi::DenseTensor) "
+=======
+            "or tensor(Tensor or framework::Tensor) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "with python kwargs by this initializer, "
             "but also even support dtype to init a empty Tensor. "
             "Please check your input first and make sure you call the existed "
@@ -789,10 +814,17 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "We support construct Tensor from numpy value "
+<<<<<<< HEAD
           "or tensor(Tensor or phi::DenseTensor) "
           "with python args and kwargs by this initializer, "
           "but the first argument should be PyArray or Tensor or "
           "phi::DenseTensor. "
+=======
+          "or tensor(Tensor or framework::Tensor) "
+          "with python args and kwargs by this initializer, "
+          "but the first argument should be PyArray or Tensor or "
+          "framework::Tensor. "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           "Please check your input first and make sure you call the existed "
           "constructor."));
     }
@@ -1113,6 +1145,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   return 1;
 }
 
+<<<<<<< HEAD
 void AddPyMethodDefs(std::vector<PyMethodDef>* vector, PyMethodDef* methods) {
   if (!vector->empty()) {
     // remove nullptr terminator
@@ -1127,6 +1160,8 @@ void AddPyMethodDefs(std::vector<PyMethodDef>* vector, PyMethodDef* methods) {
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 static void TensorDealloc(TensorObject* self) {
   if (self->weakrefs != NULL)
     PyObject_ClearWeakRefs(reinterpret_cast<PyObject*>(self));
@@ -1138,7 +1173,10 @@ extern struct PyGetSetDef variable_properties[];
 extern struct PyGetSetDef string_tensor_variable_properties[];
 
 extern PyMethodDef variable_methods[];
+<<<<<<< HEAD
 extern PyMethodDef math_op_patch_methods[];
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 extern PyMethodDef string_tensor_variable_methods[];
 
 PyNumberMethods number_methods;
@@ -1148,10 +1186,13 @@ PyMappingMethods mapping_methods;
 void BindEager(pybind11::module* module) {
   auto m = module->def_submodule("eager");
 
+<<<<<<< HEAD
   static std::vector<PyMethodDef> methods;
   AddPyMethodDefs(&methods, variable_methods);
   AddPyMethodDefs(&methods, math_op_patch_methods);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto heap_type = reinterpret_cast<PyHeapTypeObject*>(
       PyType_Type.tp_alloc(&PyType_Type, 0));
   heap_type->ht_name = ToPyObject("Tensor");
@@ -1163,7 +1204,11 @@ void BindEager(pybind11::module* module) {
   type->tp_as_number = &number_methods;
   type->tp_as_sequence = &sequence_methods;
   type->tp_as_mapping = &mapping_methods;
+<<<<<<< HEAD
   type->tp_methods = methods.data();
+=======
+  type->tp_methods = variable_methods;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   type->tp_getset = variable_properties;
   type->tp_init = TensorInit;
   type->tp_new = TensorNew;

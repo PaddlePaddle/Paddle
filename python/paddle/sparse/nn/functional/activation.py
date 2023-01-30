@@ -14,8 +14,14 @@
 
 __all__ = []
 
+<<<<<<< HEAD
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.framework import dygraph_only
+=======
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import dygraph_only
+from paddle import in_dynamic_mode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -51,14 +57,22 @@ def relu(x, name=None):
         op_type = 'sparse_relu'
         helper = LayerHelper(op_type)
         out = helper.create_sparse_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
         helper.append_op(
             type=op_type, inputs={'x': x}, outputs={'out': out}, attrs={}
         )
+=======
+        helper.append_op(type=op_type,
+                         inputs={'x': x},
+                         outputs={'out': out},
+                         attrs={})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return out
 
 
 @dygraph_only
 def softmax(x, axis=-1, name=None):
+<<<<<<< HEAD
     r"""
     sparse softmax activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -67,12 +81,26 @@ def softmax(x, axis=-1, name=None):
         by row (axis=-1).
 
     From the point of view of dense matrix, for each row :math:`i` and each column :math:`j`
+=======
+    """
+    sparse softmax activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    Note:
+        Only support axis=-1 for SparseCsrTensor, which is faster when read data 
+        by row (axis=-1).
+
+    From the point of view of dense matrix, for each row :math:`i` and each column :math:`j` 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in the matrix, we have:
 
     .. math::
 
         softmax_ij = \frac{\exp(x_ij - max_j(x_ij))}{\sum_j(exp(x_ij - max_j(x_ij))}
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Parameters:
         x (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
         axis (int, optional): The axis along which to perform softmax calculations. Only support -1 for SparseCsrTensor.
@@ -81,11 +109,16 @@ def softmax(x, axis=-1, name=None):
 
     Returns:
         Tensor: SparseCoo or SparseCsr, whose layout is the same with `x` .
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
         .. code-block:: python
 
             import paddle
+<<<<<<< HEAD
             paddle.seed(100)
 
             mask = paddle.rand((3, 4)) < 0.5
@@ -112,6 +145,31 @@ def softmax(x, axis=-1, name=None):
             #        values=[0.34132850, 0.29843223, 0.36023921, 0.20176248, 0.41964680,
             #                0.37859070, 0.30015594, 0.26316854, 0.16354506, 0.27313042])
 
+=======
+            import numpy as np
+            paddle.seed(100)
+
+            mask = np.random.rand(3, 4) < 0.5
+            np_x = np.random.rand(3, 4) * mask
+            # [[0.         0.         0.96823406 0.19722934]
+            #  [0.94373937 0.         0.02060066 0.71456372]
+            #  [0.         0.         0.         0.98275049]]
+
+            csr = paddle.to_tensor(np_x).to_sparse_csr()
+            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
+            #        crows=[0, 2, 5, 6], 
+            #        cols=[2, 3, 0, 2, 3, 3], 
+            #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
+            #                0.98275049])
+
+            out = paddle.sparse.nn.functional.softmax(csr)
+            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
+            #        crows=[0, 2, 5, 6], 
+            #        cols=[2, 3, 0, 2, 3, 3], 
+            #        values=[0.68373820, 0.31626180, 0.45610887, 0.18119845, 0.36269269,
+            #                1.        ])
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     return _C_ops.sparse_softmax(x, axis)
 
@@ -142,12 +200,20 @@ def relu6(x, name=None):
             sparse_x = dense_x.to_sparse_coo(1)
             out = paddle.sparse.nn.functional.relu6(sparse_x)
     """
+<<<<<<< HEAD
     return _C_ops.sparse_relu6(x)
+=======
+    return _C_ops.sparse_relu6(x, 6.0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @dygraph_only
 def leaky_relu(x, negative_slope=0.01, name=None):
+<<<<<<< HEAD
     r"""
+=======
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sparse leaky_relu activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::

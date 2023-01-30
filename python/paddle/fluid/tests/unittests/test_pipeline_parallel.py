@@ -12,17 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
+=======
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestPipelineParallel(TestMultipleGpus):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_pipeline_parallel(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_alexnet.py')
 
 
 class TestModelParallelWithRecompute(TestMultipleGpus):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_model_parallel_with_recompute(self):
         self.run_mnist_2gpu("dygraph_recompute_hybrid.py")
 

@@ -14,8 +14,11 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include <vector>
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {

@@ -12,19 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+
+import paddle
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 SEED = 2020
 np.random.seed(SEED)
 
 
 class SimpleNet(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear1 = paddle.nn.Linear(10, 3)
         self.linear2 = paddle.nn.Linear(3, 1)
 
@@ -32,6 +47,7 @@ class SimpleNet(paddle.nn.Layer):
         out1 = self.linear1(x)
         out2 = self.linear2(out1)
         return [out1, out2]  # 梯度为0
+<<<<<<< HEAD
         # return [out1]        # 梯度正常
         # return [out2, out1] # 梯度正常
 
@@ -42,10 +58,24 @@ class TestGradientAggregationInDy2Static(unittest.TestCase):
             net = SimpleNet()
             if to_static:
                 net = paddle.jit.to_static(net)
+=======
+        #return [out1]        # 梯度正常
+        #return [out2, out1] # 梯度正常
+
+
+class TestGradientAggregationInDy2Static(unittest.TestCase):
+
+    def test_to_static(self):
+
+        def simplenet_grad(inp, to_static=False):
+            net = SimpleNet()
+            if to_static: net = paddle.jit.to_static(net)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss = net(inp)
             loss[0].backward()
             return net.linear1.weight.grad
 
+<<<<<<< HEAD
         inp = paddle.to_tensor(
             np.random.randn(
                 10,
@@ -56,6 +86,12 @@ class TestGradientAggregationInDy2Static(unittest.TestCase):
             simplenet_grad(inp, False).numpy(),
             rtol=1e-05,
         )
+=======
+        inp = paddle.to_tensor(np.random.randn(10, )).astype("float32")
+        np.testing.assert_allclose(simplenet_grad(inp, True).numpy(),
+                                   simplenet_grad(inp, False).numpy(),
+                                   rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

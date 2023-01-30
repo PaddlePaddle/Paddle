@@ -31,7 +31,11 @@ namespace distributed {
 class Node {
  public:
   Node() {}
+<<<<<<< HEAD
   explicit Node(uint64_t id) : id(id) {}
+=======
+  Node(uint64_t id) : id(id) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual ~Node() {}
   static int id_size, int_size, weight_size;
   uint64_t get_id() { return id; }
@@ -56,6 +60,7 @@ class Node {
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
     return 0;
   }
+<<<<<<< HEAD
   virtual int get_feature_ids(int slot_idx,
                               std::vector<uint64_t> &feature_id,      // NOLINT
                               std::vector<uint8_t> &slot_id) const {  // NOLINT
@@ -64,6 +69,10 @@ class Node {
   virtual void set_feature(int idx, const std::string &str) {}
   virtual void set_feature_size(int size) {}
   virtual void shrink_to_fit() {}
+=======
+  virtual void set_feature(int idx, const std::string &str) {}
+  virtual void set_feature_size(int size) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual int get_feature_size() { return 0; }
   virtual size_t get_neighbor_size() { return 0; }
 
@@ -75,8 +84,12 @@ class Node {
 class GraphNode : public Node {
  public:
   GraphNode() : Node(), sampler(nullptr), edges(nullptr) {}
+<<<<<<< HEAD
   explicit GraphNode(uint64_t id)
       : Node(id), sampler(nullptr), edges(nullptr) {}
+=======
+  GraphNode(uint64_t id) : Node(id), sampler(nullptr), edges(nullptr) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual ~GraphNode();
   virtual void build_edges(bool is_weighted);
   virtual void build_sampler(std::string sample_type);
@@ -99,13 +112,21 @@ class GraphNode : public Node {
 class FeatureNode : public Node {
  public:
   FeatureNode() : Node() {}
+<<<<<<< HEAD
   explicit FeatureNode(uint64_t id) : Node(id) {}
+=======
+  FeatureNode(uint64_t id) : Node(id) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual ~FeatureNode() {}
   virtual int get_size(bool need_feature);
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
   virtual std::string get_feature(int idx) {
+<<<<<<< HEAD
     if (idx < static_cast<int>(this->feature.size())) {
+=======
+    if (idx < (int)this->feature.size()) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       return this->feature[idx];
     } else {
       return std::string("");
@@ -142,7 +163,11 @@ class FeatureNode : public Node {
                                 "get_feature_ids res should not be null"));
     res->clear();
     errno = 0;
+<<<<<<< HEAD
     if (slot_idx < static_cast<int>(this->feature.size())) {
+=======
+    if (slot_idx < (int)this->feature.size()) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const std::string &s = this->feature[slot_idx];
       const uint64_t *feas = (const uint64_t *)(s.c_str());
 
@@ -162,6 +187,7 @@ class FeatureNode : public Node {
     return 0;
   }
 
+<<<<<<< HEAD
   virtual int get_feature_ids(int slot_idx,
                               std::vector<uint64_t> &feature_id,      // NOLINT
                               std::vector<uint8_t> &slot_id) const {  // NOLINT
@@ -188,25 +214,36 @@ class FeatureNode : public Node {
 
   virtual std::string *mutable_feature(int idx) {
     if (idx >= static_cast<int>(this->feature.size())) {
+=======
+  virtual std::string *mutable_feature(int idx) {
+    if (idx >= (int)this->feature.size()) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       this->feature.resize(idx + 1);
     }
     return &(this->feature[idx]);
   }
 
   virtual void set_feature(int idx, const std::string &str) {
+<<<<<<< HEAD
     if (idx >= static_cast<int>(this->feature.size())) {
+=======
+    if (idx >= (int)this->feature.size()) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       this->feature.resize(idx + 1);
     }
     this->feature[idx] = str;
   }
   virtual void set_feature_size(int size) { this->feature.resize(size); }
   virtual int get_feature_size() { return this->feature.size(); }
+<<<<<<< HEAD
   virtual void shrink_to_fit() {
     feature.shrink_to_fit();
     for (auto &slot : feature) {
       slot.shrink_to_fit();
     }
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   template <typename T>
   static std::string parse_value_to_bytes(std::vector<std::string> feat_str) {
@@ -216,8 +253,12 @@ class FeatureNode : public Node {
     for (size_t i = 0; i < feat_str.size(); i++) {
       std::stringstream ss(feat_str[i]);
       ss >> v;
+<<<<<<< HEAD
       std::memcpy(
           buffer + sizeof(T) * i, reinterpret_cast<char *>(&v), sizeof(T));
+=======
+      std::memcpy(buffer + sizeof(T) * i, (char *)&v, sizeof(T));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     return std::string(buffer, Tsize);
   }
@@ -234,8 +275,12 @@ class FeatureNode : public Node {
     for (size_t i = 0; i < feat_str_size; i++) {
       std::stringstream ss(*(feat_str_begin + i));
       ss >> v;
+<<<<<<< HEAD
       std::memcpy(
           buffer + sizeof(T) * i, reinterpret_cast<char *>(&v), sizeof(T));
+=======
+      std::memcpy(buffer + sizeof(T) * i, (char *)&v, sizeof(T));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     output->assign(buffer);
   }
@@ -247,7 +292,11 @@ class FeatureNode : public Node {
     size_t start = 0;
     const char *buffer = feat_str.data();
     while (start < feat_str.size()) {
+<<<<<<< HEAD
       std::memcpy(reinterpret_cast<char *>(&v), buffer + start, sizeof(T));
+=======
+      std::memcpy((char *)&v, buffer + start, sizeof(T));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       start += sizeof(T);
       out.push_back(v);
     }
@@ -255,7 +304,11 @@ class FeatureNode : public Node {
   }
 
   template <typename T>
+<<<<<<< HEAD
   static int parse_value_to_bytes(
+=======
+  static void parse_value_to_bytes(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       std::vector<paddle::string::str_ptr>::iterator feat_str_begin,
       std::vector<paddle::string::str_ptr>::iterator feat_str_end,
       std::string *output) {
@@ -264,11 +317,16 @@ class FeatureNode : public Node {
     size_t num = output->length();
     output->resize(num + Tsize);
 
+<<<<<<< HEAD
     T *fea_ptrs = reinterpret_cast<T *>(&(*output)[num]);
+=======
+    T *fea_ptrs = (T *)(&(*output)[num]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     thread_local paddle::string::str_ptr_stream ss;
     for (size_t i = 0; i < feat_str_size; i++) {
       ss.reset(*(feat_str_begin + i));
+<<<<<<< HEAD
       int len = ss.end - ss.ptr;
       char *old_ptr = ss.ptr;
       ss >> fea_ptrs[i];
@@ -277,6 +335,10 @@ class FeatureNode : public Node {
       }
     }
     return 0;
+=======
+      ss >> fea_ptrs[i];
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
  protected:

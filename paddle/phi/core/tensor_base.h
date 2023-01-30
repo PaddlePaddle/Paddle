@@ -57,6 +57,10 @@ class TensorBase {
   /// \brief Test whether the storage is allocated.
   /// \return Whether the storage is allocated.
   virtual bool initialized() const = 0;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // TODO(Aurelius84): This interface is under intermediate state now.
   // We will remove DataType argument in the future. Please DO NOT
   // rely on Datatype too much when designing and implementing other features.
@@ -65,8 +69,12 @@ class TensorBase {
   /// \return The mutable data pointer value of type T.
   virtual void* AllocateFrom(Allocator* allocator,
                              DataType dtype,
+<<<<<<< HEAD
                              size_t requested_size = 0,
                              bool fake_alloc = false) = 0;
+=======
+                             size_t requested_size = 0) = 0;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   /// \brief Return the type information of the derived class to support
   /// safely downcast in non-rtti environment.

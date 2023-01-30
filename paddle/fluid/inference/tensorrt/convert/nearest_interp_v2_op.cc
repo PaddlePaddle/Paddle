@@ -38,9 +38,14 @@ class NearestInterpolateV2OpConverter : public OpConverter {
     std::string output_name = op_desc.Output("Out").front();
 
     auto input = engine_->GetITensor(input_name);
+<<<<<<< HEAD
     auto inputs = op_desc.Inputs();
 
     auto data_layout = phi::StringToDataLayout(
+=======
+
+    auto data_layout = framework::StringToDataLayout(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
@@ -66,14 +71,21 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       // axis are different in static/dynamic mode
       bool with_dynamic = engine_->with_dynamic_shape();
 
+<<<<<<< HEAD
       int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
       int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
+=======
+      int h_axis = (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
+      int w_axis =
+          (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       scale_h =
           static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
       scale_w =
           static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
     } else {
+<<<<<<< HEAD
       if (scale.size() >= 2) {
         scale_h = scale[0];
         scale_w = scale[1];
@@ -90,17 +102,29 @@ class NearestInterpolateV2OpConverter : public OpConverter {
         outsize_tensor =
             Concat(std::vector<nvinfer1::ITensor*>{outsize_h, outsize_w});
       }
+=======
+      scale_h = scale[0];
+      scale_w = scale[1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     if (engine_->with_dynamic_shape()) {
       scales.push_back(1.f);
     }
 
+<<<<<<< HEAD
     if (data_layout == phi::DataLayout::kNCHW) {
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
     } else if (data_layout == phi::DataLayout::kNHWC) {
+=======
+    if (data_layout == framework::DataLayout::kNCHW) {
+      scales.push_back(1.f);
+      scales.push_back(scale_h);
+      scales.push_back(scale_w);
+    } else if (data_layout == framework::DataLayout::kNHWC) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // NHWC
       scales.push_back(scale_h);
       scales.push_back(scale_w);
@@ -109,6 +133,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Data layout must be NCHW or NHWC."));
     }
+<<<<<<< HEAD
 
     if (engine_->with_dynamic_shape()) {
       if (outsize_tensor != nullptr) {
@@ -130,6 +155,9 @@ class NearestInterpolateV2OpConverter : public OpConverter {
     } else {
       layer->setScales(scales.data(), scales.size());
     }
+=======
+    layer->setScales(scales.data(), scales.size());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     RreplenishLayerAndOutput(
         layer, "nearest_interp_v2", {output_name}, test_mode);

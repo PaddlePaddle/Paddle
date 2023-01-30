@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+<<<<<<< HEAD
 from collections import OrderedDict
 
 
 class Node:
+=======
+
+class Node:
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, id, **attrs):
         # Each node must has a unique id
         self._id = id
@@ -49,6 +55,10 @@ class Node:
 
 
 class Edge:
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, src_id, tgt_id, **attrs):
         # The id of source node in an Edge
         self._src_id = src_id
@@ -85,12 +95,20 @@ class Edge:
     def __str__(self):
         str = ""
         str += "(src_id: {}, tgt_id: {}, attrs: {})".format(
+<<<<<<< HEAD
             self.src_id, self.tgt_id, self._attrs
         )
+=======
+            self.src_id, self.tgt_id, self._attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return str
 
 
 class Graph:
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, **attrs):
         # _nodes is dict for storing the nodes of the graph.
         # The key of this dict is the node id.
@@ -102,8 +120,11 @@ class Graph:
         # Attributes for Graph
         self._attrs = {}
         self._attrs.update(attrs)
+<<<<<<< HEAD
         self._reverse_adjs = {}
         self._attr_to_nodes = {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def nodes(self):
@@ -124,12 +145,18 @@ class Graph:
             node = Node(node_id, **attrs)
             self._nodes[node_id] = node
             self._adjs[node_id] = {}
+<<<<<<< HEAD
             self._reverse_adjs[node_id] = []
         else:
             self._nodes[node_id].attrs.update(attrs)
 
         return self._nodes[node_id]
 
+=======
+        else:
+            self._nodes[node_id].attrs.update(attrs)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def add_edge(self, src_id, tgt_id, **attrs):
         # add nodes
         if src_id is None:
@@ -139,6 +166,7 @@ class Graph:
         if src_id not in self._nodes:
             src_node = Node(src_id)
             self._nodes[src_id] = src_node
+<<<<<<< HEAD
             # for one tensor to multiple ops
             self._adjs[src_id] = OrderedDict()
             self._reverse_adjs[src_id] = []
@@ -148,14 +176,24 @@ class Graph:
             # for one tensor to multiple ops
             self._adjs[tgt_id] = OrderedDict()
             self._reverse_adjs[tgt_id] = []
+=======
+            self._adjs[src_id] = {}
+        if tgt_id not in self._nodes:
+            tgt_node = Node(tgt_id)
+            self._nodes[tgt_id] = tgt_node
+            self._adjs[tgt_id] = {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # add the edge
         edge = Edge(src_id, tgt_id, **attrs)
         self._adjs[src_id][tgt_id] = edge
 
+<<<<<<< HEAD
         # add the reverse adj
         self._reverse_adjs[tgt_id].append(self.nodes[src_id])
         return edge
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __len__(self):
         return len(self._nodes)
 

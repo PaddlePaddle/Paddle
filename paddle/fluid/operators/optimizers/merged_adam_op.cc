@@ -19,10 +19,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class MergedAdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto param_dtype =
@@ -42,6 +48,25 @@ class MergedAdamOp : public framework::OperatorWithKernel {
     } else {
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto param_dtype =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return framework::OpKernelType(param_dtype, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
+        var_name == "SkipUpdate") {
+      return expected_kernel_type;
+    } else {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };

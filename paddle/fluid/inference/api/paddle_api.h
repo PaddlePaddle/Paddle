@@ -38,7 +38,10 @@ namespace paddle {
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
 using PaddleDataLayout = paddle_infer::DataLayout;
+<<<<<<< HEAD
 using paddle_infer::Exp_OutputHookFunc;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 /// \brief Memory manager for PaddleTensor.
 ///
@@ -243,6 +246,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// \return Output tensor names.
   virtual std::vector<std::string> GetOutputNames() { return {}; }
 
+<<<<<<< HEAD
   /// \brief Get the output shape of the model.
   /// \return A map contains all the output names and shape defined in the
   /// model.
@@ -256,6 +260,8 @@ class PD_INFER_DECL PaddlePredictor {
     return {};
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief Get the input ZeroCopyTensor by name.
   /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
   /// The name is obtained from the GetInputNames() interface.
@@ -303,6 +309,7 @@ class PD_INFER_DECL PaddlePredictor {
   ///
   virtual uint64_t TryShrinkMemory() { return 0; }
 
+<<<<<<< HEAD
   ///
   /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
@@ -313,6 +320,8 @@ class PD_INFER_DECL PaddlePredictor {
   ///
   virtual void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc) {}
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.

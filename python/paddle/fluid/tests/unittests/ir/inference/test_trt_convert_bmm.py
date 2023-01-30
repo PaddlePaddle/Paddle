@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 from functools import partial
@@ -22,6 +23,16 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import List
+import unittest
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TrtConvertBmmTest_dynamic(TrtLayerAutoScanTest):
@@ -30,6 +41,7 @@ class TrtConvertBmmTest_dynamic(TrtLayerAutoScanTest):
             return np.random.random(shape).astype(np.float32)
 
         for batch in [10, 11, 12, 13, 14, 15]:
+<<<<<<< HEAD
             for trans_x in [False]:
                 for trans_y in [False]:
                     input1_shape = [batch, 350, 75]
@@ -63,6 +75,36 @@ class TrtConvertBmmTest_dynamic(TrtLayerAutoScanTest):
                     )
 
                     yield program_config
+=======
+            input1_shape = [batch, 350, 75]
+            input2_shape = [batch, 75, 25]
+            dics = [{}]
+            ops_config = [
+                {
+                    "op_type": "bmm",
+                    "op_inputs": {"X": ["input1_data"], "Y": ["input2_data"]},
+                    "op_outputs": {"Out": ["output_data"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
+
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input1_data": TensorConfig(
+                        data_gen=partial(generate_input, input1_shape)
+                    ),
+                    "input2_data": TensorConfig(
+                        data_gen=partial(generate_input, input2_shape)
+                    ),
+                },
+                outputs=["output_data"],
+            )
+
+            yield program_config
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def sample_predictor_configs(
         self, program_config

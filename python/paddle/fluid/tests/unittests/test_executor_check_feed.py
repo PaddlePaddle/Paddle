@@ -12,20 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+
+import numpy
+import paddle
+import paddle.fluid.core as core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 
 
 class TestExecutor(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def net(self):
         lr = fluid.data(name="lr", shape=[1], dtype='float32')
         x = fluid.data(name="x", shape=[None, 1], dtype='float32')
         y = fluid.data(name="y", shape=[None, 1], dtype='float32')
+<<<<<<< HEAD
         y_predict = paddle.static.nn.fc(x, size=1)
 
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+=======
+        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         avg_cost = paddle.mean(cost)
 
         opt = fluid.optimizer.Adam(learning_rate=lr)
@@ -47,12 +67,22 @@ class TestExecutor(unittest.TestCase):
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
                 with self.assertRaises(ValueError):
+<<<<<<< HEAD
                     exe.run(
                         feed={'x': train_data, 'lr': a},
                         fetch_list=[lr, cost],
                         return_numpy=False,
                         use_prune=True,
                     )
+=======
+                    exe.run(feed={
+                        'x': train_data,
+                        'lr': a
+                    },
+                            fetch_list=[lr, cost],
+                            return_numpy=False,
+                            use_prune=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_compiled_program_check_feed(self):
         main_program = fluid.Program()
@@ -65,12 +95,17 @@ class TestExecutor(unittest.TestCase):
                 lr, cost = self.net()
                 exe.run(startup_program)
                 compiled_prog = fluid.CompiledProgram(
+<<<<<<< HEAD
                     main_program
                 ).with_data_parallel(loss_name=cost.name)
+=======
+                    main_program).with_data_parallel(loss_name=cost.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 train_data = [[1.0], [2.0], [3.0], [4.0]]
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
                 with self.assertRaises(ValueError):
+<<<<<<< HEAD
                     exe.run(
                         compiled_prog,
                         feed={'x': train_data, 'lr': a},
@@ -78,6 +113,16 @@ class TestExecutor(unittest.TestCase):
                         return_numpy=False,
                         use_prune=True,
                     )
+=======
+                    exe.run(compiled_prog,
+                            feed={
+                                'x': train_data,
+                                'lr': a
+                            },
+                            fetch_list=[lr, cost],
+                            return_numpy=False,
+                            use_prune=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

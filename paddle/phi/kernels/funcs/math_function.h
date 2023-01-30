@@ -17,101 +17,172 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/eigen.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/utils/data_type.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 namespace funcs {
 
+<<<<<<< HEAD
 template <typename T>
 void BatchTranspose(T* output, const T* input, int batch, int m, int n);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
   // for dims >= 7 situation
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& in,
                   phi::DenseTensor* out,
+=======
+                  const paddle::framework::Tensor& in,
+                  paddle::framework::Tensor* out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const std::vector<int>& axis);
 };
 
 template <typename DeviceContext, typename T, int Rank>
 struct Transpose {
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& in,
                   phi::DenseTensor* out,
+=======
+                  const paddle::framework::Tensor& in,
+                  paddle::framework::Tensor* out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   const std::vector<int>& axis);
 };
 
 template <typename DeviceContext, typename T>
 struct SetConstant {
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   phi::DenseTensor* tensor,
+=======
+                  paddle::framework::Tensor* tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   T num);
 };
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
 struct SetConstant<XPUContext, T> {
+<<<<<<< HEAD
   void operator()(const XPUContext& context, phi::DenseTensor* tensor, T num);
+=======
+  void operator()(const XPUContext& context,
+                  paddle::framework::Tensor* tensor,
+                  T num);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename T>
 struct SetConstant<paddle::platform::XPUDeviceContext, T> {
   void operator()(const paddle::platform::XPUDeviceContext& context,
+<<<<<<< HEAD
                   phi::DenseTensor* tensor,
+=======
+                  paddle::framework::Tensor* tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   T num);
 };
 #endif
 
 template <typename Place>
 void set_constant_with_place(const paddle::platform::DeviceContext& context,
+<<<<<<< HEAD
                              phi::DenseTensor* tensor,
                              float value);
 
 void set_constant(const paddle::platform::DeviceContext& context,
                   phi::DenseTensor* tensor,
+=======
+                             paddle::framework::Tensor* tensor,
+                             float value);
+
+void set_constant(const paddle::platform::DeviceContext& context,
+                  paddle::framework::Tensor* tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   float value);
 
 template <typename DeviceContext, typename T>
 struct RowwiseAdd {
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& vec,
                   phi::DenseTensor* output);
+=======
+                  const paddle::framework::Tensor& input,
+                  const paddle::framework::Tensor& vec,
+                  paddle::framework::Tensor* output);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename DeviceContext, typename T>
 struct ColwiseSum {
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* vec);
+=======
+                  const paddle::framework::Tensor& input,
+                  paddle::framework::Tensor* vec);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename DeviceContext, typename T>
 struct RowwiseSum {
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* vec);
+=======
+                  const paddle::framework::Tensor& input,
+                  paddle::framework::Tensor* vec);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename DeviceContext, typename T>
 struct RowwiseMean {
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* vec);
+=======
+                  const paddle::framework::Tensor& input,
+                  paddle::framework::Tensor* vec);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 #ifdef PADDLE_WITH_XPU
 template <typename U>
 struct TensorSetConstantXPU {
+<<<<<<< HEAD
   TensorSetConstantXPU(phi::DenseTensor* tensor,
+=======
+  TensorSetConstantXPU(paddle::framework::Tensor* tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                        U value,
                        paddle::platform::Place place)
       : tensor_(tensor), value_(value), place_(place) {}
@@ -127,7 +198,11 @@ struct TensorSetConstantXPU {
                          static_cast<void*>(data_cpu.get()),
                          numel * sizeof(T));
   }
+<<<<<<< HEAD
   phi::DenseTensor* tensor_;
+=======
+  paddle::framework::Tensor* tensor_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   U value_;
   paddle::platform::Place place_;
 };

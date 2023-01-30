@@ -46,19 +46,31 @@
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+<<<<<<< HEAD
 using paddle::framework;
+=======
+using namespace paddle::framework;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace platform = paddle::platform;
 namespace operators = paddle::operators;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
+<<<<<<< HEAD
 const char *input_file;
+=======
+std::string input_file;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 int exe_count = 100;
 int use_nv = 1;
 int fixed_key_size = 50000, sample_size = 32,
     bfs_sample_nodes_in_each_shard = 10000, init_search_size = 1,
     bfs_sample_edges = 20, gpu_num1 = 8, gpu_num = 8;
+<<<<<<< HEAD
 const char *gpu_str = "0,1,2,3,4,5,6,7";
+=======
+std::string gpu_str = "0,1,2,3,4,5,6,7";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 int64_t *key[8];
 std::vector<std::string> edges = {std::string("37\t45\t0.34"),
                                   std::string("37\t145\t0.31"),
@@ -115,8 +127,13 @@ void testSampleRate() {
         index += node.get_size(false);
         // res.push_back(node);
         ids.push_back(node.get_id());
+<<<<<<< HEAD
         int swap_pos = rand_r() % ids.size();
         std::swap(ids[swap_pos], ids[static_cast<int>(ids.size()) - 1]);
+=======
+        int swap_pos = rand() % ids.size();
+        std::swap(ids[swap_pos], ids[(int)ids.size() - 1]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
       cur = ids.size();
       // if (sample_actual_size == 0) break;
@@ -161,8 +178,13 @@ void testSampleRate() {
           actual_size[i].push_back(ac[j - s] / sizeof(int64_t));
           int ss = ac[j - s] / sizeof(int64_t);
           for (int k = 0; k < ss; k++) {
+<<<<<<< HEAD
             sample_neighbors[i].push_back(*(reinterpret_cast<int64_t *>(
                 buffers[j - s].get() + k * sizeof(int64_t))));
+=======
+            sample_neighbors[i].push_back(
+                *((int64_t *)(buffers[j - s].get() + k * sizeof(int64_t))));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           }
         }
       }
@@ -252,8 +274,12 @@ void testSampleRate() {
 */
   for (int i = 0; i < gpu_num1; i++) {
     platform::CUDADeviceGuard guard(device_id_mapping[i]);
+<<<<<<< HEAD
     cudaMalloc(reinterpret_cast<void **>(&key[i]),
                ids.size() * sizeof(int64_t));
+=======
+    cudaMalloc((void **)&key[i], ids.size() * sizeof(int64_t));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cudaMemcpy(key[i],
                ids.data(),
                ids.size() * sizeof(int64_t),
@@ -286,16 +312,26 @@ void testSampleRate() {
     for (int k = 0; k < exe_count; k++) {
       st = 0;
       while (st < size) {
+<<<<<<< HEAD
         int len = std::min(fixed_key_size, static_cast<int>(ids.size()) - st);
         auto r = g.graph_neighbor_sample(
             i, reinterpret_cast<int64_t *>(key[i] + st), sample_size, len);
+=======
+        int len = std::min(fixed_key_size, (int)ids.size() - st);
+        auto r = g.graph_neighbor_sample(
+            i, (int64_t *)(key[i] + st), sample_size, len);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         st += len;
         delete r;
       }
     }
   };
   auto start1 = std::chrono::steady_clock::now();
+<<<<<<< HEAD
   std::thread thr[gpu_num1];  // NOLINT
+=======
+  std::thread thr[gpu_num1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (int i = 0; i < gpu_num1; i++) {
     thr[i] = std::thread(func, i);
   }
@@ -314,6 +350,7 @@ void testSampleRate() {
     for (int k = 0; k < exe_count; k++) {
       st = 0;
       while (st < size) {
+<<<<<<< HEAD
         int len = std::min(fixed_key_size, static_cast<int>(ids.size()) - st);
         auto r =
             g.graph_neighbor_sample_v2(i,
@@ -321,13 +358,22 @@ void testSampleRate() {
                                        sample_size,
                                        len,
                                        false);
+=======
+        int len = std::min(fixed_key_size, (int)ids.size() - st);
+        auto r = g.graph_neighbor_sample_v2(
+            i, (int64_t *)(key[i] + st), sample_size, len, false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         st += len;
         delete r;
       }
     }
   };
   auto start2 = std::chrono::steady_clock::now();
+<<<<<<< HEAD
   std::thread thr2[gpu_num1];  // NOLINT
+=======
+  std::thread thr2[gpu_num1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (int i = 0; i < gpu_num1; i++) {
     thr2[i] = std::thread(func2, i);
   }

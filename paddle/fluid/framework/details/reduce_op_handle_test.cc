@@ -228,7 +228,11 @@ struct TestReduceOpHandle {
               out_select_rows.rows()[k]));
     }
 
+<<<<<<< HEAD
     phi::DenseTensor result_tensor;
+=======
+    f::Tensor result_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
@@ -251,7 +255,11 @@ struct TestReduceOpHandle {
           in_var,
           platform::errors::NotFound("Variable %s is not found in scope.",
                                      "input"));
+<<<<<<< HEAD
       auto in_lod_tensor = in_var->GetMutable<phi::DenseTensor>();
+=======
+      auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
       in_lod_tensor->set_lod(lod);
 
@@ -263,10 +271,17 @@ struct TestReduceOpHandle {
     PADDLE_ENFORCE_NOT_NULL(out_var,
                             platform::errors::NotFound(
                                 "Variable %s is not found in scope.", "out"));
+<<<<<<< HEAD
     auto out_lodtensor = out_var->GetMutable<phi::DenseTensor>();
 
     auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
     auto in_lodtensor = in_var->Get<phi::DenseTensor>();
+=======
+    auto out_lodtensor = out_var->GetMutable<f::LoDTensor>();
+
+    auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
+    auto in_lodtensor = in_var->Get<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     out_lodtensor->ShareDataWith(in_lodtensor);
 
@@ -277,9 +292,15 @@ struct TestReduceOpHandle {
 
     p::CPUPlace cpu_place;
 
+<<<<<<< HEAD
     auto &rt = out_var->Get<phi::DenseTensor>();
 
     phi::DenseTensor result_tensor;
+=======
+    auto &rt = out_var->Get<f::LoDTensor>();
+
+    f::Tensor result_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 

@@ -13,14 +13,22 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
+=======
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 
 
 class TestGraphSampleNeighbors(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         num_nodes = 20
         edges = np.random.randint(num_nodes, size=(100, 2))
@@ -41,9 +49,14 @@ class TestGraphSampleNeighbors(unittest.TestCase):
 
         self.row = sorted_edges[:, 0].astype("int64")
         self.colptr = colptr.astype("int64")
+<<<<<<< HEAD
         self.nodes = np.unique(np.random.randint(num_nodes, size=5)).astype(
             "int64"
         )
+=======
+        self.nodes = np.unique(np.random.randint(num_nodes,
+                                                 size=5)).astype("int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.sample_size = 5
         self.dst_src_dict = dst_src_dict
 
@@ -54,6 +67,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         nodes = paddle.to_tensor(self.nodes)
 
         out_neighbors, out_count = paddle.incubate.graph_sample_neighbors(
+<<<<<<< HEAD
             row, colptr, nodes, sample_size=self.sample_size
         )
         out_count_cumsum = paddle.cumsum(out_count)
@@ -77,6 +91,26 @@ class TestGraphSampleNeighbors(unittest.TestCase):
             in_neighbors = np.isin(
                 neighbors.numpy(), self.dst_src_dict[self.nodes[i]]
             )
+=======
+            row, colptr, nodes, sample_size=self.sample_size)
+        out_count_cumsum = paddle.cumsum(out_count)
+        for i in range(len(out_count)):
+            if i == 0:
+                neighbors = out_neighbors[0:out_count_cumsum[i]]
+            else:
+                neighbors = out_neighbors[
+                    out_count_cumsum[i - 1]:out_count_cumsum[i]]
+            # Ensure the correct sample size.
+            self.assertTrue(
+                out_count[i] == self.sample_size
+                or out_count[i] == len(self.dst_src_dict[self.nodes[i]]))
+            # Ensure no repetitive sample neighbors.
+            self.assertTrue(
+                neighbors.shape[0] == paddle.unique(neighbors).shape[0])
+            # Ensure the correct sample neighbors.
+            in_neighbors = np.isin(neighbors.numpy(),
+                                   self.dst_src_dict[self.nodes[i]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_sample_result_fisher_yates_sampling(self):
@@ -93,6 +127,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 nodes,
                 perm_buffer=perm_buffer,
                 sample_size=self.sample_size,
+<<<<<<< HEAD
                 flag_perm_buffer=True,
             )
             out_count_cumsum = paddle.cumsum(out_count)
@@ -116,11 +151,32 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 in_neighbors = np.isin(
                     neighbors.numpy(), self.dst_src_dict[self.nodes[i]]
                 )
+=======
+                flag_perm_buffer=True)
+            out_count_cumsum = paddle.cumsum(out_count)
+            for i in range(len(out_count)):
+                if i == 0:
+                    neighbors = out_neighbors[0:out_count_cumsum[i]]
+                else:
+                    neighbors = out_neighbors[
+                        out_count_cumsum[i - 1]:out_count_cumsum[i]]
+                # Ensure the correct sample size.
+                self.assertTrue(
+                    out_count[i] == self.sample_size
+                    or out_count[i] == len(self.dst_src_dict[self.nodes[i]]))
+                # Ensure no repetitive sample neighbors.
+                self.assertTrue(
+                    neighbors.shape[0] == paddle.unique(neighbors).shape[0])
+                # Ensure the correct sample neighbors.
+                in_neighbors = np.isin(neighbors.numpy(),
+                                       self.dst_src_dict[self.nodes[i]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_sample_result_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
             row = paddle.static.data(
                 name="row", shape=self.row.shape, dtype=self.row.dtype
             )
@@ -156,6 +212,36 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 self.assertTrue(
                     neighbors.shape[0] == np.unique(neighbors).shape[0]
                 )
+=======
+            row = paddle.static.data(name="row",
+                                     shape=self.row.shape,
+                                     dtype=self.row.dtype)
+            colptr = paddle.static.data(name="colptr",
+                                        shape=self.colptr.shape,
+                                        dtype=self.colptr.dtype)
+            nodes = paddle.static.data(name="nodes",
+                                       shape=self.nodes.shape,
+                                       dtype=self.nodes.dtype)
+
+            out_neighbors, out_count = paddle.incubate.graph_sample_neighbors(
+                row, colptr, nodes, sample_size=self.sample_size)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            ret = exe.run(feed={
+                'row': self.row,
+                'colptr': self.colptr,
+                'nodes': self.nodes
+            },
+                          fetch_list=[out_neighbors, out_count])
+            out_neighbors, out_count = ret
+            out_count_cumsum = np.cumsum(out_count)
+            out_neighbors = np.split(out_neighbors, out_count_cumsum)[:-1]
+            for neighbors, node, count in zip(out_neighbors, self.nodes,
+                                              out_count):
+                self.assertTrue(count == self.sample_size
+                                or count == len(self.dst_src_dict[node]))
+                self.assertTrue(
+                    neighbors.shape[0] == np.unique(neighbors).shape[0])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 in_neighbors = np.isin(neighbors, self.dst_src_dict[node])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
@@ -166,6 +252,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         nodes = paddle.to_tensor(self.nodes)
 
         def check_eid_error():
+<<<<<<< HEAD
             paddle.incubate.graph_sample_neighbors(
                 row,
                 colptr,
@@ -182,6 +269,20 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 sample_size=self.sample_size,
                 flag_perm_buffer=True,
             )
+=======
+            paddle.incubate.graph_sample_neighbors(row,
+                                                   colptr,
+                                                   nodes,
+                                                   sample_size=self.sample_size,
+                                                   return_eids=True)
+
+        def check_perm_buffer_error():
+            paddle.incubate.graph_sample_neighbors(row,
+                                                   colptr,
+                                                   nodes,
+                                                   sample_size=self.sample_size,
+                                                   flag_perm_buffer=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, check_eid_error)
         self.assertRaises(ValueError, check_perm_buffer_error)
@@ -194,16 +295,21 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         eids = paddle.to_tensor(self.edges_id)
         perm_buffer = paddle.to_tensor(self.edges_id)
 
+<<<<<<< HEAD
         (
             out_neighbors,
             out_count,
             out_eids,
         ) = paddle.incubate.graph_sample_neighbors(
+=======
+        out_neighbors, out_count, out_eids = paddle.incubate.graph_sample_neighbors(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             row,
             colptr,
             nodes,
             eids=eids,
             sample_size=self.sample_size,
+<<<<<<< HEAD
             return_eids=True,
         )
 
@@ -212,6 +318,11 @@ class TestGraphSampleNeighbors(unittest.TestCase):
             out_count,
             out_eids,
         ) = paddle.incubate.graph_sample_neighbors(
+=======
+            return_eids=True)
+
+        out_neighbors, out_count, out_eids = paddle.incubate.graph_sample_neighbors(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             row,
             colptr,
             nodes,
@@ -219,6 +330,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
             perm_buffer=perm_buffer,
             sample_size=self.sample_size,
             return_eids=True,
+<<<<<<< HEAD
             flag_perm_buffer=True,
         )
 
@@ -242,11 +354,32 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 out_count,
                 out_eids,
             ) = paddle.incubate.graph_sample_neighbors(
+=======
+            flag_perm_buffer=True)
+
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            row = paddle.static.data(name="row",
+                                     shape=self.row.shape,
+                                     dtype=self.row.dtype)
+            colptr = paddle.static.data(name="colptr",
+                                        shape=self.colptr.shape,
+                                        dtype=self.colptr.dtype)
+            nodes = paddle.static.data(name="nodes",
+                                       shape=self.nodes.shape,
+                                       dtype=self.nodes.dtype)
+            eids = paddle.static.data(name="eids",
+                                      shape=self.edges_id.shape,
+                                      dtype=self.nodes.dtype)
+
+            out_neighbors, out_count, out_eids = paddle.incubate.graph_sample_neighbors(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 row,
                 colptr,
                 nodes,
                 eids,
                 sample_size=self.sample_size,
+<<<<<<< HEAD
                 return_eids=True,
             )
             exe = paddle.static.Executor(paddle.CPUPlace())
@@ -262,6 +395,21 @@ class TestGraphSampleNeighbors(unittest.TestCase):
 
 
 class TestGeometricGraphSampleNeighbors(unittest.TestCase):
+=======
+                return_eids=True)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            ret = exe.run(feed={
+                'row': self.row,
+                'colptr': self.colptr,
+                'nodes': self.nodes,
+                'eids': self.edges_id
+            },
+                          fetch_list=[out_neighbors, out_count, out_eids])
+
+
+class TestGeometricGraphSampleNeighbors(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         num_nodes = 20
         edges = np.random.randint(num_nodes, size=(100, 2))
@@ -282,9 +430,14 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
 
         self.row = sorted_edges[:, 0].astype("int64")
         self.colptr = colptr.astype("int64")
+<<<<<<< HEAD
         self.nodes = np.unique(np.random.randint(num_nodes, size=5)).astype(
             "int64"
         )
+=======
+        self.nodes = np.unique(np.random.randint(num_nodes,
+                                                 size=5)).astype("int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.sample_size = 5
         self.dst_src_dict = dst_src_dict
 
@@ -295,6 +448,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
         nodes = paddle.to_tensor(self.nodes)
 
         out_neighbors, out_count = paddle.geometric.sample_neighbors(
+<<<<<<< HEAD
             row, colptr, nodes, sample_size=self.sample_size
         )
         out_count_cumsum = paddle.cumsum(out_count)
@@ -318,6 +472,26 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
             in_neighbors = np.isin(
                 neighbors.numpy(), self.dst_src_dict[self.nodes[i]]
             )
+=======
+            row, colptr, nodes, sample_size=self.sample_size)
+        out_count_cumsum = paddle.cumsum(out_count)
+        for i in range(len(out_count)):
+            if i == 0:
+                neighbors = out_neighbors[0:out_count_cumsum[i]]
+            else:
+                neighbors = out_neighbors[
+                    out_count_cumsum[i - 1]:out_count_cumsum[i]]
+            # Ensure the correct sample size.
+            self.assertTrue(
+                out_count[i] == self.sample_size
+                or out_count[i] == len(self.dst_src_dict[self.nodes[i]]))
+            # Ensure no repetitive sample neighbors.
+            self.assertTrue(
+                neighbors.shape[0] == paddle.unique(neighbors).shape[0])
+            # Ensure the correct sample neighbors.
+            in_neighbors = np.isin(neighbors.numpy(),
+                                   self.dst_src_dict[self.nodes[i]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_sample_result_fisher_yates_sampling(self):
@@ -333,6 +507,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                 colptr,
                 nodes,
                 perm_buffer=perm_buffer,
+<<<<<<< HEAD
                 sample_size=self.sample_size,
             )
             out_count_cumsum = paddle.cumsum(out_count)
@@ -356,11 +531,32 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                 in_neighbors = np.isin(
                     neighbors.numpy(), self.dst_src_dict[self.nodes[i]]
                 )
+=======
+                sample_size=self.sample_size)
+            out_count_cumsum = paddle.cumsum(out_count)
+            for i in range(len(out_count)):
+                if i == 0:
+                    neighbors = out_neighbors[0:out_count_cumsum[i]]
+                else:
+                    neighbors = out_neighbors[
+                        out_count_cumsum[i - 1]:out_count_cumsum[i]]
+                # Ensure the correct sample size.
+                self.assertTrue(
+                    out_count[i] == self.sample_size
+                    or out_count[i] == len(self.dst_src_dict[self.nodes[i]]))
+                # Ensure no repetitive sample neighbors.
+                self.assertTrue(
+                    neighbors.shape[0] == paddle.unique(neighbors).shape[0])
+                # Ensure the correct sample neighbors.
+                in_neighbors = np.isin(neighbors.numpy(),
+                                       self.dst_src_dict[self.nodes[i]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_sample_result_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
             row = paddle.static.data(
                 name="row", shape=self.row.shape, dtype=self.row.dtype
             )
@@ -396,6 +592,36 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                 self.assertTrue(
                     neighbors.shape[0] == np.unique(neighbors).shape[0]
                 )
+=======
+            row = paddle.static.data(name="row",
+                                     shape=self.row.shape,
+                                     dtype=self.row.dtype)
+            colptr = paddle.static.data(name="colptr",
+                                        shape=self.colptr.shape,
+                                        dtype=self.colptr.dtype)
+            nodes = paddle.static.data(name="nodes",
+                                       shape=self.nodes.shape,
+                                       dtype=self.nodes.dtype)
+
+            out_neighbors, out_count = paddle.geometric.sample_neighbors(
+                row, colptr, nodes, sample_size=self.sample_size)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            ret = exe.run(feed={
+                'row': self.row,
+                'colptr': self.colptr,
+                'nodes': self.nodes
+            },
+                          fetch_list=[out_neighbors, out_count])
+            out_neighbors, out_count = ret
+            out_count_cumsum = np.cumsum(out_count)
+            out_neighbors = np.split(out_neighbors, out_count_cumsum)[:-1]
+            for neighbors, node, count in zip(out_neighbors, self.nodes,
+                                              out_count):
+                self.assertTrue(count == self.sample_size
+                                or count == len(self.dst_src_dict[node]))
+                self.assertTrue(
+                    neighbors.shape[0] == np.unique(neighbors).shape[0])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 in_neighbors = np.isin(neighbors, self.dst_src_dict[node])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
@@ -406,6 +632,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
         nodes = paddle.to_tensor(self.nodes)
 
         def check_eid_error():
+<<<<<<< HEAD
             paddle.geometric.sample_neighbors(
                 row,
                 colptr,
@@ -413,6 +640,13 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                 sample_size=self.sample_size,
                 return_eids=True,
             )
+=======
+            paddle.geometric.sample_neighbors(row,
+                                              colptr,
+                                              nodes,
+                                              sample_size=self.sample_size,
+                                              return_eids=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, check_eid_error)
 
@@ -430,8 +664,12 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
             nodes,
             eids=eids,
             sample_size=self.sample_size,
+<<<<<<< HEAD
             return_eids=True,
         )
+=======
+            return_eids=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         out_neighbors, out_count, out_eids = paddle.geometric.sample_neighbors(
             row,
@@ -440,6 +678,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
             eids=eids,
             perm_buffer=perm_buffer,
             sample_size=self.sample_size,
+<<<<<<< HEAD
             return_eids=True,
         )
 
@@ -463,11 +702,32 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                 out_count,
                 out_eids,
             ) = paddle.geometric.sample_neighbors(
+=======
+            return_eids=True)
+
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            row = paddle.static.data(name="row",
+                                     shape=self.row.shape,
+                                     dtype=self.row.dtype)
+            colptr = paddle.static.data(name="colptr",
+                                        shape=self.colptr.shape,
+                                        dtype=self.colptr.dtype)
+            nodes = paddle.static.data(name="nodes",
+                                       shape=self.nodes.shape,
+                                       dtype=self.nodes.dtype)
+            eids = paddle.static.data(name="eids",
+                                      shape=self.edges_id.shape,
+                                      dtype=self.nodes.dtype)
+
+            out_neighbors, out_count, out_eids = paddle.geometric.sample_neighbors(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 row,
                 colptr,
                 nodes,
                 sample_size=self.sample_size,
                 eids=eids,
+<<<<<<< HEAD
                 return_eids=True,
             )
             exe = paddle.static.Executor(paddle.CPUPlace())
@@ -480,6 +740,17 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                 },
                 fetch_list=[out_neighbors, out_count, out_eids],
             )
+=======
+                return_eids=True)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            ret = exe.run(feed={
+                'row': self.row,
+                'colptr': self.colptr,
+                'nodes': self.nodes,
+                'eids': self.edges_id
+            },
+                          fetch_list=[out_neighbors, out_count, out_eids])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

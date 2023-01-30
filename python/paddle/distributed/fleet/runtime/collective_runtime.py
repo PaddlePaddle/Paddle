@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 
 from .runtime_base import RuntimeBase
+=======
+from .runtime_base import RuntimeBase
+import logging
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
 class CollectiveRuntime(RuntimeBase):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
 
@@ -47,5 +53,35 @@ class CollectiveRuntime(RuntimeBase):
         logging.warn(
             "You should not call 'stop_worker' method for collective mode."
         )
+=======
+
+    def __init__(self):
+        super(CollectiveRuntime, self).__init__()
+
+    def _init_worker(self):
+        logging.warn(
+            "You should not call 'init_worker' method for collective mode.")
+        pass
+
+    def _run_worker(self):
+        logging.warn(
+            "You should not call 'run_worker' method for collective mode.")
+        pass
+
+    def _init_server(self, *args, **kwargs):
+        logging.warn(
+            "You should not call 'init_server' method for collective mode.")
+        pass
+
+    def _run_server(self):
+        logging.warn(
+            "You should not call 'run_server' method for collective mode.")
+        pass
+
+    def _stop_worker(self):
+        logging.warn(
+            "You should not call 'stop_worker' method for collective mode.")
+        pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # save inference model should be added here

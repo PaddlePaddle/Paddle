@@ -136,10 +136,13 @@ struct NCCLContext {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(CUDAPlace(dev_id))
             .get());
+<<<<<<< HEAD
     ctx_->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(paddle::platform::CPUPlace())
             .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(paddle::platform::CUDAPinnedPlace())

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import unittest
 
@@ -21,10 +22,23 @@ from scipy import special
 
 import paddle
 
+=======
+import unittest
+import math
+import numpy as np
+import paddle
+from op_test import OpTest
+from scipy import special
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
 class TestLgammaOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'lgamma'
         self.python_api = paddle.lgamma
@@ -49,23 +63,42 @@ class TestLgammaOp(OpTest):
 
 
 class TestLgammaOpFp32(TestLgammaOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.float32
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'], 'Out', numeric_grad_delta=0.005, check_eager=True
         )
 
 
 class TestLgammaOpApi(unittest.TestCase):
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        numeric_grad_delta=0.005,
+                        check_eager=True)
+
+
+class TestLgammaOpApi(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_lgamma(self):
         paddle.disable_static()
         self.dtype = "float32"
         shape = (1, 4)
         data = np.random.random(shape).astype(self.dtype) + 1
         data_ = paddle.to_tensor(data)
+<<<<<<< HEAD
         out = paddle.lgamma(data_)
+=======
+        out = paddle.fluid.layers.lgamma(data_)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         result = special.gammaln(data)
         np.testing.assert_allclose(result, out.numpy(), rtol=1e-05)
         paddle.enable_static()

@@ -111,6 +111,7 @@ function(kernel_declare TARGET_LIST)
 endfunction()
 
 function(append_op_util_declare TARGET)
+<<<<<<< HEAD
   file(READ ${TARGET} target_content)
   string(REGEX MATCH "(PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
                util_registrar "${target_content}")
@@ -136,6 +137,21 @@ function(append_op_kernel_map_declare TARGET)
     string(APPEND kernel_mapping_declare ");\n")
     file(APPEND ${op_utils_header} "${kernel_mapping_declare}")
   endif()
+=======
+  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET} target_content)
+  string(
+    REGEX
+      MATCH
+      "(PD_REGISTER_BASE_KERNEL_NAME|PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
+      util_registrar
+      "${target_content}")
+  string(REPLACE "PD_REGISTER_ARG_MAPPING_FN" "PD_DECLARE_ARG_MAPPING_FN"
+                 util_declare "${util_registrar}")
+  string(REPLACE "PD_REGISTER_BASE_KERNEL_NAME" "PD_DECLARE_BASE_KERNEL_NAME"
+                 util_declare "${util_declare}")
+  string(APPEND util_declare ");\n")
+  file(APPEND ${op_utils_header} "${util_declare}")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endfunction()
 
 function(register_op_utils TARGET_NAME)
@@ -146,11 +162,21 @@ function(register_op_utils TARGET_NAME)
   cmake_parse_arguments(register_op_utils "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
 
+<<<<<<< HEAD
   file(GLOB SIGNATURES "${PADDLE_SOURCE_DIR}/paddle/phi/ops/compat/*_sig.cc")
   foreach(target ${SIGNATURES})
     append_op_util_declare(${target})
     append_op_kernel_map_declare(${target})
     list(APPEND utils_srcs ${target})
+=======
+  file(
+    GLOB SIGNATURES
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "*_sig.cc")
+  foreach(target ${SIGNATURES})
+    append_op_util_declare(${target})
+    list(APPEND utils_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${target})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   endforeach()
 
   cc_library(

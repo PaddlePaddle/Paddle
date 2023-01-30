@@ -129,7 +129,11 @@ bool RunPassAndAssert(Graph* graph,
 /// @param[in]  var_name  The variable name.
 /// @param[in]  dims      The dimensions of allocated tensor.
 ///
+<<<<<<< HEAD
 /// @tparam     T         phi::DenseTensor data type.
+=======
+/// @tparam     T         Tensor data type.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ///
 template <typename T>
 void InitLoDTensorHolder(const Scope& scope,

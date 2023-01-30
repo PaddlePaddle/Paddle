@@ -91,6 +91,10 @@ void GraphPatternDetector::operator()(Graph *graph,
   if (!MarkPDNodesInGraph(*graph)) {
     return;
   }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
   SortSubgraphs(&subgraphs);
@@ -98,6 +102,10 @@ void GraphPatternDetector::operator()(Graph *graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int id = 0;
   for (auto &g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
@@ -938,6 +946,7 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::LayerNormShiftScale::operator()() {
   auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
                            ->AsInput()
@@ -961,6 +970,8 @@ PDNode *patterns::LayerNormShiftScale::operator()() {
   return layer_norm_out;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PDNode *patterns::OperatorActivation::operator()(
     const std::string &operator_type, const std::string &activation_type) {
   auto *preceding_op =
@@ -979,6 +990,7 @@ PDNode *patterns::OperatorActivation::operator()(
   return activation_out;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::Squeeze2Transpose2::operator()() {
   auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
                              ->AsInput()
@@ -999,6 +1011,8 @@ PDNode *patterns::Squeeze2Transpose2::operator()() {
   return transpose2_op;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PDNode *patterns::OperatorUnsqueeze2::operator()(
     const std::string &operator_type, const int num_of_operator_outs) {
   auto *preceding_op = pattern->NewNode(preceding_op_repr())
@@ -1083,6 +1097,29 @@ PDNode *patterns::SeqConvEltAddRelu::operator()(
   return relu_out_var;
 }
 
+<<<<<<< HEAD
+=======
+PDNode *patterns::Squeeze2Transpose2::operator()() {
+  auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
+                             ->AsInput()
+                             ->assert_has_n_outputs(1)
+                             ->assert_is_op_input("squeeze2", "X");
+  auto *squeeze2_op = pattern->NewNode(squeeze2_op_repr())
+                          ->assert_is_op("squeeze2")
+                          ->assert_has_n_outputs(2);
+  auto *squeeze2_op_out = pattern->NewNode(squeeze2_op_out_repr())
+                              ->AsIntermediate()
+                              ->assert_is_op_output("squeeze2", "Out")
+                              ->assert_is_op_input("transpose2", "X");
+  auto *transpose2_op =
+      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+
+  squeeze2_op->LinksFrom({squeeze2_op_in}).LinksTo({squeeze2_op_out});
+  transpose2_op->LinksFrom({squeeze2_op_out});
+  return transpose2_op;
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
                                  bool with_bias,
                                  bool with_relu) {
@@ -1136,7 +1173,15 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   }
 }
 
+<<<<<<< HEAD
 PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
+=======
+PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
+                                       bool with_bias) {
+  // Create shared nodes.
+  x->assert_is_op_input("fc", "Input");
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
   // Create variables
   // Input
@@ -1157,6 +1202,7 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
                          ->assert_is_op_output("fc", "Out")
                          ->assert_is_only_output_of_op("fc");
 
+<<<<<<< HEAD
   std::vector<PDNode *> links_from{input_var, fc_weight_var, fc_bias_var};
   if (with_residual_data) {
     auto res_fc_var = pattern->NewNode(residual_data_repr())
@@ -1173,6 +1219,10 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   }
 
   fc_op->LinksFrom(links_from).LinksTo({fc_out_var});
+=======
+  fc_op->LinksFrom({input_var, fc_weight_var, fc_bias_var})
+      .LinksTo({fc_out_var});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return fc_out_var;
 }
 
@@ -1611,6 +1661,7 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
   return ele_add_grad;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::ActElewiseAddInplaceGrad::operator()(
     paddle::framework::ir::PDNode *d_out_var,
     std::unordered_set<std::string> act_types) {
@@ -1638,6 +1689,8 @@ PDNode *patterns::ActElewiseAddInplaceGrad::operator()(
   return act_grad_op;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PDNode *patterns::ElewiseAddAct::operator()(
     paddle::framework::ir::PDNode *ele_x_var,
     std::unordered_set<std::string> act_types) {
@@ -1805,6 +1858,10 @@ PDNode *patterns::ConvBias::operator()(
   // Filter
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
+<<<<<<< HEAD
+=======
+                              ->assert_is_persistable_var()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                               ->assert_is_op_input(conv_type, "Filter");
   // intermediate variable, will be removed in the IR after fuse.
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
@@ -1826,6 +1883,7 @@ PDNode *patterns::ConvBias::operator()(
   return eltwise_out_var;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::Conv::operator()(const std::string &conv_type) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op(conv_type);
 
@@ -1840,6 +1898,22 @@ PDNode *patterns::Conv::operator()(const std::string &conv_type) {
   auto output_var = pattern->NewNode(conv_output_repr())
                         ->AsOutput()
                         ->assert_is_op_output(conv_type, "Output");
+=======
+PDNode *patterns::Conv::operator()() {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+
+  auto input_var = pattern->NewNode(conv_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("conv2d", "Input");
+
+  auto filter_var = pattern->NewNode(conv_filter_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("conv2d", "Filter");
+
+  auto output_var = pattern->NewNode(conv_output_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("conv2d", "Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   conv_op->LinksFrom({input_var, filter_var}).LinksTo({output_var});
   return output_var;
@@ -2068,9 +2142,14 @@ PDNode *patterns::Flatten2Matmul::operator()() {
   return matmul_out;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::ConvResidual::operator()(const std::string &conv_type,
                                            bool with_residual_data) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op(conv_type);
+=======
+PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (!with_residual_data) {
     conv_op->assert_more([&](Node *x) {
@@ -2083,6 +2162,7 @@ PDNode *patterns::ConvResidual::operator()(const std::string &conv_type,
 
   auto input_var = pattern->NewNode(conv_input_repr())
                        ->AsInput()
+<<<<<<< HEAD
                        ->assert_is_op_input(conv_type, "Input");
 
   auto filter_var = pattern->NewNode(conv_filter_repr())
@@ -2092,13 +2172,28 @@ PDNode *patterns::ConvResidual::operator()(const std::string &conv_type,
   auto output_var = pattern->NewNode(conv_output_repr())
                         ->AsOutput()
                         ->assert_is_op_output(conv_type, "Output");
+=======
+                       ->assert_is_op_input("conv2d", "Input");
+
+  auto filter_var = pattern->NewNode(conv_filter_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("conv2d", "Filter");
+
+  auto output_var = pattern->NewNode(conv_output_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("conv2d", "Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<PDNode *> links_from{input_var, filter_var};
 
   if (with_residual_data) {
     auto res_conn_var = pattern->NewNode(conv_residual_data_repr())
                             ->AsInput()
+<<<<<<< HEAD
                             ->assert_is_op_input(conv_type, "ResidualData");
+=======
+                            ->assert_is_op_input("conv2d", "ResidualData");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     links_from.push_back(res_conn_var);
   }
 
@@ -2373,8 +2468,19 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::ConvElementwiseaddAct::operator()(
     PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
+=======
+#if CUDNN_VERSION >= 8000
+std::unordered_set<std::string> conv_act_set(
+    {"identity", "relu", "sigmoid", "tanh"});
+#else
+std::unordered_set<std::string> conv_act_set({"identity", "relu"});
+#endif
+
+PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   conv_in->AsInput();
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_out = pattern->NewNode(conv_out_repr())
@@ -2571,8 +2677,12 @@ PDNode *patterns::VitAttention::operator()(PDNode *in) {
   return reshape2_out;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::ConvElementwiseadd2Act::operator()(
     PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
+=======
+PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_filter = pattern->NewNode(conv_filter_repr())
                          ->assert_is_op_input("conv2d", "Filter")
@@ -2658,12 +2768,19 @@ PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
 }
 
 PDNode *patterns::ConvAffineChannel::operator()(
+<<<<<<< HEAD
     paddle::framework::ir::PDNode *conv_input,
     const std::string &conv_type,
     bool with_eltwise_add) {
   // Create Operators
   conv_input->assert_is_op_input(conv_type, "Input");
   auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(conv_type);
+=======
+    paddle::framework::ir::PDNode *conv_input, bool with_eltwise_add) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PDNode *eltwise_op = nullptr;
   if (with_eltwise_add) {
@@ -2678,11 +2795,19 @@ PDNode *patterns::ConvAffineChannel::operator()(
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
+<<<<<<< HEAD
                               ->assert_is_op_input(conv_type, "Filter");
 
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
                            ->assert_is_only_output_of_op(conv_type);
+=======
+                              ->assert_is_op_input("conv2d", "Filter");
+
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PDNode *eltwise_y_in_var = nullptr;
   PDNode *eltwise_out_var = nullptr;
@@ -2803,8 +2928,12 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
+<<<<<<< HEAD
       std::unordered_set<std::string>({"bilinear_interp_v2",
                                        "cast",
+=======
+      std::unordered_set<std::string>({"cast",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                        "clip",
                                        "concat",
                                        "conv2d",
@@ -3198,6 +3327,7 @@ void patterns::DeleteWeightQuantDequantLinearOpPattern::operator()() {
   any_op2->LinksFrom({weight_dequantize_linear_op_out});
 }
 
+<<<<<<< HEAD
 void patterns::DeleteWeightDequantLinearOpEncoderPattern::operator()() {
   auto weight_dequantize_linear_op_x =
       pattern->NewNode(weight_dequantize_linear_op_x_repr())
@@ -3265,6 +3395,8 @@ void patterns::DeleteWeightDequantLinearOpDecoderPattern::operator()() {
   any_op2->LinksFrom({weight_dequantize_linear_op_out});
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void patterns::DeleteQuantDequantLinearOpPattern::operator()() {
   auto quantize_linear_op_x = pattern->NewNode(quantize_linear_op_x_repr())
                                   ->AsInput()
@@ -3802,6 +3934,7 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   return reshape4_out;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::ReverseRollPattern::operator()(PDNode *in) {
   in->AsInput();
   auto reshape2_00_op =
@@ -3952,6 +4085,8 @@ PDNode *patterns::MergeLayernormPattern::operator()(PDNode *in) {
   return layernorm_40_out;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

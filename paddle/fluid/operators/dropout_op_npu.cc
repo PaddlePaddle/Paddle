@@ -23,15 +23,28 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class DropoutNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* seed_tensor =
         ctx.HasInput("Seed") ? ctx.Input<phi::DenseTensor>("Seed") : nullptr;
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* mask = ctx.Output<phi::DenseTensor>("Mask");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* seed_tensor =
+        ctx.HasInput("Seed") ? ctx.Input<Tensor>("Seed") : nullptr;
+    auto* out = ctx.Output<Tensor>("Out");
+    auto* mask = ctx.Output<Tensor>("Mask");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto is_test = ctx.Attr<bool>("is_test");
@@ -54,8 +67,13 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
     // only achieve the default `upscale_in_train` method
     if (!is_test) {
+<<<<<<< HEAD
       phi::DenseTensor tmp_x(x->dtype());
       phi::DenseTensor tmp_out(out->dtype());
+=======
+      Tensor tmp_x(x->dtype());
+      Tensor tmp_out(out->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tmp_x.ShareDataWith(*x);
       tmp_out.ShareDataWith(*out);
       if (x->dims().size() == 1) {
@@ -78,7 +96,11 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
       }
 
+<<<<<<< HEAD
       phi::DenseTensor keep_prob_tensor(x->dtype());
+=======
+      Tensor keep_prob_tensor(x->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       keep_prob_tensor.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&keep_prob_tensor,
                                    static_cast<T>(keep_prob));
@@ -87,14 +109,22 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
       // mask used in `DropOutGenMask` NPU OP is different from
       // the output `Mask`.
+<<<<<<< HEAD
       phi::DenseTensor npu_mask(experimental::DataType::UINT8);
+=======
+      Tensor npu_mask(experimental::DataType::UINT8);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       uint32_t length = (x->numel() + 128 - 1) / 128 * 128;
       npu_mask.Resize(phi::make_ddim({length / 8}));
       npu_mask.mutable_data<uint8_t>(ctx.GetPlace());
 
       // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
       // OP must be a scalar with shape[0]. At present, the shape
+<<<<<<< HEAD
       // of the `prob` phi::DenseTensor of this OP is forced to be set to 0
+=======
+      // of the `prob` Tensor of this OP is forced to be set to 0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // in `npu_op_runner.cc`, which needs to be optimized later.
       NpuOpRunner runner_gen_mask;
       runner_gen_mask.SetType("DropOutGenMask")
@@ -114,7 +144,11 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       runner_dropout.Run(stream);
 
       // cast `out` from float/float16 to bool
+<<<<<<< HEAD
       phi::DenseTensor cast_mask(experimental::DataType::BOOL);
+=======
+      Tensor cast_mask(experimental::DataType::BOOL);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       cast_mask.Resize(mask->dims());
       cast_mask.mutable_data<bool>(ctx.GetPlace());
       auto dst_dtype_bool =
@@ -149,9 +183,15 @@ template <typename DeviceContext, typename T>
 class DropoutGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* mask = ctx.Input<phi::DenseTensor>("Mask");
+=======
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* mask = ctx.Input<Tensor>("Mask");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto is_test = ctx.Attr<bool>("is_test");
@@ -174,7 +214,11 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
     }
 
     // cast mask from uint8 to float32/float16
+<<<<<<< HEAD
     phi::DenseTensor cast_mask(dx->dtype());
+=======
+    Tensor cast_mask(dx->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cast_mask.Resize(mask->dims());
     cast_mask.mutable_data<T>(ctx.GetPlace());
     auto dst_dtype =

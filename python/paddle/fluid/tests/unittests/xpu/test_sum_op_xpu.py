@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test_xpu import XPUOpTest
@@ -28,16 +33,39 @@ from xpu.get_test_cover_info import (
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+=======
+import numpy as np
+from op_test_xpu import XPUOpTest
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op_test import (OpTest,
+                                                  convert_float_to_uint16,
+                                                  convert_uint16_to_float)
+from paddle import _C_ops, _legacy_C_ops
+import op_test
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestSumOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'sum'
         self.use_dynamic_create_class = False
 
     class TestSumOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -69,24 +97,47 @@ class XPUTestSumOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['x0'], 'Out')
 
     class TestSumOp1(TestSumOp):
+<<<<<<< HEAD
         def set_shape(self):
             self.shape = 5
 
     class TestSumOp2(TestSumOp):
+=======
+
+        def set_shape(self):
+            self.shape = (5)
+
+    class TestSumOp2(TestSumOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_shape(self):
             self.shape = (1, 1, 1, 1, 1)
 
     class TestSumOp3(TestSumOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_shape(self):
             self.shape = (10, 5, 7)
 
     class TestSumOp4(TestSumOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_shape(self):
             self.shape = (2, 2, 3, 3)
 
 
 def create_test_sum_fp16_class(parent):
+<<<<<<< HEAD
     class TestSumFp16Case(parent):
+=======
+
+    class TestSumFp16Case(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -102,6 +153,7 @@ def create_test_sum_fp16_class(parent):
 
 
 class API_Test_Add_n(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input0 = fluid.layers.fill_constant(
@@ -110,6 +162,17 @@ class API_Test_Add_n(unittest.TestCase):
             input1 = fluid.layers.fill_constant(
                 shape=[2, 3], dtype='int64', value=3
             )
+=======
+
+    def test_api(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input0 = fluid.layers.fill_constant(shape=[2, 3],
+                                                dtype='int64',
+                                                value=5)
+            input1 = fluid.layers.fill_constant(shape=[2, 3],
+                                                dtype='int64',
+                                                value=3)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
             sum_value = paddle.add_n([input0, input1])
@@ -128,28 +191,50 @@ class API_Test_Add_n(unittest.TestCase):
 
 
 class TestRaiseSumError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         def test_type():
             paddle.add_n([11, 22])
+=======
+
+    def test_errors(self):
+
+        def test_type():
+            fluid.layers.sum([11, 22])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
             data2 = fluid.data(name="input2", shape=[10], dtype="int8")
+<<<<<<< HEAD
             paddle.add_n([data1, data2])
+=======
+            fluid.layers.sum([data1, data2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+<<<<<<< HEAD
             paddle.add_n(data1)
+=======
+            fluid.layers.sum(data1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(TypeError, test_dtype1)
 
 
 class TestRaiseSumsError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
+=======
+
+    def test_errors(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_type():
             fluid.layers.sums([11, 22])
 
@@ -185,7 +270,13 @@ class TestRaiseSumsError(unittest.TestCase):
 
 
 class TestSumOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
+=======
+
+    def test_errors(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_empty_list_input():
             with fluid.dygraph.guard():
                 fluid._legacy_C_ops.sum([])
@@ -198,6 +289,7 @@ class TestSumOpError(unittest.TestCase):
         self.assertRaises(Exception, test_list_of_none_input)
 
 
+<<<<<<< HEAD
 class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
     def setUp(self):
         self.height = 10
@@ -283,6 +375,8 @@ class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
             self.check_with_place(place, True)
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 support_types = get_xpu_op_support_types('sum')
 for stype in support_types:
     create_test_class(globals(), XPUTestSumOp, stype)

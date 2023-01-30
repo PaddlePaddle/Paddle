@@ -169,6 +169,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     // attrs
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
+<<<<<<< HEAD
 
     if (new_desc.HasAttr("begin_norm_axis")) {
       int32_t begin_norm_axis = PADDLE_GET_CONST(
@@ -184,6 +185,10 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
     int32_t hidden_size = layer_norm_scale->Var()->GetShape()[0];
     new_desc.SetAttr("hidden_size", hidden_size);
+=======
+    new_desc.SetAttr("begin_norm_axis",
+                     layer_norm->Op()->GetAttr("begin_norm_axis"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
 
@@ -220,14 +225,22 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
             "trt_embedding_eltwise_layernorm_fuse_pass, "
             "trt_multihead_matmul_fuse_pass. please use no_varseqlen"));
       }
+<<<<<<< HEAD
     } else if (!use_varseqlen && pos_id == "") {
+=======
+    } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
                                   "use_varseqlen, set pos_id, set "
                                   "mask_id. Or not use varseqlen, do not set "
+<<<<<<< HEAD
                                   "pos_id. Please "
+=======
+                                  "pos_id, set mask_id. Please "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                   "reconfig"));
     }
   }

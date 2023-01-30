@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import shutil
 import tempfile
@@ -25,11 +26,31 @@ from paddle.distributed.fleet import auto
 from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
+=======
+import unittest
+import tempfile
+import shutil
+import time
+import random
+
+import paddle
+import paddle.vision.transforms as T
+
+from paddle.static import InputSpec
+from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.callbacks import config_callbacks
+from paddle.vision.models import LeNet
+from paddle.vision.datasets import MNIST
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestCallbacks(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
 
@@ -49,6 +70,7 @@ class TestCallbacks(unittest.TestCase):
         engine = auto.Engine(LeNet(), strategy=strategy)
         engine.prepare(inputs_spec, mode="predict")
 
+<<<<<<< HEAD
         cbks = config_callbacks(
             engine=engine,
             batch_size=128,
@@ -59,6 +81,16 @@ class TestCallbacks(unittest.TestCase):
             metrics=['loss', 'acc'],
             save_dir=self.save_dir,
         )
+=======
+        cbks = config_callbacks(engine=engine,
+                                batch_size=128,
+                                epochs=epochs,
+                                steps=steps,
+                                log_freq=freq,
+                                verbose=self.verbose,
+                                metrics=['loss', 'acc'],
+                                save_dir=self.save_dir)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         cbks.on_begin('train')
 
         logs = {'loss': 50.341673, 'acc': 0.00256}
@@ -119,6 +151,10 @@ class TestCallbacks(unittest.TestCase):
 
 
 class TestCallbacksEngine(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
         transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
@@ -135,17 +171,26 @@ class TestCallbacksEngine(unittest.TestCase):
         base_lr = 1e-3
         boundaries = [5, 8]
         values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+<<<<<<< HEAD
         lr = paddle.optimizer.lr.PiecewiseDecay(
             boundaries=boundaries, values=values, verbose=False
         )
         optimizer = paddle.optimizer.Adam(
             learning_rate=lr, parameters=model.parameters()
         )
+=======
+        lr = paddle.optimizer.lr.PiecewiseDecay(boundaries=boundaries,
+                                                values=values,
+                                                verbose=False)
+        optimizer = paddle.optimizer.Adam(learning_rate=lr,
+                                          parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto.fetch(model.parameters()[0], "param0", logging=True)
         metrics = paddle.metric.Accuracy(topk=(1, 2))
         self.engine = auto.Engine(model, loss, optimizer, metrics)
 
     def test_fit_eval(self):
+<<<<<<< HEAD
         history = self.engine.fit(
             train_data=self.train_dataset,
             valid_data=self.test_dataset,
@@ -168,6 +213,29 @@ class TestCallbacksEngine(unittest.TestCase):
         self.engine.predict(
             test_data=self.test_dataset, batch_size=128, callbacks=[logger_cbks]
         )
+=======
+        history = self.engine.fit(train_data=self.train_dataset,
+                                  valid_data=self.test_dataset,
+                                  batch_size=128,
+                                  steps_per_epoch=60,
+                                  valid_steps=40,
+                                  log_freq=20,
+                                  save_dir=self.save_dir,
+                                  save_freq=1)
+        print(history.history)
+
+    def test_eval(self):
+        self.engine.evaluate(valid_data=self.test_dataset,
+                             batch_size=128,
+                             steps=40,
+                             log_freq=10)
+
+    def test_predict(self):
+        logger_cbks = paddle.callbacks.ProgBarLogger()
+        self.engine.predict(test_data=self.test_dataset,
+                            batch_size=128,
+                            callbacks=[logger_cbks])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

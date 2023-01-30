@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 
@@ -23,6 +26,10 @@ paddle.enable_static()
 
 
 class TestIpuShard(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _test(self):
         # build graph
         main_prog = paddle.static.Program()
@@ -59,12 +66,23 @@ class TestIpuShard(unittest.TestCase):
     def test_ipu_shard(self):
         ipu_index_list = self._test()
         expected_ipu_index_list = [1, 2, 3, 1, 2, 1, 2]
+<<<<<<< HEAD
         np.testing.assert_allclose(
             ipu_index_list, expected_ipu_index_list, rtol=1e-05, atol=0
         )
 
 
 class TestIpuPipeline(unittest.TestCase):
+=======
+        np.testing.assert_allclose(ipu_index_list,
+                                   expected_ipu_index_list,
+                                   rtol=1e-05,
+                                   atol=0)
+
+
+class TestIpuPipeline(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _test(self):
         # build graph
         main_prog = paddle.static.Program()
@@ -102,9 +120,16 @@ class TestIpuPipeline(unittest.TestCase):
         ipu_index_list = self._test()
         expected_ipu_index_list = [1, 2, 3, 1, 2, 1, 2]
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             ipu_index_list, expected_ipu_index_list, rtol=1e-05, atol=0
         )
+=======
+        np.testing.assert_allclose(ipu_index_list,
+                                   expected_ipu_index_list,
+                                   rtol=1e-05,
+                                   atol=0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

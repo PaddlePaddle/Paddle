@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,10 +24,24 @@ from paddle.fluid.tests.unittests.op_test import (
     OpTestTool,
     convert_float_to_uint16,
 )
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid.core as core
+
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestFlattenOneDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_op_type()
         self.init_test_case()
@@ -54,6 +69,10 @@ class TestFlattenOneDNNOp(OpTest):
 
 
 class TestFlattenOneDNNOp1(TestFlattenOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (3, 2, 2, 10)
         self.axis = 0
@@ -61,6 +80,10 @@ class TestFlattenOneDNNOp1(TestFlattenOneDNNOp):
 
 
 class TestFlattenOneDNNOpSixDims(TestFlattenOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4
@@ -68,23 +91,41 @@ class TestFlattenOneDNNOpSixDims(TestFlattenOneDNNOp):
 
 
 class TestFlatten2OneDNNOp(TestFlattenOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_type(self):
         self.op_type = "flatten2"
 
 
 class TestFlatten2OneDNNOp1(TestFlattenOneDNNOp1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_type(self):
         self.op_type = "flatten2"
 
 
 class TestFlatten2OneDNNOpSixDims(TestFlattenOneDNNOpSixDims):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_type(self):
         self.op_type = "flatten2"
 
 
 #   BF16 TESTS
 def create_flatten_bf16_test_classes(parent):
+<<<<<<< HEAD
     class TestFlatten2BF16OneDNNOp(parent):
+=======
+
+    class TestFlatten2BF16OneDNNOp(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_inputs(self):
             self.dtype = np.uint16
             self.inputs = {
@@ -96,6 +137,7 @@ def create_flatten_bf16_test_classes(parent):
             self.dx = np.reshape(self.dout, self.ori_shape)
 
         def test_check_output(self):
+<<<<<<< HEAD
             self.check_output_with_place(
                 core.CPUPlace(), no_check_set=["XShape"]
             )
@@ -109,12 +151,27 @@ def create_flatten_bf16_test_classes(parent):
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[self.dout],
             )
+=======
+            self.check_output_with_place(core.CPUPlace(),
+                                         no_check_set=["XShape"])
+
+        def test_check_grad(self):
+            self.calculate_grads()
+            self.check_grad_with_place(core.CPUPlace(), ["X"],
+                                       "Out",
+                                       user_defined_grads=[self.dx],
+                                       user_defined_grad_outputs=[self.dout])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "Flatten2_BF16")
     TestFlatten2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestFlatten2BF16OneDNNOp
 
     class TestFlattenBF16OneDNNOp(parent):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_op_type(self):
             self.dtype = np.uint16
             self.op_type = "flatten"
@@ -138,12 +195,19 @@ def create_flatten_bf16_test_classes(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
+<<<<<<< HEAD
                 core.CPUPlace(),
                 ["X"],
                 "Out",
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
             )
+=======
+                core.CPUPlace(), ["X"],
+                "Out",
+                user_defined_grads=[self.dx],
+                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "Flatten_BF16")
     TestFlattenBF16OneDNNOp.__name__ = cls_name

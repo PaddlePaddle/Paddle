@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -29,6 +30,24 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
     "core is compiled with CUDA which has no BF implementation",
 )
 class TestScaleOpBF16(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+@unittest.skipIf(core.is_compiled_with_cuda(),
+                 "core is compiled with CUDA which has no BF implementation")
+class TestScaleOpBF16(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "scale"
         self.x_fp32 = np.random.random((10, 10)).astype(np.float32)
@@ -51,7 +70,11 @@ class TestScaleOpBF16(OpTest):
             scale = self.attrs['ScaleTensor']
 
         self.out = (self.x_fp32 * scale) + bias
+<<<<<<< HEAD
         self.dx = self.out * scale
+=======
+        self.dx = (self.out * scale)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         self.check_output(check_dygraph=False)
@@ -59,6 +82,7 @@ class TestScaleOpBF16(OpTest):
     def test_check_grad(self):
         self.calculate_grads()
         self.check_grad_with_place(
+<<<<<<< HEAD
             core.CPUPlace(),
             ["X"],
             "Out",
@@ -69,6 +93,17 @@ class TestScaleOpBF16(OpTest):
 
 
 class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
+=======
+            core.CPUPlace(), ["X"],
+            "Out",
+            check_dygraph=False,
+            user_defined_grads=[self.dx],
+            user_defined_grad_outputs=[convert_float_to_uint16(self.out)])
+
+
+class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "scale"
         self.x_fp32 = np.random.random((10, 10)).astype(np.float32)
@@ -79,7 +114,11 @@ class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
             'scale': self.scale,
             'use_mkldnn': True,
             'bias': 0.0,
+<<<<<<< HEAD
             'bias_after_scale': False,
+=======
+            'bias_after_scale': False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.use_mkldnn = True
         self.outputs = {
@@ -88,6 +127,10 @@ class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
 
 
 class TestScaleOpBF16ScaleTensor(TestScaleOpBF16):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "scale"
         self.scale = -2.3
@@ -96,13 +139,21 @@ class TestScaleOpBF16ScaleTensor(TestScaleOpBF16):
         self.scale_tensor = np.array([self.scale]).astype(np.float32)
         self.inputs = {
             'X': self.x_bf16,
+<<<<<<< HEAD
             'ScaleTensor': convert_float_to_uint16(self.scale_tensor),
+=======
+            'ScaleTensor': convert_float_to_uint16(self.scale_tensor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'use_mkldnn': True}
         self.outputs = {'Out': self.x_fp32 * self.scale}
 
 
 class TestScaleOpBF16ScaleTensorNotBiasAfterScale(TestScaleOpBF16):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "scale"
         self.scale = 1.2
@@ -111,12 +162,20 @@ class TestScaleOpBF16ScaleTensorNotBiasAfterScale(TestScaleOpBF16):
         self.scale_tensor = np.array([self.scale]).astype(np.float32)
         self.inputs = {
             'X': self.x_bf16,
+<<<<<<< HEAD
             'ScaleTensor': convert_float_to_uint16(self.scale_tensor),
+=======
+            'ScaleTensor': convert_float_to_uint16(self.scale_tensor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'bias': -1.1,
             'bias_after_scale': False,
+<<<<<<< HEAD
             'use_mkldnn': True,
+=======
+            'use_mkldnn': True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': (self.x_fp32 + self.attrs['bias']) * self.scale}
 

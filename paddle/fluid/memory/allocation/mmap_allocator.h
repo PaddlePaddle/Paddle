@@ -75,12 +75,17 @@ class MemoryMapAllocation : public Allocation {
 
 class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
  public:
+<<<<<<< HEAD
   RefcountedMemoryMapAllocation(void *ptr,
                                 size_t size,
                                 std::string ipc_name,
                                 int flags,
                                 int fd,
                                 int buffer_id = -1);
+=======
+  RefcountedMemoryMapAllocation(
+      void *ptr, size_t size, std::string ipc_name, int flags, int fd);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void incref();
   int decref();
@@ -88,7 +93,10 @@ class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   virtual ~RefcountedMemoryMapAllocation() { close(); }
 
  protected:
+<<<<<<< HEAD
   int buffer_id_ = -1;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void initializeRefercount();
   void resetBaseptr();
 };
@@ -99,8 +107,12 @@ void AllocateMemoryMap(
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
                                       int flags,
+<<<<<<< HEAD
                                       size_t size,
                                       int buffer_id = -1);
+=======
+                                      size_t size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class MemoryMapWriterAllocation : public Allocation {
  public:
@@ -159,6 +171,7 @@ class MemoryMapFdSet {
   std::mutex mtx_;
 };
 
+<<<<<<< HEAD
 class MemoryMapInfo {
  public:
   explicit MemoryMapInfo(int flags,
@@ -221,6 +234,8 @@ class MemoryMapAllocationPool {
   std::mutex mtx_;
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import unittest
 
@@ -22,6 +23,20 @@ from paddle.io import DataLoader, IterableDataset, get_worker_info
 
 
 class RangeIterableDatasetSplit(IterableDataset):
+=======
+from __future__ import division
+
+import math
+import unittest
+import numpy as np
+
+import paddle.fluid as fluid
+from paddle.io import IterableDataset, BatchSampler, DataLoader, get_worker_info
+
+
+class RangeIterableDatasetSplit(IterableDataset):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, start, end):
         self.start = start
         self.end = end
@@ -34,9 +49,13 @@ class RangeIterableDatasetSplit(IterableDataset):
         else:
             per_worker = int(
                 math.ceil(
+<<<<<<< HEAD
                     (self.end - self.start) / float(worker_info.num_workers)
                 )
             )
+=======
+                    (self.end - self.start) / float(worker_info.num_workers)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             worker_id = worker_info.id
             iter_start = self.start + worker_id * per_worker
             iter_end = min(iter_start + per_worker, self.end)
@@ -46,10 +65,15 @@ class RangeIterableDatasetSplit(IterableDataset):
 
 
 class TestDynamicDataLoaderIterSplit(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             dataset = RangeIterableDatasetSplit(0, 10)
+<<<<<<< HEAD
             dataloader = DataLoader(
                 dataset,
                 places=place,
@@ -57,6 +81,13 @@ class TestDynamicDataLoaderIterSplit(unittest.TestCase):
                 batch_size=1,
                 drop_last=True,
             )
+=======
+            dataloader = DataLoader(dataset,
+                                    places=place,
+                                    num_workers=2,
+                                    batch_size=1,
+                                    drop_last=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             rets = []
             for d in dataloader:
@@ -66,6 +97,10 @@ class TestDynamicDataLoaderIterSplit(unittest.TestCase):
 
 
 class RangeIterableDataset(IterableDataset):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, start, end):
         self.start = start
         self.end = end
@@ -76,6 +111,10 @@ class RangeIterableDataset(IterableDataset):
 
 
 class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
@@ -88,13 +127,18 @@ class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
                 start = dataset.start
                 end = dataset.end
                 num_per_worker = int(
+<<<<<<< HEAD
                     math.ceil((end - start) / float(worker_info.num_workers))
                 )
+=======
+                    math.ceil((end - start) / float(worker_info.num_workers)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 worker_id = worker_info.id
                 dataset.start = start + worker_id * num_per_worker
                 dataset.end = min(dataset.start + num_per_worker, end)
 
+<<<<<<< HEAD
             dataloader = DataLoader(
                 dataset,
                 places=place,
@@ -103,6 +147,14 @@ class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
                 drop_last=True,
                 worker_init_fn=worker_spliter,
             )
+=======
+            dataloader = DataLoader(dataset,
+                                    places=place,
+                                    num_workers=1,
+                                    batch_size=1,
+                                    drop_last=True,
+                                    worker_init_fn=worker_spliter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             rets = []
             for d in dataloader:

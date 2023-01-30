@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test_xpu import XPUOpTest
@@ -31,12 +36,32 @@ from paddle.fluid.op import Operator
 
 
 class XPUTestAdamOp(XPUOpTestWrapper):
+=======
+import numpy as np
+from op_test import OpTest
+from paddle.fluid import core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+import paddle
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+
+class XPUTestAdamOp(XPUOpTestWrapper):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'adam'
         self.use_dynamic_create_class = False
 
     class TestAdamOp(XPUOpTest):
+<<<<<<< HEAD
         '''Test Adam Op with supplied attributes'''
+=======
+        '''Test Adam Op with supplied attributes
+        '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def setUp(self):
             self.init_dtype()
@@ -48,6 +73,7 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.set_shape()
             self.set_inputs()
             self.set_steps()
+<<<<<<< HEAD
             param_out, moment1_out, moment2_out = adam_step(
                 self.inputs, self.attrs
             )
@@ -60,6 +86,22 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                 * self.beta1,
                 'Beta2PowOut': np.array([self.beta2_pow]).astype("float32")
                 * self.beta2,
+=======
+            param_out, moment1_out, \
+                moment2_out = adam_step(self.inputs, self.attrs)
+
+            self.outputs = {
+                'Moment1Out':
+                moment1_out,
+                'Moment2Out':
+                moment2_out,
+                'ParamOut':
+                param_out,
+                'Beta1PowOut':
+                np.array([self.beta1_pow]).astype("float32") * self.beta1,
+                'Beta2PowOut':
+                np.array([self.beta2_pow]).astype("float32") * self.beta2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def set_xpu(self):
@@ -74,7 +116,11 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.attrs = {
                 'epsilon': self.epsilon,
                 'beta1': self.beta1,
+<<<<<<< HEAD
                 'beta2': self.beta2,
+=======
+                'beta2': self.beta2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def set_data(self):
@@ -104,18 +150,30 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                 'Grad': grad,
                 'Moment1': moment1,
                 'Moment2': moment2,
+<<<<<<< HEAD
                 'LearningRate': np.array([self.learning_rate]).astype(
                     "float32"
                 ),
                 'Beta1Pow': np.array([self.beta1_pow]).astype("float32"),
                 'Beta2Pow': np.array([self.beta2_pow]).astype("float32"),
+=======
+                'LearningRate':
+                np.array([self.learning_rate]).astype("float32"),
+                'Beta1Pow': np.array([self.beta1_pow]).astype("float32"),
+                'Beta2Pow': np.array([self.beta2_pow]).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def test_check_output(self):
             self.check_output_with_place(place=paddle.XPUPlace(0), atol=1e-2)
 
     class TestAdamOp2(TestAdamOp):
+<<<<<<< HEAD
         '''Test Adam Op with supplied attributes'''
+=======
+        '''Test Adam Op with supplied attributes
+        '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def set_data(self):
             self.beta1 = 0.9
@@ -124,25 +182,45 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.epsilon = 1e-8
 
     class TestAdamOp3(TestAdamOp2):
+<<<<<<< HEAD
         '''Test Adam Op with supplied attributes'''
+=======
+        '''Test Adam Op with supplied attributes
+        '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def set_shape(self):
             self.shape = (101, 47)
 
     class TestAdamOp4(TestAdamOp2):
+<<<<<<< HEAD
         '''Test Adam Op with supplied attributes'''
+=======
+        '''Test Adam Op with supplied attributes
+        '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def set_shape(self):
             self.shape = (512, 26)
 
     class TestAdamOp5(TestAdamOp2):
+<<<<<<< HEAD
         '''Test Adam Op with supplied attributes'''
+=======
+        '''Test Adam Op with supplied attributes
+        '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def set_shape(self):
             self.shape = (11, 1)
 
     class TestAdamOp6(TestAdamOp2):
+<<<<<<< HEAD
         '''Test Adam Op with beta as Variable'''
+=======
+        '''Test Adam Op with beta as Variable
+        '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def set_shape(self):
             self.shape = (10, 10)
@@ -154,7 +232,12 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.epsilon = 1e-8
 
     class TestAdamOp7(TestAdamOp):
+<<<<<<< HEAD
         '''Test Adam Op with float16 accuracy'''
+=======
+        '''Test Adam Op with float16 accuracy
+        '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def setUp(self):
             self.init_dtype()
@@ -166,6 +249,7 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.set_shape()
             self.set_inputs()
             self.set_steps()
+<<<<<<< HEAD
             param_out, moment1_out, moment2_out = adam_step(
                 self.inputs, self.attrs
             )
@@ -178,6 +262,22 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                 * self.beta1,
                 'Beta2PowOut': np.array([self.beta2_pow]).astype("float16")
                 * self.beta2,
+=======
+            param_out, moment1_out, \
+                moment2_out = adam_step(self.inputs, self.attrs)
+
+            self.outputs = {
+                'Moment1Out':
+                moment1_out,
+                'Moment2Out':
+                moment2_out,
+                'ParamOut':
+                param_out,
+                'Beta1PowOut':
+                np.array([self.beta1_pow]).astype("float16") * self.beta1,
+                'Beta2PowOut':
+                np.array([self.beta2_pow]).astype("float16") * self.beta2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def set_inputs(self):
@@ -195,6 +295,7 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                 'Grad': grad,
                 'Moment1': moment1,
                 'Moment2': moment2,
+<<<<<<< HEAD
                 'LearningRate': np.array([self.learning_rate]).astype(
                     "float16"
                 ),
@@ -204,15 +305,31 @@ class XPUTestAdamOp(XPUOpTestWrapper):
 
     class TestAdamOpMultipleSteps(TestAdamOp2):
         '''Test Adam Operator with supplied attributes'''
+=======
+                'LearningRate':
+                np.array([self.learning_rate]).astype("float16"),
+                'Beta1Pow': np.array([self.beta1_pow]).astype("float16"),
+                'Beta2Pow': np.array([self.beta2_pow]).astype("float16")
+            }
+
+    class TestAdamOpMultipleSteps(TestAdamOp2):
+        '''Test Adam Operator with supplied attributes
+        '''
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def set_steps(self):
             self.num_steps = 10
 
         def test_check_output(self):
             for _ in range(self.num_steps):
+<<<<<<< HEAD
                 param_out, moment1_out, moment2_out = adam_step(
                     self.inputs, self.attrs
                 )
+=======
+                param_out, moment1_out, \
+                    moment2_out = adam_step(self.inputs, self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 beta1_pow_out = self.inputs['Beta1Pow'] * self.beta1
                 beta2_pow_out = self.inputs['Beta2Pow'] * self.beta2
@@ -221,6 +338,7 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                     'Moment2Out': moment2_out,
                     'ParamOut': param_out,
                     'Beta1PowOut': beta1_pow_out,
+<<<<<<< HEAD
                     'Beta2PowOut': beta2_pow_out,
                 }
 
@@ -228,6 +346,14 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                 self.check_output_with_place(
                     place=paddle.XPUPlace(0), atol=1e-2
                 )
+=======
+                    'Beta2PowOut': beta2_pow_out
+                }
+
+                # Verify output for this step
+                self.check_output_with_place(place=paddle.XPUPlace(0),
+                                             atol=1e-2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 # Output of this step becomes input for next step
                 self.inputs['Param'] = param_out
@@ -240,8 +366,12 @@ class XPUTestAdamOp(XPUOpTestWrapper):
 
                 # Randomize gradient for next step
                 self.inputs['Grad'] = np.random.uniform(
+<<<<<<< HEAD
                     -1, 1, (102, 105)
                 ).astype("float32")
+=======
+                    -1, 1, (102, 105)).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def adam_step(inputs, attributes):
@@ -278,9 +408,14 @@ def adam_step(inputs, attributes):
     return param_out, moment1_out, moment2_out
 
 
+<<<<<<< HEAD
 def adam_step_sparse(
     inputs, attributes, height, rows, row_numel, np_grad, lazy_mode
 ):
+=======
+def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
+                     lazy_mode):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     '''
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
@@ -305,6 +440,7 @@ def adam_step_sparse(
     param_out = np.zeros(shape=[height, row_numel])
 
     def update_row(row_id, update_value):
+<<<<<<< HEAD
         moment1_out[row_id] = (
             beta1 * moment1[row_id] + (1 - beta1) * update_value
         )
@@ -315,6 +451,15 @@ def adam_step_sparse(
         param_out[row_id] = param[row_id] - lr_t * (
             moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon)
         )
+=======
+        moment1_out[row_id] = beta1 * moment1[row_id] + (1 -
+                                                         beta1) * update_value
+        moment2_out[row_id] = beta2 * moment2[row_id] + (
+            1 - beta2) * np.square(update_value)
+        lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
+        param_out[row_id] = param[row_id] - lr_t * (
+            moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if lazy_mode:
         for idx, row_id in enumerate(rows):
@@ -330,6 +475,10 @@ def adam_step_sparse(
 
 
 class TestSparseAdamOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setup(self, scope, place, lazy_mode):
         beta1 = 0.78
         beta2 = 0.836
@@ -348,14 +497,22 @@ class TestSparseAdamOp(unittest.TestCase):
             "Moment2": np.full((height, row_numel), 5.0).astype("float32"),
             'Beta1Pow': beta1_pow,
             'Beta2Pow': beta2_pow,
+<<<<<<< HEAD
             "LearningRate": np.full((1), 2.0).astype("float32"),
+=======
+            "LearningRate": np.full((1), 2.0).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.init_output = np.full((height, row_numel), 0.0).astype("float32")
         self.attrs = {
             'epsilon': epsilon,
             'beta1': beta1,
             'beta2': beta2,
+<<<<<<< HEAD
             'min_row_size_to_use_multithread': 2,
+=======
+            'min_row_size_to_use_multithread': 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
@@ -370,6 +527,7 @@ class TestSparseAdamOp(unittest.TestCase):
 
         self.sparse_inputs = ["Grad"]
 
+<<<<<<< HEAD
         param_out, mom1, mom2 = adam_step_sparse(
             self.dense_inputs,
             self.attrs,
@@ -379,12 +537,21 @@ class TestSparseAdamOp(unittest.TestCase):
             np_array,
             lazy_mode,
         )
+=======
+        param_out, mom1, mom2 = adam_step_sparse(self.dense_inputs, self.attrs,
+                                                 height, rows, row_numel,
+                                                 np_array, lazy_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.outputs = {
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2,
             'Beta1PowOut': beta1_pow * beta1,
+<<<<<<< HEAD
             'Beta2PowOut': beta2_pow * beta2,
+=======
+            'Beta2PowOut': beta2_pow * beta2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def check_with_place(self, place, lazy_mode):
@@ -427,6 +594,10 @@ class TestSparseAdamOp(unittest.TestCase):
 
 
 class TestSparseAdamOp1(TestSparseAdamOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setup(self, scope, place, lazy_mode):
         beta1 = 0.78
         beta2 = 0.836
@@ -445,14 +616,22 @@ class TestSparseAdamOp1(TestSparseAdamOp):
             "Moment2": np.full((height, row_numel), 5.0).astype("float16"),
             'Beta1Pow': beta1_pow,
             'Beta2Pow': beta2_pow,
+<<<<<<< HEAD
             "LearningRate": np.full((1), 2.0).astype("float16"),
+=======
+            "LearningRate": np.full((1), 2.0).astype("float16")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.init_output = np.full((height, row_numel), 0.0).astype("float16")
         self.attrs = {
             'epsilon': epsilon,
             'beta1': beta1,
             'beta2': beta2,
+<<<<<<< HEAD
             'min_row_size_to_use_multithread': 2,
+=======
+            'min_row_size_to_use_multithread': 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
@@ -467,6 +646,7 @@ class TestSparseAdamOp1(TestSparseAdamOp):
 
         self.sparse_inputs = ["Grad"]
 
+<<<<<<< HEAD
         param_out, mom1, mom2 = adam_step_sparse(
             self.dense_inputs,
             self.attrs,
@@ -476,12 +656,21 @@ class TestSparseAdamOp1(TestSparseAdamOp):
             np_array,
             lazy_mode,
         )
+=======
+        param_out, mom1, mom2 = adam_step_sparse(self.dense_inputs, self.attrs,
+                                                 height, rows, row_numel,
+                                                 np_array, lazy_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.outputs = {
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2,
             'Beta1PowOut': beta1_pow * beta1,
+<<<<<<< HEAD
             'Beta2PowOut': beta2_pow * beta2,
+=======
+            'Beta2PowOut': beta2_pow * beta2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 

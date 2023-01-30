@@ -22,8 +22,15 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+=======
+#include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -31,7 +38,10 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/softmax.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace phi {
@@ -281,7 +291,10 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_HIP
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -289,6 +302,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
+<<<<<<< HEAD
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
@@ -309,3 +323,5 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    phi::dtype::float16) {}
 #endif
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

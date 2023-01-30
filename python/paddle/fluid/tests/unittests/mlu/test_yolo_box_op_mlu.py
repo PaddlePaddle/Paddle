@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import division
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
@@ -23,6 +27,10 @@ from paddle.fluid import core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
+<<<<<<< HEAD
+=======
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 

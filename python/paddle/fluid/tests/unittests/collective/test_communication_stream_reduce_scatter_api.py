@@ -13,19 +13,33 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+import paddle
+import itertools
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import test_communication_api_base as test_base
 
 
 class TestCommunicationStreamReduceScatterAPI(
+<<<<<<< HEAD
     test_base.CommunicationTestDistBase
 ):
     def setUp(self):
         super().setUp(num_of_devices=2, timeout=120)
+=======
+        test_base.CommunicationTestDistBase):
+
+    def setUp(self):
+        super(TestCommunicationStreamReduceScatterAPI,
+              self).setUp(num_of_devices=2, timeout=120)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._default_envs = {
             "backend": "nccl",
             "shape": "(100, 200)",
             "dtype": "float32",
+<<<<<<< HEAD
             "seeds": str(self._seeds),
         }
         self._changeable_envs = {
@@ -37,16 +51,35 @@ class TestCommunicationStreamReduceScatterAPI(
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
+=======
+            "seeds": str(self._seeds)
+        }
+        self._changeable_envs = {
+            "sync_op": ["True", "False"],
+            "use_calc_stream": ["True", "False"]
+        }
+
+    def test_reduce_scatter_stream(self):
+        envs_list = test_base.gen_product_envs_list(self._default_envs,
+                                                    self._changeable_envs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for envs in envs_list:
             if eval(envs["use_calc_stream"]) and not eval(envs["sync_op"]):
                 continue
             self.run_test_case(
                 "communication_stream_reduce_scatter_api_dygraph.py",
+<<<<<<< HEAD
                 user_defined_envs=envs,
             )
 
     def tearDown(self):
         super().tearDown()
+=======
+                user_defined_envs=envs)
+
+    def tearDown(self):
+        super(TestCommunicationStreamReduceScatterAPI, self).tearDown()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

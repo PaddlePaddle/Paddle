@@ -54,7 +54,11 @@ y = \frac{x}{ \sqrt{\sum {x^2} + epsion }}
 $$
 
 where, $\sum {x^2}$ is calculated along the `axis` dimension.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
   }
 };

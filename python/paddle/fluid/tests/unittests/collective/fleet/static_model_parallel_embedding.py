@@ -12,12 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import numpy as np
+import argparse
+import time
+import math
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.profiler as profiler
+from paddle.fluid import core
+import unittest
+from multiprocessing import Process
+import os
+import signal
+from functools import reduce
+from test_dist_base import TestDistRunnerBase, runtime_main
+import paddle.distributed.fleet as fleet
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -27,8 +48,13 @@ IN_SIZE = 2 * MODEL_PARALLEL_SIZE
 OUT_SIZE = 2 * MODEL_PARALLEL_SIZE
 
 # Fix seed for test
+<<<<<<< HEAD
 # fluid.default_startup_program().random_seed = 1
 # fluid.default_main_program().random_seed = 1
+=======
+#fluid.default_startup_program().random_seed = 1
+#fluid.default_main_program().random_seed = 1
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def create_model(data, rank):
@@ -36,13 +62,18 @@ def create_model(data, rank):
     np_weight = np.random.uniform(-1, 1, size=(IN_SIZE, OUT_SIZE)).astype(DTYPE)
     if rank is not None:
         start_row = 0 if rank == 0 else IN_SIZE // 2
+<<<<<<< HEAD
         np_weight_part = np_weight[start_row : start_row + IN_SIZE // 2, :]
+=======
+        np_weight_part = np_weight[start_row:start_row + IN_SIZE // 2, :]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         result = paddle.distributed.split(
             data,
             size=(IN_SIZE, OUT_SIZE),
             operation='linear',
             axis=0,
             num_partitions=MODEL_PARALLEL_SIZE,
+<<<<<<< HEAD
             weight_attr=paddle.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     np_weight_part
@@ -57,6 +88,18 @@ def create_model(data, rank):
             weight_attr=paddle.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(np_weight)
             ),
+=======
+            weight_attr=paddle.ParamAttr(initializer=fluid.initializer.
+                                         NumpyArrayInitializer(np_weight_part)),
+            bias_attr=False,
+        )
+    else:
+        result = fluid.layers.fc(
+            data,
+            size=OUT_SIZE,
+            param_attr=paddle.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(np_weight)),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             bias_attr=False,
         )
 
@@ -65,19 +108,32 @@ def create_model(data, rank):
 
 
 class TestModelParallel(TestDistRunnerBase):
+<<<<<<< HEAD
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         data_in = fluid.data(
             name='data_in', shape=[batch_size, IN_SIZE], dtype=DTYPE
         )
+=======
+
+    def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
+        # Input data
+        data_in = fluid.data(name='data_in',
+                             shape=[batch_size, IN_SIZE],
+                             dtype=DTYPE)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if dist_strategy:
             data_loader = fluid.io.DataLoader.from_generator(
                 feed_list=[data_in],
                 capacity=64,
                 use_double_buffer=False,
+<<<<<<< HEAD
                 iterable=False,
             )
+=======
+                iterable=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if dist_strategy:
             fleet.init(is_collective=True)
@@ -90,9 +146,14 @@ class TestModelParallel(TestDistRunnerBase):
         opt = fluid.optimizer.SGD(0.1)
 
         if dist_strategy:
+<<<<<<< HEAD
             dist_opt = fleet.distributed_optimizer(
                 optimizer=opt, strategy=strategy
             )
+=======
+            dist_opt = fleet.distributed_optimizer(optimizer=opt,
+                                                   strategy=strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)

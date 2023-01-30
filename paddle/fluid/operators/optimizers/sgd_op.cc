@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 
 #include <string>
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -28,6 +34,7 @@ class SGDOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
@@ -58,6 +65,47 @@ class SGDOp : public framework::OperatorWithKernel {
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+
+#ifdef PADDLE_WITH_MKLDNN
+    using dnnl::memory;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      const auto *param_var = ctx.InputVar("Param");
+      const auto *grad_var = ctx.InputVar("Grad");
+
+      // supported cases
+      bool dense_param_sparse_grad =
+          param_var->IsType<framework::LoDTensor>() &&
+          grad_var->IsType<phi::SelectedRows>();
+      bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
+                                  grad_var->IsType<framework::LoDTensor>();
+
+      if (dense_param_sparse_grad || dense_param_and_grad)
+        return framework::OpKernelType(data_type,
+                                       ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (var_name == "LearningRate") {
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

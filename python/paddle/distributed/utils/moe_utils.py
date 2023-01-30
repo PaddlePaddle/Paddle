@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _legacy_C_ops
 from paddle.common_ops_import import check_variable_and_dtype
 from paddle.framework import LayerHelper, in_dygraph_mode
@@ -20,6 +21,19 @@ from paddle.framework import LayerHelper, in_dygraph_mode
 def global_scatter(
     x, local_count, global_count, group=None, use_calc_stream=True
 ):
+=======
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle import _legacy_C_ops
+
+
+def global_scatter(x,
+                   local_count,
+                   global_count,
+                   group=None,
+                   use_calc_stream=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     The global_scatter operator distributes the data of x to n_expert * world_size experts according to local_count,
     and then receives data according to global_count. The expert refers to a user-defined expert network,
@@ -70,6 +84,10 @@ def global_scatter(
         .. code-block:: python
 
             # required: distributed
+<<<<<<< HEAD
+=======
+            import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
             from paddle.distributed import init_parallel_env
             init_parallel_env()
@@ -77,6 +95,7 @@ def global_scatter(
             world_size = 2
             d_model = 2
             in_feat = d_model
+<<<<<<< HEAD
             local_input_buf = paddle.to_tensor([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]], \
                                             dtype='float32', stop_gradient=False)
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -85,6 +104,19 @@ def global_scatter(
             else:
                 local_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
                 global_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
+=======
+            local_input_buf = np.array([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]], \
+            dtype=np.float32)
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                local_count = np.array([2, 1, 1, 1])
+                global_count = np.array([2, 1, 1, 1])
+            else:
+                local_count = np.array([1, 1, 2, 1])
+                global_count = np.array([1, 1, 2, 1])
+            local_input_buf = paddle.to_tensor(local_input_buf, dtype="float32", stop_gradient=False)
+            local_count = paddle.to_tensor(local_count, dtype="int64")
+            global_count = paddle.to_tensor(global_count, dtype="int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             a = paddle.distributed.utils.global_scatter(local_input_buf, \
             local_count, global_count)
             a.stop_gradient = False
@@ -102,6 +134,7 @@ def global_scatter(
         return
 
     ring_id = 0 if group is None else group.id
+<<<<<<< HEAD
     if in_dygraph_mode():
         return _legacy_C_ops.global_scatter(
             x,
@@ -126,10 +159,27 @@ def global_scatter(
         check_variable_and_dtype(
             global_count, 'global_count', ['int64'], 'global_scatter'
         )
+=======
+    if _non_static_mode():
+        return _legacy_C_ops.global_scatter(x, local_count, \
+                                    global_count,  \
+                                    'use_calc_stream', use_calc_stream, \
+                                    'ring_id', ring_id)
+    else:
+        op_type = 'global_scatter'
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'global_scatter')
+        check_variable_and_dtype(local_count, 'local_count', ['int64'],
+                                 'global_scatter')
+        check_variable_and_dtype(global_count, 'global_count', ['int64'],
+                                 'global_scatter')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
         helper.append_op(
             type=op_type,
             inputs={
@@ -146,6 +196,27 @@ def global_scatter(
 def global_gather(
     x, local_count, global_count, group=None, use_calc_stream=True
 ):
+=======
+        helper.append_op(type=op_type,
+                         inputs={
+                             'X': [x],
+                             'local_count': [local_count],
+                             'global_count': [global_count],
+                         },
+                         outputs={'Out': [out]},
+                         attrs={
+                             'ring_id': ring_id,
+                             'use_calc_stream': use_calc_stream
+                         })
+        return out
+
+
+def global_gather(x,
+                  local_count,
+                  global_count,
+                  group=None,
+                  use_calc_stream=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     The global_gather operator gathers the data of x into n_expert * world_size experts according to global_count, and then receives data according to local_count.
     The expert refers to a user-defined expert network, n_expert refers to the number of expert networks owned by each card, and world_size refers to the number of graphics cards running the network.
@@ -188,6 +259,10 @@ def global_gather(
         .. code-block:: python
 
             # required: distributed
+<<<<<<< HEAD
+=======
+            import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
             from paddle.distributed import init_parallel_env
             init_parallel_env()
@@ -195,6 +270,7 @@ def global_gather(
             world_size = 2
             d_model = 2
             in_feat = d_model
+<<<<<<< HEAD
             local_input_buf = paddle._to_tensor([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]],\
                                         dtype='float32', stop_gradient=False)
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -204,6 +280,19 @@ def global_gather(
                 local_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
                 global_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
 
+=======
+            local_input_buf = np.array([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]],\
+                                        dtype=np.float32)
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                local_count = np.array([2, 1, 1, 1])
+                global_count = np.array([2, 1, 1, 1])
+            else:
+                local_count = np.array([1, 1, 2, 1])
+                global_count = np.array([1, 1, 2, 1])
+            local_input_buf = paddle.to_tensor(local_input_buf, dtype="float32", stop_gradient=False)
+            local_count = paddle.to_tensor(local_count, dtype="int64")
+            global_count = paddle.to_tensor(global_count, dtype="int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             a = paddle.distributed.utils.global_gather(local_input_buf, local_count, global_count)
             print(a)
             # out for rank 0: [[1, 2], [3, 4], [7, 8], [1, 2], [7, 8]]
@@ -219,6 +308,7 @@ def global_gather(
         return
 
     ring_id = 0 if group is None else group.id
+<<<<<<< HEAD
     if in_dygraph_mode():
         return _legacy_C_ops.global_gather(
             x,
@@ -261,4 +351,36 @@ def global_gather(
                 'use_calc_stream': use_calc_stream,
             },
         )
+=======
+    if _non_static_mode():
+        return _legacy_C_ops.global_gather(x, local_count, \
+                                    global_count, \
+                                    'use_calc_stream', use_calc_stream, \
+                                    'ring_id', ring_id)
+    else:
+        op_type = 'global_gather'
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'global_gather')
+
+        check_variable_and_dtype(local_count, 'local_count', ['int64'],
+                                 'global_gather')
+
+        check_variable_and_dtype(global_count, 'global_count', ['int64'],
+                                 'global_gather')
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(type=op_type,
+                         inputs={
+                             'X': [x],
+                             'local_count': [local_count],
+                             'global_count': [global_count]
+                         },
+                         outputs={'Out': [out]},
+                         attrs={
+                             'ring_id': group,
+                             'use_calc_stream': use_calc_stream,
+                         })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return out

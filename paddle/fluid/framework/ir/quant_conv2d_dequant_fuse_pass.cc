@@ -358,8 +358,13 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph,
         scope,
         platform::errors::InvalidArgument(
             "Scope in QuantDequantFuse pass should not be null."));
+<<<<<<< HEAD
     const phi::DenseTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<phi::DenseTensor>();
+=======
+    const LoDTensor& input_scale_tensor =
+        scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_cpu_place(input_scale_tensor.place()),
         true,
@@ -484,8 +489,13 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
           platform::errors::InvalidArgument(
               "Scales size in channel-wise dequantize op should be 2, got %d.",
               scales_name.size()));
+<<<<<<< HEAD
       const phi::DenseTensor& channel_scale_tensor =
           scope->FindVar(scales_name[0])->Get<phi::DenseTensor>();
+=======
+      const LoDTensor& channel_scale_tensor =
+          scope->FindVar(scales_name[0])->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_EQ(
           paddle::platform::is_cpu_place(channel_scale_tensor.place()),
           true,
@@ -503,8 +513,13 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     }
 
     // Convert weight to fp32 range
+<<<<<<< HEAD
     auto* weight_tensor = scope->Var(quantized_op_weight_node->Name())
                               ->GetMutable<phi::DenseTensor>();
+=======
+    auto* weight_tensor =
+        scope->Var(quantized_op_weight_node->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const auto& w_dims = weight_tensor->dims();
     float* quantized_weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());

@@ -29,6 +29,7 @@ class KronOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
@@ -46,6 +47,28 @@ class KronOp : public framework::OperatorWithKernel {
     } else {
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
+    } else {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };
@@ -60,6 +83,7 @@ class KronOpMaker : public framework::OpProtoAndCheckerMaker {
           Kron Operator.
 
           This operator computes the Kronecker product of two tensors, a
+<<<<<<< HEAD
           composite tensor made of blocks of the second tensor scaled by the
           first.
 
@@ -68,6 +92,16 @@ class KronOpMaker : public framework::OpProtoAndCheckerMaker {
           shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is
           [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is
           [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are
+=======
+          composite tensor made of blocks of the second tensor scaled by the 
+          first.
+
+          This operator assumes that the rank of the two tensors, $X$ and $Y$
+          are the same, if necessary prepending the smallest with ones. If the 
+          shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is 
+          [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is 
+          [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           products of elements from $X$ and $Y$.
 
           The equation is:
@@ -107,14 +141,22 @@ class KronGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto out_grad_name = framework::GradVarName("Out");
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         OperatorWithKernel::IndicateVarDataType(ctx, out_grad_name),
         ctx.GetPlace());
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
@@ -125,6 +167,21 @@ class KronGradOp : public framework::OperatorWithKernel {
     } else {
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
+    } else {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };

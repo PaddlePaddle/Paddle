@@ -22,6 +22,10 @@ from paddle.distributed.fleet.runtime.the_one_ps import Table
 
 
 class TestTable(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_table_tensor(self):
         table = Table()
         table.id = 1001

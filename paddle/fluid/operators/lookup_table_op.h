@@ -26,6 +26,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
@@ -35,8 +40,13 @@ template <typename T>
 class LookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *ids_t = context.Input<phi::DenseTensor>("Ids");      // int tensor
     auto *output_t = context.Output<phi::DenseTensor>("Out");  // float tensor
+=======
+    auto *ids_t = context.Input<LoDTensor>("Ids");      // int tensor
+    auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *table_var = context.InputVar("W");
 
     auto id_name = context.InputNames("Ids").front();
@@ -49,8 +59,13 @@ class LookupTableKernel : public framework::OpKernel<T> {
     int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
     int64_t ids_numel = ids_t->numel();
 
+<<<<<<< HEAD
     if (table_var->IsType<phi::DenseTensor>()) {
       auto *table_t = context.Input<phi::DenseTensor>("W");
+=======
+    if (table_var->IsType<LoDTensor>()) {
+      auto *table_t = context.Input<LoDTensor>("W");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int64_t row_number = table_t->dims()[0];
       int64_t row_width = table_t->dims()[1];
 
@@ -163,15 +178,24 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
+<<<<<<< HEAD
     if (table_var->IsType<phi::DenseTensor>()) {
       table_dim = context.Input<phi::DenseTensor>("W")->dims();
+=======
+    if (table_var->IsType<LoDTensor>()) {
+      table_dim = context.Input<LoDTensor>("W")->dims();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else if (table_var->IsType<phi::SelectedRows>()) {
       auto *table_t = context.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The parameter W of a LookupTable "
+<<<<<<< HEAD
           "must be either phi::DenseTensor or SelectedRows"));
+=======
+          "must be either LoDTensor or SelectedRows"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
@@ -179,9 +203,14 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
+<<<<<<< HEAD
       auto *ids = context.Input<phi::DenseTensor>("Ids");
       auto *d_output =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+      auto *ids = context.Input<LoDTensor>("Ids");
+      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto *d_table =
           context.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
@@ -215,11 +244,17 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
                             d_output_dims_2d));
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
     } else {
+<<<<<<< HEAD
       auto *ids = context.Input<phi::DenseTensor>("Ids");
       auto *d_output =
           context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto *d_table =
           context.Output<phi::DenseTensor>(framework::GradVarName("W"));
+=======
+      auto *ids = context.Input<LoDTensor>("Ids");
+      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *d_table = context.Output<LoDTensor>(framework::GradVarName("W"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       auto *ids_data = ids->data<int64_t>();
 

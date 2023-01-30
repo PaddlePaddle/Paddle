@@ -12,20 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from unittest import TestCase
 
 import paddle
+=======
+import paddle
+from unittest import TestCase
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def create_model():
     hidden_size = 32
+<<<<<<< HEAD
     bilstm = paddle.nn.LSTM(
         hidden_size, hidden_size, num_layers=1, direction='bidirectional'
     )
+=======
+    bilstm = paddle.nn.LSTM(hidden_size,
+                            hidden_size,
+                            num_layers=1,
+                            direction='bidirectional')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return bilstm
 
 
 class TestRNNProgramClone(TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
 

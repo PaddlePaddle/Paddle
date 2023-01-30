@@ -12,15 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import ast
+=======
+from __future__ import print_function
+
+import ast
+from paddle.utils import gast
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 import textwrap
 import unittest
 
+<<<<<<< HEAD
 from paddle.utils import gast
 
 
 class GastNodeTransformer(gast.NodeTransformer):
+=======
+
+class GastNodeTransformer(gast.NodeTransformer):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, root):
         self.root = root
 
@@ -122,6 +135,10 @@ def code_ast(source):
 
 
 class TestPythonCompatibility(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _check_compatibility(self, source, target):
         source_dump = code_gast_ast(source)
         target_dump = code_ast(target)

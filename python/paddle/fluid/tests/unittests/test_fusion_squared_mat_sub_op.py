@@ -12,13 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from op_test import OpTest
 
 
 class TestFusionSquaredMatSubOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'fusion_squared_mat_sub'
         self.m = 11
@@ -31,8 +41,13 @@ class TestFusionSquaredMatSubOp(OpTest):
 
         self.inputs = {'X': matx, 'Y': maty}
         self.outputs = {
+<<<<<<< HEAD
             'Out': (np.dot(matx, maty) ** 2 - np.dot(matx**2, maty**2))
             * self.scalar
+=======
+            'Out':
+            (np.dot(matx, maty)**2 - np.dot(matx**2, maty**2)) * self.scalar
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'scalar': self.scalar,
@@ -46,6 +61,10 @@ class TestFusionSquaredMatSubOp(OpTest):
 
 
 class TestFusionSquaredMatSubOpCase1(TestFusionSquaredMatSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.scalar = -0.3
 

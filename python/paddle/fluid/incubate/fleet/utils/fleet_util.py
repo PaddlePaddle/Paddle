@@ -32,14 +32,24 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 
 __all__ = ["FleetUtil", "GPUPSUtil"]
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s %(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s %(levelname)s: %(message)s')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 fleet = None
 
 
+<<<<<<< HEAD
 class FleetUtil:
+=======
+class FleetUtil(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     FleetUtil provides some common functions for users' convenience.
 
@@ -57,6 +67,7 @@ class FleetUtil:
         op_maker = core.op_proto_and_checker_maker
         self.op_role_key = op_maker.kOpRoleAttrName()
         if mode == "pslib":
+<<<<<<< HEAD
             from paddle.fluid.incubate.fleet.parameter_server.pslib import (
                 fleet as fleet_pslib,
             )
@@ -72,6 +83,16 @@ class FleetUtil:
             raise ValueError(
                 "Please choose one mode from [\"pslib\", \"transpiler\"]"
             )
+=======
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet_pslib
+            fleet = fleet_pslib
+        elif mode == "transpiler":
+            from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
+            fleet = fleet_transpiler
+        else:
+            raise ValueError(
+                "Please choose one mode from [\"pslib\", \"transpiler\"]")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def rank0_print(self, s):
         """
@@ -131,6 +152,7 @@ class FleetUtil:
             return
         _logger.error(s)
 
+<<<<<<< HEAD
     def set_zero(
         self,
         var_name,
@@ -138,6 +160,13 @@ class FleetUtil:
         place=fluid.CPUPlace(),
         param_type="int64",
     ):
+=======
+    def set_zero(self,
+                 var_name,
+                 scope=fluid.global_scope(),
+                 place=fluid.CPUPlace(),
+                 param_type="int64"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         Set tensor of a Variable to zero.
 
@@ -159,6 +188,7 @@ class FleetUtil:
         param_array = np.zeros(param._get_dims()).astype(param_type)
         param.set(param_array, place)
 
+<<<<<<< HEAD
     def print_global_auc(
         self,
         scope=fluid.global_scope(),
@@ -166,6 +196,13 @@ class FleetUtil:
         stat_neg="_generated_var_3",
         print_prefix="",
     ):
+=======
+    def print_global_auc(self,
+                         scope=fluid.global_scope(),
+                         stat_pos="_generated_var_2",
+                         stat_neg="_generated_var_3",
+                         print_prefix=""):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         r"""
         Print global auc of all distributed workers.
 
@@ -185,6 +222,7 @@ class FleetUtil:
 
               # below is part of model
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
+<<<<<<< HEAD
               similarity_norm = fluid.layers.sigmoid(paddle.clip(\
                   emb, min=-15.0, max=15.0), name="similarity_norm")\
               binary_predict = fluid.layers.concat(input=[\
@@ -193,6 +231,16 @@ class FleetUtil:
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
                   stat_neg] = paddle.static.auc(input=binary_predict,\
+=======
+              similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(\
+                  emb, min=-15.0, max=15.0), name="similarity_norm")\
+              binary_predict = fluid.layers.concat(input=[\
+                  fluid.layers.elementwise_sub(\
+                      fluid.layers.ceil(similarity_norm), similarity_norm),\
+                  similarity_norm], axis=1)
+              auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
+                  stat_neg] = fluid.layers.auc(input=binary_predict,\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
 
@@ -200,12 +248,19 @@ class FleetUtil:
         auc_value = self.get_global_auc(scope, stat_pos, stat_neg)
         self.rank0_print(print_prefix + " global auc = %s" % auc_value)
 
+<<<<<<< HEAD
     def get_global_auc(
         self,
         scope=fluid.global_scope(),
         stat_pos="_generated_var_2",
         stat_neg="_generated_var_3",
     ):
+=======
+    def get_global_auc(self,
+                       scope=fluid.global_scope(),
+                       stat_pos="_generated_var_2",
+                       stat_neg="_generated_var_3"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         Get global auc of all distributed workers.
 
@@ -337,6 +392,7 @@ class FleetUtil:
         """
         fleet.save_persistables(None, path, mode=mode)
 
+<<<<<<< HEAD
     def _get_xbox_str(
         self,
         output_path,
@@ -348,6 +404,17 @@ class FleetUtil:
         monitor_data={},
         mode="patch",
     ):
+=======
+    def _get_xbox_str(self,
+                      output_path,
+                      day,
+                      model_path,
+                      xbox_base_key,
+                      data_path,
+                      hadoop_fs_name,
+                      monitor_data={},
+                      mode="patch"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         xbox_dict = collections.OrderedDict()
         if mode == "base":
             xbox_dict["id"] = str(xbox_base_key)
@@ -359,7 +426,11 @@ class FleetUtil:
             xbox_dict["id"] = str(int(time.time()))
         xbox_dict["key"] = str(xbox_base_key)
         if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
+<<<<<<< HEAD
             model_path = model_path[model_path.find(":") + 1 :]
+=======
+            model_path = model_path[model_path.find(":") + 1:]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         xbox_dict["input"] = hadoop_fs_name + model_path.rstrip("/") + "/000"
         xbox_dict["record_count"] = "111111"
         xbox_dict["partition_type"] = "2"
@@ -375,6 +446,7 @@ class FleetUtil:
         xbox_dict["job_id"] = job_id_with_host
         # currently hard code here, set monitor_data empty string
         xbox_dict["monitor_data"] = ""
+<<<<<<< HEAD
         xbox_dict["monitor_path"] = (
             output_path.rstrip("/") + "/monitor/" + day + ".txt"
         )
@@ -392,6 +464,22 @@ class FleetUtil:
         hadoop_home="$HADOOP_HOME",
         donefile_name="donefile.txt",
     ):
+=======
+        xbox_dict["monitor_path"] = output_path.rstrip("/") + "/monitor/" \
+                                    + day + ".txt"
+        xbox_dict["mpi_size"] = str(fleet.worker_num())
+        return json.dumps(xbox_dict)
+
+    def write_model_donefile(self,
+                             output_path,
+                             day,
+                             pass_id,
+                             xbox_base_key,
+                             hadoop_fs_name,
+                             hadoop_fs_ugi,
+                             hadoop_home="$HADOOP_HOME",
+                             donefile_name="donefile.txt"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         write donefile when save model
 
@@ -432,6 +520,7 @@ class FleetUtil:
 
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
+<<<<<<< HEAD
             content = "%s\t%lu\t%s\t%s\t%d" % (
                 day,
                 xbox_base_key,
@@ -442,6 +531,13 @@ class FleetUtil:
             configs = {
                 "fs.default.name": hadoop_fs_name,
                 "hadoop.job.ugi": hadoop_fs_ugi,
+=======
+            content  = "%s\t%lu\t%s\t%s\t%d" % (day, xbox_base_key,\
+                                                model_path, pass_id, 0)
+            configs = {
+                "fs.default.name": hadoop_fs_name,
+                "hadoop.job.ugi": hadoop_fs_ugi
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             client = HDFSClient(hadoop_home, configs)
             if client.is_file(donefile_path):
@@ -451,9 +547,14 @@ class FleetUtil:
                 pass_list = [i.split("\t")[3] for i in pre_content_list]
                 exist = False
                 for i in range(len(day_list)):
+<<<<<<< HEAD
                     if int(day) == int(day_list[i]) and int(pass_id) == int(
                         pass_list[i]
                     ):
+=======
+                    if int(day) == int(day_list[i]) and \
+                            int(pass_id) == int(pass_list[i]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         exist = True
                         break
                 if not exist:
@@ -462,6 +563,7 @@ class FleetUtil:
                         f.write(content + "\n")
                     client.delete(donefile_path)
                     client.upload(donefile_name, output_path)
+<<<<<<< HEAD
                     self.rank0_error(
                         "write %s/%s %s succeed" % (day, pass_id, donefile_name)
                     )
@@ -470,10 +572,18 @@ class FleetUtil:
                         "not write %s because %s/%s already "
                         "exists" % (donefile_name, day, pass_id)
                     )
+=======
+                    self.rank0_error("write %s/%s %s succeed" % \
+                                      (day, pass_id, donefile_name))
+                else:
+                    self.rank0_error("not write %s because %s/%s already "
+                                     "exists" % (donefile_name, day, pass_id))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
                 client.upload(donefile_name, output_path)
+<<<<<<< HEAD
                 self.rank0_error(
                     "write %s/%s %s succeed" % (day, pass_id, donefile_name)
                 )
@@ -492,6 +602,23 @@ class FleetUtil:
         hadoop_home="$HADOOP_HOME",
         donefile_name=None,
     ):
+=======
+                self.rank0_error("write %s/%s %s succeed" % \
+                               (day, pass_id, donefile_name))
+        fleet._role_maker._barrier_worker()
+
+    def write_xbox_donefile(self,
+                            output_path,
+                            day,
+                            pass_id,
+                            xbox_base_key,
+                            data_path,
+                            hadoop_fs_name,
+                            hadoop_fs_ugi,
+                            monitor_data={},
+                            hadoop_home="$HADOOP_HOME",
+                            donefile_name=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         write delta donefile or xbox base donefile
 
@@ -548,6 +675,7 @@ class FleetUtil:
 
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
+<<<<<<< HEAD
             xbox_str = self._get_xbox_str(
                 output_path,
                 day,
@@ -561,6 +689,14 @@ class FleetUtil:
             configs = {
                 "fs.default.name": hadoop_fs_name,
                 "hadoop.job.ugi": hadoop_fs_ugi,
+=======
+            xbox_str = self._get_xbox_str(output_path, day, model_path, \
+                    xbox_base_key, data_path, hadoop_fs_name, monitor_data={},
+                    mode=mode)
+            configs = {
+                "fs.default.name": hadoop_fs_name,
+                "hadoop.job.ugi": hadoop_fs_ugi
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             client = HDFSClient(hadoop_home, configs)
             if client.is_file(donefile_path):
@@ -569,11 +705,17 @@ class FleetUtil:
                 last_day = last_dict["input"].split("/")[-3]
                 last_pass = last_dict["input"].split("/")[-2].split("-")[-1]
                 exist = False
+<<<<<<< HEAD
                 if (
                     int(day) < int(last_day)
                     or int(day) == int(last_day)
                     and int(pass_id) <= int(last_pass)
                 ):
+=======
+                if int(day) < int(last_day) or \
+                        int(day) == int(last_day) and \
+                        int(pass_id) <= int(last_pass):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     exist = True
                 if not exist:
                     with open(donefile_name, "w") as f:
@@ -581,6 +723,7 @@ class FleetUtil:
                         f.write(xbox_str + "\n")
                     client.delete(donefile_path)
                     client.upload(donefile_name, output_path)
+<<<<<<< HEAD
                     self.rank0_error(
                         "write %s/%s %s succeed" % (day, pass_id, donefile_name)
                     )
@@ -589,10 +732,18 @@ class FleetUtil:
                         "not write %s because %s/%s already "
                         "exists" % (donefile_name, day, pass_id)
                     )
+=======
+                    self.rank0_error("write %s/%s %s succeed" % \
+                                      (day, pass_id, donefile_name))
+                else:
+                    self.rank0_error("not write %s because %s/%s already "
+                                     "exists" % (donefile_name, day, pass_id))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
                 client.upload(donefile_name, output_path)
+<<<<<<< HEAD
                 self.rank0_error(
                     "write %s/%s %s succeed" % (day, pass_id, donefile_name)
                 )
@@ -610,6 +761,22 @@ class FleetUtil:
         donefile_name="sparse_cache.meta",
         **kwargs
     ):
+=======
+                self.rank0_error("write %s/%s %s succeed" % \
+                               (day, pass_id, donefile_name))
+        fleet._role_maker._barrier_worker()
+
+    def write_cache_donefile(self,
+                             output_path,
+                             day,
+                             pass_id,
+                             key_num,
+                             hadoop_fs_name,
+                             hadoop_fs_ugi,
+                             hadoop_home="$HADOOP_HOME",
+                             donefile_name="sparse_cache.meta",
+                             **kwargs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         write cache donefile
 
@@ -658,6 +825,7 @@ class FleetUtil:
             donefile_path = model_path + "/" + donefile_name
             configs = {
                 "fs.default.name": hadoop_fs_name,
+<<<<<<< HEAD
                 "hadoop.job.ugi": hadoop_fs_ugi,
             }
             client = HDFSClient(hadoop_home, configs)
@@ -670,6 +838,17 @@ class FleetUtil:
                     file_num,
                     key_num,
                 )
+=======
+                "hadoop.job.ugi": hadoop_fs_ugi
+            }
+            client = HDFSClient(hadoop_home, configs)
+            if client.is_file(donefile_path):
+                self.rank0_error( \
+                    "not write because %s already exists" % donefile_path)
+            else:
+                meta_str = "file_prefix:part\npart_num:%s\nkey_num:%d\n" \
+                           % (file_num, key_num)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
                 client.upload(donefile_name, model_path)
@@ -827,9 +1006,16 @@ class FleetUtil:
         suffix_name = "/%s/delta-%s" % (day, pass_id)
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_model %s" % model_path)
+<<<<<<< HEAD
         key_num = fleet.save_cache_model(
             None, model_path, mode=mode, table_id=table_id
         )
+=======
+        key_num = fleet.save_cache_model(None,
+                                         model_path,
+                                         mode=mode,
+                                         table_id=table_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.rank0_print("save_cache_model done")
         return key_num
 
@@ -860,9 +1046,16 @@ class FleetUtil:
         suffix_name = "/%s/base" % day
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_base_model %s" % model_path)
+<<<<<<< HEAD
         key_num = fleet.save_cache_model(
             None, model_path, mode=2, table_id=table_id
         )
+=======
+        key_num = fleet.save_cache_model(None,
+                                         model_path,
+                                         mode=2,
+                                         table_id=table_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.rank0_print("save_cache_base_model done")
         return key_num
 
@@ -885,11 +1078,16 @@ class FleetUtil:
         fleet._role_maker._barrier_worker()
         if fleet._role_maker.is_first_worker():
             prog_id = str(id(program))
+<<<<<<< HEAD
             tables = (
                 fleet._opt_info["program_id_to_worker"][prog_id]
                 .get_desc()
                 .dense_table
             )
+=======
+            tables = fleet._opt_info["program_id_to_worker"][prog_id].\
+                get_desc().dense_table
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             prog_conf = fleet._opt_info['program_configs'][prog_id]
             prog_tables = {}
             for key in prog_conf:
@@ -904,6 +1102,7 @@ class FleetUtil:
                 for i in range(0, len(table.dense_variable_name)):
                     var_name = table.dense_variable_name[i]
                     if scope.find_var(var_name) is None:
+<<<<<<< HEAD
                         raise ValueError(
                             "var "
                             + var_name
@@ -931,6 +1130,29 @@ class FleetUtil:
         hadoop_home="$HADOOP_HOME",
         save_combine=True,
     ):
+=======
+                        raise ValueError("var " + var_name +
+                                         " not found in scope " +
+                                         "when pull dense")
+                    var_name_list.append(var_name)
+                fleet._fleet_ptr.pull_dense(scope, int(table.table_id),
+                                            var_name_list)
+        fleet._role_maker._barrier_worker()
+
+    def save_paddle_inference_model(self,
+                                    executor,
+                                    scope,
+                                    program,
+                                    feeded_vars,
+                                    target_vars,
+                                    output_path,
+                                    day,
+                                    pass_id,
+                                    hadoop_fs_name,
+                                    hadoop_fs_ugi,
+                                    hadoop_home="$HADOOP_HOME",
+                                    save_combine=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         save paddle inference model, and upload to hdfs dnn_plugin path
 
@@ -980,31 +1202,48 @@ class FleetUtil:
                         target_vars=target_vars,
                         executor=executor,
                         main_program=program.clone(),
+<<<<<<< HEAD
                         params_filename="params",
                     )
+=======
+                        params_filename="params")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 else:
                     fluid.io.save_inference_model(
                         dirname=model_name,
                         feeded_var_names=feeded_var_names,
                         target_vars=target_vars,
                         executor=executor,
+<<<<<<< HEAD
                         main_program=program.clone(),
                     )
 
             configs = {
                 "fs.default.name": hadoop_fs_name,
                 "hadoop.job.ugi": hadoop_fs_ugi,
+=======
+                        main_program=program.clone())
+
+            configs = {
+                "fs.default.name": hadoop_fs_name,
+                "hadoop.job.ugi": hadoop_fs_ugi
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             client = HDFSClient(hadoop_home, configs)
 
             if pass_id == "-1":
                 dest = "%s/%s/base/dnn_plugin/" % (output_path, day)
             else:
+<<<<<<< HEAD
                 dest = "%s/%s/delta-%s/dnn_plugin/" % (
                     output_path,
                     day,
                     pass_id,
                 )
+=======
+                dest = "%s/%s/delta-%s/dnn_plugin/" % (output_path, day,
+                                                       pass_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if not client.is_exist(dest):
                 client.makedirs(dest)
 
@@ -1012,6 +1251,7 @@ class FleetUtil:
 
         fleet._role_maker._barrier_worker()
 
+<<<<<<< HEAD
     def save_paddle_params(
         self,
         executor,
@@ -1027,6 +1267,21 @@ class FleetUtil:
         var_names=None,
         save_combine=True,
     ):
+=======
+    def save_paddle_params(self,
+                           executor,
+                           scope,
+                           program,
+                           model_name,
+                           output_path,
+                           day,
+                           pass_id,
+                           hadoop_fs_name,
+                           hadoop_fs_ugi,
+                           hadoop_home="$HADOOP_HOME",
+                           var_names=None,
+                           save_combine=True):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         save paddle model, and upload to hdfs dnn_plugin path
 
@@ -1090,32 +1345,50 @@ class FleetUtil:
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
+<<<<<<< HEAD
                     fluid.io.save_vars(
                         executor, "./", program, vars=vars, filename=model_name
                     )
+=======
+                    fluid.io.save_vars(executor,
+                                       "./",
+                                       program,
+                                       vars=vars,
+                                       filename=model_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 else:
                     fluid.io.save_vars(executor, model_name, program, vars=vars)
 
             configs = {
                 "fs.default.name": hadoop_fs_name,
+<<<<<<< HEAD
                 "hadoop.job.ugi": hadoop_fs_ugi,
+=======
+                "hadoop.job.ugi": hadoop_fs_ugi
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             client = HDFSClient(hadoop_home, configs)
 
             if pass_id == "-1":
                 dest = "%s/%s/base/dnn_plugin/" % (output_path, day)
             else:
+<<<<<<< HEAD
                 dest = "%s/%s/delta-%s/dnn_plugin/" % (
                     output_path,
                     day,
                     pass_id,
                 )
+=======
+                dest = "%s/%s/delta-%s/dnn_plugin/" % (output_path, day,
+                                                       pass_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if not client.is_exist(dest):
                 client.mkdirs(dest)
             client.upload(model_name, dest, multi_processes=5, overwrite=True)
 
         fleet._role_maker._barrier_worker()
 
+<<<<<<< HEAD
     def get_last_save_xbox_base(
         self,
         output_path,
@@ -1123,6 +1396,13 @@ class FleetUtil:
         hadoop_fs_ugi,
         hadoop_home="$HADOOP_HOME",
     ):
+=======
+    def get_last_save_xbox_base(self,
+                                output_path,
+                                hadoop_fs_name,
+                                hadoop_fs_ugi,
+                                hadoop_home="$HADOOP_HOME"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         r"""
         get last saved base xbox info from xbox_base_done.txt
 
@@ -1151,7 +1431,11 @@ class FleetUtil:
         donefile_path = output_path + "/xbox_base_done.txt"
         configs = {
             "fs.default.name": hadoop_fs_name,
+<<<<<<< HEAD
             "hadoop.job.ugi": hadoop_fs_ugi,
+=======
+            "hadoop.job.ugi": hadoop_fs_ugi
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         client = HDFSClient(hadoop_home, configs)
         if not client.is_file(donefile_path):
@@ -1163,6 +1447,7 @@ class FleetUtil:
         xbox_base_key = int(last_dict["key"])
         return [last_day, last_path, xbox_base_key]
 
+<<<<<<< HEAD
     def get_last_save_xbox(
         self,
         output_path,
@@ -1170,6 +1455,13 @@ class FleetUtil:
         hadoop_fs_ugi,
         hadoop_home="$HADOOP_HOME",
     ):
+=======
+    def get_last_save_xbox(self,
+                           output_path,
+                           hadoop_fs_name,
+                           hadoop_fs_ugi,
+                           hadoop_home="$HADOOP_HOME"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         r"""
         get last saved xbox info from xbox_patch_done.txt
 
@@ -1198,7 +1490,11 @@ class FleetUtil:
         donefile_path = output_path + "/xbox_patch_done.txt"
         configs = {
             "fs.default.name": hadoop_fs_name,
+<<<<<<< HEAD
             "hadoop.job.ugi": hadoop_fs_ugi,
+=======
+            "hadoop.job.ugi": hadoop_fs_ugi
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         client = HDFSClient(hadoop_home, configs)
         if not client.is_file(donefile_path):
@@ -1211,6 +1507,7 @@ class FleetUtil:
         xbox_base_key = int(last_dict["key"])
         return [last_day, last_pass, last_path, xbox_base_key]
 
+<<<<<<< HEAD
     def get_last_save_model(
         self,
         output_path,
@@ -1218,6 +1515,13 @@ class FleetUtil:
         hadoop_fs_ugi,
         hadoop_home="$HADOOP_HOME",
     ):
+=======
+    def get_last_save_model(self,
+                            output_path,
+                            hadoop_fs_name,
+                            hadoop_fs_ugi,
+                            hadoop_home="$HADOOP_HOME"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         r"""
         get last saved model info from donefile.txt
 
@@ -1249,7 +1553,11 @@ class FleetUtil:
         donefile_path = output_path + "/donefile.txt"
         configs = {
             "fs.default.name": hadoop_fs_name,
+<<<<<<< HEAD
             "hadoop.job.ugi": hadoop_fs_ugi,
+=======
+            "hadoop.job.ugi": hadoop_fs_ugi
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         client = HDFSClient(hadoop_home, configs)
         if not client.is_file(donefile_path):
@@ -1262,9 +1570,14 @@ class FleetUtil:
         xbox_base_key = int(content[1])
         return [last_save_day, last_save_pass, last_path, xbox_base_key]
 
+<<<<<<< HEAD
     def get_online_pass_interval(
         self, days, hours, split_interval, split_per_pass, is_data_hourly_placed
     ):
+=======
+    def get_online_pass_interval(self, days, hours, split_interval,
+                                 split_per_pass, is_data_hourly_placed):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         get online pass interval
 
@@ -1324,6 +1637,7 @@ class FleetUtil:
 
         return online_pass_interval
 
+<<<<<<< HEAD
     def get_global_metrics(
         self,
         scope=fluid.global_scope(),
@@ -1336,6 +1650,18 @@ class FleetUtil:
         pos_ins_num_name="pos",
         total_ins_num_name="total",
     ):
+=======
+    def get_global_metrics(self,
+                           scope=fluid.global_scope(),
+                           stat_pos_name="_generated_var_2",
+                           stat_neg_name="_generated_var_3",
+                           sqrerr_name="sqrerr",
+                           abserr_name="abserr",
+                           prob_name="prob",
+                           q_name="q",
+                           pos_ins_num_name="pos",
+                           total_ins_num_name="total"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         r"""
         get global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
@@ -1371,6 +1697,7 @@ class FleetUtil:
                                                           local_total_ins.name)
 
               # below is part of example model
+<<<<<<< HEAD
               label = paddle.static.data(name="click", shape=[-1, 1],\
                   dtype="int64", lod_level=0)
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
@@ -1382,6 +1709,19 @@ class FleetUtil:
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
                   stat_neg] = paddle.static.auc(input=binary_predict,\
+=======
+              label = fluid.layers.data(name="click", shape=[-1, 1],\
+                  dtype="int64", lod_level=0, append_batch_size=False)
+              emb = my_slot_net(slots, label) # emb can be fc layer of size 1
+              similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(\
+                  emb, min=-15.0, max=15.0), name="similarity_norm")\
+              binary_predict = fluid.layers.concat(input=[\
+                  fluid.layers.elementwise_sub(\
+                      fluid.layers.ceil(similarity_norm), similarity_norm),\
+                  similarity_norm], axis=1)
+              auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
+                  stat_neg] = fluid.layers.auc(input=binary_predict,\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins,\
@@ -1389,10 +1729,15 @@ class FleetUtil:
                       similarity_norm, label)
 
         """
+<<<<<<< HEAD
         if (
             scope.find_var(stat_pos_name) is None
             or scope.find_var(stat_neg_name) is None
         ):
+=======
+        if scope.find_var(stat_pos_name) is None or \
+                scope.find_var(stat_neg_name) is None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.rank0_print("not found auc bucket")
             return [None] * 9
         elif scope.find_var(sqrerr_name) is None:
@@ -1411,9 +1756,14 @@ class FleetUtil:
             self.rank0_print("not found pos_ins_num_name=%s" % pos_ins_num_name)
             return [None] * 9
         elif scope.find_var(total_ins_num_name) is None:
+<<<<<<< HEAD
             self.rank0_print(
                 "not found total_ins_num_name=%s" % total_ins_num_name
             )
+=======
+            self.rank0_print("not found total_ins_num_name=%s" % \
+                             total_ins_num_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return [None] * 9
 
         # barrier worker to ensure all workers finished training
@@ -1502,9 +1852,14 @@ class FleetUtil:
             adjust_ctr = ctr_sum / impression_sum
             if adjust_ctr == 0:
                 continue
+<<<<<<< HEAD
             relative_error = math.sqrt(
                 (1 - adjust_ctr) / (adjust_ctr * impression_sum)
             )
+=======
+            relative_error = \
+                           math.sqrt((1 - adjust_ctr) / (adjust_ctr * impression_sum))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if relative_error < k_relative_error_bound:
                 actual_ctr = click_sum / impression_sum
                 relative_ctr_error = abs(actual_ctr / adjust_ctr - 1)
@@ -1515,6 +1870,7 @@ class FleetUtil:
         bucket_error = error_sum / error_count if error_count > 0 else 0.0
 
         return [
+<<<<<<< HEAD
             auc,
             bucket_error,
             mae,
@@ -1539,6 +1895,24 @@ class FleetUtil:
         total_ins_num_name="total",
         print_prefix="",
     ):
+=======
+            auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr,
+            copc, mean_predict_qvalue,
+            int(total_ins_num)
+        ]
+
+    def print_global_metrics(self,
+                             scope=fluid.global_scope(),
+                             stat_pos_name="_generated_var_2",
+                             stat_neg_name="_generated_var_3",
+                             sqrerr_name="sqrerr",
+                             abserr_name="abserr",
+                             prob_name="prob",
+                             q_name="q",
+                             pos_ins_num_name="pos",
+                             total_ins_num_name="total",
+                             print_prefix=""):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         r"""
         print global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
@@ -1571,6 +1945,7 @@ class FleetUtil:
                                               local_total_ins.name)
 
               # below is part of model
+<<<<<<< HEAD
               label = paddle.static.data(name="click", shape=[-1, 1],\
                   dtype="int64", lod_level=0)
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
@@ -1582,6 +1957,19 @@ class FleetUtil:
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
                   stat_neg] = paddle.static.auc(input=binary_predict,\
+=======
+              label = fluid.layers.data(name="click", shape=[-1, 1],\
+                  dtype="int64", lod_level=0, append_batch_size=False)
+              emb = my_slot_net(slots, label) # emb can be fc layer of size 1
+              similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(\
+                  emb, min=-15.0, max=15.0), name="similarity_norm")\
+              binary_predict = fluid.layers.concat(input=[\
+                  fluid.layers.elementwise_sub(\
+                      fluid.layers.ceil(similarity_norm), similarity_norm),\
+                  similarity_norm], axis=1)
+              auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
+                  stat_neg] = fluid.layers.auc(input=binary_predict,\
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins, \
@@ -1589,10 +1977,15 @@ class FleetUtil:
                       similarity_norm, label)
 
         """
+<<<<<<< HEAD
         if (
             scope.find_var(stat_pos_name) is None
             or scope.find_var(stat_neg_name) is None
         ):
+=======
+        if scope.find_var(stat_pos_name) is None or \
+                scope.find_var(stat_neg_name) is None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.rank0_print("not found auc bucket")
             return
         elif scope.find_var(sqrerr_name) is None:
@@ -1611,6 +2004,7 @@ class FleetUtil:
             self.rank0_print("not found pos_ins_num_name=%s" % pos_ins_num_name)
             return
         elif scope.find_var(total_ins_num_name) is None:
+<<<<<<< HEAD
             self.rank0_print(
                 "not found total_ins_num_name=%s" % total_ins_num_name
             )
@@ -1654,13 +2048,34 @@ class FleetUtil:
                 total_ins_num,
             )
         )
+=======
+            self.rank0_print("not found total_ins_num_name=%s" % \
+                             total_ins_num_name)
+            return
+
+        auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,\
+            mean_predict_qvalue, total_ins_num = self.get_global_metrics(\
+            scope, stat_pos_name, stat_neg_name, sqrerr_name, abserr_name,\
+            prob_name, q_name, pos_ins_num_name, total_ins_num_name)
+        self.rank0_print(
+            "%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
+            "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
+            "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
+            (print_prefix, auc, bucket_error, mae, rmse, actual_ctr,
+             predicted_ctr, copc, mean_predict_qvalue, total_ins_num))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def program_type_trans(self, prog_dir, prog_fn, is_text):
         return utils.program_type_trans(prog_dir, prog_fn, is_text)
 
+<<<<<<< HEAD
     def draw_from_program_file(
         self, model_filename, is_text, output_dir, output_filename
     ):
+=======
+    def draw_from_program_file(self, model_filename, is_text, output_dir,
+                               output_filename):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """draw program from file"""
         program = utils.load_program(model_filename, is_text)
         utils.graphviz(program.global_block(), output_dir, output_filename)
@@ -1670,6 +2085,7 @@ class FleetUtil:
         utils.graphviz(program.global_block(), output_dir, output_name)
 
     def check_two_programs(self, config):
+<<<<<<< HEAD
         train_prog = utils.load_program(
             config.train_prog_path, config.is_text_train_program
         )
@@ -1681,6 +2097,16 @@ class FleetUtil:
             self.draw_from_program(
                 pruned_prog, pruned_dir, config.draw_out_name
             )
+=======
+        train_prog = utils.load_program(config.train_prog_path,
+                                        config.is_text_train_program)
+        pruned_prog = utils.load_program(config.pruned_prog_path,
+                                         config.is_text_pruned_program)
+        if config.draw:
+            pruned_dir = os.path.dirname(config.pruned_prog_path)
+            self.draw_from_program(pruned_prog, pruned_dir,
+                                   config.draw_out_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         res = utils.check_pruned_program_vars(train_prog, pruned_prog)
         if res:
             _logger.info("check_programs succeed.")
@@ -1693,6 +2119,7 @@ class FleetUtil:
     def check_vars_and_dump(self, config):
         _logger.info("start check_vars_and_dump.")
         results = utils.check_saved_vars_try_dump(
+<<<<<<< HEAD
             config.dump_model_dir,
             config.dump_program_filename,
             config.is_text_dump_program,
@@ -1701,13 +2128,23 @@ class FleetUtil:
             config.batch_size,
             config.save_params_filename,
         )
+=======
+            config.dump_model_dir, config.dump_program_filename,
+            config.is_text_dump_program, config.feed_config,
+            config.fetch_config, config.batch_size, config.save_params_filename)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         _logger.info("check_vars_and_dump succeed.")
         return results
 
     def parse_program_proto(self, prog_path, is_text, output_dir):
         """
+<<<<<<< HEAD
         Parse program.proto into a more readable format.
         This function will generate three files:
+=======
+        Parse program.proto into a more readable format. 
+        This function will generate three files: 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output_dir/vars_all.log,
         output_dir/vars_persistable.log,
         output_dir/ops.log.
@@ -1731,9 +2168,14 @@ class FleetUtil:
         utils.parse_program(program, output_dir)
 
     def _is_optimizer_op(self, op):
+<<<<<<< HEAD
         return self.op_role_key in op.attr_names and int(
             op.all_attrs()[self.op_role_key]
         ) & int(OpRole.Optimize)
+=======
+        return self.op_role_key in op.attr_names and \
+                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Optimize)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def split_program_by_device(self, program):
         ops_list = []
@@ -1744,11 +2186,16 @@ class FleetUtil:
             if self._is_optimizer_op(op):
                 break
             if op.has_attr("op_device"):
+<<<<<<< HEAD
                 cur_attr = (
                     op.attr("op_device")
                     if op.attr("op_device") != ""
                     else type_cpu
                 )
+=======
+                cur_attr = op.attr(
+                    "op_device") if op.attr("op_device") != "" else type_cpu
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if pre is None or pre != cur_attr:
                     ops_list.append([])
                     type_list.append(cur_attr)
@@ -1838,9 +2285,14 @@ class FleetUtil:
                 send_list[i].extend(list(in_from_pre[i + 1]))
             prog = program.clone()
             if merged_type_list[i] != type_cpu:
+<<<<<<< HEAD
                 prog = prog._prune_with_input(
                     list(in_from_pre[i]), list(send_list[i])
                 )
+=======
+                prog = prog._prune_with_input(list(in_from_pre[i]),
+                                              list(send_list[i]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 program_list.append(prog)
             else:
                 program_list.append(prog)
@@ -1858,6 +2310,7 @@ class FleetUtil:
             print("warning: non heter program")
             return None
         else:
+<<<<<<< HEAD
             return [
                 start_list[heter_index],
                 end_list[heter_index],
@@ -1865,6 +2318,10 @@ class FleetUtil:
                 recv_list[heter_index],
                 program_list[heter_index],
             ]
+=======
+            return [start_list[heter_index], end_list[heter_index], send_list[heter_index], \
+                    recv_list[heter_index], program_list[heter_index]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class GPUPSUtil(FleetUtil):
@@ -1880,7 +2337,11 @@ class GPUPSUtil(FleetUtil):
     """
 
     def __init__(self, fs_client=None):
+<<<<<<< HEAD
         super().__init__("pslib")
+=======
+        super(GPUPSUtil, self).__init__("pslib")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._afs = fs_client
         # self._afs = fs_client._fs
 
@@ -2055,6 +2516,7 @@ class GPUPSUtil(FleetUtil):
         os.remove("donefile.txt")
         return [last_save_day, last_save_pass, last_path, xbox_base_key]
 
+<<<<<<< HEAD
     def write_model_donefile(
         self,
         output_path,
@@ -2063,6 +2525,14 @@ class GPUPSUtil(FleetUtil):
         xbox_base_key,
         donefile_name="donefile.txt",
     ):
+=======
+    def write_model_donefile(self,
+                             output_path,
+                             day,
+                             pass_id,
+                             xbox_base_key,
+                             donefile_name="donefile.txt"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         write donefile when save model
 
@@ -2101,6 +2571,7 @@ class GPUPSUtil(FleetUtil):
 
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
+<<<<<<< HEAD
             content = "%s\t%lu\t%s\t%s\t%d" % (
                 day,
                 xbox_base_key,
@@ -2108,6 +2579,10 @@ class GPUPSUtil(FleetUtil):
                 pass_id,
                 0,
             )
+=======
+            content  = "%s\t%lu\t%s\t%s\t%d" % (day, xbox_base_key,\
+                                                model_path, pass_id, 0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if self._afs.is_file(donefile_path):
                 self._afs.download(donefile_path, donefile_name)
                 pre_content = ""
@@ -2119,9 +2594,14 @@ class GPUPSUtil(FleetUtil):
                 os.remove(donefile_name)
                 exist = False
                 for i in range(len(day_list)):
+<<<<<<< HEAD
                     if int(day) == int(day_list[i]) and int(pass_id) == int(
                         pass_list[i]
                     ):
+=======
+                    if int(day) == int(day_list[i]) and \
+                            int(pass_id) == int(pass_list[i]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         exist = True
                         break
                 if not exist:
@@ -2130,6 +2610,7 @@ class GPUPSUtil(FleetUtil):
                         f.write(content + "\n")
                     self._afs.delete(donefile_path)
                     self._afs.upload(donefile_name, donefile_path)
+<<<<<<< HEAD
                     self.rank0_error(
                         "write %s/%s %s succeed" % (day, pass_id, donefile_name)
                     )
@@ -2138,10 +2619,18 @@ class GPUPSUtil(FleetUtil):
                         "not write %s because %s/%s already "
                         "exists" % (donefile_name, day, pass_id)
                     )
+=======
+                    self.rank0_error("write %s/%s %s succeed" % \
+                                      (day, pass_id, donefile_name))
+                else:
+                    self.rank0_error("not write %s because %s/%s already "
+                                     "exists" % (donefile_name, day, pass_id))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
                 self._afs.upload(donefile_name, donefile_path)
+<<<<<<< HEAD
                 self.rank0_error(
                     "write %s/%s %s succeed" % (day, pass_id, donefile_name)
                 )
@@ -2159,6 +2648,22 @@ class GPUPSUtil(FleetUtil):
         hadoop_home="$HADOOP_HOME",
         donefile_name=None,
     ):
+=======
+                self.rank0_error("write %s/%s %s succeed" % \
+                               (day, pass_id, donefile_name))
+
+    def write_xbox_donefile(self,
+                            output_path,
+                            day,
+                            pass_id,
+                            xbox_base_key,
+                            data_path,
+                            hadoop_fs_name,
+                            hadoop_fs_ugi,
+                            monitor_data={},
+                            hadoop_home="$HADOOP_HOME",
+                            donefile_name=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         write delta donefile or xbox base donefile
 
@@ -2211,6 +2716,7 @@ class GPUPSUtil(FleetUtil):
             data_path = ",".join(data_path)
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
+<<<<<<< HEAD
             xbox_str = self._get_xbox_str(
                 output_path,
                 day,
@@ -2221,6 +2727,11 @@ class GPUPSUtil(FleetUtil):
                 monitor_data={},
                 mode=mode,
             )
+=======
+            xbox_str = self._get_xbox_str(output_path, day, model_path, \
+                    xbox_base_key, data_path, hadoop_fs_name, monitor_data={},
+                    mode=mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if self._afs.is_exist(donefile_path):
                 self.rank0_info("exist %s succeed" % (donefile_path))
@@ -2235,11 +2746,17 @@ class GPUPSUtil(FleetUtil):
                 os.remove(donefile_name)
                 self.rank0_info("remove %s succeed" % (donefile_name))
                 exist = False
+<<<<<<< HEAD
                 if (
                     int(day) < int(last_day)
                     or int(day) == int(last_day)
                     and int(pass_id) <= int(last_pass)
                 ):
+=======
+                if int(day) < int(last_day) or \
+                        int(day) == int(last_day) and \
+                        int(pass_id) <= int(last_pass):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     exist = True
                 if not exist:
                     with open(donefile_name, "w") as f:
@@ -2247,6 +2764,7 @@ class GPUPSUtil(FleetUtil):
                         f.write(xbox_str + "\n")
                     self._afs.delete(donefile_path)
                     self._afs.upload(donefile_name, donefile_path)
+<<<<<<< HEAD
                     self.rank0_info(
                         "write %s/%s %s succeed" % (day, pass_id, donefile_name)
                     )
@@ -2255,10 +2773,18 @@ class GPUPSUtil(FleetUtil):
                         "not write %s because %s/%s already "
                         "exists" % (donefile_name, day, pass_id)
                     )
+=======
+                    self.rank0_info("write %s/%s %s succeed" % \
+                                      (day, pass_id, donefile_name))
+                else:
+                    self.rank0_info("not write %s because %s/%s already "
+                                    "exists" % (donefile_name, day, pass_id))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
                 self._afs.upload(donefile_name, donefile_path)
+<<<<<<< HEAD
                 self.rank0_error(
                     "write %s/%s %s succeed" % (day, pass_id, donefile_name)
                 )
@@ -2272,6 +2798,18 @@ class GPUPSUtil(FleetUtil):
         donefile_name="sparse_cache.meta",
         **kwargs
     ):
+=======
+                self.rank0_error("write %s/%s %s succeed" % \
+                               (day, pass_id, donefile_name))
+
+    def write_cache_donefile(self,
+                             output_path,
+                             day,
+                             pass_id,
+                             key_num,
+                             donefile_name="sparse_cache.meta",
+                             **kwargs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         write cache donefile
 
@@ -2317,6 +2855,7 @@ class GPUPSUtil(FleetUtil):
             donefile_path = model_path + "/" + donefile_name
 
             if self._afs.is_file(donefile_path):
+<<<<<<< HEAD
                 self.rank0_error(
                     "not write because %s already exists" % donefile_path
                 )
@@ -2325,11 +2864,19 @@ class GPUPSUtil(FleetUtil):
                     file_num,
                     key_num,
                 )
+=======
+                self.rank0_error( \
+                    "not write because %s already exists" % donefile_path)
+            else:
+                meta_str = "file_prefix:part\npart_num:%s\nkey_num:%d\n" \
+                           % (file_num, key_num)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
                 self._afs.upload(donefile_name, donefile_path)
                 self.rank0_error("write %s succeed" % donefile_path)
 
+<<<<<<< HEAD
     def _get_xbox_str(
         self,
         output_path,
@@ -2341,6 +2888,17 @@ class GPUPSUtil(FleetUtil):
         monitor_data={},
         mode="patch",
     ):
+=======
+    def _get_xbox_str(self,
+                      output_path,
+                      day,
+                      model_path,
+                      xbox_base_key,
+                      data_path,
+                      hadoop_fs_name,
+                      monitor_data={},
+                      mode="patch"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         xbox_dict = collections.OrderedDict()
         if mode == "base":
             xbox_dict["id"] = str(xbox_base_key)
@@ -2352,7 +2910,11 @@ class GPUPSUtil(FleetUtil):
             xbox_dict["id"] = str(int(time.time()))
         xbox_dict["key"] = str(xbox_base_key)
         if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
+<<<<<<< HEAD
             model_path = model_path[model_path.find(":") + 1 :]
+=======
+            model_path = model_path[model_path.find(":") + 1:]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         xbox_dict["input"] = hadoop_fs_name + model_path.rstrip("/") + "/000"
         xbox_dict["record_count"] = "111111"
         xbox_dict["partition_type"] = "2"
@@ -2362,8 +2924,13 @@ class GPUPSUtil(FleetUtil):
         xbox_dict["job_id"] = os.environ.get("PADDLE_JOB_ID", "")
         # currently hard code here, set monitor_data empty string
         xbox_dict["monitor_data"] = ""
+<<<<<<< HEAD
         xbox_dict["monitor_path"] = (
             output_path.rstrip("/") + "/monitor/" + day + ".txt"
         )
+=======
+        xbox_dict["monitor_path"] = output_path.rstrip("/") + "/monitor/" \
+                                    + day + ".txt"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         xbox_dict["mpi_size"] = str(fleet.worker_num())
         return json.dumps(xbox_dict)

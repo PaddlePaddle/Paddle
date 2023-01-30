@@ -89,7 +89,11 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
   if (var == nullptr) {
     return;
   }
+<<<<<<< HEAD
   phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   req_var->set_varname(varname);
   req_var->set_type(LOD_TENSOR);
   req_var->set_data_type(static_cast<VariableMessage::Type>(
@@ -148,7 +152,11 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
                                        gpuStream_t stream) {
   // const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
+<<<<<<< HEAD
   auto* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<int> vec_dim;
   for (auto& x : req_var.dims()) {
@@ -193,7 +201,11 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
                                        platform::Place place) {
   // const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
+<<<<<<< HEAD
   auto* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<int> vec_dim;
   for (auto& x : req_var.dims()) {
@@ -286,7 +298,11 @@ void HeterWrapper::EndPass(Scope* scope, int num) {
 void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
                                  HeterCpuWorker* worker,
                                  int mpi_rank,
+<<<<<<< HEAD
                                  const std::vector<std::string>& send_vars) {
+=======
+                                 std::vector<std::string>& send_vars) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   HeterRequest request;
   request.set_cmd(0);
   request.set_cur_batch(task->cur_batch_);
@@ -329,11 +345,18 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
   stub.service(&done->cntl, &request, &done->response, done);
 }
 
+<<<<<<< HEAD
 void HeterWrapper::CallRemoteXpuSync(
     std::shared_ptr<HeterTask> task,
     HeterCpuWorker* worker,
     int mpi_rank,
     const std::vector<std::string>& send_vars) {
+=======
+void HeterWrapper::CallRemoteXpuSync(std::shared_ptr<HeterTask> task,
+                                     HeterCpuWorker* worker,
+                                     int mpi_rank,
+                                     std::vector<std::string>& send_vars) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   HeterRequest request;
   HeterResponse response;
   brpc::Controller cntl;

@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import multiprocessing
 import os
+=======
+from __future__ import print_function
+
+import os
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 
 import paddle
 import paddle.distributed as dist
+<<<<<<< HEAD
 from paddle.distributed.spawn import (
     _get_default_nprocs,
     _get_subprocess_env_list,
@@ -25,16 +33,30 @@ from paddle.distributed.spawn import (
 )
 from paddle.fluid import core
 from paddle.fluid.dygraph import parallel_helper
+=======
+from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_check, _get_default_nprocs
+
+from paddle.fluid import core
+from paddle.fluid.dygraph import parallel_helper
+import multiprocessing
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be
 # executed in the python3 sub-process.
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestInitParallelEnv(unittest.TestCase):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestInitParallelEnv(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_env_failed(self):
         os.environ['FLAGS_selected_gpus'] = '0'
         os.environ['PADDLE_TRAINER_ID'] = '0'
@@ -54,10 +76,17 @@ class TestInitParallelEnv(unittest.TestCase):
         self.assertFalse(parallel_helper._is_parallel_ctx_initialized())
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSpawnAssistMethod(unittest.TestCase):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSpawnAssistMethod(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_nprocs_greater_than_device_num_error(self):
         with self.assertRaises(RuntimeError):
             _get_subprocess_env_list(nprocs=100, options=dict())

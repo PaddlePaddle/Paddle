@@ -13,10 +13,17 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
 from paddle.vision.datasets import VOC2012, voc2012
+=======
+import os
+import numpy as np
+
+from paddle.vision.datasets import voc2012, VOC2012
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # VOC2012 is too large for unittest to download, stub a small dataset here
 voc2012.VOC_URL = 'https://paddlemodels.bj.bcebos.com/voc2012_stub/VOCtrainval_11-May-2012.tar'
@@ -24,6 +31,10 @@ voc2012.VOC_MD5 = '34cb1fe5bdc139a5454b25b16118fff8'
 
 
 class TestVOC2012Train(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         voc2012 = VOC2012(mode='train')
         self.assertTrue(len(voc2012) == 3)
@@ -40,6 +51,10 @@ class TestVOC2012Train(unittest.TestCase):
 
 
 class TestVOC2012Valid(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         voc2012 = VOC2012(mode='valid')
         self.assertTrue(len(voc2012) == 1)
@@ -56,6 +71,10 @@ class TestVOC2012Valid(unittest.TestCase):
 
 
 class TestVOC2012Test(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         voc2012 = VOC2012(mode='test')
         self.assertTrue(len(voc2012) == 2)

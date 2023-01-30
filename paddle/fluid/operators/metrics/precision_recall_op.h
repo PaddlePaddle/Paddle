@@ -19,6 +19,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -30,6 +34,7 @@ template <typename DeviceContext, typename T>
 class PrecisionRecallKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in0 = ctx.Input<phi::DenseTensor>("Indices");
     auto* in1 = ctx.Input<phi::DenseTensor>("Labels");
     auto* in2 = ctx.Input<phi::DenseTensor>("Weights");
@@ -37,6 +42,15 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
     auto* out0 = ctx.Output<phi::DenseTensor>("BatchMetrics");
     auto* out1 = ctx.Output<phi::DenseTensor>("AccumMetrics");
     auto* out2 = ctx.Output<phi::DenseTensor>("AccumStatesInfo");
+=======
+    auto* in0 = ctx.Input<Tensor>("Indices");
+    auto* in1 = ctx.Input<Tensor>("Labels");
+    auto* in2 = ctx.Input<Tensor>("Weights");
+    auto* in3 = ctx.Input<Tensor>("StatesInfo");
+    auto* out0 = ctx.Output<Tensor>("BatchMetrics");
+    auto* out1 = ctx.Output<Tensor>("AccumMetrics");
+    auto* out2 = ctx.Output<Tensor>("AccumStatesInfo");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const int* ids_data = in0->data<int>();
     const int* labels_data = in1->data<int>();

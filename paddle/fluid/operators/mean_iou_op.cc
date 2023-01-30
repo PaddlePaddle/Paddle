@@ -40,9 +40,15 @@ class MeanIoUOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         OperatorWithKernel::IndicateVarDataType(ctx, "Predictions"),
         ctx.GetPlace());
   }
@@ -87,10 +93,17 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
 mean-IOU Operator.
 Mean Intersection-Over-Union is a common evaluation metric for
 semantic image segmentation, which first computes the IOU for each
+<<<<<<< HEAD
 semantic class and then computes the average over classes.
 IOU is defined as follows:
     IOU = true_positive / (true_positive + false_positive + false_negative).
 It is based on pixel level area while "IOU Similarity Operator"
+=======
+semantic class and then computes the average over classes. 
+IOU is defined as follows: 
+    IOU = true_positive / (true_positive + false_positive + false_negative).
+It is based on pixel level area while "IOU Similarity Operator" 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 is based on area of rectangle.
 
 )DOC");

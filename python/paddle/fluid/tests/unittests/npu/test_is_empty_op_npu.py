@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -23,10 +28,17 @@ import paddle
 paddle.enable_static()
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
 class TestEmpty(OpTest):
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestEmpty(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.init_dtype()
@@ -48,15 +60,23 @@ class TestEmpty(OpTest):
         self.check_output_with_place(self.place)
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
 class TestNotEmpty(TestEmpty):
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestNotEmpty(TestEmpty):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data(self):
         self.inputs = {'X': np.array([])}
         self.outputs = {'Out': np.array([True])}
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
@@ -66,6 +86,16 @@ class TestIsEmptyOpError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestIsEmptyOpError(unittest.TestCase):
+
+    def test_errors(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             input_data = np.random.random((3, 2)).astype("float32")
 
             def test_Variable():
@@ -76,27 +106,46 @@ class TestIsEmptyOpError(unittest.TestCase):
 
             def test_type():
                 # dtype must be float32, float16 in NPU
+<<<<<<< HEAD
                 x3 = paddle.static.data(
                     name="x3", shape=[4, 32, 32], dtype="bool"
                 )
+=======
+                x3 = paddle.static.data(name="x3",
+                                        shape=[4, 32, 32],
+                                        dtype="bool")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 res = paddle.is_empty(x=x3)
 
             self.assertRaises(TypeError, test_type)
 
             def test_name_type():
                 # name type must be string.
+<<<<<<< HEAD
                 x4 = paddle.static.data(
                     name="x4", shape=[3, 2], dtype="float32"
                 )
+=======
+                x4 = paddle.static.data(name="x4",
+                                        shape=[3, 2],
+                                        dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 res = paddle.is_empty(x=x4, name=1)
 
             self.assertRaises(TypeError, test_name_type)
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
 class TestIsEmptyOpDygraph(unittest.TestCase):
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestIsEmptyOpDygraph(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_dygraph(self):
         paddle.disable_static(paddle.NPUPlace(0))
         input = paddle.rand(shape=[4, 32, 32], dtype='float32')

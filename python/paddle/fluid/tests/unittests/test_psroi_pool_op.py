@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import unittest
 
@@ -30,6 +31,19 @@ def calc_psroi_pool(
     pooled_height,
     pooled_width,
 ):
+=======
+from __future__ import print_function
+
+import paddle
+import math
+import numpy as np
+import unittest
+from op_test import OpTest
+
+
+def calc_psroi_pool(x, rois, rois_num_per_img, output_channels, spatial_scale,
+                    pooled_height, pooled_width):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Psroi_pool implemented by Numpy.
     x: 4-D as (N, C, H, W),
@@ -52,8 +66,13 @@ def calc_psroi_pool(
             batch_id += 1
         roi_start_w = round(roi[0]) * spatial_scale
         roi_start_h = round(roi[1]) * spatial_scale
+<<<<<<< HEAD
         roi_end_w = (round(roi[2]) + 1.0) * spatial_scale
         roi_end_h = (round(roi[3]) + 1.0) * spatial_scale
+=======
+        roi_end_w = (round(roi[2]) + 1.) * spatial_scale
+        roi_end_h = (round(roi[3]) + 1.) * spatial_scale
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         roi_height = max(roi_end_h - roi_start_h, 0.1)
         roi_width = max(roi_end_w - roi_start_w, 0.1)
@@ -67,6 +86,7 @@ def calc_psroi_pool(
             for ph in range(pooled_height):
                 for pw in range(pooled_width):
                     hstart = int(
+<<<<<<< HEAD
                         math.floor(float(ph) * bin_size_h + roi_start_h)
                     )
                     wstart = int(
@@ -78,6 +98,15 @@ def calc_psroi_pool(
                     wend = int(
                         math.ceil(float(pw + 1) * bin_size_w + roi_start_w)
                     )
+=======
+                        math.floor(float(ph) * bin_size_h + roi_start_h))
+                    wstart = int(
+                        math.floor(float(pw) * bin_size_w + roi_start_w))
+                    hend = int(
+                        math.ceil(float(ph + 1) * bin_size_h + roi_start_h))
+                    wend = int(
+                        math.ceil(float(pw + 1) * bin_size_w + roi_start_w))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     hstart = min(max(hstart, 0), x.shape[2])
                     hend = min(max(hend, 0), x.shape[2])
                     wstart = min(max(wstart, 0), x.shape[3])
@@ -85,22 +114,37 @@ def calc_psroi_pool(
 
                     c_in = (c * pooled_height + ph) * pooled_width + pw
                     is_empty = (hend <= hstart) or (wend <= wstart)
+<<<<<<< HEAD
                     out_sum = 0.0
+=======
+                    out_sum = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     for ih in range(hstart, hend):
                         for iw in range(wstart, wend):
                             out_sum += x_i[c_in, ih, iw]
                     bin_area = (hend - hstart) * (wend - wstart)
+<<<<<<< HEAD
                     out_data[i, c, ph, pw] = (
                         0.0 if is_empty else (out_sum / float(bin_area))
                     )
+=======
+                    out_data[i, c, ph,
+                             pw] = 0. if is_empty else (out_sum /
+                                                        float(bin_area))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return out_data
 
 
 class TestPSROIPoolOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data(self):
         paddle.enable_static()
         self.init_test_case()
         self.make_rois()
+<<<<<<< HEAD
         self.outs = calc_psroi_pool(
             self.x,
             self.boxes,
@@ -114,12 +158,26 @@ class TestPSROIPoolOp(OpTest):
             'X': self.x,
             'ROIs': (self.rois_with_batch_id[:, 1:5], self.rois_lod),
             'RoisNum': self.boxes_num,
+=======
+        self.outs = calc_psroi_pool(self.x, self.boxes, self.boxes_num,
+                                    self.output_channels, self.spatial_scale,
+                                    self.pooled_height,
+                                    self.pooled_width).astype('float64')
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois_with_batch_id[:, 1:5], self.rois_lod),
+            'RoisNum': self.boxes_num
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'output_channels': self.output_channels,
             'spatial_scale': self.spatial_scale,
             'pooled_height': self.pooled_height,
+<<<<<<< HEAD
             'pooled_width': self.pooled_width,
+=======
+            'pooled_width': self.pooled_width
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.outs}
 
@@ -145,6 +203,7 @@ class TestPSROIPoolOp(OpTest):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
                 x1 = np.random.random_integers(
+<<<<<<< HEAD
                     0, self.width // self.spatial_scale - self.pooled_width
                 )
                 y1 = np.random.random_integers(
@@ -157,20 +216,39 @@ class TestPSROIPoolOp(OpTest):
                 y2 = np.random.random_integers(
                     y1 + self.pooled_height, self.height // self.spatial_scale
                 )
+=======
+                    0, self.width // self.spatial_scale - self.pooled_width)
+                y1 = np.random.random_integers(
+                    0, self.height // self.spatial_scale - self.pooled_height)
+
+                x2 = np.random.random_integers(x1 + self.pooled_width,
+                                               self.width // self.spatial_scale)
+                y2 = np.random.random_integers(
+                    y1 + self.pooled_height, self.height // self.spatial_scale)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
         self.rois_with_batch_id = np.array(rois).astype('float64')
         self.boxes = self.rois_with_batch_id[:, 1:]
+<<<<<<< HEAD
         self.boxes_num = np.array(
             [bno + 1 for bno in range(self.batch_size)]
         ).astype('int32')
+=======
+        self.boxes_num = np.array([bno + 1 for bno in range(self.batch_size)
+                                   ]).astype('int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = 'psroi_pool'
         self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, output_channels, spatial_scale: paddle.vision.ops.psroi_pool(
+<<<<<<< HEAD
             x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale
         )
+=======
+            x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.set_data()
 
     def test_check_output(self):
@@ -181,6 +259,7 @@ class TestPSROIPoolOp(OpTest):
 
 
 class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x = np.random.random([2, 490, 28, 28]).astype(np.float32)
         self.boxes = np.array(
@@ -200,10 +279,30 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
             expect_out = calc_psroi_pool(
                 self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
             )
+=======
+
+    def setUp(self):
+        self.x = np.random.random([2, 490, 28, 28]).astype(np.float32)
+        self.boxes = np.array([[1, 5, 8, 10], [4, 2, 6, 7],
+                               [12, 12, 19, 21]]).astype(np.float32)
+        self.boxes_num = np.array([1, 2]).astype(np.int32)
+
+    def test_output_size(self):
+
+        def test_output_size_is_int():
+            output_size = 7
+            out = paddle.vision.ops.psroi_pool(paddle.to_tensor(self.x),
+                                               paddle.to_tensor(self.boxes),
+                                               paddle.to_tensor(self.boxes_num),
+                                               output_size).numpy()
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
+                                         1.0, 7, 7)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         def test_output_size_is_tuple():
             output_size = (7, 7)
+<<<<<<< HEAD
             out = paddle.vision.ops.psroi_pool(
                 paddle.to_tensor(self.x),
                 paddle.to_tensor(self.boxes),
@@ -213,6 +312,14 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
             expect_out = calc_psroi_pool(
                 self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
             )
+=======
+            out = paddle.vision.ops.psroi_pool(paddle.to_tensor(self.x),
+                                               paddle.to_tensor(self.boxes),
+                                               paddle.to_tensor(self.boxes_num),
+                                               output_size).numpy()
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
+                                         1.0, 7, 7)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         def test_dytype_is_float64():
@@ -220,12 +327,18 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
             out = paddle.vision.ops.psroi_pool(
                 paddle.to_tensor(self.x, 'float64'),
                 paddle.to_tensor(self.boxes, 'float64'),
+<<<<<<< HEAD
                 paddle.to_tensor(self.boxes_num, 'int32'),
                 output_size,
             ).numpy()
             expect_out = calc_psroi_pool(
                 self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
             )
+=======
+                paddle.to_tensor(self.boxes_num, 'int32'), output_size).numpy()
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
+                                         1.0, 7, 7)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         places = ['cpu']
@@ -239,6 +352,7 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
 
 
 class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x = np.random.random([2, 128, 32, 32]).astype(np.float32)
         self.boxes = np.array(
@@ -257,10 +371,29 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
             expect_out = calc_psroi_pool(
                 self.x, self.boxes, self.boxes_num, 2, 1.1, 8, 8
             )
+=======
+
+    def setUp(self):
+        self.x = np.random.random([2, 128, 32, 32]).astype(np.float32)
+        self.boxes = np.array([[3, 5, 6, 13], [7, 4, 22, 18], [4, 5, 7, 10],
+                               [5, 3, 25, 21]]).astype(np.float32)
+        self.boxes_num = np.array([2, 2]).astype(np.int32)
+
+    def test_output_size(self):
+
+        def test_output_size_is_int():
+            psroi_module = paddle.vision.ops.PSRoIPool(8, 1.1)
+            out = psroi_module(paddle.to_tensor(self.x),
+                               paddle.to_tensor(self.boxes),
+                               paddle.to_tensor(self.boxes_num)).numpy()
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 2,
+                                         1.1, 8, 8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         def test_output_size_is_tuple():
             psroi_pool_module = paddle.vision.ops.PSRoIPool(8, 1.1)
+<<<<<<< HEAD
             out = psroi_pool_module(
                 paddle.to_tensor(self.x),
                 paddle.to_tensor(self.boxes),
@@ -269,10 +402,18 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
             expect_out = calc_psroi_pool(
                 self.x, self.boxes, self.boxes_num, 2, 1.1, 8, 8
             )
+=======
+            out = psroi_pool_module(paddle.to_tensor(self.x),
+                                    paddle.to_tensor(self.boxes),
+                                    paddle.to_tensor(self.boxes_num)).numpy()
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 2,
+                                         1.1, 8, 8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         def test_dytype_is_float64():
             psroi_pool_module = paddle.vision.ops.PSRoIPool(8, 1.1)
+<<<<<<< HEAD
             out = psroi_pool_module(
                 paddle.to_tensor(self.x, 'float64'),
                 paddle.to_tensor(self.boxes, 'float64'),
@@ -281,6 +422,14 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
             expect_out = calc_psroi_pool(
                 self.x, self.boxes, self.boxes_num, 2, 1.1, 8, 8
             )
+=======
+            out = psroi_pool_module(paddle.to_tensor(self.x, 'float64'),
+                                    paddle.to_tensor(self.boxes, 'float64'),
+                                    paddle.to_tensor(self.boxes_num,
+                                                     'int32')).numpy()
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 2,
+                                         1.1, 8, 8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         paddle.disable_static()
@@ -295,10 +444,15 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
 
 
 class TestPSROIPoolBoxesNumError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.disable_static()
         self.x = paddle.uniform([2, 490, 28, 28], dtype='float32')
         self.boxes = paddle.to_tensor(
+<<<<<<< HEAD
             [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], 'float32'
         )
 
@@ -308,23 +462,47 @@ class TestPSROIPoolBoxesNumError(unittest.TestCase):
             out = paddle.vision.ops.psroi_pool(
                 self.x, self.boxes, boxes_num, output_size=7
             )
+=======
+            [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], 'float32')
+
+    def test_errors(self):
+
+        def test_boxes_num_nums_error():
+            boxes_num = paddle.to_tensor([1, 5], 'int32')
+            out = paddle.vision.ops.psroi_pool(self.x,
+                                               self.boxes,
+                                               boxes_num,
+                                               output_size=7)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, test_boxes_num_nums_error)
 
         def test_boxes_num_length_error():
             boxes_num = paddle.to_tensor([1, 1, 1], 'int32')
+<<<<<<< HEAD
             out = paddle.vision.ops.psroi_pool(
                 self.x, self.boxes, boxes_num, output_size=7
             )
+=======
+            out = paddle.vision.ops.psroi_pool(self.x,
+                                               self.boxes,
+                                               boxes_num,
+                                               output_size=7)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, test_boxes_num_length_error)
 
 
 class TestPSROIPoolChannelError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.disable_static()
         self.x = paddle.uniform([2, 490, 28, 28], dtype='float32')
         self.boxes = paddle.to_tensor(
+<<<<<<< HEAD
             [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], 'float32'
         )
         self.output_size = 4
@@ -335,11 +513,23 @@ class TestPSROIPoolChannelError(unittest.TestCase):
             out = paddle.vision.ops.psroi_pool(
                 self.x, self.boxes, boxes_num, self.output_size
             )
+=======
+            [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], 'float32')
+        self.output_size = 4
+
+    def test_errors(self):
+
+        def test_channel_error():
+            boxes_num = paddle.to_tensor([2, 1], 'int32')
+            out = paddle.vision.ops.psroi_pool(self.x, self.boxes, boxes_num,
+                                               self.output_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, test_channel_error)
 
 
 class TestPSROIPoolStaticAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         paddle.enable_static()
         self.x_placeholder = paddle.static.data(
@@ -352,10 +542,24 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
         self.boxes = np.array(
             [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]]
         ).astype(np.float32)
+=======
+
+    def setUp(self):
+        paddle.enable_static()
+        self.x_placeholder = paddle.static.data(name='x',
+                                                shape=[2, 490, 28, 28])
+        self.x = np.random.random([2, 490, 28, 28]).astype(np.float32)
+        self.boxes_placeholder = paddle.static.data(name='boxes',
+                                                    shape=[3, 4],
+                                                    lod_level=1)
+        self.boxes = np.array([[1, 5, 8, 10], [4, 2, 6, 7],
+                               [12, 12, 19, 21]]).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.boxes_num = np.array([1, 2]).astype(np.int32)
 
     def test_function_in_static(self):
         output_size = 7
+<<<<<<< HEAD
         out = paddle.vision.ops.psroi_pool(
             self.x_placeholder,
             self.boxes_placeholder,
@@ -365,12 +569,20 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
         expect_out = calc_psroi_pool(
             self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
         )
+=======
+        out = paddle.vision.ops.psroi_pool(self.x_placeholder,
+                                           self.boxes_placeholder,
+                                           self.boxes_num, output_size)
+        expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
+                                     1.0, 7, 7)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         places = [paddle.CPUPlace()]
         if paddle.fluid.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             exe = paddle.static.Executor(place)
             boxes_lod_data = paddle.fluid.create_lod_tensor(
+<<<<<<< HEAD
                 self.boxes, [[1, 2]], place
             )
             (out_res,) = exe.run(
@@ -378,6 +590,15 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
                 feed={'x': self.x, 'boxes': boxes_lod_data},
                 fetch_list=[out.name],
             )
+=======
+                self.boxes, [[1, 2]], place)
+            out_res, = exe.run(paddle.static.default_main_program(),
+                               feed={
+                                   'x': self.x,
+                                   'boxes': boxes_lod_data
+                               },
+                               fetch_list=[out.name])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(out_res, expect_out, rtol=1e-05)
 
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import contextlib
 import unittest
 
@@ -28,6 +29,24 @@ from paddle.fluid.executor import (
 )
 from paddle.fluid.framework import global_var
 from paddle.fluid.layers.utils import _hash_with_id
+=======
+from __future__ import print_function
+
+import contextlib
+import unittest
+import numpy as np
+import six
+
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+import paddle.fluid as fluid
+from paddle import compat as cpt
+from paddle.fluid import core, framework, executor
+from paddle.fluid.layers.utils import _hash_with_id
+from paddle.fluid.framework import _in_eager_mode_
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
+from paddle.fluid.dygraph.base import switch_to_static_graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -47,11 +66,17 @@ def program_scope_guard():
 def _add_build_strategy_for(input_program, start_op_index, end_op_index):
     compiled_program = paddle.static.CompiledProgram(
         core.Graph(input_program.desc, start_op_index, end_op_index),
+<<<<<<< HEAD
         build_strategy=paddle.static.BuildStrategy(),
     )
     compiled_program._compile(
         core.Scope(), paddle.framework._current_expected_place()
     )
+=======
+        build_strategy=paddle.static.BuildStrategy())
+    compiled_program._compile(core.Scope(),
+                              paddle.framework._current_expected_place())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ir_graph = paddle.fluid.framework.IrGraph(compiled_program._graph)
     builded_program = ir_graph.to_program()
     return builded_program
@@ -62,7 +87,12 @@ def _build_program_by_desc(program_desc):
     prog = framework.Program()
     prog.desc = program_desc
     prog.blocks = [
+<<<<<<< HEAD
         framework.Block(prog, i) for i in range(prog.desc.num_blocks())
+=======
+        framework.Block(prog, i)
+        for i in six.moves.range(prog.desc.num_blocks())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ]
     prog._sync_with_cpp()
     return prog
@@ -76,17 +106,28 @@ def _build_program_by_desc(program_desc):
 # when create Operator, so here compare gradients with static graph
 # NOTE: Here rewrite a simple unittest framework for RunProgramOp
 class RunProgramOpTest(unittest.TestCase):
+<<<<<<< HEAD
     def build_model(self):
         raise NotImplementedError(
             "RunProgramOp test should implement build_model"
         )
+=======
+
+    def build_model(self):
+        raise NotImplementedError(
+            "RunProgramOp test should implement build_model")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_output(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
+<<<<<<< HEAD
             # TODO: RunProgramOp is not recommended for use in static graph mode now
+=======
+            # TODO: RunProgramOp is not recommended for use in static mode now
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.expect_outs = self.run_static_model(place, is_test=True)
             self.check_output_with_place(place)
 
@@ -95,7 +136,11 @@ class RunProgramOpTest(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
+<<<<<<< HEAD
             # TODO: RunProgramOp is not recommended for use in static graph mode now
+=======
+            # TODO: RunProgramOp is not recommended for use in static mode now
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.expect_grads = self.run_static_model(place, is_test=False)
             self.check_grad_with_place(place)
 
@@ -114,9 +159,15 @@ class RunProgramOpTest(unittest.TestCase):
             else:
                 fetch_list = self.get_param_grad_names()
 
+<<<<<<< HEAD
             outs = exe.run(
                 main_program, feed=self.inputs['X'], fetch_list=fetch_list
             )
+=======
+            outs = exe.run(main_program,
+                           feed=self.inputs['X'],
+                           fetch_list=fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return outs
 
     def get_program_desc(self):
@@ -124,6 +175,7 @@ class RunProgramOpTest(unittest.TestCase):
             fwd_op_num = self.build_model()
             return fluid.default_main_program().desc, fwd_op_num
 
+<<<<<<< HEAD
     def get_forward_backward_program_desc(
         self, whole_program_desc, forward_op_num, output_num
     ):
@@ -134,11 +186,21 @@ class RunProgramOpTest(unittest.TestCase):
             forward_op_num + 2 * output_num,
             program.desc.block(0).op_size(),
         )
+=======
+    def get_forward_backward_program_desc(self, whole_program_desc,
+                                          forward_op_num, output_num):
+        program = _build_program_by_desc(whole_program_desc)
+        forward_program = _add_build_strategy_for(program, 0, forward_op_num)
+        backward_program = _add_build_strategy_for(
+            program, forward_op_num + 2 * output_num,
+            program.desc.block(0).op_size())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return forward_program.desc, backward_program.desc
 
     def prepare_attrs(self):
         return [
             'global_block',
+<<<<<<< HEAD
             self.program_desc.block(0),
             'start_op_index',
             0,
@@ -146,6 +208,11 @@ class RunProgramOpTest(unittest.TestCase):
             self.fwd_op_num,
             'program_id',
             _hash_with_id(self.program_desc, self),
+=======
+            self.program_desc.block(0), 'start_op_index', 0, 'end_op_index',
+            self.fwd_op_num, 'program_id',
+            _hash_with_id(self.program_desc, self)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
     def get_param_grad_names(self):
@@ -159,16 +226,25 @@ class RunProgramOpTest(unittest.TestCase):
         actual_outs = self.calc_dygraph_output(place)
 
         # Step 2. compare output
+<<<<<<< HEAD
         for expect_v, actual_v in zip(self.expect_outs, actual_outs):
             np.testing.assert_allclose(
                 expect_v, actual_v.numpy(), rtol=1e-05, atol=1e-05
             )
+=======
+        for expect_v, actual_v in six.moves.zip(self.expect_outs, actual_outs):
+            np.testing.assert_allclose(expect_v,
+                                       actual_v.numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_grad_with_place(self, place):
         # Step 1. calc grads
         actual_grads = self.calc_dygraph_grad(place)
 
         # Step 2. compare grads
+<<<<<<< HEAD
         for expect_v, actual_v in zip(self.expect_grads, actual_grads):
             np.testing.assert_array_almost_equal(expect_v, actual_v)
             np.testing.assert_allclose(
@@ -185,6 +261,29 @@ class RunProgramOpTest(unittest.TestCase):
                 var = core.VarBase(
                     value=np_value, name=name, place=place, zero_copy=True
                 )
+=======
+        for expect_v, actual_v in six.moves.zip(self.expect_grads,
+                                                actual_grads):
+            np.testing.assert_array_almost_equal(expect_v, actual_v)
+            np.testing.assert_allclose(expect_v,
+                                       actual_v,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+
+    def prepare_dygraph_input(self, place, return_param_list=False):
+
+        def create_var_base(is_input, name, np_value, stop_gradient):
+            if _in_eager_mode_:
+                var = core.eager.Tensor(value=np_value,
+                                        name=name,
+                                        place=place,
+                                        zero_copy=True)
+            else:
+                var = core.VarBase(value=np_value,
+                                   name=name,
+                                   place=place,
+                                   zero_copy=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             var.stop_gradient = stop_gradient
             return var
 
@@ -207,6 +306,10 @@ class RunProgramOpTest(unittest.TestCase):
         return inputs
 
     def prepare_dygraph_output(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def create_var_base(is_input, name):
             var = framework._varbase_creator(dtype=None, shape=None, name=name)
             var.stop_gradient = False
@@ -218,14 +321,22 @@ class RunProgramOpTest(unittest.TestCase):
         for name in self.output_names['Out']:
             outputs['Out'].append(create_var_base(False, name))
 
+<<<<<<< HEAD
         if global_var._in_eager_mode_:
+=======
+        if _in_eager_mode_:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             outputs['OutScope'] = [core.Scope()]
         else:
             outputs['OutScope'] = framework._varbase_creator(
                 type=core.VarDesc.VarType.STEP_SCOPES,
                 name="program_out_scope",
+<<<<<<< HEAD
                 persistable=True,
             )
+=======
+                persistable=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             inner_scope = core.Scope()
             outputs['OutScope'].value().set_scope(inner_scope)
 
@@ -240,6 +351,7 @@ class RunProgramOpTest(unittest.TestCase):
             inputs = self.prepare_dygraph_input(place)
             outputs = self.prepare_dygraph_output()
 
+<<<<<<< HEAD
             (
                 forward_program_desc,
                 backward_program_desc,
@@ -280,6 +392,22 @@ class RunProgramOpTest(unittest.TestCase):
                 None,
                 *self.attrs
             )
+=======
+            forward_program_desc, backward_program_desc = self.get_forward_backward_program_desc(
+                self.program_desc, self.fwd_op_num, len(outputs['Out']))
+
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
+            self.attrs.extend(('use_interpretorcore', use_interpretorcore))
+            if use_interpretorcore:
+                self.attrs.extend(
+                    ('forward_global_block', forward_program_desc.block(0),
+                     'backward_global_block', backward_program_desc.block(0)))
+
+            _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
+                                      outputs['Out'], outputs['OutScope'],
+                                      outputs['DOut'], None, *self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             return outputs['Out']
 
@@ -292,6 +420,7 @@ class RunProgramOpTest(unittest.TestCase):
             inputs, input_param_list = self.prepare_dygraph_input(place, True)
             outputs = self.prepare_dygraph_output()
 
+<<<<<<< HEAD
             (
                 forward_program_desc,
                 backward_program_desc,
@@ -332,6 +461,22 @@ class RunProgramOpTest(unittest.TestCase):
                 None,
                 *self.attrs
             )
+=======
+            forward_program_desc, backward_program_desc = self.get_forward_backward_program_desc(
+                self.program_desc, self.fwd_op_num, len(outputs['Out']))
+
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
+            self.attrs.extend(('use_interpretorcore', use_interpretorcore))
+            if use_interpretorcore:
+                self.attrs.extend(
+                    ('forward_global_block', forward_program_desc.block(0),
+                     'backward_global_block', backward_program_desc.block(0)))
+
+            _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
+                                      outputs['Out'], outputs['OutScope'],
+                                      outputs['DOut'], None, *self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             for param in input_param_list:
                 var_type = self._get_grad_vartype(param.name)
@@ -355,24 +500,39 @@ class RunProgramOpTest(unittest.TestCase):
     def _get_grad_vartype(self, name):
         assert self.program_desc is not None
         grad_name = name + core.grad_var_suffix()
+<<<<<<< HEAD
         for i in range(self.program_desc.num_blocks()):
             block = self.program_desc.block(i)
             var_desc = block.find_var_recursive(grad_name.encode())
+=======
+        for i in six.moves.range(self.program_desc.num_blocks()):
+            block = self.program_desc.block(i)
+            var_desc = block.find_var_recursive(cpt.to_bytes(grad_name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return var_desc.type() if var_desc is not None else None
 
 
 class TestRunProgramOpWithFC(RunProgramOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "run_program"
         self.dtype = np.float32
         self.input_names = {
             'X': ['img'],
+<<<<<<< HEAD
             'Params': ['weight_param', 'bias_param'],
+=======
+            'Params': ['weight_param', 'bias_param']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.output_names = {'Out': ['fc_0.tmp_2']}
 
         self.inputs = {
             'X': {
+<<<<<<< HEAD
                 self.input_names['X'][0]: np.random.random(
                     (32, 1, 28, 28)
                 ).astype(self.dtype)
@@ -385,6 +545,17 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
                     (32, 10)
                 ).astype(self.dtype),
             },
+=======
+                self.input_names['X'][0]:
+                np.random.random((32, 1, 28, 28)).astype(self.dtype)
+            },
+            'Params': {
+                self.input_names['Params'][0]:
+                np.random.random((784, 10)).astype(self.dtype),
+                self.input_names['Params'][1]:
+                np.random.random((32, 10)).astype(self.dtype)
+            }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -395,23 +566,35 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
+<<<<<<< HEAD
         img = fluid.data(
             name=self.input_names['X'][0],
             shape=[None, 1, 28, 28],
             dtype='float32',
         )
+=======
+        img = fluid.data(name=self.input_names['X'][0],
+                         shape=[None, 1, 28, 28],
+                         dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         weight_attr = fluid.ParamAttr(
             name=self.input_names['Params'][0],
             learning_rate=0.5,
             initializer=fluid.initializer.NumpyArrayInitializer(
+<<<<<<< HEAD
                 self.inputs['Params'][self.input_names['Params'][0]]
             ),
             trainable=True,
         )
+=======
+                self.inputs['Params'][self.input_names['Params'][0]]),
+            trainable=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         bias_attr = fluid.ParamAttr(
             name=self.input_names['Params'][1],
             learning_rate=0.5,
             initializer=fluid.initializer.NumpyArrayInitializer(
+<<<<<<< HEAD
                 self.inputs['Params'][self.input_names['Params'][1]]
             ),
             trainable=True,
@@ -423,6 +606,15 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
             bias_attr=bias_attr,
             activation='relu',
         )
+=======
+                self.inputs['Params'][self.input_names['Params'][1]]),
+            trainable=True)
+        pred = fluid.layers.fc(input=img,
+                               size=10,
+                               param_attr=weight_attr,
+                               bias_attr=bias_attr,
+                               act='relu')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # 2. get forward op num
         fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
         # 3. append backward
@@ -432,10 +624,15 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
 
 class TestRunProgramOpWithEmbedding(RunProgramOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "run_program"
         self.dtype = np.float32
         self.input_names = {'X': ['x'], 'Params': ['emb_weight']}
+<<<<<<< HEAD
         self.output_names = {'Out': ['sum_0.tmp_0']}
 
         self.inputs = {
@@ -443,6 +640,17 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
             'Params': {
                 'emb_weight': np.random.random(size=(10, 16)).astype("float32")
             },
+=======
+        self.output_names = {'Out': ['reduce_sum_0.tmp_0']}
+
+        self.inputs = {
+            'X': {
+                'x': np.array([[1, 3, 0, 4, 7]]).astype("int64")
+            },
+            'Params': {
+                'emb_weight': np.random.random(size=(10, 16)).astype("float32")
+            }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -455,14 +663,24 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
+<<<<<<< HEAD
             # TODO: RunProgramOp is not recommended for use in static graph mode now
+=======
+            # TODO: RunProgramOp is not recommended for use in static mode now
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.calc_dygraph_grad(place)
 
     def build_model(self):
         # 1. simple model
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.input_names['X'][0], shape=[-1, 5], dtype='int64'
         )
+=======
+        x = fluid.layers.data(name=self.input_names['X'][0],
+                              shape=[5],
+                              dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         emb = fluid.input.embedding(
             input=x,
             size=[10, 16],
@@ -470,12 +688,18 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
                 name="emb_weight",
                 learning_rate=10,
                 initializer=fluid.initializer.NumpyArrayInitializer(
+<<<<<<< HEAD
                     self.inputs['Params'][self.input_names['Params'][0]]
                 ),
             ),
             is_sparse=True,
         )
         y = paddle.sum(emb, axis=-1)
+=======
+                    self.inputs['Params'][self.input_names['Params'][0]])),
+            is_sparse=True)
+        y = fluid.layers.reduce_sum(emb, dim=-1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # 2. get forward op num
         fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
         # 3. append backward
@@ -485,8 +709,14 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
 
 
 class Net(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(Net, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fc1 = paddle.nn.Linear(10, 10)
         self.fc2 = paddle.nn.Linear(10, 1)
 
@@ -498,6 +728,10 @@ class Net(paddle.nn.Layer):
 
 
 class TestParametersWithStopGradient(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.seed = 2021
         self.iter = 5

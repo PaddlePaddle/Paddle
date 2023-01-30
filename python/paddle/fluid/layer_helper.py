@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 
 from .framework import (
@@ -21,16 +22,32 @@ from .framework import (
     OpProtoHolder,
     _global_flags,
 )
+=======
+from __future__ import print_function
+
+import copy
+import six
+
+from .framework import Parameter, dtype_is_floating, _non_static_mode, OpProtoHolder, _global_flags
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
 from . import core
+<<<<<<< HEAD
 
+=======
+from six.moves import zip
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .layer_helper_base import LayerHelperBase
 from .dygraph_utils import _append_activation_in_dygraph
 
 
 class LayerHelper(LayerHelperBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, layer_type, **kwargs):
         self.kwargs = kwargs
         name = self.kwargs.get('name', None)
@@ -40,7 +57,12 @@ class LayerHelper(LayerHelperBase):
         if name is None:
             self.kwargs['name'] = unique_name.generate(layer_type)
 
+<<<<<<< HEAD
         super().__init__(self.kwargs['name'], layer_type=layer_type)
+=======
+        super(LayerHelper, self).__init__(self.kwargs['name'],
+                                          layer_type=layer_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
@@ -69,7 +91,11 @@ class LayerHelper(LayerHelperBase):
     def bias_attr(self):
         return ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
 
+<<<<<<< HEAD
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of param_attr
+=======
+    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of param_attr
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def multiple_param_attr(self, length):
         param_attr = self.param_attr
         if isinstance(param_attr, ParamAttr):
@@ -79,7 +105,11 @@ class LayerHelper(LayerHelperBase):
             raise ValueError("parameter number mismatch")
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
+<<<<<<< HEAD
             for i in range(length):
+=======
+            for i in six.moves.range(length):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
         return param_attr
@@ -97,9 +127,14 @@ class LayerHelper(LayerHelperBase):
             if dtype is None:
                 dtype = each.dtype
             elif dtype != each.dtype:
+<<<<<<< HEAD
                 raise ValueError(
                     "Data Type mismatch: %d to %d" % (dtype, each.dtype)
                 )
+=======
+                raise ValueError("Data Type mismatch: %d to %d" %
+                                 (dtype, each.dtype))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return dtype
 
     def get_parameter(self, name):
@@ -108,7 +143,11 @@ class LayerHelper(LayerHelperBase):
             raise ValueError("no Parameter name %s found" % name)
         return param
 
+<<<<<<< HEAD
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of bias_attr
+=======
+    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of bias_attr
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def append_bias_op(self, input_var, dim_start=1, dim_end=None):
         """
         Append bias operator and return its output. If the user does not set
@@ -128,6 +167,7 @@ class LayerHelper(LayerHelperBase):
         if not bias_attr:
             return input_var
 
+<<<<<<< HEAD
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True
         )
@@ -141,11 +181,32 @@ class LayerHelper(LayerHelperBase):
         return tmp
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of act
+=======
+        b = self.create_parameter(attr=bias_attr,
+                                  shape=size,
+                                  dtype=input_var.dtype,
+                                  is_bias=True)
+        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+        self.append_op(type='elementwise_add',
+                       inputs={
+                           'X': [input_var],
+                           'Y': [b]
+                       },
+                       outputs={'Out': [tmp]},
+                       attrs={'axis': dim_start})
+        return tmp
+
+    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of act
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def append_activation(self, input_var):
         act = self.kwargs.get('act', None)
         if act is None:
             return input_var
+<<<<<<< HEAD
         if isinstance(act, str):
+=======
+        if isinstance(act, six.string_types):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             act = {'type': act}
         else:
             raise TypeError(str(act) + " should be unicode or str")
@@ -155,12 +216,18 @@ class LayerHelper(LayerHelperBase):
             use_cudnn = self.kwargs.get('use_cudnn')
             act['use_cudnn'] = use_cudnn
         use_mkldnn = self.kwargs.get(
+<<<<<<< HEAD
             'use_mkldnn', _global_flags().get("FLAGS_use_mkldnn", False)
         )
+=======
+            'use_mkldnn',
+            _global_flags().get("FLAGS_use_mkldnn", False))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if _non_static_mode():
+<<<<<<< HEAD
             res = _append_activation_in_dygraph(
                 input_var, act_type, use_cudnn, use_mkldnn
             )
@@ -176,6 +243,20 @@ class LayerHelper(LayerHelperBase):
             return tmp
 
     # TODO (jiabin): should we remove this since it has never be used
+=======
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn,
+                                                use_mkldnn)
+            return res
+        else:
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+            self.append_op(type=act_type,
+                           inputs={"X": [input_var]},
+                           outputs={"Out": [tmp]},
+                           attrs=act)
+            return tmp
+
+    #TODO (jiabin): should we remove this since it has never be used
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _get_default_initializer(self, dtype):
         if dtype is None or dtype_is_floating(dtype) is True:
             return Xavier()
@@ -183,6 +264,7 @@ class LayerHelper(LayerHelperBase):
             # For integer and boolean types, initialize with all zeros
             return Constant()
 
+<<<<<<< HEAD
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of kwargs
     def is_instance(self, param_name, cls):
         param = self.kwargs.get(param_name, None)
@@ -193,3 +275,11 @@ class LayerHelper(LayerHelperBase):
                 self.layer_type,
                 cls.__name__,
             )
+=======
+    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of kwargs
+    def is_instance(self, param_name, cls):
+        param = self.kwargs.get(param_name, None)
+        if not isinstance(param, cls):
+            raise TypeError("The input {0} parameter of method {1} must be {2}",
+                            param_name, self.layer_type, cls.__name__)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/common/complex.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/type_traits.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/impl/abs_grad_kernel_impl.h"
@@ -29,9 +32,13 @@ PD_REGISTER_KERNEL(abs_grad,
                    int,
                    int64_t,
                    complex<float>,
+<<<<<<< HEAD
                    complex<double>) {
   kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
+=======
+                   complex<double>) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_KERNEL(abs_double_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -41,6 +48,10 @@ PD_REGISTER_KERNEL(abs_double_grad,
                    int,
                    int64_t,
                    complex<float>,
+<<<<<<< HEAD
                    complex<double>) {
   kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
+=======
+                   complex<double>) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

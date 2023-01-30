@@ -54,6 +54,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
     dmask_data = dev_ctx.template Alloc<T>(mask_grad);
   }
 
+<<<<<<< HEAD
   if (phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
       phi::backends::xpu::XPUVersion::XPU1) {
     PADDLE_ENFORCE_EQ(
@@ -62,16 +63,31 @@ void DeformableConvGradKernel(const Context& dev_ctx,
         errors::InvalidArgument(("XPU1 only support deformable_groups == 1 in "
                                  "deformable_conv_grad op.")));
   }
+=======
+  PADDLE_ENFORCE_EQ(
+      deformable_groups == 1,
+      true,
+      errors::InvalidArgument(
+          ("XPU only support deformable_groups == 1 in deformable_conv op.")));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_EQ(
       groups == 1,
       true,
       errors::InvalidArgument(
+<<<<<<< HEAD
           ("XPU only support groups == 1 in deformable_conv_grad op.")));
+=======
+          ("XPU only support groups == 1 in deformable_conv op.")));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_EQ(filter.dims()[2] <= 8 && filter.dims()[3] <= 8,
                     true,
                     errors::InvalidArgument(
                         "Filter high and weight should less than 8 on xpu "
+<<<<<<< HEAD
                         "in deformable_conv_grad op."));
+=======
+                        "in deformable_conv op."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   const int batch_size = static_cast<int>(x.dims()[0]);
   std::vector<int64_t> output_shape_vec(phi::vectorize(out_grad.dims()));

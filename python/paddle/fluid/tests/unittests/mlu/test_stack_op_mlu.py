@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -25,6 +30,10 @@ paddle.enable_static()
 
 
 class TestStackOpBase(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
@@ -48,8 +57,12 @@ class TestStackOpBase(OpTest):
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
+<<<<<<< HEAD
                 np.random.random(size=self.input_dim).astype(self.dtype)
             )
+=======
+                np.random.random(size=self.input_dim).astype(self.dtype))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         tmp = []
         x_names = self.get_x_names()
@@ -73,66 +86,120 @@ class TestStackOpBase(OpTest):
 
 
 class TestStackOp1(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.num_inputs = 16
 
 
 class TestStackOp2(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.num_inputs = 20
 
 
 class TestStackOp3(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = -1
 
 
 class TestStackOp4(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = -4
 
 
 class TestStackOp5(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 1
 
 
 class TestStackOp6(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 3
 
 
 class TestStackOpINT32(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestStackOpINT64(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int64
 
 
 class TestStackOpHalf(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class API_test(unittest.TestCase):
+<<<<<<< HEAD
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 1, 2], dtype='float32')
             data2 = paddle.static.data('data2', shape=[-1, 1, 2], dtype='float32')
             data3 = paddle.static.data('data3', shape=[-1, 1, 2], dtype='float32')
+=======
+
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float32')
+            data2 = fluid.layers.data('data2', shape=[1, 2], dtype='float32')
+            data3 = fluid.layers.data('data3', shape=[1, 2], dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             result_stack = paddle.stack([data1, data2, data3], axis=0)
             place = paddle.MLUPlace(0)
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 2]).astype('float32')
             input2 = np.random.random([1, 2]).astype('float32')
             input3 = np.random.random([1, 2]).astype('float32')
+<<<<<<< HEAD
             (result,) = exe.run(
                 feed={"data1": input1, "data2": input2, "data3": input3},
                 fetch_list=[result_stack],
             )
+=======
+            result, = exe.run(feed={
+                "data1": input1,
+                "data2": input2,
+                "data3": input3
+            },
+                              fetch_list=[result_stack])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.stack([input1, input2, input3], axis=0)
             np.testing.assert_allclose(expected_result, result)
 
@@ -143,6 +210,10 @@ class API_test(unittest.TestCase):
 
 
 class API_DygraphTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_out(self):
         data1 = np.array([[1.0, 2.0]]).astype("float32")
         data2 = np.array([[3.0, 4.0]]).astype("float32")

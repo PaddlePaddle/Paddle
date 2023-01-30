@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 __all__ = []
 
 
+<<<<<<< HEAD
 class DataGenerator:
     """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
     with paddle.distributed.InMemoryDataset/QueueDataset should
+=======
+class DataGenerator(object):
+    """
+    DataGenerator is a general Base class for user to inherit
+    A user who wants to define his/her own python processing logic
+    with paddle.distributed.InMemoryDataset/QueueDataset should 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     inherit this class.
     """
 
@@ -79,7 +91,11 @@ class DataGenerator:
         batch_samples = []
         line_iter = self.generate_sample(None)
         for user_parsed_line in line_iter():
+<<<<<<< HEAD
             if user_parsed_line is None:
+=======
+            if user_parsed_line == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 continue
             batch_samples.append(user_parsed_line)
             if len(batch_samples) == self.batch_size_:
@@ -95,7 +111,11 @@ class DataGenerator:
     def run_from_stdin(self):
         '''
         This function reads the data row from stdin, parses it with the
+<<<<<<< HEAD
         process function, and further parses the return value of the
+=======
+        process function, and further parses the return value of the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         process function with the _gen_str function. The parsed data will
         be wrote to stdout and the corresponding protofile will be
         generated.
@@ -121,7 +141,11 @@ class DataGenerator:
         for line in sys.stdin:
             line_iter = self.generate_sample(line)
             for user_parsed_line in line_iter():
+<<<<<<< HEAD
                 if user_parsed_line is None:
+=======
+                if user_parsed_line == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     continue
                 batch_samples.append(user_parsed_line)
                 if len(batch_samples) == self.batch_size_:
@@ -147,12 +171,20 @@ class DataGenerator:
             Return a string data that can be read directly by the datafeed.
         '''
         raise NotImplementedError(
+<<<<<<< HEAD
             "pls use MultiSlotDataGenerator or PairWiseDataGenerator"
         )
 
     def generate_sample(self, line):
         '''
         This function needs to be overridden by the user to process the
+=======
+            "pls use MultiSlotDataGenerator or PairWiseDataGenerator")
+
+    def generate_sample(self, line):
+        '''
+        This function needs to be overridden by the user to process the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         original data row into a list or tuple.
 
         Args:
@@ -160,8 +192,13 @@ class DataGenerator:
 
         Returns:
             Returns the data processed by the user.
+<<<<<<< HEAD
               The data format is list or tuple:
             [(name, [feasign, ...]), ...]
+=======
+              The data format is list or tuple: 
+            [(name, [feasign, ...]), ...] 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               or ((name, [feasign, ...]), ...)
 
             For example:
@@ -188,9 +225,14 @@ class DataGenerator:
 
         '''
         raise NotImplementedError(
+<<<<<<< HEAD
             "Please rewrite this function to return a list or tuple: "
             + "[(name, [feasign, ...]), ...] or ((name, [feasign, ...]), ...)"
         )
+=======
+            "Please rewrite this function to return a list or tuple: " +
+            "[(name, [feasign, ...]), ...] or ((name, [feasign, ...]), ...)")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def generate_batch(self, samples):
         '''
@@ -238,6 +280,10 @@ class DataGenerator:
 # add more generalized DataGenerator that can adapt user-defined slot
 # for example, [(name, float_list), (name, str_list), (name, int_list)]
 class MultiSlotStringDataGenerator(DataGenerator):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -262,14 +308,22 @@ class MultiSlotStringDataGenerator(DataGenerator):
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''
+<<<<<<< HEAD
         if isinstance(line, zip):
+=======
+        if sys.version > '3' and isinstance(line, zip):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             line = list(line)
 
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
                 "the output of process() must be in list or tuple type"
+<<<<<<< HEAD
                 "Examples: [('words', ['1926', '08', '17']), ('label', ['1'])]"
             )
+=======
+                "Examples: [('words', ['1926', '08', '17']), ('label', ['1'])]")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output = ""
         for index, item in enumerate(line):
             name, elements = item
@@ -283,6 +337,10 @@ class MultiSlotStringDataGenerator(DataGenerator):
 
 
 class MultiSlotDataGenerator(DataGenerator):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -290,7 +348,11 @@ class MultiSlotDataGenerator(DataGenerator):
         and updating proto_info information.
 
         The input line will be in this format:
+<<<<<<< HEAD
             >>> [(name, [feasign, ...]), ...]
+=======
+            >>> [(name, [feasign, ...]), ...] 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             >>> or ((name, [feasign, ...]), ...)
         The output will be in this format:
             >>> [ids_num id1 id2 ...] ...
@@ -311,14 +373,22 @@ class MultiSlotDataGenerator(DataGenerator):
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''
+<<<<<<< HEAD
         if isinstance(line, zip):
+=======
+        if sys.version > '3' and isinstance(line, zip):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             line = list(line)
 
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
                 "the output of process() must be in list or tuple type"
+<<<<<<< HEAD
                 "Example: [('words', [1926, 08, 17]), ('label', [1])]"
             )
+=======
+                "Example: [('words', [1926, 08, 17]), ('label', [1])]")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output = ""
 
         if self._proto_info is None:
@@ -328,9 +398,14 @@ class MultiSlotDataGenerator(DataGenerator):
                 if not isinstance(name, str):
                     raise ValueError("name%s must be in str type" % type(name))
                 if not isinstance(elements, list):
+<<<<<<< HEAD
                     raise ValueError(
                         "elements%s must be in list type" % type(elements)
                     )
+=======
+                    raise ValueError("elements%s must be in list type" %
+                                     type(elements))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if not elements:
                     raise ValueError(
                         "the elements of each field can not be empty, you need padding it in process()."
@@ -342,11 +417,19 @@ class MultiSlotDataGenerator(DataGenerator):
                 for elem in elements:
                     if isinstance(elem, float):
                         self._proto_info[-1] = (name, "float")
+<<<<<<< HEAD
                     elif not isinstance(elem, int):
                         raise ValueError(
                             "the type of element%s must be in int or float"
                             % type(elem)
                         )
+=======
+                    elif not isinstance(elem, int) and not isinstance(
+                            elem, long):
+                        raise ValueError(
+                            "the type of element%s must be in int or float" %
+                            type(elem))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     output += " " + str(elem)
         else:
             if len(line) != len(self._proto_info):
@@ -358,9 +441,14 @@ class MultiSlotDataGenerator(DataGenerator):
                 if not isinstance(name, str):
                     raise ValueError("name%s must be in str type" % type(name))
                 if not isinstance(elements, list):
+<<<<<<< HEAD
                     raise ValueError(
                         "elements%s must be in list type" % type(elements)
                     )
+=======
+                    raise ValueError("elements%s must be in list type" %
+                                     type(elements))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if not elements:
                     raise ValueError(
                         "the elements of each field can not be empty, you need padding it in process()."
@@ -368,8 +456,12 @@ class MultiSlotDataGenerator(DataGenerator):
                 if name != self._proto_info[index][0]:
                     raise ValueError(
                         "the field name of two given line are not match: require<%s>, get<%s>."
+<<<<<<< HEAD
                         % (self._proto_info[index][0], name)
                     )
+=======
+                        % (self._proto_info[index][0], name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if output:
                     output += " "
                 output += str(len(elements))
@@ -377,10 +469,18 @@ class MultiSlotDataGenerator(DataGenerator):
                     if self._proto_info[index][1] != "float":
                         if isinstance(elem, float):
                             self._proto_info[index] = (name, "float")
+<<<<<<< HEAD
                         elif not isinstance(elem, int):
                             raise ValueError(
                                 "the type of element%s must be in int or float"
                                 % type(elem)
                             )
+=======
+                        elif not isinstance(elem, int) and not isinstance(
+                                elem, long):
+                            raise ValueError(
+                                "the type of element%s must be in int or float"
+                                % type(elem))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     output += " " + str(elem)
         return output + "\n"

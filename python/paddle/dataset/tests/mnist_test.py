@@ -12,14 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle.dataset.mnist
+=======
+from __future__ import print_function
+
+import paddle.dataset.mnist
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
 class TestMNIST(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def check_reader(self, reader):
         sum = 0
         label = 0
@@ -32,15 +43,23 @@ class TestMNIST(unittest.TestCase):
 
     def test_train(self):
         instances, max_label_value = self.check_reader(
+<<<<<<< HEAD
             paddle.dataset.mnist.train()
         )
+=======
+            paddle.dataset.mnist.train())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(instances, 60000)
         self.assertEqual(max_label_value, 9)
 
     def test_test(self):
         instances, max_label_value = self.check_reader(
+<<<<<<< HEAD
             paddle.dataset.mnist.test()
         )
+=======
+            paddle.dataset.mnist.test())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(instances, 10000)
         self.assertEqual(max_label_value, 9)
 

@@ -13,13 +13,20 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from numpy.random import random as rand
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+<<<<<<< HEAD
+=======
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle_apis = {
     "add": paddle.add,
@@ -30,6 +37,10 @@ paddle_apis = {
 
 
 class TestComplexElementwiseLayers(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -47,6 +58,7 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             pd_result,
             np_result,
             rtol=1e-05,
+<<<<<<< HEAD
             err_msg='\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'.format(
                 place,
                 pd_result[~np.isclose(pd_result, np_result)],
@@ -68,6 +80,23 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             self.assert_check(
                 self.paddle_calc(x, y, "div", place), x / y, place
             )
+=======
+            err_msg=
+            '\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'.
+            format(place, pd_result[~np.isclose(pd_result, np_result)],
+                   np_result[~np.isclose(pd_result, np_result)]))
+
+    def compare_by_basic_api(self, x, y):
+        for place in self._places:
+            self.assert_check(self.paddle_calc(x, y, "add", place), x + y,
+                              place)
+            self.assert_check(self.paddle_calc(x, y, "sub", place), x - y,
+                              place)
+            self.assert_check(self.paddle_calc(x, y, "mul", place), x * y,
+                              place)
+            self.assert_check(self.paddle_calc(x, y, "div", place), x / y,
+                              place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def compare_op_by_basic_api(self, x, y):
         for place in self._places:
@@ -81,21 +110,33 @@ class TestComplexElementwiseLayers(unittest.TestCase):
 
     def test_complex_xy(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
                 [2, 3, 4, 5]
             ).astype(dtype)
             y = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
                 [2, 3, 4, 5]
             ).astype(dtype)
+=======
+            x = rand([2, 3, 4, 5
+                      ]).astype(dtype) + 1j * rand([2, 3, 4, 5]).astype(dtype)
+            y = rand([2, 3, 4, 5
+                      ]).astype(dtype) + 1j * rand([2, 3, 4, 5]).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.compare_by_basic_api(x, y)
             self.compare_op_by_basic_api(x, y)
 
     def test_complex_x_real_y(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
                 [2, 3, 4, 5]
             ).astype(dtype)
+=======
+            x = rand([2, 3, 4, 5
+                      ]).astype(dtype) + 1j * rand([2, 3, 4, 5]).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             y = rand([4, 5]).astype(dtype)
 
             # promote types cases
@@ -111,6 +152,15 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             self.compare_by_basic_api(x, y)
             self.compare_op_by_basic_api(x, y)
 
+<<<<<<< HEAD
+=======
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_real_x_complex_y()
+            self.test_complex_x_real_y()
+            self.test_complex_xy()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

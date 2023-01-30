@@ -31,7 +31,10 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pybind/imperative.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/complex.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace py = pybind11;
 namespace paddle {
@@ -215,6 +218,7 @@ double CastPyArg2Double(PyObject* obj,
   return 0.0;
 }
 
+<<<<<<< HEAD
 phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
                                              const std::string& op_type,
                                              ssize_t arg_pos) {
@@ -234,6 +238,8 @@ phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
   return phi::dtype::complex<float>(0, 0);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void CastPyArg2AttrDouble(PyObject* obj,
                           paddle::framework::AttributeMap& attrs,  // NOLINT
                           const std::string& key,
@@ -461,11 +467,15 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
             i));
       }
     }
+<<<<<<< HEAD
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrToLong(&obj)) {
     return {static_cast<int64_t>(PyLong_AsLong(obj))};
   } else {
+=======
+  } else if ((PyObject*)obj != Py_None) {  // NOLINT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "list or tuple, but got %s",

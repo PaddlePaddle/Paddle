@@ -124,7 +124,10 @@ TEST(ArgMappingContexTest, BasicFunction) {
 
   EXPECT_EQ(context.IsDenseTensorOutput("Out"), false);
   EXPECT_EQ(context.IsSelectedRowsOutput("Out"), false);
+<<<<<<< HEAD
   EXPECT_EQ(context.IsSparseCooTensorOutput("Out"), false);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   EXPECT_EQ(context.IsForInferShape(), false);
 }
 

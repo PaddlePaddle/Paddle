@@ -14,12 +14,21 @@
 
 #include "paddle/phi/kernels/put_along_axis_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
+=======
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/operators/gather_scatter_kernel.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -36,6 +45,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                     errors::PreconditionNotMet(
                         "PutAlongAxisCUDAKernel only runs on GPU device."));
 
+<<<<<<< HEAD
   const auto& index_type = index.dtype();
 
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
@@ -61,6 +71,34 @@ void PutAlongAxisKernel(const Context& dev_ctx,
           *out, axis, index, value, dev_ctx);
     } else if (index_type == DataType::INT64) {
       phi::funcs::gpu_scatter_assign_kernel<T, int64_t>(
+=======
+  const auto& index_type =
+      paddle::framework::TransToProtoVarType(index.dtype());
+
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  if (reduce == "add") {
+    if (index_type == paddle::framework::proto::VarType::INT32) {
+      paddle::operators::gpu_scatter_add_kernel<T, int32_t>(
+          *out, axis, index, value, dev_ctx);
+    } else if (index_type == paddle::framework::proto::VarType::INT64) {
+      paddle::operators::gpu_scatter_add_kernel<T, int64_t>(
+          *out, axis, index, value, dev_ctx);
+    }
+  } else if (reduce == "multiply" || reduce == "mul") {
+    if (index_type == paddle::framework::proto::VarType::INT32) {
+      paddle::operators::gpu_scatter_mul_kernel<T, int32_t>(
+          *out, axis, index, value, dev_ctx);
+    } else if (index_type == paddle::framework::proto::VarType::INT64) {
+      paddle::operators::gpu_scatter_mul_kernel<T, int64_t>(
+          *out, axis, index, value, dev_ctx);
+    }
+  } else if (reduce == "assign") {
+    if (index_type == paddle::framework::proto::VarType::INT32) {
+      paddle::operators::gpu_scatter_assign_kernel<T, int32_t>(
+          *out, axis, index, value, dev_ctx);
+    } else if (index_type == paddle::framework::proto::VarType::INT64) {
+      paddle::operators::gpu_scatter_assign_kernel<T, int64_t>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           *out, axis, index, value, dev_ctx);
     }
   } else {

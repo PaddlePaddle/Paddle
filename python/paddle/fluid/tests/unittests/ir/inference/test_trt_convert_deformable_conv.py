@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -24,6 +25,19 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+
+class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -31,31 +45,48 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
+<<<<<<< HEAD
         if (
             inputs['input_data'].shape[1]
             != weights['filter_data'].shape[1] * attrs[0]['groups']
         ):
+=======
+        if inputs['input_data'].shape[
+                1] != weights['filter_data'].shape[1] * attrs[0]['groups']:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
 
         return True
 
     def sample_program_configs(self):
+<<<<<<< HEAD
         def compute_output_size(
             input_size: List[int],
             kernel_sizes: List[int],
             attrs: List[Dict[str, Any]],
         ):
+=======
+
+        def compute_output_size(input_size: List[int], kernel_sizes: List[int],
+                                attrs: List[Dict[str, Any]]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             strides = attrs[0]['strides']
             paddings = attrs[0]['paddings']
             dilations = attrs[0]['dilations']
             output_size = []
+<<<<<<< HEAD
             for i, k, s, p, d in zip(
                 input_size, kernel_sizes, strides, paddings, dilations
             ):
+=======
+            for i, k, s, p, d in zip(input_size, kernel_sizes, strides,
+                                     paddings, dilations):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 k = d * (k - 1) + 1
                 output_size.append((i + 2 * p - k) // s + 1)
             return output_size
 
+<<<<<<< HEAD
         def generate_input1(
             batch: int,
             input_size: List[int],
@@ -96,12 +127,41 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
 
         for batch in [
             1,
+=======
+        def generate_input1(batch: int, input_size: List[int],
+                            kernel_sizes: List[int], attrs: List[Dict[str,
+                                                                      Any]]):
+            return np.random.random([batch, 3] + input_size).astype(np.float32)
+
+        def generate_offset1(batch: int, input_size: List[int],
+                             kernel_sizes: List[int], attrs: List[Dict[str,
+                                                                       Any]]):
+            output_size = compute_output_size(input_size, kernel_sizes, attrs)
+            return np.random.random([batch, 2 * np.prod(kernel_sizes)] +
+                                    output_size).astype(np.float32)
+
+        def generate_mask1(batch: int, input_size: List[int],
+                           kernel_sizes: List[int], attrs: List[Dict[str,
+                                                                     Any]]):
+            output_size = compute_output_size(input_size, kernel_sizes, attrs)
+            return np.random.random([batch, np.prod(kernel_sizes)] +
+                                    output_size).astype(np.float32)
+
+        def generate_filter1(batch: int, input_size: List[int],
+                             kernel_sizes: List[int], attrs: List[Dict[str,
+                                                                       Any]]):
+            return np.random.random([6, 3] + kernel_sizes).astype(np.float32)
+
+        for batch in [
+                1,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]:
             for input_size in [[32, 32]]:
                 for kernel_sizes in [[3, 3]]:
                     for strides in [[1, 1], [2, 2]]:
                         for paddings in [[1, 1], [0, 2]]:
                             for groups in [
+<<<<<<< HEAD
                                 1,
                             ]:
                                 for dilations in [[1, 1], [2, 2]]:
@@ -131,11 +191,39 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
                                         "op_attrs": dics[0],
                                     }
                                 ]
+=======
+                                    1,
+                            ]:
+                                for dilations in [[1, 1], [2, 2]]:
+                                    dics = [{
+                                        "strides": strides,
+                                        "paddings": paddings,
+                                        "groups": groups,
+                                        "dilations": dilations,
+                                        "deformable_groups": 1,
+                                        "im2col_step": 1
+                                    }]
+
+                                ops_config = [{
+                                    "op_type": "deformable_conv",
+                                    "op_inputs": {
+                                        "Input": ["input_data"],
+                                        "Offset": ["offset_data"],
+                                        "Mask": ["mask_data"],
+                                        "Filter": ["filter_data"]
+                                    },
+                                    "op_outputs": {
+                                        "Output": ["output_data"]
+                                    },
+                                    "op_attrs": dics[0]
+                                }]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                 ops = self.generate_op_config(ops_config)
 
                                 program_config = ProgramConfig(
                                     ops=ops,
                                     weights={
+<<<<<<< HEAD
                                         "filter_data": TensorConfig(
                                             data_gen=partial(
                                                 generate_filter1,
@@ -177,12 +265,39 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
                                     },
                                     outputs=["output_data"],
                                 )
+=======
+                                        "filter_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_filter1, batch, input_size,
+                                            kernel_sizes, dics))
+                                    },
+                                    inputs={
+                                        "input_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, batch, input_size,
+                                            kernel_sizes, dics)),
+                                        "offset_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_offset1, batch, input_size,
+                                            kernel_sizes, dics)),
+                                        "mask_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_mask1, batch, input_size,
+                                            kernel_sizes, dics))
+                                    },
+                                    outputs=["output_data"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -203,8 +318,12 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, False
         ), 1e-5
+=======
+            attrs, False), 1e-5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test(self):
         self.trt_param.workspace_size = 1 << 28

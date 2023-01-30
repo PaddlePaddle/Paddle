@@ -167,10 +167,13 @@ class Dataset {
 
   virtual void SetGpuGraphMode(int is_graph_mode) = 0;
   virtual int GetGpuGraphMode() = 0;
+<<<<<<< HEAD
   virtual bool GetEpochFinish() = 0;
 
   virtual void SetPassId(uint32_t pass_id) = 0;
   virtual uint32_t GetPassID() = 0;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  protected:
   virtual int ReceiveFromClient(int msg_type,
@@ -264,7 +267,15 @@ class DatasetImpl : public Dataset {
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
   virtual std::vector<std::string> GetSlots();
+<<<<<<< HEAD
   virtual bool GetEpochFinish();
+=======
+  /* for enable_heterps_
+  virtual void EnableHeterps(bool enable_heterps) {
+    enable_heterps_ = enable_heterps;
+  }
+  */
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<paddle::framework::Channel<T>>& GetMultiOutputChannel() {
     return multi_output_channel_;
@@ -280,9 +291,13 @@ class DatasetImpl : public Dataset {
   std::vector<uint64_t>& GetGpuGraphTotalKeys() {
     return gpu_graph_total_keys_;
   }
+<<<<<<< HEAD
 
   virtual void SetPassId(uint32_t pass_id) { pass_id_ = pass_id; }
   virtual uint32_t GetPassID() { return pass_id_; }
+=======
+  Channel<T>& GetInputChannelRef() { return input_channel_; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  protected:
   virtual int ReceiveFromClient(int msg_type,
@@ -343,9 +358,15 @@ class DatasetImpl : public Dataset {
   std::vector<std::string> use_slots_;
   bool enable_heterps_ = false;
   int gpu_graph_mode_ = 0;
+<<<<<<< HEAD
   std::vector<std::vector<std::vector<uint64_t>>> gpu_graph_type_keys_;
   std::vector<uint64_t> gpu_graph_total_keys_;
   uint32_t pass_id_ = 0;
+=======
+  // std::vector<std::vector<int64_t>> gpu_graph_device_keys_;
+  std::vector<std::vector<std::vector<uint64_t>>> graph_all_type_total_keys_;
+  std::vector<uint64_t> gpu_graph_total_keys_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 // use std::vector<MultiSlotType> or Record as data type

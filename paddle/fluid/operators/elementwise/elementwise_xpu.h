@@ -41,6 +41,7 @@ void XPUElementwise(const framework::ExecutionContext& ctx,
       nullptr,
       platform::errors::InvalidArgument("Cannot get input Variable X"));
   PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
       x_var->IsType<phi::DenseTensor>(),
       true,
       platform::errors::InvalidArgument("XPU only support phi::DenseTensor, "
@@ -49,6 +50,16 @@ void XPUElementwise(const framework::ExecutionContext& ctx,
   auto x = x_var->Get<phi::DenseTensor>();
   auto* y = ctx.Input<phi::DenseTensor>("Y");
   auto* z = ctx.Output<phi::DenseTensor>("Out");
+=======
+      x_var->IsType<framework::LoDTensor>(),
+      true,
+      platform::errors::InvalidArgument(
+          "XPU only support LoDTensor, Input(X) is not LoDTensor"));
+
+  auto x = x_var->Get<framework::LoDTensor>();
+  auto* y = ctx.Input<framework::LoDTensor>("Y");
+  auto* z = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int axis = ctx.Attr<int>("axis");
 
   auto& dev_ctx =
@@ -68,11 +79,19 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
                                           const std::vector<int>&,
                                           const std::vector<int>&)> func,
                         bool use_x_y_data) {
+<<<<<<< HEAD
   auto* x = ctx.Input<phi::DenseTensor>("X");
   auto* y = ctx.Input<phi::DenseTensor>("Y");
   auto* dz = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
   auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
   auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+  auto* x = ctx.Input<framework::Tensor>("X");
+  auto* y = ctx.Input<framework::Tensor>("Y");
+  auto* dz = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+  auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+  auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int axis = ctx.Attr<int>("axis");
 
   auto& dev_ctx =

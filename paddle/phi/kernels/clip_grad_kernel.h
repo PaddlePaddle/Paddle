@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+=======
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

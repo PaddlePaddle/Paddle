@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy as cp
 
 import hypothesis.strategies as st
@@ -25,6 +26,27 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
     conv_input   conv_weight_var(persistable)
       \       /
          conv_op
+=======
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import copy as cp
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume, reproduce_failure
+import hypothesis.strategies as st
+
+
+class TestConvTransposeBnFusePass(PassAutoScanTest):
+    '''
+    conv_input   conv_weight_var(persistable)
+      \       /
+         conv_op     
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           |
       conv_out_var  (bn_scale_var, bn_bias_var, bn_mean_var,bn_variance_var)
                 |            /
@@ -34,12 +56,19 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
     '''
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=150,
             max_duration=250,
             passes=["conv_transpose_bn_fuse_pass"],
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=150,
+                            max_duration=250,
+                            passes=["conv_transpose_bn_fuse_pass"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def sample_program_config(self, draw):
         # generate random number
@@ -49,6 +78,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         random_input_dim2 = draw(st.integers(min_value=20, max_value=50))
         random_groups = draw(st.integers(min_value=1, max_value=2))
         random_dilations = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=3), min_size=2, max_size=2
             )
@@ -66,14 +96,35 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         random_padding_algorithm = draw(
             st.sampled_from(["EXPLICIT", "SAME", "VALID"])
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=3),
+                     min_size=2,
+                     max_size=2))
+        random_strides = draw(
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
+        random_paddings = draw(
+            st.lists(st.integers(min_value=0, max_value=4),
+                     min_size=2,
+                     max_size=2))
+        random_padding_algorithm = draw(
+            st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         random_data_layout = draw(st.sampled_from(["NCHW", "NHWC"]))
         random_use_mkldnn = draw(st.booleans())
         random_output_size = []
         random_filter = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         random_out_channel = draw(st.integers(min_value=10, max_value=25))
         random_epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
@@ -94,6 +145,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             return np.random.random(shape).astype(np.float32)
 
         def generate_batch_norm_Scale():
+<<<<<<< HEAD
             return np.random.random(
                 [random_out_channel * random_groups * random_groups]
             ).astype(np.float32)
@@ -112,6 +164,26 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             return np.random.random(
                 [random_out_channel * random_groups * random_groups]
             ).astype(np.float32)
+=======
+            return np.random.random([
+                random_out_channel * random_groups * random_groups
+            ]).astype(np.float32)
+
+        def generate_batch_norm_Bias():
+            return np.random.random([
+                random_out_channel * random_groups * random_groups
+            ]).astype(np.float32)
+
+        def generate_batch_norm_Mean():
+            return np.random.random([
+                random_out_channel * random_groups * random_groups
+            ]).astype(np.float32)
+
+        def generate_batch_norm_Variance():
+            return np.random.random([
+                random_out_channel * random_groups * random_groups
+            ]).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # define op
         conv2d_op = OpConfig(
@@ -119,7 +191,11 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             inputs={
                 "Input": ["conv2d_Input"],
                 "Filter": ["conv2d_Filter"],
+<<<<<<< HEAD
                 # "Bias": ["conv2d_Bias"],
+=======
+                #"Bias": ["conv2d_Bias"],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             },
             outputs={
                 "Output": ["conv2d_Out"],
@@ -135,6 +211,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 'output_padding': random_output_size,
                 'use_mkldnn': random_use_mkldnn,
                 'is_test': True,
+<<<<<<< HEAD
             },
         )
 
@@ -163,6 +240,35 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 'use_mkldnn': random_use_mkldnn,
             },
         )
+=======
+            })
+
+        batch_norm_op = OpConfig(type="batch_norm",
+                                 inputs={
+                                     "X": ["conv2d_Out"],
+                                     "Scale": ["batch_norm_Scale"],
+                                     "Bias": ["batch_norm_Bias"],
+                                     "Mean": ["batch_norm_Mean"],
+                                     "Variance": ["batch_norm_Variance"],
+                                 },
+                                 outputs={
+                                     "Y": ["batch_norm_Y"],
+                                     "MeanOut": ["batch_norm_Mean"],
+                                     "VarianceOut": ["batch_norm_Variance"],
+                                     "SavedMean": ["batch_norm_SavedMean"],
+                                     "SavedVariance":
+                                     ["batch_norm_SavedVariance"],
+                                     "ReserveSpace":
+                                     ["batch_norm_ReserveSpace"],
+                                 },
+                                 attrs={
+                                     'epsilon': random_epsilon,
+                                     'is_test': True,
+                                     'trainable_statistics': False,
+                                     'data_layout': random_data_layout,
+                                     'use_mkldnn': random_use_mkldnn,
+                                 })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # define model_net
         model_net = [conv2d_op, batch_norm_op]
@@ -173,6 +279,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 "conv2d_Input": TensorConfig(data_gen=generate_conv2d_Input),
             },
             weights={
+<<<<<<< HEAD
                 "conv2d_Filter": TensorConfig(data_gen=generate_conv2d_Filter),
                 "batch_norm_Scale": TensorConfig(
                     data_gen=generate_batch_norm_Scale
@@ -189,6 +296,20 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             },
             outputs=["batch_norm_Y"],
         )
+=======
+                "conv2d_Filter":
+                TensorConfig(data_gen=generate_conv2d_Filter),
+                "batch_norm_Scale":
+                TensorConfig(data_gen=generate_batch_norm_Scale),
+                "batch_norm_Bias":
+                TensorConfig(data_gen=generate_batch_norm_Bias),
+                "batch_norm_Mean":
+                TensorConfig(data_gen=generate_batch_norm_Mean),
+                "batch_norm_Variance":
+                TensorConfig(data_gen=generate_batch_norm_Variance),
+            },
+            outputs=["batch_norm_Y"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
@@ -213,6 +334,10 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         return True
 
     def add_ignore_pass_case(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def teller1(program_config, predictor_config):
             if program_config.ops[0].attrs['data_format'] == "NHWC":
                 return True
@@ -224,6 +349,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             return False
 
         self.add_ignore_check_case(
+<<<<<<< HEAD
             teller1,
             IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d_transpose is wrong when data_format attribute is NHWC",
@@ -234,3 +360,11 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             IgnoreReasons.PASS_ACCURACY_ERROR,
             "there is diff when group >1 in this pass",
         )
+=======
+            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The output format of conv2d_transpose is wrong when data_format attribute is NHWC"
+        )
+
+        self.add_ignore_check_case(teller2, IgnoreReasons.PASS_ACCURACY_ERROR,
+                                   "there is diff when group >1 in this pass")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

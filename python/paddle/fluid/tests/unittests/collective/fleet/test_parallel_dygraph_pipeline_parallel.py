@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
+=======
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
@@ -23,6 +31,7 @@ class TestHybridPipeParallel(TestMultipleGpus):
         self.run_mnist_2gpu(
             os.path.abspath('../../hybrid_parallel_pp_layer.py')
         )
+<<<<<<< HEAD
 
     def test_hybrid_parallel_pp_tuple_inputs(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_embedding.py')
@@ -53,4 +62,57 @@ class TestHybridPipeParallel(TestMultipleGpus):
 
 
 if __name__ == "__main__":
+=======
+        self.run_mnist_2gpu(
+            os.path.abspath('../../hybrid_parallel_pp_layer.py'),
+            eager_mode=False,
+        )
+
+    def test_hybrid_parallel_pp_tuple_inputs(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_embedding.py')
+        self.run_mnist_2gpu('hybrid_parallel_pp_embedding.py', eager_mode=False)
+
+    def test_hybrid_parallel_shared_weight(self):
+        self.run_mnist_2gpu('hybrid_parallel_shared_weight.py')
+        self.run_mnist_2gpu(
+            'hybrid_parallel_shared_weight.py', eager_mode=False
+        )
+
+    def test_pipeline_parallel_amp(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_amp.py')
+        self.run_mnist_2gpu('hybrid_parallel_pp_amp.py', eager_mode=False)
+
+    def test_pipeline_parallel_fp16(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_fp16.py')
+        self.run_mnist_2gpu('hybrid_parallel_pp_fp16.py', eager_mode=False)
+
+    def test_hybrid_parallel_transformer(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_transformer.py')
+        self.run_mnist_2gpu(
+            'hybrid_parallel_pp_transformer.py', eager_mode=False
+        )
+
+    def test_hybrid_parallel_save_load(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_save_load.py')
+        self.run_mnist_2gpu('hybrid_parallel_pp_save_load.py', eager_mode=False)
+
+    def test_hybrid_parallel_recompute(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_recompute.py')
+        self.run_mnist_2gpu('hybrid_parallel_pp_recompute.py', eager_mode=False)
+
+    def test_hybrid_parallel_pp_clip_grad(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_clip_grad.py')
+        self.run_mnist_2gpu('hybrid_parallel_pp_clip_grad.py', eager_mode=False)
+
+    def test_hybrid_parallel_transformer_unbalanced_data(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_transformer_unbalanced_data.py')
+        self.run_mnist_2gpu(
+            'hybrid_parallel_pp_transformer_unbalanced_data.py',
+            eager_mode=False,
+        )
+
+
+if __name__ == "__main__":
+    os.environ["FLAGS_enable_eager_mode"] = "1"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     unittest.main()

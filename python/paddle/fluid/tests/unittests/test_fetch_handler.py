@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import time
 import unittest
 
@@ -23,6 +24,21 @@ from paddle.fluid.framework import Program
 
 
 class TestFetchHandler(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import time
+import unittest
+import numpy as np
+from paddle.fluid.framework import Program
+
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+
+
+class TestFetchHandler(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @unittest.skip(reason="Skip unstable ci")
     def test_fetch_handler(self):
         place = core.CPUPlace()
@@ -36,6 +52,10 @@ class TestFetchHandler(unittest.TestCase):
         var_emb3 = block.create_var(name='emb3', type=core.VarDesc.VarType.FP32)
 
         class FH(fluid.executor.FetchHandler):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             def handler(self, fetch_dict):
                 assert len(fetch_dict) == 1
 
@@ -48,6 +68,7 @@ class TestFetchHandler(unittest.TestCase):
         time.sleep(3)
         fm.stop()
 
+<<<<<<< HEAD
         default_fh = fluid.executor.FetchHandler(
             var_dict={'emb': var_emb, 'emb2': None, 'emb3': var_emb3},
             period_secs=1,
@@ -55,6 +76,16 @@ class TestFetchHandler(unittest.TestCase):
         default_fm = fluid.trainer_factory.FetchHandlerMonitor(
             scope, default_fh
         )
+=======
+        default_fh = fluid.executor.FetchHandler(var_dict={
+            'emb': var_emb,
+            'emb2': None,
+            'emb3': var_emb3
+        },
+                                                 period_secs=1)
+        default_fm = fluid.trainer_factory.FetchHandlerMonitor(
+            scope, default_fh)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         default_fm.start()
         time.sleep(5)
         default_fm.stop()

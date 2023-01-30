@@ -123,8 +123,12 @@ class StringTensor : public TensorBase,
   }
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
+<<<<<<< HEAD
                      size_t requested_size = 0,
                      bool fake_alloc = false) override;
+=======
+                     size_t requested_size = 0) override;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   dtype::pstring* mutable_data(const phi::Place& place,
                                size_t requested_size = 0);
 

@@ -214,10 +214,16 @@ class OpWithKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(InferShapeContext* ctx) const override {}
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(proto::VarType::FP32,
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(proto::VarType::FP32, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -276,11 +282,20 @@ class OpWithMultiKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(InferShapeContext* ctx) const override {}
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(phi::Backend::GPUDNN,
                           phi::DataLayout::ALL_LAYOUT,
                           phi::DataType::FLOAT32);
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(proto::VarType::FP32,
+                                   platform::CUDAPlace(0),
+                                   DataLayout::kAnyLayout,
+                                   framework::LibraryType::kCUDNN);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

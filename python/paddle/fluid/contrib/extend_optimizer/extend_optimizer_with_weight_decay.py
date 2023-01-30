@@ -17,16 +17,28 @@ from paddle.fluid import framework as framework
 __all__ = ["extend_with_decoupled_weight_decay"]
 
 
+<<<<<<< HEAD
 class DecoupledWeightDecay:
     def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
         if not isinstance(coeff, float) and not isinstance(
             coeff, framework.Variable
         ):
+=======
+class DecoupledWeightDecay(object):
+
+    def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
+        if not isinstance(coeff, float) and \
+                not isinstance(coeff, framework.Variable):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             raise TypeError("coeff should be float or Variable.")
         self._params_name = set()
         self._apply_decay_param_fun = apply_decay_param_fun
         self._coeff = coeff
+<<<<<<< HEAD
         super().__init__(**kwargs)
+=======
+        super(DecoupledWeightDecay, self).__init__(**kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _scale_parameters(self, params_and_grads):
         """
@@ -47,6 +59,7 @@ class DecoupledWeightDecay:
             # If no gradient then we don't need to do anything
             if grad is None:
                 continue
+<<<<<<< HEAD
             if (
                 self._apply_decay_param_fun is not None
                 and not self._apply_decay_param_fun(param.name)
@@ -69,12 +82,28 @@ class DecoupledWeightDecay:
             with param.block.program._optimized_guard(
                 [param, grad]
             ), framework.name_scope('weight decay'):
+=======
+            if self._apply_decay_param_fun is not None \
+                    and not self._apply_decay_param_fun(param.name):
+                continue
+
+            if isinstance(self._coeff, float):
+                assert param.dtype is not paddle.fluid.core.VarDesc.VarType.FP32, \
+                    "the type of coeff(float) and parameter(%s) is not consistent."%(self._coeff.dtype)
+            else:
+                assert self._coeff.dtype == param.dtype, \
+                    "the type of coeff(%s) and parameter(%s) is not consistent."%(self._coeff.dtype, param.dtype)
+
+            with param.block.program._optimized_guard(
+                [param, grad]), framework.name_scope('weight decay'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 assert param.name not in self._params_name
                 scaled_params.append((param, grad, param * self._coeff))
                 self._params_name.add(param.name)
         return scaled_params
 
     def backward(self, **kargs):
+<<<<<<< HEAD
         return super().backward(**kargs)
 
     def apply_optimize(self, **kargs):
@@ -89,10 +118,27 @@ class DecoupledWeightDecay:
             parameter_list=parameter_list,
             no_grad_set=no_grad_set,
         )
+=======
+        return super(DecoupledWeightDecay, self).backward(**kargs)
+
+    def apply_optimize(self, **kargs):
+        return super(DecoupledWeightDecay, self).apply_optimize(**kargs)
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        params_grads = self.backward(loss=loss,
+                                     startup_program=startup_program,
+                                     parameter_list=parameter_list,
+                                     no_grad_set=no_grad_set)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         scaled_params = self._scale_parameters(params_grads)
         for p_grad_sgrad in scaled_params:
             param, grad, scaled_param = p_grad_sgrad
             with param.block.program._optimized_guard(
+<<<<<<< HEAD
                 [param, grad]
             ), framework.name_scope('weight decay'):
                 updated_param = paddle.subtract(x=param, y=scaled_param)
@@ -103,6 +149,16 @@ class DecoupledWeightDecay:
             params_grads=params_grads,
             startup_program=startup_program,
         )
+=======
+                [param, grad]), framework.name_scope('weight decay'):
+                updated_param = paddle.fluid.layers.elementwise_sub(
+                    x=param, y=scaled_param)
+                paddle.fluid.layers.assign(input=updated_param, output=param)
+
+        optimize_ops = self.apply_optimize(loss=loss,
+                                           params_grads=params_grads,
+                                           startup_program=startup_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return optimize_ops, params_grads
 
     def __str__(self):
@@ -137,12 +193,19 @@ def extend_with_decoupled_weight_decay(base_optimizer):
     """
     if not issubclass(base_optimizer, paddle.fluid.optimizer.Optimizer):
         raise TypeError(
+<<<<<<< HEAD
             "The input(base_optimizer) should be a derived class of Optimizer."
         )
 
     class OptimizerWithDecoupledWeightDecay(
         DecoupledWeightDecay, base_optimizer
     ):
+=======
+            "The input(base_optimizer) should be a derived class of Optimizer.")
+
+    class OptimizerWithDecoupledWeightDecay(DecoupledWeightDecay,
+                                            base_optimizer):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         OptimizerWithDecoupledWeightDecay is used to update the optimized parameters
         with the parameters before optimization. For more information, please refer:
@@ -158,6 +221,11 @@ def extend_with_decoupled_weight_decay(base_optimizer):
         """
 
         def __init__(self, weight_decay, apply_decay_param_fun=None, **kwargs):
+<<<<<<< HEAD
             super().__init__(weight_decay, apply_decay_param_fun, **kwargs)
+=======
+            super(OptimizerWithDecoupledWeightDecay,
+                  self).__init__(weight_decay, apply_decay_param_fun, **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return OptimizerWithDecoupledWeightDecay

@@ -19,6 +19,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class LocalityAwareNMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -79,9 +85,15 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
         platform::CPUPlace());
   }
@@ -163,8 +175,13 @@ void GetMaxScoreIndexWithLocalityAware(
 template <typename T>
 class LocalityAwareNMSKernel : public framework::OpKernel<T> {
  public:
+<<<<<<< HEAD
   void LocalityAwareNMSFast(phi::DenseTensor* bbox,
                             phi::DenseTensor* scores,
+=======
+  void LocalityAwareNMSFast(Tensor* bbox,
+                            Tensor* scores,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             const T score_threshold,
                             const T nms_threshold,
                             const T eta,
@@ -234,8 +251,13 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
   }
 
   void LocalityAwareNMS(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                         phi::DenseTensor* scores,
                         phi::DenseTensor* bboxes,
+=======
+                        Tensor* scores,
+                        Tensor* bboxes,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         const int scores_size,
                         std::map<int, std::vector<int>>* indices,
                         int* num_nmsed_out) const {
@@ -250,7 +272,11 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     int num_det = 0;
 
     int64_t class_num = scores->dims()[0];
+<<<<<<< HEAD
     phi::DenseTensor bbox_slice, score_slice;
+=======
+    Tensor bbox_slice, score_slice;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (int64_t c = 0; c < class_num; ++c) {
       if (c == background_label) continue;
 
@@ -306,11 +332,19 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
 
   void LocalityAwareNMSOutput(
       const platform::DeviceContext& ctx,
+<<<<<<< HEAD
       const phi::DenseTensor& scores,
       const phi::DenseTensor& bboxes,
       const std::map<int, std::vector<int>>& selected_indices,
       const int scores_size,
       phi::DenseTensor* outs,
+=======
+      const Tensor& scores,
+      const Tensor& bboxes,
+      const std::map<int, std::vector<int>>& selected_indices,
+      const int scores_size,
+      Tensor* outs,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int* oindices = nullptr,
       const int offset = 0) const {
     int64_t predict_dim = scores.dims()[1];
@@ -323,7 +357,11 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     auto* bboxes_data = bboxes.data<T>();
     auto* odata = outs->data<T>();
     const T* sdata;
+<<<<<<< HEAD
     phi::DenseTensor bbox;
+=======
+    Tensor bbox;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bbox.Resize({scores.dims()[0], box_size});
     int count = 0;
     for (const auto& it : selected_indices) {
@@ -349,15 +387,26 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* boxes_input = ctx.Input<phi::DenseTensor>("BBoxes");
     auto* scores_input = ctx.Input<phi::DenseTensor>("Scores");
     auto* outs = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* boxes_input = ctx.Input<LoDTensor>("BBoxes");
+    auto* scores_input = ctx.Input<LoDTensor>("Scores");
+    auto* outs = ctx.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto& score_dims = scores_input->dims();
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
+<<<<<<< HEAD
     phi::DenseTensor scores;
     phi::DenseTensor boxes;
+=======
+    LoDTensor scores;
+    LoDTensor boxes;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle::framework::TensorCopySync(
         *scores_input, platform::CPUPlace(), &scores);
     paddle::framework::TensorCopySync(
@@ -368,7 +417,11 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     int64_t box_dim = boxes.dims()[2];
     int64_t out_dim = box_dim + 2;
     int num_nmsed_out = 0;
+<<<<<<< HEAD
     phi::DenseTensor boxes_slice, scores_slice;
+=======
+    Tensor boxes_slice, scores_slice;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int n = batch_size;
     for (int i = 0; i < n; ++i) {
       scores_slice = scores.Slice(i, i + 1);
@@ -405,7 +458,11 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
+<<<<<<< HEAD
           phi::DenseTensor out = outs->Slice(s, e);
+=======
+          Tensor out = outs->Slice(s, e);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           LocalityAwareNMSOutput(dev_ctx,
                                  scores_slice,
                                  boxes_slice,
@@ -473,12 +530,19 @@ class LocalityAwareNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether detections are normalized.")
         .SetDefault(true);
     AddOutput("Out",
+<<<<<<< HEAD
               "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 6] "
               "represents the "
               "detections. Each row has 6 values: "
               "[label, confidence, xmin, ymin, xmax, ymax] or "
               "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 10] "
               "represents the "
+=======
+              "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
+              "detections. Each row has 6 values: "
+              "[label, confidence, xmin, ymin, xmax, ymax] or "
+              "(LoDTensor) A 2-D LoDTensor with shape [No, 10] represents the "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "detections. Each row has 10 values: "
               "[label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the "
               "total number of detections in this mini-batch."
@@ -500,7 +564,11 @@ Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
+<<<<<<< HEAD
 image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
+=======
+image, the offsets in first dimension of LoDTensor are called LoD, the number
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image.
 

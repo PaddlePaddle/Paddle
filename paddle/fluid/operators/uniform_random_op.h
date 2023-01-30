@@ -30,6 +30,7 @@
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
 
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const phi::DenseTensor* new_data_tensor) {
@@ -37,6 +38,16 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
       framework::proto::VarType::INT64) {
     auto* new_data = new_data_tensor->data<int64_t>();
     phi::DenseTensor cpu_starts_tensor;
+=======
+using Tensor = framework::Tensor;
+
+inline std::vector<int64_t> GetNewDataFromShapeTensor(
+    const Tensor* new_data_tensor) {
+  if (framework::TransToProtoVarType(new_data_tensor->dtype()) ==
+      framework::proto::VarType::INT64) {
+    auto* new_data = new_data_tensor->data<int64_t>();
+    framework::Tensor cpu_starts_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (platform::is_gpu_place(new_data_tensor->place())) {
       paddle::framework::TensorCopySync(
           *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
@@ -49,7 +60,11 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
              framework::proto::VarType::INT32) {
     auto* new_data = new_data_tensor->data<int32_t>();
     std::vector<int64_t> vec_new_data;
+<<<<<<< HEAD
     phi::DenseTensor cpu_starts_tensor;
+=======
+    framework::Tensor cpu_starts_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (platform::is_gpu_place(new_data_tensor->place())) {
       paddle::framework::TensorCopySync(
           *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
@@ -68,7 +83,11 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
 }
 
 inline std::vector<int64_t> GetNewDataFromShapeTensorList(
+<<<<<<< HEAD
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
+=======
+    const std::vector<const Tensor*>& list_new_shape_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<int64_t> vec_new_shape;
   vec_new_shape.reserve(list_new_shape_tensor.size());
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
@@ -84,7 +103,11 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     if (framework::TransToProtoVarType(tensor->dtype()) ==
         framework::proto::VarType::INT32) {
       if (platform::is_gpu_place(tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
       } else {
@@ -93,7 +116,11 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     } else if (framework::TransToProtoVarType(tensor->dtype()) ==
                framework::proto::VarType::INT64) {
       if (platform::is_gpu_place(tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_shape.push_back(*temp.data<int64_t>());
       } else {
@@ -147,7 +174,11 @@ struct UniformGenerator {
 
 template <typename T>
 void UniformRandom(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                    phi::DenseTensor* tensor) {
+=======
+                   framework::Tensor* tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int64_t size = tensor->numel();
   auto& dev_cxt = context.template device_context<phi::GPUContext>();
   T* data = tensor->mutable_data<T>(dev_cxt.GetPlace());
@@ -164,7 +195,11 @@ void UniformRandom(const framework::ExecutionContext& context,
 
   if (seed == 0) {
     // Use global Generator seed
+<<<<<<< HEAD
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+=======
+    using MT = typename details::MPTypeTrait<T>::Type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     phi::funcs::uniform_distribution<MT> dist;
     phi::funcs::uniform_real_transform<MT> trans(min, max);
     phi::funcs::distribution_and_transform<T>(dev_cxt, tensor, dist, trans);

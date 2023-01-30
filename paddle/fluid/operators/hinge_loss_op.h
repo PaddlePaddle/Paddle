@@ -24,9 +24,15 @@ template <typename DeviceContext, typename T, typename AttrType = T>
 class HingeLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* pred = context.Input<phi::DenseTensor>("Logits");
     auto* label = context.Input<phi::DenseTensor>("Labels");
     auto* loss = context.Output<phi::DenseTensor>("Loss");
+=======
+    auto* pred = context.Input<framework::Tensor>("Logits");
+    auto* label = context.Input<framework::Tensor>("Labels");
+    auto* loss = context.Output<framework::Tensor>("Loss");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
@@ -42,12 +48,21 @@ template <typename DeviceContext, typename T, typename AttrType = T>
 class HingeLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* pred = context.Input<phi::DenseTensor>("Logits");
     auto* label = context.Input<phi::DenseTensor>("Labels");
     auto* dloss =
         context.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
     auto* dpred =
         context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
+=======
+    auto* pred = context.Input<framework::Tensor>("Logits");
+    auto* label = context.Input<framework::Tensor>("Labels");
+    auto* dloss =
+        context.Input<framework::Tensor>(framework::GradVarName("Loss"));
+    auto* dpred =
+        context.Output<framework::Tensor>(framework::GradVarName("Logits"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 

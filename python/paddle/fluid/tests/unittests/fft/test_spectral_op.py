@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import re
 import sys
 
@@ -27,6 +28,23 @@ from spectral_op_np import (
 
 import paddle
 from paddle import _C_ops
+=======
+from __future__ import print_function
+import unittest
+
+import numpy as np
+import paddle
+
+import re
+import sys
+from spectral_op_np import fft_c2c, fft_r2c, fft_c2r, fft_c2c_backward, fft_r2c_backward, fft_c2r_backward
+import paddle.fluid.core as core
+import paddle.fluid.dygraph as dg
+import paddle.static as static
+from numpy.random import random as rand
+from paddle.fluid import Program, program_guard
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append("../")
 from op_test import OpTest
@@ -40,11 +58,16 @@ def parameterize(attrs, input_values=None):
 
     if isinstance(attrs, str):
         attrs = [attrs]
+<<<<<<< HEAD
     input_dicts = (
         attrs
         if input_values is None
         else [dict(zip(attrs, vals)) for vals in input_values]
     )
+=======
+    input_dicts = (attrs if input_values is None else
+                   [dict(zip(attrs, vals)) for vals in input_values])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def decorator(base_class):
         test_class_module = sys.modules[base_class.__module__].__dict__
@@ -54,7 +77,12 @@ def parameterize(attrs, input_values=None):
 
             name = class_name(base_class, idx, input_dict)
 
+<<<<<<< HEAD
             test_class_module[name] = type(name, (base_class,), test_class_dict)
+=======
+            test_class_module[name] = type(name, (base_class, ),
+                                           test_class_dict)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for method_name in list(base_class.__dict__):
             if method_name.startswith("test"):
@@ -70,8 +98,12 @@ def to_safe_name(s):
 
 def class_name(cls, num, params_dict):
     suffix = to_safe_name(
+<<<<<<< HEAD
         next((v for v in params_dict.values() if isinstance(v, str)), "")
     )
+=======
+        next((v for v in params_dict.values() if isinstance(v, str)), ""))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if TEST_CASE_NAME in params_dict:
         suffix = to_safe_name(params_dict["test_case"])
     return "{}_{}{}".format(cls.__name__, num, suffix and "_" + suffix)
@@ -91,6 +123,7 @@ def fft_c2r_python_api(x, axes, norm, forward, last_dim_size=0):
 
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward'),
+<<<<<<< HEAD
     [
         (
             'test_axes_is_sqe_type',
@@ -140,6 +173,22 @@ def fft_c2r_python_api(x, axes, norm, forward, last_dim_size=0):
     ],
 )
 class TestFFTC2COp(OpTest):
+=======
+    [('test_axes_is_sqe_type', (np.random.random(
+        (12, 14)) + 1j * np.random.random(
+            (12, 14))).astype(np.complex128), [0, 1], 'forward', True),
+     ('test_axis_not_last', (np.random.random(
+         (4, 8, 4)) + 1j * np.random.random(
+             (4, 8, 4))).astype(np.complex128), (0, 1), "backward", False),
+     ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "forward", False),
+     ('test_norm_backward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "backward", True),
+     ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (1, ), "ortho", True)])
+class TestFFTC2COp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "fft_c2c"
         self.dtype = self.x.dtype
@@ -151,6 +200,7 @@ class TestFFTC2COp(OpTest):
         self.attrs = {
             'axes': self.axes,
             'normalization': self.norm,
+<<<<<<< HEAD
             "forward": self.forward,
         }
         self.outputs = {'Out': out}
@@ -161,11 +211,23 @@ class TestFFTC2COp(OpTest):
         self.x_grad = fft_c2c_backward(
             self.out_grad, self.axes, self.norm, self.forward
         )
+=======
+            "forward": self.forward
+        }
+        self.outputs = {'Out': out}
+
+        self.out_grad = (np.random.random(self.x.shape) +
+                         1j * np.random.random(self.x.shape)).astype(
+                             self.x.dtype)
+        self.x_grad = fft_c2c_backward(self.out_grad, self.axes, self.norm,
+                                       self.forward)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             "X",
             "Out",
@@ -173,10 +235,18 @@ class TestFFTC2COp(OpTest):
             user_defined_grad_outputs=[self.out_grad],
             check_eager=True,
         )
+=======
+        self.check_grad("X",
+                        "Out",
+                        user_defined_grads=[self.x_grad],
+                        user_defined_grad_outputs=[self.out_grad],
+                        check_eager=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'last_dim_size'),
+<<<<<<< HEAD
     [
         (
             'test_axes_is_sqe_type',
@@ -231,25 +301,51 @@ class TestFFTC2COp(OpTest):
     ],
 )
 class TestFFTC2ROp(OpTest):
+=======
+    [('test_axes_is_sqe_type', (np.random.random(
+        (12, 14)) + 1j * np.random.random(
+            (12, 14))).astype(np.complex128), [0, 1], 'forward', True, 26),
+     ('test_axis_not_last', (np.random.random(
+         (4, 7, 4)) + 1j * np.random.random((4, 7, 4))).astype(np.complex128),
+      (0, 1), "backward", False, None),
+     ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "forward", False, 22),
+     ('test_norm_backward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "backward", True, 22),
+     ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (1, ), "ortho", True, 26)])
+class TestFFTC2ROp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "fft_c2r"
         self.dtype = self.x.dtype
         self.python_api = fft_c2r_python_api
 
+<<<<<<< HEAD
         out = fft_c2r(
             self.x, self.axes, self.norm, self.forward, self.last_dim_size
         )
+=======
+        out = fft_c2r(self.x, self.axes, self.norm, self.forward,
+                      self.last_dim_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {'X': self.x}
         self.attrs = {
             "axes": self.axes,
             "normalization": self.norm,
             "forward": self.forward,
+<<<<<<< HEAD
             "last_dim_size": self.last_dim_size,
+=======
+            "last_dim_size": self.last_dim_size
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': out}
 
         self.out_grad = np.random.random(out.shape).astype(out.dtype)
+<<<<<<< HEAD
         self.x_grad = fft_c2r_backward(
             self.x,
             self.out_grad,
@@ -258,11 +354,17 @@ class TestFFTC2ROp(OpTest):
             self.forward,
             self.last_dim_size,
         )
+=======
+        self.x_grad = fft_c2r_backward(self.x, self.out_grad, self.axes,
+                                       self.norm, self.forward,
+                                       self.last_dim_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["X"],
             "Out",
@@ -270,10 +372,18 @@ class TestFFTC2ROp(OpTest):
             user_defined_grad_outputs=[self.out_grad],
             check_eager=True,
         )
+=======
+        self.check_grad(["X"],
+                        "Out",
+                        user_defined_grads=[self.x_grad],
+                        user_defined_grad_outputs=[self.out_grad],
+                        check_eager=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'onesided'),
+<<<<<<< HEAD
     [
         (
             'test_axes_is_sqe_type',
@@ -318,6 +428,20 @@ class TestFFTC2ROp(OpTest):
     ],
 )
 class TestFFTR2COp(OpTest):
+=======
+    [('test_axes_is_sqe_type', np.random.randn(12, 18).astype(np.float64),
+      (0, 1), 'forward', True, True),
+     ('test_axis_not_last', np.random.randn(4, 8, 4).astype(np.float64),
+      (0, 1), "backward", False, True),
+     ('test_norm_forward', np.random.randn(12, 18).astype(np.float64),
+      (0, 1), "forward", False, False),
+     ('test_norm_backward', np.random.randn(12, 18).astype(np.float64),
+      (0, ), "backward", True, False),
+     ('test_norm_ortho', np.random.randn(12, 18).astype(np.float64),
+      (1, ), "ortho", True, False)])
+class TestFFTR2COp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "fft_r2c"
         self.dtype = self.x.dtype
@@ -330,11 +454,16 @@ class TestFFTR2COp(OpTest):
             'axes': self.axes,
             'normalization': self.norm,
             "forward": self.forward,
+<<<<<<< HEAD
             'onesided': self.onesided,
+=======
+            'onesided': self.onesided
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': out}
 
         self.out_grad = np.random.random(out.shape).astype(out.dtype)
+<<<<<<< HEAD
         self.x_grad = fft_r2c_backward(
             self.x,
             self.out_grad,
@@ -343,11 +472,16 @@ class TestFFTR2COp(OpTest):
             self.forward,
             self.onesided,
         )
+=======
+        self.x_grad = fft_r2c_backward(self.x, self.out_grad, self.axes,
+                                       self.norm, self.forward, self.onesided)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             "X",
             "Out",
@@ -355,3 +489,10 @@ class TestFFTR2COp(OpTest):
             user_defined_grad_outputs=[self.out_grad],
             check_eager=True,
         )
+=======
+        self.check_grad("X",
+                        "Out",
+                        user_defined_grads=[self.x_grad],
+                        user_defined_grad_outputs=[self.out_grad],
+                        check_eager=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

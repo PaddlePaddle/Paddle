@@ -15,18 +15,30 @@
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid import core
+<<<<<<< HEAD
 from paddle.static.amp import fp16_utils
+=======
+from paddle.fluid.contrib.mixed_precision import fp16_utils
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
 
 class AMPTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_find_op_index(self):
         block = fluid.default_main_program().global_block()
         op_desc = core.OpDesc()
         idx = fp16_utils.find_op_index(block.desc, op_desc)
+<<<<<<< HEAD
         assert idx == -1
+=======
+        assert (idx == -1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_find_true_post_op(self):
         block = fluid.default_main_program().global_block()
@@ -34,6 +46,7 @@ class AMPTest(unittest.TestCase):
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
         var2 = block.create_var(name="Y", shape=[3], dtype='float32')
         var3 = block.create_var(name="Z", shape=[3], dtype='float32')
+<<<<<<< HEAD
         op1 = block.append_op(
             type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]}
         )
@@ -42,6 +55,16 @@ class AMPTest(unittest.TestCase):
         )
         res = fp16_utils.find_true_post_op(block.ops, op1, "Y")
         assert res == [op2]
+=======
+        op1 = block.append_op(type="abs",
+                              inputs={"X": [var1]},
+                              outputs={"Out": [var2]})
+        op2 = block.append_op(type="abs",
+                              inputs={"X": [var2]},
+                              outputs={"Out": [var3]})
+        res = fp16_utils.find_true_post_op(block.ops, op1, "Y")
+        assert (res == [op2])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

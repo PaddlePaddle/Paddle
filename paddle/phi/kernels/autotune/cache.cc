@@ -38,6 +38,7 @@ std::string AlgorithmTypeString(int64_t algo_type) {
              static_cast<int64_t>(AlgorithmType::kConvBackwardFilter)) {
     return "conv_backward_filter";
   }
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   if (algo_type == static_cast<int64_t>(AlgorithmType::kConvForwardV8)) {
     return "conv_forward_v8";
@@ -49,6 +50,8 @@ std::string AlgorithmTypeString(int64_t algo_type) {
     return "conv_backward_filter_v8";
   }
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return std::to_string(algo_type);
 }
 
@@ -70,6 +73,7 @@ void AutoTuneCache::UpdateStatus() {
     cache_misses += v.second.CacheMisses();
   }
 
+<<<<<<< HEAD
   for (auto& v : conv_auto_tune_map_) {
     VLOG(4) << "AlgoType: " << std::setfill(' ') << std::setw(name_width)
             << AlgorithmTypeString(v.first)
@@ -84,6 +88,9 @@ void AutoTuneCache::UpdateStatus() {
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   for (auto& v : cudnn_v8_auto_tune_map_) {
+=======
+  for (auto& v : cudnn_auto_tune_map_) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(4) << "AlgoType: " << std::setfill(' ') << std::setw(name_width)
             << AlgorithmTypeString(v.first)
             << " Cache Size: " << v.second.Size()
@@ -94,7 +101,10 @@ void AutoTuneCache::UpdateStatus() {
     cache_hits += v.second.CacheHits();
     cache_misses += v.second.CacheMisses();
   }
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   total_size_ = size;
   total_cache_hits_ = cache_hits;

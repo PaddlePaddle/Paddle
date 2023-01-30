@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import time
 import unittest
 
@@ -19,20 +20,38 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
+=======
+import paddle.fluid as fluid
+from paddle.fluid.layer_helper import LayerHelper
+import unittest
+import numpy as np
+import time
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def inplace_add(x, bias):
     helper = LayerHelper('scale', **locals())
+<<<<<<< HEAD
     helper.append_op(
         type='scale',
         inputs={'X': [x]},
         outputs={'Out': [x]},
         attrs={'bias': bias},
     )
+=======
+    helper.append_op(type='scale',
+                     inputs={'X': [x]},
+                     outputs={'Out': [x]},
+                     attrs={'bias': bias})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return x
 
 
 class TestAddReaderDependency(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_num = 3
         self.sleep_time = 2
@@ -52,12 +71,17 @@ class TestAddReaderDependency(unittest.TestCase):
                     feed_list=[tmp_in],
                     capacity=16,
                     iterable=False,
+<<<<<<< HEAD
                     use_double_buffer=self.use_double_buffer,
                 )
+=======
+                    use_double_buffer=self.use_double_buffer)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 def data_source():
                     for _ in range(self.batch_num):
                         time.sleep(self.sleep_time)  # sleep some times
+<<<<<<< HEAD
                         yield np.random.uniform(
                             low=-1, high=1, size=[1]
                         ).astype('float32'),
@@ -65,6 +89,14 @@ class TestAddReaderDependency(unittest.TestCase):
                 persistable_in = fluid.data(
                     name='persistable_in', dtype='float32', shape=[1]
                 )
+=======
+                        yield np.random.uniform(low=-1, high=1,
+                                                size=[1]).astype('float32'),
+
+                persistable_in = fluid.data(name='persistable_in',
+                                            dtype='float32',
+                                            shape=[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 persistable_in.persistable = True
 
                 persistable_in = inplace_add(persistable_in, bias=1)
@@ -79,23 +111,36 @@ class TestAddReaderDependency(unittest.TestCase):
                     while True:
                         if batch_id == 0:
                             feed = {
+<<<<<<< HEAD
                                 persistable_in.name: np.array([-1]).astype(
                                     'float32'
                                 )
+=======
+                                persistable_in.name:
+                                np.array([-1]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             }
                         else:
                             feed = None
 
+<<<<<<< HEAD
                         (ret,) = exe.run(
                             prog, feed=feed, fetch_list=[persistable_in]
                         )
                         self.assertEqual(ret.shape, (1,))
+=======
+                        ret, = exe.run(prog,
+                                       feed=feed,
+                                       fetch_list=[persistable_in])
+                        self.assertEqual(ret.shape, (1, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self.assertEqual(ret[0], batch_id)
                         batch_id += 1
                 except fluid.core.EOFException:
                     loader.reset()
 
                     self.assertEqual(batch_id, self.batch_num)
+<<<<<<< HEAD
                     t = (
                         fluid.global_scope()
                         .find_var(persistable_in.name)
@@ -103,10 +148,20 @@ class TestAddReaderDependency(unittest.TestCase):
                     )
                     t_val = np.array(t)
                     self.assertEqual(t_val.shape, (1,))
+=======
+                    t = fluid.global_scope().find_var(
+                        persistable_in.name).get_tensor()
+                    t_val = np.array(t)
+                    self.assertEqual(t_val.shape, (1, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self.assertEqual(t_val[0] + 1, batch_id)
 
 
 class TestAddReaderDependencyWithoutDoubleBuffer(TestAddReaderDependency):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_num = 3
         self.sleep_time = 2

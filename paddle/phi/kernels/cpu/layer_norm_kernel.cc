@@ -35,6 +35,10 @@ void LayerNormKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& bias_opt,
                      float epsilon,
                      int begin_norm_axis,
+<<<<<<< HEAD
+=======
+                     bool is_test,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
@@ -134,7 +138,11 @@ void LayerNormKernel(const Context& dev_ctx,
       scale ? scale->data<T>() : nullptr,
       bias ? bias->data<T>() : nullptr,
       static_cast<int>(left),
+<<<<<<< HEAD
       static_cast<float>(epsilon),
+=======
+      static_cast<const float>(epsilon),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       right);
 #endif
 }

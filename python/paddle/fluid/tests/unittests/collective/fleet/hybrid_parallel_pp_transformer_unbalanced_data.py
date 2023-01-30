@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from hybrid_parallel_pp_transformer import (
@@ -29,6 +30,22 @@ import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
 
+=======
+import paddle
+import numpy as np
+import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
+from hybrid_parallel_pp_transformer import (
+    TestDistPPTraning,
+    set_random_seed,
+    ModelPipe,
+    batch_size,
+    length,
+    micro_batch_size,
+    vocab_size,
+)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class TestDistPPTraningUnbalancedData(TestDistPPTraning):
     def test_pp_model(self):

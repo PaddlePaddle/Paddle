@@ -51,7 +51,11 @@ std::vector<TreeNode> Tree2ColUtil::construct_patch(
   return patch;
 }
 
+<<<<<<< HEAD
 void Tree2ColUtil::construct_tree(const phi::DenseTensor &EdgeSet,
+=======
+void Tree2ColUtil::construct_tree(const framework::Tensor &EdgeSet,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                   std::vector<std::vector<int>> *tr,
                                   size_t *node_count) {
   const auto &edge_set_dims = EdgeSet.dims();
@@ -87,9 +91,15 @@ template <typename T>
 class Tree2ColFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext &context,
+<<<<<<< HEAD
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &node_features,
                   phi::DenseTensor *patch,
+=======
+                  const framework::Tensor &EdgeSet,
+                  const framework::Tensor &node_features,
+                  framework::Tensor *patch,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &feature_dims = node_features.dims();
@@ -141,9 +151,15 @@ template <typename T>
 class Col2TreeFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext &context,
+<<<<<<< HEAD
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &out_grad,
                   phi::DenseTensor *in_grad,
+=======
+                  const framework::Tensor &EdgeSet,
+                  const framework::Tensor &out_grad,
+                  framework::Tensor *in_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &output_dims = out_grad.dims();

@@ -29,10 +29,18 @@ template <typename DeviceContext, typename T>
 class SkipLayerNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *X = context.Input<phi::DenseTensor>("X");
     auto *Y = context.Input<phi::DenseTensor>("Y");
     auto *scale = context.Input<phi::DenseTensor>("Scale");
     auto *bias = context.Input<phi::DenseTensor>("Bias");
+=======
+    using Tensor = framework::Tensor;
+    auto *X = context.Input<framework::Tensor>("X");
+    auto *Y = context.Input<framework::Tensor>("Y");
+    auto *scale = context.Input<framework::Tensor>("Scale");
+    auto *bias = context.Input<framework::Tensor>("Bias");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto *X_d = X->data<T>();
     auto *Y_d = Y->data<T>();
@@ -41,7 +49,11 @@ class SkipLayerNormKernel : public framework::OpKernel<T> {
     float epsilon = context.Attr<float>("epsilon");
     int begin_norm_axis = context.Attr<int>("begin_norm_axis");
 
+<<<<<<< HEAD
     auto *out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto *out = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->Resize(X->dims());
     auto &dev_ctx = context.template device_context<phi::GPUContext>();
     auto *output_d = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));

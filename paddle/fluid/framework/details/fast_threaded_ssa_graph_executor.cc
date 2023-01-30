@@ -46,8 +46,12 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
   platform::EmplaceDeviceContexts(
       &fetch_ctxs_,
       places,
+<<<<<<< HEAD
       /*disable_setting_default_stream_for_allocator=*/true,
       /*stream_priority=*/0);
+=======
+      /*disable_setting_default_stream_for_allocator=*/true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (ir::IsTopologySortOperationsUnique(*graph_)) {
     VLOG(10)
         << "Change thread number to 1 because the toposort order is unique";

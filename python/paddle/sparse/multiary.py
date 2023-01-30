@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _C_ops
+=======
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.framework import dygraph_only
 
 __all__ = []
@@ -21,7 +25,11 @@ __all__ = []
 @dygraph_only
 def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
+<<<<<<< HEAD
     Note:
+=======
+    Note:    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         This API is only supported from ``CUDA 11.0`` .
 
     Applies matrix multiplication for `x` and `y` , `input` is added to
@@ -29,10 +37,17 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
     ..  math::
 
+<<<<<<< HEAD
         out = alpha * x * y + beta * input
 
     The supported input/output Tensor layout are as follows:
 
+=======
+        Out = alpha * x * y + beta * input
+    
+    The supported input/output Tensor layout are as follows:
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Note:
         input[SparseCsrTensor] + x[SparseCsrTensor] @ y[SparseCsrTensor] -> out[SparseCsrTensor]
         input[DenseTensor] + x[SparseCsrTensor] @ y[DenseTensor] -> out[DenseTensor]
@@ -44,6 +59,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     Dimensions `input` , `x` , `y` must be same and >= 2D. Automatic broadcasting of Tensor is not supported.
 
     Args:
+<<<<<<< HEAD
         input (SparseTensor|DenseTensor): The input tensor. Shape is [*, M, N]. The data type can be float32 or float64.
         x (SparseTensor): The input SparseTensor. Shape is [*, M, K]. The data type can be float32 or float64.
         y (SparseTensor|DenseTensor): The input tensor. Shape is [*, K, N]. The data type can be float32 or float64.
@@ -54,6 +70,18 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     Returns:
         SparseTensor|DenseTensor: Tensor type, date type and shape is the same with `input` .
 
+=======
+        input (Tensor): The input tensor. Shape is [*, M, N]. The data type can be float32 or float64.
+        x (Tensor): The input tensor. Shape is [*, M, K]. The data type can be float32 or float64.
+        y (Tensor): The input tensor. Shape is [*, K, N]. The data type can be float32 or float64.
+        beta (float, optional): Coefficient of `input` . Default: 1.0
+        alpha (float, optional): Coefficient of `x * y` . Default: 1.0
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: Its layout is determined by that of `x` and `y` . dtype and shape is the same with `input`
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
 
         .. code-block:: python
@@ -77,6 +105,12 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             x = paddle.sparse.sparse_coo_tensor(indices, values, [3, 3])
             y = paddle.rand([3, 2])
             out = paddle.sparse.addmm(input, x, y, 3.0, 2.0)
+<<<<<<< HEAD
 
     """
     return _C_ops.sparse_addmm(input, x, y, beta, alpha)
+=======
+            
+    """
+    return _C_ops.sparse_addmm(input, x, y, alpha, beta)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

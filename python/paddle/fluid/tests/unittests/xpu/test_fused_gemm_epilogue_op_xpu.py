@@ -13,10 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test_xpu import XPUOpTest
@@ -37,6 +42,18 @@ def gelu(x):
         * x
         * (1.0 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
     )
+=======
+import numpy as np
+import paddle
+import paddle.fluid.core as core
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+
+def gelu(x):
+    y_ref = 0.5 * x * (
+        1.0 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return y_ref.astype(x.dtype)
 
 
@@ -91,11 +108,19 @@ def matmul_grad(x, y, bias, dz, trans_x, trans_y):
 
 
 class XPUTestFuseGemmOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'fused_gemm_epilogue'
         self.use_dynamic_create_class = False
 
     class TestFuseGemmBase(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.__class__.no_need_check_grad = True
             self.op_type = "fused_gemm_epilogue"
@@ -104,6 +129,7 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype(self.dtype) - 0.5,
                 'Y': np.random.random(self.y_shape).astype(self.dtype) - 0.5,
+<<<<<<< HEAD
                 'Bias': np.random.random(self.bias_shape).astype(self.dtype)
                 - 0.5,
             }
@@ -116,22 +142,45 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
                 numpy_input_x = self.inputs['X'].reshape((-1, self.x_shape[-1]))
 
             if self.trans_y:
+=======
+                'Bias':
+                np.random.random(self.bias_shape).astype(self.dtype) - 0.5
+            }
+
+            if self.trans_x == True:
+                numpy_input_x = self.inputs['X'].reshape(
+                    (self.x_shape[0], -1)).T
+            else:
+                numpy_input_x = self.inputs['X'].reshape((-1, self.x_shape[-1]))
+
+            if self.trans_y == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 numpy_input_y = self.inputs['Y'].T
             else:
                 numpy_input_y = self.inputs['Y']
 
             self.outputs = {
+<<<<<<< HEAD
                 'Out': get_output(
                     numpy_input_x,
                     numpy_input_y,
                     self.inputs['Bias'],
                     self.activation,
                 ).reshape(self.out_shape)
+=======
+                'Out':
+                get_output(numpy_input_x, numpy_input_y, self.inputs['Bias'],
+                           self.activation).reshape(self.out_shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.attrs = {
                 "activation": self.activation,
                 "trans_y": self.trans_y,
+<<<<<<< HEAD
                 "trans_x": self.trans_x,
+=======
+                "trans_x": self.trans_x
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def init_dtype_type(self):
@@ -155,6 +204,10 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.check_output_with_place(core.XPUPlace(0), atol=self.atol)
 
     class TestFuseGemmEpilogueOp1(TestFuseGemmBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_datas_shape_and_attrs(self):
             self.x_shape = [4, 8]
             self.y_shape = [4, 128]
@@ -167,6 +220,10 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.trans_x = True
 
     class TestFuseGemmEpilogueOp2(TestFuseGemmBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_datas_shape_and_attrs(self):
             self.x_shape = [8, 4]
             self.y_shape = [128, 4]
@@ -179,6 +236,10 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.trans_x = False
 
     class TestFuseGemmEpilogueOp3(TestFuseGemmBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_datas_shape_and_attrs(self):
             self.x_shape = [4, 8]
             self.y_shape = [128, 4]
@@ -191,6 +252,10 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.trans_x = True
 
     class TestFuseGemmEpilogueOp4(TestFuseGemmBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_datas_shape_and_attrs(self):
             self.x_shape = [2, 2, 8, 4]
             self.y_shape = [4, 128]
@@ -203,6 +268,10 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.trans_x = False
 
     class TestFuseGemmEpilogueOp5(TestFuseGemmBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_datas_shape_and_attrs(self):
             self.x_shape = [4, 2, 2, 8]
             self.y_shape = [4, 128]
@@ -215,6 +284,10 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.trans_x = True
 
     class TestFuseGemmEpilogueOp6(TestFuseGemmBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_datas_shape_and_attrs(self):
             self.x_shape = [8, 4]
             self.y_shape = [4, 128]
@@ -227,6 +300,10 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
             self.trans_x = False
 
     class TestFuseGemmEpilogueOp7(TestFuseGemmBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_datas_shape_and_attrs(self):
             self.x_shape = [8, 4]
             self.y_shape = [4, 128]
@@ -240,6 +317,10 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
 
 
 class TestEagerFusedGemmEpilogue(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.set_device('xpu')
 
@@ -247,13 +328,18 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         paddle.disable_static()
         x_np = np.random.random((8, 4)).astype(np.float32) - 0.5
         y_np = np.random.random((4, 128)).astype(np.float32) - 0.5
+<<<<<<< HEAD
         bias_np = np.random.random((128,)).astype(np.float32) - 0.5
+=======
+        bias_np = np.random.random((128, )).astype(np.float32) - 0.5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = paddle.to_tensor(x_np)
         y = paddle.to_tensor(y_np)
         bias = paddle.to_tensor(bias_np)
         x.stop_gradient = False
         y.stop_gradient = False
 
+<<<<<<< HEAD
         out1 = _legacy_C_ops.fused_gemm_epilogue(
             x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'none'
         )
@@ -263,6 +349,17 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         out3 = _legacy_C_ops.fused_gemm_epilogue(
             x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'gelu'
         )
+=======
+        out1 = core.ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
+                                            'trans_y', False, 'activation',
+                                            'none')
+        out2 = core.ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
+                                            'trans_y', False, 'activation',
+                                            'relu')
+        out3 = core.ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
+                                            'trans_y', False, 'activation',
+                                            'gelu')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         out_np1 = get_output(x_np, y_np, bias_np, 'none')
         out_np2 = get_output(x_np, y_np, bias_np, 'relu')
@@ -272,6 +369,7 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         np.testing.assert_allclose(out2, out_np2, atol=1e-04)
         np.testing.assert_allclose(out3, out_np3, atol=1e-03)
 
+<<<<<<< HEAD
         out_grad_np1 = np.random.randint(
             low=-20, high=20, size=out_np1.shape
         ).astype(np.float32)
@@ -282,6 +380,15 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
             x_np, y_np, bias_np, out_grad_np1, False, False
         )
+=======
+        out_grad_np1 = np.random.randint(low=-20, high=20,
+                                         size=out_np1.shape).astype(np.float32)
+        paddle.autograd.backward(out1,
+                                 grad_tensors=[paddle.to_tensor(out_grad_np1)])
+
+        x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
+            x_np, y_np, bias_np, out_grad_np1, False, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(x.grad.numpy(), x_grad_np, atol=1e-02)
         self.assertEqual(y_grad_np.shape, y_np.shape)
         np.testing.assert_allclose(y.grad.numpy(), y_grad_np, atol=1e-03)

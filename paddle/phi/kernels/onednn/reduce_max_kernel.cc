@@ -24,7 +24,10 @@ void MaxRawKernel(const Context& dev_ctx,
                   bool keep_dim,
                   bool reduce_all,
                   DenseTensor* out) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ReduceKernel<T, Context>(dev_ctx,
                            x,
                            dims,
@@ -35,5 +38,14 @@ void MaxRawKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(
     max_raw, OneDNN, ONEDNN, phi::MaxRawKernel, float, phi::dtype::bfloat16) {}
+=======
+PD_REGISTER_KERNEL(max_raw,
+                   OneDNN,
+                   ALL_LAYOUT,
+                   phi::MaxRawKernel,
+                   float,
+                   phi::dtype::bfloat16) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

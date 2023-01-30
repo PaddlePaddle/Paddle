@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import warnings
 
 import paddle
@@ -38,12 +39,56 @@ def _scatter_tensor_in_dygraph(
     task = group.process_group.scatter_tensor(
         out_tensor, in_tensor, src_rank_in_group, sync_op
     )
+=======
+import paddle
+import paddle.fluid.framework as framework
+from paddle.distributed import collective
+
+
+def _check_tensor_shape(tensor, shape, nranks=1):
+    expect_shape = list(shape)
+    expect_shape[0] //= nranks
+    if list(tensor.shape) != expect_shape:
+        raise RuntimeError("The in_tensor for scatter is not correctly-sized.")
+
+
+def _check_tensor_list_shape(tensor_list, shape, nranks=1):
+    if len(tensor_list) != nranks:
+        raise RuntimeError(
+            f"The tensor_list for scatter is not correctly-sized.")
+    for tensor in tensor_list:
+        if tensor.shape != shape:
+            raise RuntimeError(
+                f"The tensor_list for scatter is not correctly-sized.")
+
+
+def _scatter_tensor_in_dygraph(out_tensor, in_tensor, src, group, sync_op,
+                               use_calc_stream):
+    group = collective._get_default_group() if group is None else group
+
+    src_rank = group.get_group_rank(src)
+    if src_rank == -1:
+        raise RuntimeError("Src rank out of group.")
+
+    nranks = group.nranks
+    rank = paddle.distributed.get_rank()
+    if rank == src_rank:
+        _check_tensor_shape(out_tensor, in_tensor.shape, nranks)
+
+    if use_calc_stream:
+        return group.process_group.scatter_tensor_on_calc_stream(
+            in_tensor, out_tensor, src)
+
+    task = group.process_group.scatter_tensor(in_tensor, out_tensor, src,
+                                              sync_op)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if sync_op:
         task.wait()
 
     return task
 
 
+<<<<<<< HEAD
 def _scatter_in_dygraph(
     tensor, tensor_list, src_rank_in_group, group, sync_op, use_calc_stream
 ):
@@ -53,23 +98,47 @@ def _scatter_in_dygraph(
             raise RuntimeError(
                 "The tensor_list should not be empty on src rank."
             )
+=======
+def _scatter_in_dygraph(tensor, tensor_list, src, group, sync_op,
+                        use_calc_stream):
+    group = collective._get_default_group() if group is None else group
+
+    src_rank = group.get_group_rank(src)
+    if src_rank == -1:
+        raise RuntimeError("Src rank out of group.")
+
+    nranks = group.nranks
+    rank = paddle.distributed.get_rank()
+    if rank == src_rank:
+        if len(tensor_list) == 0:
+            raise RuntimeError(
+                "The tensor_list should not be empty on src rank.")
+        _check_tensor_list_shape(tensor_list, tensor.shape, nranks)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         tensor_list = [tensor for _ in range(nranks)]
 
     if use_calc_stream:
         return group.process_group.scatter_on_calc_stream(
+<<<<<<< HEAD
             tensor, tensor_list, src_rank_in_group
         )
 
     task = group.process_group.scatter(
         tensor, tensor_list, src_rank_in_group, sync_op
     )
+=======
+            tensor_list, tensor, src)
+
+    task = group.process_group.scatter(tensor_list, tensor, src, sync_op)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if sync_op:
         task.wait()
 
     return task
 
 
+<<<<<<< HEAD
 def _scatter_in_static_mode(
     tensor,
     tensor_or_tensor_list,
@@ -136,6 +205,14 @@ def scatter(
     sync_op=True,
     use_calc_stream=False,
 ):
+=======
+def scatter(tensor,
+            tensor_or_tensor_list=None,
+            src=0,
+            group=None,
+            sync_op=True,
+            use_calc_stream=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     Scatter a tensor (or a tensor list) across devices.
@@ -177,6 +254,7 @@ def scatter(
             # [1, 2, 3] (2 GPUs, out for rank 0)
             # [4, 5, 6] (2 GPUs, out for rank 1)
     """
+<<<<<<< HEAD
     if _warn_cur_rank_not_in_group(group):
         return
 
@@ -231,3 +309,29 @@ def scatter(
             sync_op,
             use_calc_stream,
         )
+=======
+    if group is not None and not group.is_member():
+        raise RuntimeError(
+            "The group should not be None and all ranks which invoke this operation should be the member of this group."
+        )
+
+    if not sync_op and use_calc_stream:
+        raise RuntimeError(
+            "use_calc_stream can only be true in sync op behavior.")
+
+    if tensor_or_tensor_list is None:
+        raise RuntimeError("The input should be specified.")
+
+    if framework.in_dygraph_mode():
+        if paddle.is_tensor(tensor_or_tensor_list):
+            return _scatter_tensor_in_dygraph(tensor, tensor_or_tensor_list,
+                                              src, group, sync_op,
+                                              use_calc_stream)
+        else:
+            return _scatter_in_dygraph(tensor, tensor_or_tensor_list, src,
+                                       group, sync_op, use_calc_stream)
+
+    raise RuntimeError(
+        "paddle.distributed.stream.scatter is only supported in dygraph mode now."
+    )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

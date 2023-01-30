@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -34,6 +39,10 @@ def gather_numpy(x, index, axis):
 
 
 class TestGatherOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -42,7 +51,11 @@ class TestGatherOp(OpTest):
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
             'X': xnp,
+<<<<<<< HEAD
             'Index': np.array(self.index).astype(self.index_type),
+=======
+            'Index': np.array(self.index).astype(self.index_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
@@ -71,36 +84,66 @@ class TestGatherOp(OpTest):
 
 
 class TestCase1(TestGatherOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         """
         For one dimension input
         """
+<<<<<<< HEAD
         self.x_shape = 100
+=======
+        self.x_shape = (100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.x_type = "float32"
         self.index = [1, 3, 5]
         self.index_type = "int32"
 
 
 class API_TestGather(unittest.TestCase):
+<<<<<<< HEAD
     def test_out1(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float32')
             index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
             out = paddle.gather(data1, index)
+=======
+
+    def test_out1(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float32')
+            index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
+            out = paddle.fluid.layers.gather(data1, index)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
             index_1 = np.array([1, 2])
+<<<<<<< HEAD
             (result,) = exe.run(
                 feed={"data1": input, "index": index_1}, fetch_list=[out]
             )
+=======
+            result, = exe.run(feed={
+                "data1": input,
+                "index": index_1
+            },
+                              fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_output = np.array([[3, 4], [5, 6]])
         np.testing.assert_allclose(result, expected_output, rtol=1e-5)
 
     def test_out2(self):
+<<<<<<< HEAD
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x = paddle.fluid.data('x', shape=[-1, 2], dtype='float32')
             index = paddle.fluid.data('index', shape=[-1, 1], dtype='int32')
             out = paddle.gather(x, index)
@@ -108,14 +151,26 @@ class API_TestGather(unittest.TestCase):
             exe = paddle.static.Executor(place)
             x_np = np.array([[1, 2], [3, 4], [5, 6]]).astype('float32')
             index_np = np.array([1, 1]).astype('int32')
+<<<<<<< HEAD
             (result,) = exe.run(
                 feed={"x": x_np, "index": index_np}, fetch_list=[out]
             )
+=======
+            result, = exe.run(feed={
+                "x": x_np,
+                "index": index_np
+            },
+                              fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_output = gather_numpy(x_np, index_np, axis=0)
         np.testing.assert_allclose(result, expected_output, rtol=1e-5)
 
 
 class TestGatherGrad(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -128,6 +183,7 @@ class TestGatherGrad(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[8192, 768], dtype='float32')
+<<<<<<< HEAD
             index = paddle.static.data(
                 name="index", shape=[1232, 1], dtype='int32'
             )
@@ -135,6 +191,15 @@ class TestGatherGrad(unittest.TestCase):
             b = paddle.gather(a, index)
 
             loss = paddle.mean(b)
+=======
+            index = paddle.static.data(name="index",
+                                       shape=[1232, 1],
+                                       dtype='int32')
+            a.stop_gradient = False
+            b = paddle.gather(a, index)
+
+            loss = fluid.layers.reduce_mean(b)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -149,6 +214,7 @@ class TestGatherGrad(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(
                 main_prog,
                 feed={"a": a_np, "index": index_np},
@@ -160,6 +226,17 @@ class TestGatherGrad(unittest.TestCase):
                         epoch, pred_res[0], loss_res[0]
                     )
                 )
+=======
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "index": index_np
+                                         },
+                                         fetch_list=[b, loss])
+            if epoch % 10 == 0:
+                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                    epoch, pred_res[0], loss_res[0]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return pred_res, loss_res
 

@@ -30,8 +30,12 @@ template <typename T,
           bool Activation,
           typename Functor,
           typename InType = T,
+<<<<<<< HEAD
           typename OutType = T,
           bool HasDropout = true>
+=======
+          typename OutType = T>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     const int row_id,
     const int col_id,
@@ -50,6 +54,10 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     Functor act_func,
     const float quant_last_in_scale = 1.0,
     const float *dequant_out_scale_data = nullptr,
+<<<<<<< HEAD
+=======
+    const int quant_out_scale_offset = 0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const float quant_next_in_scale = 1.0,
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
@@ -74,8 +82,14 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
   }
   // vectorize load data from global
   phi::Load<InType, VecSize>(&src[row_id * cols + col_id], &src_vec);
+<<<<<<< HEAD
   phi::Load<float, VecSize>(&dequant_out_scale_data[col_id],
                             &quant_out_scale_vec);
+=======
+  phi::Load<float, VecSize>(
+      &dequant_out_scale_data[quant_out_scale_offset + col_id],
+      &quant_out_scale_vec);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (residual) {
     phi::Load<T, VecSize>(&residual[row_id * cols + col_id], &residual_vec);
   }
@@ -85,7 +99,11 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
   }
 
   MaskStoreT mask_vec;
+<<<<<<< HEAD
   if (!is_test && HasDropout) {
+=======
+  if (!is_test) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float rand[VecSize];
     RandVec<VecSize>(state, rand);
 #pragma unroll
@@ -107,7 +125,11 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     T tmp;
     if (std::is_same<InType, int32_t>::value) {
       T tmp0 = static_cast<T>(static_cast<float>(src_vec[ii]) *
+<<<<<<< HEAD
                               quant_out_scale_vec[ii]);
+=======
+                              quant_last_in_scale / quant_out_scale_vec[ii]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tmp = tmp0 + bias_vec[ii];
     } else {
       tmp = static_cast<T>(src_vec[ii]) + bias_vec[ii];
@@ -115,12 +137,17 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     if (Activation) {
       tmp = act_func(tmp);
     }
+<<<<<<< HEAD
     if (HasDropout) {
       dest_vec[ii] =
           tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
     } else {
       dest_vec[ii] = tmp * factor + residual_vec[ii];
     }
+=======
+    dest_vec[ii] =
+        tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (ComputeLayerNorm) {
       U tmp = static_cast<U>(dest_vec[ii]);
       *mean_val += tmp;
@@ -143,7 +170,11 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     phi::Store<T, VecSize>(dest_vec,
                            reinterpret_cast<T *>(&dst[row_id * cols + col_id]));
   }
+<<<<<<< HEAD
   if (!is_test && HasDropout) {
+=======
+  if (!is_test) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     phi::Store<MaskType, VecSize>(mask_vec, &mask[row_id * cols + col_id]);
   }
 }
@@ -159,8 +190,12 @@ template <typename T,
           typename MaskType,
           int VecSize,
           typename InType = T,
+<<<<<<< HEAD
           typename OutType = T,
           bool HasDropout = true>
+=======
+          typename OutType = T>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 __global__ void FusedResidualDropoutBias(
     const size_t rows,
     const size_t cols,
@@ -176,11 +211,16 @@ __global__ void FusedResidualDropoutBias(
     const bool is_test,
     const float quant_last_in_scale = 1.0,
     const float *dequant_out_scale_data = nullptr,
+<<<<<<< HEAD
+=======
+    const int quant_out_scale_offset = 0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const float quant_next_in_scale = 1.0) {
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
   curandStatePhilox4_32_10_t state;
+<<<<<<< HEAD
   if (HasDropout) {
     curand_init(seed, idx, increment, &state);
   }
@@ -190,6 +230,10 @@ __global__ void FusedResidualDropoutBias(
   } else {
     factor = static_cast<T>(1);
   }
+=======
+  curand_init(seed, idx, increment, &state);
+  const T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::ReluFunctor<T> relu;
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < cols;
@@ -201,6 +245,7 @@ __global__ void FusedResidualDropoutBias(
                                         false,
                                         phi::funcs::ReluFunctor<T>,
                                         InType,
+<<<<<<< HEAD
                                         OutType,
                                         HasDropout>(r,
                                                     i,
@@ -220,6 +265,27 @@ __global__ void FusedResidualDropoutBias(
                                                     quant_last_in_scale,
                                                     dequant_out_scale_data,
                                                     quant_next_in_scale);
+=======
+                                        OutType>(r,
+                                                 i,
+                                                 cols,
+                                                 &state,
+                                                 dropout_prob,
+                                                 factor,
+                                                 src,
+                                                 residual,
+                                                 bias,
+                                                 dst,
+                                                 mask,
+                                                 is_test,
+                                                 nullptr,
+                                                 nullptr,
+                                                 relu,
+                                                 quant_last_in_scale,
+                                                 dequant_out_scale_data,
+                                                 quant_out_scale_offset,
+                                                 quant_next_in_scale);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }
@@ -246,6 +312,10 @@ void LaunchResidualDropoutBias(const uint32_t rows,
                                const phi::GPUContext &ctx,
                                const float quant_last_in_scale = 1.0,
                                const float *dequant_out_scale_data = nullptr,
+<<<<<<< HEAD
+=======
+                               const int quant_out_scale_offset = 0,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                const float quant_next_in_scale = 1.0) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
@@ -270,6 +340,7 @@ void LaunchResidualDropoutBias(const uint32_t rows,
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
   auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
+<<<<<<< HEAD
 
 #define PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_KERNEL(__has_dropout)           \
   do {                                                                        \
@@ -328,6 +399,47 @@ void LaunchResidualDropoutBias(const uint32_t rows,
   }
 
 #undef PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_KERNEL
+=======
+  if (cols % VecSize == 0) {
+    FusedResidualDropoutBias<T, uint8_t, VecSize, InType, OutType>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            rows,
+            cols,
+            seed,
+            dropout_prob,
+            is_upscale_in_train,
+            src,
+            residual,
+            bias,
+            mask_data,
+            dst,
+            increment,
+            is_test,
+            quant_last_in_scale,
+            dequant_out_scale_data,
+            quant_out_scale_offset,
+            quant_next_in_scale);
+  } else {
+    FusedResidualDropoutBias<T, uint8_t, 1, InType, OutType>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            rows,
+            cols,
+            seed,
+            dropout_prob,
+            is_upscale_in_train,
+            src,
+            residual,
+            bias,
+            mask_data,
+            dst,
+            increment,
+            is_test,
+            quant_last_in_scale,
+            dequant_out_scale_data,
+            quant_out_scale_offset,
+            quant_next_in_scale);
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 /*
@@ -369,8 +481,12 @@ template <typename T,
           typename MaskType,
           int BlockSizeX,
           int BlockSizeY,
+<<<<<<< HEAD
           int VecSize,
           bool HasDropout>
+=======
+          int VecSize>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 __global__ void FusedResidualDropoutBiasGrad(const T *dout,
                                              const MaskType *mask,
                                              const T factor,
@@ -386,9 +502,12 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
 
   T tmp_sum[VecSize] = {static_cast<T>(0)};
   // calculate the dx and temporary sum
+<<<<<<< HEAD
   const bool not_need_dx = (dx == nullptr) || (dx == dout && !HasDropout &&
                                                factor == static_cast<T>(1.0));
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (col_id * VecSize < cols) {
     for (int row_id = threadIdx.y; row_id < rows; row_id += blockDim.y) {
       int index = row_id * cols + col_id * VecSize;
@@ -396,6 +515,7 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
       MaskLoadT mask_vec;
       StoreT dx_vec;
       phi::Load<T, VecSize>(&dout[index], &out_vec);
+<<<<<<< HEAD
       if (HasDropout) {
         phi::Load<MaskType, VecSize>(&mask[index], &mask_vec);
       }
@@ -417,6 +537,17 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
         }
         phi::Store<T, VecSize>(dx_vec, &dx[index]);
       }
+=======
+      phi::Load<MaskType, VecSize>(&mask[index], &mask_vec);
+
+#pragma unroll
+      for (int i = 0; i < VecSize; i++) {
+        dx_vec[i] = out_vec[i] * static_cast<T>(mask_vec[i]) * factor;
+        tmp_sum[i] += out_vec[i];
+      }
+
+      phi::Store<T, VecSize>(dx_vec, &dx[index]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 
@@ -446,6 +577,7 @@ void LaunchResidualDropoutBiasGrad(const T *dout,
 
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
+<<<<<<< HEAD
 
 #define PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_GRAD_KERNEL(__has_dropout)      \
   do {                                                                        \
@@ -508,6 +640,37 @@ void LaunchResidualDropoutBiasGrad(const T *dout,
   }
 
 #undef PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_GRAD_KERNEL
+=======
+  if (dbias != nullptr) {
+    const auto threads = 8;
+    auto blocks = std::max(static_cast<uint32_t>(1),
+                           (cols / real_vec_size + threads - 1) / threads);
+    dim3 block_dim(threads, 128, 1);
+    dim3 grid_dim(blocks, 1, 1);
+    if (cols % VecSize == 0) {
+      FusedResidualDropoutBiasGrad<T, MaskType, 8, 128, VecSize>
+          <<<grid_dim, block_dim, 0, ctx.stream()>>>(
+              dout, mask, factor, rows, cols, dx, dbias);
+    } else {
+      FusedResidualDropoutBiasGrad<T, MaskType, 8, 128, 1>
+          <<<grid_dim, block_dim, 0, ctx.stream()>>>(
+              dout, mask, factor, rows, cols, dx, dbias);
+    }
+  } else {
+    const uint64_t n = rows * cols;
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(ctx, n / real_vec_size);
+    if (n % VecSize == 0) {
+      FusedResidualDropoutGrad<T, MaskType, VecSize>
+          <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+              dout, mask, factor, n, dx);
+    } else {
+      FusedResidualDropoutGrad<T, MaskType, 1>
+          <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+              dout, mask, factor, n, dx);
+    }
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace operators

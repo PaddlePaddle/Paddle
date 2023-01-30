@@ -32,13 +32,22 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
                             bool keep_dim,
                             bool reduce_all,
                             DenseTensor* x_grad) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* in_x = &x;
   auto* out_y = &out;
   auto* d_out = &out_grad;
   auto* d_x = x_grad;
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = in_x->dims().size();
+<<<<<<< HEAD
+=======
+  if (dims.size() == 0) {
+    reduce_all = true;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto reduce_dims = funcs::details::GetReduceDim(dims, dim_size, reduce_all);
   auto update_dims = vectorize(d_x->dims());
   int reduce_num = 1;

@@ -12,11 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from functools import partial
 
 import numpy as np
 
 import paddle
+=======
+from __future__ import print_function
+
+from functools import partial
+import numpy as np
+
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 
@@ -32,6 +41,7 @@ def position_encoding_init(n_position, d_pos_vec):
     """
     Generate the initial values for the sinusoid position encoding table.
     """
+<<<<<<< HEAD
     position_enc = np.array(
         [
             [
@@ -43,11 +53,18 @@ def position_encoding_init(n_position, d_pos_vec):
             for pos in range(n_position)
         ]
     )
+=======
+    position_enc = np.array([[
+        pos / np.power(10000, 2 * (j // 2) / d_pos_vec)
+        for j in range(d_pos_vec)
+    ] if pos != 0 else np.zeros(d_pos_vec) for pos in range(n_position)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     position_enc[1:, 0::2] = np.sin(position_enc[1:, 0::2])  # dim 2i
     position_enc[1:, 1::2] = np.cos(position_enc[1:, 1::2])  # dim 2i+1
     return position_enc.astype("float32")
 
 
+<<<<<<< HEAD
 def multi_head_attention(
     queries,
     keys,
@@ -59,6 +76,17 @@ def multi_head_attention(
     n_head=1,
     dropout_rate=0.0,
 ):
+=======
+def multi_head_attention(queries,
+                         keys,
+                         values,
+                         attn_bias,
+                         d_key,
+                         d_value,
+                         d_model,
+                         n_head=1,
+                         dropout_rate=0.):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Multi-Head Attention. Note that attn_bias is added to the logit before
     computing softmax activiation to mask certain selected positions so that
@@ -66,13 +94,18 @@ def multi_head_attention(
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
+<<<<<<< HEAD
             "Inputs: queries, keys and values should all be 3-D tensors."
         )
+=======
+            "Inputs: queries, keys and values should all be 3-D tensors.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __compute_qkv(queries, keys, values, n_head, d_key, d_value):
         """
         Add linear projection to queries, keys, and values.
         """
+<<<<<<< HEAD
         q = paddle.static.nn.fc(
             x=queries,
             size=d_key * n_head,
@@ -102,6 +135,32 @@ def multi_head_attention(
             bias_attr=False,
             num_flatten_dims=2,
         )
+=======
+        q = layers.fc(input=queries,
+                      size=d_key * n_head,
+                      param_attr=fluid.initializer.Xavier(
+                          uniform=False,
+                          fan_in=d_model * d_key,
+                          fan_out=n_head * d_key),
+                      bias_attr=False,
+                      num_flatten_dims=2)
+        k = layers.fc(input=keys,
+                      size=d_key * n_head,
+                      param_attr=fluid.initializer.Xavier(
+                          uniform=False,
+                          fan_in=d_model * d_key,
+                          fan_out=n_head * d_key),
+                      bias_attr=False,
+                      num_flatten_dims=2)
+        v = layers.fc(input=values,
+                      size=d_value * n_head,
+                      param_attr=fluid.initializer.Xavier(
+                          uniform=False,
+                          fan_in=d_model * d_value,
+                          fan_out=n_head * d_value),
+                      bias_attr=False,
+                      num_flatten_dims=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return q, k, v
 
     def __split_heads(x, n_head):
@@ -116,6 +175,7 @@ def multi_head_attention(
 
         hidden_size = x.shape[-1]
         # FIXME(guosheng): Decouple the program desc with batch_size.
+<<<<<<< HEAD
         reshaped = paddle.reshape(
             x=x, shape=[batch_size, -1, n_head, hidden_size // n_head]
         )
@@ -123,12 +183,21 @@ def multi_head_attention(
         # permute the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
         return paddle.transpose(x=reshaped, perm=[0, 2, 1, 3])
+=======
+        reshaped = layers.reshape(
+            x=x, shape=[batch_size, -1, n_head, hidden_size // n_head])
+
+        # permute the dimensions into:
+        # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
+        return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __combine_heads(x):
         """
         Transpose and then reshape the last two dimensions of input tensor x
         so that it becomes one dimension, which is reverse to __split_heads.
         """
+<<<<<<< HEAD
         if len(x.shape) == 3:
             return x
         if len(x.shape) != 4:
@@ -142,6 +211,19 @@ def multi_head_attention(
                 map(int, [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]])
             ),
         )
+=======
+        if len(x.shape) == 3: return x
+        if len(x.shape) != 4:
+            raise ValueError("Input(x) should be a 4-D Tensor.")
+
+        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
+        # FIXME(guosheng): Decouple the program desc with batch_size.
+        return layers.reshape(
+            x=trans_x,
+            shape=list(
+                map(int,
+                    [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]])))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_model, dropout_rate):
         """
@@ -158,6 +240,7 @@ def multi_head_attention(
         # So, here define the softmax for temporary solution.
 
         def __softmax(x, eps=1e-9):
+<<<<<<< HEAD
             exp_out = paddle.exp(x=x)
             sum_out = paddle.sum(exp_out, axis=-1, keepdim=True)
             return paddle.divide(x=exp_out, y=sum_out)
@@ -169,6 +252,20 @@ def multi_head_attention(
             weights = paddle.nn.functional.dropout(weights, p=dropout_rate)
         out = paddle.matmul(weights, v)
 
+=======
+            exp_out = layers.exp(x=x)
+            sum_out = layers.reduce_sum(exp_out, dim=-1, keep_dim=False)
+            return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
+
+        scaled_q = layers.scale(x=q, scale=d_model**-0.5)
+        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
+        weights = __softmax(layers.elementwise_add(x=product, y=attn_bias))
+        if dropout_rate:
+            weights = layers.dropout(weights,
+                                     dropout_prob=dropout_rate,
+                                     is_test=False)
+        out = layers.matmul(weights, v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
@@ -177,13 +274,19 @@ def multi_head_attention(
     k = __split_heads(k, n_head)
     v = __split_heads(v, n_head)
 
+<<<<<<< HEAD
     ctx_multiheads = scaled_dot_product_attention(
         q, k, v, attn_bias, d_model, dropout_rate
     )
+=======
+    ctx_multiheads = scaled_dot_product_attention(q, k, v, attn_bias, d_model,
+                                                  dropout_rate)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
+<<<<<<< HEAD
     proj_out = paddle.static.nn.fc(
         x=out,
         size=d_model,
@@ -191,6 +294,13 @@ def multi_head_attention(
         bias_attr=False,
         num_flatten_dims=2,
     )
+=======
+    proj_out = layers.fc(input=out,
+                         size=d_model,
+                         param_attr=fluid.initializer.Xavier(uniform=False),
+                         bias_attr=False,
+                         num_flatten_dims=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return proj_out
 
 
@@ -200,6 +310,7 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
+<<<<<<< HEAD
     hidden = paddle.static.nn.fc(
         x,
         size=d_inner_hid,
@@ -221,6 +332,23 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
 
 
 def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
+=======
+    hidden = layers.fc(input=x,
+                       size=d_inner_hid,
+                       num_flatten_dims=2,
+                       param_attr=fluid.initializer.Uniform(low=-(d_hid**-0.5),
+                                                            high=(d_hid**-0.5)),
+                       act="relu")
+    out = layers.fc(input=hidden,
+                    size=d_hid,
+                    num_flatten_dims=2,
+                    param_attr=fluid.initializer.Uniform(
+                        low=-(d_inner_hid**-0.5), high=(d_inner_hid**-0.5)))
+    return out
+
+
+def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Add residual connection, layer normalization and droput to the out tensor
     optionally according to the value of process_cmd.
@@ -232,6 +360,7 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
         if cmd == "a":  # add residual connection
             out = out + prev_out if prev_out else out
         elif cmd == "n":  # add layer normalization
+<<<<<<< HEAD
             out = paddle.static.nn.layer_norm(
                 out,
                 begin_norm_axis=len(out.shape) - 1,
@@ -241,6 +370,15 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
         elif cmd == "d":  # add dropout
             if dropout:
                 out = paddle.nn.functional.dropout(out, p=dropout)
+=======
+            out = layers.layer_norm(out,
+                                    begin_norm_axis=len(out.shape) - 1,
+                                    param_attr=fluid.initializer.Constant(1.),
+                                    bias_attr=fluid.initializer.Constant(0.))
+        elif cmd == "d":  # add dropout
+            if dropout:
+                out = layers.dropout(out, dropout_prob=dropout, is_test=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return out
 
 
@@ -248,6 +386,7 @@ pre_process_layer = partial(pre_post_process_layer, None)
 post_process_layer = pre_post_process_layer
 
 
+<<<<<<< HEAD
 def prepare_encoder(
     src_word,
     src_pos,
@@ -259,28 +398,51 @@ def prepare_encoder(
     pos_pad_idx=0,
     pos_enc_param_name=None,
 ):
+=======
+def prepare_encoder(src_word,
+                    src_pos,
+                    src_vocab_size,
+                    src_emb_dim,
+                    src_pad_idx,
+                    src_max_len,
+                    dropout=0.,
+                    pos_pad_idx=0,
+                    pos_enc_param_name=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Add word embeddings and position encodings.
     The output tensor has a shape of:
     [batch_size, max_src_length_in_batch, d_model].
 
     This module is used at the bottom of the encoder stacks.
     """
+<<<<<<< HEAD
     src_word_emb = layers.embedding(
         src_word,
         size=[src_vocab_size, src_emb_dim],
         padding_idx=src_pad_idx,
         param_attr=fluid.initializer.Normal(0.0, 1.0),
     )
+=======
+    src_word_emb = layers.embedding(src_word,
+                                    size=[src_vocab_size, src_emb_dim],
+                                    padding_idx=src_pad_idx,
+                                    param_attr=fluid.initializer.Normal(0., 1.))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     src_pos_enc = layers.embedding(
         src_pos,
         size=[src_max_len, src_emb_dim],
         padding_idx=pos_pad_idx,
+<<<<<<< HEAD
         param_attr=fluid.ParamAttr(name=pos_enc_param_name, trainable=False),
     )
+=======
+        param_attr=fluid.ParamAttr(name=pos_enc_param_name, trainable=False))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc
 
     # FIXME(guosheng): Decouple the program desc with batch_size.
+<<<<<<< HEAD
     enc_input = paddle.reshape(x=enc_input, shape=[batch_size, -1, src_emb_dim])
     return (
         paddle.nn.functional.dropout(enc_input, p=dropout)
@@ -307,6 +469,27 @@ def encoder_layer(
     d_inner_hid,
     dropout_rate=0.0,
 ):
+=======
+    enc_input = layers.reshape(x=enc_input, shape=[batch_size, -1, src_emb_dim])
+    return layers.dropout(enc_input, dropout_prob=dropout,
+                          is_test=False) if dropout else enc_input
+
+
+prepare_encoder = partial(prepare_encoder,
+                          pos_enc_param_name=pos_enc_param_names[0])
+prepare_decoder = partial(prepare_encoder,
+                          pos_enc_param_name=pos_enc_param_names[1])
+
+
+def encoder_layer(enc_input,
+                  attn_bias,
+                  n_head,
+                  d_key,
+                  d_value,
+                  d_model,
+                  d_inner_hid,
+                  dropout_rate=0.):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """The encoder layers that can be stacked to form a deep encoder.
 
     This module consits of a multi-head (self) attention followed by
@@ -314,6 +497,7 @@ def encoder_layer(
     with the post_process_layer to add residual connection, layer normalization
     and droput.
     """
+<<<<<<< HEAD
     attn_output = multi_head_attention(
         enc_input,
         enc_input,
@@ -328,10 +512,18 @@ def encoder_layer(
     attn_output = post_process_layer(
         enc_input, attn_output, "dan", dropout_rate
     )
+=======
+    attn_output = multi_head_attention(enc_input, enc_input, enc_input,
+                                       attn_bias, d_key, d_value, d_model,
+                                       n_head, dropout_rate)
+    attn_output = post_process_layer(enc_input, attn_output, "dan",
+                                     dropout_rate)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ffd_output = positionwise_feed_forward(attn_output, d_inner_hid, d_model)
     return post_process_layer(attn_output, ffd_output, "dan", dropout_rate)
 
 
+<<<<<<< HEAD
 def encoder(
     enc_input,
     attn_bias,
@@ -351,17 +543,34 @@ def encoder(
         enc_output = encoder_layer(
             enc_input,
             attn_bias,
+=======
+def encoder(enc_input,
+            attn_bias,
+            n_layer,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             n_head,
             d_key,
             d_value,
             d_model,
             d_inner_hid,
+<<<<<<< HEAD
             dropout_rate,
         )
+=======
+            dropout_rate=0.):
+    """
+    The encoder is composed of a stack of identical layers returned by calling
+    encoder_layer.
+    """
+    for i in range(n_layer):
+        enc_output = encoder_layer(enc_input, attn_bias, n_head, d_key, d_value,
+                                   d_model, d_inner_hid, dropout_rate)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         enc_input = enc_output
     return enc_output
 
 
+<<<<<<< HEAD
 def decoder_layer(
     dec_input,
     enc_output,
@@ -375,6 +584,19 @@ def decoder_layer(
     dropout_rate=0.0,
 ):
     """The layer to be stacked in decoder part.
+=======
+def decoder_layer(dec_input,
+                  enc_output,
+                  slf_attn_bias,
+                  dec_enc_attn_bias,
+                  n_head,
+                  d_key,
+                  d_value,
+                  d_model,
+                  d_inner_hid,
+                  dropout_rate=0.):
+    """ The layer to be stacked in decoder part.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     The structure of this module is similar to that in the encoder part except
     a multi-head attention is added to implement encoder-decoder attention.
@@ -427,6 +649,7 @@ def decoder_layer(
     return dec_output
 
 
+<<<<<<< HEAD
 def decoder(
     dec_input,
     enc_output,
@@ -440,6 +663,19 @@ def decoder(
     d_inner_hid,
     dropout_rate=0.0,
 ):
+=======
+def decoder(dec_input,
+            enc_output,
+            dec_slf_attn_bias,
+            dec_enc_attn_bias,
+            n_layer,
+            n_head,
+            d_key,
+            d_value,
+            d_model,
+            d_inner_hid,
+            dropout_rate=0.):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     The decoder is composed of a stack of identical decoder_layer layers.
     """
@@ -499,6 +735,7 @@ def build_inputs(max_length, n_head):
 
     all_inputs = []
     for name, shape, dtype in zip(names, shapes, dtypes):
+<<<<<<< HEAD
         data_input = paddle.static.data(
             name=name,
             shape=shape,
@@ -506,6 +743,13 @@ def build_inputs(max_length, n_head):
         )
         data_input.desc.set_need_check_feed(False)
         all_inputs.append(data_input)
+=======
+        all_inputs.append(
+            fluid.layers.data(name=name,
+                              shape=shape,
+                              dtype=dtype,
+                              append_batch_size=False))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return all_inputs
 
 
@@ -525,6 +769,7 @@ def transformer(
     pos_pad_idx,
 ):
 
+<<<<<<< HEAD
     (
         src_word,
         src_pos,
@@ -536,6 +781,10 @@ def transformer(
         gold,
         weights,
     ) = build_inputs(max_length, n_head)
+=======
+    src_word, src_pos, trg_word, trg_pos, src_slf_attn_bias, trg_slf_attn_bias, trg_src_attn_bias, gold, weights = build_inputs(
+        max_length, n_head)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     enc_input = prepare_encoder(
         src_word,
@@ -583,6 +832,7 @@ def transformer(
 
     # TODO(guosheng): Share the weight matrix between the embedding layers and
     # the pre-softmax linear transformation.
+<<<<<<< HEAD
     predict = paddle.reshape(
         x=paddle.static.nn.fc(
             x=dec_output,
@@ -600,3 +850,17 @@ def transformer(
     )
     weighted_cost = cost * weights
     return paddle.sum(weighted_cost)
+=======
+    predict = layers.reshape(x=layers.fc(
+        input=dec_output,
+        size=trg_vocab_size,
+        param_attr=fluid.initializer.Xavier(uniform=False),
+        bias_attr=False,
+        num_flatten_dims=2),
+                             shape=[-1, trg_vocab_size],
+                             act="softmax")
+
+    cost = layers.cross_entropy(input=predict, label=gold)
+    weighted_cost = cost * weights
+    return layers.reduce_sum(weighted_cost)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

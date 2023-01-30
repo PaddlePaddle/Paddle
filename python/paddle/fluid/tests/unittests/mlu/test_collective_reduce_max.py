@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 import unittest
 import numpy as np
@@ -23,10 +27,15 @@ paddle.enable_static()
 
 
 class TestCReduceOp(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_reduce_max_fp32(self):
+<<<<<<< HEAD
         self.check_with_place(
             "collective_reduce_op.py", "reduce_max", "float32"
         )
@@ -35,6 +44,14 @@ class TestCReduceOp(TestDistBase):
         self.check_with_place(
             "collective_reduce_op.py", "reduce_max", "float16"
         )
+=======
+        self.check_with_place("collective_reduce_op.py", "reduce_max",
+                              "float32")
+
+    def test_reduce_max_fp16(self):
+        self.check_with_place("collective_reduce_op.py", "reduce_max",
+                              "float16")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_reduce_max_int32(self):
         self.check_with_place("collective_reduce_op.py", "reduce_max", "int32")

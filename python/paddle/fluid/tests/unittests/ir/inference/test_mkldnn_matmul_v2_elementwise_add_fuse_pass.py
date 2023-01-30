@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -22,6 +23,18 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
+=======
+from auto_scan_test import PassAutoScanTest
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+from functools import partial
+import unittest
+import hypothesis.strategies as st
+
+
+class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         matmul_as_x = draw(st.booleans())
@@ -49,24 +62,44 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
                 shape_out = [batch_size, channel, input_dim_X, input_dim_Y]
                 return np.random.random(shape_out).astype(np.float32)
 
+<<<<<<< HEAD
         matmul_op = OpConfig(
             type='matmul_v2',
             inputs={'X': ['matmul_X'], 'Y': ['matmul_Y']},
             outputs={'Out': ['matmul_output']},
             attrs={'use_mkldnn': True},
         )
+=======
+        matmul_op = OpConfig(type='matmul_v2',
+                             inputs={
+                                 'X': ['matmul_X'],
+                                 'Y': ['matmul_Y']
+                             },
+                             outputs={'Out': ['matmul_output']},
+                             attrs={'use_mkldnn': True})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if matmul_as_x:
             inputs = {'X': ['matmul_output'], 'Y': ['elementwise_addend']}
         else:
             inputs = {'X': ['elementwise_addend'], 'Y': ['matmul_output']}
 
+<<<<<<< HEAD
         elt_add_op = OpConfig(
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
             attrs={'axis': axis, 'use_mkldnn': True},
         )
+=======
+        elt_add_op = OpConfig(type='elementwise_add',
+                              inputs=inputs,
+                              outputs={'Out': ['elementwise_add_output']},
+                              attrs={
+                                  'axis': axis,
+                                  'use_mkldnn': True
+                              })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_net = [matmul_op, elt_add_op]
 
@@ -74,6 +107,7 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
             ops=model_net,
             weights={},
             inputs={
+<<<<<<< HEAD
                 'matmul_X': TensorConfig(data_gen=partial(generate_input, 'X')),
                 'matmul_Y': TensorConfig(data_gen=partial(generate_input, 'Y')),
                 'elementwise_addend': TensorConfig(
@@ -82,6 +116,16 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
             },
             outputs=['elementwise_add_output'],
         )
+=======
+                'matmul_X':
+                TensorConfig(data_gen=partial(generate_input, 'X')),
+                'matmul_Y':
+                TensorConfig(data_gen=partial(generate_input, 'Y')),
+                'elementwise_addend':
+                TensorConfig(data_gen=partial(generate_input, 'ElAdd'))
+            },
+            outputs=['elementwise_add_output'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
@@ -90,11 +134,17 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
         yield config, ['matmul_v2'], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=30,
             passes=['matmul_elementwise_add_mkldnn_fuse_pass'],
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=30,
+                            passes=['matmul_elementwise_add_mkldnn_fuse_pass'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

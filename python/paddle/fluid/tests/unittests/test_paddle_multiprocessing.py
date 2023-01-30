@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import gc
 import os
 import time
@@ -19,12 +20,28 @@ import unittest
 
 import paddle
 import paddle.incubate.multiprocessing as mp
+=======
+import os
+import gc
+import sys
+import unittest
+import time
+import paddle
+import paddle.incubate.multiprocessing as mp
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode, _enable_legacy_dygraph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 REPEAT = 20
 HAS_SHM_FILES = os.path.isdir('/dev/shm')
 
 
 def fill_tensor(queue, event):
+<<<<<<< HEAD
+=======
+    # make sure run in legacy dygraph
+    if in_dygraph_mode():
+        _enable_legacy_dygraph()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     data = queue.get()
     with paddle.no_grad():
         data[0][:] = 5
@@ -44,14 +61,23 @@ def send_parambase(queue, event, device, dtype):
     tensor = paddle.nn.Layer().create_parameter(
         [5, 5],
         dtype=dtype,
+<<<<<<< HEAD
         default_initializer=paddle.nn.initializer.Constant(value=1.0),
     )
+=======
+        default_initializer=paddle.nn.initializer.Constant(value=1.0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     queue.put(tensor)
     queue.put(tensor)
     event.wait()
 
 
+<<<<<<< HEAD
 class leak_checker:
+=======
+class leak_checker(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, test_case):
         self.checked_pids = [os.getpid()]
         self.test_case = test_case
@@ -95,6 +121,10 @@ class leak_checker:
 
 
 class TestMultiprocessingBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_tensor(self, device="cpu"):
         self.device = device.lower()
         place = None
@@ -104,8 +134,12 @@ class TestMultiprocessingBase(unittest.TestCase):
     def get_parameter(self):
         w = paddle.nn.Layer().create_parameter(
             [10, 10],
+<<<<<<< HEAD
             default_initializer=paddle.nn.initializer.Constant(value=0.0),
         )
+=======
+            default_initializer=paddle.nn.initializer.Constant(value=0.0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return w
 
     def _test_empty(self, dtype="float32"):
@@ -115,9 +149,19 @@ class TestMultiprocessingBase(unittest.TestCase):
         out = q.get(timeout=1)
         self.assertEqual(str(out), str(empty))
 
+<<<<<<< HEAD
     def _test_sharing(
         self, ctx=mp, device='cpu', dtype="float32", repeat=1, param=False
     ):
+=======
+    def _test_sharing(self,
+                      ctx=mp,
+                      device='cpu',
+                      dtype="float32",
+                      repeat=1,
+                      param=False):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_fill():
             if param:
                 x = self.get_parameter()
@@ -152,8 +196,12 @@ class TestMultiprocessingBase(unittest.TestCase):
 
             process = ctx.Process(
                 target=send_parambase if param else send_tensor,
+<<<<<<< HEAD
                 args=(queue, event, device, dtype),
             )
+=======
+                args=(queue, event, device, dtype))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             process.daemon = True
             lc.check_pid(process.pid)
             process.start()
@@ -174,38 +222,84 @@ class TestMultiprocessingBase(unittest.TestCase):
 
 
 class TestMultiprocessingCpu(TestMultiprocessingBase):
+<<<<<<< HEAD
     def func_test_pass_tensor(self):
+=======
+
+    def func_test_pass_tensor(self):
+        if in_dygraph_mode():
+            return
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.set_device("cpu")
         self._test_sharing(repeat=REPEAT)
 
     def test_pass_tensor(self):
+<<<<<<< HEAD
         self.func_test_pass_tensor()
 
     def func_test_pass_parambase(self):
+=======
+        with _test_eager_guard():
+            self.func_test_pass_tensor()
+        self.func_test_pass_tensor()
+
+    def func_test_pass_parambase(self):
+        if in_dygraph_mode():
+            return
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.set_device("cpu")
         self._test_sharing(repeat=1, param=True)
 
     def test_pass_parambase(self):
+<<<<<<< HEAD
         self.func_test_pass_parambase()
 
     def func_test_pass_empty(self):
+=======
+        with _test_eager_guard():
+            self.func_test_pass_parambase()
+        self.func_test_pass_parambase()
+
+    def func_test_pass_empty(self):
+        if in_dygraph_mode():
+            return
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.set_device("cpu")
         self._test_empty()
 
     def test_pass_empty(self):
+<<<<<<< HEAD
+=======
+        with _test_eager_guard():
+            self.func_test_pass_empty()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.func_test_pass_empty()
 
 
 class TestMultiprocessingGpu(TestMultiprocessingBase):
+<<<<<<< HEAD
     @unittest.skipIf(
         not paddle.fluid.core.is_compiled_with_cuda(),
         "core is not compiled with CUDA",
     )
     def func_test_pass_tensor(self):
+=======
+
+    @unittest.skipIf(not paddle.fluid.core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    def func_test_pass_tensor(self):
+        if in_dygraph_mode():
+            return
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.set_device("gpu")
         self._test_sharing(mp.get_context("spawn"), "gpu")
 
     def test_pass_tensor(self):
+<<<<<<< HEAD
+=======
+        with _test_eager_guard():
+            self.func_test_pass_tensor()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.func_test_pass_tensor()
 
 

@@ -13,6 +13,18 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
+<<<<<<< HEAD
+=======
+namespace framework {
+class Scope;
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace inference {
 namespace tensorrt {
 
@@ -25,15 +37,23 @@ class NearestInterpolateOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
 
+<<<<<<< HEAD
     auto inputs = op_desc.Inputs();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::string input_name = op_desc.Input("X").front();
     std::string output_name = op_desc.Output("Out").front();
 
     auto input = engine_->GetITensor(input_name);
 
     auto data_layout = !op_desc.HasAttr("data_layout")
+<<<<<<< HEAD
                            ? phi::DataLayout::kNCHW
                            : phi::StringToDataLayout(PADDLE_GET_CONST(
+=======
+                           ? framework::DataLayout::kNCHW
+                           : framework::StringToDataLayout(PADDLE_GET_CONST(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
@@ -62,8 +82,15 @@ class NearestInterpolateOpConverter : public OpConverter {
       bool with_dynamic = engine_->with_dynamic_shape();
 
       if (!with_dynamic) {
+<<<<<<< HEAD
         int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
         int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
+=======
+        int h_axis =
+            (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
+        int w_axis =
+            (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         scale_h =
             static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
@@ -76,11 +103,19 @@ class NearestInterpolateOpConverter : public OpConverter {
       scales.push_back(1.f);
     }
 
+<<<<<<< HEAD
     if (data_layout == phi::DataLayout::kNCHW) {
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
     } else if (data_layout == phi::DataLayout::kNHWC) {
+=======
+    if (data_layout == framework::DataLayout::kNCHW) {
+      scales.push_back(1.f);
+      scales.push_back(scale_h);
+      scales.push_back(scale_w);
+    } else if (data_layout == framework::DataLayout::kNHWC) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // NHWC
       scales.push_back(scale_h);
       scales.push_back(scale_w);

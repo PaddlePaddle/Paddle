@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -26,6 +31,10 @@ SEED = 2021
 
 
 class TestExpand(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"
@@ -54,6 +63,10 @@ class TestExpand(OpTest):
 
 
 class TestExpandV2(TestExpand):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"
@@ -67,7 +80,11 @@ class TestExpandV2(TestExpand):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
+<<<<<<< HEAD
             'ExpandTimes': OpTest.np_dtype_to_fluid_dtype(expand_times),
+=======
+            'ExpandTimes': OpTest.np_dtype_to_fluid_dtype(expand_times)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {}
         self.outputs = {'Out': out}
@@ -81,6 +98,10 @@ class TestExpandFp16(TestExpand):
 
 
 class TestExpandNet(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -93,11 +114,19 @@ class TestExpandNet(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 1], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64'
             )
 
             res = paddle.expand(a, [-1, 32])
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
+
+            res = paddle.fluid.layers.expand(a, [1, 32])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss = res.sum()
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
@@ -112,11 +141,20 @@ class TestExpandNet(unittest.TestCase):
 
         for epoch in range(100):
 
+<<<<<<< HEAD
             loss_res = exe.run(
                 main_prog,
                 feed={"a": a_np, "label": label_np},
                 fetch_list=[loss],
             )
+=======
+            loss_res = exe.run(main_prog,
+                               feed={
+                                   "a": a_np,
+                                   "label": label_np
+                               },
+                               fetch_list=[loss])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if epoch % 10 == 0:
                 print("Epoch {} | Loss: {}".format(epoch, loss))
 
@@ -135,6 +173,10 @@ class TestExpandNet(unittest.TestCase):
 
 
 class TestExpand_expand_times_all_one(TestExpand):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"

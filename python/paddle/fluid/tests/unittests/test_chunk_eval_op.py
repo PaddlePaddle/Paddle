@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,17 +20,36 @@ from op_test import OpTest
 
 
 class Segment:
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import numpy as np
+from paddle.fluid import Program, program_guard
+from paddle import fluid
+
+
+class Segment(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, chunk_type, start_idx, end_idx):
         self.chunk_type = chunk_type
         self.start_idx = start_idx
         self.end_idx = end_idx
 
     def __str__(self):
+<<<<<<< HEAD
         return '(Segment: %s, %s, %s)' % (
             self.chunk_type,
             self.start_idx,
             self.end_idx,
         )
+=======
+        return '(Segment: %s, %s, %s)' % (self.chunk_type, self.start_idx,
+                                          self.end_idx)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     __repr__ = __str__
 
@@ -48,6 +68,7 @@ class TestChunkEvalOp(OpTest):
         for chunk in chunks:
             if self.scheme == 'IOB':
                 data[chunk.start_idx] = chunk.chunk_type * self.num_tag_types
+<<<<<<< HEAD
                 data[
                     chunk.start_idx + 1 : chunk.end_idx
                 ] = chunk.chunk_type * self.num_tag_types + (
@@ -66,6 +87,19 @@ class TestChunkEvalOp(OpTest):
                 data[chunk.end_idx] = chunk.chunk_type * self.num_tag_types + (
                     self.num_tag_types - 1
                 )
+=======
+                data[chunk.start_idx + 1:chunk.
+                     end_idx] = chunk.chunk_type * self.num_tag_types + (
+                         self.num_tag_types - 1)
+                data[chunk.end_idx] = chunk.chunk_type * self.num_tag_types + (
+                    self.num_tag_types - 1
+                ) if chunk.start_idx < chunk.end_idx else data[chunk.start_idx]
+            elif self.scheme == 'IOE':
+                data[chunk.start_idx:chunk.
+                     end_idx] = chunk.chunk_type * self.num_tag_types
+                data[chunk.end_idx] = chunk.chunk_type * self.num_tag_types + (
+                    self.num_tag_types - 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def rand_chunks(self, starts, num_chunks):
         if num_chunks < 0:
@@ -73,17 +107,27 @@ class TestChunkEvalOp(OpTest):
         chunks = []
         # generate chunk beginnings
         chunk_begins = sorted(
+<<<<<<< HEAD
             np.random.choice(list(range(starts[-1])), num_chunks, replace=False)
         )
+=======
+            np.random.choice(list(range(starts[-1])), num_chunks,
+                             replace=False))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         seq_chunk_begins = []
         begin_idx = 0
         # divide chunks into sequences
         for i in range(len(starts) - 1):
             tmp_chunk_begins = []
+<<<<<<< HEAD
             while (
                 begin_idx < len(chunk_begins)
                 and chunk_begins[begin_idx] < starts[i + 1]
             ):
+=======
+            while begin_idx < len(
+                    chunk_begins) and chunk_begins[begin_idx] < starts[i + 1]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 tmp_chunk_begins.append(chunk_begins[begin_idx])
                 begin_idx += 1
             seq_chunk_begins.append(tmp_chunk_begins)
@@ -92,11 +136,17 @@ class TestChunkEvalOp(OpTest):
         for i in range(len(seq_chunk_begins)):
             for j in range(len(seq_chunk_begins[i])):
                 low = seq_chunk_begins[i][j]
+<<<<<<< HEAD
                 high = (
                     seq_chunk_begins[i][j + 1]
                     if j < len(seq_chunk_begins[i]) - 1
                     else starts[i + 1]
                 )
+=======
+                high = seq_chunk_begins[i][
+                    j + 1] if j < len(seq_chunk_begins[i]) - 1 else starts[i +
+                                                                           1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 chunk_ends.append(np.random.randint(low, high))
         # generate chunks
         for chunk_pos in zip(chunk_begins, chunk_ends):
@@ -106,6 +156,7 @@ class TestChunkEvalOp(OpTest):
 
     def gen_chunks(self, infer, label, starts):
         chunks = self.rand_chunks(
+<<<<<<< HEAD
             starts,
             self.num_infer_chunks
             + self.num_label_chunks
@@ -119,12 +170,27 @@ class TestChunkEvalOp(OpTest):
             self.num_infer_chunks - self.num_correct_chunks,
             replace=False,
         )
+=======
+            starts, self.num_infer_chunks + self.num_label_chunks -
+            self.num_correct_chunks)
+        correct_chunks = np.random.choice(list(range(len(chunks))),
+                                          self.num_correct_chunks,
+                                          replace=False)
+        infer_chunks = np.random.choice(
+            [x for x in range(len(chunks)) if x not in correct_chunks],
+            self.num_infer_chunks - self.num_correct_chunks,
+            replace=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         infer_chunks = sorted(correct_chunks.tolist() + infer_chunks.tolist())
         label_chunks = np.random.choice(
             [x for x in range(len(chunks)) if x not in infer_chunks],
             self.num_label_chunks - self.num_correct_chunks,
+<<<<<<< HEAD
             replace=False,
         )
+=======
+            replace=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         label_chunks = sorted(correct_chunks.tolist() + label_chunks.tolist())
         self.fill_with_chunks(infer, [chunks[idx] for idx in infer_chunks])
         self.fill_with_chunks(label, [chunks[idx] for idx in label_chunks])
@@ -139,11 +205,15 @@ class TestChunkEvalOp(OpTest):
             for idx in label_chunks:
                 if chunks[idx].chunk_type in self.excluded_chunk_types:
                     self.num_label_chunks -= 1
+<<<<<<< HEAD
         return (
             self.num_correct_chunks,
             self.num_infer_chunks,
             self.num_label_chunks,
         )
+=======
+        return self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_confs(self):
         # Use the IOB scheme and labels with 2 chunk types
@@ -154,6 +224,7 @@ class TestChunkEvalOp(OpTest):
         self.attrs = {
             'num_chunk_types': self.num_chunk_types,
             'chunk_scheme': self.scheme,
+<<<<<<< HEAD
             'excluded_chunk_types': self.excluded_chunk_types,
         }
         self.parse_scheme()
@@ -179,10 +250,29 @@ class TestChunkEvalOp(OpTest):
             self.num_infer_chunks,
             self.num_label_chunks,
         ) = self.gen_chunks(infer, label, starts)
+=======
+            'excluded_chunk_types': self.excluded_chunk_types
+        }
+        self.parse_scheme()
+        self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = 4, 5, 9
+
+    def set_data(self):
+        infer = np.zeros((self.batch_size, )).astype('int64')
+        infer.fill(self.num_chunk_types * self.num_tag_types)
+        label = np.copy(infer)
+        starts = np.random.choice(list(range(1, self.batch_size)),
+                                  self.num_sequences - 1,
+                                  replace=False).tolist()
+        starts.extend([0, self.batch_size])
+        starts = sorted(starts)
+        self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = self.gen_chunks(
+            infer, label, starts)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         lod = []
         for i in range(len(starts) - 1):
             lod.append(starts[i + 1] - starts[i])
         self.set_input(infer, label, lod)
+<<<<<<< HEAD
         precision = (
             float(self.num_correct_chunks) / self.num_infer_chunks
             if self.num_infer_chunks
@@ -198,10 +288,20 @@ class TestChunkEvalOp(OpTest):
             if self.num_correct_chunks
             else 0
         )
+=======
+        precision = float(
+            self.num_correct_chunks
+        ) / self.num_infer_chunks if self.num_infer_chunks else 0
+        recall = float(self.num_correct_chunks
+                       ) / self.num_label_chunks if self.num_label_chunks else 0
+        f1 = float(2 * precision * recall) / (
+            precision + recall) if self.num_correct_chunks else 0
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.outputs = {
             'Precision': np.asarray([precision], dtype='float32'),
             'Recall': np.asarray([recall], dtype='float32'),
             'F1-Score': np.asarray([f1], dtype='float32'),
+<<<<<<< HEAD
             'NumInferChunks': np.asarray(
                 [self.num_infer_chunks], dtype='int64'
             ),
@@ -211,6 +311,14 @@ class TestChunkEvalOp(OpTest):
             'NumCorrectChunks': np.asarray(
                 [self.num_correct_chunks], dtype='int64'
             ),
+=======
+            'NumInferChunks': np.asarray([self.num_infer_chunks],
+                                         dtype='int64'),
+            'NumLabelChunks': np.asarray([self.num_label_chunks],
+                                         dtype='int64'),
+            'NumCorrectChunks': np.asarray([self.num_correct_chunks],
+                                           dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_input(self, infer, label, lod):
@@ -226,6 +334,10 @@ class TestChunkEvalOp(OpTest):
 
 
 class TestChunkEvalOpWithExclude(TestChunkEvalOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_confs(self):
         # Use the IOE scheme and labels with 3 chunk types
         self.scheme = 'IOE'
@@ -235,6 +347,7 @@ class TestChunkEvalOpWithExclude(TestChunkEvalOp):
         self.attrs = {
             'num_chunk_types': self.num_chunk_types,
             'chunk_scheme': self.scheme,
+<<<<<<< HEAD
             'excluded_chunk_types': self.excluded_chunk_types,
         }
         self.parse_scheme()
@@ -246,6 +359,16 @@ class TestChunkEvalOpWithExclude(TestChunkEvalOp):
 
 
 class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
+=======
+            'excluded_chunk_types': self.excluded_chunk_types
+        }
+        self.parse_scheme()
+        self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = 15, 18, 20
+
+
+class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_input(self, infer, label, lod):
         max_len = np.max(lod)
         pad_infer = []
@@ -254,6 +377,7 @@ class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
         for i in range(len(lod)):
             end = lod[i] + start
             pad_infer.append(
+<<<<<<< HEAD
                 np.pad(
                     infer[start:end],
                     (0, max_len - lod[i]),
@@ -269,6 +393,15 @@ class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
                     constant_values=(-1,),
                 )
             )
+=======
+                np.pad(infer[start:end], (0, max_len - lod[i]),
+                       'constant',
+                       constant_values=(-1, )))
+            pad_label.append(
+                np.pad(label[start:end], (0, max_len - lod[i]),
+                       'constant',
+                       constant_values=(-1, )))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             start = end
 
         pad_infer = np.expand_dims(np.array(pad_infer, dtype='int64'), 2)
@@ -277,9 +410,56 @@ class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
         self.inputs = {
             'Inference': pad_infer,
             'Label': pad_label,
+<<<<<<< HEAD
             'SeqLength': lod,
         }
 
 
+=======
+            'SeqLength': lod
+        }
+
+
+class TestChunkEvalOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_input():
+                input_data = np.random.random(1, 1).astype("int64")
+                label_data = np.random.random(1).astype("int64")
+                fluid.layers.chunk_eval(input=input_data,
+                                        label=label_data,
+                                        chunk_scheme="IOB",
+                                        num_chunk_types=3)
+
+            self.assertRaises(TypeError, test_input)
+
+            def test_label():
+                input_ = fluid.data(name="input",
+                                    shape=[None, 1],
+                                    dtype="int64")
+                label_data = np.random.random(1).astype("int64")
+                fluid.layers.chunk_eval(input=input_,
+                                        label=label_data,
+                                        chunk_scheme="IOB",
+                                        num_chunk_types=3)
+
+            self.assertRaises(TypeError, test_label)
+
+            def test_type():
+                in_data = fluid.data(name="input_",
+                                     shape=[None, 1],
+                                     dtype="int32")
+                label = fluid.data(name="label_", shape=[1], dtype="int64")
+                fluid.layers.chunk_eval(input=in_data,
+                                        label=label,
+                                        chunk_scheme="IOB",
+                                        num_chunk_types=3)
+
+            self.assertRaises(TypeError, test_type)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     unittest.main()

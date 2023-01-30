@@ -12,18 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid.core as core
 from paddle.fluid import debugger
 from paddle.fluid.framework import Program
 
 
 class TestDebugger(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_debug_str(self):
         p = Program()
         b = p.current_block()
 
+<<<<<<< HEAD
         # selected_rows
         b.create_var(
             name='selected_rows',
@@ -55,6 +67,39 @@ class TestDebugger(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1},
         )
+=======
+        #selected_rows
+        b.create_var(name='selected_rows',
+                     dtype="float32",
+                     shape=[5, 10],
+                     type=core.VarDesc.VarType.SELECTED_ROWS)
+
+        #tensor array
+        b.create_var(name='tensor_array',
+                     shape=[5, 10],
+                     type=core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+
+        #operator
+        mul_x = b.create_parameter(dtype="float32",
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="mul.x")
+        mul_y = b.create_var(dtype="float32",
+                             shape=[10, 8],
+                             lod_level=0,
+                             name="mul.y")
+        mul_out = b.create_var(dtype="float32",
+                               shape=[5, 8],
+                               lod_level=0,
+                               name="mul.out")
+        b.append_op(type="mul",
+                    inputs={
+                        "X": mul_x,
+                        "Y": mul_y
+                    },
+                    outputs={"Out": mul_out},
+                    attrs={"x_num_col_dims": 1})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         print(debugger.pprint_program_codes(p))
 

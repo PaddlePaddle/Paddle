@@ -21,10 +21,17 @@
 
 namespace phi {
 template <typename T, typename Context>
+<<<<<<< HEAD
 void UnsqueezeInferKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& axes,
                           DenseTensor* out) {
+=======
+void UnsqueezeKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const IntArray& axes,
+                     DenseTensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto x_dims = x.dims();
   auto out_dims = out->dims();
   if (axes.FromTensor()) {
@@ -42,6 +49,7 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
@@ -55,6 +63,21 @@ PD_REGISTER_KERNEL(unsqueeze_infer,
                    CPU,
                    ALL_LAYOUT,
                    phi::UnsqueezeInferKernel,
+=======
+void UnsqueezeWithXShapeKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const IntArray& axes,
+                               DenseTensor* out,
+                               DenseTensor* xshape) {
+  UnsqueezeKernel<T, Context>(dev_ctx, x, axes, out);
+}
+}  // namespace phi
+
+PD_REGISTER_KERNEL(unsqueeze,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::UnsqueezeKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::bfloat16,
@@ -67,10 +90,17 @@ PD_REGISTER_KERNEL(unsqueeze_infer,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(unsqueeze,
                    CPU,
                    ALL_LAYOUT,
                    phi::UnsqueezeKernel,
+=======
+PD_REGISTER_KERNEL(unsqueeze_with_xshape,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::UnsqueezeWithXShapeKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::bfloat16,
@@ -83,10 +113,17 @@ PD_REGISTER_KERNEL(unsqueeze,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(unsqueeze_infer,
                    GPU,
                    ALL_LAYOUT,
                    phi::UnsqueezeInferKernel,
+=======
+PD_REGISTER_KERNEL(unsqueeze,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UnsqueezeKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::float16,
@@ -100,10 +137,17 @@ PD_REGISTER_KERNEL(unsqueeze_infer,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(unsqueeze,
                    GPU,
                    ALL_LAYOUT,
                    phi::UnsqueezeKernel,
+=======
+PD_REGISTER_KERNEL(unsqueeze_with_xshape,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UnsqueezeWithXShapeKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::float16,
@@ -119,10 +163,17 @@ PD_REGISTER_KERNEL(unsqueeze,
 #endif
 
 #ifdef PADDLE_WITH_XPU
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(unsqueeze_infer,
                    XPU,
                    ALL_LAYOUT,
                    phi::UnsqueezeInferKernel,
+=======
+PD_REGISTER_KERNEL(unsqueeze,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::UnsqueezeKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::float16,
@@ -132,10 +183,17 @@ PD_REGISTER_KERNEL(unsqueeze_infer,
                    int8_t,
                    int64_t) {}
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(unsqueeze,
                    XPU,
                    ALL_LAYOUT,
                    phi::UnsqueezeKernel,
+=======
+PD_REGISTER_KERNEL(unsqueeze_with_xshape,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::UnsqueezeWithXShapeKernel,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    float,
                    double,
                    phi::dtype::float16,

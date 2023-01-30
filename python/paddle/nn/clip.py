@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 import warnings
 
@@ -1083,3 +1084,11 @@ GradientClipBase = ClipGradBase
 GradientClipByValue = ClipGradByValue
 GradientClipByNorm = ClipGradByNorm
 GradientClipByGlobalNorm = ClipGradByGlobalNorm
+=======
+# TODO: define the functions to clip gradient of parameter
+from ..fluid.clip import ClipGradByGlobalNorm  # noqa: F401
+from ..fluid.clip import ClipGradByNorm  # noqa: F401
+from ..fluid.clip import ClipGradByValue  # noqa: F401
+
+__all__ = []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

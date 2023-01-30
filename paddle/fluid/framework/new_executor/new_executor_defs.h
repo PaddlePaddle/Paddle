@@ -31,6 +31,7 @@ namespace paddle {
 namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
+<<<<<<< HEAD
 
 using SchedulingPriority = int64_t;
 
@@ -41,6 +42,10 @@ constexpr const char* kCustomStream = "CustomStream";
 constexpr const char* kDefaultStream = "DefaultStream";
 constexpr const char* kD2HStream = "D2HStream";
 constexpr const char* kH2DStream = "H2DStream";
+=======
+using OpKernelMap =
+    std::unordered_map<OpKernelType, OpKernelComputeFunc, OpKernelType::Hash>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 constexpr int kEmptyVarIndex = 0;
 
@@ -245,24 +250,64 @@ class VariableScope {
   std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
 };
 
+<<<<<<< HEAD
 struct EventInter {
   explicit EventInter(size_t instr_id,
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type)
       : instr_id_(instr_id), event_(event), waiter_type_(waiter_type) {}
   size_t instr_id_;
+=======
+class NextInstruction {
+ public:
+  void AddDirectRun(size_t id) { direct_run_.push_back(id); }
+
+  void ADDEventRun(size_t id) { event_wait_run_.push_back(id); }
+
+  void AddSyncRun(size_t id) { synchronize_run_.push_back(id); }
+
+  const std::vector<size_t>& DirectRunIds() const { return direct_run_; }
+
+  const std::vector<size_t>& EventRunIds() const { return event_wait_run_; }
+
+  const std::vector<size_t>& SyncRunIds() const { return synchronize_run_; }
+
+ private:
+  std::vector<size_t> direct_run_;
+  std::vector<size_t> event_wait_run_;
+  std::vector<size_t> synchronize_run_;
+};
+
+struct EventInter {
+  explicit EventInter(size_t var_id,
+                      std::shared_ptr<platform::DeviceEvent> event,
+                      platform::DeviceType waiter_type)
+      : var_id_(var_id), event_(event), waiter_type_(waiter_type) {}
+  size_t var_id_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::shared_ptr<platform::DeviceEvent> event_;
   platform::DeviceType waiter_type_;
 };
 
+<<<<<<< HEAD
 enum class OpFuncType {
   kCpuSync,  // CPU kernel, block host
   kGpuSync,  // GPU or other device kernel without asynchronous operation
   kGpuAsync  // GPU or other device kernel with asynchronous operation
+=======
+struct InstructionInfo {
+  std::vector<size_t> dependecy_count_;
+};
+
+enum class OpFuncType {
+  kQueueSync = 0,   // CPU kernel, block host
+  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 class RuntimeInferShapeContext;
 
 struct OpFuncNode {
+<<<<<<< HEAD
   int stream_priority_{0};  // lower value, higher priority
   // fit for phi kernel
   phi::Kernel* phi_kernel_{nullptr};  // not owned
@@ -281,6 +326,23 @@ struct OpFuncNode {
   OpKernelComputeFunc kernel_func_;
 
   SchedulingPriority scheduling_priority_{0};  // lower value, higher priority
+=======
+  // TODO(zhiqiu): Better make it unique_ptr
+  std::shared_ptr<OperatorBase> operator_base_;
+  std::map<std::string, std::vector<int>> input_index;
+  std::map<std::string, std::vector<int>> output_index;
+  std::unordered_set<int> no_data_transform_index;
+
+  std::map<int, int> inplace_back_map;
+
+  OpKernelComputeFunc kernel_func_;
+  platform::DeviceContext* dev_ctx_;  // not owned
+
+  // fit for phi kernel
+  phi::Kernel* phi_kernel_{nullptr};  // not owned
+
+  OpFuncType type_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class Instruction {
@@ -289,6 +351,7 @@ class Instruction {
               OpFuncNode&& op_func_node,
               const platform::DeviceContext& dev_ctx);
 
+<<<<<<< HEAD
   bool IsArtificial() const { return is_artificial_; }
 
   const std::vector<size_t>& NextInstrsInDifferenceThread() const {
@@ -327,6 +390,9 @@ class Instruction {
   void RecordEvent(const Place& place) const;
 
   void WaitEvent(const Place& place) const;
+=======
+  size_t Id() const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   const std::map<std::string, std::vector<int>>& Inputs() const;
 
@@ -344,6 +410,13 @@ class Instruction {
 
   OperatorBase* OpBase() const;
 
+<<<<<<< HEAD
+=======
+  NextInstruction& NextInstructions();
+
+  const NextInstruction& NextInstructions() const;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void AddGCCheckVar(size_t id);
 
   const std::vector<size_t>& GCCheckVars() const;
@@ -370,6 +443,7 @@ class Instruction {
 
   void ClearInplace();
 
+<<<<<<< HEAD
   SchedulingPriority GetSchedulingPriority() const {
     return op_func_node_.scheduling_priority_;
   }
@@ -386,6 +460,22 @@ class Instruction {
   std::shared_ptr<EventInter> event_to_record_;
   std::vector<EventInter> events_to_wait_;
 
+=======
+  const std::vector<EventInter>& InputEvents() const;
+
+  const std::vector<EventInter>& OutputEvents() const;
+
+  void AddInputEvent(size_t var_id,
+                     std::shared_ptr<platform::DeviceEvent> event,
+                     platform::DeviceType waiter_type);
+
+  void AddOutputEvent(size_t var_id,
+                      std::shared_ptr<platform::DeviceEvent> event,
+                      platform::DeviceType waiter_type);
+
+ private:
+  size_t id_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
 
@@ -393,7 +483,15 @@ class Instruction {
   std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
+<<<<<<< HEAD
   std::vector<size_t> gc_check_vars_;
+=======
+  std::vector<size_t> gc_check_var_list_;
+  NextInstruction next_instruction_;
+
+  std::vector<EventInter> intput_events_;
+  std::vector<EventInter> output_events_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
@@ -403,6 +501,7 @@ static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 static constexpr char kFetchVarName[] = "fetch";
 
+<<<<<<< HEAD
 // static_ref_ is the numer of last live ops calculated to statically after
 // `build` the Instructions. dynamic_ref_  is the runtime version ref which will
 // be decreased by one dynamiclly after the execution of an op (in last ops
@@ -483,6 +582,25 @@ class ResetAtomicGuard {
   std::vector<std::shared_ptr<OpDepInfo>>* deps_;
   std::vector<std::shared_ptr<VarRefInfo>>* refs_;
 };
+=======
+static bool IsMemcpyH2D(const Instruction& instr) {
+  return instr.OpBase()->Type() == kMemcpyH2D;
+}
+
+static bool IsMemcpyD2H(const Instruction& instr) {
+  return instr.OpBase()->Type() == kMemcpyD2H;
+}
+
+static bool IsCpuOp(const Instruction& instr) {
+  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+// is supported heterogeneous place
+static bool IsSupportedHetePlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
+         platform::is_xpu_place(place) || platform::is_ipu_place(place);
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace interpreter
 

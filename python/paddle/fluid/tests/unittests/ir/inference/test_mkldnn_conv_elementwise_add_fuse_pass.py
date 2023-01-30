@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -19,10 +20,27 @@ import hypothesis.strategies as st
 import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
+=======
+from auto_scan_test import PassAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # the two inputs of elementwise_add are tensor
 class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -45,6 +63,7 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
         def generate_input():
             if data_format == "NCHW":
+<<<<<<< HEAD
                 return np.random.random([batch_size, 48, 64, 64]).astype(
                     np.float32
                 )
@@ -99,6 +118,60 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
             outputs={"Out": ["elementwise_output"]},
             attrs={'axis': axis},
         )
+=======
+                return np.random.random([batch_size, 48, 64,
+                                         64]).astype(np.float32)
+            else:
+                return np.random.random([batch_size, 64, 64,
+                                         48]).astype(np.float32)
+
+        def generate_weight():
+            return np.random.random([48, int(48 / groups), 3,
+                                     3]).astype(np.float32)
+
+        relu_op = OpConfig(type="relu",
+                           inputs={"X": ["input_data"]},
+                           outputs={"Out": ["relu_out"]},
+                           attrs={})
+
+        conv2d_op1 = OpConfig(type="conv2d",
+                              inputs={
+                                  "Input": ["relu_out"],
+                                  "Filter": ["conv_weight1"]
+                              },
+                              outputs={"Output": ["conv_output1"]},
+                              attrs={
+                                  "data_format": data_format,
+                                  "dilations": dilations,
+                                  "padding_algorithm": padding_algorithm,
+                                  "groups": groups,
+                                  "paddings": paddings,
+                                  "strides": strides
+                              })
+
+        conv2d_op2 = OpConfig(type="conv2d",
+                              inputs={
+                                  "Input": ["input_data"],
+                                  "Filter": ["conv_weight2"]
+                              },
+                              outputs={"Output": ["conv_output2"]},
+                              attrs={
+                                  "data_format": data_format,
+                                  "dilations": dilations,
+                                  "padding_algorithm": padding_algorithm,
+                                  "groups": groups,
+                                  "paddings": paddings,
+                                  "strides": strides
+                              })
+
+        elt_op = OpConfig(type="elementwise_add",
+                          inputs={
+                              "X": ["conv_output1"],
+                              "Y": ["conv_output2"]
+                          },
+                          outputs={"Out": ["elementwise_output"]},
+                          attrs={'axis': axis})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_net = [relu_op, conv2d_op1, conv2d_op2, elt_op]
 
@@ -106,24 +179,40 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
             ops=model_net,
             weights={
                 "conv_weight1": TensorConfig(data_gen=partial(generate_weight)),
+<<<<<<< HEAD
                 "conv_weight2": TensorConfig(data_gen=partial(generate_weight)),
+=======
+                "conv_weight2": TensorConfig(data_gen=partial(generate_weight))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             },
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input))
             },
+<<<<<<< HEAD
             outputs=["elementwise_output"],
         )
+=======
+            outputs=["elementwise_output"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
+<<<<<<< HEAD
         yield config, ["relu", "conv2d", "fused_conv2d"], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
             quant=False, passes=["conv_elementwise_add_mkldnn_fuse_pass"]
         )
+=======
+        yield config, ["relu", "conv2d", "conv2d"], (1e-5, 1e-5)
+
+    def test(self):
+        self.run_and_statis(quant=False,
+                            passes=["conv_elementwise_add_mkldnn_fuse_pass"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

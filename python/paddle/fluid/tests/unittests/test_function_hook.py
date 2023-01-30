@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,6 +22,21 @@ from paddle import _legacy_C_ops
 
 
 class TestCapture:
+=======
+from __future__ import print_function
+
+import unittest
+import paddle
+import numpy as np
+
+import paddle.fluid.core as core
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestCapture:
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.list = []
 
@@ -28,6 +44,13 @@ class TestCapture:
 test_cap = TestCapture()
 
 
+<<<<<<< HEAD
+=======
+def test_hook():
+    test_cap.list.append(1)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def grad_hook(grad):
     test_cap.list.append(2)
 
@@ -35,7 +58,12 @@ def grad_hook(grad):
 
 
 class TestBakcwardFunctionHookError(unittest.TestCase):
+<<<<<<< HEAD
     def test_hook(self):
+=======
+
+    def func_hook(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         input_data = np.ones([4, 4]).astype('float32')
 
         x = paddle.to_tensor(input_data.astype(np.float32), stop_gradient=False)
@@ -44,11 +72,26 @@ class TestBakcwardFunctionHookError(unittest.TestCase):
         y = _legacy_C_ops.sigmoid(x)
         out = _legacy_C_ops.matmul_v2(y, z, 'trans_x', False, 'trans_y', False)
 
+<<<<<<< HEAD
+=======
+        out._register_void_function_post_hook(test_hook)
+        y._register_void_function_post_hook(test_hook)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         y.register_hook(grad_hook)
 
         out.backward()
 
+<<<<<<< HEAD
         assert test_cap.list == [2]
+=======
+        assert test_cap.list == [1, 2, 1]
+
+    def test_hook(self):
+        # _register_void_function_post_hook do not support in eager mode
+        with _test_eager_guard():
+            pass
+        self.func_hook()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

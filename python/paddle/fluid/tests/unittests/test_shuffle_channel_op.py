@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,20 @@ from op_test import OpTest
 
 
 class TestShuffleChannelOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+import math
+from op_test import OpTest
+import paddle.fluid.core as core
+
+
+class TestShuffleChannelOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "shuffle_channel"
         self.batch_size = 10
@@ -27,6 +42,7 @@ class TestShuffleChannelOp(OpTest):
         self.layer_w = 4
         self.group = 4
         self.x = np.random.random(
+<<<<<<< HEAD
             (self.batch_size, self.input_channels, self.layer_h, self.layer_w)
         ).astype('float32')
         self.inputs = {'X': self.x}
@@ -35,6 +51,15 @@ class TestShuffleChannelOp(OpTest):
         input_reshaped = np.reshape(
             self.x, (-1, self.group, c // self.group, h, w)
         )
+=======
+            (self.batch_size, self.input_channels, self.layer_h,
+             self.layer_w)).astype('float32')
+        self.inputs = {'X': self.x}
+        self.attrs = {'group': self.group}
+        n, c, h, w = self.x.shape
+        input_reshaped = np.reshape(self.x,
+                                    (-1, self.group, c // self.group, h, w))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         input_transposed = np.transpose(input_reshaped, (0, 2, 1, 3, 4))
         self.outputs = {'Out': np.reshape(input_transposed, (-1, c, h, w))}
 

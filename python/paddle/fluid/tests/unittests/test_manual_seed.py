@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,10 +23,25 @@ from paddle.tensor import random
 
 
 class TestManualSeed(unittest.TestCase):
+=======
+from __future__ import print_function
+import unittest
+
+import paddle
+import paddle.fluid as fluid
+from paddle.framework import seed
+from paddle.fluid.framework import Program, default_main_program, default_startup_program
+import numpy as np
+
+
+class TestManualSeed(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_seed(self):
         fluid.enable_dygraph()
 
         gen = paddle.seed(12312321111)
+<<<<<<< HEAD
         x = random.gaussian([10], dtype="float32")
         st1 = gen.get_state()
         x1 = random.gaussian([10], dtype="float32")
@@ -33,6 +49,15 @@ class TestManualSeed(unittest.TestCase):
         x2 = random.gaussian([10], dtype="float32")
         gen.manual_seed(12312321111)
         x3 = random.gaussian([10], dtype="float32")
+=======
+        x = fluid.layers.gaussian_random([10], dtype="float32")
+        st1 = gen.get_state()
+        x1 = fluid.layers.gaussian_random([10], dtype="float32")
+        gen.set_state(st1)
+        x2 = fluid.layers.gaussian_random([10], dtype="float32")
+        gen.manual_seed(12312321111)
+        x3 = fluid.layers.gaussian_random([10], dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x_np = x.numpy()
         x1_np = x1.numpy()
         x2_np = x2.numpy()

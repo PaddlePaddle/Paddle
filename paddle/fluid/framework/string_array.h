@@ -20,11 +20,15 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+<<<<<<< HEAD
 #include "paddle/phi/core/extended_tensor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 // Note(YuanRisheng): Vocab is mainly used for faster_tokenizer_op and we don't
 // recommend widely use it. Because faster_tokenizer_op may be deleted in the
 // future and this class will be deleted.
@@ -165,6 +169,11 @@ class PhiVector : public phi::ExtendedTensor,
 
 using String = std::string;
 using Strings = PhiVector<std::string>;
+=======
+using String = std::string;
+using Strings = std::vector<std::string>;
+using Vocab = std::unordered_map<std::wstring, std::int32_t>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 // Convert the std::string type to the std::string type.
 bool ConvertStrToWstr(const std::string& src, std::wstring* res);

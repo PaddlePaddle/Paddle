@@ -26,12 +26,19 @@ def strToSecond(strTime):
 def getUsefulBuildTimeFile(filename):
     os.system(
         "grep -Po -- '-o .*' %s | grep ' elapsed' | grep -P -v '0:00.* elapse' > %s/tools/analysis_build_time"
+<<<<<<< HEAD
         % (filename, root_path)
     )
     os.system(
         "grep -v  -- '-o .*' %s |grep ' elapse' |  grep -P -v '0:00.* elapse' >> %s/tools/analysis_build_time"
         % (filename, root_path)
     )
+=======
+        % (filename, root_path))
+    os.system(
+        "grep -v  -- '-o .*' %s |grep ' elapse' |  grep -P -v '0:00.* elapse' >> %s/tools/analysis_build_time"
+        % (filename, root_path))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def analysisBuildTime():
@@ -47,14 +54,20 @@ def analysisBuildTime():
                     buildFile = line.split(', ')[0].split(' ')[1]
                     buildTime = line.split(', ')[1].split('elapsed')[0].strip()
                     secondTime = strToSecond(buildTime)
+<<<<<<< HEAD
                     os.system(
                         "echo %s, %s >> %s/tools/tempbuildTime.txt"
                         % (buildFile, secondTime, root_path)
                     )
+=======
+                    os.system("echo %s, %s >> %s/tools/tempbuildTime.txt" %
+                              (buildFile, secondTime, root_path))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 else:
                     buildTime = line.split(', ')[1].split('elapsed')[0].strip()
                     secondTime = strToSecond(buildTime)
                     if secondTime > 30:
+<<<<<<< HEAD
                         os.system(
                             "echo %s, %s >> %s/tools/tempbuildTime.txt"
                             % (line, secondTime, root_path)
@@ -65,6 +78,15 @@ def analysisBuildTime():
         'sort -n -k 2 -r %s/tools/tempbuildTime.txt > %s/tools/buildTime.txt'
         % (root_path, root_path)
     )
+=======
+                        os.system("echo %s, %s >> %s/tools/tempbuildTime.txt" %
+                                  (line, secondTime, root_path))
+            except ValueError:
+                print(line)
+    os.system(
+        'sort -n -k 2 -r %s/tools/tempbuildTime.txt > %s/tools/buildTime.txt' %
+        (root_path, root_path))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 analysisBuildTime()

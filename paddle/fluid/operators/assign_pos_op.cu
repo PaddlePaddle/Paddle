@@ -23,8 +23,13 @@ We retain the following license from the original files:
 
 #include "paddle/fluid/operators/assign_pos_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DECLARE_bool(avoid_op_randomness);
 
@@ -47,7 +52,11 @@ __global__ void AssignPos(T* cum_count,
   CUDA_KERNEL_LOOP(i, limit) {
     int number_idx = numbers[i];
     if (number_idx > -1) {
+<<<<<<< HEAD
       int p = phi::CudaAtomicAdd(cum_count + number_idx, -1);
+=======
+      int p = platform::CudaAtomicAdd(cum_count + number_idx, -1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       out[p - 1] = i;
     }
   }
@@ -59,6 +68,7 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     // assign pos decides which tokens should be fetched belong to specially
     // counter orderingly.
+<<<<<<< HEAD
     auto cum_count = context.Input<phi::DenseTensor>(
         "cum_count");  // (counter number) int32 | int64
     auto numbers = context.Input<phi::DenseTensor>(
@@ -67,6 +77,15 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
         context.Input<phi::DenseTensor>("eff_num_len");  // (sum(cum_count))
     auto out =
         context.Output<phi::DenseTensor>("Out");  // (cum_count) value ranges
+=======
+    auto cum_count = context.Input<LoDTensor>(
+        "cum_count");  // (counter number) int32 | int64
+    auto numbers =
+        context.Input<LoDTensor>("X");  // (batch_size * seq_len, topk) int32
+    auto eff_num_len =
+        context.Input<LoDTensor>("eff_num_len");  // (sum(cum_count))
+    auto out = context.Output<LoDTensor>("Out");  // (cum_count) value ranges
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                   // from 0 to batch_size *
                                                   // seq_len * topk
     auto place = context.GetPlace();
@@ -74,7 +93,11 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
     T* cum_data = const_cast<T*>(cum_count->data<T>());
     auto cum_size = cum_count->numel();
 
+<<<<<<< HEAD
     phi::DenseTensor cpu_eff_num_len;
+=======
+    framework::Tensor cpu_eff_num_len;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int64_t cpu_eff_num_len_data = 0;
     if (platform::is_cpu_place(eff_num_len->place())) {
       cpu_eff_num_len_data = eff_num_len->data<T>()[0];

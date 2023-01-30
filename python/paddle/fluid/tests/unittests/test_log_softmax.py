@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -20,12 +21,23 @@ import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+=======
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+import paddle
+import paddle.fluid.core as core
+import paddle.nn.functional as F
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.seed(10)
 
 
 def ref_log_softmax(x):
+<<<<<<< HEAD
     shiftx = x - np.max(x)
+=======
+    shiftx = (x - np.max(x))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out = shiftx - np.log(np.exp(shiftx).sum())
     return out
 
@@ -35,14 +47,24 @@ def ref_log_softmax_grad(x, axis):
         axis += len(x.shape)
     out = np.apply_along_axis(ref_log_softmax, axis, x)
     axis_dim = x.shape[axis]
+<<<<<<< HEAD
     dout = np.full_like(x, fill_value=1.0 / x.size)
     dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
         axis_dim, axis=axis
     )
+=======
+    dout = np.full_like(x, fill_value=1. / x.size)
+    dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
+        axis_dim, axis=axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return dx
 
 
 class TestLogSoftmaxOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'log_softmax'
         self.python_api = F.log_softmax
@@ -51,7 +73,11 @@ class TestLogSoftmaxOp(OpTest):
         self.axis = -1
         self.set_attrs()
 
+<<<<<<< HEAD
         x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+=======
+        x = np.random.uniform(0.1, 1., self.shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
 
@@ -66,6 +92,7 @@ class TestLogSoftmaxOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
         )
@@ -92,19 +119,39 @@ class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
+=======
+        self.check_grad(['X'], ['Out'],
+                        user_defined_grads=[self.x_grad],
+                        check_eager=True)
+
+
+class TestLogSoftmaxShape(TestLogSoftmaxOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.shape = [12, 10]
 
 
 class TestLogSoftmaxAxis(TestLogSoftmaxOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.axis = 1
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestLogSoftmaxBF16Op(OpTest):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestLogSoftmaxBF16Op(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'log_softmax'
         self.python_api = F.log_softmax
@@ -112,7 +159,11 @@ class TestLogSoftmaxBF16Op(OpTest):
         self.shape = [2, 3, 4, 5]
         self.axis = -1
 
+<<<<<<< HEAD
         x = np.random.uniform(0.1, 1.0, self.shape).astype(np.float32)
+=======
+        x = np.random.uniform(0.1, 1., self.shape).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
 
@@ -126,6 +177,7 @@ class TestLogSoftmaxBF16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
+<<<<<<< HEAD
         self.check_grad_with_place(
             place,
             ['X'],
@@ -144,6 +196,21 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
             if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        self.check_grad_with_place(place, ['X'], ['Out'],
+                                   user_defined_grads=[self.x_grad],
+                                   check_eager=True)
+
+
+class TestNNLogSoftmaxAPI(unittest.TestCase):
+
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1., 1., self.x_shape).astype(np.float32)
+        self.place = paddle.CUDAPlace(0) \
+            if paddle.fluid.core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_api(self, axis=-1):
         ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
@@ -170,6 +237,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
 
 
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
@@ -178,6 +246,15 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.place = paddle.CUDAPlace(0) \
+            if paddle.fluid.core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_api(self, axis=-1, dtype=None):
         x = self.x.copy()

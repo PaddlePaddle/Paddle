@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,13 @@ from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid.core as core
+=======
+import paddle
+import unittest
+import numpy as np
+import paddle.fluid.core as core
+from op_test import OpTest, skip_check_grad_ci
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -27,6 +35,7 @@ def AffineGrid(theta, grid_shape):
     n = grid_shape[0]
     h = grid_shape[1]
     w = grid_shape[2]
+<<<<<<< HEAD
     h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w, axis=0).T[
         :, :, np.newaxis
     ]
@@ -36,6 +45,14 @@ def AffineGrid(theta, grid_shape):
     grid = np.concatenate(
         [w_idx, h_idx, np.ones([h, w, 1])], axis=2
     )  # h * w * 3
+=======
+    h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w,
+                      axis=0).T[:, :, np.newaxis]
+    w_idx = np.repeat(np.linspace(-1, 1, w)[np.newaxis, :], h,
+                      axis=0)[:, :, np.newaxis]
+    grid = np.concatenate([w_idx, h_idx, np.ones([h, w, 1])],
+                          axis=2)  # h * w * 3
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     grid = np.repeat(grid[np.newaxis, :], n, axis=0)  # n * h * w *3
 
     ret = np.zeros([n, h * w, 2])
@@ -55,17 +72,26 @@ def getGridPointValue(data, x, y):
     out_H = x.shape[1]
     out_W = x.shape[2]
 
+<<<<<<< HEAD
     # out = np.zeros(data_shape, dtype='float64')
+=======
+    #out = np.zeros(data_shape, dtype='float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out = np.zeros([N, C, out_H, out_W], dtype='float64')
     for i in range(N):
         for j in range(out_H):
             for k in range(out_W):
+<<<<<<< HEAD
                 if (
                     y[i, j, k] < 0
                     or y[i, j, k] > in_H - 1
                     or x[i, j, k] < 0
                     or x[i, j, k] > in_W - 1
                 ):
+=======
+                if y[i, j, k] < 0 or y[i, j, k] > in_H - 1 or x[
+                        i, j, k] < 0 or x[i, j, k] > in_W - 1:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     out[i, :, j, k] = 0
                 else:
                     out[i, :, j, k] = data[i, :, y[i, j, k], x[i, j, k]]
@@ -78,6 +104,7 @@ def AffineGrid3D(theta, grid_shape):
     d = grid_shape[1]
     h = grid_shape[2]
     w = grid_shape[3]
+<<<<<<< HEAD
     d_idx = np.repeat(
         np.repeat(np.linspace(-1, 1, d)[:, np.newaxis, np.newaxis], h, axis=1),
         w,
@@ -96,6 +123,28 @@ def AffineGrid3D(theta, grid_shape):
     grid = np.concatenate(
         [w_idx, h_idx, d_idx, np.ones([d, h, w, 1])], axis=3
     )  # d * h * w * 4
+=======
+    d_idx = np.repeat(np.repeat(np.linspace(-1, 1, d)[:, np.newaxis,
+                                                      np.newaxis],
+                                h,
+                                axis=1),
+                      w,
+                      axis=2)[:, :, :, np.newaxis]
+    h_idx = np.repeat(np.repeat(np.linspace(-1, 1, h)[np.newaxis, :,
+                                                      np.newaxis],
+                                w,
+                                axis=2),
+                      d,
+                      axis=0)[:, :, :, np.newaxis]
+    w_idx = np.repeat(np.repeat(np.linspace(-1, 1, w)[np.newaxis,
+                                                      np.newaxis, :],
+                                h,
+                                axis=1),
+                      d,
+                      axis=0)[:, :, :, np.newaxis]
+    grid = np.concatenate(
+        [w_idx, h_idx, d_idx, np.ones([d, h, w, 1])], axis=3)  # d * h * w * 4
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     grid = np.repeat(grid[np.newaxis, :], n, axis=0)  # n * d * h * w *4
     ret = np.zeros([n, d * h * w, 3])
     theta = theta.transpose([0, 2, 1])
@@ -121,6 +170,7 @@ def getGridPointValue3D(data, x, y, z):
         for j in range(out_D):
             for k in range(out_H):
                 for l in range(out_W):
+<<<<<<< HEAD
                     if (
                         y[i, j, k, l] < 0
                         or y[i, j, k, l] > in_H - 1
@@ -134,6 +184,15 @@ def getGridPointValue3D(data, x, y, z):
                         out[i, :, j, k, l] = data[
                             i, :, z[i, j, k, l], y[i, j, k, l], x[i, j, k, l]
                         ]
+=======
+                    if y[i, j, k, l] < 0 or y[i, j, k, l] > in_H - 1 or x[
+                            i, j, k, l] < 0 or x[i, j, k, l] > in_W - 1 or z[
+                                i, j, k, l] < 0 or z[i, j, k, l] > in_D - 1:
+                        out[i, :, j, k, l] = 0
+                    else:
+                        out[i, :, j, k, l] = data[i, :, z[i, j, k, l],
+                                                  y[i, j, k, l], x[i, j, k, l]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return out
 
@@ -146,14 +205,20 @@ def unnormalizeAndClip(grid_slice, max_val, align_corners, padding_mode):
     if align_corners:
         grid_slice = 0.5 * ((grid_slice.astype('float64') + 1.0) * max_val)
     else:
+<<<<<<< HEAD
         grid_slice = (
             0.5 * ((grid_slice.astype('float64') + 1.0) * (max_val + 1)) - 0.5
         )
+=======
+        grid_slice = 0.5 * ((grid_slice.astype('float64') + 1.0) *
+                            (max_val + 1)) - 0.5
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if padding_mode == "border":
         grid_slice = clip(grid_slice, 0, max_val)
     elif padding_mode == "reflection":
         double_range = 2 * max_val if align_corners else (max_val + 1) * 2
+<<<<<<< HEAD
         grid_abs = (
             np.abs(grid_slice) if align_corners else np.abs(grid_slice + 0.5)
         )
@@ -168,6 +233,22 @@ def unnormalizeAndClip(grid_slice, max_val, align_corners, padding_mode):
 def GridSampler(
     data, grid, align_corners=True, mode="bilinear", padding_mode="zeros"
 ):
+=======
+        grid_abs = np.abs(grid_slice) if align_corners else np.abs(grid_slice +
+                                                                   0.5)
+        extra = grid_abs - np.floor(grid_abs / double_range) * double_range
+        grid_slice = np.minimum(extra, double_range - extra)
+        grid_slice = grid_slice if align_corners else clip(
+            grid_slice - 0.5, 0, max_val)
+    return grid_slice
+
+
+def GridSampler(data,
+                grid,
+                align_corners=True,
+                mode="bilinear",
+                padding_mode="zeros"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dims = data.shape
     N = dims[0]
     in_C = dims[1]
@@ -191,6 +272,7 @@ def GridSampler(
         y0 = np.floor(y).astype('int32')
         y1 = y0 + 1
 
+<<<<<<< HEAD
         wa = np.tile(
             ((x1 - x) * (y1 - y)).reshape((N, 1, out_H, out_W)), (1, in_C, 1, 1)
         )
@@ -203,6 +285,16 @@ def GridSampler(
         wd = np.tile(
             ((x - x0) * (y - y0)).reshape((N, 1, out_H, out_W)), (1, in_C, 1, 1)
         )
+=======
+        wa = np.tile(((x1 - x) * (y1 - y)).reshape((N, 1, out_H, out_W)),
+                     (1, in_C, 1, 1))
+        wb = np.tile(((x1 - x) * (y - y0)).reshape((N, 1, out_H, out_W)),
+                     (1, in_C, 1, 1))
+        wc = np.tile(((x - x0) * (y1 - y)).reshape((N, 1, out_H, out_W)),
+                     (1, in_C, 1, 1))
+        wd = np.tile(((x - x0) * (y - y0)).reshape((N, 1, out_H, out_W)),
+                     (1, in_C, 1, 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         va = getGridPointValue(data, x0, y0)
         vb = getGridPointValue(data, x0, y1)
@@ -217,9 +309,17 @@ def GridSampler(
     return out
 
 
+<<<<<<< HEAD
 def GridSampler3D(
     data, grid, align_corners=True, mode="bilinear", padding_mode="zeros"
 ):
+=======
+def GridSampler3D(data,
+                  grid,
+                  align_corners=True,
+                  mode="bilinear",
+                  padding_mode="zeros"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dims = data.shape
     N = dims[0]
     in_C = dims[1]
@@ -251,6 +351,7 @@ def GridSampler3D(
         z0 = np.floor(z).astype('int32')
         z1 = z0 + 1
 
+<<<<<<< HEAD
         w_tnw = np.tile(
             ((x1 - x) * (y1 - y) * (z1 - z)).reshape(
                 (N, 1, out_D, out_H, out_W)
@@ -299,6 +400,24 @@ def GridSampler3D(
             ),
             (1, in_C, 1, 1, 1),
         )
+=======
+        w_tnw = np.tile(((x1 - x) * (y1 - y) * (z1 - z)).reshape(
+            (N, 1, out_D, out_H, out_W)), (1, in_C, 1, 1, 1))
+        w_tne = np.tile(((x - x0) * (y1 - y) * (z1 - z)).reshape(
+            (N, 1, out_D, out_H, out_W)), (1, in_C, 1, 1, 1))
+        w_tsw = np.tile(((x1 - x) * (y - y0) * (z1 - z)).reshape(
+            (N, 1, out_D, out_H, out_W)), (1, in_C, 1, 1, 1))
+        w_tse = np.tile(((x - x0) * (y - y0) * (z1 - z)).reshape(
+            (N, 1, out_D, out_H, out_W)), (1, in_C, 1, 1, 1))
+        w_bnw = np.tile(((x1 - x) * (y1 - y) * (z - z0)).reshape(
+            (N, 1, out_D, out_H, out_W)), (1, in_C, 1, 1, 1))
+        w_bne = np.tile(((x - x0) * (y1 - y) * (z - z0)).reshape(
+            (N, 1, out_D, out_H, out_W)), (1, in_C, 1, 1, 1))
+        w_bsw = np.tile(((x1 - x) * (y - y0) * (z - z0)).reshape(
+            (N, 1, out_D, out_H, out_W)), (1, in_C, 1, 1, 1))
+        w_bse = np.tile(((x - x0) * (y - y0) * (z - z0)).reshape(
+            (N, 1, out_D, out_H, out_W)), (1, in_C, 1, 1, 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         v_tnw = getGridPointValue3D(data, x0, y0, z0)
         v_tne = getGridPointValue3D(data, x1, y0, z0)
@@ -309,6 +428,7 @@ def GridSampler3D(
         v_bsw = getGridPointValue3D(data, x0, y1, z1)
         v_bse = getGridPointValue3D(data, x1, y1, z1)
 
+<<<<<<< HEAD
         out = (
             w_tnw * v_tnw
             + w_tne * v_tne
@@ -319,6 +439,11 @@ def GridSampler3D(
             + w_bsw * v_bsw
             + w_bse * v_bse
         ).astype('float64')
+=======
+        out = (w_tnw * v_tnw + w_tne * v_tne + w_tsw * v_tsw + w_tse * v_tse +
+               w_bnw * v_bnw + w_bne * v_bne + w_bsw * v_bsw +
+               w_bse * v_bse).astype('float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     elif mode == "nearest":
         x = np.round(x).astype('int32')
@@ -329,6 +454,10 @@ def GridSampler3D(
 
 
 class TestGridSamplerOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.use_cudnn = False
         self.numeric_grad_delta = 0.0001
@@ -352,12 +481,21 @@ class TestGridSamplerOp(OpTest):
                 'use_cudnn': self.use_cudnn,
                 "align_corners": self.align_corners,
                 "padding_mode": self.padding_mode,
+<<<<<<< HEAD
                 "mode": self.mode,
             }
             self.outputs = {
                 'Output': GridSampler(
                     x, grid, self.align_corners, self.mode, self.padding_mode
                 )
+=======
+                "mode": self.mode
+            }
+            self.outputs = {
+                'Output':
+                GridSampler(x, grid, self.align_corners, self.mode,
+                            self.padding_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
         else:
             for i in range(self.theta_shape[0]):
@@ -370,18 +508,28 @@ class TestGridSamplerOp(OpTest):
                 'use_cudnn': self.use_cudnn,
                 "align_corners": self.align_corners,
                 "padding_mode": self.padding_mode,
+<<<<<<< HEAD
                 "mode": self.mode,
             }
             self.outputs = {
                 'Output': GridSampler3D(
                     x, grid, self.align_corners, self.mode, self.padding_mode
                 )
+=======
+                "mode": self.mode
+            }
+            self.outputs = {
+                'Output':
+                GridSampler3D(x, grid, self.align_corners, self.mode,
+                              self.padding_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X', 'Grid'],
             'Output',
@@ -389,6 +537,13 @@ class TestGridSamplerOp(OpTest):
             numeric_grad_delta=self.numeric_grad_delta,
             check_eager=True,
         )
+=======
+        self.check_grad(['X', 'Grid'],
+                        'Output',
+                        max_relative_error=0.01,
+                        numeric_grad_delta=self.numeric_grad_delta,
+                        check_eager=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def initTestCase(self):
         self.x_shape = (2, 3, 8, 8)
@@ -401,6 +556,10 @@ class TestGridSamplerOp(OpTest):
 
 
 class Case1(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -411,6 +570,10 @@ class Case1(TestGridSamplerOp):
 
 
 class Case1_(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -421,6 +584,10 @@ class Case1_(TestGridSamplerOp):
 
 
 class Case2(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -431,6 +598,10 @@ class Case2(TestGridSamplerOp):
 
 
 class Case3(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -441,6 +612,10 @@ class Case3(TestGridSamplerOp):
 
 
 class Case4(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -451,11 +626,18 @@ class Case4(TestGridSamplerOp):
         self.numeric_grad_delta = 0.0001
 
 
+<<<<<<< HEAD
 @skip_check_grad_ci(
     reason="'check_grad' on large inputs is too slow, "
     + "however it is desirable to cover the forward pass"
 )
 class LargeInputCase(TestGridSamplerOp):
+=======
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class LargeInputCase(TestGridSamplerOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_places(self):
         places = []
         if core.is_compiled_with_cuda():
@@ -475,11 +657,18 @@ class LargeInputCase(TestGridSamplerOp):
         pass
 
 
+<<<<<<< HEAD
 @skip_check_grad_ci(
     reason="'check_grad' on large inputs is too slow, "
     + "however it is desirable to cover the forward pass"
 )
 class Case5(LargeInputCase):
+=======
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class Case5(LargeInputCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.no_need_check_grad = True
         self.x_shape = (2, 3, 128, 128)
@@ -492,6 +681,10 @@ class Case5(LargeInputCase):
 
 
 class Case6(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6, 7)
         self.grid_shape = (2, 8, 9, 10, 3)
@@ -503,6 +696,10 @@ class Case6(TestGridSamplerOp):
 
 
 class Case6_(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 4, 5, 6)
         self.grid_shape = (2, 7, 8, 9, 3)
@@ -514,6 +711,10 @@ class Case6_(TestGridSamplerOp):
 
 
 class Case7(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 4, 5, 6)
         self.grid_shape = (2, 7, 8, 9, 3)
@@ -525,6 +726,10 @@ class Case7(TestGridSamplerOp):
 
 
 class Case8(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 4, 5, 6)
         self.grid_shape = (2, 7, 8, 9, 3)
@@ -536,6 +741,10 @@ class Case8(TestGridSamplerOp):
 
 
 class Case9(TestGridSamplerOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.x_shape = (2, 3, 4, 5, 6)
         self.grid_shape = (2, 7, 8, 9, 3)
@@ -546,11 +755,18 @@ class Case9(TestGridSamplerOp):
         self.numeric_grad_delta = 0.000001
 
 
+<<<<<<< HEAD
 @skip_check_grad_ci(
     reason="'check_grad' on large inputs is too slow, "
     + "however it is desirable to cover the forward pass"
 )
 class LargeInput3DCase(TestGridSamplerOp):
+=======
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class LargeInput3DCase(TestGridSamplerOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_places(self):
         places = []
         if core.is_compiled_with_cuda():
@@ -572,11 +788,18 @@ class LargeInput3DCase(TestGridSamplerOp):
         pass
 
 
+<<<<<<< HEAD
 @skip_check_grad_ci(
     reason="'check_grad' on large inputs is too slow, "
     + "however it is desirable to cover the forward pass"
 )
 class Case10(LargeInput3DCase):
+=======
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class Case10(LargeInput3DCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.no_need_check_grad = True
         self.x_shape = (2, 3, 24, 24, 12)

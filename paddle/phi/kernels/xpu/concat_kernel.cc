@@ -50,7 +50,10 @@ void ConcatKernel(const Context& dev_ctx,
                         x[0]->dims().size()));
 
   // If axis is 0, the lod of the output is not the same as inputs.
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (axis == 0 && x[0]->lod().size() > 0) {
     size_t lod_size_0 = x[0]->lod().size();
     size_t lod_size = lod_size_0;
@@ -80,9 +83,13 @@ void ConcatKernel(const Context& dev_ctx,
       }
     }
   }
+<<<<<<< HEAD
 
   dev_ctx.template Alloc<T>(out);
 
+=======
+  dev_ctx.template Alloc<T>(out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<std::vector<int>> xdims_list;
   std::vector<const XPUType*> ptrs;
   for (unsigned int i = 0; i < x.size(); ++i) {
@@ -100,7 +107,10 @@ void ConcatKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(xdims_list.size(),
                     0,
                     phi::errors::InvalidArgument("No tensor need concat"));
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int r = xpu::concat<XPUType>(dev_ctx.x_context(),
                                ptrs,
                                reinterpret_cast<XPUType*>(out->data<T>()),
@@ -111,6 +121,7 @@ void ConcatKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(concat,
                    XPU,
                    ALL_LAYOUT,
@@ -118,3 +129,7 @@ PD_REGISTER_KERNEL(concat,
                    float,
                    phi::dtype::float16,
                    int64_t) {}
+=======
+PD_REGISTER_KERNEL(
+    concat, XPU, ALL_LAYOUT, phi::ConcatKernel, float, phi::dtype::float16) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

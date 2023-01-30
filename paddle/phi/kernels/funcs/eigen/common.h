@@ -17,7 +17,10 @@ limitations under the License. */
 #include <stdint.h>
 
 #include "paddle/phi/core/dense_tensor.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {

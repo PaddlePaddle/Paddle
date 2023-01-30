@@ -34,7 +34,11 @@ class ShareDataOp : public framework::OperatorWithKernel {
             in_type == framework::proto::VarType::SELECTED_ROWS,
         true,
         platform::errors::InvalidArgument(
+<<<<<<< HEAD
             "Type of Variable[X] must be phi::DenseTensor or SelectedRows!"));
+=======
+            "Type of Variable[X] must be LoDTensor or SelectedRows!"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         in_type,
         out_type,

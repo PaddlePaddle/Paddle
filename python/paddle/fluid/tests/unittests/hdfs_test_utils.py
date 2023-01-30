@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -21,11 +22,25 @@ from paddle.distributed.fleet.utils.fs import (
     HDFSClient,
     LocalFS,
 )
+=======
+import unittest
+import paddle.fluid as fluid
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
+import os
+import sys
+
+from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 java_home = os.environ["JAVA_HOME"]
 
 
 class FSTestBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _test_dirs(self, fs):
         dir_path = os.path.abspath("./test_dir")
         fs.delete(dir_path)
@@ -221,12 +236,19 @@ class FSTestBase(unittest.TestCase):
             pass
 
     def _test_list_dir(self, fs):
+<<<<<<< HEAD
         fs = HDFSClient(
             "/usr/local/hadoop-2.7.7/",
             None,
             time_out=15 * 1000,
             sleep_inter=100,
         )
+=======
+        fs = HDFSClient("/usr/local/hadoop-2.7.7/",
+                        None,
+                        time_out=15 * 1000,
+                        sleep_inter=100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         fs.ls_dir("test_not_exists")
 
     def _test_touch(self, fs):

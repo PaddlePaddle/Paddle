@@ -17,21 +17,36 @@ import unittest
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.utils import flatten
+<<<<<<< HEAD
 from paddle.incubate.autograd.primrules import _jvp, _transpose
+=======
+from paddle.incubate.autograd.primrules import _orig2prim, _prim2orig, _jvp, _transpose
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
+<<<<<<< HEAD
 # --------------------- Test linearize rules ----------------------- #
 class TestAddPJVPAndTranspose(unittest.TestCase):
+=======
+############################ Test linearize rules ############################
+class TestAddPJVPAndTranspose(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.main_program = paddle.static.Program()
         self.startup_program = paddle.static.Program()
         self.layer_help = LayerHelper('TestPrim2Orig')
 
+<<<<<<< HEAD
         with paddle.static.program_guard(
             self.main_program, self.startup_program
         ):
+=======
+        with paddle.static.program_guard(self.main_program,
+                                         self.startup_program):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.init_data()
 
     def init_data(self):
@@ -41,9 +56,14 @@ class TestAddPJVPAndTranspose(unittest.TestCase):
         Y = paddle.static.data(name='Y', shape=[2, 2], dtype='float')
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -68,6 +88,7 @@ class TestAddPJVPAndTranspose(unittest.TestCase):
         ]
 
     def test_op(self):
+<<<<<<< HEAD
         with paddle.static.program_guard(
             self.main_program, self.startup_program
         ):
@@ -77,6 +98,14 @@ class TestAddPJVPAndTranspose(unittest.TestCase):
                 outputs=self.prim_output,
                 attrs=self.prim_attrs,
             )
+=======
+        with paddle.static.program_guard(self.main_program,
+                                         self.startup_program):
+            op = self.layer_help.append_op(type=self.op_type,
+                                           inputs=self.prim_input,
+                                           outputs=self.prim_output,
+                                           attrs=self.prim_attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             jvp_out = _jvp(op, *self.jvp_args)
             jvp_out = flatten(jvp_out)
@@ -95,6 +124,10 @@ class TestAddPJVPAndTranspose(unittest.TestCase):
 
 
 class TestSubPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'sub_p'
@@ -102,9 +135,14 @@ class TestSubPJVPAndTranspose(TestAddPJVPAndTranspose):
         Y = paddle.static.data(name='Y', shape=[5, 6], dtype='int64')
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -127,11 +165,19 @@ class TestSubPJVPAndTranspose(TestAddPJVPAndTranspose):
             'sub_p',
             # transpose op:
             'fill_constant_p',
+<<<<<<< HEAD
             'sub_p',
+=======
+            'sub_p'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
 
 class TestMulPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'mul_p'
@@ -139,9 +185,14 @@ class TestMulPJVPAndTranspose(TestAddPJVPAndTranspose):
         Y = paddle.static.data(name='Y', shape=[5, 6], dtype='int64')
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -167,11 +218,19 @@ class TestMulPJVPAndTranspose(TestAddPJVPAndTranspose):
             'mul_p',
             'add_p',
             # transpose op:
+<<<<<<< HEAD
             'mul_p',
+=======
+            'mul_p'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
 
 class TestDivPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'div_p'
@@ -179,9 +238,14 @@ class TestDivPJVPAndTranspose(TestAddPJVPAndTranspose):
         Y = paddle.static.data(name='Y', shape=[5, 6], dtype='int64')
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -209,11 +273,19 @@ class TestDivPJVPAndTranspose(TestAddPJVPAndTranspose):
             'mul_p',
             'sub_p',
             # transpose op:
+<<<<<<< HEAD
             'div_p',
+=======
+            'div_p'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
 
 class TestSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'sqrt_p'
@@ -222,15 +294,24 @@ class TestSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
@@ -245,6 +326,7 @@ class TestSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
+<<<<<<< HEAD
 class TestRSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
     def init_data(self):
         # Set prim op
@@ -279,6 +361,10 @@ class TestRSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestTanhPJVPAndTranspose(TestAddPJVPAndTranspose):
+=======
+class TestTanhPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'tanh_p'
@@ -287,15 +373,24 @@ class TestTanhPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
@@ -311,6 +406,10 @@ class TestTanhPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestSinPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'sin_p'
@@ -319,15 +418,24 @@ class TestSinPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
@@ -341,6 +449,10 @@ class TestSinPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestCosPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'cos_p'
@@ -349,15 +461,24 @@ class TestCosPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
@@ -373,6 +494,10 @@ class TestCosPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestExpPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'exp_p'
@@ -381,15 +506,24 @@ class TestExpPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
@@ -402,6 +536,10 @@ class TestExpPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestErfPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'erf_p'
@@ -410,15 +548,24 @@ class TestErfPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
@@ -438,6 +585,10 @@ class TestErfPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestAbsPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'abs_p'
@@ -446,15 +597,24 @@ class TestAbsPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
@@ -471,6 +631,10 @@ class TestAbsPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestCastPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'cast_p'
@@ -479,15 +643,24 @@ class TestCastPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {'dtype': paddle.float64}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
@@ -502,11 +675,19 @@ class TestCastPJVPAndTranspose(TestAddPJVPAndTranspose):
             # jvp op:
             'cast_p',
             # transpose op:
+<<<<<<< HEAD
             'cast_p',
+=======
+            'cast_p'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
 
 class TestLogPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'log_p'
@@ -515,15 +696,24 @@ class TestLogPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
@@ -536,6 +726,10 @@ class TestLogPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestReshapePJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'reshape_p'
@@ -544,15 +738,24 @@ class TestReshapePJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {'shape': [2, 32]}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[8, 8], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
@@ -574,6 +777,10 @@ class TestReshapePJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestBroadcastPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'broadcast_p'
@@ -582,22 +789,37 @@ class TestBroadcastPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {'shape': [2, 10, 7]}
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[10, 7], dtype='int64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X
+<<<<<<< HEAD
         Y_BAR = paddle.static.data(
             name='Y_BAR', shape=[2, 10, 7], dtype='int64'
         )
+=======
+        Y_BAR = paddle.static.data(name='Y_BAR',
+                                   shape=[2, 10, 7],
+                                   dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.transpose_args = (check_dot, Y_BAR)
         self.transpose_out_shape_map = {
             0: X,
@@ -610,11 +832,19 @@ class TestBroadcastPJVPAndTranspose(TestAddPJVPAndTranspose):
             'broadcast_p',
             # transpose op:
             'reduce_sum_p',
+<<<<<<< HEAD
             'reshape_p',
+=======
+            'reshape_p'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
 
 class TestTransposePJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'transpose_p'
@@ -623,24 +853,42 @@ class TestTransposePJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {'axis': [0, 2, 3, 1]}
 
         # Set JVP
+<<<<<<< HEAD
         X_DOT = paddle.static.data(
             name='X_DOT', shape=[2, 3, 4, 5], dtype='int64'
         )
         self.jvp_args = (X_DOT,)
+=======
+        X_DOT = paddle.static.data(name='X_DOT',
+                                   shape=[2, 3, 4, 5],
+                                   dtype='int64')
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X
+<<<<<<< HEAD
         Y_BAR = paddle.static.data(
             name='Y_BAR', shape=[2, 4, 5, 3], dtype='int64'
         )
+=======
+        Y_BAR = paddle.static.data(name='Y_BAR',
+                                   shape=[2, 4, 5, 3],
+                                   dtype='int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.transpose_args = (check_dot, Y_BAR)
         self.transpose_out_shape_map = {
             0: X,
@@ -657,6 +905,10 @@ class TestTransposePJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestSplitPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'split_p'
@@ -667,18 +919,29 @@ class TestSplitPJVPAndTranspose(TestAddPJVPAndTranspose):
         self.prim_output = {
             'YS': [
                 self.layer_help.create_variable_for_type_inference(
+<<<<<<< HEAD
                     dtype=X.dtype
                 )
                 for i in range(4)
+=======
+                    dtype=X.dtype) for i in range(4)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
         }
         self.prim_attrs = {'num_or_sections': [2, 3, 4, 1], 'axis': 2}
 
         # Set JVP
+<<<<<<< HEAD
         X_DOT = paddle.static.data(
             name='X_DOT', shape=[2, 7, 10], dtype='int64'
         )
         self.jvp_args = (X_DOT,)
+=======
+        X_DOT = paddle.static.data(name='X_DOT',
+                                   shape=[2, 7, 10],
+                                   dtype='int64')
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {
             0: self.prim_output['YS'][0],
             1: self.prim_output['YS'][1],
@@ -710,6 +973,10 @@ class TestSplitPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestConcatPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'concat_p'
@@ -720,9 +987,14 @@ class TestConcatPJVPAndTranspose(TestAddPJVPAndTranspose):
             'XS': [X, Y, Z],
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {'axis': 1}
 
@@ -732,14 +1004,24 @@ class TestConcatPJVPAndTranspose(TestAddPJVPAndTranspose):
             paddle.static.data(name='X_DOT2', shape=[3, 2, 5], dtype='float64'),
             paddle.static.data(name='X_DOT3', shape=[3, 3, 5], dtype='float64'),
         ]
+<<<<<<< HEAD
         self.jvp_args = (XS_DOT,)
+=======
+        self.jvp_args = (XS_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X or v is Y or v is Z
+<<<<<<< HEAD
         Y_BAR = paddle.static.data(
             name='Y_BAR', shape=[3, 14, 5], dtype='float64'
         )
+=======
+        Y_BAR = paddle.static.data(name='Y_BAR',
+                                   shape=[3, 14, 5],
+                                   dtype='float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.transpose_args = (check_dot, Y_BAR)
         self.transpose_out_shape_map = {
             0: X,
@@ -758,30 +1040,52 @@ class TestConcatPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestReduceSumPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'reduce_sum_p'
         X = paddle.static.data(name='X', shape=[2, 3, 4, 5], dtype='float64')
         self.prim_input = {'X': X}
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {'axis': [2], 'keepdim': False}
 
         # Set JVP
+<<<<<<< HEAD
         X_DOT = paddle.static.data(
             name='X_DOT1', shape=[2, 3, 4, 5], dtype='float64'
         )
         self.jvp_args = (X_DOT,)
+=======
+        X_DOT = paddle.static.data(name='X_DOT1',
+                                   shape=[2, 3, 4, 5],
+                                   dtype='float64')
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X
+<<<<<<< HEAD
         Y_BAR = paddle.static.data(
             name='Y_BAR', shape=[2, 3, 5], dtype='float64'
         )
+=======
+        Y_BAR = paddle.static.data(name='Y_BAR',
+                                   shape=[2, 3, 5],
+                                   dtype='float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.transpose_args = (check_dot, Y_BAR)
         self.transpose_out_shape_map = {
             0: X,
@@ -799,6 +1103,10 @@ class TestReduceSumPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestMatmulPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'matmul_p'
@@ -806,9 +1114,14 @@ class TestMatmulPJVPAndTranspose(TestAddPJVPAndTranspose):
         Y = paddle.static.data(name='Y', shape=[3, 4], dtype='float64')
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -840,6 +1153,10 @@ class TestMatmulPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestSliceSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'slice_select_p'
@@ -848,20 +1165,33 @@ class TestSliceSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
             'X': X,
         }
         self.prim_output = {
+<<<<<<< HEAD
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {
             'axis': [1],
             'starts': [0],
             'ends': [20],
+<<<<<<< HEAD
             'strides': [2],
+=======
+            'strides': [2]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[3, 20], dtype='float64')
+<<<<<<< HEAD
         self.jvp_args = (X_DOT,)
+=======
+        self.jvp_args = (X_DOT, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
@@ -883,7 +1213,12 @@ class TestSliceSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
+<<<<<<< HEAD
 class TestSliceAssignPJVPAndTranspose1(TestAddPJVPAndTranspose):
+=======
+class TestSliceAssignPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'slice_assign_p'
@@ -891,15 +1226,24 @@ class TestSliceAssignPJVPAndTranspose1(TestAddPJVPAndTranspose):
         Y = paddle.static.data(name='Y', shape=[3, 5], dtype='float64')
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {
             'axis': [1],
             'starts': [0],
             'ends': [10],
+<<<<<<< HEAD
             'strides': [2],
+=======
+            'strides': [2]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         # Set JVP
@@ -909,16 +1253,24 @@ class TestSliceAssignPJVPAndTranspose1(TestAddPJVPAndTranspose):
         self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
+<<<<<<< HEAD
         check_dot = lambda v: v is X
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[3, 20], dtype='float64')
         self.transpose_args = (check_dot, Z_BAR)
         self.transpose_out_shape_map = {0: X}
+=======
+        check_dot = lambda v: v is X or v is Y
+        Z_BAR = paddle.static.data(name='Z_BAR', shape=[3, 20], dtype='float64')
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {0: X, 1: Y}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.all_ops = [
             # prim op:
             'slice_assign_p',
             # jvp op:
             'slice_assign_p',
+<<<<<<< HEAD
             "slice_assign_p",
             "add_p",
             "fill_constant_p",
@@ -1010,14 +1362,25 @@ class TestSliceAssignPJVPAndTranspose3(TestAddPJVPAndTranspose):
             # transpose op:
             'slice_assign_p',
             'fill_constant_p',
+=======
+            # transpose op:
+            'slice_assign_p',
+            'slice_select_p',
+            'fill_constant_p'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
 
 class TestGatherPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'gather_p'
         X = paddle.static.data(name='X', shape=[9, 5], dtype='float64')
+<<<<<<< HEAD
         IndexTensor = paddle.static.data(
             name='IndexTensor', shape=[3], dtype='int32'
         )
@@ -1026,6 +1389,15 @@ class TestGatherPJVPAndTranspose(TestAddPJVPAndTranspose):
             'Y': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+        IndexTensor = paddle.static.data(name='IndexTensor',
+                                         shape=[3],
+                                         dtype='int32')
+        self.prim_input = {'X': X, 'IndexTensor': IndexTensor}
+        self.prim_output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {'axis': 1}
 
@@ -1057,11 +1429,16 @@ class TestGatherPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestScatterAddPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'scatter_add_p'
         X = paddle.static.data(name='X', shape=[9, 5], dtype='float64')
         Y = paddle.static.data(name='Y', shape=[9, 3], dtype='float64')
+<<<<<<< HEAD
         IndexTensor = paddle.static.data(
             name='IndexTensor', shape=[3], dtype='int32'
         )
@@ -1070,6 +1447,15 @@ class TestScatterAddPJVPAndTranspose(TestAddPJVPAndTranspose):
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+        IndexTensor = paddle.static.data(name='IndexTensor',
+                                         shape=[3],
+                                         dtype='int32')
+        self.prim_input = {'X': X, 'Y': Y, 'IndexTensor': IndexTensor}
+        self.prim_output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {'axis': 1}
 
@@ -1093,11 +1479,19 @@ class TestScatterAddPJVPAndTranspose(TestAddPJVPAndTranspose):
             # transpose op:
             'scatter_add_p',
             'fill_constant_p',
+<<<<<<< HEAD
             'gather_p',
+=======
+            'gather_p'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
 
 class TestSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'select_p'
@@ -1107,16 +1501,27 @@ class TestSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
 
         self.prim_input = {'Condition': Cond, 'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
         # Set JVP
+<<<<<<< HEAD
         Cond_DOT = paddle.static.data(
             name='Cond_DOT', shape=[9, 5], dtype='float64'
         )
+=======
+        Cond_DOT = paddle.static.data(name='Cond_DOT',
+                                      shape=[9, 5],
+                                      dtype='float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         X_DOT = paddle.static.data(name='X_DOT', shape=[9, 5], dtype='float64')
         Y_DOT = paddle.static.data(name='Y_DOT', shape=[9, 5], dtype='float64')
         self.jvp_args = (Cond_DOT, X_DOT, Y_DOT)
@@ -1143,6 +1548,10 @@ class TestSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestEqPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'eq_p'
@@ -1151,9 +1560,14 @@ class TestEqPJVPAndTranspose(TestAddPJVPAndTranspose):
 
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -1173,6 +1587,10 @@ class TestEqPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestGtPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'gt_p'
@@ -1181,9 +1599,14 @@ class TestGtPJVPAndTranspose(TestAddPJVPAndTranspose):
 
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -1203,6 +1626,10 @@ class TestGtPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestGePJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'ge_p'
@@ -1211,9 +1638,14 @@ class TestGePJVPAndTranspose(TestAddPJVPAndTranspose):
 
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -1233,6 +1665,10 @@ class TestGePJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestNePJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'ne_p'
@@ -1241,9 +1677,14 @@ class TestNePJVPAndTranspose(TestAddPJVPAndTranspose):
 
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -1263,6 +1704,10 @@ class TestNePJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestPowPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'pow_p'
@@ -1270,9 +1715,14 @@ class TestPowPJVPAndTranspose(TestAddPJVPAndTranspose):
         Y = paddle.static.data(name='Y', shape=[5, 6], dtype='float32')
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 
@@ -1303,6 +1753,10 @@ class TestPowPJVPAndTranspose(TestAddPJVPAndTranspose):
 
 
 class TestMaxPJVPAndTranspose(TestAddPJVPAndTranspose):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         # Set prim op
         self.op_type = 'max_p'
@@ -1310,9 +1764,14 @@ class TestMaxPJVPAndTranspose(TestAddPJVPAndTranspose):
         Y = paddle.static.data(name='Y', shape=[5, 6], dtype='float32')
         self.prim_input = {'X': X, 'Y': Y}
         self.prim_output = {
+<<<<<<< HEAD
             'Z': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
+=======
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.prim_attrs = {}
 

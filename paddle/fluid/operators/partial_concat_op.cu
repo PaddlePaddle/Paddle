@@ -23,6 +23,12 @@ namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <class T>
 __global__ void ConcatPartialCUDAKernel(T **in,
                                         T *out,
@@ -69,8 +75,13 @@ template <typename T>
 class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto in_vars = ctx.MultiInput<phi::DenseTensor>("X");
     phi::DenseTensor *out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto in_vars = ctx.MultiInput<Tensor>("X");
+    Tensor *out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(in_vars[0] != nullptr,
                       true,
                       platform::errors::InvalidArgument(
@@ -150,9 +161,15 @@ template <typename T>
 class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_EQ(ins[0] != nullptr,
                       true,

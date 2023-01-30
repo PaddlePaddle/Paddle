@@ -42,9 +42,15 @@ template <typename T>
 class CopyMatrixRowsFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& src,
                   paddle::framework::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,
+=======
+                  const paddle::framework::Tensor& src,
+                  paddle::framework::Vector<size_t> index_lod,
+                  paddle::framework::Tensor* dst,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   bool is_src_index) {
     auto src_dims = src.dims();
     auto dst_dims = dst->dims();

@@ -18,11 +18,21 @@ namespace phi {
 
 KernelSignature FlattenOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasOutput("XShape")) {
+<<<<<<< HEAD
     return KernelSignature(
         "flatten", {"X"}, {"start_axis", "stop_axis"}, {"Out", "XShape"});
   } else {
     return KernelSignature(
         "flatten_infer", {"X"}, {"start_axis", "stop_axis"}, {"Out"});
+=======
+    return KernelSignature("flatten_with_xshape",
+                           {"X"},
+                           {"start_axis", "stop_axis"},
+                           {"Out", "XShape"});
+  } else {
+    return KernelSignature(
+        "flatten", {"X"}, {"start_axis", "stop_axis"}, {"Out"});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import hypothesis.strategies as st
@@ -22,11 +23,29 @@ import paddle.inference as paddle_infer
 
 
 class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
+=======
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
+
+
+class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_config(self, draw):
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=4, max_size=4
             )
@@ -45,12 +64,30 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=4), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=4,
+                     max_size=4))
+        pooling_type = draw(st.sampled_from(["max", "avg"]))
+
+        data_format = "NCHW"  #trt support this format only
+        strides = draw(
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
+
+        paddings = draw(
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         ceil_mode = draw(st.booleans())
         exclusive = draw(st.booleans())
         global_pooling = draw(st.booleans())
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VAILD"]))
 
+<<<<<<< HEAD
         pool_op = OpConfig(
             "pool2d",
             inputs={"X": ["input_data"]},
@@ -76,6 +113,30 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
             },
             outputs=["pool_output"],
         )
+=======
+        pool_op = OpConfig("pool2d",
+                           inputs={"X": ["input_data"]},
+                           outputs={"Out": ["pool_output"]},
+                           ksize=[1, 1],
+                           adaptive=True,
+                           pooling_type=pooling_type,
+                           data_format=data_format,
+                           strides=strides,
+                           paddings=paddings,
+                           ceil_mode=ceil_mode,
+                           global_pooling=global_pooling,
+                           padding_algorithm=padding_algorithm,
+                           exclusive=exclusive)
+        ops = [pool_op]
+
+        program_config = ProgramConfig(ops=ops,
+                                       weights={},
+                                       inputs={
+                                           "input_data":
+                                           TensorConfig(shape=x_shape),
+                                       },
+                                       outputs=["pool_output"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return program_config
 
@@ -87,6 +148,7 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
+<<<<<<< HEAD
             use_calib_mode=False,
         )
         yield config, ['pool2d'], (1e-5, 1e-5)
@@ -98,6 +160,16 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
             passes=["adaptive_pool2d_convert_global_pass"],
             min_success_num=40,
         )
+=======
+            use_calib_mode=False)
+        yield config, ['pool2d'], (1e-5, 1e-5)
+
+    def test(self):
+        self.run_and_statis(quant=False,
+                            max_examples=300,
+                            passes=["adaptive_pool2d_convert_global_pass"],
+                            min_success_num=40)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

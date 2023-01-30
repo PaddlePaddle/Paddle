@@ -25,4 +25,8 @@ set_tests_properties(test_multi_precision_fp16_train PROPERTIES TIMEOUT 120)
 
 if(APPLE)
   set_tests_properties(test_model_cast_to_bf16 PROPERTIES TIMEOUT 300)
+<<<<<<< HEAD
+=======
+  set_tests_properties(test_quantize_transpiler PROPERTIES TIMEOUT 300)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()

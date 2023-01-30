@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 
@@ -29,6 +33,10 @@ paddle.enable_static()
 
 
 class TestElementwiseModOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -41,7 +49,11 @@ class TestElementwiseModOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+=======
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -68,11 +80,19 @@ class TestElementwiseModOp(OpTest):
 
 
 class TestElementwiseModOpInt64(TestElementwiseModOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int64
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -82,6 +102,10 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFloat(TestElementwiseModOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -95,6 +119,10 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float64
 
@@ -103,6 +131,10 @@ class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
 
 
 class TestElementwiseModOpFP16(TestElementwiseModOpFloat):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -111,6 +143,10 @@ class TestElementwiseModOpFP16(TestElementwiseModOpFloat):
 
 
 class TestElementwiseModOp_broadcast_0(TestElementwiseModOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -121,6 +157,10 @@ class TestElementwiseModOp_broadcast_0(TestElementwiseModOp):
 
 
 class TestElementwiseModOp_broadcast_1(TestElementwiseModOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 100, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -131,6 +171,10 @@ class TestElementwiseModOp_broadcast_1(TestElementwiseModOp):
 
 
 class TestElementwiseModOp_broadcast_2(TestElementwiseModOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -141,6 +185,10 @@ class TestElementwiseModOp_broadcast_2(TestElementwiseModOp):
 
 
 class TestRemainderOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_name(self):
         paddle.set_device('npu:0')
         with fluid.program_guard(fluid.Program()):
@@ -162,7 +210,11 @@ class TestRemainderOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
             np_x = np.array([-3.3, 11.5, -2, 3.5])
+<<<<<<< HEAD
             np_y = np.array([-1.2, 2.0, 3.3, -2.3])
+=======
+            np_y = np.array([-1.2, 2., 3.3, -2.3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x = paddle.to_tensor(np_x)
             y = paddle.to_tensor(np_y)
             z = x % y

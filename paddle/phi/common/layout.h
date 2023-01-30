@@ -14,10 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include <cctype>
 #include "paddle/phi/api/ext/exception.h"
 
 namespace phi {
+=======
+#include "paddle/phi/api/ext/exception.h"
+namespace paddle {
+namespace experimental {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 // Note: The original design of paddle DataLayout is confusing.
 // It contains two levels of "layout", one is the data layout
@@ -68,6 +74,16 @@ enum class DataLayout {
   kNCDHW = NCDHW,
 };
 
+<<<<<<< HEAD
+=======
+}  // namespace experimental
+
+// In order to be compatible with the fluid implementation
+namespace framework {
+
+using DataLayout = paddle::experimental::DataLayout;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 inline DataLayout StringToDataLayout(const std::string& str) {
   std::string s(str);
   for (size_t i = 0; i < s.size(); ++i) {
@@ -121,6 +137,7 @@ inline std::string DataLayoutToString(const DataLayout& layout) {
       PD_THROW("Unknown Data Layout type ", static_cast<int>(layout), ".");
   }
 }
+<<<<<<< HEAD
 
 inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
   os << DataLayoutToString(layout);
@@ -134,3 +151,20 @@ namespace paddle {
 using DataLayout = phi::DataLayout;
 
 }  // namespace paddle
+=======
+}  // namespace framework
+
+namespace experimental {
+
+inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
+  os << framework::DataLayoutToString(layout);
+  return os;
+}
+
+}  // namespace experimental
+}  // namespace paddle
+
+namespace phi {
+using DataLayout = paddle::experimental::DataLayout;
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

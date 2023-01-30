@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -26,6 +31,10 @@ paddle.enable_static()
 
 
 class TestStackOpBase(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
@@ -49,8 +58,12 @@ class TestStackOpBase(OpTest):
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
+<<<<<<< HEAD
                 np.random.random(size=self.input_dim).astype(self.dtype)
             )
+=======
+                np.random.random(size=self.input_dim).astype(self.dtype))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         tmp = []
         x_names = self.get_x_names()
@@ -78,41 +91,73 @@ class TestStackOpBase(OpTest):
 
 
 class TestStackOp1(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.num_inputs = 16
 
 
 class TestStackOp2(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.num_inputs = 20
 
 
 class TestStackOp3(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = -1
 
 
 class TestStackOp4(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = -4
 
 
 class TestStackOp5(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 1
 
 
 class TestStackOp6(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.axis = 3
 
 
 class TestStackOpINT32(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestStackOpINT64(TestStackOpBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int64
 
@@ -127,17 +172,23 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
         self.iter_num = 3
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
+<<<<<<< HEAD
         self.place = (
             paddle.NPUPlace(0)
             if paddle.is_compiled_with_npu()
             else paddle.CPUPlace()
         )
+=======
+        self.place = paddle.NPUPlace(0) \
+            if paddle.is_compiled_with_npu() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.set_program()
 
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
             input = fluid.layers.assign(self.x)
+<<<<<<< HEAD
             tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
@@ -145,14 +196,27 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
                 paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
+=======
+            tensor_array = fluid.layers.create_array(dtype='float32')
+            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+
+            for i in range(self.iter_num):
+                fluid.layers.array_write(input, zero + i, tensor_array)
+
+            self.out_var = fluid.layers.stack(tensor_array, axis=self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_case(self):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
         np.testing.assert_allclose(
+<<<<<<< HEAD
             res[0], np.stack([self.x] * self.iter_num, axis=self.axis)
         )
+=======
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
@@ -165,22 +229,35 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         self.iter_num = 3
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
+<<<<<<< HEAD
         self.place = (
             paddle.NPUPlace(0)
             if paddle.is_compiled_with_npu()
             else paddle.CPUPlace()
         )
+=======
+        self.place = paddle.NPUPlace(0) \
+            if paddle.is_compiled_with_npu() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.set_program()
 
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
             input = fluid.layers.assign(self.x)
+<<<<<<< HEAD
             tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
                 paddle.tensor.array_write(input, zero + i, tensor_array)
+=======
+            tensor_array = fluid.layers.create_array(dtype='float32')
+            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+
+            for i in range(self.iter_num):
+                fluid.layers.array_write(input, zero + i, tensor_array)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
 
@@ -189,6 +266,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
         np.testing.assert_allclose(
+<<<<<<< HEAD
             res[0], np.stack([self.x] * self.iter_num, axis=self.axis)
         )
 
@@ -199,16 +277,37 @@ class API_test(unittest.TestCase):
             data1 = paddle.static.data('data1', shape=[-1, 1, 2], dtype='float32')
             data2 = paddle.static.data('data2', shape=[-1, 1, 2], dtype='float32')
             data3 = paddle.static.data('data3', shape=[-1, 1, 2], dtype='float32')
+=======
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis))
+
+
+class API_test(unittest.TestCase):
+
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float32')
+            data2 = fluid.layers.data('data2', shape=[1, 2], dtype='float32')
+            data3 = fluid.layers.data('data3', shape=[1, 2], dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             result_stack = paddle.stack([data1, data2, data3], axis=0)
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 2]).astype('float32')
             input2 = np.random.random([1, 2]).astype('float32')
             input3 = np.random.random([1, 2]).astype('float32')
+<<<<<<< HEAD
             (result,) = exe.run(
                 feed={"data1": input1, "data2": input2, "data3": input3},
                 fetch_list=[result_stack],
             )
+=======
+            result, = exe.run(feed={
+                "data1": input1,
+                "data2": input2,
+                "data3": input3
+            },
+                              fetch_list=[result_stack])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_result = np.stack([input1, input2, input3], axis=0)
             np.testing.assert_allclose(expected_result, result)
 
@@ -219,6 +318,10 @@ class API_test(unittest.TestCase):
 
 
 class API_DygraphTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_out(self):
         data1 = np.array([[1.0, 2.0]])
         data2 = np.array([[3.0, 4.0]])

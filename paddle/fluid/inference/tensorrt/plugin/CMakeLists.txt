@@ -11,7 +11,14 @@ list(
   group_norm_op_plugin.cu
   layer_norm_op_plugin.cu
   instance_norm_op_plugin.cu
+<<<<<<< HEAD
   qkv_to_context_plugin.cu
+=======
+  emb_eltwise_layernorm_plugin.cu
+  qkv_to_context_plugin.cu
+  skip_layernorm_op_plugin.cu
+  slice_op_plugin.cu
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   hard_swish_op_plugin.cu
   stack_op_plugin.cu
   anchor_generator_op_plugin.cu
@@ -23,14 +30,19 @@ list(
   pool3d_op_plugin.cu
   deformable_conv_op_plugin.cu
   matmul_op_int8_plugin.cu
+<<<<<<< HEAD
   multihead_matmul_roformer_plugin.cu
   transformer_input_output_convert_plugin.cu
+=======
+  transformer_input_convert_plugin.cu
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   remove_padding_plugin.cu
   recover_padding_plugin.cu
   c_allreduce_op_plugin.cu
   preln_residual_bias_plugin.cu
   fused_token_prune_op_plugin.cu
   layernorm_shift_partition_op.cu
+<<<<<<< HEAD
   reverse_roll_op_plugin.cu
   prelnlayernorm_shift_partition_op.cu
   merge_layernorm_op_plugin.cu
@@ -47,6 +59,9 @@ if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
        many_emb_layernorm_varseqlen_kernel_mtron.cu
        many_emb_layernorm_varseqlen_kernel_hface.cu)
 endif()
+=======
+  generic_plugin.cu)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)

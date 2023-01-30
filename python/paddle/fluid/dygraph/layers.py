@@ -16,6 +16,10 @@ import collections
 import contextlib
 import sys
 import numpy as np
+<<<<<<< HEAD
+=======
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import re
 import copy
 import weakref
@@ -46,6 +50,10 @@ from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import (
+<<<<<<< HEAD
+=======
+    _non_static_mode,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     convert_np_dtype_to_dtype_,
     in_dygraph_mode,
 )
@@ -61,6 +69,7 @@ _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 _all_cap_re = re.compile('([a-z])([A-Z])')
 
 
+<<<<<<< HEAD
 def _scope_dist2single(dist_scope):
     mapping = {
         "row_parallel_linear": "linear",
@@ -72,6 +81,8 @@ def _scope_dist2single(dist_scope):
     return mapping.get(dist_scope, dist_scope)
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def _convert_camel_to_snake(name):
     s1 = _first_cap_re.sub(r'\1_\2', name)
     return _all_cap_re.sub(r'\1_\2', s1).lower()
@@ -88,7 +99,11 @@ def _addindent(string, indent):
     return s1[0] + '\n' + '\n'.join(s2)
 
 
+<<<<<<< HEAD
 class HookRemoveHelper:
+=======
+class HookRemoveHelper(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """A HookRemoveHelper that can be used to remove hook."""
 
     next_hook_id = 0
@@ -104,7 +119,11 @@ class HookRemoveHelper:
             del hooks[self._hook_id]
 
 
+<<<<<<< HEAD
 class Layer:
+=======
+class Layer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -128,7 +147,11 @@ class Layer:
             import paddle
             class MyLayer(paddle.nn.Layer):
                 def __init__(self):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(MyLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self._linear = paddle.nn.Linear(1, 1)
                     self._dropout = paddle.nn.Dropout(p=0.5)
                 def forward(self, input):
@@ -147,12 +170,19 @@ class Layer:
         self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
+<<<<<<< HEAD
             name_scope = _scope_dist2single(name_scope)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._full_name = unique_name.generate(name_scope)
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
+<<<<<<< HEAD
         self._init_in_dynamic_mode = in_dygraph_mode()
+=======
+        self._init_in_dynamic_mode = framework._non_static_mode()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._parameters = collections.OrderedDict()
         # Buffers the variable (not parameter) created in layer
@@ -190,7 +220,11 @@ class Layer:
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(MyLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self._linear = paddle.nn.Linear(1, 1)
                         self._dropout = paddle.nn.Dropout(p=0.5)
 
@@ -210,7 +244,11 @@ class Layer:
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
+<<<<<<< HEAD
         if in_dygraph_mode():
+=======
+        if _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             framework._dygraph_tracer().train_mode()
         # Layer-level setting
         self.training = True
@@ -232,7 +270,11 @@ class Layer:
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(MyLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self._linear = paddle.nn.Linear(1, 1)
                         self._dropout = paddle.nn.Dropout(p=0.5)
 
@@ -251,7 +293,11 @@ class Layer:
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
+<<<<<<< HEAD
         if in_dygraph_mode():
+=======
+        if _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             framework._dygraph_tracer().eval_mode()
         # Layer-level setting
         self.training = False
@@ -312,7 +358,11 @@ class Layer:
 
                 class LinearNet(paddle.nn.Layer):
                     def __init__(self):
+<<<<<<< HEAD
                         super().__init__(name_scope = "demo_linear_net")
+=======
+                        super(LinearNet, self).__init__(name_scope = "demo_linear_net")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self._linear = paddle.nn.Linear(1, 1)
 
                     def forward(self, x):
@@ -462,7 +512,11 @@ class Layer:
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(MyLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self._linear = paddle.nn.Linear(1, 1)
                         w_tmp = self.create_parameter([1,1])
                         self.add_parameter("w_tmp", w_tmp)
@@ -476,7 +530,11 @@ class Layer:
 
         """
         temp_attr = copy.deepcopy(attr)
+<<<<<<< HEAD
         if isinstance(temp_attr, str) and temp_attr == "":
+=======
+        if isinstance(temp_attr, six.string_types) and temp_attr == "":
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             temp_attr = None
         return self._helper.create_parameter(
             temp_attr, shape, dtype, is_bias, default_initializer
@@ -511,7 +569,11 @@ class Layer:
                     def __init__(self,
                                 in_features,
                                 out_features):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(MyLinear, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self.linear = paddle.nn.Linear( 10, 10)
 
                         self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
@@ -563,7 +625,11 @@ class Layer:
                     def __init__(self,
                                 in_features,
                                 out_features):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(MyLinear, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self.linear = paddle.nn.Linear( 10, 10)
 
                         self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
@@ -684,7 +750,11 @@ class Layer:
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(MyLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self._linear = paddle.nn.Linear(1, 1)
                         self._dropout = paddle.nn.Dropout(p=0.5)
 
@@ -820,8 +890,15 @@ class Layer:
         """
 
         if '_buffers' not in self.__dict__:
+<<<<<<< HEAD
             raise ValueError("super().__init__() should be called first")
         elif not isinstance(name, str):
+=======
+            raise ValueError(
+                "super(YourLayer, self).__init__() should be called first"
+            )
+        elif not isinstance(name, six.string_types):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             raise TypeError(
                 "The name of buffer should be a string, but received {}.".format(
                     type(name).__name__
@@ -1055,7 +1132,11 @@ class Layer:
 
                 class MySequential(paddle.nn.Layer):
                     def __init__(self, *layers):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(MySequential, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         if len(layers) > 0 and isinstance(layers[0], tuple):
                             for name, layer in layers:
                                 self.add_sublayer(name, layer)
@@ -1075,7 +1156,11 @@ class Layer:
                     print(prefix, layer)
 
         """
+<<<<<<< HEAD
         assert isinstance(sublayer, Layer) or sublayer is None
+=======
+        assert isinstance(sublayer, Layer) or sublayer == None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._sub_layers[name] = sublayer
         return sublayer
@@ -1097,7 +1182,11 @@ class Layer:
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(MyLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self._linear = paddle.nn.Linear(1, 1)
                         w_tmp = self.create_parameter([1,1])
                         self.add_parameter("w_tmp", w_tmp)
@@ -1111,8 +1200,15 @@ class Layer:
 
         """
         if '_parameters' not in self.__dict__:
+<<<<<<< HEAD
             raise RuntimeError("super().__init__() should be called firstly.")
         elif not isinstance(name, str):
+=======
+            raise RuntimeError(
+                "super(YourLayer, self).__init__() should be called firstly."
+            )
+        elif not isinstance(name, six.string_types):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             raise TypeError(
                 "The name of parameter should be a string, but received {}.".format(
                     type(name).__name__
@@ -1250,7 +1346,13 @@ class Layer:
         params = self.__dict__.get('_parameters', None)
         if isinstance(value, framework.Parameter):
             if params is None:
+<<<<<<< HEAD
                 raise ValueError("super().__init__() should be called first")
+=======
+                raise ValueError(
+                    "super(YourLayer, self).__init__() should be called first"
+                )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if len(self._loaddict_holder) > 0:
                 assert (
                     value.name in self._loaddict_holder
@@ -1275,7 +1377,11 @@ class Layer:
             if isinstance(value, Layer):
                 if layers is None:
                     raise ValueError(
+<<<<<<< HEAD
                         "super().__init__() should be called first"
+=======
+                        "super(YourLayer, self).__init__() should be called first"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     )
 
                 _remove_if_exist(self.__dict__, self._parameters, self._buffers)
@@ -1293,7 +1399,11 @@ class Layer:
                 if isinstance(value, (core.VarBase, core.eager.Tensor)):
                     if _buffers is None:
                         raise ValueError(
+<<<<<<< HEAD
                             "super().__init__() should be called first"
+=======
+                            "super(YourLayer, self).__init__() should be called first"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         )
                     _remove_if_exist(
                         self.__dict__, self._parameters, self._sub_layers
@@ -1365,7 +1475,11 @@ class Layer:
 
                 class Mylayer(paddle.nn.Layer):
                     def __init__(self):
+<<<<<<< HEAD
                         super().__init__()
+=======
+                        super(Mylayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         self.linear1 = paddle.nn.Linear(10, 10)
                         self.linear2 = paddle.nn.Linear(5, 5)
                         self.conv2d = paddle.nn.Conv2D(3, 2, 3)
@@ -1599,8 +1713,12 @@ class Layer:
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True
         Returns:
+<<<<<<< HEAD
             missing_keys(list):A list of str containing the missing keys
             unexpected_keys(list):A list of str containing the unexpected keys
+=======
+            None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         Examples:
             .. code-block:: python
@@ -1615,20 +1733,29 @@ class Layer:
                 emb.set_state_dict(para_state_dict)
 
         '''
+<<<<<<< HEAD
         missing_keys = []
         match_keys = set()
         unexpected_keys = []
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def _check_match(key, param):
             state = state_dict.get(key, None)
             if state is None:
+<<<<<<< HEAD
                 missing_keys.append(key)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 raise ValueError(
                     "{} is not found in the provided dict.".format(key)
                 )
             if isinstance(state, dict) or isinstance(state, list):
                 if len(state) != len(param):
+<<<<<<< HEAD
                     missing_keys.append(key)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     raise ValueError(
                         "{} receieves the length of {}, "
                         "but the expected shape is {}".format(
@@ -1636,7 +1763,10 @@ class Layer:
                         )
                     )
                 else:
+<<<<<<< HEAD
                     match_keys.add(key)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     return param, state
             else:
                 state_shape = (
@@ -1646,27 +1776,42 @@ class Layer:
                 )
 
                 if list(state_shape) != list(param.shape):
+<<<<<<< HEAD
                     missing_keys.append(key)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     raise ValueError(
                         "{} receives a shape {}, but the expected shape is {}.".format(
                             key, list(state_shape), list(param.shape)
                         )
                     )
+<<<<<<< HEAD
                 match_keys.add(key)
                 return param, state
 
         matched_param_state = []
         for key, param in self._state_dict_impl(use_hook=False).items():
+=======
+                return param, state
+
+        matched_param_state = []
+        for key, param in self.state_dict(use_hook=False).items():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
                 matched_param_state.append(match_res)
             except ValueError as err:
                 warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
+<<<<<<< HEAD
         for key in state_dict.keys():
             if key not in match_keys:
                 unexpected_keys.append(key)
         if in_dygraph_mode():
+=======
+
+        if _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for param, state in matched_param_state:
                 param.set_value(state)
         else:
@@ -1688,6 +1833,7 @@ class Layer:
                     place = core.CUDAPlace(p.gpu_device_id())
                 t.set(ndarray, place)
 
+<<<<<<< HEAD
             try:
                 executor = Executor(_get_device())._default_executor
                 # restore parameter states
@@ -1704,6 +1850,17 @@ class Layer:
                 )
 
         return missing_keys, unexpected_keys
+=======
+            executor = Executor(_get_device())._default_executor
+            # restore parameter states
+            core._create_loaded_parameter(
+                [param for param, state in matched_param_state],
+                global_scope(),
+                executor,
+            )
+            for param, state in matched_param_state:
+                _set_var(param, state)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def to(self, device=None, dtype=None, blocking=None):
         '''

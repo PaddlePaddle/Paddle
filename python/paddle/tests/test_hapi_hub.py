@@ -12,14 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
 import numpy as np
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 from paddle.hapi import hub
 
+<<<<<<< HEAD
 
 class TestHub(unittest.TestCase):
     def setUp(
@@ -34,11 +43,28 @@ class TestHub(unittest.TestCase):
         model = hub.load(
             self.local_repo, model='MM', source='local', out_channels=8
         )
+=======
+import numpy as np
+
+
+class TestHub(unittest.TestCase):
+
+    def setUp(self, ):
+        self.local_repo = os.path.dirname(os.path.abspath(__file__))
+        self.github_repo = 'lyuwenyu/paddlehub_demo:main'
+
+    def testLoad(self, ):
+        model = hub.load(self.local_repo,
+                         model='MM',
+                         source='local',
+                         out_channels=8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         data = paddle.rand((1, 3, 100, 100))
         out = model(data)
         np.testing.assert_equal(out.shape, [1, 8, 50, 50])
 
+<<<<<<< HEAD
         model = hub.load(
             self.github_repo, model='MM', source='github', force_reload=True
         )
@@ -67,10 +93,36 @@ class TestHub(unittest.TestCase):
             pretrained=True,
             out_channels=8,
         )
+=======
+        model = hub.load(self.github_repo,
+                         model='MM',
+                         source='github',
+                         force_reload=True)
+
+        model = hub.load(self.github_repo,
+                         model='MM',
+                         source='github',
+                         force_reload=False,
+                         pretrained=False)
+
+        model = hub.load(self.github_repo.split(':')[0],
+                         model='MM',
+                         source='github',
+                         force_reload=False,
+                         pretrained=False)
+
+        model = hub.load(self.github_repo,
+                         model='MM',
+                         source='github',
+                         force_reload=False,
+                         pretrained=True,
+                         out_channels=8)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         data = paddle.ones((1, 3, 2, 2))
         out = model(data)
 
+<<<<<<< HEAD
         gt = np.array(
             [
                 1.53965068,
@@ -91,12 +143,25 @@ class TestHub(unittest.TestCase):
     def testHelp(
         self,
     ):
+=======
+        gt = np.array([
+            1.53965068, 0., 0., 1.39455748, 0.72066200, 0.19773030, 2.09201908,
+            0.37345418
+        ])
+        np.testing.assert_equal(out.shape, [1, 8, 1, 1])
+        np.testing.assert_almost_equal(out.numpy(),
+                                       gt.reshape(1, 8, 1, 1),
+                                       decimal=5)
+
+    def testHelp(self, ):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         docs1 = hub.help(
             self.local_repo,
             model='MM',
             source='local',
         )
 
+<<<<<<< HEAD
         docs2 = hub.help(
             self.github_repo, model='MM', source='github', force_reload=False
         )
@@ -106,6 +171,16 @@ class TestHub(unittest.TestCase):
     def testList(
         self,
     ):
+=======
+        docs2 = hub.help(self.github_repo,
+                         model='MM',
+                         source='github',
+                         force_reload=False)
+
+        assert docs1 == docs2 == 'This is a test demo for paddle hub\n    ', ''
+
+    def testList(self, ):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         models1 = hub.list(
             self.local_repo,
             source='local',
@@ -120,6 +195,7 @@ class TestHub(unittest.TestCase):
 
         assert models1 == models2 == ['MM'], ''
 
+<<<<<<< HEAD
     def testExcept(
         self,
     ):
@@ -153,6 +229,37 @@ class TestHub(unittest.TestCase):
             _ = hub.load(
                 self.local_repo, model='123', source='local', force_reload=False
             )
+=======
+    def testExcept(self, ):
+        with self.assertRaises(ValueError):
+            _ = hub.help(self.github_repo,
+                         model='MM',
+                         source='github-test',
+                         force_reload=False)
+
+        with self.assertRaises(ValueError):
+            _ = hub.load(self.github_repo,
+                         model='MM',
+                         source='github-test',
+                         force_reload=False)
+
+        with self.assertRaises(ValueError):
+            _ = hub.list(self.github_repo,
+                         source='github-test',
+                         force_reload=False)
+
+        with self.assertRaises(ValueError):
+            _ = hub.load(self.local_repo,
+                         model=123,
+                         source='local',
+                         force_reload=False)
+
+        with self.assertRaises(RuntimeError):
+            _ = hub.load(self.local_repo,
+                         model='123',
+                         source='local',
+                         force_reload=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

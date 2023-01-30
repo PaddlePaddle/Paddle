@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import time
 import unittest
 
@@ -20,6 +21,16 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid import core
+=======
+import sys
+import time
+import unittest
+import numpy as np
+import paddle.fluid as fluid
+from paddle.fluid import core
+import paddle.compat as cpt
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -29,12 +40,17 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 class TestDygraphDataLoaderWithException(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
         self.epoch_num = 1
         self.capacity = 5
 
+<<<<<<< HEAD
     def test_not_capacity(self):
         with fluid.dygraph.guard():
             with self.assertRaisesRegex(
@@ -44,6 +60,23 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
 
     def test_single_process_with_thread_expection(self):
         def error_sample_genarator(batch_num):
+=======
+    def func_test_not_capacity(self):
+        with fluid.dygraph.guard():
+            with self.assertRaisesRegexp(ValueError,
+                                         "Please give value to capacity."):
+                fluid.io.DataLoader.from_generator()
+
+    def test_not_capacity(self):
+        with _test_eager_guard():
+            self.func_test_not_capacity()
+        self.func_test_not_capacity()
+
+    def func_test_single_process_with_thread_expection(self):
+
+        def error_sample_genarator(batch_num):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             def __reader__():
                 for _ in range(batch_num):
                     yield [[[1, 2], [1]]]
@@ -51,23 +84,48 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             return __reader__
 
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(
                 capacity=self.capacity, iterable=False, use_multiprocess=False
             )
             loader.set_batch_generator(
                 error_sample_genarator(self.batch_num), places=fluid.CPUPlace()
             )
+=======
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                        iterable=False,
+                                                        use_multiprocess=False)
+            loader.set_batch_generator(error_sample_genarator(self.batch_num),
+                                       places=fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exception = None
             try:
                 for _ in loader():
                     print("test_single_process_with_thread_expection")
             except core.EnforceNotMet as ex:
+<<<<<<< HEAD
                 self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex
             self.assertIsNotNone(exception)
 
     def test_multi_process_with_process_expection(self):
         def error_sample_genarator(batch_num):
+=======
+                self.assertIn("Blocking queue is killed",
+                              cpt.get_exception_message(ex))
+                exception = ex
+            self.assertIsNotNone(exception)
+
+    def test_single_process_with_thread_expection(self):
+        with _test_eager_guard():
+            self.func_test_single_process_with_thread_expection()
+        self.func_test_single_process_with_thread_expection()
+
+    def func_test_multi_process_with_process_expection(self):
+
+        def error_sample_genarator(batch_num):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             def __reader__():
                 for _ in range(batch_num):
                     yield [[[1, 2], [1]]]
@@ -75,12 +133,19 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             return __reader__
 
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(
                 capacity=self.capacity, use_multiprocess=True
             )
             loader.set_batch_generator(
                 error_sample_genarator(self.batch_num), places=fluid.CPUPlace()
             )
+=======
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                        use_multiprocess=True)
+            loader.set_batch_generator(error_sample_genarator(self.batch_num),
+                                       places=fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exception = None
             try:
                 for _ in loader():
@@ -89,19 +154,36 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                 exception = ex
             self.assertIsNotNone(exception)
 
+<<<<<<< HEAD
     def test_multi_process_with_get_timeout(self):
         def slow_batch_generator_creator(batch_size, batch_num):
+=======
+    def test_multi_process_with_process_expection(self):
+        with _test_eager_guard():
+            self.func_test_multi_process_with_process_expection()
+        self.func_test_multi_process_with_process_expection()
+
+    def func_test_multi_process_with_get_timeout(self):
+
+        def slow_batch_generator_creator(batch_size, batch_num):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             def __reader__():
                 for _ in range(batch_num):
                     time.sleep(80)
                     batch_image, batch_label = get_random_images_and_labels(
+<<<<<<< HEAD
                         [batch_size, 784], [batch_size, 1]
                     )
+=======
+                        [batch_size, 784], [batch_size, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     yield batch_image, batch_label
 
             return __reader__
 
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(
                 capacity=self.capacity, use_multiprocess=True
             )
@@ -109,16 +191,38 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                 slow_batch_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace(),
             )
+=======
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                        use_multiprocess=True)
+            loader.set_batch_generator(slow_batch_generator_creator(
+                self.batch_size, self.batch_num),
+                                       places=fluid.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exception = None
             try:
                 for _ in range(self.epoch_num):
                     for image, _ in loader():
+<<<<<<< HEAD
                         F.relu(image)
             except core.EnforceNotMet as ex:
                 self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex
             self.assertIsNotNone(exception)
 
+=======
+                        fluid.layers.relu(image)
+            except core.EnforceNotMet as ex:
+                self.assertIn("Blocking queue is killed",
+                              cpt.get_exception_message(ex))
+                exception = ex
+            self.assertIsNotNone(exception)
+
+    def test_multi_process_with_get_timeout(self):
+        with _test_eager_guard():
+            self.func_test_multi_process_with_get_timeout()
+        self.func_test_multi_process_with_get_timeout()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

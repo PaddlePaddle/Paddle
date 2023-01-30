@@ -36,11 +36,19 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(2-D phi::DenseTensor with the 2nd dimension equal to 1) "
              "Input phi::DenseTensor of SequenceEnumerate operator.");
     AddOutput("Out",
               "(2-D phi::DenseTensor with the 2nd dimension equal to win_size) "
               "Output phi::DenseTensor of SequenceEnumerate operator.");
+=======
+             "(2-D LoDTensor with the 2nd dimension equal to 1) "
+             "Input LoDTensor of SequenceEnumerate operator.");
+    AddOutput("Out",
+              "(2-D LoDTensor with the 2nd dimension equal to win_size) "
+              "Output LoDTensor of SequenceEnumerate operator.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<int>("win_size", "(int) The enumerate sequence window size.")
         .AddCustomChecker([](const int& win_size) {
           PADDLE_ENFORCE_GE(win_size,
@@ -59,10 +67,17 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
 Sequence Enumerate Operator.
 
 Generate a new sequence for the input index sequence, which enumerates all the
+<<<<<<< HEAD
 sub-sequences with length `win_size` of the input.
 The enumerated sequence has the same 1st dimension with variable `input`, and
 the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
 
+=======
+sub-sequences with length `win_size` of the input. 
+The enumerated sequence has the same 1st dimension with variable `input`, and
+the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 Examples:
 Case 1:
   Input:

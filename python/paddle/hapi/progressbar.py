@@ -12,16 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import struct
 import sys
 import time
 
 import numpy as np
+=======
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
+import sys
+import time
+import numpy as np
+import struct
+from collections import namedtuple
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
+<<<<<<< HEAD
 class ProgressBar:
     """progress bar"""
 
@@ -34,6 +48,18 @@ class ProgressBar:
         file=sys.stdout,
         name='step',
     ):
+=======
+class ProgressBar(object):
+    """progress bar """
+
+    def __init__(self,
+                 num=None,
+                 width=30,
+                 verbose=1,
+                 start=True,
+                 file=sys.stdout,
+                 name='step'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._num = num
         if isinstance(num, int) and num <= 0:
             raise TypeError('num should be None or integer (> 0)')
@@ -49,6 +75,7 @@ class ProgressBar:
         self._last_update = 0
         self.name = name
 
+<<<<<<< HEAD
         self._dynamic_display = (
             (hasattr(self.file, 'isatty') and self.file.isatty())
             or 'ipykernel' in sys.modules
@@ -58,6 +85,25 @@ class ProgressBar:
 
     def _get_max_width(self):
         from shutil import get_terminal_size
+=======
+        self._dynamic_display = ((hasattr(self.file, 'isatty')
+                                  and self.file.isatty())
+                                 or 'ipykernel' in sys.modules
+                                 or 'posix' in sys.modules
+                                 or 'PYCHARM_HOSTED' in os.environ)
+
+    def _get_max_width(self):
+        if sys.version_info > (3, 3):
+            from shutil import get_terminal_size
+        else:
+            try:
+                from backports.shutil_get_terminal_size import get_terminal_size
+            except:
+
+                def get_terminal_size():
+                    terminal_size = namedtuple("terminal_size", "columns lines")
+                    return terminal_size(80, 24)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         terminal_width, _ = get_terminal_size()
         terminal_width = terminal_width if terminal_width > 0 else 80
@@ -75,17 +121,26 @@ class ProgressBar:
             in_list = np.asarray(in_list)
             out = np.vectorize(
                 lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+<<<<<<< HEAD
                 otypes=[np.float32],
             )(in_list.flat)
+=======
+                otypes=[np.float32])(in_list.flat)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return np.reshape(out, in_list.shape)
 
         for i, (k, val) in enumerate(values):
             if k == "loss":
+<<<<<<< HEAD
                 val = (
                     val
                     if isinstance(val, list) or isinstance(val, np.ndarray)
                     else [val]
                 )
+=======
+                val = val if isinstance(val, list) or isinstance(
+                    val, np.ndarray) else [val]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if isinstance(val[0], np.uint16):
                     values[i] = ("loss", list(convert_uint16_to_float(val)))
 
@@ -114,20 +169,33 @@ class ProgressBar:
             if self._num is not None:
                 numdigits = int(np.log10(self._num)) + 1
 
+<<<<<<< HEAD
                 bar_chars = (self.name + ' %' + str(numdigits) + 'd/%d [') % (
                     current_num,
                     self._num,
                 )
+=======
+                bar_chars = (self.name + ' %' + str(numdigits) +
+                             'd/%d [') % (current_num, self._num)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 prog = float(current_num) / self._num
                 prog_width = int(self._width * prog)
 
                 if prog_width > 0:
+<<<<<<< HEAD
                     bar_chars += '=' * (prog_width - 1)
+=======
+                    bar_chars += ('=' * (prog_width - 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     if current_num < self._num:
                         bar_chars += '>'
                     else:
                         bar_chars += '='
+<<<<<<< HEAD
                 bar_chars += '.' * (self._width - prog_width)
+=======
+                bar_chars += ('.' * (self._width - prog_width))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 bar_chars += ']'
             else:
                 bar_chars = self.name + ' %3d' % current_num
@@ -150,11 +218,16 @@ class ProgressBar:
             if self._num is not None and current_num < self._num:
                 eta = time_per_unit * (self._num - current_num)
                 if eta > 3600:
+<<<<<<< HEAD
                     eta_format = '%d:%02d:%02d' % (
                         eta // 3600,
                         (eta % 3600) // 60,
                         eta % 60,
                     )
+=======
+                    eta_format = '%d:%02d:%02d' % (eta // 3600,
+                                                   (eta % 3600) // 60, eta % 60)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 elif eta > 60:
                     eta_format = '%d:%02d' % (eta // 60, eta % 60)
                 else:
@@ -165,7 +238,11 @@ class ProgressBar:
             info += fps
             self._total_width += len(info)
             if prev_total_width > self._total_width:
+<<<<<<< HEAD
                 info += ' ' * (prev_total_width - self._total_width)
+=======
+                info += (' ' * (prev_total_width - self._total_width))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # newline for another epoch
             if self._num is not None and current_num >= self._num:
@@ -179,10 +256,15 @@ class ProgressBar:
         elif self._verbose == 2 or self._verbose == 3:
             if self._num:
                 numdigits = int(np.log10(self._num)) + 1
+<<<<<<< HEAD
                 count = (self.name + ' %' + str(numdigits) + 'd/%d') % (
                     current_num,
                     self._num,
                 )
+=======
+                count = (self.name + ' %' + str(numdigits) +
+                         'd/%d') % (current_num, self._num)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 count = self.name + ' %3d' % current_num
             info = count + info
@@ -196,11 +278,17 @@ class ProgressBar:
                             info += ' %.4f' % v
                         else:
                             info += ' %.4e' % v
+<<<<<<< HEAD
                     elif (
                         isinstance(v, np.ndarray)
                         and v.size == 1
                         and v.dtype in [np.float32, np.float64]
                     ):
+=======
+                    elif isinstance(v, np.ndarray) and \
+                        v.size == 1 and \
+                        v.dtype in [np.float32, np.float64]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         if abs(v[0]) > 1e-3:
                             info += ' %.4f' % v[0]
                         else:

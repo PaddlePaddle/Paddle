@@ -15,6 +15,7 @@
 # TODO: define the extention functions
 
 import numpy as np
+<<<<<<< HEAD
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 
@@ -29,13 +30,35 @@ from ...framework import convert_np_dtype_to_dtype_, core
 from ...static import Variable
 from ...tensor.creation import assign
 from ...tensor.layer_function_generator import templatedoc
+=======
+from ...fluid.data_feeder import check_dtype
+from ...fluid.layer_helper import LayerHelper
+from ...static import Variable
+from ...tensor.creation import assign
+from ...fluid import dygraph_utils
+from ...tensor.layer_function_generator import templatedoc
+from paddle import in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops
+from ...fluid.framework import (
+    _non_static_mode,
+    _in_legacy_dygraph,
+    in_dygraph_mode,
+)
+from ...fluid.data_feeder import check_variable_and_dtype, check_type
+from ...framework import core
+from ...common_ops_import import convert_np_dtype_to_dtype_
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
 def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     """
+<<<<<<< HEAD
     Creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2)
+=======
+    This OP creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     are filled by ``input``. By default, a 2D plane formed by the last two dimensions
     of the returned tensor will be selected.
 
@@ -57,6 +80,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
             import paddle.nn.functional as F
 
@@ -99,6 +123,50 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 
             #         [[0, 0, 2],
             #          [0, 0, 5]]])
+=======
+            import paddle.nn.functional as F
+            import numpy as np
+
+            diag_embed = np.random.randn(2, 3).astype('float32')
+            # [[ 0.7545889 , -0.25074545,  0.5929117 ],
+            #  [-0.6097662 , -0.01753256,  0.619769  ]]
+
+            data1 = F.diag_embed(diag_embed)
+            data1.numpy()
+            # [[[ 0.7545889 ,  0.        ,  0.        ],
+            #  [ 0.        , -0.25074545,  0.        ],
+            #   [ 0.        ,  0.        ,  0.5929117 ]],
+
+            # [[-0.6097662 ,  0.        ,  0.        ],
+            #  [ 0.        , -0.01753256,  0.        ],
+            #  [ 0.        ,  0.        ,  0.619769  ]]]
+
+            data2 = F.diag_embed(diag_embed, offset=-1, dim1=0, dim2=2)
+            data2.numpy()
+            # [[[ 0.        ,  0.        ,  0.        ,  0.        ],
+            #   [ 0.7545889 ,  0.        ,  0.        ,  0.        ],
+            #   [ 0.        , -0.25074545,  0.        ,  0.        ],
+            #   [ 0.        ,  0.        ,  0.5929117 ,  0.        ]],
+            #
+            #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
+            #   [-0.6097662 ,  0.        ,  0.        ,  0.        ],
+            #   [ 0.        , -0.01753256,  0.        ,  0.        ],
+            #   [ 0.        ,  0.        ,  0.619769  ,  0.        ]]]
+
+            data3 = F.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
+            data3.numpy()
+            # [[[ 0.        ,  0.7545889 ,  0.        ,  0.        ],
+            #   [ 0.        , -0.6097662 ,  0.        ,  0.        ]],
+            #
+            #  [[ 0.        ,  0.        , -0.25074545,  0.        ],
+            #   [ 0.        ,  0.        , -0.01753256,  0.        ]],
+            #
+            #  [[ 0.        ,  0.        ,  0.        ,  0.5929117 ],
+            #   [ 0.        ,  0.        ,  0.        ,  0.619769  ]],
+            #
+            #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
+            #   [ 0.        ,  0.        ,  0.        ,  0.        ]]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     if not isinstance(input, Variable):
         input = assign(input)
@@ -198,7 +266,11 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
+<<<<<<< HEAD
     Returns:
+=======
+    Returns: 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
@@ -211,11 +283,18 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             lengths = paddle.to_tensor([10, 9, 8])
             mask = paddle.nn.functional.sequence_mask(lengths)
 
+<<<<<<< HEAD
             print(mask)
             # Tensor(shape=[3, 10], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             #        [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             #         [1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
             #         [1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
+=======
+            print(mask.numpy())
+            # [[1 1 1 1 1 1 1 1 1 1]
+            #  [1 1 1 1 1 1 1 1 1 0]
+            #  [1 1 1 1 1 1 1 1 0 0]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
 
@@ -322,6 +401,7 @@ def gather_tree(ids, parents):
     if in_dygraph_mode():
         return _C_ops.gather_tree(ids, parents)
     else:
+<<<<<<< HEAD
         helper = LayerHelper('gather_tree', **locals())
         check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
         check_variable_and_dtype(
@@ -336,6 +416,27 @@ def gather_tree(ids, parents):
         )
 
         return out
+=======
+        if _in_legacy_dygraph():
+            return _legacy_C_ops.gather_tree(ids, parents)
+        else:
+            helper = LayerHelper('gather_tree', **locals())
+            check_variable_and_dtype(
+                ids, 'ids', ['int32', 'int64'], 'gather_tree'
+            )
+            check_variable_and_dtype(
+                parents, 'parents', ['int32', 'int64'], 'gather_tree'
+            )
+            out = helper.create_variable_for_type_inference(dtype=ids.dtype)
+
+            helper.append_op(
+                type="gather_tree",
+                inputs={"Ids": ids, "Parents": parents},
+                outputs={"Out": out},
+            )
+
+            return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @templatedoc()
@@ -376,6 +477,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
         )
     if in_dygraph_mode():
         return _C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)
+<<<<<<< HEAD
     else:
         helper = LayerHelper("temporal_shift", **locals())
         check_variable_and_dtype(
@@ -400,3 +502,37 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
             },
         )
         return out
+=======
+    if _non_static_mode():
+        return _legacy_C_ops.temporal_shift(
+            x,
+            'seg_num',
+            seg_num,
+            'shift_ratio',
+            shift_ratio,
+            'data_format',
+            data_format,
+        )
+
+    helper = LayerHelper("temporal_shift", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
+    check_type(seg_num, 'seg_num', int, 'temporal_shift')
+    check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if not isinstance(seg_num, int):
+        raise TypeError("seg_num must be int type.")
+
+    helper.append_op(
+        type="temporal_shift",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={
+            "seg_num": seg_num,
+            "shift_ratio": shift_ratio,
+            "data_format": data_format,
+        },
+    )
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

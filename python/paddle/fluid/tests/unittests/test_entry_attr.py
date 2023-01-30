@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 paddle.enable_static()
 
 import unittest
+<<<<<<< HEAD
 
 import paddle.fluid as fluid
 from paddle.distributed import (
@@ -31,6 +37,17 @@ class EntryAttrChecks(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             from paddle.distributed.entry_attr import EntryAttr
 
+=======
+import paddle.fluid as fluid
+from paddle.distributed import ProbabilityEntry, CountFilterEntry, ShowClickEntry
+
+
+class EntryAttrChecks(unittest.TestCase):
+
+    def base(self):
+        with self.assertRaises(NotImplementedError):
+            from paddle.distributed.entry_attr import EntryAttr
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             base = EntryAttr()
             base._to_attr()
 
@@ -67,21 +84,35 @@ class EntryAttrChecks(unittest.TestCase):
 
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog):
+<<<<<<< HEAD
                 input = paddle.static.data(
                     name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
                 )
+=======
+                input = fluid.layers.data(name="dnn_data",
+                                          shape=[-1, 1],
+                                          dtype="int64",
+                                          lod_level=1,
+                                          append_batch_size=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 prob = ProbabilityEntry(0.5)
                 emb = paddle.static.nn.sparse_embedding(
                     input=input,
                     size=[100, 10],
                     is_test=False,
                     entry=prob,
+<<<<<<< HEAD
                     param_attr=fluid.ParamAttr(name="deep_embedding"),
                 )
                 pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
                 predict = paddle.static.nn.fc(
                     x=pool, size=2, activation='softmax'
                 )
+=======
+                    param_attr=fluid.ParamAttr(name="deep_embedding"))
+                pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
+                predict = fluid.layers.fc(input=pool, size=2, act='softmax')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         block = prog.global_block()
         for op in block.ops:
@@ -98,6 +129,10 @@ class EntryAttrChecks(unittest.TestCase):
 
 
 class TestEntryAttrs(EntryAttrChecks):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_base(self):
         self.base()
 

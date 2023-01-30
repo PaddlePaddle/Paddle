@@ -23,6 +23,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct ModifiedHuberLossBackward {
   template <typename Tuple>
   HOSTDEVICE void operator()(Tuple t) const {
@@ -43,10 +48,17 @@ template <typename T>
 class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* in0 = context.Input<phi::DenseTensor>("Y");
     auto* in1 = context.Input<phi::DenseTensor>("IntermediateVal");
     auto* in2 = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* in0 = context.Input<Tensor>("Y");
+    auto* in1 = context.Input<Tensor>("IntermediateVal");
+    auto* in2 = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (out0) {
       auto counts = phi::product(in1->dims());

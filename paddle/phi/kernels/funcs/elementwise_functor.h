@@ -606,6 +606,7 @@ struct ElementwisePowFunctor {
   }
 };
 
+<<<<<<< HEAD
 template <typename T>
 struct ElementwiseInversePowFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
@@ -628,6 +629,8 @@ struct ElementwiseInversePowFunctor {
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <>
 struct ElementwisePowFunctor<dtype::float16> {
   inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
@@ -638,6 +641,7 @@ struct ElementwisePowFunctor<dtype::float16> {
   }
 };
 
+<<<<<<< HEAD
 template <>
 struct ElementwiseInversePowFunctor<dtype::float16> {
   inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
@@ -648,5 +652,7 @@ struct ElementwiseInversePowFunctor<dtype::float16> {
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace funcs
 }  // namespace phi

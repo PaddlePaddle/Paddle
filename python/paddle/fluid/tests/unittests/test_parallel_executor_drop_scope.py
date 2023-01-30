@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -22,6 +23,19 @@ import paddle.fluid as fluid
 
 
 class TestParallelExecutorDropExeScope(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import paddle
+import paddle.fluid as fluid
+import numpy
+import os
+
+
+class TestParallelExecutorDropExeScope(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def check_drop_scope(self, use_cuda=True):
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
@@ -31,8 +45,13 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
+<<<<<<< HEAD
             data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
+=======
+            data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+            hidden = fluid.layers.fc(input=data, size=10)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss = paddle.mean(hidden)
             test_program = fluid.default_main_program().clone(for_test=True)
             fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -43,6 +62,7 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
         exec_strateg = fluid.ExecutionStrategy()
         exec_strateg.num_iteration_per_drop_scope = 10
 
+<<<<<<< HEAD
         train_exe = fluid.ParallelExecutor(
             use_cuda=use_cuda,
             main_program=train_program,
@@ -55,13 +75,28 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
             share_vars_from=train_exe,
             exec_strategy=exec_strateg,
         )
+=======
+        train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                           main_program=train_program,
+                                           loss_name=loss.name,
+                                           exec_strategy=exec_strateg)
+        test_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                          main_program=test_program,
+                                          share_vars_from=train_exe,
+                                          exec_strategy=exec_strateg)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         x = numpy.random.random(size=(10, 1)).astype('float32')
         train_exe.run(feed={"X": x}, fetch_list=[loss.name])
         test_exe.run(feed={"X": x}, fetch_list=[loss.name])
 
+<<<<<<< HEAD
         assert not train_exe._need_create_local_exe_scopes()
         assert not test_exe._need_create_local_exe_scopes()
+=======
+        assert train_exe._need_create_local_exe_scopes() == False
+        assert test_exe._need_create_local_exe_scopes() == False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # drop the local execution scope immediately
         train_exe.drop_local_exe_scopes()

@@ -81,6 +81,7 @@ void ReluDoubleGradKernel(const Context& dev_ctx,
                           DenseTensor* ddout);
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void SinDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const paddle::optional<DenseTensor>& dout,
@@ -97,6 +98,8 @@ void CosDoubleGradKernel(const Context& dev_ctx,
                          DenseTensor* ddout);
 
 template <typename T, typename Context>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void TanhDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dout,
@@ -109,13 +112,19 @@ void TanhTripleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dout,
                           const DenseTensor& ddx,
+<<<<<<< HEAD
                           const paddle::optional<DenseTensor>& d_dout_new,
                           const paddle::optional<DenseTensor>& d_ddout,
+=======
+                          const DenseTensor& d_dout_new,
+                          const DenseTensor& d_ddout,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           DenseTensor* d_out_new,
                           DenseTensor* d_dout,
                           DenseTensor* d_ddx);
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void SinTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const paddle::optional<DenseTensor>& dout,
@@ -138,6 +147,8 @@ void CosTripleGradKernel(const Context& dev_ctx,
                          DenseTensor* d_ddx);
 
 template <typename T, typename Context>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void LeakyReluDoubleGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& ddx,
@@ -237,6 +248,7 @@ void PowGradKernel(const Context& dev_ctx,
                    const Scalar& factor,
                    DenseTensor* dx);
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void PowDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
@@ -257,6 +269,8 @@ void PowTripleGradKernel(const Context& dev_ctx,
                          DenseTensor* out_d_x,
                          DenseTensor* out_d_dout,
                          DenseTensor* out_d_ddx);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Cos);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Tan);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Acos);
@@ -301,7 +315,11 @@ DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish, threshold);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Celu, alpha);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPOUT(Relu6, threshold);
 
+<<<<<<< HEAD
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(HardTanh, t_min, t_max);
+=======
+DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(BRelu, t_min, t_max);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh, scale_a, scale_b);
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus, beta, threshold);
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid, slope, offset);

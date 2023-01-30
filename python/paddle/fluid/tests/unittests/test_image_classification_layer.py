@@ -12,15 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program
 
 
 def conv_block(input, num_filter, groups, dropouts):
+<<<<<<< HEAD
     return nets.img_conv_group(
         input=input,
         pool_size=2,
@@ -35,10 +43,26 @@ def conv_block(input, num_filter, groups, dropouts):
 
 
 class TestLayer(unittest.TestCase):
+=======
+    return nets.img_conv_group(input=input,
+                               pool_size=2,
+                               pool_stride=2,
+                               conv_num_filter=[num_filter] * groups,
+                               conv_filter_size=3,
+                               conv_act='relu',
+                               conv_with_batchnorm=True,
+                               conv_batchnorm_drop_rate=dropouts,
+                               pool_type='max')
+
+
+class TestLayer(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_batch_norm_layer(self):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             images = paddle.static.data(
                 name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
@@ -47,6 +71,14 @@ class TestLayer(unittest.TestCase):
                 x=hidden1, size=128, activation='relu'
             )
             paddle.static.nn.batch_norm(input=hidden2)
+=======
+            images = fluid.layers.data(name='pixel',
+                                       shape=[3, 48, 48],
+                                       dtype='float32')
+            hidden1 = fluid.layers.batch_norm(input=images)
+            hidden2 = fluid.layers.fc(input=hidden1, size=128, act='relu')
+            fluid.layers.batch_norm(input=hidden2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         print(str(main_program))
 
@@ -54,10 +86,17 @@ class TestLayer(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             images = paddle.static.data(
                 name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
             paddle.nn.functional.dropout(x=images, p=0.5)
+=======
+            images = fluid.layers.data(name='pixel',
+                                       shape=[3, 48, 48],
+                                       dtype='float32')
+            fluid.layers.dropout(x=images, dropout_prob=0.5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         print(str(main_program))
 
@@ -66,9 +105,15 @@ class TestLayer(unittest.TestCase):
         startup_program = Program()
 
         with fluid.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             images = paddle.static.data(
                 name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
+=======
+            images = fluid.layers.data(name='pixel',
+                                       shape=[3, 48, 48],
+                                       dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             conv1 = conv_block(images, 64, 2, [0.3, 0])
             conv_block(conv1, 256, 3, [0.4, 0.4, 0])
 
@@ -78,6 +123,7 @@ class TestLayer(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             image1 = paddle.static.data(
                 name='pixel1', shape=[-1, 3, 48, 48], dtype='float32'
             )
@@ -85,6 +131,15 @@ class TestLayer(unittest.TestCase):
                 name='pixel2', shape=[-1, 3, 48, 48], dtype='float32'
             )
             paddle.nn.functional.relu(paddle.add(x=image1, y=image2))
+=======
+            image1 = fluid.layers.data(name='pixel1',
+                                       shape=[3, 48, 48],
+                                       dtype='float32')
+            image2 = fluid.layers.data(name='pixel2',
+                                       shape=[3, 48, 48],
+                                       dtype='float32')
+            fluid.layers.elementwise_add(x=image1, y=image2, act='relu')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print(main_program)
 
 

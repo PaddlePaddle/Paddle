@@ -36,6 +36,7 @@ set(PRIM_OP_SRCS
     pow_p_op.cc
     max_p_op.cc
     erf_p_op.cc
+<<<<<<< HEAD
     bernoulli_p_op.cc
     abs_p_op.cc
     cast_p_op.cc
@@ -43,3 +44,12 @@ set(PRIM_OP_SRCS
     uniform_random_p_op.cc)
 
 cc_test_old(prim_op_test SRCS prim_op_test.cc ${PRIM_OP_SRCS} DEPS op_registry)
+=======
+    abs_p_op.cc
+    cast_p_op.cc)
+
+cc_test(
+  prim_op_test
+  SRCS prim_op_test.cc ${PRIM_OP_SRCS}
+  DEPS op_registry)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

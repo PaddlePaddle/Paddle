@@ -18,12 +18,23 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 template <typename T>
 void HuberLossSub(const platform::Place& place,
                   const aclrtStream& stream,
                   const phi::DenseTensor* x,
                   const phi::DenseTensor* y,
                   phi::DenseTensor* z) {
+=======
+using Tensor = framework::Tensor;
+
+template <typename T>
+void HuberLossSub(const platform::Place& place,
+                  const aclrtStream& stream,
+                  const Tensor* x,
+                  const Tensor* y,
+                  Tensor* z) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   //  Calculate z = x - y
   z->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
@@ -33,9 +44,15 @@ void HuberLossSub(const platform::Place& place,
 template <typename T>
 void HuberLossMuls(const platform::Place& place,
                    const aclrtStream& stream,
+<<<<<<< HEAD
                    const phi::DenseTensor* x,
                    float scalar,
                    phi::DenseTensor* y) {
+=======
+                   const Tensor* x,
+                   float scalar,
+                   Tensor* y) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scalar}});
@@ -45,8 +62,13 @@ void HuberLossMuls(const platform::Place& place,
 template <typename T>
 void HuberLossZerosLike(const platform::Place& place,
                         const aclrtStream& stream,
+<<<<<<< HEAD
                         const phi::DenseTensor* x,
                         phi::DenseTensor* y) {
+=======
+                        const Tensor* x,
+                        Tensor* y) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("ZerosLike", {*x}, {*y}, {});
   runner.Run(stream);
@@ -55,10 +77,17 @@ void HuberLossZerosLike(const platform::Place& place,
 template <typename T>
 void HuberLossSmoothL1Loss(const platform::Place& place,
                            const aclrtStream& stream,
+<<<<<<< HEAD
                            const phi::DenseTensor* x,
                            const phi::DenseTensor* y,
                            float delta,
                            phi::DenseTensor* z) {
+=======
+                           const Tensor* x,
+                           const Tensor* y,
+                           float delta,
+                           Tensor* z) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   z->mutable_data<T>(x->dims(), place);
   const auto& runner =
       NpuOpRunner("SmoothL1Loss", {*x, *y}, {*z}, {{"sigma", delta}});
@@ -68,11 +97,19 @@ void HuberLossSmoothL1Loss(const platform::Place& place,
 template <typename T>
 void HuberLossSmoothL1LossGrad(const platform::Place& place,
                                const aclrtStream& stream,
+<<<<<<< HEAD
                                const phi::DenseTensor* pred,
                                const phi::DenseTensor* lab,
                                const phi::DenseTensor* dout,
                                float sigma,
                                phi::DenseTensor* grad) {
+=======
+                               const Tensor* pred,
+                               const Tensor* lab,
+                               const Tensor* dout,
+                               float sigma,
+                               Tensor* grad) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   grad->mutable_data<T>(pred->dims(), place);
   const auto& runner = NpuOpRunner(
       "SmoothL1LossGrad", {*pred, *lab, *dout}, {*grad}, {{"sigma", sigma}});
@@ -83,10 +120,17 @@ template <typename T>
 class HuberLossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in0 = ctx.Input<phi::DenseTensor>("X");
     auto* in1 = ctx.Input<phi::DenseTensor>("Y");
     auto* residual = ctx.Output<phi::DenseTensor>("Residual");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* in0 = ctx.Input<Tensor>("X");
+    auto* in1 = ctx.Input<Tensor>("Y");
+    auto* residual = ctx.Output<Tensor>("Residual");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto delta = ctx.Attr<float>("delta");
 
     auto stream =
@@ -104,10 +148,17 @@ template <typename T>
 class HuberLossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* residual = ctx.Input<phi::DenseTensor>("Residual");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+    auto* residual = ctx.Input<Tensor>("Residual");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto delta = ctx.Attr<float>("delta");
 
     auto stream =
@@ -115,9 +166,15 @@ class HuberLossGradNPUKernel : public framework::OpKernel<T> {
             .stream();
     auto place = ctx.GetPlace();
 
+<<<<<<< HEAD
     phi::DenseTensor t_grad_rd;
     if (dx || dy) {
       phi::DenseTensor t_zero;
+=======
+    Tensor t_grad_rd;
+    if (dx || dy) {
+      Tensor t_zero;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       HuberLossZerosLike<T>(place, stream, residual, &t_zero);
       HuberLossSmoothL1LossGrad<T>(
           place, stream, residual, &t_zero, dout, delta, &t_grad_rd);

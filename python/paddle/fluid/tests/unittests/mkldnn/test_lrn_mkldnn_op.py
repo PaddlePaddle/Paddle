@@ -12,12 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from paddle.fluid.tests.unittests.test_lrn_op import TestLRNOp
 
 
 class TestLRNMKLDNNOp(TestLRNOp):
+=======
+from __future__ import print_function
+
+import unittest
+from paddle.fluid.tests.unittests.test_lrn_op import TestLRNOp
+import paddle.fluid as fluid
+
+
+class TestLRNMKLDNNOp(TestLRNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_attrs(self):
         attrs = TestLRNOp.get_attrs(self)
         attrs['use_mkldnn'] = True
@@ -26,6 +38,7 @@ class TestLRNMKLDNNOp(TestLRNOp):
     def test_check_output(self):
         # We cannot validate MidOut as LRN REF has diffrent meaning in it
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
+<<<<<<< HEAD
         self.check_output(
             atol=0.002, no_check_set=['MidOut'], check_dygraph=False
         )
@@ -38,12 +51,29 @@ class TestLRNMKLDNNOp(TestLRNOp):
 
 
 class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
+=======
+        self.check_output(atol=0.002,
+                          no_check_set=['MidOut'],
+                          check_dygraph=False)
+
+    def test_check_grad_normal(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.01,
+                        check_dygraph=False)
+
+
+class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_attrs(self):
         attrs = TestLRNMKLDNNOp.get_attrs(self)
         attrs['is_test'] = True
         return attrs
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         def check_raise_is_test():
             try:
                 self.check_grad(
@@ -51,6 +81,18 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
                 )
             except Exception as e:
                 t = "is_test attribute should be set to False in training phase."
+=======
+
+        def check_raise_is_test():
+            try:
+                self.check_grad(['X'],
+                                'Out',
+                                max_relative_error=0.01,
+                                check_dygraph=False)
+            except Exception as e:
+                t = \
+                "is_test attribute should be set to False in training phase."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if t in str(e):
                     raise AttributeError
 
@@ -58,12 +100,19 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
 
 
 class TestLRNMKLDNNOpNHWC(TestLRNMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.data_format = 'NHWC'
 
 
 if __name__ == "__main__":
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

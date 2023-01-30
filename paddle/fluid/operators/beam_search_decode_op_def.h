@@ -23,6 +23,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using LoDTensorArray = framework::LoDTensorArray;
 
 // all the lod have 2 levels.
@@ -53,15 +57,25 @@ struct BeamSearchDecoder {
    * with word score.
    * Param:
    *  sentence_vector_list: sentence_vector for each source sentence.
+<<<<<<< HEAD
    *  id_tensor: result phi::DenseTensor for sentences of id.
    *  score_tensor: result phi::DenseTensor for sentences of score.
+=======
+   *  id_tensor: result LoDTensor for sentences of id.
+   *  score_tensor: result LoDTensor for sentences of score.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    *  reverse: whether ids of sentence in sentence_vector_list is reversed
    *  sort_by_score: whether to sort hypotheses of each sentence by scores.
    */
   void ConvertSentenceVectorToLodTensor(
       std::vector<SentenceVector<T>> sentence_vector_list,
+<<<<<<< HEAD
       phi::DenseTensor* id_tensor,
       phi::DenseTensor* score_tensor,
+=======
+      LoDTensor* id_tensor,
+      LoDTensor* score_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       bool reverse = true,
       bool sort_by_score = true) const;
 
@@ -71,8 +85,13 @@ struct BeamSearchDecoder {
    */
   void Backtrace(const LoDTensorArray& step_ids,
                  const LoDTensorArray& step_scores,
+<<<<<<< HEAD
                  phi::DenseTensor* id_tensor,
                  phi::DenseTensor* score_tensor) const;
+=======
+                 LoDTensor* id_tensor,
+                 LoDTensor* score_tensor) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   size_t beam_size_;
   int end_id_;
@@ -81,8 +100,13 @@ struct BeamSearchDecoder {
 template <typename T>
 void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
     std::vector<SentenceVector<T>> sentence_vector_list,
+<<<<<<< HEAD
     phi::DenseTensor* id_tensor,
     phi::DenseTensor* score_tensor,
+=======
+    LoDTensor* id_tensor,
+    LoDTensor* score_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool reverse,
     bool sort_by_score) const {
   size_t src_num = sentence_vector_list.size();
@@ -157,8 +181,13 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
 template <typename T>
 void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
                                      const LoDTensorArray& step_scores,
+<<<<<<< HEAD
                                      phi::DenseTensor* id_tensor,
                                      phi::DenseTensor* score_tensor) const {
+=======
+                                     LoDTensor* id_tensor,
+                                     LoDTensor* score_tensor) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_NE(
       step_ids.empty(),
       true,

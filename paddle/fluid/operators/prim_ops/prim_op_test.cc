@@ -40,7 +40,10 @@ USE_OP_ITSELF(eq_p);
 USE_OP_ITSELF(pow_p);
 USE_OP_ITSELF(max_p);
 USE_OP_ITSELF(erf_p);
+<<<<<<< HEAD
 USE_OP_ITSELF(bernoulli_p);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -731,6 +734,7 @@ TEST(PrimOp, erf_p) {
   ASSERT_EQ(shapes[2], 5L);
 }
 
+<<<<<<< HEAD
 TEST(PrimOp, bernoulli_p) {
   ProgramDesc program;
   auto *block = program.MutableBlock(0);
@@ -752,5 +756,7 @@ TEST(PrimOp, bernoulli_p) {
   ASSERT_EQ(shapes[2], 5L);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace framework
 }  // namespace paddle

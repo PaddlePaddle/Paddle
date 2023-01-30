@@ -7,6 +7,11 @@ if(WITH_GPU OR APPLE)
 
   # Compiling shared library will cost some time, but running process is very fast.
   set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
+<<<<<<< HEAD
+=======
+  set_tests_properties(test_custom_relu_op_setup
+                       PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
   set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
   set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)
@@ -19,12 +24,15 @@ if(WITH_GPU OR APPLE)
   endif()
 endif()
 
+<<<<<<< HEAD
 if(WITH_XPU)
   set(CUSTOM_XPU_ENVS FLAGS_init_allocated_mem=0)
   py_test(test_custom_relu_op_xpu_setup SRCS test_custom_relu_op_xpu_setup.py
                                              ENVS ${CUSTOM_XPU_ENVS})
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 py_test(test_custom_raw_op_kernel_op SRCS test_custom_raw_op_kernel_op.py)
 set_tests_properties(test_custom_raw_op_kernel_op PROPERTIES TIMEOUT 180)
 

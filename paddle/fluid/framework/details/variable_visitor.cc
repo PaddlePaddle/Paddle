@@ -32,8 +32,13 @@ namespace framework {
 namespace details {
 template <typename Func>
 static void VisitVariable(Variable* var, Func* func) {
+<<<<<<< HEAD
   if (var->IsType<phi::DenseTensor>()) {
     (*func)(var->GetMutable<phi::DenseTensor>());
+=======
+  if (var->IsType<LoDTensor>()) {
+    (*func)(var->GetMutable<LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (var->IsType<phi::SelectedRows>()) {
     (*func)(var->GetMutable<phi::SelectedRows>());
   } else {
@@ -45,8 +50,13 @@ static void VisitVariable(Variable* var, Func* func) {
 
 template <typename Func>
 static void VisitVariable(const Variable& var, Func* func) {
+<<<<<<< HEAD
   if (var.IsType<phi::DenseTensor>()) {
     (*func)(var.Get<phi::DenseTensor>());
+=======
+  if (var.IsType<LoDTensor>()) {
+    (*func)(var.Get<LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else if (var.IsType<phi::SelectedRows>()) {
     (*func)(var.Get<phi::SelectedRows>());
   } else {
@@ -56,9 +66,15 @@ static void VisitVariable(const Variable& var, Func* func) {
 }
 
 struct TensorVisitor {
+<<<<<<< HEAD
   phi::DenseTensor* result_{nullptr};
 
   void operator()(phi::DenseTensor* tensor) { result_ = tensor; }
+=======
+  Tensor* result_{nullptr};
+
+  void operator()(LoDTensor* tensor) { result_ = tensor; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void operator()(phi::SelectedRows* selected_rows) {
     result_ = selected_rows->mutable_value();
@@ -71,7 +87,11 @@ struct TensorVisitor {
   }
 };
 
+<<<<<<< HEAD
 phi::DenseTensor& VariableVisitor::GetMutableTensor(Variable* var) {
+=======
+Tensor& VariableVisitor::GetMutableTensor(Variable* var) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TensorVisitor vistor;
   VisitVariable(var, &vistor);
   return *vistor.result_;
@@ -79,8 +99,13 @@ phi::DenseTensor& VariableVisitor::GetMutableTensor(Variable* var) {
 
 struct ShareDimsAndLoDVisitor {
   Variable* trg_;
+<<<<<<< HEAD
   void operator()(const phi::DenseTensor& val) {
     auto* tensor = trg_->GetMutable<phi::DenseTensor>();
+=======
+  void operator()(const LoDTensor& val) {
+    auto* tensor = trg_->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tensor->set_layout(val.layout());
     tensor->set_lod(val.lod());
     tensor->Resize(val.dims());
@@ -108,8 +133,13 @@ void VariableVisitor::ShareDimsAndLoD(const Variable& src, Variable* trg) {
 struct EnforceShapeAndDTypeEQVisitor {
   const Variable* dst_;
 
+<<<<<<< HEAD
   void operator()(const phi::DenseTensor& src) {
     auto& tensor = dst_->Get<phi::DenseTensor>();
+=======
+  void operator()(const LoDTensor& src) {
+    auto& tensor = dst_->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         src.place().GetType(),
         tensor.place().GetType(),

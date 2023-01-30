@@ -1,8 +1,18 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+<<<<<<< HEAD
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
     http://www.apache.org/licenses/LICENSE-2.0
+=======
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,6 +35,7 @@ limitations under the License. */
 #include <windows.h>  // GetModuleFileName, Sleep
 #endif
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
 #include <cudnn.h>
@@ -48,16 +59,22 @@ limitations under the License. */
 #include <fstream>
 #include <iomanip>
 #include <memory>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+<<<<<<< HEAD
 #include <utility>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
 #include <execinfo.h>
 #endif
 
+<<<<<<< HEAD
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -101,6 +118,15 @@ limitations under the License. */
 
 #include "paddle/utils/variant.h"
 
+=======
+#include "gflags/gflags.h"
+
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#include "paddle/phi/core/errors.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/to_string.h"
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DECLARE_int32(call_stack_level);
 
 namespace phi {
@@ -108,10 +134,13 @@ class ErrorSummary;
 }  // namespace phi
 
 namespace phi {
+<<<<<<< HEAD
 namespace proto {}  // namespace proto
 }  // namespace phi
 
 namespace phi {
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace enforce {
 
 /** HELPER MACROS AND FUNCTIONS **/
@@ -470,6 +499,7 @@ struct EnforceNotMet : public std::exception {
 /** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
 
 /*
+<<<<<<< HEAD
  * Summary: This PADDLE_GET(_**) series macros are used to call paddle::get
  *   safely. paddle::get is not a completely safe api, although it will not
  *   go wrong in most cases, but in extreme cases, it may fail and directly
@@ -1068,6 +1098,83 @@ inline void retry_sleep(unsigned millisecond) {
 #undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_HIP
 
+=======
+ * Summary: This macro is used to get Variable or internal type
+ *   data (such as LoDTensor or SelectedRows) of the Input and
+ *   Output in op, generally used when call scope.FindVar(Input/
+ *   Output("Name")) or ctx.Input<LoDTensor>().
+ *   Firstly this macro check whether the obtained pointer is null,
+ *   and then return data if it is not null.
+ *
+ * Note: This macro is only suitable for specific scenarios and
+ *   does not intended to be widely used. If it cannot meet the
+ *   requirements, please use other PADDLE_ENFORCE** check macro.
+ *
+ * Parameters:
+ *     __PTR: pointer
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *  
+ * Return: The data pointed to by the pointer.
+ *
+ * Examples:
+ *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
+ */
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)               \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
+    auto* __ptr = (__PTR);                                              \
+    if (UNLIKELY(nullptr == __ptr)) {                                   \
+      auto __summary__ = phi::errors::NotFound(                         \
+          "Unable to get %s data of %s %s in operator %s. "             \
+          "Possible reasons are:\n"                                     \
+          "  1. The %s is not the %s of operator %s;\n"                 \
+          "  2. The %s has no corresponding variable passed in;\n"      \
+          "  3. The %s corresponding variable is not initialized.",     \
+          phi::demangle(                                                \
+              typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
+                  .name()),                                             \
+          __ROLE,                                                       \
+          __NAME,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __ROLE,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __NAME);                                                      \
+      auto __message__ = ::paddle::string::Sprintf(                     \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",       \
+          __summary__.error_message());                                 \
+      __THROW_ERROR_INTERNAL__(                                         \
+          phi::ErrorSummary(__summary__.code(), __message__));          \
+    }                                                                   \
+    return *__ptr;                                                      \
+  })())
+
+/*
+ * Summary: This macro is used to check whether op has specified
+ * Input or Output Variables. Because op's Input and Output
+ * checking are written similarly, so abstract this macro.
+ *
+ * Parameters:
+ *     __EXPR: (bool), the bool expression
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *
+ * Examples:
+ *    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
+ */
+#define OP_INOUT_CHECK(__EXPR, __ROLE, __NAME, __OP_TYPE)                    \
+  do {                                                                       \
+    PADDLE_ENFORCE_EQ(                                                       \
+        __EXPR,                                                              \
+        true,                                                                \
+        phi::errors::NotFound(                                               \
+            "No %s(%s) found for %s operator.", __ROLE, __NAME, __OP_TYPE)); \
+  } while (0)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace enforce
 using namespace enforce;  // NOLINT
 }  // namespace phi

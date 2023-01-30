@@ -35,13 +35,17 @@
 #endif
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace platform {
 
+<<<<<<< HEAD
 void SynchronizeDevice() {
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
@@ -61,6 +65,9 @@ void SynchronizeDevice() {
   }
 #endif
 }
+=======
+void SynchronizeAllDevice();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 std::atomic<bool> Profiler::alive_{false};
 
@@ -125,7 +132,11 @@ void Profiler::Prepare() {
 }
 
 void Profiler::Start() {
+<<<<<<< HEAD
   SynchronizeDevice();
+=======
+  SynchronizeAllDevice();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (auto& tracer : tracers_) {
     tracer.Get().StartTracing();
   }
@@ -133,7 +144,11 @@ void Profiler::Start() {
 }
 
 std::unique_ptr<ProfilerResult> Profiler::Stop() {
+<<<<<<< HEAD
   SynchronizeDevice();
+=======
+  SynchronizeAllDevice();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   TraceEventCollector collector;
   for (auto& tracer : tracers_) {
     tracer.Get().StopTracing();

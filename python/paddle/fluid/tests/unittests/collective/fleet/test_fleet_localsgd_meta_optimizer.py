@@ -13,16 +13,31 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
 import paddle.fluid as fluid
+=======
+import paddle
+import os
+
+import paddle
+import paddle.fluid as fluid
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_localsgd_optimizer(self):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
@@ -31,8 +46,12 @@ class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
+<<<<<<< HEAD
             ''.join(op.output('Out'))
             for op in avg_cost.block.ops
+=======
+            ''.join(op.output('Out')) for op in avg_cost.block.ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if op.type == 'conditional_block'
         ]
 
@@ -48,8 +67,12 @@ class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
+<<<<<<< HEAD
             ''.join(op.output('Out'))
             for op in avg_cost.block.ops
+=======
+            ''.join(op.output('Out')) for op in avg_cost.block.ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if op.type == 'conditional_block'
         ]
 
@@ -62,6 +85,10 @@ class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
 
 class TestFleetAdaptiveLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_adaptive_localsgd_optimizer(self):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
@@ -70,8 +97,12 @@ class TestFleetAdaptiveLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
+<<<<<<< HEAD
             ''.join(op.output('Out'))
             for op in avg_cost.block.ops
+=======
+            ''.join(op.output('Out')) for op in avg_cost.block.ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if op.type == 'conditional_block'
         ]
 
@@ -87,8 +118,12 @@ class TestFleetAdaptiveLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
+<<<<<<< HEAD
             ''.join(op.output('Out'))
             for op in avg_cost.block.ops
+=======
+            ''.join(op.output('Out')) for op in avg_cost.block.ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if op.type == 'conditional_block'
         ]
 

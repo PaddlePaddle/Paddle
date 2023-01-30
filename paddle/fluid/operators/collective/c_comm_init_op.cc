@@ -54,12 +54,24 @@ class CCommInitOp : public framework::OperatorBase {
 // TODO(wangxi): Put this in the unified header file
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     using UniqueId = ncclUniqueId;
+<<<<<<< HEAD
     using CommContext = platform::NCCLCommContext;
 #elif defined(PADDLE_WITH_XPU_BKCL)
     using UniqueId = BKCLUniqueId;
     using CommContext = platform::BKCLCommContext;
 #elif defined(PADDLE_WITH_CNCL)
     using UniqueId = cnclCliqueId;
+=======
+    using Place = platform::CUDAPlace;
+    using CommContext = platform::NCCLCommContext;
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    using UniqueId = BKCLUniqueId;
+    using Place = platform::XPUPlace;
+    using CommContext = platform::BKCLCommContext;
+#elif defined(PADDLE_WITH_CNCL)
+    using UniqueId = cnclCliqueId;
+    using Place = platform::MLUPlace;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     using CommContext = platform::CNCLCommContext;
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

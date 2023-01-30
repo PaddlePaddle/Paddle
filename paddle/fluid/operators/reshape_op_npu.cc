@@ -30,11 +30,19 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     auto place = ctx.GetPlace();
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     std::vector<int32_t> target_shape_vector;
     auto shape_tensor_vector = ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+
+    std::vector<int32_t> target_shape_vector;
+    auto shape_tensor_vector = ctx.MultiInput<framework::Tensor>("ShapeTensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (shape_tensor_vector.size() > 0) {
       for (auto* shape_tensor : shape_tensor_vector) {
         PADDLE_ENFORCE_EQ(
@@ -50,7 +58,11 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
       }
     } else {
       auto* shape_tensor = ctx.HasInput("Shape")
+<<<<<<< HEAD
                                ? ctx.Input<phi::DenseTensor>("Shape")
+=======
+                               ? ctx.Input<framework::LoDTensor>("Shape")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                : nullptr;
       if (shape_tensor) {
         target_shape_vector = GetDataFromTensor<int>(shape_tensor);
@@ -127,8 +139,13 @@ template <typename DeviceContext, typename T>
 class Reshape2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto in_dims = d_x->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());

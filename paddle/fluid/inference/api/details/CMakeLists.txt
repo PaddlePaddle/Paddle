@@ -25,16 +25,24 @@ if(WITH_ONNXRUNTIME)
   cc_library(
     zero_copy_tensor_dummy
     SRCS zero_copy_tensor_dummy.cc
+<<<<<<< HEAD
     DEPS onnxruntime phi_enforce)
+=======
+    DEPS onnxruntime)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 else()
   cc_library(
     zero_copy_tensor
     SRCS zero_copy_tensor.cc
     DEPS scope lod_tensor enforce)
+<<<<<<< HEAD
   cc_library(
     zero_copy_tensor_dummy
     SRCS zero_copy_tensor_dummy.cc
     DEPS phi_enforce)
+=======
+  cc_library(zero_copy_tensor_dummy SRCS zero_copy_tensor_dummy.cc)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 cc_test(

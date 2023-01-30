@@ -39,9 +39,15 @@ namespace details {
 // training phase.
 struct TensorArrayBatchCleaner {
   TensorArrayBatchCleaner() {
+<<<<<<< HEAD
     constexpr auto kTensorId = framework::VarTypeTrait<phi::DenseTensor>::kId;
     constexpr auto kLoDTensorId =
         framework::VarTypeTrait<phi::DenseTensor>::kId;
+=======
+    constexpr auto kTensorId = framework::VarTypeTrait<framework::Tensor>::kId;
+    constexpr auto kLoDTensorId =
+        framework::VarTypeTrait<framework::LoDTensor>::kId;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     constexpr auto kSelectedRowsId =
         framework::VarTypeTrait<phi::SelectedRows>::kId;
     constexpr auto kFetchListId =

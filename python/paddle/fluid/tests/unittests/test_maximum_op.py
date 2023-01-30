@@ -12,15 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid.core as core
 
 
 class ApiMaximumTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -41,13 +52,19 @@ class ApiMaximumTest(unittest.TestCase):
 
     def test_static_api(self):
         paddle.enable_static()
+<<<<<<< HEAD
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
             result_max = paddle.maximum(data_x, data_y)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             (res,) = exe.run(
                 feed={"x": self.input_x, "y": self.input_y},
                 fetch_list=[result_max],
@@ -57,10 +74,22 @@ class ApiMaximumTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "y": self.input_y
+            },
+                           fetch_list=[result_max])
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
+
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_z = paddle.static.data("z", shape=[15], dtype="float32")
             result_max = paddle.maximum(data_x, data_z)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             (res,) = exe.run(
                 feed={"x": self.input_x, "z": self.input_z},
                 fetch_list=[result_max],
@@ -70,10 +99,22 @@ class ApiMaximumTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "z": self.input_z
+            },
+                           fetch_list=[result_max])
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
+
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_a = paddle.static.data("a", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_max = paddle.maximum(data_a, data_c)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             (res,) = exe.run(
                 feed={"a": self.input_a, "c": self.input_c},
                 fetch_list=[result_max],
@@ -83,14 +124,33 @@ class ApiMaximumTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+            res, = exe.run(feed={
+                "a": self.input_a,
+                "c": self.input_c
+            },
+                           fetch_list=[result_max])
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
+
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data_b = paddle.static.data("b", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_max = paddle.maximum(data_b, data_c)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             (res,) = exe.run(
                 feed={"b": self.input_b, "c": self.input_c},
                 fetch_list=[result_max],
             )
+=======
+            res, = exe.run(feed={
+                "b": self.input_b,
+                "c": self.input_c
+            },
+                           fetch_list=[result_max])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
     def test_dynamic_api(self):

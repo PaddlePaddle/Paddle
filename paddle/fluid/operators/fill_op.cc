@@ -27,7 +27,11 @@ class FillOpMaker : public framework::OpProtoAndCheckerMaker {
 Fill an tensor with `value` and `shape`. The type of the tensor is specify by
 `dtype`.
 )DOC");
+<<<<<<< HEAD
     AddOutput("Out", "(phi::DenseTensor) The output tensor.");
+=======
+    AddOutput("Out", "(LoDTensor) The output tensor.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddAttr<std::vector<float>>(
         "value", "The float values of tensor, which are flatten in row major");
     AddAttr<std::vector<int>>("shape", "The shape of output tensor");
@@ -51,9 +55,15 @@ class FillOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }

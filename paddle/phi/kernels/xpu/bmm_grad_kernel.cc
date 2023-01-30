@@ -27,7 +27,11 @@ void MatMul(const Context& dev_ctx,
             DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   xpu::Context* xpu_ctx = dev_ctx.x_context();
+<<<<<<< HEAD
   if (std::is_same<phi::dtype::float16, T>::value) {
+=======
+  if (std::is_same<paddle::platform::float16, T>::value) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     MatMulXPUFunction<T, int16_t>(a, b, out, trans_a, trans_b, xpu_ctx);
   } else {
     if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
@@ -99,6 +103,15 @@ void BmmGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(
     bmm_grad, XPU, ALL_LAYOUT, phi::BmmGradKernel, float, phi::dtype::float16) {
 }
+=======
+PD_REGISTER_KERNEL(bmm_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::BmmGradKernel,
+                   float,
+                   paddle::platform::float16) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

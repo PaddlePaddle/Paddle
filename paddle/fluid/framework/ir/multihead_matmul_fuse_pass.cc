@@ -639,12 +639,21 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
 
 namespace {
 template <typename T>
+<<<<<<< HEAD
 inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
                               phi::DenseTensor* wk_tensor,
                               phi::DenseTensor* wv_tensor,
                               phi::DenseTensor* bq_tensor,
                               phi::DenseTensor* bk_tensor,
                               phi::DenseTensor* bv_tensor) {
+=======
+inline void QKVWeightsProcess(Tensor* wq_tensor,
+                              Tensor* wk_tensor,
+                              Tensor* wv_tensor,
+                              Tensor* bq_tensor,
+                              Tensor* bk_tensor,
+                              Tensor* bv_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* wq_data = wq_tensor->mutable_data<T>(platform::CPUPlace());
   auto* wk_data = wk_tensor->mutable_data<T>(platform::CPUPlace());
   auto* wv_data = wv_tensor->mutable_data<T>(platform::CPUPlace());
@@ -656,7 +665,11 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
       phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
   auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
 
+<<<<<<< HEAD
   phi::DenseTensor tmp_combined_w_tensor;
+=======
+  framework::LoDTensor tmp_combined_w_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tmp_combined_w_tensor.Resize(combined_w_dims);
   auto* tmp_combined_w_data =
       tmp_combined_w_tensor.mutable_data<T>(platform::CPUPlace());
@@ -679,7 +692,11 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   memcpy(
       new_combined_w_data, tmp_combined_w_data, sizeof(T) * wq_tensor->numel());
 
+<<<<<<< HEAD
   phi::DenseTensor tmp_combined_bias_tensor;
+=======
+  framework::LoDTensor tmp_combined_bias_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
   auto* tmp_combined_bias_data =
       tmp_combined_bias_tensor.mutable_data<T>(platform::CPUPlace());
@@ -894,6 +911,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
     // Transpose (B * S * 3 * N * H) -> (3 * B * N * S * H)
+<<<<<<< HEAD
     auto* wq_tensor =
         scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* wk_tensor =
@@ -907,6 +925,18 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
         scope->FindVar(eltadd1_b->Name())->GetMutable<phi::DenseTensor>();
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
+=======
+    auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<LoDTensor>();
+    auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<LoDTensor>();
+    auto* wv_tensor = scope->FindVar(mul2_w->Name())->GetMutable<LoDTensor>();
+
+    auto* bq_tensor =
+        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+    auto* bk_tensor =
+        scope->FindVar(eltadd1_b->Name())->GetMutable<LoDTensor>();
+    auto* bv_tensor =
+        scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (wq_tensor->dtype() == phi::DataType::FLOAT32) {
       QKVWeightsProcess<float>(
@@ -931,7 +961,10 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
+<<<<<<< HEAD
     paddle::memory::Release(platform::CPUPlace());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto reshape_desc = reshape2->Op();
     int head_number =
@@ -1339,6 +1372,7 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
     // Transpose (B * S * 3 * N * H) -> (3 * B * N * S * H)
+<<<<<<< HEAD
     auto* wq_tensor =
         scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* wk_tensor =
@@ -1352,6 +1386,18 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
         scope->FindVar(eltadd1_b->Name())->GetMutable<phi::DenseTensor>();
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
+=======
+    auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<LoDTensor>();
+    auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<LoDTensor>();
+    auto* wv_tensor = scope->FindVar(mul2_w->Name())->GetMutable<LoDTensor>();
+
+    auto* bq_tensor =
+        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+    auto* bk_tensor =
+        scope->FindVar(eltadd1_b->Name())->GetMutable<LoDTensor>();
+    auto* bv_tensor =
+        scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
     auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
@@ -1373,7 +1419,11 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     combined_bias_desc->SetShape({3, bq_tensor->dims()[0]});
     combined_bias_desc->SetPersistable(true);
 
+<<<<<<< HEAD
     phi::DenseTensor tmp_combined_w_tensor;
+=======
+    framework::LoDTensor tmp_combined_w_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp_combined_w_tensor.Resize(combined_w_dims);
     auto* tmp_combined_w_data =
         tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
@@ -1399,9 +1449,14 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
+<<<<<<< HEAD
     paddle::memory::Release(platform::CPUPlace());
 
     phi::DenseTensor tmp_combined_bias_tensor;
+=======
+
+    framework::LoDTensor tmp_combined_bias_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp_combined_bias_tensor.Resize(combined_bias_dims);
     auto* tmp_combined_bias_data =
         tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());

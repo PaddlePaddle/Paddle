@@ -19,7 +19,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+<<<<<<< HEAD
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -56,7 +60,13 @@ int CPUBfloat16PlacementPass::SetMkldnnDataType(ir::Graph* graph) const {
     // Only float input can be converted to bfloat16
     if (op_in->Var()->GetDataType() != proto::VarType::FP32) return;
 
+<<<<<<< HEAD
     if (platform::HasOpINT8DataType(op->Op()) == false) {
+=======
+    if ((op->Op()->HasAttr("mkldnn_data_type") ||
+         op->Op()->HasProtoAttr("mkldnn_data_type")) &&
+        !platform::HasOpINT8DataType(op->Op())) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       VLOG(4) << "---    marked " << op->Op()->Type()
               << " operator to bfloat16 ";
       op->Op()->SetAttr("mkldnn_data_type", std::string("bfloat16"));

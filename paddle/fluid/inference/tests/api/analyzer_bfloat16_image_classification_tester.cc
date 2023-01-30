@@ -14,7 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
@@ -47,7 +51,11 @@ TEST(Analyzer_bfloat16_image_classification, bfloat16) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInputs(&input_slots_all);
   if (FLAGS_enable_mkldnn && FLAGS_enable_bf16 &&
+<<<<<<< HEAD
       phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_bf16)) {
+=======
+      platform::MayIUse(platform::cpu_isa_t::avx512_bf16)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     b_cfg.EnableMkldnnBfloat16();
   } else {
     FLAGS_enable_bf16 = false;

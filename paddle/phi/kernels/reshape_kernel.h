@@ -22,6 +22,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename Context>
+<<<<<<< HEAD
 void ReshapeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const IntArray& shape,
@@ -33,6 +34,19 @@ void ReshapeKernel(const Context& dev_ctx,
                    const IntArray& shape,
                    DenseTensor* out,
                    DenseTensor* xshape);
+=======
+void ReshapeKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const IntArray& shape,
+                   DenseTensor* out);
+
+template <typename Context>
+void ReshapeWithXShape(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const IntArray& shape,
+                       DenseTensor* out,
+                       DenseTensor* xshape);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T, typename Context>
 DenseTensor Reshape(const Context& dev_ctx,
@@ -41,7 +55,11 @@ DenseTensor Reshape(const Context& dev_ctx,
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   InferMetaFromVecValue(x, shape, &meta_out);
+<<<<<<< HEAD
   ReshapeInferKernel<Context>(dev_ctx, x, IntArray(shape), &dense_out);
+=======
+  ReshapeKernel<Context>(dev_ctx, x, IntArray(shape), &dense_out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return dense_out;
 }
 

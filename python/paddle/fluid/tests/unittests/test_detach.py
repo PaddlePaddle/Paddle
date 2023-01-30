@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+<<<<<<< HEAD
 from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Linear
 
@@ -27,11 +32,25 @@ class Test_Detach(unittest.TestCase):
         data = np.array([[1, 8, 3, 9], [7, 20, 9, 6], [4, 6, 8, 10]]).astype(
             'float32'
         )
+=======
+from paddle.fluid.dygraph import Linear
+from paddle.fluid.dygraph.base import to_variable
+
+import unittest
+
+
+class Test_Detach(unittest.TestCase):
+
+    def generate_Data(self):
+        data = np.array([[1, 8, 3, 9], [7, 20, 9, 6], [4, 6, 8,
+                                                       10]]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return data
 
     def no_detach_multi(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             linear_w_param_attrs = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(5.0)
             )
@@ -68,6 +87,32 @@ class Test_Detach(unittest.TestCase):
                 weight_attr=linear2_w_param_attrs,
                 bias_attr=linear2_b_param_attrs,
             )
+=======
+            linear_w_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(5.0))
+            linear_b_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(6.0))
+            linear = Linear(4,
+                            10,
+                            param_attr=linear_w_param_attrs,
+                            bias_attr=linear_b_param_attrs)
+            linear1_w_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(7.0))
+            linear1_b_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(8.0))
+            linear1 = Linear(10,
+                             1,
+                             param_attr=linear1_w_param_attrs,
+                             bias_attr=linear1_b_param_attrs)
+            linear2_w_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(9.0))
+            linear2_b_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(10.0))
+            linear2 = Linear(10,
+                             1,
+                             param_attr=linear2_w_param_attrs,
+                             bias_attr=linear2_b_param_attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             data = to_variable(data)
             x = linear(data)
             x1 = linear1(x)
@@ -80,6 +125,7 @@ class Test_Detach(unittest.TestCase):
     def no_detach_single(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             linear_w_param_attrs = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(5.0)
             )
@@ -107,6 +153,26 @@ class Test_Detach(unittest.TestCase):
             data = to_variable(data)
             x = linear(data)
             x.retain_grads()
+=======
+            linear_w_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(5.0))
+            linear_b_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(6.0))
+            linear = Linear(4,
+                            10,
+                            param_attr=linear_w_param_attrs,
+                            bias_attr=linear_b_param_attrs)
+            linear1_w_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(7.0))
+            linear1_b_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(8.0))
+            linear1 = Linear(10,
+                             1,
+                             param_attr=linear1_w_param_attrs,
+                             bias_attr=linear1_b_param_attrs)
+            data = to_variable(data)
+            x = linear(data)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x1 = linear1(x)
             loss = x1
             # print(loss, loss.shape)
@@ -116,6 +182,7 @@ class Test_Detach(unittest.TestCase):
     def detach_multi(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             linear_w_param_attrs = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(5.0)
             )
@@ -155,6 +222,34 @@ class Test_Detach(unittest.TestCase):
             data = to_variable(data)
             x = linear(data)
             x.retain_grads()
+=======
+            linear_w_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(5.0))
+            linear_b_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(6.0))
+            linear = Linear(4,
+                            10,
+                            param_attr=linear_w_param_attrs,
+                            bias_attr=linear_b_param_attrs)
+            linear1_w_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(7.0))
+            linear1_b_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(8.0))
+            linear1 = Linear(10,
+                             1,
+                             param_attr=linear1_w_param_attrs,
+                             bias_attr=linear1_b_param_attrs)
+            linear2_w_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(9.0))
+            linear2_b_param_attrs = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(10.0))
+            linear2 = Linear(10,
+                             1,
+                             param_attr=linear2_w_param_attrs,
+                             bias_attr=linear2_b_param_attrs)
+            data = to_variable(data)
+            x = linear(data)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x_detach = x.detach()
             x1 = linear1(x)
             x2 = linear2(x_detach)
@@ -164,10 +259,18 @@ class Test_Detach(unittest.TestCase):
             return x.gradient()
 
     def test_NoDetachMulti_DetachMulti(self):
+<<<<<<< HEAD
+=======
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         array_no_detach_multi = self.no_detach_multi()
         array_detach_multi = self.detach_multi()
 
         assert not np.array_equal(array_no_detach_multi, array_detach_multi)
+<<<<<<< HEAD
+=======
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_NoDetachSingle_DetachMulti(self):
         array_no_detach_single = self.no_detach_single()
@@ -176,6 +279,10 @@ class Test_Detach(unittest.TestCase):
 
 
 class TestInplace(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_forward_version(self):
         with paddle.fluid.dygraph.guard():
             var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
@@ -210,12 +317,19 @@ class TestInplace(unittest.TestCase):
             var_d = var_b**2
 
             loss = paddle.nn.functional.relu(var_c + var_d)
+<<<<<<< HEAD
             with self.assertRaisesRegex(
                 RuntimeError,
                 "received tensor_version:{} != wrapper_version_snapshot:{}".format(
                     1, 0
                 ),
             ):
+=======
+            with self.assertRaisesRegexp(
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 loss.backward()
 
 

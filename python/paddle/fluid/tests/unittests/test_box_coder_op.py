@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
@@ -23,6 +24,17 @@ import paddle
 def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
     pb_w = p_box[:, 2] - p_box[:, 0] + (not norm)
     pb_h = p_box[:, 3] - p_box[:, 1] + (not norm)
+=======
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.fluid.core as core
+
+
+def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
+    pb_w = p_box[:, 2] - p_box[:, 0] + (norm == False)
+    pb_h = p_box[:, 3] - p_box[:, 1] + (norm == False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     pb_x = pb_w * 0.5 + p_box[:, 0]
     pb_y = pb_h * 0.5 + p_box[:, 1]
     shape = (1, p_box.shape[0]) if axis == 0 else (p_box.shape[0], 1)
@@ -33,11 +45,17 @@ def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
     pb_y = pb_y.reshape(shape)
 
     if pb_v.ndim == 2:
+<<<<<<< HEAD
         var_shape = (
             (1, pb_v.shape[0], pb_v.shape[1])
             if axis == 0
             else (pb_v.shape[0], 1, pb_v.shape[1])
         )
+=======
+        var_shape = (1, pb_v.shape[0],
+                     pb_v.shape[1]) if axis == 0 else (pb_v.shape[0], 1,
+                                                       pb_v.shape[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         pb_v = pb_v.reshape(var_shape)
     if pb_v.ndim == 1:
         tb_x = pb_v[0] * t_box[:, :, 0] * pb_w + pb_x
@@ -56,8 +74,13 @@ def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
 
 
 def box_encoder(t_box, p_box, pb_v, output_box, norm):
+<<<<<<< HEAD
     pb_w = p_box[:, 2] - p_box[:, 0] + (not norm)
     pb_h = p_box[:, 3] - p_box[:, 1] + (not norm)
+=======
+    pb_w = p_box[:, 2] - p_box[:, 0] + (norm == False)
+    pb_h = p_box[:, 3] - p_box[:, 1] + (norm == False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     pb_x = pb_w * 0.5 + p_box[:, 0]
     pb_y = pb_h * 0.5 + p_box[:, 1]
     shape = (1, p_box.shape[0])
@@ -93,6 +116,7 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
     output_box = np.zeros((n, m, 4), dtype=np.float32)
     cur_offset = 0
     for i in range(len(lod)):
+<<<<<<< HEAD
         if code_type == "EncodeCenterSize":
             box_encoder(
                 t_box[cur_offset : (cur_offset + lod[i]), :],
@@ -102,24 +126,40 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
                 norm,
             )
         elif code_type == "DecodeCenterSize":
+=======
+        if (code_type == "EncodeCenterSize"):
+            box_encoder(t_box[cur_offset:(cur_offset + lod[i]), :], p_box, pb_v,
+                        output_box[cur_offset:(cur_offset + lod[i]), :, :],
+                        norm)
+        elif (code_type == "DecodeCenterSize"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             box_decoder(t_box, p_box, pb_v, output_box, norm, axis)
         cur_offset += lod[i]
     return output_box
 
 
 class TestBoxCoderOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def setUp(self):
         self.op_type = "box_coder"
+<<<<<<< HEAD
         self.python_api = paddle.vision.ops.box_coder
+=======
+        self.python_api = paddle.fluid.layers.box_coder
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((81, 4)).astype('float32')
         prior_box_var = np.random.random((81, 4)).astype('float32')
         target_box = np.random.random((20, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
+<<<<<<< HEAD
         output_box = batch_box_coder(
             prior_box,
             prior_box_var,
@@ -128,6 +168,10 @@ class TestBoxCoderOp(OpTest):
             code_type,
             box_normalized,
         )
+=======
+        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
+                                     lod[0], code_type, box_normalized)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {
             'PriorBox': prior_box,
             'PriorBoxVar': prior_box_var,
@@ -135,17 +179,29 @@ class TestBoxCoderOp(OpTest):
         }
         self.attrs = {
             'code_type': 'decode_center_size',
+<<<<<<< HEAD
             'box_normalized': False,
+=======
+            'box_normalized': False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'OutputBox': output_box}
 
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def setUp(self):
+<<<<<<< HEAD
         self.python_api = paddle.vision.ops.box_coder
+=======
+        self.python_api = paddle.fluid.layers.box_coder
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.op_type = "box_coder"
         lod = [[0, 1, 2, 3, 4, 5]]
         prior_box = np.random.random((81, 4)).astype('float32')
@@ -153,6 +209,7 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
         target_box = np.random.random((20, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
+<<<<<<< HEAD
         output_box = batch_box_coder(
             prior_box,
             prior_box_var,
@@ -161,6 +218,10 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
             code_type,
             box_normalized,
         )
+=======
+        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
+                                     lod[0], code_type, box_normalized)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'PriorBox': prior_box,
@@ -169,17 +230,29 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
         }
         self.attrs = {
             'code_type': 'decode_center_size',
+<<<<<<< HEAD
             'box_normalized': False,
+=======
+            'box_normalized': False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'OutputBox': output_box}
 
 
 class TestBoxCoderOpWithLoD(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def setUp(self):
+<<<<<<< HEAD
         self.python_api = paddle.vision.ops.box_coder
+=======
+        self.python_api = paddle.fluid.layers.box_coder
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.op_type = "box_coder"
         lod = [[10, 20, 20]]
         prior_box = np.random.random((20, 4)).astype('float32')
@@ -187,6 +260,7 @@ class TestBoxCoderOpWithLoD(OpTest):
         target_box = np.random.random((50, 4)).astype('float32')
         code_type = "EncodeCenterSize"
         box_normalized = True
+<<<<<<< HEAD
         output_box = batch_box_coder(
             prior_box,
             prior_box_var,
@@ -195,6 +269,10 @@ class TestBoxCoderOpWithLoD(OpTest):
             code_type,
             box_normalized,
         )
+=======
+        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
+                                     lod[0], code_type, box_normalized)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'PriorBox': prior_box,
@@ -206,11 +284,19 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 
 class TestBoxCoderOpWithAxis(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def setUp(self):
+<<<<<<< HEAD
         self.python_api = paddle.vision.ops.box_coder
+=======
+        self.python_api = paddle.fluid.layers.box_coder
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((30, 4)).astype('float32')
@@ -219,6 +305,7 @@ class TestBoxCoderOpWithAxis(OpTest):
         code_type = "DecodeCenterSize"
         box_normalized = False
         axis = 1
+<<<<<<< HEAD
         output_box = batch_box_coder(
             prior_box,
             prior_box_var,
@@ -228,6 +315,10 @@ class TestBoxCoderOpWithAxis(OpTest):
             box_normalized,
             axis,
         )
+=======
+        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
+                                     lod[0], code_type, box_normalized, axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'PriorBox': prior_box,
@@ -237,12 +328,20 @@ class TestBoxCoderOpWithAxis(OpTest):
         self.attrs = {
             'code_type': 'decode_center_size',
             'box_normalized': False,
+<<<<<<< HEAD
             'axis': axis,
+=======
+            'axis': axis
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'OutputBox': output_box}
 
 
 class TestBoxCoderOpWithVariance(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_check_output(self):
         self.check_output()
 
@@ -255,6 +354,7 @@ class TestBoxCoderOpWithVariance(OpTest):
         code_type = "DecodeCenterSize"
         box_normalized = False
         axis = 1
+<<<<<<< HEAD
         output_box = batch_box_coder(
             prior_box,
             prior_box_var,
@@ -264,6 +364,10 @@ class TestBoxCoderOpWithVariance(OpTest):
             box_normalized,
             axis,
         )
+=======
+        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
+                                     lod[0], code_type, box_normalized, axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'PriorBox': prior_box,
@@ -273,12 +377,20 @@ class TestBoxCoderOpWithVariance(OpTest):
             'code_type': 'decode_center_size',
             'box_normalized': False,
             'variance': prior_box_var.astype(np.float64).flatten(),
+<<<<<<< HEAD
             'axis': axis,
+=======
+            'axis': axis
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'OutputBox': output_box}
 
 
 class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.lod = [[1, 1, 1, 1, 1]]
         self.prior_box = np.random.random((30, 4)).astype('float32')
@@ -287,6 +399,7 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
         self.code_type = "DecodeCenterSize"
         self.box_normalized = False
         self.axis = 1
+<<<<<<< HEAD
         self.output_ref = batch_box_coder(
             self.prior_box,
             self.prior_box_var,
@@ -304,16 +417,38 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
         def run(place):
             paddle.disable_static(place)
             output_box = paddle.vision.ops.box_coder(
+=======
+        self.output_ref = batch_box_coder(self.prior_box, self.prior_box_var,
+                                          self.target_box, self.lod[0],
+                                          self.code_type, self.box_normalized,
+                                          self.axis)
+        self.place = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def test_dygraph_api(self):
+
+        def run(place):
+            paddle.disable_static(place)
+            output_box = paddle.fluid.layers.box_coder(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 paddle.to_tensor(self.prior_box),
                 self.prior_box_var.tolist(),
                 paddle.to_tensor(self.target_box),
                 "decode_center_size",
                 self.box_normalized,
+<<<<<<< HEAD
                 axis=self.axis,
             )
             np.testing.assert_allclose(
                 np.sum(self.output_ref), np.sum(output_box.numpy()), rtol=1e-05
             )
+=======
+                axis=self.axis)
+            np.testing.assert_allclose(np.sum(self.output_ref),
+                                       np.sum(output_box.numpy()),
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.enable_static()
 
         for place in self.place:
@@ -321,6 +456,10 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
 
 
 class TestBoxCoderAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         np.random.seed(678)
         self.prior_box_np = np.random.random((80, 4)).astype('float32')
@@ -329,6 +468,7 @@ class TestBoxCoderAPI(unittest.TestCase):
 
     def test_dygraph_with_static(self):
         paddle.enable_static()
+<<<<<<< HEAD
         prior_box = paddle.static.data(
             name='prior_box', shape=[80, 4], dtype='float32'
         )
@@ -357,12 +497,39 @@ class TestBoxCoderAPI(unittest.TestCase):
             },
             fetch_list=[boxes],
         )
+=======
+        prior_box = paddle.static.data(name='prior_box',
+                                       shape=[80, 4],
+                                       dtype='float32')
+        prior_box_var = paddle.static.data(name='prior_box_var',
+                                           shape=[80, 4],
+                                           dtype='float32')
+        target_box = paddle.static.data(name='target_box',
+                                        shape=[20, 80, 4],
+                                        dtype='float32')
+
+        boxes = paddle.vision.ops.box_coder(prior_box=prior_box,
+                                            prior_box_var=prior_box_var,
+                                            target_box=target_box,
+                                            code_type="decode_center_size",
+                                            box_normalized=False)
+
+        exe = paddle.static.Executor()
+        boxes_np = exe.run(paddle.static.default_main_program(),
+                           feed={
+                               'prior_box': self.prior_box_np,
+                               'prior_box_var': self.prior_box_var_np,
+                               'target_box': self.target_box_np,
+                           },
+                           fetch_list=[boxes])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         paddle.disable_static()
         prior_box_dy = paddle.to_tensor(self.prior_box_np)
         prior_box_var_dy = paddle.to_tensor(self.prior_box_var_np)
         target_box_dy = paddle.to_tensor(self.target_box_np)
 
+<<<<<<< HEAD
         boxes_dy = paddle.vision.ops.box_coder(
             prior_box=prior_box_dy,
             prior_box_var=prior_box_var_dy,
@@ -370,6 +537,13 @@ class TestBoxCoderAPI(unittest.TestCase):
             code_type="decode_center_size",
             box_normalized=False,
         )
+=======
+        boxes_dy = paddle.vision.ops.box_coder(prior_box=prior_box_dy,
+                                               prior_box_var=prior_box_var_dy,
+                                               target_box=target_box_dy,
+                                               code_type="decode_center_size",
+                                               box_normalized=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         boxes_dy_np = boxes_dy.numpy()
 
         np.testing.assert_allclose(boxes_np[0], boxes_dy_np)

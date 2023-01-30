@@ -12,12 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 import os
+=======
+from __future__ import print_function
+
+import logging
+import numpy as np
+import os
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import shutil
 import tempfile
 import unittest
 
+<<<<<<< HEAD
 import numpy as np
 
 import paddle
@@ -27,6 +37,12 @@ paddle.enable_static()
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
 )
+=======
+paddle.enable_static()
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 logger = logging.getLogger("paddle_with_cinn")
 
 
@@ -42,9 +58,14 @@ def set_cinn_flag(val):
 
 def reader(limit):
     for _ in range(limit):
+<<<<<<< HEAD
         yield np.random.random([1, 28]).astype('float32'), np.random.randint(
             0, 2, size=[1]
         ).astype('int64')
+=======
+        yield np.random.random([1, 28]).astype('float32'), \
+            np.random.randint(0, 2, size=[1]).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def rand_data(img, label, loop_num=10):
@@ -63,12 +84,17 @@ def build_program(main_program, startup_program):
             name="bias",
             shape=[1, 28],
             dtype="float32",
+<<<<<<< HEAD
             attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(
                     np.random.rand(1, 28).astype(np.float32)
                 )
             ),
         )
+=======
+            attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(
+                np.random.rand(1, 28).astype(np.float32))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         label = paddle.static.data(name="label", shape=[1], dtype='int64')
 
         hidden = paddle.add(img, param)
@@ -91,19 +117,28 @@ def train(dot_save_dir, prefix, seed=1234):
     main_program = paddle.static.Program()
     img, label, loss = build_program(main_program, startup_program)
 
+<<<<<<< HEAD
     place = (
         paddle.CUDAPlace(0)
         if paddle.is_compiled_with_cuda()
         else paddle.CPUPlace()
     )
+=======
+    place = paddle.CUDAPlace(
+        0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     exe = paddle.static.Executor(place)
     exe.run(startup_program)
 
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.debug_graphviz_path = os.path.join(dot_save_dir, prefix)
     compiled_program = paddle.static.CompiledProgram(
+<<<<<<< HEAD
         main_program, build_strategy
     ).with_data_parallel(loss_name=loss.name)
+=======
+        main_program, build_strategy).with_data_parallel(loss_name=loss.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     iters = 100
     feed = rand_data(img.name, label.name, iters)
@@ -116,6 +151,10 @@ def train(dot_save_dir, prefix, seed=1234):
 
 @unittest.skipIf(not set_cinn_flag(True), "Paddle is not compiled with CINN.")
 class TestParallelExecutorRunCinn(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp(prefix="dots_")
 
@@ -126,9 +165,16 @@ class TestParallelExecutorRunCinn(unittest.TestCase):
         cinn_losses = train(self.tmpdir, "paddle")
         set_cinn_flag(False)
         pd_losses = train(self.tmpdir, "cinn")
+<<<<<<< HEAD
         np.testing.assert_allclose(
             cinn_losses, pd_losses, rtol=1e-05, atol=1e-05
         )
+=======
+        np.testing.assert_allclose(cinn_losses,
+                                   pd_losses,
+                                   rtol=1e-05,
+                                   atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

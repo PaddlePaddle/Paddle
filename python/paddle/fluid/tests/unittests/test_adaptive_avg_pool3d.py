@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,19 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+from __future__ import division
+
+import unittest
+import numpy as np
+
+import paddle.fluid.core as core
+from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -29,6 +43,7 @@ def adaptive_end_index(index, input_size, output_size):
     return int(np.ceil((index + 1) * input_size / output_size))
 
 
+<<<<<<< HEAD
 def adaptive_pool3d_forward(
     x, output_size, adaptive=True, data_format='NCDHW', pool_type='avg'
 ):
@@ -41,6 +56,19 @@ def adaptive_pool3d_forward(
     )
 
     if isinstance(output_size, int) or output_size is None:
+=======
+def adaptive_pool3d_forward(x,
+                            output_size,
+                            adaptive=True,
+                            data_format='NCDHW',
+                            pool_type='avg'):
+
+    N = x.shape[0]
+    C, D, H, W = [x.shape[1], x.shape[2], x.shape[3], x.shape[4]] \
+        if data_format == 'NCDHW' else [x.shape[4], x.shape[1], x.shape[2],x.shape[3]]
+
+    if (isinstance(output_size, int) or output_size == None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         H_out = output_size
         W_out = output_size
         D_out = output_size
@@ -48,6 +76,7 @@ def adaptive_pool3d_forward(
     else:
         D_out, H_out, W_out = output_size
 
+<<<<<<< HEAD
     if output_size[0] is None:
         output_size[0] = D
         D_out = D
@@ -63,6 +92,20 @@ def adaptive_pool3d_forward(
         if data_format == 'NCDHW'
         else np.zeros((N, D_out, H_out, W_out, C))
     )
+=======
+    if output_size[0] == None:
+        output_size[0] = D
+        D_out = D
+    if output_size[1] == None:
+        output_size[1] = H
+        H_out = H
+    if output_size[2] == None:
+        output_size[2] = W
+        W_out = W
+
+    out = np.zeros((N, C, D_out, H_out, W_out)) if data_format=='NCDHW' \
+        else np.zeros((N, D_out, H_out, W_out, C))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for k in range(D_out):
         d_start = adaptive_start_index(k, D, output_size[0])
         d_end = adaptive_end_index(k, D, output_size[0])
@@ -76,6 +119,7 @@ def adaptive_pool3d_forward(
                 w_end = adaptive_end_index(j, W, output_size[2])
 
                 if data_format == 'NCDHW':
+<<<<<<< HEAD
                     x_masked = x[
                         :, :, d_start:d_end, h_start:h_end, w_start:w_end
                     ]
@@ -88,10 +132,20 @@ def adaptive_pool3d_forward(
                         out[:, :, k, i, j] = (
                             np.sum(x_masked, axis=(2, 3, 4)) / field_size
                         )
+=======
+                    x_masked = x[:, :, d_start:d_end, h_start:h_end,
+                                 w_start:w_end]
+                    if pool_type == 'avg':
+                        field_size = (d_end - d_start) * (h_end - h_start) * (
+                            w_end - w_start)
+                        out[:, :, k, i,
+                            j] = np.sum(x_masked, axis=(2, 3, 4)) / field_size
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     elif pool_type == 'max':
                         out[:, :, k, i, j] = np.max(x_masked, axis=(2, 3, 4))
 
                 elif data_format == 'NDHWC':
+<<<<<<< HEAD
                     x_masked = x[
                         :, d_start:d_end, h_start:h_end, w_start:w_end, :
                     ]
@@ -104,12 +158,22 @@ def adaptive_pool3d_forward(
                         out[:, k, i, j, :] = (
                             np.sum(x_masked, axis=(1, 2, 3)) / field_size
                         )
+=======
+                    x_masked = x[:, d_start:d_end, h_start:h_end,
+                                 w_start:w_end, :]
+                    if pool_type == 'avg':
+                        field_size = (d_end - d_start) * (h_end - h_start) * (
+                            w_end - w_start)
+                        out[:, k, i, j, :] = np.sum(x_masked,
+                                                    axis=(1, 2, 3)) / field_size
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     elif pool_type == 'max':
                         out[:, k, i, j, :] = np.max(x_masked, axis=(1, 2, 3))
     return out
 
 
 class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
         self.res_1_np = adaptive_pool3d_forward(
@@ -148,10 +212,48 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
             out_1 = paddle.nn.functional.adaptive_avg_pool3d(
                 x=x, output_size=[3, 3, 3]
             )
+=======
+
+    def setUp(self):
+        self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
+        self.res_1_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="avg")
+
+        self.res_2_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=5,
+                                                pool_type="avg")
+
+        self.res_3_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[2, 3, 5],
+                                                pool_type="avg")
+
+        self.res_4_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="avg",
+                                                data_format="NDHWC")
+
+        self.res_5_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[None, 3, None],
+                                                pool_type="avg")
+
+    def test_static_graph(self):
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.enable_static()
+            x = paddle.fluid.data(name="x",
+                                  shape=[2, 3, 5, 7, 7],
+                                  dtype="float32")
+
+            out_1 = paddle.nn.functional.adaptive_avg_pool3d(
+                x=x, output_size=[3, 3, 3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             out_2 = paddle.nn.functional.adaptive_avg_pool3d(x=x, output_size=5)
 
             out_3 = paddle.nn.functional.adaptive_avg_pool3d(
+<<<<<<< HEAD
                 x=x, output_size=[2, 3, 5]
             )
 
@@ -169,6 +271,21 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
+=======
+                x=x, output_size=[2, 3, 5])
+
+            out_4 = paddle.nn.functional.adaptive_avg_pool3d(
+                x=x, output_size=[3, 3, 3], data_format="NDHWC")
+
+            out_5 = paddle.nn.functional.adaptive_avg_pool3d(
+                x=x, output_size=[None, 3, None])
+
+            exe = paddle.static.Executor(place=place)
+            [res_1, res_2, res_3, res_4,
+             res_5] = exe.run(fluid.default_main_program(),
+                              feed={"x": self.x_np},
+                              fetch_list=[out_1, out_2, out_3, out_4, out_5])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -181,20 +298,30 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
             assert np.allclose(res_5, self.res_5_np)
 
     def test_dynamic_graph(self):
+<<<<<<< HEAD
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
+=======
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
             out_1 = paddle.nn.functional.adaptive_avg_pool3d(
+<<<<<<< HEAD
                 x=x, output_size=[3, 3, 3]
             )
+=======
+                x=x, output_size=[3, 3, 3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             out_2 = paddle.nn.functional.adaptive_avg_pool3d(x=x, output_size=5)
 
             out_3 = paddle.nn.functional.adaptive_avg_pool3d(
+<<<<<<< HEAD
                 x=x, output_size=[2, 3, 5]
             )
 
@@ -209,6 +336,19 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
             out_6 = paddle.nn.functional.interpolate(
                 x=x, mode="area", size=[2, 3, 5]
             )
+=======
+                x=x, output_size=[2, 3, 5])
+
+            out_4 = paddle.nn.functional.adaptive_avg_pool3d(
+                x=x, output_size=[3, 3, 3], data_format="NDHWC")
+
+            out_5 = paddle.nn.functional.adaptive_avg_pool3d(
+                x=x, output_size=[None, 3, None])
+
+            out_6 = paddle.nn.functional.interpolate(x=x,
+                                                     mode="area",
+                                                     size=[2, 3, 5])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             assert np.allclose(out_1.numpy(), self.res_1_np)
 
@@ -224,6 +364,7 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
 
 
 class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
         self.res_1_np = adaptive_pool3d_forward(
@@ -262,12 +403,50 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
                 output_size=[3, 3, 3]
             )
+=======
+
+    def setUp(self):
+        self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
+        self.res_1_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="avg")
+
+        self.res_2_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=5,
+                                                pool_type="avg")
+
+        self.res_3_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[2, 3, 5],
+                                                pool_type="avg")
+
+        self.res_4_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="avg",
+                                                data_format="NDHWC")
+
+        self.res_5_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[None, 3, None],
+                                                pool_type="avg")
+
+    def test_static_graph(self):
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.enable_static()
+            x = paddle.fluid.data(name="x",
+                                  shape=[2, 3, 5, 7, 7],
+                                  dtype="float32")
+
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
+                output_size=[3, 3, 3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out_1 = adaptive_avg_pool(x=x)
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(output_size=5)
             out_2 = adaptive_avg_pool(x=x)
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
+<<<<<<< HEAD
                 output_size=[2, 3, 5]
             )
             out_3 = adaptive_avg_pool(x=x)
@@ -288,6 +467,24 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
+=======
+                output_size=[2, 3, 5])
+            out_3 = adaptive_avg_pool(x=x)
+
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
+                output_size=[3, 3, 3], data_format="NDHWC")
+            out_4 = adaptive_avg_pool(x=x)
+
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
+                output_size=[None, 3, None])
+            out_5 = adaptive_avg_pool(x=x)
+
+            exe = paddle.static.Executor(place=place)
+            [res_1, res_2, res_3, res_4,
+             res_5] = exe.run(fluid.default_main_program(),
+                              feed={"x": self.x_np},
+                              fetch_list=[out_1, out_2, out_3, out_4, out_5])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -300,22 +497,32 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
             assert np.allclose(res_5, self.res_5_np)
 
     def test_dynamic_graph(self):
+<<<<<<< HEAD
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
+=======
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
+<<<<<<< HEAD
                 output_size=[3, 3, 3]
             )
+=======
+                output_size=[3, 3, 3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out_1 = adaptive_avg_pool(x=x)
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(output_size=5)
             out_2 = adaptive_avg_pool(x=x)
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
+<<<<<<< HEAD
                 output_size=[2, 3, 5]
             )
             out_3 = adaptive_avg_pool(x=x)
@@ -328,6 +535,17 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
                 output_size=[None, 3, None]
             )
+=======
+                output_size=[2, 3, 5])
+            out_3 = adaptive_avg_pool(x=x)
+
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
+                output_size=[3, 3, 3], data_format="NDHWC")
+            out_4 = adaptive_avg_pool(x=x)
+
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
+                output_size=[None, 3, None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out_5 = adaptive_avg_pool(x=x)
 
             assert np.allclose(out_1.numpy(), self.res_1_np)

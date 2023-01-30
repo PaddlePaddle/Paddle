@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import random
 import unittest
@@ -22,6 +23,23 @@ import paddle
 import paddle.fluid as fluid
 from paddle.jit.api import to_static
 from paddle.nn import Embedding
+=======
+import io
+import os
+import sys
+import requests
+from collections import OrderedDict
+import math
+import random
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import unittest
+
+from paddle.fluid.dygraph.nn import Embedding
+from paddle.fluid.dygraph import ProgramTranslator
+from paddle.fluid.dygraph import declarative
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def fake_text():
@@ -56,15 +74,25 @@ def build_dict(corpus, min_freq=3):
                 word_freq_dict[word] = 0
             word_freq_dict[word] += 1
 
+<<<<<<< HEAD
     word_freq_dict = sorted(
         word_freq_dict.items(), key=lambda x: x[1], reverse=True
     )
+=======
+    word_freq_dict = sorted(word_freq_dict.items(),
+                            key=lambda x: x[1],
+                            reverse=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     word2id_dict = dict()
     word2id_freq = dict()
     id2word_dict = dict()
 
+<<<<<<< HEAD
     word2id_freq[0] = 1.0
+=======
+    word2id_freq[0] = 1.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     word2id_dict['[oov]'] = 0
     id2word_dict[0] = '[oov]'
 
@@ -86,10 +114,15 @@ word2id_freq, word2id_dict, id2word_dict = build_dict(corpus)
 vocab_size = len(word2id_freq)
 print("there are totoally %d different words in the corpus" % vocab_size)
 for _, (word, word_id) in zip(range(50), word2id_dict.items()):
+<<<<<<< HEAD
     print(
         "word %s, its id %d, its word freq %d"
         % (word, word_id, word2id_freq[word_id])
     )
+=======
+    print("word %s, its id %d, its word freq %d" %
+          (word, word_id, word2id_freq[word_id]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def convert_corpus_to_id(corpus, word2id_dict):
@@ -97,9 +130,13 @@ def convert_corpus_to_id(corpus, word2id_dict):
     for line in corpus:
         new_line = [
             word2id_dict[word]
+<<<<<<< HEAD
             if word in word2id_dict
             else word2id_dict['[oov]']
             for word in line
+=======
+            if word in word2id_dict else word2id_dict['[oov]'] for word in line
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         new_corpus.append(new_line)
     return new_corpus
@@ -109,10 +146,17 @@ corpus = convert_corpus_to_id(corpus, word2id_dict)
 
 
 def subsampling(corpus, word2id_freq):
+<<<<<<< HEAD
     def keep(word_id):
         return random.uniform(0, 1) < math.sqrt(
             1e-4 / word2id_freq[word_id] * len(corpus)
         )
+=======
+
+    def keep(word_id):
+        return random.uniform(0, 1) < math.sqrt(
+            1e-4 / word2id_freq[word_id] * len(corpus))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     new_corpus = []
     for line in corpus:
@@ -124,6 +168,7 @@ def subsampling(corpus, word2id_freq):
 corpus = subsampling(corpus, word2id_freq)
 
 
+<<<<<<< HEAD
 def build_data(
     corpus,
     word2id_dict,
@@ -131,6 +176,13 @@ def build_data(
     max_window_size=3,
     negative_sample_num=10,
 ):
+=======
+def build_data(corpus,
+               word2id_dict,
+               word2id_freq,
+               max_window_size=3,
+               negative_sample_num=10):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     dataset = []
 
@@ -139,6 +191,7 @@ def build_data(
             window_size = random.randint(1, max_window_size)
             center_word = line[center_word_idx]
 
+<<<<<<< HEAD
             positive_word_range = (
                 max(0, center_word_idx - window_size),
                 min(len(line) - 1, center_word_idx + window_size),
@@ -148,6 +201,15 @@ def build_data(
                 for idx in range(
                     positive_word_range[0], positive_word_range[1] + 1
                 )
+=======
+            positive_word_range = (max(0, center_word_idx - window_size),
+                                   min(
+                                       len(line) - 1,
+                                       center_word_idx + window_size))
+            positive_word_candidates = [
+                line[idx] for idx in range(positive_word_range[0],
+                                           positive_word_range[1] + 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if idx != center_word_idx and line[idx] != line[center_word_idx]
             ]
 
@@ -170,10 +232,15 @@ def build_data(
 
 dataset = build_data(corpus, word2id_dict, word2id_freq)
 for _, (center_word, target_word, label) in zip(range(50), dataset):
+<<<<<<< HEAD
     print(
         "center_word %s, target %s, label %d"
         % (id2word_dict[center_word], id2word_dict[target_word], label)
     )
+=======
+    print("center_word %s, target %s, label %d" %
+          (id2word_dict[center_word], id2word_dict[target_word], label))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def build_batch(dataset, batch_size, epoch_num):
@@ -196,6 +263,7 @@ def build_batch(dataset, batch_size, epoch_num):
 
             if len(center_word_batch) == batch_size:
                 yield np.array(center_word_batch).astype("int64"), np.array(
+<<<<<<< HEAD
                     target_word_batch
                 ).astype("int64"), np.array(label_batch).astype(
                     "float32"
@@ -204,6 +272,11 @@ def build_batch(dataset, batch_size, epoch_num):
                 ).astype(
                     "int64"
                 )
+=======
+                    target_word_batch).astype("int64"), np.array(
+                        label_batch).astype("float32"), np.array(
+                            eval_word_batch).astype("int64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 center_word_batch = []
                 target_word_batch = []
                 label_batch = []
@@ -211,6 +284,7 @@ def build_batch(dataset, batch_size, epoch_num):
 
     if len(center_word_batch) > 0:
         yield np.array(center_word_batch).astype("int64"), np.array(
+<<<<<<< HEAD
             target_word_batch
         ).astype("int64"), np.array(label_batch).astype("float32"), np.array(
             eval_word_batch
@@ -222,10 +296,21 @@ def build_batch(dataset, batch_size, epoch_num):
 class SkipGram(fluid.dygraph.Layer):
     def __init__(self, name_scope, vocab_size, embedding_size, init_scale=0.1):
         super().__init__(name_scope)
+=======
+            target_word_batch).astype("int64"), np.array(label_batch).astype(
+                "float32"), np.array(eval_word_batch).astype("int64")
+
+
+class SkipGram(fluid.dygraph.Layer):
+
+    def __init__(self, name_scope, vocab_size, embedding_size, init_scale=0.1):
+        super(SkipGram, self).__init__(name_scope)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
 
         self.embedding = Embedding(
+<<<<<<< HEAD
             self.vocab_size,
             self.embedding_size,
             weight_attr=fluid.ParamAttr(
@@ -250,12 +335,33 @@ class SkipGram(fluid.dygraph.Layer):
         )
 
     @to_static
+=======
+            size=[self.vocab_size, self.embedding_size],
+            dtype='float32',
+            param_attr=fluid.ParamAttr(
+                name='embedding_para',
+                initializer=fluid.initializer.UniformInitializer(
+                    low=-0.5 / self.embedding_size,
+                    high=0.5 / self.embedding_size)))
+
+        self.embedding_out = Embedding(
+            size=[self.vocab_size, self.embedding_size],
+            dtype='float32',
+            param_attr=fluid.ParamAttr(
+                name='embedding_out_para',
+                initializer=fluid.initializer.UniformInitializer(
+                    low=-0.5 / self.embedding_size,
+                    high=0.5 / self.embedding_size)))
+
+    @declarative
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
 
         # center_words_emb = [batch_size, embedding_size]
         # target_words_emb = [batch_size, embedding_size]
+<<<<<<< HEAD
         word_sim = paddle.multiply(center_words_emb, target_words_emb)
         word_sim = paddle.sum(word_sim, axis=-1)
 
@@ -265,6 +371,16 @@ class SkipGram(fluid.dygraph.Layer):
             word_sim, label
         )
         loss = paddle.mean(loss)
+=======
+        word_sim = fluid.layers.elementwise_mul(center_words_emb,
+                                                target_words_emb)
+        word_sim = fluid.layers.reduce_sum(word_sim, dim=-1)
+
+        pred = fluid.layers.sigmoid(word_sim)
+
+        loss = fluid.layers.sigmoid_cross_entropy_with_logits(word_sim, label)
+        loss = fluid.layers.reduce_mean(loss)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return pred, loss
 
@@ -277,20 +393,31 @@ total_steps = len(dataset) * epoch_num // batch_size
 
 
 def train(to_static):
+<<<<<<< HEAD
     paddle.jit.enable_to_static(to_static)
+=======
+    program_translator = ProgramTranslator()
+    program_translator.enable(to_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     random.seed(0)
     np.random.seed(0)
 
+<<<<<<< HEAD
     place = (
         fluid.CUDAPlace(0)
         if fluid.is_compiled_with_cuda()
         else fluid.CPUPlace()
     )
+=======
+    place = fluid.CUDAPlace(
+        0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     with fluid.dygraph.guard(place):
         fluid.default_startup_program().random_seed = 1000
         fluid.default_main_program().random_seed = 1000
 
+<<<<<<< HEAD
         skip_gram_model = SkipGram(
             "skip_gram_model", vocab_size, embedding_size
         )
@@ -298,10 +425,18 @@ def train(to_static):
             learning_rate=learning_rate,
             parameter_list=skip_gram_model.parameters(),
         )
+=======
+        skip_gram_model = SkipGram("skip_gram_model", vocab_size,
+                                   embedding_size)
+        adam = fluid.optimizer.AdamOptimizer(
+            learning_rate=learning_rate,
+            parameter_list=skip_gram_model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         step = 0
         ret = []
         for center_words, target_words, label, eval_words in build_batch(
+<<<<<<< HEAD
             dataset, batch_size, epoch_num
         ):
             center_words_var = fluid.dygraph.to_variable(center_words)
@@ -310,6 +445,14 @@ def train(to_static):
             pred, loss = skip_gram_model(
                 center_words_var, target_words_var, label_var
             )
+=======
+                dataset, batch_size, epoch_num):
+            center_words_var = fluid.dygraph.to_variable(center_words)
+            target_words_var = fluid.dygraph.to_variable(target_words)
+            label_var = fluid.dygraph.to_variable(label)
+            pred, loss = skip_gram_model(center_words_var, target_words_var,
+                                         label_var)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             loss.backward()
             adam.minimize(loss)
@@ -323,6 +466,10 @@ def train(to_static):
 
 
 class TestWord2Vec(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
@@ -330,4 +477,9 @@ class TestWord2Vec(unittest.TestCase):
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     unittest.main()
+=======
+    with fluid.framework._test_eager_guard():
+        unittest.main()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

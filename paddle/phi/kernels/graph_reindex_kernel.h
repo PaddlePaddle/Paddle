@@ -19,6 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
                                                const T* input,
                                                int num_input,
@@ -45,6 +46,8 @@ void ReindexDst(const Context& dev_ctx,
                 int node_len);
 
 template <typename T, typename Context>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void GraphReindexKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& neighbors,

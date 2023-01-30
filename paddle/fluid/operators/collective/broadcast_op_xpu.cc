@@ -44,8 +44,13 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
     int dev_id = ctx.GetPlace().device;
     int root_dev_id = ctx.Attr<int>("root");
 
+<<<<<<< HEAD
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         out->IsInitialized(),
         true,

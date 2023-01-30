@@ -15,7 +15,11 @@
 #include "paddle/fluid/operators/jit/gen/vbroadcast.h"
 
 #include "paddle/fluid/operators/jit/registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -69,8 +73,12 @@ void VBroadcastJitCode::genCode() {
 class VBroadcastCreator : public JitCodeCreator<int64_t> {
  public:
   bool CanBeUsed(const int64_t& w) const override {
+<<<<<<< HEAD
     return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) &&
            w % YMM_FLOAT_BLOCK == 0;
+=======
+    return platform::MayIUse(platform::avx) && w % YMM_FLOAT_BLOCK == 0;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   size_t CodeSize(const int64_t& w) const override {
     return 96 + (w / YMM_FLOAT_BLOCK) * 16 * 8;

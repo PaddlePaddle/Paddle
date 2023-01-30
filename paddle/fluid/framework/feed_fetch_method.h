@@ -30,12 +30,20 @@ namespace framework {
 class Scope;
 
 void SetFeedVariable(Scope* scope,
+<<<<<<< HEAD
                      const phi::DenseTensor& input,
+=======
+                     const LoDTensor& input,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      const std::string& var_name,
                      size_t index);
 
 void SetFeedVariable(Scope* scope,
+<<<<<<< HEAD
                      const std::vector<std::string>& input,
+=======
+                     const Strings& input,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      const std::string& var_name,
                      size_t index);
 
@@ -43,8 +51,12 @@ FetchType& GetFetchVariable(const Scope& scope,
                             const std::string& var_name,
                             size_t index);
 
+<<<<<<< HEAD
 phi::DenseTensor& GetVariableTensor(const Scope& scope,
                                     const std::string& var_name);
+=======
+LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace framework
 }  // namespace paddle

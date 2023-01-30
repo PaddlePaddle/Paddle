@@ -66,11 +66,20 @@ void FleetExecutor::Init(
                         "Fleet executor is inited with empty task node"));
   // TODO(fleet_exe devs): the unused_vars should be got from run time graph
   std::vector<std::unique_ptr<framework::OperatorBase>> ops;
+<<<<<<< HEAD
   for (const auto& desc : program_desc.Block(0).AllOps()) {
     ops.emplace_back(framework::OpRegistry::CreateOp(*desc));
   }
   auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
 
+=======
+  for (auto task_node : task_nodes) {
+    for (auto op : task_node->ops()) {
+      ops.emplace_back(std::unique_ptr<framework::OperatorBase>(op));
+    }
+  }
+  auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // NOTE: For inference, the vars in inference_root_scope_vars
   // shouldn't be deleted during inf, for that they may be the result of the
   // inf. If they are GCed, it will cause error during ZeroCopy the result.
@@ -106,6 +115,7 @@ void FleetExecutor::Init(
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
   for (auto task_node : task_nodes) {
     task_node->SetUnusedVars(unused_vars);
+<<<<<<< HEAD
     if (task_node->type() == "Cond") {
       std::vector<std::string> while_block_vars;
       std::vector<std::string> vars_in_parent;
@@ -125,6 +135,8 @@ void FleetExecutor::Init(
                           std::back_inserter(while_block_vars));
       task_node->SetWhileBlockVars(while_block_vars);
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int64_t interceptor_id = task_node->task_id();
     interceptor_id_to_task.emplace(interceptor_id, task_node);
   }

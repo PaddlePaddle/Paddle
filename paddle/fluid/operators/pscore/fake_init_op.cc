@@ -32,12 +32,21 @@ class FakeInitOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+<<<<<<< HEAD
     phi::DenseTensor *tensor = nullptr;
 
     auto &out_var = *scope.FindVar(Output("Out"));
 
     if (out_var.IsType<phi::DenseTensor>()) {
       tensor = out_var.GetMutable<phi::DenseTensor>();
+=======
+    framework::Tensor *tensor = nullptr;
+
+    auto &out_var = *scope.FindVar(Output("Out"));
+
+    if (out_var.IsType<framework::LoDTensor>()) {
+      tensor = out_var.GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tensor->Resize(phi::make_ddim(Attr<std::vector<int64_t>>("shape")));
     } else if (out_var.IsType<phi::SelectedRows>()) {
       tensor = out_var.GetMutable<phi::SelectedRows>()->mutable_value();
@@ -45,7 +54,11 @@ class FakeInitOp : public framework::OperatorBase {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "fake init op's output only"
+<<<<<<< HEAD
           "supports SelectedRows and phi::DenseTensor"));
+=======
+          "supports SelectedRows and LoDTensor"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };

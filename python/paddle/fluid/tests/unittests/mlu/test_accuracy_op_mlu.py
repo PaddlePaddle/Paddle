@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import sys
@@ -26,6 +31,10 @@ paddle.enable_static()
 
 
 class TestAccuracyOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "accuracy"
         self.place = paddle.device.MLUPlace(0)
@@ -46,7 +55,11 @@ class TestAccuracyOp(OpTest):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
+<<<<<<< HEAD
             'Total': np.array([n]).astype("int32"),
+=======
+            'Total': np.array([n]).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_dtype(self):
@@ -57,6 +70,10 @@ class TestAccuracyOp(OpTest):
 
 
 class TestAccuracyOpFp16(TestAccuracyOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -65,6 +82,7 @@ class TestAccuracyOpFp16(TestAccuracyOp):
 
 
 class TestAccuracyOpError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of accuracy_op must be Variable.
@@ -82,10 +100,30 @@ class TestAccuracyOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
             x3 = paddle.static.data(name='input', shape=[-1, 2], dtype="float16")
             paddle.static.accuracy(input=x3, label=label)
+=======
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of accuracy_op must be Variable.
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.MLUPlace(0))
+            label = fluid.layers.data(name='label',
+                                      shape=[-1, 1],
+                                      dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.accuracy, x1, label)
+            self.assertRaises(TypeError, paddle.metric.accuracy, x1, label)
+            # The input dtype of accuracy_op must be float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.accuracy, x2, label)
+            self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
+            x3 = fluid.layers.data(name='input', shape=[-1, 2], dtype="float16")
+            fluid.layers.accuracy(input=x3, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.metric.accuracy(input=x3, label=label)
 
 
 class TestAccuracyAPI1(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.predictions = paddle.static.data(
             shape=[2, 5], name="predictions", dtype="float32"
@@ -100,11 +138,28 @@ class TestAccuracyAPI1(unittest.TestCase):
             [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
             dtype="float32",
         )
+=======
+
+    def setUp(self):
+        self.predictions = paddle.static.data(shape=[2, 5],
+                                              name="predictions",
+                                              dtype="float32")
+        self.label = paddle.static.data(shape=[2, 1],
+                                        name="labels",
+                                        dtype="int32")
+        self.result = paddle.static.accuracy(input=self.predictions,
+                                             label=self.label,
+                                             k=1)
+        self.input_predictions = np.array(
+            [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
+            dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.input_labels = np.array([[2], [0]], dtype="int32")
         self.expect_value = np.array([0.5], dtype='float32')
 
     def test_api(self):
         exe = paddle.static.Executor()
+<<<<<<< HEAD
         (result,) = exe.run(
             feed={
                 "predictions": self.input_predictions,
@@ -112,16 +167,31 @@ class TestAccuracyAPI1(unittest.TestCase):
             },
             fetch_list=[self.result.name],
         )
+=======
+        result, = exe.run(feed={
+            "predictions": self.input_predictions,
+            'labels': self.input_labels
+        },
+                          fetch_list=[self.result.name])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual((result == self.expect_value).all(), True)
 
 
 class TestAccuracyAPI2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api(self):
         with fluid.dygraph.guard():
             predictions = paddle.to_tensor(
                 [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
+<<<<<<< HEAD
                 dtype='float32',
             )
+=======
+                dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             label = paddle.to_tensor([[2], [0]], dtype="int32")
             result = paddle.static.accuracy(input=predictions, label=label, k=1)
             expect_value = np.array([0.5], dtype='float32')
@@ -129,12 +199,20 @@ class TestAccuracyAPI2(unittest.TestCase):
 
 
 class TestAccuracyAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api(self):
         with fluid.dygraph.guard():
             predictions = paddle.to_tensor(
                 [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
+<<<<<<< HEAD
                 dtype='float32',
             )
+=======
+                dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             label = paddle.to_tensor([[2], [0]], dtype="int32")
             result = paddle.metric.accuracy(input=predictions, label=label, k=1)
             expect_value = np.array([0.5], dtype='float32')

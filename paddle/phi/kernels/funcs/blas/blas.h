@@ -18,7 +18,11 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLML
+<<<<<<< HEAD
 #include "paddle/phi/backends/dynload/mklml.h"
+=======
+#include "paddle/fluid/platform/dynload/mklml.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 #ifdef PADDLE_WITH_LIBXSMM

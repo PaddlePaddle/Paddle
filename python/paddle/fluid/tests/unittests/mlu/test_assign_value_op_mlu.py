@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy
 import sys
@@ -29,6 +34,10 @@ numpy.random.seed(2022)
 
 
 class TestAssignValueMLUOp(op_test.OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "assign_value"
@@ -38,8 +47,12 @@ class TestAssignValueMLUOp(op_test.OpTest):
 
         self.attrs["shape"] = self.value.shape
         self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
+<<<<<<< HEAD
             self.value.dtype
         )
+=======
+            self.value.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.outputs = {"Out": self.value}
 
     def set_mlu(self):
@@ -55,22 +68,37 @@ class TestAssignValueMLUOp(op_test.OpTest):
 
 
 class TestAssignValueMLUOp2(TestAssignValueMLUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.value = numpy.random.random(size=(2, 5)).astype(numpy.int32)
         self.attrs["int32_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignValueMLUOp3(TestAssignValueMLUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.value = numpy.random.random(size=(2, 5)).astype(numpy.int64)
         self.attrs["int64_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignValueMLUOp4(TestAssignValueMLUOp):
+<<<<<<< HEAD
     def init_data(self):
         self.value = numpy.random.choice(a=[False, True], size=(2, 5)).astype(
             numpy.bool
         )
+=======
+
+    def init_data(self):
+        self.value = numpy.random.choice(a=[False, True],
+                                         size=(2, 5)).astype(numpy.bool)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 

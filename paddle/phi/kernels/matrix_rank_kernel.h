@@ -22,8 +22,13 @@ template <typename T, typename Context>
 void MatrixRankKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       float tol,
+<<<<<<< HEAD
                       bool hermitian,
                       bool use_default_tol,
+=======
+                      bool use_default_tol,
+                      bool hermitian,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       DenseTensor* out);
 
 }  // namespace phi

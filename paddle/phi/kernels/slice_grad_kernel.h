@@ -16,7 +16,10 @@
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/tensor_array.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -31,6 +34,7 @@ void SliceGradRawKernel(const Context& ctx,
                         const std::vector<int64_t>& decrease_axis,
                         DenseTensor* input_grad);
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void SliceArrayGradKernel(const Context& dev_ctx,
                           const TensorArray& input,
@@ -46,4 +50,6 @@ void SliceArrayDenseGradKernel(const Context& dev_ctx,
                                const IntArray& starts,
                                TensorArray* input_grad);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

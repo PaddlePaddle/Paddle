@@ -16,9 +16,15 @@
 
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
+=======
+#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
@@ -36,7 +42,13 @@ void FoldKernel(const Context& ctx,
   const int batch_size = static_cast<int>(x.dims()[0]);
   ctx.template Alloc<T>(out);
 
+<<<<<<< HEAD
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
+=======
+  paddle::operators::math::
+      Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
+          col2im;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const auto& x_dims = x.dims();
 
   int output_height = (output_sizes[0] + 2 * paddings[0] -

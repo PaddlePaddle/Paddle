@@ -42,7 +42,17 @@ class ReduceOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(4) << "convert a paddle " << op_type << " op to tensorrt reduce layer";
     framework::OpDesc op_desc(op, nullptr);
+<<<<<<< HEAD
     auto reduce_type = ops_.find(op_type);
+=======
+    nvinfer1::ReduceOperation reduce_type = nvinfer1::ReduceOperation::kSUM;
+    if (op_type == "reduce_sum") {
+      reduce_type = nvinfer1::ReduceOperation::kSUM;
+    } else if (op_type == "reduce_mean") {
+      reduce_type = nvinfer1::ReduceOperation::kAVG;
+    }
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* x = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::Dims input_shape = x->getDimensions();
     int input_dims = input_shape.nbDims;
@@ -58,12 +68,17 @@ class ReduceOpConverter : public OpConverter {
       for (int i = 0; i < input_dims; ++i) {
         reduce_dim |= 1 << i;
       }
+<<<<<<< HEAD
       layer = TRT_ENGINE_ADD_LAYER(engine_,
                                    Reduce,
                                    *x,
                                    reduce_type->second.front(),
                                    reduce_dim,
                                    keep_dim);
+=======
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *x, reduce_type, reduce_dim, keep_dim);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       auto CvtToBitMask = [&](const std::vector<int32_t>& dims) -> uint32_t {
         uint32_t res = 0;
@@ -77,12 +92,17 @@ class ReduceOpConverter : public OpConverter {
         }
         return res;
       };
+<<<<<<< HEAD
       layer = TRT_ENGINE_ADD_LAYER(engine_,
                                    Reduce,
                                    *x,
                                    reduce_type->second.front(),
                                    CvtToBitMask(dim),
                                    keep_dim);
+=======
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *x, reduce_type, CvtToBitMask(dim), keep_dim);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     auto output_name = op_desc.Output("Out")[0];
@@ -93,6 +113,7 @@ class ReduceOpConverter : public OpConverter {
 
  protected:
   std::string op_type;
+<<<<<<< HEAD
   static const std::unordered_map<std::string,
                                   std::vector<nvinfer1::ReduceOperation>>
       ops_;
@@ -105,6 +126,8 @@ const std::unordered_map<std::string, std::vector<nvinfer1::ReduceOperation>>
         {"reduce_max", {nvinfer1::ReduceOperation::kMAX}},
         {"reduce_min", {nvinfer1::ReduceOperation::kMIN}},
         {"reduce_prod", {nvinfer1::ReduceOperation::kPROD}},
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class ReduceSumOpConverter : public ReduceOpConverter {
@@ -117,6 +140,7 @@ class ReduceMeanOpConverter : public ReduceOpConverter {
   ReduceMeanOpConverter() { op_type = "reduce_mean"; }
 };
 
+<<<<<<< HEAD
 class ReduceMaxOpConverter : public ReduceOpConverter {
  public:
   ReduceMaxOpConverter() { op_type = "reduce_max"; }
@@ -132,12 +156,17 @@ class ReduceProdOpConverter : public ReduceOpConverter {
   ReduceProdOpConverter() { op_type = "reduce_prod"; }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(reduce_sum, ReduceSumOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_mean, ReduceMeanOpConverter);
+<<<<<<< HEAD
 REGISTER_TRT_OP_CONVERTER(reduce_max, ReduceMaxOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_min, ReduceMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(reduce_prod, ReduceProdOpConverter);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

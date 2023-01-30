@@ -12,32 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+import math
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from op_test import OpTest
 
 
 class TestMineHardExamplesOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data(self):
         self.init_test_data()
         self.inputs = {
             'ClsLoss': self.cls_loss,
             'LocLoss': self.loc_loss,
             'MatchIndices': self.match_indices,
+<<<<<<< HEAD
             'MatchDist': self.match_dis,
+=======
+            'MatchDist': self.match_dis
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {
             'neg_pos_ratio': self.neg_pos_ratio,
             'neg_overlap': self.neg_overlap,
             'sample_size': self.sample_size,
+<<<<<<< HEAD
             'mining_type': self.mining_type,
+=======
+            'mining_type': self.mining_type
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.outputs = {
             'NegIndices': (self.neg_indices, self.neg_indices_lod),
+<<<<<<< HEAD
             'UpdatedMatchIndices': self.updated_match_indices,
+=======
+            'UpdatedMatchIndices': self.updated_match_indices
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -55,6 +80,7 @@ class TestMineHardExamplesOp(OpTest):
         self.neg_overlap = 0.5
         self.sample_size = 0
         self.mining_type = "max_negative"
+<<<<<<< HEAD
         self.cls_loss = np.array([[0.1, 0.1, 0.3], [0.3, 0.1, 0.1]]).astype(
             'float64'
         )
@@ -70,6 +96,19 @@ class TestMineHardExamplesOp(OpTest):
         self.match_indices = np.array([[0, -1, -1], [-1, 0, -1]]).astype(
             'int32'
         )
+=======
+        self.cls_loss = np.array([[0.1, 0.1, 0.3], [0.3, 0.1,
+                                                    0.1]]).astype('float64')
+
+        self.loc_loss = np.array([[0.1, 0.2, 0.3], [0.3, 0.4,
+                                                    0.1]]).astype('float64')
+
+        self.match_dis = np.array([[0.2, 0.4, 0.8], [0.1, 0.9,
+                                                     0.3]]).astype('float64')
+
+        self.match_indices = np.array([[0, -1, -1], [-1, 0,
+                                                     -1]]).astype('int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.updated_match_indices = self.match_indices
 
@@ -78,6 +117,7 @@ class TestMineHardExamplesOp(OpTest):
 
 
 class TestMineHardExamplesOpHardExample(TestMineHardExamplesOp):
+<<<<<<< HEAD
     def init_test_data(self):
         super().init_test_data()
         self.mining_type = "hard_example"
@@ -98,6 +138,25 @@ class TestMineHardExamplesOpHardExample(TestMineHardExamplesOp):
         self.updated_match_indices = np.array(
             [[0, -1, -1], [-1, -1, -1]]
         ).astype('int32')
+=======
+
+    def init_test_data(self):
+        super(TestMineHardExamplesOpHardExample, self).init_test_data()
+        self.mining_type = "hard_example"
+        self.sample_size = 2
+
+        self.cls_loss = np.array([[0.5, 0.1, 0.3], [0.3, 0.1,
+                                                    0.1]]).astype('float64')
+
+        self.loc_loss = np.array([[0.2, 0.2, 0.3], [0.3, 0.1,
+                                                    0.2]]).astype('float64')
+
+        self.match_indices = np.array([[0, -1, -1], [-1, 0,
+                                                     -1]]).astype('int32')
+
+        self.updated_match_indices = np.array([[0, -1, -1],
+                                               [-1, -1, -1]]).astype('int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.neg_indices_lod = [[1, 2]]
         self.neg_indices = np.array([[2], [0], [2]]).astype('int32')

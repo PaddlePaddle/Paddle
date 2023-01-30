@@ -61,6 +61,7 @@ class CompareOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
@@ -75,6 +76,21 @@ class CompareOp : public framework::OperatorWithKernel {
             phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
       } else {
         kt.set_backend(phi::TransToPhiBackend(ctx.GetPlace()));
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    // CompareOp kernel's device type is decided by input tensor place
+    bool force_cpu = ctx.Attr<bool>("force_cpu");
+    if (force_cpu) {
+      kt.place_ = platform::CPUPlace();
+    } else {
+      if (ctx.Input<framework::LoDTensor>("X")->place().GetType() !=
+          phi::AllocationType::GPUPINNED) {
+        kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+      } else {
+        kt.place_ = ctx.GetPlace();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     }
     return kt;
@@ -101,7 +117,11 @@ class CompareOp : public framework::OperatorWithKernel {
   char _##op_type##Comment::equation[]{_equation};                       \
   DECLARE_INFER_SHAPE_FUNCTOR(op_type,                                   \
                               op_type##_InferShapeFunctor,               \
+<<<<<<< HEAD
                               PD_INFER_META(phi::CompareRawInferMeta));  \
+=======
+                              PD_INFER_META(phi::CompareInferMeta));     \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   REGISTER_OPERATOR(                                                     \
       op_type,                                                           \
       ::paddle::operators::CompareOp<_##op_type##Comment>,               \

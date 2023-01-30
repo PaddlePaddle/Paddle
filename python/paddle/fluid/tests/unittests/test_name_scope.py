@@ -12,23 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 
 
 class TestNameScope(unittest.TestCase):
+<<<<<<< HEAD
     def test_name_scope(self):
         with fluid.name_scope("s1"):
             a = paddle.static.data(name='data', shape=[-1, 1], dtype='int32')
+=======
+
+    def test_name_scope(self):
+        with fluid.name_scope("s1"):
+            a = fluid.layers.data(name='data', shape=[1], dtype='int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             b = a + 1
             with fluid.name_scope("s2"):
                 c = b * 1
             with fluid.name_scope("s3"):
                 d = c / 1
         with fluid.name_scope("s1"):
+<<<<<<< HEAD
             f = paddle.pow(d, 2.0)
+=======
+            f = fluid.layers.pow(d, 2.0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with fluid.name_scope("s4"):
             g = f - 1
 

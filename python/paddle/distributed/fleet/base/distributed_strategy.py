@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import google.protobuf
 import google.protobuf.text_format
 
@@ -21,6 +22,14 @@ from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
+=======
+import paddle
+from paddle.distributed.fleet.proto import distributed_strategy_pb2
+from paddle.fluid.framework import Variable, set_flags, core, _global_flags
+from paddle.fluid.wrapped_decorator import wrap_decorator
+import google.protobuf.text_format
+import google.protobuf
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -67,7 +76,11 @@ def check_configs_key(msg, config, field_name):
         assert key in key_list, "key:{} not in {}".format(key, field_name)
 
 
+<<<<<<< HEAD
 class DistributedJobInfo:
+=======
+class DistributedJobInfo(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     DistributedJobInfo will serialize all distributed training information
     Just for inner use: 1) debug 2) replicate experiments
@@ -104,11 +117,19 @@ class DistributedJobInfo:
         self.job_info.strategy = dist_strategy
 
 
+<<<<<<< HEAD
 ReduceStrategyFluid = paddle.static.BuildStrategy.ReduceStrategy
 ReduceStrategyFleet = int
 
 
 class DistributedStrategy:
+=======
+ReduceStrategyFluid = paddle.fluid.BuildStrategy.ReduceStrategy
+ReduceStrategyFleet = int
+
+
+class DistributedStrategy(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     __lock_attr = False
 
     def __init__(self):
@@ -144,7 +165,10 @@ class DistributedStrategy:
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
         self.__lock_attr = True
+<<<<<<< HEAD
         logger.info("distributed strategy initialized")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __setattr__(self, key, value):
         if self.__lock_attr and not hasattr(self, key):
@@ -208,7 +232,11 @@ class DistributedStrategy:
                 strategy.execution_strategy = exe_strategy
 
         """
+<<<<<<< HEAD
         execution_strategy = paddle.static.ExecutionStrategy()
+=======
+        execution_strategy = paddle.fluid.ExecutionStrategy()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         fields = self.strategy.execution_strategy.DESCRIPTOR.fields
         for f in fields:
             setattr(
@@ -256,7 +284,11 @@ class DistributedStrategy:
 
         """
 
+<<<<<<< HEAD
         build_strategy = paddle.static.BuildStrategy()
+=======
+        build_strategy = paddle.fluid.BuildStrategy()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
             value = getattr(self.strategy.build_strategy, f.name)
@@ -523,12 +555,20 @@ class DistributedStrategy:
             for field in msg.DESCRIPTOR.fields:
                 name = config_name + "." + field.name
                 if field.type == FieldDescriptor.TYPE_MESSAGE:
+<<<<<<< HEAD
                     logger.debug(f"message: {name}")
+=======
+                    # print("message:", name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     if field.label == FieldDescriptor.LABEL_REPEATED:
                         if name + ".num" not in configs:
                             continue
                         num = configs[name + ".num"]
+<<<<<<< HEAD
                         logger.debug(f"message num: {name} {num}")
+=======
+                        # print("message num:", name, num)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         for i in range(num):
                             data = getattr(msg, field.name).add()
                             set_table_config(data, name, configs, i)
@@ -537,7 +577,11 @@ class DistributedStrategy:
                             getattr(msg, field.name), name, configs
                         )
                 else:
+<<<<<<< HEAD
                     logger.debug("not message:", name)
+=======
+                    # print("not message:", name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     if name not in configs:
                         continue
                     if field.label == FieldDescriptor.LABEL_REPEATED:
@@ -549,7 +593,11 @@ class DistributedStrategy:
                             setattr(msg, field.name, configs[name])
 
         if not configs:
+<<<<<<< HEAD
             logger.info("table configs is empty")
+=======
+            print("table configs is empty")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             for table_name in configs:
                 table_data = table_param.add()
@@ -608,12 +656,17 @@ class DistributedStrategy:
             'embedx_sparse_beta2_decay_rate',
             'feature_learning_rate',
             'nodeid_slot',
+<<<<<<< HEAD
             'sparse_load_filter_slots',
         ]
         support_sparse_table_class = [
             'DownpourSparseTable',
             'DownpourSparseSSDTable',
         ]
+=======
+        ]
+        support_sparse_table_class = ['DownpourSparseTable']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor',
             'DownpourCtrAccessor',
@@ -622,6 +675,11 @@ class DistributedStrategy:
             'DownpourDoubleUnitAccessor',
             'DownpourCtrDymfAccessor',
         ]
+<<<<<<< HEAD
+=======
+        from google.protobuf.descriptor import FieldDescriptor
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         table_param = self.strategy.downpour_table_param
 
         def add_graph_config(graph, strategy):
@@ -733,6 +791,7 @@ class DistributedStrategy:
             )
             if table_class not in support_sparse_table_class:
                 raise ValueError(
+<<<<<<< HEAD
                     "support sparse_table_class: ['DownpourSparseTable, DownpourSparseSSDTable'], but actual %s"
                     % (table_class)
                 )
@@ -740,6 +799,12 @@ class DistributedStrategy:
                 table_data.table_class = 'SSDSparseTable'
             else:
                 table_data.table_class = 'MemorySparseTable'
+=======
+                    "support sparse_table_class: ['DownpourSparseTable'], but actual %s"
+                    % (table_class)
+                )
+            table_data.table_class = 'MemorySparseTable'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             table_data.shard_num = config.get('sparse_shard_num', 1000)
             table_data.enable_sparse_table_cache = config.get(
                 'sparse_enable_cache', True
@@ -808,10 +873,13 @@ class DistributedStrategy:
             table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = (
                 config.get('sparse_ssd_unseenday_threshold', 1)
             )
+<<<<<<< HEAD
             load_filter_slots = config.get('sparse_load_filter_slots', [])
             table_data.accessor.ctr_accessor_param.load_filter_slots.extend(
                 load_filter_slots
             )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")
 
@@ -845,7 +913,11 @@ class DistributedStrategy:
             add_graph_config(table_data.accessor.graph_sgd_param, config)
 
         if not configs:
+<<<<<<< HEAD
             logger.info("fleet desc config is empty")
+=======
+            print("fleet desc config is empty")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             for table_name in configs:
                 if (
@@ -882,7 +954,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.amp = flag
         else:
+<<<<<<< HEAD
             logger.warning("amp should have value of bool type")
+=======
+            print("WARNING: amp should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def amp_configs(self):
@@ -969,7 +1045,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.asp = flag
         else:
+<<<<<<< HEAD
             logger.warning("asp should have value of bool type")
+=======
+            print("WARNING: asp should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def recompute(self):
@@ -1012,7 +1092,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.sync_nccl_allreduce = flag
         else:
+<<<<<<< HEAD
             logger.warning("sync_nccl_allreduce should have value of bool type")
+=======
+            print("WARNING: sync_nccl_allreduce should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def use_hierarchical_allreduce(self):
@@ -1038,8 +1122,13 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.use_hierarchical_allreduce = flag
         else:
+<<<<<<< HEAD
             logger.warning(
                 "use_hierarchical_allreduce should have value of bool type"
+=======
+            print(
+                "WARNING: use_hierarchical_allreduce should have value of bool type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     @property
@@ -1065,8 +1154,13 @@ class DistributedStrategy:
         if isinstance(value, int):
             self.strategy.hierarchical_allreduce_inter_nranks = value
         else:
+<<<<<<< HEAD
             logger.warning(
                 "hierarchical_allreduce_inter_nranks should have value of int type"
+=======
+            print(
+                "WARNING: hierarchical_allreduce_inter_nranks should have value of int type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     @property
@@ -1094,7 +1188,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.sync_batch_norm = flag
         else:
+<<<<<<< HEAD
             logger.warning("sync_batch_norm should have value of bool type")
+=======
+            print("WARNING: sync_batch_norm should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def fuse_all_reduce_ops(self):
@@ -1119,7 +1217,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.fuse_all_reduce_ops = flag
         else:
+<<<<<<< HEAD
             logger.warning("fuse_all_reduce_ops should have value of bool type")
+=======
+            print("WARNING: fuse_all_reduce_ops should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def fuse_grad_size_in_MB(self):
@@ -1145,7 +1247,11 @@ class DistributedStrategy:
         if isinstance(value, int):
             self.strategy.fuse_grad_size_in_MB = value
         else:
+<<<<<<< HEAD
             logger.warning("fuse_grad_size_in_MB should have value of int type")
+=======
+            print("WARNING: fuse_grad_size_in_MB should have value of int type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def last_comm_group_size_MB(self):
@@ -1201,8 +1307,13 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.find_unused_parameters = flag
         else:
+<<<<<<< HEAD
             logger.warning(
                 "find_unused_parameters should have value of bool type"
+=======
+            print(
+                "WARNING: find_unused_parameters should have value of bool type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     @property
@@ -1215,8 +1326,13 @@ class DistributedStrategy:
         if isinstance(value, float):
             self.strategy.fuse_grad_size_in_TFLOPS = value
         else:
+<<<<<<< HEAD
             logger.warning(
                 "fuse_grad_size_in_TFLOPS should have value of float type"
+=======
+            print(
+                "WARNING: fuse_grad_size_in_TFLOPS should have value of float type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     @property
@@ -1244,7 +1360,11 @@ class DistributedStrategy:
         if isinstance(value, int):
             self.strategy.nccl_comm_num = value
         else:
+<<<<<<< HEAD
             logger.warning("nccl_comm_num should have value of int type")
+=======
+            print("WARNING: nccl_comm_num should have value of int type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @recompute.setter
     @is_strict_auto
@@ -1252,7 +1372,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.recompute = flag
         else:
+<<<<<<< HEAD
             logger.warning("recompute should have value of bool type")
+=======
+            print("WARNING: recompute should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def recompute_configs(self):
@@ -1324,7 +1448,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.sharding = flag
         else:
+<<<<<<< HEAD
             logger.warning("sharding should have value of bool type")
+=======
+            print("WARNING: sharding should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def sharding_configs(self):
@@ -1414,8 +1542,13 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.without_graph_optimization = flag
         else:
+<<<<<<< HEAD
             logger.warning(
                 "without_graph_optimization should have value of bool type"
+=======
+            print(
+                "WARNING: without_graph_optimization should have value of bool type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     @property
@@ -1442,8 +1575,13 @@ class DistributedStrategy:
         if isinstance(same, bool):
             self.strategy.calc_comm_same_stream = same
         else:
+<<<<<<< HEAD
             logger.warning(
                 "calc_comm_same_stream should have value of boolean type"
+=======
+            print(
+                "WARNING: calc_comm_same_stream should have value of boolean type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     @property
@@ -1470,7 +1608,11 @@ class DistributedStrategy:
         if isinstance(fuse_grad_merge, bool):
             self.strategy.fuse_grad_merge = fuse_grad_merge
         else:
+<<<<<<< HEAD
             logger.warning("fuse_grad_merge should have value of boolean type")
+=======
+            print("WARNING: fuse_grad_merge should have value of boolean type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def fuse_grad_size_in_num(self):
@@ -1495,8 +1637,13 @@ class DistributedStrategy:
         if isinstance(num, int):
             self.strategy.fuse_grad_size_in_num = num
         else:
+<<<<<<< HEAD
             logger.warning(
                 "fuse_grad_size_in_num should have value of int32 type"
+=======
+            print(
+                "WARNING: fuse_grad_size_in_num should have value of int32 type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     @property
@@ -1528,7 +1675,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.is_fl_ps_mode = flag
         else:
+<<<<<<< HEAD
             logger.warning("is_fl_ps_mode should have value of bool type")
+=======
+            print("WARNING: is_fl_ps_mode should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def is_with_coordinator(self):
@@ -1540,7 +1691,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.with_coordinator = flag
         else:
+<<<<<<< HEAD
             logger.warning("with_coordinator should have value of bool type")
+=======
+            print("WARNING: with_coordinator should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @pipeline.setter
     @is_strict_auto
@@ -1548,7 +1703,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.pipeline = flag
         else:
+<<<<<<< HEAD
             logger.warning("pipeline should have value of bool type")
+=======
+            print("WARNING: pipeline should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def pipeline_configs(self):
@@ -1610,7 +1769,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.tensor_parallel = flag
         else:
+<<<<<<< HEAD
             logger.warning("tensor_parallel should have value of bool type")
+=======
+            print("WARNING: tensor_parallel should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def tensor_parallel_configs(self):
@@ -1712,7 +1875,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.localsgd = flag
         else:
+<<<<<<< HEAD
             logger.warning("localsgd should have value of bool type")
+=======
+            print("WARNING: localsgd should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def localsgd_configs(self):
@@ -1770,7 +1937,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.adaptive_localsgd = flag
         else:
+<<<<<<< HEAD
             logger.warning("adaptive_localsgd should have value of bool type")
+=======
+            print("WARNING: adaptive_localsgd should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def adaptive_localsgd_configs(self):
@@ -1834,7 +2005,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.dgc = flag
         else:
+<<<<<<< HEAD
             logger.warning("dgc should have value of bool type")
+=======
+            print("WARNING: dgc should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def dgc_configs(self):
@@ -1927,7 +2102,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.gradient_merge = flag
         else:
+<<<<<<< HEAD
             logger.warning("gradient_merge should have value of bool type")
+=======
+            print("WARNING: gradient_merge should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def gradient_merge_configs(self):
@@ -1985,7 +2164,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.lars = flag
         else:
+<<<<<<< HEAD
             logger.warning("lars should have value of bool type")
+=======
+            print("WARNING: lars should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def lars_configs(self):
@@ -2051,7 +2234,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.lamb = flag
         else:
+<<<<<<< HEAD
             logger.warning("lamb should have value of bool type")
+=======
+            print("WARNING: lamb should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def lamb_configs(self):
@@ -2100,7 +2287,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.elastic = flag
         else:
+<<<<<<< HEAD
             logger.warning("elastic should have value of bool type")
+=======
+            print("WARNING: elastic should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def auto(self):
@@ -2136,7 +2327,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.auto = flag
         else:
+<<<<<<< HEAD
             logger.warning("auto should have value of bool type")
+=======
+            print("WARNING: auto should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def semi_auto(self):
@@ -2172,7 +2367,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.semi_auto = flag
         else:
+<<<<<<< HEAD
             logger.warning("semi-auto should have value of bool type")
+=======
+            print("WARNING: semi-auto should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def auto_search(self):
@@ -2200,7 +2399,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.auto_search = flag
         else:
+<<<<<<< HEAD
             logger.warning("auto-search should have value of bool type")
+=======
+            print("WARNING: auto-search should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def split_data(self):
@@ -2227,7 +2430,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.split_data = flag
         else:
+<<<<<<< HEAD
             logger.warning("split_data should have value of bool type")
+=======
+            print("WARNING: split_data should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def qat(self):
@@ -2244,7 +2451,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.qat = flag
         else:
+<<<<<<< HEAD
             logger.warning("qat should have value of bool type")
+=======
+            print("WARNING: qat should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def qat_configs(self):
@@ -2316,7 +2527,11 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.heter_ccl_mode = flag
         else:
+<<<<<<< HEAD
             logger.warning("heter_ccl_mode should have value of bool type")
+=======
+            print("WARNING: heter_ccl_mode should have value of bool type")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def cudnn_exhaustive_search(self):
@@ -2350,8 +2565,13 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.cudnn_exhaustive_search = flag
         else:
+<<<<<<< HEAD
             logger.warning(
                 "cudnn_exhaustive_search should have value of bool type"
+=======
+            print(
+                "WARNING: cudnn_exhaustive_search should have value of bool type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     @property
@@ -2386,8 +2606,13 @@ class DistributedStrategy:
         if isinstance(value, int):
             self.strategy.conv_workspace_size_limit = value
         else:
+<<<<<<< HEAD
             logger.warning(
                 "conv_workspace_size_limit should have value of int type"
+=======
+            print(
+                "WARNING: conv_workspace_size_limit should have value of int type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     @property
@@ -2420,8 +2645,13 @@ class DistributedStrategy:
         if isinstance(flag, bool):
             self.strategy.cudnn_batchnorm_spatial_persistent = flag
         else:
+<<<<<<< HEAD
             logger.warning(
                 "cudnn_batchnorm_spatial_persistent should have value of bool type"
+=======
+            print(
+                "WARNING: cudnn_batchnorm_spatial_persistent should have value of bool type"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     def _enable_env(self):

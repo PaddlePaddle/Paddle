@@ -13,9 +13,15 @@
 # limitations under the License.
 
 import logging
+<<<<<<< HEAD
 import tarfile
 
 import paddle
+=======
+import paddle
+import tarfile
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.log_helper import get_logger
 
 logger = get_logger("paddle", logging.INFO)
@@ -108,7 +114,12 @@ def load_lr_input_record(sent):
 feeding_index = {'dnn_input': 0, 'lr_input': 1, 'click': 2}
 
 
+<<<<<<< HEAD
 class Dataset:
+=======
+class Dataset(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def train(self):
         '''
         Load trainset.
@@ -163,9 +174,13 @@ def load_data_meta():
     lines = read_data('data.meta.txt')
     err_info = "wrong meta format"
     assert len(lines) == 2, err_info
+<<<<<<< HEAD
     assert (
         'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1]
     ), err_info
+=======
+    assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1], err_info
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     res = map(int, [_.split(':')[1] for _ in lines])
     res = list(res)
     logger.info('dnn input dim: %d' % res[0])

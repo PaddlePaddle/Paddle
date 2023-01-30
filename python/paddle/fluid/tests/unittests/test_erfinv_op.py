@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 from scipy.special import erfinv
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from scipy.special import erfinv
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid.core as core
 
@@ -26,6 +35,10 @@ np.random.seed(0)
 
 
 class TestErfinv(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "erfinv"
         self.python_api = paddle.erfinv
@@ -34,9 +47,14 @@ class TestErfinv(OpTest):
         self.x = np.random.uniform(-1, 1, size=self.shape).astype(self.dtype)
         self.res_ref = erfinv(self.x).astype(self.dtype)
         self.grad_out = np.ones(self.shape, self.dtype)
+<<<<<<< HEAD
         self.gradient = (
             np.sqrt(np.pi) / 2 * np.exp(np.square(self.res_ref)) * self.grad_out
         )
+=======
+        self.gradient = np.sqrt(np.pi) / 2 * np.exp(np.square(
+            self.res_ref)) * self.grad_out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.res_ref}
 
@@ -47,6 +65,7 @@ class TestErfinv(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'],
             'Out',
@@ -56,11 +75,25 @@ class TestErfinv(OpTest):
 
 
 class TestErfinvFP32(TestErfinv):
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[self.gradient],
+                        user_defined_grad_outputs=self.grad_out)
+
+
+class TestErfinvFP32(TestErfinv):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float32
 
 
 class TestErfinvAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = 'float32'
 
@@ -88,6 +121,10 @@ class TestErfinvAPI(unittest.TestCase):
             run(place)
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
@@ -99,6 +136,10 @@ class TestErfinvAPI(unittest.TestCase):
             run(place)
 
     def test_inplace_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)

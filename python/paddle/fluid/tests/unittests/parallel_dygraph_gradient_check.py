@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,6 +21,19 @@ import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
 from paddle.nn import Linear
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+import os
+
+import paddle
+import numpy as np
+import paddle.distributed as dist
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import Linear
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.seed(1024)
 np.random.seed(2021)
@@ -30,6 +44,7 @@ out_dim = 20
 
 
 class SimpleNet(fluid.Layer):
+<<<<<<< HEAD
     def __init__(self, train_id):
         super().__init__()
         self.w1 = self.create_parameter(
@@ -43,6 +58,19 @@ class SimpleNet(fluid.Layer):
         self.unused_param = self.create_parameter(
             shape=[out_dim, in_dim], dtype="float64"
         )
+=======
+
+    def __init__(self, train_id):
+        super(SimpleNet, self).__init__()
+        self.w1 = self.create_parameter(shape=[in_dim, out_dim],
+                                        dtype="float32")
+        self.w2 = self.create_parameter(shape=[in_dim, out_dim],
+                                        dtype="float32")
+        self.share_net = Linear(out_dim, 10)
+
+        self.unused_param = self.create_parameter(shape=[out_dim, in_dim],
+                                                  dtype="float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # just for test sync_params_buffers
         self.register_buffer("queue", paddle.randn([10, 5]))
@@ -52,10 +80,16 @@ class SimpleNet(fluid.Layer):
         self.trainer_id = train_id
 
     def forward(self, x):
+<<<<<<< HEAD
         is_use = (
             paddle.equal_all(x, paddle.ones(shape=(batch, in_dim))).numpy()[0]
             and self.trainer_id == 1
         )
+=======
+        is_use = (paddle.equal_all(
+            x, paddle.ones(shape=(batch, in_dim))).numpy()[0]
+                  and self.trainer_id == 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if is_use:
             tmp = paddle.matmul(x, self.w1)
@@ -66,6 +100,10 @@ class SimpleNet(fluid.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_multiple_gpus(self):
         dist.init_parallel_env()
         self.trainer_id = dist.get_rank()
@@ -103,12 +141,19 @@ class TestDistTraning(unittest.TestCase):
             self.check_gradient(model_b.parameters())
 
             # test acc gradient
+<<<<<<< HEAD
             w1_grad_sum = self.check_acc(
                 model_a._layers.w1.grad, w1_grad_sum, model_b._layers.w1.grad
             )
             w2_grad_sum = self.check_acc(
                 model_a._layers.w2.grad, w2_grad_sum, model_b._layers.w2.grad
             )
+=======
+            w1_grad_sum = self.check_acc(model_a._layers.w1.grad, w1_grad_sum,
+                                         model_b._layers.w1.grad)
+            w2_grad_sum = self.check_acc(model_a._layers.w2.grad, w2_grad_sum,
+                                         model_b._layers.w2.grad)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             model_a.clear_gradients()
 

@@ -14,9 +14,17 @@
 
 # Define functions about array.
 
+<<<<<<< HEAD
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, core, in_dygraph_mode
 from ..static import Variable
+=======
+import paddle
+from ..static import Variable
+from ..framework import LayerHelper, core, _non_static_mode
+from ..fluid.data_feeder import check_type
+from ..fluid.data_feeder import check_variable_and_dtype
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -26,7 +34,11 @@ def array_length(array):
     This OP is used to get the length of the input array.
 
     Args:
+<<<<<<< HEAD
         array (list|Tensor): The input array that will be used to compute the length. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor whose VarType is LOD_TENSOR_ARRAY.
+=======
+        array (list|Tensor): The input array that will be used to compute the length. In dynamic mode, ``array`` is a Python list. But in static mode, array is a Tensor whose VarType is LOD_TENSOR_ARRAY.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         Tensor: 1-D Tensor with shape [1], which is the length of array.
@@ -45,6 +57,7 @@ def array_length(array):
             arr_len = paddle.tensor.array_length(arr)
             print(arr_len)  # 1
     """
+<<<<<<< HEAD
     if in_dygraph_mode():
         assert isinstance(
             array, list
@@ -68,6 +81,27 @@ def array_length(array):
             outputs={'Out': [tmp]},
         )
         return tmp
+=======
+    if _non_static_mode():
+        assert isinstance(
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
+        return len(array)
+
+    if not isinstance(
+            array,
+            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        raise TypeError(
+            "array should be tensor array vairable in array_length Op")
+
+    helper = LayerHelper('array_length', **locals())
+    tmp = helper.create_variable_for_type_inference(dtype='int64')
+    tmp.stop_gradient = True
+    helper.append_op(type='lod_array_length',
+                     inputs={'X': [array]},
+                     outputs={'Out': [tmp]})
+    return tmp
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def array_read(array, i):
@@ -88,7 +122,11 @@ def array_read(array, i):
             output = [0.4, 0.2]
 
     Args:
+<<<<<<< HEAD
         array (list|Tensor): The input array. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
+=======
+        array (list|Tensor): The input array. In dynamic mode, ``array`` is a Python list. But in static mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         i (Tensor): 1-D Tensor, whose shape is [1] and dtype is int64. It represents the
             specified read position of ``array``.
 
@@ -109,10 +147,17 @@ def array_read(array, i):
             item = paddle.tensor.array_read(arr, i)
             print(item)     # [[5., 5., 5.]]
     """
+<<<<<<< HEAD
     if in_dygraph_mode():
         assert isinstance(
             array, list
         ), "The 'array' in array_read must be list in dygraph mode"
+=======
+    if _non_static_mode():
+        assert isinstance(
+            array,
+            list), "The 'array' in array_read must be list in dygraph mode"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert isinstance(
             i, Variable
         ), "The index 'i' in array_read must be Variable in dygraph mode"
@@ -121,6 +166,7 @@ def array_read(array, i):
         ], "The shape of index 'i' should be [1] in dygraph mode"
         i = i.numpy().item(0)
         return array[i]
+<<<<<<< HEAD
     else:
         check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
         helper = LayerHelper('array_read', **locals())
@@ -136,6 +182,23 @@ def array_read(array, i):
             outputs={'Out': [out]},
         )
         return out
+=======
+
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
+    helper = LayerHelper('array_read', **locals())
+    if not isinstance(
+            array,
+            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        raise TypeError("array should be tensor array vairable")
+    out = helper.create_variable_for_type_inference(dtype=array.dtype)
+    helper.append_op(type='read_from_array',
+                     inputs={
+                         'X': [array],
+                         'I': [i]
+                     },
+                     outputs={'Out': [out]})
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def array_write(x, i, array=None):
@@ -150,7 +213,11 @@ def array_write(x, i, array=None):
             ``x`` is written.
         array (list|Tensor, optional): The array into which ``x`` is written. The default value is None,
             when a new array will be created and returned as a result. In dynamic mode, ``array`` is a Python list.
+<<<<<<< HEAD
             But in static graph mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
+=======
+            But in static mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         list|Tensor: The input ``array`` after ``x`` is written into.
@@ -169,7 +236,11 @@ def array_write(x, i, array=None):
             item = paddle.tensor.array_read(arr, i)
             print(item)     # [[5., 5., 5.]]
     """
+<<<<<<< HEAD
     if in_dygraph_mode():
+=======
+    if _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert isinstance(
             x, Variable
         ), "The input data 'x' in array_write must be Variable in dygraph mode"
@@ -183,8 +254,13 @@ def array_write(x, i, array=None):
         if array is None:
             array = create_array(x.dtype)
         assert isinstance(
+<<<<<<< HEAD
             array, list
         ), "The 'array' in array_write must be a list in dygraph mode"
+=======
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert i <= len(
             array
         ), "The index 'i' should not be greater than the length of 'array' in dygraph mode"
@@ -193,6 +269,7 @@ def array_write(x, i, array=None):
         else:
             array.append(x)
         return array
+<<<<<<< HEAD
     else:
         check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
         check_type(x, 'x', (Variable), 'array_write')
@@ -217,6 +294,30 @@ def array_write(x, i, array=None):
             outputs={'Out': [array]},
         )
         return array
+=======
+
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
+    check_type(x, 'x', (Variable), 'array_write')
+    helper = LayerHelper('array_write', **locals())
+    if array is not None:
+        if not isinstance(
+                array, Variable
+        ) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "array should be tensor array vairable in array_write Op")
+    if array is None:
+        array = helper.create_variable(
+            name="{0}.out".format(helper.name),
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+            dtype=x.dtype)
+    helper.append_op(type='write_to_array',
+                     inputs={
+                         'X': [x],
+                         'I': [i]
+                     },
+                     outputs={'Out': [array]})
+    return array
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def create_array(dtype, initialized_list=None):
@@ -230,7 +331,11 @@ def create_array(dtype, initialized_list=None):
                     All values in initialized list should be a Tensor.
 
     Returns:
+<<<<<<< HEAD
         list|Tensor: An empty array. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor
+=======
+        list|Tensor: An empty array. In dynamic mode, ``array`` is a Python list. But in static mode, array is a Tensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
 
     Examples:
@@ -252,6 +357,7 @@ def create_array(dtype, initialized_list=None):
     if initialized_list is not None:
         if not isinstance(initialized_list, (list, tuple)):
             raise TypeError(
+<<<<<<< HEAD
                 "Require type(initialized_list) should be list/tuple, but received {}".format(
                     type(initialized_list)
                 )
@@ -281,3 +387,29 @@ def create_array(dtype, initialized_list=None):
             array_write(x=val, i=array_length(tensor_array), array=tensor_array)
 
         return tensor_array
+=======
+                "Require type(initialized_list) should be list/tuple, but received {}"
+                .format(type(initialized_list)))
+        array = list(initialized_list)
+
+    # NOTE: Only support plain list like [x, y,...], not support nested list in static mode.
+    for val in array:
+        if not isinstance(val, Variable):
+            raise TypeError(
+                "All values in `initialized_list` should be Variable, but recevied {}."
+                .format(type(val)))
+
+    if _non_static_mode():
+        return array
+
+    helper = LayerHelper("array", **locals())
+    tensor_array = helper.create_variable(
+        name="{0}.out".format(helper.name),
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype=dtype)
+
+    for val in array:
+        array_write(x=val, i=array_length(tensor_array), array=tensor_array)
+
+    return tensor_array
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

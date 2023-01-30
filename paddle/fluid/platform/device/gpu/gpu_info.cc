@@ -24,6 +24,10 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/flags.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -31,13 +35,21 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/flags.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
 #else
+<<<<<<< HEAD
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+=======
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -124,6 +136,14 @@ size_t GpuInitAllocSize() { return GpuAllocSize(/* realloc = */ false); }
 
 size_t GpuReallocSize() { return GpuAllocSize(/* realloc = */ true); }
 
+<<<<<<< HEAD
+=======
+size_t GpuMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 256 bytes.
+  return 1 << 8;
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 size_t GpuMaxChunkSize() {
   size_t max_chunk_size = GpuMaxAllocSize();
   VLOG(10) << "Max chunk size " << (max_chunk_size >> 20) << "M";
@@ -230,7 +250,11 @@ class RecordedGpuMallocHelper {
       result = hipMalloc(ptr, size);
     }
 #else
+<<<<<<< HEAD
     phi::backends::gpu::CUDAGraphCaptureModeGuard capture_mode_guard;
+=======
+    CUDAGraphCaptureModeGuard capture_mode_guard;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (UNLIKELY(malloc_managed_memory)) {
       result = cudaMallocManaged(ptr, size);
     } else {
@@ -405,8 +429,13 @@ void RecordedGpuFree(void *p, size_t size, int dev_id) {
 CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
                               size_t size,
                               const CUmemAllocationProp *prop,
+<<<<<<< HEAD
                               unsigned long long flags,  // NOLINT
                               int dev_id) {
+=======
+                              unsigned long long flags,
+                              int dev_id) {  // NOLINT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return RecordedGpuMallocHelper::Instance(dev_id)->MemCreate(
       handle, size, prop, flags);
 }

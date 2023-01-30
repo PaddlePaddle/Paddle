@@ -46,6 +46,7 @@ void TrilTriuKernel(const Context& ctx,
   }
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void TrilKernel(const Context& ctx,
                 const DenseTensor& x,
@@ -62,9 +63,14 @@ void TriuKernel(const Context& ctx,
   TrilTriuKernel<T, Context>(ctx, x, diagonal, false, out);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     tril_triu, XPU, ALL_LAYOUT, phi::TrilTriuKernel, int, float) {}
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(tril, XPU, ALL_LAYOUT, phi::TrilKernel, int, float) {}
 PD_REGISTER_KERNEL(triu, XPU, ALL_LAYOUT, phi::TriuKernel, int, float) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

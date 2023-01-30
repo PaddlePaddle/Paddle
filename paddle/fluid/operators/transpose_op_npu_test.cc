@@ -39,9 +39,15 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto x = scope->Var("X");
   auto out = scope->Var("Out");
   auto xshape = scope->Var("XShape");
+<<<<<<< HEAD
   auto* x_t = x->GetMutable<phi::DenseTensor>();
   auto* out_t = out->GetMutable<phi::DenseTensor>();
   auto* xshape_t = xshape->GetMutable<phi::DenseTensor>();
+=======
+  auto* x_t = x->GetMutable<f::LoDTensor>();
+  auto* out_t = out->GetMutable<f::LoDTensor>();
+  auto* xshape_t = xshape->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto place = ctx.GetPlace();
 
   int dim0 = 2;
@@ -85,9 +91,15 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   auto x_grad = scope->Var("X@GRAD");
   auto out_grad = scope->Var("Out@GRAD");
 
+<<<<<<< HEAD
   auto* x_grad_t = x_grad->GetMutable<phi::DenseTensor>();
   auto* xshape_t = xshape->GetMutable<phi::DenseTensor>();
   auto* out_grad_t = out_grad->GetMutable<phi::DenseTensor>();
+=======
+  auto* x_grad_t = x_grad->GetMutable<f::LoDTensor>();
+  auto* xshape_t = xshape->GetMutable<f::LoDTensor>();
+  auto* out_grad_t = out_grad->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int dim0 = 2;
   int dim1 = 3;

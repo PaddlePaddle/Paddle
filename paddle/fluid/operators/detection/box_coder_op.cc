@@ -44,8 +44,12 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput(
         "TargetBox",
+<<<<<<< HEAD
         "(phi::DenseTensor or Tensor) This input can be a 2-D phi::DenseTensor "
         "with shape "
+=======
+        "(LoDTensor or Tensor) This input can be a 2-D LoDTensor with shape "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         "[N, 4] when code_type is 'encode_center_size'. This input also can "
         "be a 3-D Tensor with shape [N, M, 4] when code_type is "
         "'decode_center_size'. [N, 4], each box is represented as "
@@ -80,7 +84,11 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         "not be provided at the same time.")
         .SetDefault(std::vector<float>{});
     AddOutput("OutputBox",
+<<<<<<< HEAD
               "(phi::DenseTensor or Tensor) "
+=======
+              "(LoDTensor or Tensor) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "When code_type is 'encode_center_size', the output tensor of "
               "box_coder_op with shape [N, M, 4] representing the result of N "
               "target boxes encoded with M Prior boxes and variances. When "
@@ -99,9 +107,15 @@ The Encoding schema described below:
 
     oy = (ty - py) / ph / pyv
 
+<<<<<<< HEAD
     ow = log(abs(tw / pw)) / pwv
 
     oh = log(abs(th / ph)) / phv
+=======
+    ow = log(abs(tw / pw)) / pwv 
+
+    oh = log(abs(th / ph)) / phv 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 The Decoding schema described below:
 
@@ -117,11 +131,19 @@ where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, width
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
 priorbox's (anchor) center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 `phv` denote the variance of the priorbox and `ox`, `oy`, `ow`, `oh` denote the
+<<<<<<< HEAD
 encoded/decoded coordinates, width and height.
 
 During Box Decoding, two modes for broadcast are supported. Say target box has
 shape [N, M, 4], and the shape of prior box can be [N, 4] or [M, 4]. Then prior
 box will broadcast to target box along the assigned axis.
+=======
+encoded/decoded coordinates, width and height. 
+
+During Box Decoding, two modes for broadcast are supported. Say target box has 
+shape [N, M, 4], and the shape of prior box can be [N, 4] or [M, 4]. Then prior
+box will broadcast to target box along the assigned axis. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
   }
 };

@@ -16,8 +16,13 @@
 
 #include "paddle/fluid/operators/jit/refer/refer.h"
 #include "paddle/fluid/operators/jit/registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/dynload/mklml.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/dynload/mklml.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -188,17 +193,29 @@ void StrideASum<double>(const double* x, double* res, int n, int stride) {
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
 bool VMulKernel<float>::CanBeUsed(const int& d) const {
+<<<<<<< HEAD
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f) && d > 512;
+=======
+  return platform::MayIUse(platform::avx512f) && d > 512;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <>
 bool VAddKernel<float>::CanBeUsed(const int& d) const {
+<<<<<<< HEAD
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && d > 512;
+=======
+  return platform::MayIUse(platform::avx) && d > 512;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <>
 bool VScalKernel<float>::CanBeUsed(const int& d) const {
+<<<<<<< HEAD
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f) && d > 512;
+=======
+  return platform::MayIUse(platform::avx512f) && d > 512;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <>
@@ -274,7 +291,11 @@ bool SgdKernel<double>::CanBeUsed(const sgd_attr_t& attr) const {
 
 template <>
 bool MatMulKernel<float>::CanBeUsed(const matmul_attr_t& attr) const {
+<<<<<<< HEAD
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
+=======
+  return platform::MayIUse(platform::avx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <>
@@ -285,7 +306,11 @@ bool MatMulKernel<double>::CanBeUsed(const matmul_attr_t& attr) const {
 template <>
 bool SoftmaxKernel<float>::CanBeUsed(const int& d) const {
   // tuned on avx2
+<<<<<<< HEAD
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && d < 60;
+=======
+  return platform::MayIUse(platform::avx) && d < 60;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 #define AWALYS_USE_ME_WITH_DOUBLE(func)                      \

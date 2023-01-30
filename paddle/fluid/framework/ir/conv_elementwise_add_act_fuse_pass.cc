@@ -36,8 +36,12 @@ framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc,
     const std::string& bias,
     const std::string& activation,
+<<<<<<< HEAD
     const std::string& output,
     float alpha) {
+=======
+    const std::string& output) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
   desc.SetType("conv2d_fusion");
@@ -47,8 +51,11 @@ framework::proto::OpDesc PrepareOpDesc(
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);
   desc.SetAttr("use_cudnn", false);
+<<<<<<< HEAD
   // for leaky_relu use
   desc.SetAttr("fuse_alpha", alpha);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   desc.Flush();
   return *desc.Proto();
 }
@@ -121,6 +128,7 @@ ConvElementwiseAddActFusePass::ConvElementwiseAddActFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
+<<<<<<< HEAD
 
   AddOpCompat(OpCompat("swish"))
       .AddInput("X")
@@ -140,6 +148,8 @@ ConvElementwiseAddActFusePass::ConvElementwiseAddActFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -152,6 +162,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
                 ->assert_is_op_input("conv2d", "Input")
                 ->AsInput();
 
+<<<<<<< HEAD
 #if CUDNN_VERSION >= 8000
   std::unordered_set<std::string> cudnn_act_set(
       {"identity", "relu", "sigmoid", "tanh"});
@@ -186,6 +197,10 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x, all_act_set);
+=======
+  patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
+  pattern(x);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -199,6 +214,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     std::string bias_name = elementwise_add_in_y->Name();
     std::string act_op_type = act_op->Op()->Type();
     std::string act_op_out = act_out->Name();
+<<<<<<< HEAD
     auto* scope = param_scope();
     auto* filter_var = scope->FindLocalVar(conv_filter->Name());
     auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
@@ -220,6 +236,11 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
     auto new_op_proto =
         PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out, alpha);
+=======
+
+    auto new_op_proto =
+        PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
 
     // Create a new node for the fused op.
@@ -260,6 +281,10 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
             .EQ("relu", 0)
             .EQ("sigmoid", 0)
             .EQ("tanh", 0)
+<<<<<<< HEAD
             .EQ("identity", 0)
             .LE("leaky_relu", 1)
             .EQ("swish", 0));
+=======
+            .EQ("identity", 0));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

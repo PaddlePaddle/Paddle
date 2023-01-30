@@ -12,9 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import math
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from op_test import OpTest
 
 
@@ -31,6 +39,10 @@ def dequantize_log(x, dict_data):
 
 
 class TestDequantizeLogOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "dequantize_log"
         x = np.random.randint(low=-128, high=127, size=(20, 10)).astype('int8')
@@ -39,7 +51,11 @@ class TestDequantizeLogOp(OpTest):
 
         self.inputs = {
             'X': np.array(x).astype('int8'),
+<<<<<<< HEAD
             'Dict': np.array(dict_data).astype('float32'),
+=======
+            'Dict': np.array(dict_data).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': xdq}
 

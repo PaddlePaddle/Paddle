@@ -13,6 +13,10 @@
 # limitations under the License.
 
 import logging
+<<<<<<< HEAD
+=======
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from paddle.distributed.utils.log_utils import get_logger
 
@@ -67,8 +71,13 @@ def layer_to_str(base, *args, **kwargs):
         if kwargs:
             name += ", "
     if kwargs:
+<<<<<<< HEAD
         name += ", ".join(
             "{}={}".format(key, str(value)) for key, value in kwargs.items()
         )
+=======
+        name += ", ".join("{}={}".format(key, str(value))
+                          for key, value in kwargs.items())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     name += ")"
     return name

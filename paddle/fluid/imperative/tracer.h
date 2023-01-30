@@ -136,7 +136,11 @@ class Tracer {
   }
 
   // Note(Aurelius84): The `tmp` is used as prefix key while naming a temporary
+<<<<<<< HEAD
   // intermediate var both in imperative and static graph mode. But the
+=======
+  // intermediate var both in imperative and static mode. But the
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // `UniqueNameGenerator` in C++ and `unique_name.py` in Python doesn't share
   // the same auto-increment id. It will create a variable repeatedly with same
   // name like `tmp_0` in some cases when transform dygraph into static layers.

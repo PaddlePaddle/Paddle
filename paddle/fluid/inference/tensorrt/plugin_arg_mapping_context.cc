@@ -104,21 +104,33 @@ bool PluginArgumentMappingContext::IsSelectedRowsInput(
     const std::string& name) const {
   return false;
 }
+<<<<<<< HEAD
 bool PluginArgumentMappingContext::IsSelectedRowsInputs(
     const std::string& name) const {
   return false;
 }
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool PluginArgumentMappingContext::IsSparseCooTensorInput(
     const std::string& name) const {
   return false;
 }
+<<<<<<< HEAD
 
 bool PluginArgumentMappingContext::IsSparseCooTensorOutput(
+=======
+bool PluginArgumentMappingContext::IsSparseCsrTensorInput(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const std::string& name) const {
   return false;
 }
 
+<<<<<<< HEAD
 bool PluginArgumentMappingContext::IsSparseCsrTensorInput(
+=======
+bool PluginArgumentMappingContext::IsSelectedRowsInputs(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const std::string& name) const {
   return false;
 }

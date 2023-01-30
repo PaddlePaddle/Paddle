@@ -79,10 +79,17 @@ class StftOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(in_dtype, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    const auto in_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(in_dtype, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -140,12 +147,20 @@ class StftGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     const auto kernel_dtype = framework::ToRealType(in_dtype);
+<<<<<<< HEAD
     return phi::KernelKey(kernel_dtype, ctx.GetPlace());
+=======
+    return framework::OpKernelType(kernel_dtype, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

@@ -36,7 +36,11 @@ class SelectInputOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
+<<<<<<< HEAD
     auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
+=======
+    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
 
     const std::vector<std::string> &x_names = Inputs("X");
@@ -73,7 +77,11 @@ class SelectInputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     // Because this op is blocking whole control flow. I am implementing MVP
     // (minimal viable product) here.
     AddComment(R"DOC(
+<<<<<<< HEAD
 Merge branches of phi::DenseTensor into a single Output with a mask integer
+=======
+Merge branches of LoDTensor into a single Output with a mask integer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 specifying the output branchi.
 )DOC");
   }

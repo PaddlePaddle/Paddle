@@ -334,6 +334,7 @@ inline int split_string_ptr(const char* str,
   return num;
 }
 
+<<<<<<< HEAD
 inline int split_string_ptr(const char* str,
                             size_t len,
                             char delim,
@@ -370,6 +371,8 @@ inline int split_string_ptr(const char* str,
   }
   return num;
 }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // A helper class for reading lines from file. A line buffer is maintained. It
 // doesn't need to know the maximum possible length of a line.
 

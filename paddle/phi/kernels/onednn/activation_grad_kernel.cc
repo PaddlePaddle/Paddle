@@ -260,20 +260,32 @@ void Relu6GradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(relu_grad,
                    OneDNN,
+<<<<<<< HEAD
                    ONEDNN,
+=======
+                   ALL_LAYOUT,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    phi::ReluGradKernel,
                    float,
                    phi::dtype::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                                  \
+<<<<<<< HEAD
       name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
+=======
+      name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(abs_grad, AbsGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(exp_grad, ExpGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(gelu_grad, GeluGradKernel)
+<<<<<<< HEAD
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardswish_grad, HardSwishGradKernel)
+=======
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)

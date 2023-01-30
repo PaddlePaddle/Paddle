@@ -12,11 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import collections
 import hashlib
 import importlib
 import inspect
 import sys
+=======
+from __future__ import print_function
+
+import importlib
+import inspect
+import collections
+import sys
+import pydoc
+import hashlib
+import functools
+import platform
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = [
     'get_apis_with_and_without_core_ops',
@@ -37,12 +51,18 @@ def md5(doc):
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
+<<<<<<< HEAD
         print(
             "Error({}) occurred when `md5({})`, discard it.".format(
                 str(e), doc
             ),
             file=sys.stderr,
         )
+=======
+        print("Error({}) occurred when `md5({})`, discard it.".format(
+            str(e), doc),
+              file=sys.stderr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return md5sum
 
 
@@ -53,6 +73,7 @@ def split_with_and_without_core_ops(member, cur_name):
     if member.__doc__.find(':api_attr: Static Graph') != -1:
         return
 
+<<<<<<< HEAD
     if (
         cur_name.find('ParamBase') != -1
         or cur_name.find('Parameter') != -1
@@ -60,6 +81,13 @@ def split_with_and_without_core_ops(member, cur_name):
         or cur_name.find('control_flow') != -1
         or cur_name.find('contrib.mixed_precision') != -1
     ):
+=======
+    if cur_name.find('ParamBase') != -1 or cur_name.find(
+            'Parameter') != -1 or cur_name.find(
+                'Variable') != -1 or cur_name.find(
+                    'control_flow') != -1 or cur_name.find(
+                        'contrib.mixed_precision') != -1:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return
 
     if inspect.isclass(member):
@@ -99,9 +127,14 @@ def visit_member(parent_name, member, func):
     if inspect.isclass(member):
         func(member, cur_name)
         for name, value in inspect.getmembers(member):
+<<<<<<< HEAD
             if hasattr(value, '__name__') and (
                 not name.startswith("_") or name == "__init__"
             ):
+=======
+            if hasattr(value, '__name__') and (not name.startswith("_")
+                                               or name == "__init__"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 visit_member(cur_name, value, func)
     elif inspect.ismethoddescriptor(member):
         return
@@ -112,6 +145,7 @@ def visit_member(parent_name, member, func):
     else:
         raise RuntimeError(
             "Unsupported generate signature of member, type {0}".format(
+<<<<<<< HEAD
                 str(type(member))
             )
         )
@@ -119,6 +153,13 @@ def visit_member(parent_name, member, func):
 
 def is_primitive(instance):
     int_types = (int,)
+=======
+                str(type(member))))
+
+
+def is_primitive(instance):
+    int_types = (int, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     pritimitive_types = int_types + (float, str)
     if isinstance(instance, pritimitive_types):
         return True
@@ -170,7 +211,11 @@ def visit_all_module(mod, func):
                 IdSet.add(instance_id)
                 visit_member(mod.__name__, instance, func)
         except:
+<<<<<<< HEAD
             if cur_name not in ErrorSet and cur_name not in skiplist:
+=======
+            if not cur_name in ErrorSet and not cur_name in skiplist:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ErrorSet.add(cur_name)
 
 
@@ -179,9 +224,14 @@ def get_apis_with_and_without_core_ops(modules):
     api_with_ops = []
     api_without_ops = []
     for m in modules:
+<<<<<<< HEAD
         visit_all_module(
             importlib.import_module(m), split_with_and_without_core_ops
         )
+=======
+        visit_all_module(importlib.import_module(m),
+                         split_with_and_without_core_ops)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return api_with_ops, api_without_ops
 
 
@@ -198,8 +248,12 @@ if __name__ == "__main__":
         modules = sys.argv[2].split(",")
         if sys.argv[1] == '-c':
             api_with_ops, api_without_ops = get_apis_with_and_without_core_ops(
+<<<<<<< HEAD
                 modules
             )
+=======
+                modules)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             print('api_with_ops:', len(api_with_ops))
             print('\n'.join(api_with_ops))
@@ -213,6 +267,7 @@ if __name__ == "__main__":
                 print(name, func_dict[name])
 
     else:
+<<<<<<< HEAD
         print(
             """Usage:
             1. Count and list all operator-raleated APIs that contains append_op but not _legacy_C_ops.xx.
@@ -221,3 +276,11 @@ if __name__ == "__main__":
                 python ./count_api_without_core_ops.py -p paddle
             """
         )
+=======
+        print("""Usage: 
+            1. Count and list all operator-raleated APIs that contains append_op but not _legacy_C_ops.xx. 
+                python ./count_api_without_core_ops.py -c paddle
+            2. Print api and the md5 of source code of the api.
+                python ./count_api_without_core_ops.py -p paddle
+            """)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

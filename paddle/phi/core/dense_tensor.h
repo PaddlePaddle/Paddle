@@ -15,7 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/storage_properties.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -125,8 +128,12 @@ class DenseTensor : public TensorBase,
   /// \return The mutable data pointer value of type T.
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
+<<<<<<< HEAD
                      size_t requested_size = 0,
                      bool fake_alloc = false) override;
+=======
+                     size_t requested_size = 0) override;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   /// \brief Check if allocation is shared with other objects.
   /// \return Whether the allocation is shared with other objects.
@@ -165,6 +172,7 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
+<<<<<<< HEAD
   /// \brief Get whether the storage_properties is inited.
   /// \return The init status of storage_properties.
   bool storage_properties_initialized() const;
@@ -179,6 +187,8 @@ class DenseTensor : public TensorBase,
   void set_storage_properties(
       std::unique_ptr<StorageProperties>&& storage_properties);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   friend class DenseTensorUtils;
 
@@ -186,6 +196,7 @@ class DenseTensor : public TensorBase,
   DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
 
+<<<<<<< HEAD
   /** [ Why need StorageProperties? ]
    *
    * 1. Some hardware or third-party libraries add some additional storage
@@ -222,6 +233,8 @@ class DenseTensor : public TensorBase,
    */
   std::unique_ptr<StorageProperties> storage_properties_{nullptr};
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  public:
   /* Temporarily put InplaceVersion inside DenseTensor.
   Will move to AutogradMeta as soon as we switch to Eager Dygraph.
@@ -244,9 +257,15 @@ class DenseTensor : public TensorBase,
   - Question: In what scenarios will version counters NOT be shared?
   - Answer: Replacing a `Variable`'s data by calling
   `Tensor::ShareDataWith(...)` or `Tensor::ShareBufferWith(...)`. Because they
+<<<<<<< HEAD
   share the same Allocation but not phi::DenseTensor.
 
   - Question: Why put the inplace_version_counter_ in phi::DenseTensor instead
+=======
+  share the same Allocation but not framework::Tensor.
+
+  - Question: Why put the inplace_version_counter_ in framework::Tensor instead
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   of Allocation or Variable?
   - Answer:
    1. Tensor can call ResetHolder() to reset the corresponding Allocation so
@@ -279,6 +298,19 @@ In the final state, we should come up with a MKLDNN_Tensor and move the
 following codes there.
 */
 #ifdef PADDLE_WITH_MKLDNN
+<<<<<<< HEAD
+=======
+  /**
+   * @brief the detail format of memory block which have layout as kMKLDNN
+   *
+   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
+   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
+   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
+   *       this field.
+   */
+  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief memory descriptor of tensor which have layout set as kMKLDNN
   dnnl::memory::desc mem_desc_;
 #endif

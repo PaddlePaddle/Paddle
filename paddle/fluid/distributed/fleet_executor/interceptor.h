@@ -93,6 +93,10 @@ class Interceptor {
   TaskNode* node_;
 
   // for stop
+<<<<<<< HEAD
+=======
+  bool stop_{false};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void StopCarrier();
 
   // for runtime
@@ -113,6 +117,12 @@ class Interceptor {
 
   std::mutex mutex_;
   std::deque<InterceptorMessage> messages_;
+<<<<<<< HEAD
+=======
+
+  int64_t already_run_times_{0};
+  int64_t used_slot_nums_{0};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class InterceptorFactory {

@@ -46,6 +46,10 @@ limitations under the License. */
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/imperative/py_layer_fwd.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -53,6 +57,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/pybind/op_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -187,7 +195,11 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
                                  bool zero_copy = false,
                                  int stop_gradient = -1) {
   InitVarBaseOnly(self, name, persistable, stop_gradient);
+<<<<<<< HEAD
   auto *tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   VLOG(4) << "zero_copy: " << zero_copy;
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(tensor, array, place, zero_copy);
@@ -263,7 +275,11 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
           << " / stop_gradient: " << stop_gradient << " / at " << place;
   new (self) imperative::VarBase(name);
   self->SetPersistable(persistable);
+<<<<<<< HEAD
   auto *tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (stop_gradient != -1) {
     self->SetOverridedStopGradient(stop_gradient);
   }
@@ -280,7 +296,11 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
 }
 
 static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
+<<<<<<< HEAD
                                                 const phi::DenseTensor &tensor,
+=======
+                                                const framework::Tensor &tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                 const std::string &name) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
@@ -291,7 +311,11 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
+<<<<<<< HEAD
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto *new_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Same place，share data directly
   if (place == tensor.place()) {
     new_tensor->ShareDataWith(tensor);
@@ -304,7 +328,11 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
 
 template <typename P>
 static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
+<<<<<<< HEAD
                                          const phi::DenseTensor &tensor,
+=======
+                                         const framework::Tensor &tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                          const P &place,
                                          const std::string &name) {
   VLOG(4) << "Init VarBase";
@@ -315,7 +343,11 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
+<<<<<<< HEAD
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto *new_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Same place，share data directly
   if (platform::is_same_place(place, tensor.place())) {
     new_tensor->ShareDataWith(tensor);
@@ -342,7 +374,11 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
     return GetSliceIndexFromTensor(
         py::cast<std::shared_ptr<imperative::VarBase>>(obj)
             ->Var()
+<<<<<<< HEAD
             .Get<phi::DenseTensor>());
+=======
+            .Get<framework::LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "We should only get paddle::experimental::Tensor or VarBase in this "
@@ -350,6 +386,12 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
   }
 }
 
+<<<<<<< HEAD
+=======
+bool PyCheckTensor(PyObject *obj) {
+  return py::isinstance<imperative::VarBase>(obj);
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 // NOTE(zjl): py::handle is a very light wrapper of PyObject *.
@@ -445,9 +487,15 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
     dst.SetType(src->Type());
     dst.SetOverridedStopGradient(src->OverridedStopGradient());
     if (!src->SharedVar()->IsEmpty()) {
+<<<<<<< HEAD
       if (src->Var().IsType<phi::DenseTensor>()) {
         auto &src_tensor = src->Var().Get<phi::DenseTensor>();
         auto *dst_tensor = dst.MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+      if (src->Var().IsType<framework::LoDTensor>()) {
+        auto &src_tensor = src->Var().Get<framework::LoDTensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dst_tensor->set_lod(src_tensor.lod());
         framework::TensorCopy(src_tensor, dst_device, dst_tensor);
         if (blocking) {
@@ -494,6 +542,18 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
+<<<<<<< HEAD
+=======
+  BindOpFunctions1(&m);
+  BindOpFunctions2(&m);
+  BindOpFunctions3(&m);
+  BindOpFunctions4(&m);
+  BindOpFunctions5(&m);
+  BindOpFunctions6(&m);
+  BindOpFunctions7(&m);
+  BindOpFunctions8(&m);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
   m.def("_set_process_pids", [](int64_t key, py::object &obj) {
@@ -537,18 +597,30 @@ void BindImperative(py::module *m_ptr) {
               string::Sprintf("%s", array.dtype()).compare("object"),
               0,
               platform::errors::InvalidArgument(
+<<<<<<< HEAD
                   "Failed to convert input data to a regular ndarray.\n  * "
+=======
+                  "Faild to convert input data to a regular ndarray.\n  * "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   "Usually this means the input data contains nested "
                   "lists with different lengths.\n  * Check the reader "
                   "function passed to 'set_(sample/sample_list/batch)"
                   "_generator' to locate the data causes this issue."));
           // 2. construcct LoDTensor
+<<<<<<< HEAD
           phi::DenseTensor t;
+=======
+          framework::LoDTensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           SetTensorFromPyArray<platform::CPUPlace>(
               &t, array, platform::CPUPlace(), true);
           // 3. allocate shared memory
           void *data_ptr = t.data();
+<<<<<<< HEAD
           size_t data_size = t.numel() * phi::SizeOf(t.dtype());
+=======
+          size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
           // 4. maintain mmap fd set & backup ipc_name
@@ -577,18 +649,30 @@ void BindImperative(py::module *m_ptr) {
             string::Sprintf("%s", array.dtype()).compare("object"),
             0,
             platform::errors::InvalidArgument(
+<<<<<<< HEAD
                 "Failed to convert input data to a regular ndarray.\n  * "
+=======
+                "Faild to convert input data to a regular ndarray.\n  * "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "Usually this means the input data contains nested "
                 "lists with different lengths.\n  * Check the reader "
                 "function passed to 'set_(sample/sample_list/batch)"
                 "_generator' to locate the data causes this issue."));
         // 2. construcct LoDTensor
+<<<<<<< HEAD
         phi::DenseTensor t;
+=======
+        framework::LoDTensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         SetTensorFromPyArray<platform::CPUPlace>(
             &t, array, platform::CPUPlace(), true);
         // 3. allocate shared memory
         void *data_ptr = t.data();
+<<<<<<< HEAD
         size_t data_size = t.numel() * phi::SizeOf(t.dtype());
+=======
+        size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto shared_writer_holder =
             memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
         // 4. maintain mmap fd set & backup ipc_name
@@ -608,7 +692,11 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("_remove_tensor_list_mmap_fds", [](py::list &tensor_list) {
     for (size_t i = 0; i < tensor_list.size(); ++i) {
+<<<<<<< HEAD
       auto t = tensor_list[i].cast<phi::DenseTensor>();
+=======
+      auto t = tensor_list[i].cast<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto *mmap_writer_allocation =
           dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
               t.Holder().get());
@@ -624,11 +712,14 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("_cleanup_mmap_fds",
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
+<<<<<<< HEAD
 
   m.def("_set_max_memory_map_allocation_pool_size", [](int32_t size) {
     memory::allocation::MemoryMapAllocationPool::Instance().SetMaxPoolSize(
         size);
   });
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
   m.def("start_imperative_gperf_profiler",
@@ -678,7 +769,12 @@ void BindImperative(py::module *m_ptr) {
              self.SetType(type);
              self.SetDataType(dtype);
              if (type == framework::proto::VarType::LOD_TENSOR) {
+<<<<<<< HEAD
                auto *tensor = self.MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+               auto *tensor =
+                   self.MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                tensor->Resize(phi::make_ddim(dims));
              }
            })
@@ -787,7 +883,11 @@ void BindImperative(py::module *m_ptr) {
             VLOG(4) << "Call __setitem_varbase__";
 
             auto self_tensor =
+<<<<<<< HEAD
                 self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+                self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
             // https://github.com/python/cpython/blob/24b63c695ae0a95b06379eaadace66735abac1e2/Objects/tupleobject.c#L251
             PyObject *index_ptr = !PyTuple_Check(_index.ptr())
@@ -874,7 +974,11 @@ void BindImperative(py::module *m_ptr) {
                         self->Name()));
               }
 
+<<<<<<< HEAD
               if (py::isinstance<imperative::VarBase>(value_obj.ptr())) {
+=======
+              if (PyCheckTensor(value_obj.ptr())) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                 ins.insert({"ValueTensor", {value_tensor}});
@@ -923,11 +1027,19 @@ void BindImperative(py::module *m_ptr) {
                       "please check the type of tensor."));
                 }
 
+<<<<<<< HEAD
                 SetTensorFromPyArray(
                     value_tensor->MutableVar()->GetMutable<phi::DenseTensor>(),
                     value,
                     self->Place(),
                     false);
+=======
+                SetTensorFromPyArray(value_tensor->MutableVar()
+                                         ->GetMutable<framework::LoDTensor>(),
+                                     value,
+                                     self->Place(),
+                                     false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ins.insert({"ValueTensor", {value_tensor}});
 
               } else {
@@ -993,7 +1105,11 @@ void BindImperative(py::module *m_ptr) {
                 auto index_var =
                     py::cast<std::shared_ptr<imperative::VarBase>>(_index);
                 auto index_tensor =
+<<<<<<< HEAD
                     index_var->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+                    index_var->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 auto index_numpy = TensorToPyArray(*index_tensor);
                 self_numpy[index_numpy] = value_obj;
               } else {
@@ -1012,7 +1128,12 @@ void BindImperative(py::module *m_ptr) {
                  list_select_idxs;
              // if index is a list, list_select_flag will be true
              bool list_select_flag = false;
+<<<<<<< HEAD
              auto tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto tensor =
+                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              ParseIndexingSlice(tensor,
                                 _index.ptr(),
                                 &slice_axes,
@@ -1100,8 +1221,13 @@ void BindImperative(py::module *m_ptr) {
              if (list_select_flag) {
                auto select_index = std::shared_ptr<imperative::VarBase>(
                    new imperative::VarBase(tracer->GenerateUniqueName()));
+<<<<<<< HEAD
                auto *idx_tensor =
                    select_index->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+               auto *idx_tensor = select_index->MutableVar()
+                                      ->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                auto *dev_ctx = platform::DeviceContextPool::Instance().Get(
                    tracer->ExpectedPlace());
                paddle::framework::TensorFromVector(
@@ -1118,7 +1244,11 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "_getitem_from_offset",
           [](std::shared_ptr<imperative::VarBase> &self, const py::args &args) {
+<<<<<<< HEAD
             const auto &tensor = self->Var().Get<phi::DenseTensor>();
+=======
+            const auto &tensor = self->Var().Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             PADDLE_ENFORCE_EQ(
                 tensor.IsInitialized(),
                 true,
@@ -1213,7 +1343,11 @@ void BindImperative(py::module *m_ptr) {
           "numpy",
 
           [](imperative::VarBase &self) -> py::array {
+<<<<<<< HEAD
             const auto &tensor = self.MutableVar()->Get<phi::DenseTensor>();
+=======
+            const auto &tensor = self.MutableVar()->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             PADDLE_ENFORCE_EQ(
                 tensor.IsInitialized(),
                 true,
@@ -1224,7 +1358,11 @@ void BindImperative(py::module *m_ptr) {
           },
           R"DOC(
         Returns a numpy array shows the value of current Tensor.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Returns:
             ndarray: The numpy value of current Tensor.
 
@@ -1253,7 +1391,11 @@ void BindImperative(py::module *m_ptr) {
                     "Tensor %s has not been initialized!", self.Name()));
 
             PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
                 self.Var().IsType<phi::DenseTensor>() ||
+=======
+                self.Var().IsType<framework::LoDTensor>() ||
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self.Var().IsType<phi::SelectedRows>(),
                 true,
                 platform::errors::InvalidArgument(
@@ -1267,8 +1409,14 @@ void BindImperative(py::module *m_ptr) {
             detach_var->SetType(self.Type());
             detach_var->SetDataType(self.DataType());
 
+<<<<<<< HEAD
             if (self.Var().IsType<phi::DenseTensor>()) {
               const auto &origin_tensor = self.Var().Get<phi::DenseTensor>();
+=======
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              const auto &origin_tensor =
+                  self.Var().Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               PADDLE_ENFORCE_EQ(
                   origin_tensor.IsInitialized(),
                   true,
@@ -1276,7 +1424,11 @@ void BindImperative(py::module *m_ptr) {
                       "Tensor %s has not been initialized!", self.Name()));
 
               auto *detach_tensor =
+<<<<<<< HEAD
                   detach_var->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+                  detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               detach_tensor->ShareDataWith(origin_tensor);
               // NOTE(liym27): Call ShareInplaceVersionCounterWith to share the
               // same TensorInplaceVersion, which is used to check whether
@@ -1340,10 +1492,17 @@ void BindImperative(py::module *m_ptr) {
                 # Due to sharing of data with origin Tensor, There are some unsafe operations:
                 y = 2 * x
                 detach_x[:] = 5.0
+<<<<<<< HEAD
                 y.backward()
                 # It will raise Error:
                 #   one of the variables needed for gradient computation has been modified by an inplace operation.
 
+=======
+                y.backward() 
+                # It will raise Error:
+                #   one of the variables needed for gradient computation has been modified by an inplace operation.
+             
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
        )DOC")
       .def("clear_gradient",
            &imperative::VarBase::ClearGradient,
@@ -1375,7 +1534,11 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "clone",
           [](std::shared_ptr<imperative::VarBase> &self) {
+<<<<<<< HEAD
             const auto &tensor = self->Var().Get<phi::DenseTensor>();
+=======
+            const auto &tensor = self->Var().Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             PADDLE_ENFORCE_EQ(tensor.IsInitialized(),
                               true,
                               platform::errors::InvalidArgument(
@@ -1426,7 +1589,11 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "_grad_value",
           [](imperative::VarBase &self) {
+<<<<<<< HEAD
             return self.MutableGradVar()->Get<phi::DenseTensor>();
+=======
+            return self.MutableGradVar()->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           },
           py::return_value_policy::reference)
       .def("_set_grad_type",
@@ -1463,8 +1630,14 @@ void BindImperative(py::module *m_ptr) {
 
             if (grad_var && grad_var->Var().IsInitialized()) {
               auto *tensor =
+<<<<<<< HEAD
                   grad_var->MutableVar()->IsType<phi::DenseTensor>()
                       ? grad_var->MutableVar()->GetMutable<phi::DenseTensor>()
+=======
+                  grad_var->MutableVar()->IsType<framework::LoDTensor>()
+                      ? grad_var->MutableVar()
+                            ->GetMutable<framework::LoDTensor>()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       : grad_var->MutableVar()
                             ->GetMutable<phi::SelectedRows>()
                             ->mutable_value();
@@ -1609,7 +1782,11 @@ void BindImperative(py::module *m_ptr) {
               import paddle
               x = paddle.to_tensor(1.0, place=paddle.CUDAPlace(0))
               print(x.place)    # CUDAPlace(0)
+<<<<<<< HEAD
 
+=======
+              
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               y = x.cpu()
               print(y.place)    # CPUPlace
 
@@ -1699,12 +1876,21 @@ void BindImperative(py::module *m_ptr) {
           R"DOC(
         Returns a copy of this Tensor in GPU memory.
 
+<<<<<<< HEAD
         If this Tensor is already in GPU memory and device_id is default,
         then no copy is performed and the original Tensor is returned.
 
         Args:
             device_id(int, optional): The destination GPU device id. Default: None, means current device.
             blocking(bool, optional): If False and the source is in pinned memory, the copy will be
+=======
+        If this Tensor is already in GPU memory and device_id is default, 
+        then no copy is performed and the original Tensor is returned.
+        
+        Args:
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+            blocking(bool, optional): If False and the source is in pinned memory, the copy will be 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               asynchronous with respect to the host. Otherwise, the argument has no effect. Default: False.
 
         Examples:
@@ -1717,7 +1903,11 @@ void BindImperative(py::module *m_ptr) {
 
               y = x.cuda()
               print(y.place)        # Place(gpu:0)
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               y = x.cuda(None)
               print(y.place)        # Place(gpu:0)
 
@@ -1735,7 +1925,11 @@ void BindImperative(py::module *m_ptr) {
                 platform::errors::InvalidArgument(
                     "Sharing memory only support CPU Tensor currently"));
             // 1. get LoDTensor
+<<<<<<< HEAD
             auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+            auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             // 2. allocate shared memory
             void *data_ptr = t->data();
             size_t data_size =
@@ -1771,7 +1965,11 @@ void BindImperative(py::module *m_ptr) {
                                   "Unified virtual addressing only support "
                                   "CPU Tensor currently."));
             auto *self_tensor =
+<<<<<<< HEAD
                 self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+                self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             tensor_uva(self_tensor, device_id);
           },
           py::arg("device_id") = 0,
@@ -1915,7 +2113,11 @@ void BindImperative(py::module *m_ptr) {
           py::return_value_policy::reference)
       .def("_clear",
            [](const std::shared_ptr<imperative::VarBase> &self) {
+<<<<<<< HEAD
              auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              PADDLE_ENFORCE_EQ(
                  t->IsInitialized(),
                  true,
@@ -1925,7 +2127,11 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("_offset",
            [](const std::shared_ptr<imperative::VarBase> &self) {
+<<<<<<< HEAD
              auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              PADDLE_ENFORCE_EQ(
                  t->IsInitialized(),
                  true,
@@ -1936,8 +2142,13 @@ void BindImperative(py::module *m_ptr) {
       .def("_share_buffer_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               std::shared_ptr<imperative::VarBase> &dst) {
+<<<<<<< HEAD
              auto *src = self->MutableVar()->GetMutable<phi::DenseTensor>();
              auto *dst_ = dst->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              PADDLE_ENFORCE_EQ(
                  src->IsInitialized(),
                  true,
@@ -1949,8 +2160,13 @@ void BindImperative(py::module *m_ptr) {
       .def("_is_shared_buffer_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
               std::shared_ptr<imperative::VarBase> &dst) {
+<<<<<<< HEAD
              auto *src = self->MutableVar()->GetMutable<phi::DenseTensor>();
              auto *dst_ = dst->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              if (!src->IsInitialized() || !dst_->IsInitialized()) {
                return false;
              }
@@ -1959,8 +2175,13 @@ void BindImperative(py::module *m_ptr) {
       .def("_share_underline_tensor_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               std::shared_ptr<imperative::VarBase> &dst) {
+<<<<<<< HEAD
              auto *src = self->MutableVar()->GetMutable<phi::DenseTensor>();
              auto *dst_ = dst->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              PADDLE_ENFORCE_EQ(
                  src->IsInitialized(),
                  true,
@@ -1973,8 +2194,13 @@ void BindImperative(py::module *m_ptr) {
       .def("_is_shared_underline_tensor_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
               std::shared_ptr<imperative::VarBase> &dst) {
+<<<<<<< HEAD
              auto *src = self->MutableVar()->GetMutable<phi::DenseTensor>();
              auto *dst_ = dst->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              if (!src->IsInitialized() || !dst_->IsInitialized()) {
                return false;
              }
@@ -1984,7 +2210,11 @@ void BindImperative(py::module *m_ptr) {
            [](const std::shared_ptr<imperative::VarBase> &self,
               int64_t begin_idx,
               int64_t end_idx) {
+<<<<<<< HEAD
              auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              PADDLE_ENFORCE_EQ(
                  t->IsInitialized(),
                  true,
@@ -1997,12 +2227,20 @@ void BindImperative(py::module *m_ptr) {
               const imperative::VarBase &src) { self->_CopyGradientFrom(src); })
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
+<<<<<<< HEAD
              auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              return t->numel();
            })
       .def("element_size", &imperative::VarBase::ElementSize, R"DOC(
         Returns the size in bytes of an element in the Tensor.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
           .. code-block:: python
 
@@ -2034,10 +2272,17 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly(
           "shape",
           [](imperative::VarBase &self) {
+<<<<<<< HEAD
             if (self.Var().IsType<phi::DenseTensor>()) {
               auto value = phi::vectorize<int>(
                   self.Var().Get<phi::DenseTensor>().dims());
               auto tensor = self.Var().Get<phi::DenseTensor>();
+=======
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              auto value = phi::vectorize<int>(
+                  self.Var().Get<framework::LoDTensor>().dims());
+              auto tensor = self.Var().Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               auto tmp_value = value;
               auto desired_layout =
                   paddle::imperative::LayoutAutoTune::Instance()
@@ -2054,8 +2299,13 @@ void BindImperative(py::module *m_ptr) {
                       << " tensor layout: " << tensor.layout()
                       << " tensor's shape size is : " << value.size();
 
+<<<<<<< HEAD
               if (change_dim &&
                   phi::DataLayoutToString(desired_layout) == "NCHW") {
+=======
+              if (change_dim && paddle::framework::DataLayoutToString(
+                                    desired_layout) == "NCHW") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 VLOG(6) << "layout autotune get Shape from NHWC -> NCHW "
                         << value[0] << " " << value[1] << " " << value[2] << " "
                         << value[3] << " to " << tmp_value[3] << " "
@@ -2065,8 +2315,13 @@ void BindImperative(py::module *m_ptr) {
                 value[1] = tmp_value[2];
                 value[2] = tmp_value[3];
                 value[3] = tmp_value[1];
+<<<<<<< HEAD
               } else if (change_dim &&
                          phi::DataLayoutToString(desired_layout) == "NHWC") {
+=======
+              } else if (change_dim && paddle::framework::DataLayoutToString(
+                                           desired_layout) == "NHWC") {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 VLOG(6) << "layout autotune get Shape from NHWC -> NCHW "
                         << value[0] << " " << value[1] << " " << value[2] << " "
                         << value[3] << " to " << tmp_value[0] << " "
@@ -2097,9 +2352,15 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly(
           "layout",
           [](imperative::VarBase &self) {
+<<<<<<< HEAD
             if (self.Var().IsType<phi::DenseTensor>()) {
               auto layout = self.Var().Get<phi::DenseTensor>().layout();
               return phi::DataLayoutToString(layout);
+=======
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              auto layout = self.Var().Get<framework::LoDTensor>().layout();
+              return paddle::framework::DataLayoutToString(layout);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             return std::string("");
           })
@@ -2108,8 +2369,13 @@ void BindImperative(py::module *m_ptr) {
                              R"DOC(
       Whether a Tensor is leaf Tensor.
 
+<<<<<<< HEAD
       For the Tensor whose stop_gradient is ``True`` , it will be leaf Tensor.
 
+=======
+      For the Tensor whose stop_gradient is ``True`` , it will be leaf Tensor. 
+      
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       For the Tensor whose stop_gradient is ``False`` , it will be leaf Tensor too if it is created by user.
 
       Returns:
@@ -2647,6 +2913,63 @@ void BindImperative(py::module *m_ptr) {
       .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
 #endif
 
+<<<<<<< HEAD
+=======
+  m.def("pylayer_apply",
+        [](const platform::CPUPlace &place,
+           const py::object &cls,
+           const py::args args,
+           const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::CUDAPlace &place,
+           const py::object &cls,
+           const py::args args,
+           const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::XPUPlace &place,
+           const py::object &cls,
+           const py::args args,
+           const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::CUDAPinnedPlace &place,
+           const py::object &cls,
+           const py::args args,
+           const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::NPUPlace &place,
+           const py::object &cls,
+           const py::args args,
+           const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+  m.def("pylayer_apply",
+        [](const platform::MLUPlace &place,
+           const py::object &cls,
+           const py::args args,
+           const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+  m.def("pylayer_apply",
+        [](const platform::CustomPlace &place,
+           const py::object &cls,
+           const py::args args,
+           const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #if defined(PADDLE_WITH_CUDA)
   m.def(
       "to_uva_tensor",
@@ -2699,7 +3022,11 @@ void BindImperative(py::module *m_ptr) {
 
   Returns:
 
+<<<<<<< HEAD
       new_tensor(paddle.Tensor): Return the UVA Tensor with the sample dtype and
+=======
+      new_tensor(paddle.Tensor): Return the UVA Tensor with the sample dtype and 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  shape with the input numpy array.
 
   Examples:
@@ -2708,7 +3035,11 @@ void BindImperative(py::module *m_ptr) {
         # required: gpu
         import numpy as np
         import paddle
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data = np.random.randint(10, size=(3, 4))
         tensor = paddle.fluid.core.to_uva_tensor(data)
         print(tensor)
@@ -2751,10 +3082,17 @@ void BindImperative(py::module *m_ptr) {
 
         // TODO(daisiming): In future, add index as arguments following
         // async_read.
+<<<<<<< HEAD
         auto &src_tensor = src.Var().Get<phi::DenseTensor>();
         auto *dst_tensor = dst.MutableVar()->GetMutable<phi::DenseTensor>();
         auto &offset_tensor = offset.Var().Get<phi::DenseTensor>();
         auto &count_tensor = count.Var().Get<phi::DenseTensor>();
+=======
+        auto &src_tensor = src.Var().Get<framework::LoDTensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
+        auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
+        auto &count_tensor = count.Var().Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         const auto &deviceId = paddle::platform::GetCurrentDeviceId();
 
         PADDLE_ENFORCE_EQ(offset_tensor.dims().size(),
@@ -2812,6 +3150,7 @@ void BindImperative(py::module *m_ptr) {
         }
       },
       R"DOC(
+<<<<<<< HEAD
   This api provides a way to write pieces of source tensor to destination tensor
   inplacely and asynchronously. In which, we use `offset` and `count` to determine
   where to copy. `offset` means the begin points of the copy pieces of `src`, and
@@ -2835,15 +3174,46 @@ void BindImperative(py::module *m_ptr) {
     count (Tensor): The count tensor, and the data type should be `int64` currently.
                     Besides, `count` should be placed on CPUPlace. The shape of `count`
                     should be one-dimensinal.
+=======
+  This api provides a way to write pieces of source tensor to destination tensor 
+  inplacely and asynchronously. In which, we use `offset` and `count` to determine 
+  where to copy. `offset` means the begin points of the copy pieces of `src`, and 
+  `count` means the lengths of the copy pieces of `src`. To be noted, the copy process 
+  will run asynchronously from cuda to pin memory. We can simply remember this as 
+  "gpu async_write to pin_memory".
+  
+  Arguments:
+  
+    src (Tensor): The source tensor, and the data type should be `float32` currently. 
+                  Besides, `src` should be placed on CUDAPlace.
+
+    dst (Tensor): The destination tensor, and the data type should be `float32` currently. 
+                  Besides, `dst` should be placed on CUDAPinnedPlace. The shape of `dst` 
+                  should be the same with `src` except for the first dimension. 
+
+    offset (Tensor): The offset tensor, and the data type should be `int64` currently. 
+                     Besides, `offset` should be placed on CPUPlace. The shape of `offset` 
+                     should be one-dimensional. 
+    
+    count (Tensor): The count tensor, and the data type should be `int64` currently. 
+                    Besides, `count` should be placed on CPUPlace. The shape of `count` 
+                    should be one-dimensinal. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   Examples:
       .. code-block:: python
 
           import numpy as np
           import paddle
+<<<<<<< HEAD
           from paddle.fluid import core
           from paddle.device import cuda
 
+=======
+          from paddle.fluid import core  
+          from paddle.device import cuda
+          
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           if core.is_compiled_with_cuda():
               src = paddle.rand(shape=[100, 50, 50])
               dst = paddle.emtpy(shape=[200, 50, 50]).pin_memory()
@@ -2908,6 +3278,7 @@ void BindImperative(py::module *m_ptr) {
                 "Required `count` device should be CPUPlace, but received %d.",
                 count.Place()));
 
+<<<<<<< HEAD
         auto &src_tensor = src.Var().Get<phi::DenseTensor>();
         auto *dst_tensor = dst.MutableVar()->GetMutable<phi::DenseTensor>();
         auto &index_tensor = index.Var().Get<phi::DenseTensor>();
@@ -2915,6 +3286,15 @@ void BindImperative(py::module *m_ptr) {
             buffer.MutableVar()->GetMutable<phi::DenseTensor>();
         auto &offset_tensor = offset.Var().Get<phi::DenseTensor>();
         auto &count_tensor = count.Var().Get<phi::DenseTensor>();
+=======
+        auto &src_tensor = src.Var().Get<framework::LoDTensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
+        auto &index_tensor = index.Var().Get<framework::LoDTensor>();
+        auto *buffer_tensor =
+            buffer.MutableVar()->GetMutable<framework::LoDTensor>();
+        auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
+        auto &count_tensor = count.Var().Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto *dst_data = dst_tensor->mutable_data<float>(dst.Place());
         const auto &deviceId = paddle::platform::GetCurrentDeviceId();
 
@@ -3009,9 +3389,15 @@ void BindImperative(py::module *m_ptr) {
         }
 
         // Select the index data to the buffer
+<<<<<<< HEAD
         auto index_select = [](const phi::DenseTensor &src_tensor,
                                const phi::DenseTensor &index_tensor,
                                phi::DenseTensor *buffer_tensor) {
+=======
+        auto index_select = [](const framework::Tensor &src_tensor,
+                               const framework::Tensor &index_tensor,
+                               framework::Tensor *buffer_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           auto *src_data = src_tensor.data<float>();
           auto *index_data = index_tensor.data<int64_t>();
           auto *buffer_data =
@@ -3036,6 +3422,7 @@ void BindImperative(py::module *m_ptr) {
                         stream);
       },
       R"DOC(
+<<<<<<< HEAD
   This api provides a way to read from pieces of source tensor to destination tensor
   asynchronously. In which, we use `index`, `offset` and `count` to determine where
   to read. `index` means the index position of src tensor we want to read. `offset`
@@ -3068,6 +3455,40 @@ void BindImperative(py::module *m_ptr) {
                     Besides, `count` should be placed on CPUPlace. The shape of `count`
                     should be one-dimensinal.
 
+=======
+  This api provides a way to read from pieces of source tensor to destination tensor 
+  asynchronously. In which, we use `index`, `offset` and `count` to determine where 
+  to read. `index` means the index position of src tensor we want to read. `offset` 
+  and count means the begin points and length of pieces of src tensor we want to read. 
+  To be noted, the copy process will run asynchronously from pin memory to cuda place. 
+  We can simply remember this as "cuda async_read from pin_memory".
+
+  Arguments:
+  
+    src (Tensor): The source tensor, and the data type should be `float32` currently. 
+                  Besides, `src` should be placed on CUDAPinnedPlace.
+  
+    dst (Tensor): The destination tensor, and the data type should be `float32` currently. 
+                  Besides, `dst` should be placed on CUDAPlace. The shape of `dst` should 
+                  be the same with `src` except for the first dimension.
+
+    index (Tensor): The index tensor, and the data type should be `int64` currently. 
+                    Besides, `index` should be on CPUplace. The shape of `index` should 
+                    be one-dimensional.
+
+    buffer (Tensor): The buffer tensor, used to buffer index copy tensor temporarily. 
+                     The data type should be `float32` currently, and should be placed 
+                     on CUDAPinnedPlace. The shape of `buffer` should be the same with `src` except for the first dimension.
+
+    offset (Tensor): The offset tensor, and the data type should be `int64` currently. 
+                     Besides, `offset` should be placed on CPUPlace. The shape of `offset` 
+                     should be one-dimensional.
+
+    count (Tensor): The count tensor, and the data type should be `int64` currently. 
+                    Besides, `count` should be placed on CPUPlace. The shape of `count` 
+                    should be one-dimensinal.
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   Examples:
       .. code-block:: python
 
@@ -3086,11 +3507,19 @@ void BindImperative(py::module *m_ptr) {
               buffer = paddle.empty(shape=[50, 50, 50], dtype="float32").pin_memory()
               index = paddle.to_tensor(
                   np.array([1, 3, 5, 7, 9], dtype="int64")).cpu()
+<<<<<<< HEAD
 
               stream = cuda.Stream()
               with cuda.stream_guard(stream):
                   core.async_read(src, dst, index, buffer, offset, count)
 
+=======
+          
+              stream = cuda.Stream()
+              with cuda.stream_guard(stream):
+                  core.async_read(src, dst, index, buffer, offset, count)
+ 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
 #endif
 }

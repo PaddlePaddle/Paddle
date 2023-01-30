@@ -25,6 +25,7 @@ void TransposeKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+<<<<<<< HEAD
 
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
@@ -34,6 +35,12 @@ void TransposeKernel(const Context& dev_ctx,
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
+=======
+  if (out->numel() == 0) {
+    return;
+  }
+  dev_ctx.template Alloc<T>(out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int ndims = axis.size();
   std::vector<int> x_shape_host(ndims, 0);
   for (int i = 0; i < ndims; ++i) {

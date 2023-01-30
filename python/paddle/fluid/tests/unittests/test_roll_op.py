@@ -12,17 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import paddle
+import numpy as np
+import paddle.fluid.core as core
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
 class TestRollOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.python_api = paddle.roll
         self.op_type = "roll"
@@ -30,9 +44,14 @@ class TestRollOp(OpTest):
         self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
         self.attrs = {'shifts': self.shifts, 'axis': self.axis}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.roll(
                 self.inputs['X'], self.attrs['shifts'], self.attrs['axis']
             )
+=======
+            'Out':
+            np.roll(self.inputs['X'], self.attrs['shifts'], self.attrs['axis'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def init_dtype_type(self):
@@ -49,6 +68,10 @@ class TestRollOp(OpTest):
 
 
 class TestRollOpCase2(TestRollOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.float32
         self.x_shape = (100, 10, 5)
@@ -57,10 +80,17 @@ class TestRollOpCase2(TestRollOp):
 
 
 class TestRollAPI(unittest.TestCase):
+<<<<<<< HEAD
     def input_data(self):
         self.data_x = np.array(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
         )
+=======
+
+    def input_data(self):
+        self.data_x = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0],
+                                [7.0, 8.0, 9.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_roll_op_api(self):
         self.input_data()
@@ -68,6 +98,7 @@ class TestRollAPI(unittest.TestCase):
         paddle.enable_static()
         # case 1:
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             x.desc.set_need_check_feed(False)
             z = paddle.roll(x, shifts=1)
@@ -78,10 +109,21 @@ class TestRollAPI(unittest.TestCase):
             expect_out = np.array(
                 [[9.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
             )
+=======
+            x = fluid.layers.data(name='x', shape=[-1, 3])
+            z = paddle.roll(x, shifts=1)
+            exe = fluid.Executor(fluid.CPUPlace())
+            res, = exe.run(feed={'x': self.data_x},
+                           fetch_list=[z.name],
+                           return_numpy=False)
+            expect_out = np.array([[9.0, 1.0, 2.0], [3.0, 4.0, 5.0],
+                                   [6.0, 7.0, 8.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             x.desc.set_need_check_feed(False)
             z = paddle.roll(x, shifts=1, axis=0)
@@ -92,6 +134,16 @@ class TestRollAPI(unittest.TestCase):
         expect_out = np.array(
             [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
         )
+=======
+            x = fluid.layers.data(name='x', shape=[-1, 3])
+            z = paddle.roll(x, shifts=1, axis=0)
+            exe = fluid.Executor(fluid.CPUPlace())
+            res, = exe.run(feed={'x': self.data_x},
+                           fetch_list=[z.name],
+                           return_numpy=False)
+        expect_out = np.array([[7.0, 8.0, 9.0], [1.0, 2.0, 3.0],
+                               [4.0, 5.0, 6.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
@@ -101,9 +153,14 @@ class TestRollAPI(unittest.TestCase):
             x = fluid.dygraph.to_variable(self.data_x)
             z = paddle.roll(x, shifts=1)
             np_z = z.numpy()
+<<<<<<< HEAD
         expect_out = np.array(
             [[9.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
         )
+=======
+        expect_out = np.array([[9.0, 1.0, 2.0], [3.0, 4.0, 5.0],
+                               [6.0, 7.0, 8.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
@@ -111,9 +168,14 @@ class TestRollAPI(unittest.TestCase):
             x = fluid.dygraph.to_variable(self.data_x)
             z = paddle.roll(x, shifts=1, axis=0)
             np_z = z.numpy()
+<<<<<<< HEAD
         expect_out = np.array(
             [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
         )
+=======
+        expect_out = np.array([[7.0, 8.0, 9.0], [1.0, 2.0, 3.0],
+                               [4.0, 5.0, 6.0]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
     def test_roll_op_false(self):
@@ -121,6 +183,7 @@ class TestRollAPI(unittest.TestCase):
 
         def test_axis_out_range():
             with program_guard(Program(), Program()):
+<<<<<<< HEAD
                 x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
                 x.desc.set_need_check_feed(False)
                 z = paddle.roll(x, shifts=1, axis=10)
@@ -130,6 +193,14 @@ class TestRollAPI(unittest.TestCase):
                     fetch_list=[z.name],
                     return_numpy=False,
                 )
+=======
+                x = fluid.layers.data(name='x', shape=[-1, 3])
+                z = paddle.roll(x, shifts=1, axis=10)
+                exe = fluid.Executor(fluid.CPUPlace())
+                res, = exe.run(feed={'x': self.data_x},
+                               fetch_list=[z.name],
+                               return_numpy=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertRaises(ValueError, test_axis_out_range)
 

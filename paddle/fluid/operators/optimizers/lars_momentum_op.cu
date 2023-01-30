@@ -15,7 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+=======
+#include "paddle/fluid/platform/fast_divmod.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 #if CUDA_VERSION >= 11000
@@ -187,8 +191,13 @@ __global__ void L2NormKernel(
     g_tmp += (tmp1 * tmp1);
     tid += grid_stride;
   }
+<<<<<<< HEAD
   p_tmp = phi::funcs::BlockReduceSum<MT>(p_tmp, FINAL_MASK);
   g_tmp = phi::funcs::BlockReduceSum<MT>(g_tmp, FINAL_MASK);
+=======
+  p_tmp = phi::funcs::blockReduceSum<MT>(p_tmp, FINAL_MASK);
+  g_tmp = phi::funcs::blockReduceSum<MT>(g_tmp, FINAL_MASK);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (threadIdx.x == 0) {
     p_buffer[blockIdx.x] = p_tmp;
@@ -198,8 +207,13 @@ __global__ void L2NormKernel(
   cg->sync();  // Grid sync for writring partial result to gloabl memory
   MT p_part_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_part_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
+<<<<<<< HEAD
   MT tmp0 = phi::funcs::BlockReduceSum<MT>(p_part_sum, FINAL_MASK);
   MT tmp1 = phi::funcs::BlockReduceSum<MT>(g_part_sum, FINAL_MASK);
+=======
+  MT tmp0 = phi::funcs::blockReduceSum<MT>(p_part_sum, FINAL_MASK);
+  MT tmp1 = phi::funcs::blockReduceSum<MT>(g_part_sum, FINAL_MASK);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (threadIdx.x == 0) {
     s_buffer[0] = tmp0;
     s_buffer[1] = tmp1;
@@ -393,8 +407,13 @@ __global__ void MomentumLarsKernel(const T* param,
   MT grad_part_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   __syncthreads();
   MT param_norm =
+<<<<<<< HEAD
       Sqrt(phi::funcs::BlockReduceSum<MT>(param_part_norm, FINAL_MASK));
   MT grad_norm = Sqrt(rescale_grad_pow * phi::funcs::BlockReduceSum<MT>(
+=======
+      Sqrt(phi::funcs::blockReduceSum<MT>(param_part_norm, FINAL_MASK));
+  MT grad_norm = Sqrt(rescale_grad_pow * phi::funcs::blockReduceSum<MT>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                              grad_part_norm, FINAL_MASK));
 #endif
   MomentumUpdate<T, MT>(param,
@@ -484,7 +503,11 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     bool multi_precision = ctx.Attr<bool>("multi_precision");
     auto& cuda_ctx = ctx.template device_context<phi::GPUContext>();
     int sm_num = cuda_ctx.GetSMCount();
+<<<<<<< HEAD
     phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+=======
+    framework::Tensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         {LARS_BLOCK_SIZE << 1}, cuda_ctx);
     auto* p_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
     auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
@@ -495,6 +518,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
 
     auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
+<<<<<<< HEAD
     auto grad = ctx.MultiInput<phi::DenseTensor>("Grad");
     auto param = ctx.MultiInput<phi::DenseTensor>("Param");
     auto velocity = ctx.MultiInput<phi::DenseTensor>("Velocity");
@@ -503,6 +527,17 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     auto learning_rate = ctx.MultiInput<phi::DenseTensor>("LearningRate");
     auto master_param = ctx.MultiInput<phi::DenseTensor>("MasterParam");
     auto master_param_out = ctx.MultiOutput<phi::DenseTensor>("MasterParamOut");
+=======
+    auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
+    auto param = ctx.MultiInput<framework::LoDTensor>("Param");
+    auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
+    auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
+    auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
+    auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
+    auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
+    auto master_param_out =
+        ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     int op_num = grad.size();
 #if CUDA_VERSION >= 11000

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 import paddle
@@ -28,21 +32,33 @@ def test_convert():
         tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
+<<<<<<< HEAD
             "dims_mapping": [-1, -1],
+=======
+            "dims_mapping": [-1, -1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
     }
     row_strategy = {
         tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
+<<<<<<< HEAD
             "dims_mapping": [0, -1],
+=======
+            "dims_mapping": [0, -1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
     }
     col_strategy = {
         tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
+<<<<<<< HEAD
             "dims_mapping": [-1, 0],
+=======
+            "dims_mapping": [-1, 0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
     }
 
@@ -70,7 +86,11 @@ def test_convert():
         new_name: {
             "process_shape": [2],
             "process_group": [0, 1],
+<<<<<<< HEAD
             "dims_mapping": [0, -1],
+=======
+            "dims_mapping": [0, -1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
     }
     converter = Converter(tensor_dict, col_strategy, row_strategy)
@@ -84,14 +104,22 @@ def test_convert():
         "tensor_2": {
             "process_shape": [2],
             "process_group": [0, 1],
+<<<<<<< HEAD
             "dims_mapping": [-1, -1],
+=======
+            "dims_mapping": [-1, -1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
     }
     row_strategy = {
         "tensor_2": {
             "process_shape": [2],
             "process_group": [0, 1],
+<<<<<<< HEAD
             "dims_mapping": [0, -1],
+=======
+            "dims_mapping": [0, -1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
     }
     tensor_dict = {"tensor_2": [complete_tensor]}

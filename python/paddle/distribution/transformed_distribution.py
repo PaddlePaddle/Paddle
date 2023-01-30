@@ -14,12 +14,23 @@
 
 import typing
 
+<<<<<<< HEAD
 from paddle.distribution import distribution, independent, transform
 
 
 class TransformedDistribution(distribution.Distribution):
     r"""
     Applies a sequence of Transforms to a base distribution.
+=======
+from paddle.distribution import distribution
+from paddle.distribution import transform
+from paddle.distribution import independent
+
+
+class TransformedDistribution(distribution.Distribution):
+    r"""    
+    Applies a sequence of Transforms to a base distribution. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Args:
         base (Distribution): The base distribution.
@@ -28,12 +39,21 @@ class TransformedDistribution(distribution.Distribution):
     Examples:
 
         .. code-block:: python
+<<<<<<< HEAD
 
             import paddle
             from paddle.distribution import transformed_distribution
 
             d = transformed_distribution.TransformedDistribution(
                 paddle.distribution.Normal(0., 1.),
+=======
+        
+            import paddle 
+            from paddle.distribution import transformed_distribution
+
+            d = transformed_distribution.TransformedDistribution(
+                paddle.distribution.Normal(0., 1.), 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 [paddle.distribution.AffineTransform(paddle.to_tensor(1.), paddle.to_tensor(2.))]
             )
 
@@ -59,18 +79,22 @@ class TransformedDistribution(distribution.Distribution):
             raise TypeError("All element of transforms must be Transform type.")
 
         chain = transform.ChainTransform(transforms)
+<<<<<<< HEAD
         base_shape = base.batch_shape + base.event_shape
         self._base = base
         self._transforms = transforms
         if not transforms:
             super().__init__(base.batch_shape, base.event_shape)
             return
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if len(base.batch_shape + base.event_shape) < chain._domain.event_rank:
             raise ValueError(
                 f"'base' needs to have shape with size at least {chain._domain.event_rank}, bug got {len(base_shape)}."
             )
         if chain._domain.event_rank > len(base.event_shape):
             base = independent.Independent(
+<<<<<<< HEAD
                 (base, chain._domain.event_rank - len(base.event_shape))
             )
 
@@ -88,12 +112,29 @@ class TransformedDistribution(distribution.Distribution):
                 len(transformed_shape) - transformed_event_rank :
             ],
         )
+=======
+                (base, chain._domain.event_rank - len(base.event_shape)))
+        self._base = base
+        self._transforms = transforms
+
+        transformed_shape = chain.forward_shape(base.batch_shape +
+                                                base.event_shape)
+        transformed_event_rank = chain._codomain.event_rank + \
+            max(len(base.event_shape)-chain._domain.event_rank, 0)
+        super(TransformedDistribution, self).__init__(
+            transformed_shape[:len(transformed_shape) - transformed_event_rank],
+            transformed_shape[len(transformed_shape) - transformed_event_rank:])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def sample(self, shape=()):
         """Sample from ``TransformedDistribution``.
 
         Args:
+<<<<<<< HEAD
             shape (Sequence[int], optional): The sample shape. Defaults to ().
+=======
+            shape (tuple, optional): The sample shape. Defaults to ().
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         Returns:
             [Tensor]: The sample result.
@@ -103,6 +144,7 @@ class TransformedDistribution(distribution.Distribution):
             x = t.forward(x)
         return x
 
+<<<<<<< HEAD
     def rsample(self, shape=()):
         """Reparameterized sample from ``TransformedDistribution``.
 
@@ -117,6 +159,8 @@ class TransformedDistribution(distribution.Distribution):
             x = t.forward(x)
         return x
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def log_prob(self, value):
         """The log probability evaluated at value.
 
@@ -132,6 +176,7 @@ class TransformedDistribution(distribution.Distribution):
         for t in reversed(self._transforms):
             x = t.inverse(y)
             event_rank += t._domain.event_rank - t._codomain.event_rank
+<<<<<<< HEAD
             log_prob = log_prob - _sum_rightmost(
                 t.forward_log_det_jacobian(x), event_rank - t._domain.event_rank
             )
@@ -139,6 +184,14 @@ class TransformedDistribution(distribution.Distribution):
         log_prob += _sum_rightmost(
             self._base.log_prob(y), event_rank - len(self._base.event_shape)
         )
+=======
+            log_prob = log_prob - \
+                _sum_rightmost(t.forward_log_det_jacobian(
+                    x), event_rank-t._domain.event_rank)
+            y = x
+        log_prob += _sum_rightmost(self._base.log_prob(y),
+                                   event_rank - len(self._base.event_shape))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return log_prob
 
 

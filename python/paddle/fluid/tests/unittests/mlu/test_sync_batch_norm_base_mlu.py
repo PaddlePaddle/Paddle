@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import time
 import argparse
 import os
+<<<<<<< HEAD
+=======
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
@@ -28,6 +36,10 @@ from contextlib import closing
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
+<<<<<<< HEAD
+=======
+from six import string_types
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 from op_test import OpTest, _set_use_system_allocator
@@ -40,7 +52,11 @@ paddle.enable_static()
 SEED = 10
 
 
+<<<<<<< HEAD
 class TestSyncBatchNormRunnerBase:
+=======
+class TestSyncBatchNormRunnerBase(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_model(
         self,
         main,
@@ -56,7 +72,11 @@ class TestSyncBatchNormRunnerBase:
         )
 
     def wait_server_ready(self, endpoints):
+<<<<<<< HEAD
         assert not isinstance(endpoints, str)
+=======
+        assert not isinstance(endpoints, string_types)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         while True:
             all_ok = True
             not_ready_endpoints = []
@@ -175,7 +195,11 @@ class TestSyncBatchNormRunnerBase:
         sys.stderr.write(
             "len(sync_bn_fetches): " + str(len(sync_bn_fetches)) + "\n"
         )
+<<<<<<< HEAD
         for i in range(0, len(sync_bn_fetches)):
+=======
+        for i in six.moves.xrange(0, len(sync_bn_fetches)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sys.stderr.write("i: " + str(i) + "\n")
             sys.stderr.write("fetch_names[i]): " + fetch_names[i] + "\n")
 
@@ -434,6 +458,10 @@ def runtime_main(test_class, col_type, sub_type):
     model.run_trainer(args)
 
 
+<<<<<<< HEAD
+=======
+import paddle.compat as cpt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import socket
 from contextlib import closing
 

@@ -31,10 +31,17 @@
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(enable_pe_launch_cinn);
+<<<<<<< HEAD
 DECLARE_bool(enable_interpretercore_launch_cinn);
 namespace paddle {
 namespace operators {
 
+=======
+namespace paddle {
+namespace operators {
+
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 
@@ -76,6 +83,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
             << "value:\n"
             << CinnCompiler::GetInstance()->ReadableKey(compilation_key);
 
+<<<<<<< HEAD
     std::map<std::string, const phi::DenseTensor*> inputs_name2tensor;
     std::vector<std::string> input_x_variable_names;
     std::vector<std::string> input_no_need_buffer_variable_names;
@@ -83,23 +91,43 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         [&inputs_name2tensor](
             const std::vector<std::string>& variable_names,
             const std::vector<const phi::DenseTensor*>& tensors) {
+=======
+    std::map<std::string, const LoDTensor*> inputs_name2tensor;
+    std::vector<std::string> input_x_variable_names;
+    std::vector<std::string> input_no_need_buffer_variable_names;
+    auto add_name2tensor_fn =
+        [&inputs_name2tensor](const std::vector<std::string>& variable_names,
+                              const std::vector<const LoDTensor*>& tensors) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           std::transform(
               variable_names.begin(),
               variable_names.end(),
               tensors.begin(),
               std::inserter(inputs_name2tensor, inputs_name2tensor.end()),
+<<<<<<< HEAD
               [](const std::string& name, const phi::DenseTensor* tensor) {
+=======
+              [](const std::string& name, const LoDTensor* tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return std::make_pair(name, tensor);
               });
         };
 
+<<<<<<< HEAD
     auto input_x_tensors = ctx.MultiInput<phi::DenseTensor>(kX);
+=======
+    auto input_x_tensors = ctx.MultiInput<LoDTensor>(kX);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!input_x_tensors.empty()) {
       input_x_variable_names = std::move(ctx.InputNames(kX));
       add_name2tensor_fn(input_x_variable_names, input_x_tensors);
     }
     auto input_no_need_buffer_tensors =
+<<<<<<< HEAD
         ctx.MultiInput<phi::DenseTensor>(kNoNeedBufferX);
+=======
+        ctx.MultiInput<LoDTensor>(kNoNeedBufferX);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!input_no_need_buffer_tensors.empty()) {
       input_no_need_buffer_variable_names =
           std::move(ctx.InputNames(kNoNeedBufferX));
@@ -136,6 +164,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 4. Execute the compiled CINN instructions by a PE or
     //         by the CINN compiled program in sequential order
     if (FLAGS_enable_pe_launch_cinn) {
+<<<<<<< HEAD
       if (FLAGS_enable_interpretercore_launch_cinn) {
         platform::RecordEvent record_event_4(
             "Step 4. Execute the runtime program by InterpreterCore.");
@@ -151,6 +180,14 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         auto* pe = launch_context->InitializePE(place, &exec_scope);
         pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
       }
+=======
+      platform::RecordEvent record_event_4(
+          "Step 4. Execute the runtime graph by PE.");
+      VLOG(4) << "Execute the runtime graph by PE";
+      framework::Scope& exec_scope = scope.NewScope();
+      auto* pe = launch_context->InitializePE(place, &exec_scope);
+      pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       platform::RecordEvent record_event_4(
           "Step 4. Execute the compiled executable program.");

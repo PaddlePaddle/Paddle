@@ -173,10 +173,16 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       node_input_buffers_dict[grad_node] =
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
+<<<<<<< HEAD
 
     // copy grad tensor since we should totally run grad without affect forward
     // value
     if (grad_tensors.size() > 0 && grad_tensors[i].initialized()) {
+=======
+    bool copy_from_grad_t =
+        grad_tensors.size() > 0 && grad_tensors[i].initialized();
+    if (copy_from_grad_t) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
           paddle::platform::errors::Fatal(
@@ -227,6 +233,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
+<<<<<<< HEAD
+=======
+    VLOG(4) << EagerUtils::GradNodeStr(*node);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()),
         paddle::platform::TracerEventType::Operator,
@@ -338,7 +348,11 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
         }
 
+<<<<<<< HEAD
         VLOG(3) << "Sum or Move grad inputs for edge slot: " << edge_rank.first
+=======
+        VLOG(3) << "Sum grad inputs for edge slot: " << edge_rank.first
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 << ", rank: " << edge_rank.second;
 
         node_input_buffers_dict[next_node]->add(edge_rank.first,
@@ -358,11 +372,30 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                 "Node's in-degree cannot be negative.",
                 next_node->name()));
 
+<<<<<<< HEAD
         if (node_in_degree_map[next_node] == 0) {
           if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
             queue.push_front(std::move(next_node));
           } else {
             queue.push_back(std::move(next_node));
+=======
+        if (is_general_grad) {
+          if (node_in_degree_map[next_node] == 0 &&
+              GeneralGrad::Instance().IsNeededNodes(next_node)) {
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              queue.push_front(std::move(next_node));
+            } else {
+              queue.push_back(std::move(next_node));
+            }
+          }
+        } else {
+          if (node_in_degree_map[next_node] == 0) {
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              queue.push_front(std::move(next_node));
+            } else {
+              queue.push_back(std::move(next_node));
+            }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           }
         }
       }
@@ -376,8 +409,13 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   }
   egr::Controller::Instance().ClearFinalBackwardHooks();
   if (!is_general_grad) return {};
+<<<<<<< HEAD
   VLOG(3) << "Finish Backward";
   return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
+=======
+  return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
+  VLOG(3) << "Finish Backward";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void Backward(

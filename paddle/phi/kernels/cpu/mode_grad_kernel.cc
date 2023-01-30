@@ -17,7 +17,10 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/mode.h"
 
 namespace phi {
@@ -33,6 +36,7 @@ void ModeGradKernel(const Context& dev_ctx,
   auto in_dims = x.dims();
   auto out_dims = indices.dims();
 
+<<<<<<< HEAD
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
   // axis < 0, get the real axis
@@ -44,6 +48,11 @@ void ModeGradKernel(const Context& dev_ctx,
     return;
   }
 
+=======
+  // axis < 0, get the real axis
+  axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (!keepdim) {
     std::vector<int> tmp_out_shape;
     for (int i = 0; i < axis; i++) {
@@ -55,6 +64,10 @@ void ModeGradKernel(const Context& dev_ctx,
     }
     out_dims = phi::make_ddim(tmp_out_shape);
   }
+<<<<<<< HEAD
+=======
+  T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (axis == in_dims.size() - 1) {
     // allocate the memory for the input_grad

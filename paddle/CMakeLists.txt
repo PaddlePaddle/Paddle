@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 set(CC_TESTS_DIR
     ${PADDLE_BINARY_DIR}/paddle/tests
     CACHE INTERNAL "c++ tests directory")
@@ -136,3 +137,14 @@ add_custom_target(build_tests)
 if(${len} GREATER_EQUAL 1)
   add_dependencies(build_tests ${test_names})
 endif()
+=======
+add_subdirectory(utils)
+add_subdirectory(scripts)
+add_subdirectory(testing)
+set(PYTHON_TESTS_DIR
+    ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests
+    CACHE INTERNAL "python tests directory")
+add_subdirectory(phi)
+add_subdirectory(infrt)
+add_subdirectory(fluid)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

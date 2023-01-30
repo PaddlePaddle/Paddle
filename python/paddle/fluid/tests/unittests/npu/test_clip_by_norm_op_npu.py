@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import paddle
@@ -26,6 +31,10 @@ paddle.enable_static()
 
 
 class TestClipByNormOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.max_relative_error = 0.006
@@ -54,7 +63,11 @@ class TestClipByNormOp(OpTest):
         self.check_output_with_place(self.place)
 
     def initTestCase(self):
+<<<<<<< HEAD
         self.shape = (100,)
+=======
+        self.shape = (100, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.max_norm = 1.0
 
     def init_dtype(self):
@@ -62,24 +75,42 @@ class TestClipByNormOp(OpTest):
 
 
 class TestCase1(TestClipByNormOp):
+<<<<<<< HEAD
     def initTestCase(self):
         self.shape = (100,)
+=======
+
+    def initTestCase(self):
+        self.shape = (100, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.max_norm = 1e20
 
 
 class TestCase2(TestClipByNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (16, 16)
         self.max_norm = 0.1
 
 
 class TestCase3(TestClipByNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0
 
 
 class TestClipByNormOpFp16(TestClipByNormOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -88,18 +119,32 @@ class TestClipByNormOpFp16(TestClipByNormOp):
 
 
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
+<<<<<<< HEAD
     def initTestCase(self):
         self.shape = (100,)
+=======
+
+    def initTestCase(self):
+        self.shape = (100, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.max_norm = 1e20
 
 
 class TestClipByNormOpFp16Case2(TestClipByNormOpFp16):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (16, 16)
         self.max_norm = 0.1
 
 
 class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0

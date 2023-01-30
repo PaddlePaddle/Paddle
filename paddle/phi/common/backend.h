@@ -42,6 +42,7 @@ enum class Backend : uint8_t {
 
   // basic kernel backend
   CPU,
+<<<<<<< HEAD
   // the third library backend
   ONEDNN,
 
@@ -51,11 +52,23 @@ enum class Backend : uint8_t {
   GPUDNN,  // cuDNN and hipDNN
 
   // various acceleration devices' backends
+=======
+
+  // various acceleration devices' backends
+  GPU,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
   MLU,  // MLU currently does not exist at the same time as CUDA
   IPU,
 
+<<<<<<< HEAD
+=======
+  // the third library backend
+  ONEDNN,
+  GPUDNN,  // cuDNN and hipDNN
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // paddle kernel primitives backend
   KPS,
 
@@ -134,9 +147,13 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
+<<<<<<< HEAD
       std::string device_type =
           phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
               device_type_id_);
+=======
+      std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (!device_type.empty()) {
         os << device_type;
       } else {
@@ -180,6 +197,7 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::IPU;
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
+<<<<<<< HEAD
                                 phi::CustomRegisteredDeviceMap::Instance()
                                     .GetOrRegisterGlobalDeviceTypeId(s));
   }
@@ -219,6 +237,9 @@ inline std::string BackendToString(const Backend& backend) {
         PD_THROW(
             "Invalid enum backend type `", static_cast<int>(backend), "`.");
       }
+=======
+                                phi::GetOrRegisterGlobalDeviceTypeId(s));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

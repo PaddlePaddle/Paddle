@@ -12,12 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle
 from paddle.fluid import framework, unique_name
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import Variable
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.optimizer import Optimizer
+=======
+from paddle.optimizer import Optimizer
+from paddle.fluid import core, framework, layers, unique_name
+from paddle.fluid.framework import (
+    Program,
+    Variable,
+    name_scope,
+    default_main_program,
+    default_startup_program,
+    device_guard,
+)
+from paddle.fluid.layer_helper import LayerHelper
+import paddle
+import numpy as np
+from paddle.fluid.dygraph import base as imperative_base
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -76,7 +93,11 @@ class LookAhead(Optimizer):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(LinearNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
                     self.bias = self._linear.bias
 
@@ -129,7 +150,11 @@ class LookAhead(Optimizer):
         else:
             parameters = self.inner_optimizer._parameter_list
 
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(LookAhead, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             learning_rate=alpha,
             parameters=parameters,
             weight_decay=None,
@@ -192,7 +217,11 @@ class LookAhead(Optimizer):
 
     def _increment_global_var(self):
         if self._global_step_var is None:
+<<<<<<< HEAD
             self._global_step_var = paddle.static.create_global_var(
+=======
+            self._global_step_var = layers.create_global_var(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 name=unique_name.generate("lookahead_step"),
                 shape=[1],
                 value=0,
@@ -212,7 +241,11 @@ class LookAhead(Optimizer):
         zero_var = paddle.zeros(
             shape=[1], dtype='int32', name='lookahead_zeros'
         )
+<<<<<<< HEAD
         k_var = paddle.static.create_global_var(
+=======
+        k_var = layers.create_global_var(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             name=unique_name.generate("lookahead_k"),
             shape=[1],
             value=self.k,

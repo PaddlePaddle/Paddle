@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid.core as core
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
@@ -22,15 +25,25 @@ paddle.enable_static()
 
 
 class TestFleetExecutorTaskNode(unittest.TestCase):
+<<<<<<< HEAD
     def test_task_node(self):
         program = paddle.static.Program()
         task_node_0 = core.TaskNode(program.desc, 0, 0, 1)
         task_node_1 = core.TaskNode(program.desc, 0, 1, 1)
         task_node_2 = core.TaskNode(program.desc, 0, 2, 1)
+=======
+
+    def test_task_node(self):
+        program = paddle.static.Program()
+        task_node_0 = core.TaskNode(program.desc, 0, 1, 1)
+        task_node_1 = core.TaskNode(program.desc, 0, 1, 1)
+        task_node_2 = core.TaskNode(program.desc, 0, 1, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(task_node_0.task_id(), 0)
         self.assertEqual(task_node_1.task_id(), 1)
         self.assertEqual(task_node_2.task_id(), 2)
         self.assertTrue(
+<<<<<<< HEAD
             task_node_0.add_downstream_task(
                 task_node_1.task_id(), 1, core.DependType.NORMAL
             )
@@ -49,6 +62,18 @@ class TestFleetExecutorTaskNode(unittest.TestCase):
             max_run_times=1,
             lazy_initialize=True,
         )
+=======
+            task_node_0.add_downstream_task(task_node_1.task_id(), 1))
+        self.assertTrue(task_node_1.add_upstream_task(task_node_0.task_id(), 1))
+
+    def test_lazy_task_node(self):
+        program = paddle.static.Program()
+        task = TaskNode(program=program,
+                        rank=0,
+                        max_run_times=1,
+                        max_slot_times=1,
+                        lazy_initialize=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         task_node = task.task_node()
 
 

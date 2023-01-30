@@ -564,6 +564,7 @@ namespace capi {
       static_assert(out_idx == 0,                                            \
                     "Kernel's Input should appear before Outputs.");         \
       auto arg = PD_MultiInputAt(ctx, in_idx);                               \
+<<<<<<< HEAD
       std::vector<const tensor_type *> tensor_ptr_vec;                       \
       for (auto &tensor : arg) {                                             \
         tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
@@ -571,17 +572,29 @@ namespace capi {
       CustomKernelCallHelper<Tail...>::                                      \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
               ctx, pargs..., tensor_ptr_vec);                                \
+=======
+      auto arg_wrapper = PD_GetPointerVector(&arg);                          \
+      CustomKernelCallHelper<Tail...>::                                      \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
+              ctx, pargs..., arg_wrapper);                                   \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }                                                                        \
     template <int idx, typename... PreviousArgs>                             \
     static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,    \
                                 PreviousArgs &...pargs) {                    \
       auto &arg = std::get<idx>(ctx);                                        \
+<<<<<<< HEAD
       auto tensor_vec = PD_TensorVector(reinterpret_cast<PD_Tensor *>(       \
           const_cast<std::vector<const tensor_type *> *>(&arg)));            \
       std::vector<const tensor_type *> tensor_ptr_vec;                       \
       for (auto &tensor : tensor_vec) {                                      \
         tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
       }                                                                      \
+=======
+      auto tensor = PD_TensorVector(reinterpret_cast<PD_Tensor *>(           \
+          const_cast<std::vector<const tensor_type *> *>(&arg)));            \
+      auto tensor_ptr_vec = PD_GetPointerVector(&arg);                       \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx + \
                                                                        1>(   \
           ctx, pargs..., tensor_ptr_vec);                                    \
@@ -687,7 +700,11 @@ namespace capi {
         tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
       }                                                                      \
       CustomKernelCallHelper<Tail...>::                                      \
+<<<<<<< HEAD
           template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(      \
+=======
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               ctx, pargs..., tensor_ptr_vec);                                \
     }                                                                        \
     template <int idx, typename... PreviousArgs>                             \

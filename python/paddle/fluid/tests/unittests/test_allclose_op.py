@@ -13,16 +13,27 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
 
+=======
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
 class TestAllcloseOp(OpTest):
+<<<<<<< HEAD
     def set_args(self):
         self.input = np.array([10000.0, 1e-07]).astype("float32")
+=======
+
+    def set_args(self):
+        self.input = np.array([10000., 1e-07]).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.other = np.array([10000.1, 1e-08]).astype("float32")
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
@@ -36,6 +47,7 @@ class TestAllcloseOp(OpTest):
             'Input': self.input,
             'Other': self.other,
             "Rtol": self.rtol,
+<<<<<<< HEAD
             "Atol": self.atol,
         }
         self.attrs = {'equal_nan': self.equal_nan}
@@ -51,6 +63,20 @@ class TestAllcloseOp(OpTest):
                     )
                 ]
             )
+=======
+            "Atol": self.atol
+        }
+        self.attrs = {'equal_nan': self.equal_nan}
+        self.outputs = {
+            'Out':
+            np.array([
+                np.allclose(self.inputs['Input'],
+                            self.inputs['Other'],
+                            rtol=self.rtol,
+                            atol=self.atol,
+                            equal_nan=self.equal_nan)
+            ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -58,7 +84,13 @@ class TestAllcloseOp(OpTest):
 
 
 class TestAllcloseOpException(TestAllcloseOp):
+<<<<<<< HEAD
     def test_check_output(self):
+=======
+
+    def test_check_output(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def test_rtol_num():
             self.inputs['Rtol'] = np.array([1e-05, 1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([1e-08]).astype("float64")
@@ -89,8 +121,14 @@ class TestAllcloseOpException(TestAllcloseOp):
 
 
 class TestAllcloseOpSmallNum(TestAllcloseOp):
+<<<<<<< HEAD
     def set_args(self):
         self.input = np.array([10000.0, 1e-08]).astype("float32")
+=======
+
+    def set_args(self):
+        self.input = np.array([10000., 1e-08]).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.other = np.array([10000.1, 1e-09]).astype("float32")
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
@@ -98,6 +136,10 @@ class TestAllcloseOpSmallNum(TestAllcloseOp):
 
 
 class TestAllcloseOpNanFalse(TestAllcloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
@@ -107,6 +149,10 @@ class TestAllcloseOpNanFalse(TestAllcloseOp):
 
 
 class TestAllcloseOpNanTrue(TestAllcloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
@@ -116,6 +162,10 @@ class TestAllcloseOpNanTrue(TestAllcloseOp):
 
 
 class TestAllcloseDygraph(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_api_case(self):
         paddle.disable_static()
         x_data = np.random.rand(10, 10)
@@ -129,11 +179,20 @@ class TestAllcloseDygraph(unittest.TestCase):
 
 
 class TestAllcloseError(unittest.TestCase):
+<<<<<<< HEAD
     def test_input_dtype(self):
         def test_x_dtype():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
+=======
+
+    def test_input_dtype(self):
+
+        def test_x_dtype():
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.allclose(x, y)
@@ -141,9 +200,14 @@ class TestAllcloseError(unittest.TestCase):
         self.assertRaises(TypeError, test_x_dtype)
 
         def test_y_dtype():
+<<<<<<< HEAD
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
+=======
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='int32')
                 result = paddle.allclose(x, y)
@@ -171,6 +235,10 @@ class TestAllcloseError(unittest.TestCase):
 
 
 class TestAllcloseOpFloat32(TestAllcloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array([10.1]).astype("float32")
         self.other = np.array([10]).astype("float32")
@@ -180,6 +248,10 @@ class TestAllcloseOpFloat32(TestAllcloseOp):
 
 
 class TestAllcloseOpFloat64(TestAllcloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array([10.1]).astype("float64")
         self.other = np.array([10]).astype("float64")
@@ -189,6 +261,10 @@ class TestAllcloseOpFloat64(TestAllcloseOp):
 
 
 class TestAllcloseOpLargeDimInput(TestAllcloseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.input = np.array(np.zeros([2048, 1024])).astype("float64")
         self.other = np.array(np.zeros([2048, 1024])).astype("float64")

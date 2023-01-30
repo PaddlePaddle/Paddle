@@ -115,6 +115,7 @@ struct OperatorSupplementOriginEvent {
       const std::map<std::string, std::vector<framework::DDim>> &input_shapes,
       const std::map<std::string, std::vector<framework::proto::VarType::Type>>
           &dtypes,
+<<<<<<< HEAD
       const framework::AttributeMap &attributes,
       uint64_t op_id)
       : timestamp_ns(timestamp_ns),
@@ -122,6 +123,13 @@ struct OperatorSupplementOriginEvent {
         dtypes(dtypes),
         attributes(attributes),
         op_id(op_id) {
+=======
+      const std::vector<std::string> callstack)
+      : timestamp_ns(timestamp_ns),
+        input_shapes(input_shapes),
+        dtypes(dtypes),
+        callstack(callstack) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
     strncpy(buf, type_name.c_str(), type_name.length() + 1);
     op_type = buf;
@@ -134,12 +142,17 @@ struct OperatorSupplementOriginEvent {
           &shapes,
       const std::map<std::string, std::vector<framework::proto::VarType::Type>>
           &dtypes,
+<<<<<<< HEAD
       const framework::AttributeMap &attributes,
       uint64_t op_id)
       : timestamp_ns(timestamp_ns),
         dtypes(dtypes),
         attributes(attributes),
         op_id(op_id) {
+=======
+      const std::vector<std::string> callstack)
+      : timestamp_ns(timestamp_ns), dtypes(dtypes), callstack(callstack) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
     strncpy(buf, type_name.c_str(), type_name.length() + 1);
     op_type = buf;
@@ -152,10 +165,15 @@ struct OperatorSupplementOriginEvent {
   // input shapes
   std::map<std::string, std::vector<framework::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
+<<<<<<< HEAD
   // op attributes
   framework::AttributeMap attributes;
   // op id
   uint64_t op_id;
+=======
+  // call stack
+  const std::vector<std::string> callstack;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace platform

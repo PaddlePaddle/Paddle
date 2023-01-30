@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import importlib
 import os
 import sys
@@ -21,6 +22,18 @@ from io import StringIO
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+
+import unittest
+import os
+import sys
+import paddle
+import paddle.fluid as fluid
+import importlib
+import paddle.fluid.core as core
+from six.moves import cStringIO
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import static_mode_white_list
@@ -29,7 +42,11 @@ import static_mode_white_list
 def main():
     sys.path.append(os.getcwd())
     if core.is_compiled_with_cuda() or core.is_compiled_with_rocm():
+<<<<<<< HEAD
         if os.getenv('FLAGS_enable_gpu_memory_usage_log') is None:
+=======
+        if (os.getenv('FLAGS_enable_gpu_memory_usage_log') == None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             os.environ['FLAGS_enable_gpu_memory_usage_log'] = 'true'
             os.environ['FLAGS_enable_gpu_memory_usage_log_mb'] = 'false'
 
@@ -39,7 +56,11 @@ def main():
         if module_name in static_mode_white_list.STATIC_MODE_TESTING_LIST:
             flag_need_static_mode = True
             paddle.enable_static()
+<<<<<<< HEAD
         buffer = StringIO()
+=======
+        buffer = cStringIO()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         main = fluid.Program()
         startup = fluid.Program()
         scope = fluid.core.Scope()
@@ -53,12 +74,19 @@ def main():
 
                     if not res.wasSuccessful():
                         some_test_failed = True
+<<<<<<< HEAD
                         print(
                             module_name,
                             'failed\n',
                             buffer.getvalue(),
                             file=sys.stderr,
                         )
+=======
+                        print(module_name,
+                              'failed\n',
+                              buffer.getvalue(),
+                              file=sys.stderr)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if flag_need_static_mode:
             paddle.disable_static()
 

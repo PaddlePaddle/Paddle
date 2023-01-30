@@ -48,8 +48,12 @@ void MaskedSelectKernel(const Context& dev_ctx,
 
   DDim out_dim{out_size};
   out->Resize(out_dim);
+<<<<<<< HEAD
 
   auto out_data = dev_ctx.template HostAlloc<T>(out);
+=======
+  auto out_data = out->mutable_data<T>(phi::CPUPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int index = 0;
   for (int i = 0; i < mask_size; i++) {

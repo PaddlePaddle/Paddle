@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import argparse
 import os
@@ -20,6 +25,10 @@ import signal
 import time
 import socket
 from contextlib import closing
+<<<<<<< HEAD
+=======
+from six import string_types
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import math
 import paddle
 import paddle.fluid as fluid
@@ -30,23 +39,37 @@ import unittest
 from multiprocessing import Process
 import paddle.fluid.layers as layers
 from functools import reduce
+<<<<<<< HEAD
 from test_collective_api_base_mlu import (
     TestCollectiveAPIRunnerBase,
     runtime_main,
 )
+=======
+from test_collective_api_base_mlu import TestCollectiveAPIRunnerBase, runtime_main
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
+=======
+            tindata = layers.data(name="tindata",
+                                  shape=[10, 1000],
+                                  dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.distributed.all_reduce(tindata)
             return [tindata]
 

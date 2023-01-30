@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -32,6 +33,20 @@ USE_OP_ITSELF(relu);
 PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(softmax);
 PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
+=======
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+USE_OP_ITSELF(elementwise_add);
+USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+USE_OP_ITSELF(relu);
+PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
+USE_OP_ITSELF(softmax);
+USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_DECLARE_KERNEL(softmax, CPU, ALL_LAYOUT);
 
 namespace paddle {
@@ -39,7 +54,11 @@ namespace operators {
 
 struct InputVars {
   std::string name;
+<<<<<<< HEAD
   phi::DenseTensor *tensor;
+=======
+  framework::LoDTensor *tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename T>
@@ -50,6 +69,7 @@ bool TestMain(const platform::Place &place,
   framework::Scope scope;
 
   std::vector<InputVars> input_names = {
+<<<<<<< HEAD
       {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()},
       {"x1",
        num_inputs > 1 ? scope.Var("x1")->GetMutable<phi::DenseTensor>()
@@ -64,6 +84,22 @@ bool TestMain(const platform::Place &place,
        num_inputs > 4 ? scope.Var("x4")->GetMutable<phi::DenseTensor>()
                       : nullptr}};
   auto *y = scope.Var("y")->GetMutable<phi::DenseTensor>();
+=======
+      {"x", scope.Var("x")->GetMutable<framework::LoDTensor>()},
+      {"x1",
+       num_inputs > 1 ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
+                      : nullptr},
+      {"x2",
+       num_inputs > 2 ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
+                      : nullptr},
+      {"x3",
+       num_inputs > 3 ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
+                      : nullptr},
+      {"x4",
+       num_inputs > 4 ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
+                      : nullptr}};
+  auto *y = scope.Var("y")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
@@ -103,7 +139,11 @@ bool TestMain(const platform::Place &place,
   pool.Get(place)->Wait();
 
   // Get reference (out of place) result
+<<<<<<< HEAD
   auto &ref_tensor = scope.FindVar("y")->Get<phi::DenseTensor>();
+=======
+  auto &ref_tensor = scope.FindVar("y")->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // In-place (to be tested) computation
   auto op = num_inputs > 1
@@ -120,7 +160,11 @@ bool TestMain(const platform::Place &place,
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
   // Get in-place result
+<<<<<<< HEAD
   auto &out_tensor = scope.FindVar("x")->Get<phi::DenseTensor>();
+=======
+  auto &out_tensor = scope.FindVar("x")->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_EQ(
       &out_tensor,
       input_names[0].tensor,
@@ -136,13 +180,21 @@ bool TestMain(const platform::Place &place,
 
 TEST(test_softmax_inplace, cpu_place) {
   framework::DDim dims({32, 64});
+<<<<<<< HEAD
   phi::CPUPlace p;
+=======
+  platform::CPUPlace p;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ASSERT_TRUE(TestMain<float>(p, "softmax", dims, 1));
 }
 
 TEST(test_relu_inplace, cpu_place) {
   framework::DDim dims({1, 12, 20, 20});
+<<<<<<< HEAD
   phi::CPUPlace p;
+=======
+  platform::CPUPlace p;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ASSERT_TRUE(TestMain<float>(p, "relu", dims, 1));
 }
 

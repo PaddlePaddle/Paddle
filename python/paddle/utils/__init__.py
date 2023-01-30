@@ -28,4 +28,10 @@ from . import image_util  # noqa: F401
 from . import cpp_extension  # noqa: F401
 from . import dlpack
 
+<<<<<<< HEAD
 __all__ = ['deprecated', 'run_check', 'require_version', 'try_import']  # noqa
+=======
+__all__ = [  #noqa
+    'deprecated', 'run_check', 'require_version', 'try_import'
+]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

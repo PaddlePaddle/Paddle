@@ -82,11 +82,18 @@ void Stream::Wait() const {
 void Stream::WaitCallback() const { callback_manager_->Wait(); }
 
 void Stream::Destroy() {
+<<<<<<< HEAD
   if (own_data_ && stream_ != nullptr) {
     phi::DeviceManager::SetDevice(place_);
     device_->DestroyStream(this);
     own_data_ = false;
     stream_ = nullptr;
+=======
+  if (own_data_) {
+    phi::DeviceManager::SetDevice(place_);
+    device_->DestroyStream(this);
+    own_data_ = false;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

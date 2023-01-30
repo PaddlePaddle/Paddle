@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import shutil
 import signal
@@ -27,6 +28,26 @@ import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.op import Operator
+=======
+from __future__ import print_function
+
+import os
+import signal
+import time
+import shutil
+import unittest
+
+from multiprocessing import Process
+
+import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.transpiler.details import VarStruct, VarsDistributed
+from dist_test_utils import *
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def run_pserver(pserver_id):
@@ -46,6 +67,7 @@ def run_pserver(pserver_id):
             param.set(param_array, place)
 
             optimize_block = program._create_block(program.global_block().idx)
+<<<<<<< HEAD
             program.global_block().append_op(
                 type="listen_and_serv",
                 inputs={'X': []},
@@ -58,6 +80,22 @@ def run_pserver(pserver_id):
                     "grad_to_block_id": [],
                 },
             )
+=======
+            program.global_block().append_op(type="listen_and_serv",
+                                             inputs={'X': []},
+                                             outputs={},
+                                             attrs={
+                                                 "optimize_blocks":
+                                                 [optimize_block],
+                                                 "endpoint":
+                                                 '127.0.0.1:0',
+                                                 "Fanin":
+                                                 1,
+                                                 "distributed_mode":
+                                                 DistributedMode.SYNC,
+                                                 "grad_to_block_id": []
+                                             })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = fluid.Executor(place)
             exe.run(program)
@@ -65,11 +103,19 @@ def run_pserver(pserver_id):
 
 @unittest.skip("do not need currently")
 class TestListenAndServOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.ps_timeout = 5
 
     def _start_pserver(self, pserver_id, pserver_func):
+<<<<<<< HEAD
         p = Process(target=pserver_func, args=(pserver_id,))
+=======
+        p = Process(target=pserver_func, args=(pserver_id, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         p.daemon = True
         p.start()
         return p
@@ -101,6 +147,7 @@ class TestListenAndServOp(unittest.TestCase):
                 emaps = ['127.0.0.1:' + str(port0), '127.0.0.1:' + str(port1)]
 
                 # create and run recv and save operator
+<<<<<<< HEAD
                 remote_recv_op = Operator(
                     "recv_save",
                     trainer_id=0,
@@ -112,6 +159,17 @@ class TestListenAndServOp(unittest.TestCase):
                     endpoints=emaps,
                     file_path=model_file,
                 )
+=======
+                remote_recv_op = Operator("recv_save",
+                                          trainer_id=0,
+                                          shape=[10, 8],
+                                          slice_shapes=["5,8", "5,8"],
+                                          slice_varnames=["table", "table"],
+                                          remote_varnames=['table', 'table'],
+                                          is_sparse=False,
+                                          endpoints=emaps,
+                                          file_path=model_file)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 remote_recv_op.run(scope, place)
 
@@ -124,22 +182,31 @@ class TestListenAndServOp(unittest.TestCase):
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[10, 8],
             dtype="float32",
+<<<<<<< HEAD
             persistable=True,
         )
+=======
+            persistable=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         slice0 = load_block.create_var(
             name="var.slice0",
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[3, 8],
             dtype="float32",
+<<<<<<< HEAD
             persistable=True,
         )
+=======
+            persistable=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         slice1 = load_block.create_var(
             name="var.slice1",
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[5, 8],
             dtype="float32",
+<<<<<<< HEAD
             persistable=True,
         )
 
@@ -171,6 +238,32 @@ class TestListenAndServOp(unittest.TestCase):
                 'shape': slice1.shape,
             },
         )
+=======
+            persistable=True)
+
+        load_block.append_op(type='load',
+                             inputs={},
+                             outputs={'Out': [origin]},
+                             attrs={'file_path': model_file})
+
+        load_block.append_op(type='load',
+                             inputs={},
+                             outputs={'Out': [slice0]},
+                             attrs={
+                                 'file_path': model_file,
+                                 'seek': 2 * 8,
+                                 'shape': slice0.shape
+                             })
+
+        load_block.append_op(type='load',
+                             inputs={},
+                             outputs={'Out': [slice1]},
+                             attrs={
+                                 'file_path': model_file,
+                                 'seek': 5 * 8,
+                                 'shape': slice1.shape
+                             })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         exe.run(load_prog)
@@ -187,9 +280,14 @@ class TestListenAndServOp(unittest.TestCase):
         np.testing.assert_equal(origin[5:10], slice1)
 
     def _save_by_io_persistables(self, place, port0, port1, dirname, var_name):
+<<<<<<< HEAD
         self._run_nce_op_two_pserver(
             place, port0, port1, os.path.join(dirname, var_name)
         )
+=======
+        self._run_nce_op_two_pserver(place, port0, port1,
+                                     os.path.join(dirname, var_name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_recv_save_op_remote(self):
         # run pserver on CPU in sync mode
@@ -207,9 +305,14 @@ class TestListenAndServOp(unittest.TestCase):
         param_name = "table"
 
         for place in places:
+<<<<<<< HEAD
             self._save_by_io_persistables(
                 place, port0, port1, param_dir, param_name
             )
+=======
+            self._save_by_io_persistables(place, port0, port1, param_dir,
+                                          param_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # raise SIGTERM to pserver
         os.kill(p0.pid, signal.SIGINT)

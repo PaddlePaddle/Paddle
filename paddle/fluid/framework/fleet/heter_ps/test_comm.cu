@@ -22,7 +22,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
+<<<<<<< HEAD
 using paddle::framework;
+=======
+using namespace paddle::framework;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 TEST(TEST_FLEET, heter_comm) {
   int gpu_count = 3;

@@ -13,12 +13,20 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
 import paddle
 from paddle.distributed.models.moe import utils
 from paddle.fluid import core
+=======
+import paddle
+import numpy as np
+from paddle.distributed.models.moe import utils
+from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def limit_by_capacity(expert_count, _capacity, n_worker):
@@ -44,6 +52,7 @@ def all_close(exp, out, n_worker):
     return np.allclose(exp.sum(0), out.sum(0))
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -55,6 +64,19 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
         self.out = limit_by_capacity(
             self.expert_count, self.capacity, self.n_worker
         )
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestLimitByCapacityInt64API(unittest.TestCase):
+
+    def init_test_case(self):
+        self.expert_count = np.random.randint(0,
+                                              1000,
+                                              size=(len(self.capacity) *
+                                                    self.n_worker))
+        self.out = limit_by_capacity(self.expert_count, self.capacity,
+                                     self.n_worker)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.expert_count = self.expert_count.astype("int64")
         self.capacity = self.capacity.astype("int64")
         self.place = paddle.CUDAPlace(0)
@@ -67,6 +89,7 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
             capacity = paddle.static.data(
                 'capacity', shape=self.capacity.shape, dtype="int64"
             )
@@ -101,6 +124,42 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestLimitByCapacityInt64API_SmallWorker(TestLimitByCapacityInt64API):
+=======
+            capacity = paddle.static.data('capacity',
+                                          shape=self.capacity.shape,
+                                          dtype="int64")
+            expert_count_tensor = paddle.static.data(
+                'ExpertCount', shape=self.expert_count.shape, dtype="int64")
+            out = utils._limit_by_capacity(expert_count_tensor, capacity,
+                                           self.n_worker)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={
+                'capacity': self.capacity,
+                'ExpertCount': self.expert_count,
+            },
+                          fetch_list=out)
+
+        assert all_close(self.out, res[0], self.n_worker)
+
+    def func_dygraph_api(self):
+        paddle.disable_static(self.place)
+        capacity = paddle.to_tensor(self.capacity)
+        expert_count_tensor = paddle.to_tensor(self.expert_count)
+        out = utils._limit_by_capacity(expert_count_tensor, capacity,
+                                       self.n_worker)
+        assert all_close(self.out, out.numpy(), self.n_worker)
+
+    def test_dygraph_api(self):
+        with _test_eager_guard():
+            self.func_dygraph_api()
+        self.func_dygraph_api()
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestLimitByCapacityInt64API_SmallWorker(TestLimitByCapacityInt64API):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.capacity = np.array([100, 12000, 1200, 0, 4700, 1000, 57, 200])
         self.n_worker = 1

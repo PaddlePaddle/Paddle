@@ -14,10 +14,15 @@
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+=======
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -44,6 +49,7 @@ void EmbeddingGradKernel(const Context& ctx,
           "number of ids in LookupTableV2GradXPUKernel."));
 
   auto& dev_ctx = ctx;
+<<<<<<< HEAD
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   const int64_t* ids_data;
   if (ids_t->dtype() == phi::DataType::INT64) {
@@ -56,6 +62,9 @@ void EmbeddingGradKernel(const Context& ctx,
     ids_data = reinterpret_cast<const int64_t*>(ids_tt);
   }
 
+=======
+  const int64_t* ids_data = ids_t->data<int64_t>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const T* d_output_data = d_output_t->data<T>();
   T* d_table_data = dev_ctx.template Alloc<T>(d_table_t);
   int xm = d_table_t->dims()[0];
@@ -73,6 +82,7 @@ void EmbeddingGradKernel(const Context& ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void EmbeddingSparseGradKernel(const Context& ctx,
                                const DenseTensor& input,
@@ -146,12 +156,17 @@ void EmbeddingSparseGradKernel(const Context& ctx,
                        d_output_data,
                        d_output->numel() * sizeof(T));
 }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     embedding_grad, XPU, ALL_LAYOUT, phi::EmbeddingGradKernel, float) {}
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::EmbeddingSparseGradKernel,
                    float) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

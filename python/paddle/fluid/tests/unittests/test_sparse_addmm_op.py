@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import re
 import unittest
@@ -19,6 +20,15 @@ import unittest
 import numpy as np
 
 import paddle
+=======
+import paddle
+import numpy as np
+import scipy
+import scipy.sparse as sp
+import unittest
+import os
+import re
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.set_default_dtype('float64')
 
@@ -53,7 +63,11 @@ class TestAddmm(unittest.TestCase):
         dense_x.stop_gradient = False
         dense_y = origin_y.detach()
         dense_y.stop_gradient = False
+<<<<<<< HEAD
         dense_out = 2.0 * paddle.matmul(dense_x, dense_y) + 3.0 * dense_input
+=======
+        dense_out = 2. * paddle.matmul(dense_x, dense_y) + 3. * dense_input
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         sp_input = dense_input.detach()
         sp_input.stop_gradient = False
@@ -66,6 +80,7 @@ class TestAddmm(unittest.TestCase):
         sp_y.stop_gradient = False
         sp_out = paddle.sparse.addmm(sp_input, sp_x, sp_y, 3.0, 2.0)
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             sp_out.numpy(), dense_out.numpy(), rtol=1e-05
         )
@@ -88,14 +103,39 @@ class TestAddmm(unittest.TestCase):
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
         "only support cuda>=11.0",
     )
+=======
+        np.testing.assert_allclose(sp_out.numpy(),
+                                   dense_out.numpy(),
+                                   rtol=1e-05)
+        if get_cuda_version() >= 11030:
+            dense_out.backward()
+            sp_out.backward()
+            np.testing.assert_allclose(sp_input.grad.numpy(),
+                                       dense_input.grad.numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                       (dense_x.grad * mask).numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(sp_y.grad.numpy(),
+                                       dense_y.grad.numpy(),
+                                       rtol=1e-05)
+
+    @unittest.skipIf(not paddle.is_compiled_with_cuda()
+                     or get_cuda_version() < 11000, "only support cuda>=11.0")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_addmm_2d(self):
         self.check_result([16, 10], [16, 12], [12, 10], 'coo')
         self.check_result([16, 10], [16, 12], [12, 10], 'csr')
 
+<<<<<<< HEAD
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
         "only support cuda>=11.8",
     )
+=======
+    @unittest.skipIf(not paddle.is_compiled_with_cuda()
+                     or get_cuda_version() < 11070, "only support cuda>=11.7")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_addmm_3d(self):
         self.check_result([8, 16, 10], [8, 16, 12], [8, 12, 10], 'coo')
         self.check_result([8, 16, 10], [8, 16, 12], [8, 12, 10], 'csr')

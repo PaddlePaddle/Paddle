@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from collections import OrderedDict
 
@@ -38,10 +39,38 @@ class MyLayer(fluid.Layer):
         x = F.relu(inputs)
         x = paddle.multiply(x, x)
         x = paddle.sum(x)
+=======
+import contextlib
+import unittest
+import numpy as np
+from collections import OrderedDict
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.dygraph.parallel import DataParallel
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.parallel import _coalesce_tensors, _split_tensors, _reshape_inplace
+
+
+class MyLayer(fluid.Layer):
+
+    def __init__(self, name_scope):
+        super(MyLayer, self).__init__(name_scope)
+
+    def forward(self, inputs):
+        x = fluid.layers.relu(inputs)
+        x = fluid.layers.elementwise_mul(x, x)
+        x = fluid.layers.reduce_sum(x)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return [x]
 
 
 class TestImperativeParallelCoalesceSplit(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_coalesce_split(self):
         with fluid.dygraph.guard():
             test_layer = MyLayer("test_layer")
@@ -52,9 +81,14 @@ class TestImperativeParallelCoalesceSplit(unittest.TestCase):
             vars = []
             vars.append(to_variable(np.random.random([2, 3]).astype("float32")))
             vars.append(to_variable(np.random.random([4, 9]).astype("float32")))
+<<<<<<< HEAD
             vars.append(
                 to_variable(np.random.random([10, 1]).astype("float32"))
             )
+=======
+            vars.append(to_variable(
+                np.random.random([10, 1]).astype("float32")))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             var_groups = OrderedDict()
             var_groups.setdefault(0, vars)
 

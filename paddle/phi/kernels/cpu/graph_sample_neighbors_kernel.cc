@@ -26,8 +26,13 @@ void SampleUniqueNeighbors(
     bidiiter begin,
     bidiiter end,
     int num_samples,
+<<<<<<< HEAD
     std::mt19937& rng,                                        // NOLINT
     std::uniform_int_distribution<int>& dice_distribution) {  // NOLINT
+=======
+    std::mt19937& rng,
+    std::uniform_int_distribution<int>& dice_distribution) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int left_num = std::distance(begin, end);
   for (int i = 0; i < num_samples; i++) {
     bidiiter r = begin;
@@ -46,8 +51,13 @@ void SampleUniqueNeighborsWithEids(
     bidiiter eid_begin,
     bidiiter eid_end,
     int num_samples,
+<<<<<<< HEAD
     std::mt19937& rng,                                        // NOLINT
     std::uniform_int_distribution<int>& dice_distribution) {  // NOLINT
+=======
+    std::mt19937& rng,
+    std::uniform_int_distribution<int>& dice_distribution) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int left_num = std::distance(src_begin, src_end);
   for (int i = 0; i < num_samples; i++) {
     bidiiter r1 = src_begin, r2 = eid_begin;

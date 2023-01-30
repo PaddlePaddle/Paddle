@@ -51,7 +51,11 @@ class TestElementwiseOpGradGrad {
 
   void InitVarInScope(std::string var_name) {
     in_out_tensors_[var_name] =
+<<<<<<< HEAD
         scope_.Var(var_name)->template GetMutable<phi::DenseTensor>();
+=======
+        scope_.Var(var_name)->template GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in_out_tensors_[var_name]->Resize(dims_);
     in_out_tensors_[var_name]->template mutable_data<T>(place_);
   }
@@ -109,7 +113,11 @@ class TestElementwiseOpGradGrad {
     auto op = CreateTestOp();
     op->Run(scope_, place_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
+<<<<<<< HEAD
     phi::DenseTensor cpu_out;
+=======
+    framework::LoDTensor cpu_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(scope_.kids().empty(),
                       true,
                       platform::errors::InvalidArgument(
@@ -120,7 +128,11 @@ class TestElementwiseOpGradGrad {
     bool all_equal = true;
     for (auto &out_name : outputs_) {
       auto &out_tensor =
+<<<<<<< HEAD
           scope_.FindVar(out_name)->template Get<phi::DenseTensor>();
+=======
+          scope_.FindVar(out_name)->template Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (platform::is_gpu_place(place_)) {
         framework::TensorCopySync(out_tensor, platform::CPUPlace(), &cpu_out);
       } else {
@@ -156,7 +168,11 @@ class TestElementwiseOpGradGrad {
   framework::DDim dims_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
+<<<<<<< HEAD
   std::map<std::string, phi::DenseTensor *> in_out_tensors_;
+=======
+  std::map<std::string, paddle::framework::LoDTensor *> in_out_tensors_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::map<std::string, std::vector<T>> feed_datas_;
   std::map<std::string, std::vector<T>> expected_outs_;
   framework::Scope scope_;

@@ -1,5 +1,6 @@
 #  Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserve.
 #
+<<<<<<< HEAD
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,10 +12,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+=======
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+
+from __future__ import division
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import os
 import sys
 
+<<<<<<< HEAD
 from darknet import ConvBNLayer, DarkNet53_conv_body
 
 import paddle
@@ -28,6 +46,25 @@ from paddle.jit.api import to_static
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+=======
+import paddle.fluid as fluid
+from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
+from paddle.fluid.initializer import Constant
+from paddle.fluid.initializer import Normal
+from paddle.fluid.param_attr import ParamAttr
+from paddle.fluid.regularizer import L2Decay
+
+from darknet import DarkNet53_conv_body
+from darknet import ConvBNLayer
+
+
+class AttrDict(dict):
+
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __getattr__(self, name):
         if name in self.__dict__:
@@ -77,6 +114,7 @@ cfg.pixel_means = [0.485, 0.456, 0.406]
 cfg.pixel_stds = [0.229, 0.224, 0.225]
 # anchors box weight and height
 cfg.anchors = [
+<<<<<<< HEAD
     10,
     13,
     16,
@@ -95,11 +133,18 @@ cfg.anchors = [
     198,
     373,
     326,
+=======
+    10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]
 # anchor mask of each yolo layer
 cfg.anchor_masks = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
 # IoU threshold to ignore objectness loss of pred box
+<<<<<<< HEAD
 cfg.ignore_thresh = 0.7
+=======
+cfg.ignore_thresh = .7
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #
 # SOLVER options
 #
@@ -113,7 +158,11 @@ cfg.max_iter = 20 if fluid.is_compiled_with_cuda() else 1
 cfg.no_mixup_iter = 10 if fluid.is_compiled_with_cuda() else 1
 # warm up to learning rate
 cfg.warm_up_iter = 10 if fluid.is_compiled_with_cuda() else 1
+<<<<<<< HEAD
 cfg.warm_up_factor = 0.0
+=======
+cfg.warm_up_factor = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # lr steps_with_decay
 cfg.lr_steps = [400000, 450000]
 cfg.lr_gamma = 0.1
@@ -131,6 +180,7 @@ cfg.class_num = 80
 
 
 class YoloDetectionBlock(fluid.dygraph.Layer):
+<<<<<<< HEAD
     def __init__(self, ch_in, channel, is_test=True):
         super().__init__()
 
@@ -186,6 +236,51 @@ class YoloDetectionBlock(fluid.dygraph.Layer):
             padding=1,
             is_test=is_test,
         )
+=======
+
+    def __init__(self, ch_in, channel, is_test=True):
+        super(YoloDetectionBlock, self).__init__()
+
+        assert channel % 2 == 0, \
+            "channel {} cannot be divided by 2".format(channel)
+
+        self.conv0 = ConvBNLayer(ch_in=ch_in,
+                                 ch_out=channel,
+                                 filter_size=1,
+                                 stride=1,
+                                 padding=0,
+                                 is_test=is_test)
+        self.conv1 = ConvBNLayer(ch_in=channel,
+                                 ch_out=channel * 2,
+                                 filter_size=3,
+                                 stride=1,
+                                 padding=1,
+                                 is_test=is_test)
+        self.conv2 = ConvBNLayer(ch_in=channel * 2,
+                                 ch_out=channel,
+                                 filter_size=1,
+                                 stride=1,
+                                 padding=0,
+                                 is_test=is_test)
+        self.conv3 = ConvBNLayer(ch_in=channel,
+                                 ch_out=channel * 2,
+                                 filter_size=3,
+                                 stride=1,
+                                 padding=1,
+                                 is_test=is_test)
+        self.route = ConvBNLayer(ch_in=channel * 2,
+                                 ch_out=channel,
+                                 filter_size=1,
+                                 stride=1,
+                                 padding=0,
+                                 is_test=is_test)
+        self.tip = ConvBNLayer(ch_in=channel,
+                               ch_out=channel * 2,
+                               filter_size=3,
+                               stride=1,
+                               padding=1,
+                               is_test=is_test)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, inputs):
         out = self.conv0(inputs)
@@ -198,30 +293,56 @@ class YoloDetectionBlock(fluid.dygraph.Layer):
 
 
 class Upsample(fluid.dygraph.Layer):
+<<<<<<< HEAD
     def __init__(self, scale=2):
         super().__init__()
+=======
+
+    def __init__(self, scale=2):
+        super(Upsample, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.scale = scale
 
     def forward(self, inputs):
         # get dynamic upsample output shape
+<<<<<<< HEAD
         shape_nchw = paddle.shape(inputs)
         shape_hw = paddle.slice(shape_nchw, axes=[0], starts=[2], ends=[4])
+=======
+        shape_nchw = fluid.layers.shape(inputs)
+        shape_hw = fluid.layers.slice(shape_nchw,
+                                      axes=[0],
+                                      starts=[2],
+                                      ends=[4])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         shape_hw.stop_gradient = True
         in_shape = fluid.layers.cast(shape_hw, dtype='int32')
         out_shape = in_shape * self.scale
         out_shape.stop_gradient = True
 
         # reisze by actual_shape
+<<<<<<< HEAD
         out = paddle.nn.functional.interpolate(
             x=inputs, size=out_shape, mode='nearest'
         )
 
+=======
+        out = fluid.layers.resize_nearest(input=inputs,
+                                          scale=self.scale,
+                                          actual_shape=out_shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return out
 
 
 class YOLOv3(fluid.dygraph.Layer):
+<<<<<<< HEAD
     def __init__(self, ch_in, is_train=True, use_random=False):
         super().__init__()
+=======
+
+    def __init__(self, ch_in, is_train=True, use_random=False):
+        super(YOLOv3, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.is_train = is_train
         self.use_random = use_random
@@ -234,18 +355,25 @@ class YOLOv3(fluid.dygraph.Layer):
         for i in range(3):
             yolo_block = self.add_sublayer(
                 "yolo_detecton_block_%d" % (i),
+<<<<<<< HEAD
                 YoloDetectionBlock(
                     ch_in_list[i],
                     channel=512 // (2**i),
                     is_test=not self.is_train,
                 ),
             )
+=======
+                YoloDetectionBlock(ch_in_list[i],
+                                   channel=512 // (2**i),
+                                   is_test=not self.is_train))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.yolo_blocks.append(yolo_block)
 
             num_filters = len(cfg.anchor_masks[i]) * (cfg.class_num + 5)
 
             block_out = self.add_sublayer(
                 "block_out_%d" % (i),
+<<<<<<< HEAD
                 paddle.nn.Conv2D(
                     in_channels=1024 // (2**i),
                     out_channels=num_filters,
@@ -261,10 +389,24 @@ class YOLOv3(fluid.dygraph.Layer):
                     ),
                 ),
             )
+=======
+                Conv2D(num_channels=1024 // (2**i),
+                       num_filters=num_filters,
+                       filter_size=1,
+                       stride=1,
+                       padding=0,
+                       act=None,
+                       param_attr=ParamAttr(
+                           initializer=fluid.initializer.Normal(0., 0.02)),
+                       bias_attr=ParamAttr(
+                           initializer=fluid.initializer.Constant(0.0),
+                           regularizer=L2Decay(0.))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.block_outputs.append(block_out)
             if i < 2:
                 route = self.add_sublayer(
                     "route2_%d" % i,
+<<<<<<< HEAD
                     ConvBNLayer(
                         ch_in=512 // (2**i),
                         ch_out=256 // (2**i),
@@ -287,6 +429,25 @@ class YOLOv3(fluid.dygraph.Layer):
         im_id=None,
         im_shape=None,
     ):
+=======
+                    ConvBNLayer(ch_in=512 // (2**i),
+                                ch_out=256 // (2**i),
+                                filter_size=1,
+                                stride=1,
+                                padding=0,
+                                is_test=(not self.is_train)))
+                self.route_blocks_2.append(route)
+            self.upsample = Upsample()
+
+    @declarative
+    def forward(self,
+                inputs,
+                gtbox=None,
+                gtlabel=None,
+                gtscore=None,
+                im_id=None,
+                im_shape=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.outputs = []
         self.boxes = []
         self.scores = []
@@ -295,9 +456,13 @@ class YOLOv3(fluid.dygraph.Layer):
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
             if i > 0:
+<<<<<<< HEAD
                 block = fluid.layers.concat(
                     input=[route, block], axis=1  # noqa: F821
                 )
+=======
+                block = fluid.layers.concat(input=[route, block], axis=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             route, tip = self.yolo_blocks[i](block)
             block_out = self.block_outputs[i](tip)
             self.outputs.append(block_out)
@@ -315,7 +480,11 @@ class YOLOv3(fluid.dygraph.Layer):
         for i, out in enumerate(self.outputs):
             anchor_mask = cfg.anchor_masks[i]
             if self.is_train:
+<<<<<<< HEAD
                 loss = paddle.vision.ops.yolo_loss(
+=======
+                loss = fluid.layers.yolov3_loss(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     x=out,
                     gt_box=self.gtbox,
                     gt_label=self.gtlabel,
@@ -325,26 +494,42 @@ class YOLOv3(fluid.dygraph.Layer):
                     class_num=cfg.class_num,
                     ignore_thresh=cfg.ignore_thresh,
                     downsample_ratio=self.downsample,
+<<<<<<< HEAD
                     use_label_smooth=cfg.label_smooth,
                 )
                 self.losses.append(paddle.mean(loss))
+=======
+                    use_label_smooth=cfg.label_smooth)
+                self.losses.append(fluid.layers.reduce_mean(loss))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             else:
                 mask_anchors = []
                 for m in anchor_mask:
                     mask_anchors.append(cfg.anchors[2 * m])
                     mask_anchors.append(cfg.anchors[2 * m + 1])
+<<<<<<< HEAD
                 boxes, scores = paddle.vision.ops.yolo_box(
+=======
+                boxes, scores = fluid.layers.yolo_box(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     x=out,
                     img_size=self.im_shape,
                     anchors=mask_anchors,
                     class_num=cfg.class_num,
                     conf_thresh=cfg.valid_thresh,
                     downsample_ratio=self.downsample,
+<<<<<<< HEAD
                     name="yolo_box" + str(i),
                 )
                 self.boxes.append(boxes)
                 self.scores.append(paddle.transpose(scores, perm=[0, 2, 1]))
+=======
+                    name="yolo_box" + str(i))
+                self.boxes.append(boxes)
+                self.scores.append(
+                    fluid.layers.transpose(scores, perm=[0, 2, 1]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.downsample //= 2
 
         if not self.is_train:
@@ -352,6 +537,7 @@ class YOLOv3(fluid.dygraph.Layer):
             yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
             yolo_scores = fluid.layers.concat(self.scores, axis=2)
 
+<<<<<<< HEAD
             pred = _legacy_C_ops.multiclass_nms(
                 bboxes=yolo_boxes,
                 scores=yolo_scores,
@@ -361,6 +547,15 @@ class YOLOv3(fluid.dygraph.Layer):
                 nms_threshold=cfg.nms_thresh,
                 background_label=-1,
             )
+=======
+            pred = fluid.layers.multiclass_nms(bboxes=yolo_boxes,
+                                               scores=yolo_scores,
+                                               score_threshold=cfg.valid_thresh,
+                                               nms_top_k=cfg.nms_topk,
+                                               keep_top_k=cfg.nms_posk,
+                                               nms_threshold=cfg.nms_thresh,
+                                               background_label=-1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return pred
         else:
             return sum(self.losses)

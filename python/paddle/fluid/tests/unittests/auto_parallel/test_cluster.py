@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import json
 import os
 import tempfile
@@ -24,6 +25,19 @@ from paddle.distributed.auto_parallel.cluster import (
 
 cluster_json = """
 {
+=======
+import tempfile
+import unittest
+import os
+import json
+
+import paddle
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.cluster import get_default_cluster
+
+cluster_json = """
+{ 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     "alpha_latency": {"inter": {"ring": "NET", "tree": "NET"},
                     "intra": {"ring": "NVL", "tree": "PHB"},
                     "base": {"ring": 8.4, "tree": 0},
@@ -1970,6 +1984,10 @@ multi_cluster_json = """{
 
 
 class TestCluster(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -1978,9 +1996,14 @@ class TestCluster(unittest.TestCase):
 
     def test_single_machine(self):
         # Build cluster
+<<<<<<< HEAD
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster_single.json"
         )
+=======
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster_single.json")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
@@ -2005,9 +2028,14 @@ class TestCluster(unittest.TestCase):
 
     def test_multi_machine(self):
         # Build cluster
+<<<<<<< HEAD
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster_multi.json"
         )
+=======
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster_multi.json")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         cluster_json_object = json.loads(multi_cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)

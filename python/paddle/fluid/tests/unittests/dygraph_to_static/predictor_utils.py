@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -21,6 +22,19 @@ from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
 class PredictorTools:
+=======
+import unittest
+
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+
+from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import create_paddle_predictor
+
+
+class PredictorTools(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     '''
     Paddle-Inference predictor
     '''
@@ -37,13 +51,21 @@ class PredictorTools:
 
     def _load_model_and_set_config(self):
         '''
+<<<<<<< HEAD
         load model from file and set analysis config
+=======
+        load model from file and set analysis config 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         '''
         if os.path.exists(os.path.join(self.model_path, self.params_file)):
             config = AnalysisConfig(
                 os.path.join(self.model_path, self.model_file),
+<<<<<<< HEAD
                 os.path.join(self.model_path, self.params_file),
             )
+=======
+                os.path.join(self.model_path, self.params_file))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             config = AnalysisConfig(os.path.join(self.model_path))
 
@@ -73,7 +95,11 @@ class PredictorTools:
         tensor_shapes = predictor.get_input_tensor_shape()
         names = predictor.get_input_names()
         for i, name in enumerate(names):
+<<<<<<< HEAD
             # assert name in self.feeds_var, '{} not in feeded dict'.format(name)
+=======
+            #assert name in self.feeds_var, '{} not in feeded dict'.format(name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             shape = tensor_shapes[name]
             tensor = predictor.get_input_tensor(name)
             feed_data = self.feeds_var[i]

@@ -21,6 +21,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class ElementwisePowNPUKernel : public framework::OpKernel<T> {
  public:
@@ -28,9 +33,15 @@ class ElementwisePowNPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
 
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto place = ctx.GetPlace();
     int axis = ctx.Attr<int>("axis");
@@ -54,7 +65,11 @@ class ElementwisePowNPUKernel : public framework::OpKernel<T> {
       const auto& runner = NpuOpRunner("Pow", {*x, *y}, {*out}, {});
       runner.Run(stream);
     } else {
+<<<<<<< HEAD
       phi::DenseTensor transformed_x, transformed_y;
+=======
+      Tensor transformed_x, transformed_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       NpuElementWiseOpBroadcast<T>(
           dev_ctx, x, y, axis, &transformed_x, &transformed_y);
       const auto& runner =
@@ -70,11 +85,19 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
     auto place = ctx.GetPlace();
 
@@ -82,7 +105,11 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
     auto y_dims = y->dims();
     axis =
         (axis < 0 ? std::abs(x_dims.size() - y_dims.size()) + axis + 1 : axis);
+<<<<<<< HEAD
     phi::DenseTensor transformed_x, transformed_y;
+=======
+    Tensor transformed_x, transformed_y;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     NpuElementWiseOpBroadcast<T>(
         dev_ctx, x, y, axis, &transformed_x, &transformed_y);
 
@@ -91,34 +118,58 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
     // Reshape info vector.
     std::vector<int> reduce_axes;
     if (dx) {
+<<<<<<< HEAD
       phi::DenseTensor zero_tensor(dout->type());
+=======
+      Tensor zero_tensor(dout->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       zero_tensor.mutable_data<T>(dout_dims, place);
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       dx->mutable_data<T>(place);
+<<<<<<< HEAD
       phi::DenseTensor tmp_dx;
       tmp_dx.mutable_data<T>(dout_dims, place);
 
       // dx = dout * y * pow(x, y - 1);
       phi::DenseTensor PowGrad_dx_temp1(dout->type());
+=======
+      Tensor tmp_dx;
+      tmp_dx.mutable_data<T>(dout_dims, place);
+
+      // dx = dout * y * pow(x, y - 1);
+      Tensor PowGrad_dx_temp1(dout->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PowGrad_dx_temp1.mutable_data<T>(dout->dims(), place);
       const auto& runner_PowGrad_dx_temp1 =
           NpuOpRunner("Mul", {*dout, transformed_y}, {PowGrad_dx_temp1}, {});
       runner_PowGrad_dx_temp1.Run(stream);
 
+<<<<<<< HEAD
       phi::DenseTensor one_dx(transformed_y.type());
+=======
+      Tensor one_dx(transformed_y.type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       one_dx.mutable_data<T>(transformed_y.dims(), place);
       const auto& runner_one_dx =
           NpuOpRunner("OnesLike", {transformed_y}, {one_dx}, {});
       runner_one_dx.Run(stream);
 
+<<<<<<< HEAD
       phi::DenseTensor sub_dx(transformed_y.type());
+=======
+      Tensor sub_dx(transformed_y.type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       sub_dx.mutable_data<T>(transformed_y.dims(), place);
       const auto& runner_sub_dx =
           NpuOpRunner("Sub", {transformed_y, one_dx}, {sub_dx}, {});
       runner_sub_dx.Run(stream);
 
+<<<<<<< HEAD
       phi::DenseTensor PowGrad_dx_temp2(transformed_x.type());
+=======
+      Tensor PowGrad_dx_temp2(transformed_x.type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PowGrad_dx_temp2.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_PowGrad_dx_temp2 =
           NpuOpRunner("Pow", {transformed_x, sub_dx}, {PowGrad_dx_temp2}, {});
@@ -151,39 +202,67 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
       }
     }
     if (dy) {
+<<<<<<< HEAD
       phi::DenseTensor zero_tensor(dout->type());
+=======
+      Tensor zero_tensor(dout->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       zero_tensor.mutable_data<T>(dout_dims, place);
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       dy->mutable_data<T>(place);
+<<<<<<< HEAD
       phi::DenseTensor tmp_dy;
       tmp_dy.mutable_data<T>(dout_dims, place);
 
       // dy = dout * log(x) * pow(x, y)
       phi::DenseTensor PowGrad_dy_temp1(transformed_x.type());
+=======
+      Tensor tmp_dy;
+      tmp_dy.mutable_data<T>(dout_dims, place);
+
+      // dy = dout * log(x) * pow(x, y)
+      Tensor PowGrad_dy_temp1(transformed_x.type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PowGrad_dy_temp1.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_PowGrad_dy_temp1 = NpuOpRunner(
           "Pow", {transformed_x, transformed_y}, {PowGrad_dy_temp1}, {});
       runner_PowGrad_dy_temp1.Run(stream);
 
+<<<<<<< HEAD
       phi::DenseTensor one_dy(transformed_x.type());
+=======
+      Tensor one_dy(transformed_x.type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       one_dy.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_one_dy =
           NpuOpRunner("OnesLike", {transformed_x}, {one_dy}, {});
       runner_one_dy.Run(stream);
 
+<<<<<<< HEAD
       phi::DenseTensor sub_dy(transformed_x.type());
+=======
+      Tensor sub_dy(transformed_x.type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       sub_dy.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_sub_dy =
           NpuOpRunner("Sub", {transformed_x, one_dy}, {sub_dy}, {});
       runner_sub_dy.Run(stream);
 
+<<<<<<< HEAD
       phi::DenseTensor log_dy(transformed_x.type());
+=======
+      Tensor log_dy(transformed_x.type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       log_dy.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_log_dy = NpuOpRunner("Log1p", {sub_dy}, {log_dy}, {});
       runner_log_dy.Run(stream);
 
+<<<<<<< HEAD
       phi::DenseTensor PowGrad_dy_temp2(transformed_x.type());
+=======
+      Tensor PowGrad_dy_temp2(transformed_x.type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PowGrad_dy_temp2.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_PowGrad_dy_temp2 = NpuOpRunner(
           "Mul", {log_dy, PowGrad_dy_temp1}, {PowGrad_dy_temp2}, {});

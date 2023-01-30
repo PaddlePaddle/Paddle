@@ -18,7 +18,12 @@ limitations under the License. */
 #include <iostream>
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
+=======
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DEFINE_string(infer_shape, "", "data shape file");
 DEFINE_int32(sample, 20, "number of sample");
@@ -77,8 +82,14 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 #ifdef PADDLE_WITH_MKLDNN
 int GetNumCachedObjects(void) {
   auto &pool = platform::DeviceContextPool::Instance();
+<<<<<<< HEAD
   phi::CPUPlace place;
   auto onednn_dev_ctx = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
+=======
+  platform::CPUPlace place;
+  auto onednn_dev_ctx =
+      dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return onednn_dev_ctx->GetCachedObjectsNumber();
 }
 

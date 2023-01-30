@@ -13,6 +13,11 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
+=======
+import re
+import json
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 skip_list = ["adam_sig.cc", "adamw_sig.cc"]
 
@@ -36,7 +41,11 @@ def parse_compat_registry(kernel_info):
 def remove_grad_registry(kernels_registry):
     clean_kernel_registry = {}
     for registry in kernels_registry:
+<<<<<<< HEAD
         if "_grad" not in registry:
+=======
+        if (not "_grad" in registry):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             clean_kernel_registry[registry] = kernels_registry[registry]
     return clean_kernel_registry
 
@@ -45,7 +54,11 @@ def get_compat_kernels_info():
     kernels_info = {}
     compat_files = os.listdir("../../paddle/phi/ops/compat")
     for file_ in compat_files:
+<<<<<<< HEAD
         if ".cc" not in file_:
+=======
+        if not ".cc" in file_:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             compat_files.remove(file_)
 
     for file_ in compat_files:
@@ -56,6 +69,7 @@ def get_compat_kernels_info():
             content = ""
             registry = False
             for line in txt:
+<<<<<<< HEAD
                 if "KernelSignature(" in line:
                     content = ""
                     registry = True
@@ -71,6 +85,18 @@ def get_compat_kernels_info():
                         .replace("\"", "")
                         .replace("\\", "")
                     )
+=======
+                if ("KernelSignature(" in line):
+                    content = ""
+                    registry = True
+                if (registry):
+                    content += line
+                if (registry and ";" in line):
+                    data = content.replace("\n", "").replace(
+                        " ",
+                        "").strip("return").strip("KernelSignature(").strip(
+                            "\);").replace("\"", "").replace("\\", "")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     registry = False
                     if is_grad_kernel(data):
                         continue
@@ -79,6 +105,7 @@ def get_compat_kernels_info():
                     if name in kernels_info:
                         cur_reg = kernels_info[name]
                         kernels_info[name]["inputs"] = list(
+<<<<<<< HEAD
                             set(
                                 registry_info["inputs"]
                                 + kernels_info[name]["inputs"]
@@ -96,6 +123,16 @@ def get_compat_kernels_info():
                                 + kernels_info[name]["outputs"]
                             )
                         )
+=======
+                            set(registry_info["inputs"] +
+                                kernels_info[name]["inputs"]))
+                        kernels_info[name]["attrs"] = list(
+                            set(registry_info["attrs"] +
+                                kernels_info[name]["attrs"]))
+                        kernels_info[name]["outputs"] = list(
+                            set(registry_info["outputs"] +
+                                kernels_info[name]["outputs"]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     else:
                         kernels_info[name] = registry_info
 

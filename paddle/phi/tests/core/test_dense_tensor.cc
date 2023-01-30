@@ -129,6 +129,7 @@ TEST(dense_tensor, shallow_copy) {
   CHECK(tensor_0.meta() == tensor_1.meta());
 }
 
+<<<<<<< HEAD
 struct TestStorageProperties
     : public StorageProperties,
       public TypeInfoTraits<StorageProperties, NPUStorageProperties> {
@@ -183,5 +184,7 @@ TEST(dense_tensor, storage_properties) {
   CHECK_EQ(get_cp_npu_properties.storage_dims.size(), 5);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace tests
 }  // namespace phi

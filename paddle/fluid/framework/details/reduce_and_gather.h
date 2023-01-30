@@ -30,11 +30,18 @@ namespace framework {
 namespace details {
 
 struct ReduceLoDTensor {
+<<<<<<< HEAD
   const std::vector<const phi::DenseTensor *> &src_tensors_;
   phi::DenseTensor &dst_tensor_;
 
   ReduceLoDTensor(const std::vector<const phi::DenseTensor *> &src,
                   phi::DenseTensor *dst)
+=======
+  const std::vector<const LoDTensor *> &src_tensors_;
+  LoDTensor &dst_tensor_;
+
+  ReduceLoDTensor(const std::vector<const LoDTensor *> &src, LoDTensor *dst)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       : src_tensors_(src), dst_tensor_(*dst) {}
 
   template <typename T>
@@ -166,7 +173,11 @@ struct GatherLocalSelectedRowsFunctor {
  private:
   const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes_;
   std::vector<platform::Place> in_places_;
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> in_tensors_;
+=======
+  std::vector<Tensor> in_tensors_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   platform::Place out_place_;
   phi::SelectedRows *dst_selected_rows_;

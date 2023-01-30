@@ -13,19 +13,35 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
 
+=======
+import paddle
+import os
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+
+from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
 class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
+<<<<<<< HEAD
     def test_gradient_merge_optimizer(self):
         train_prog, startup_prog = (
             paddle.fluid.Program(),
             paddle.fluid.Program(),
+=======
+
+    def test_gradient_merge_optimizer(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'gradient_merge')
@@ -35,9 +51,13 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@GradientMerge', ''.join(vars))
 
     def test_recom_gm_optimizer(self):
+<<<<<<< HEAD
         train_prog, startup_prog = (
             paddle.fluid.Program(),
             paddle.fluid.Program(),
+=======
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'gradient_merge')
@@ -49,9 +69,13 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(vars))
 
     def test_gm_amp_optimizer(self):
+<<<<<<< HEAD
         train_prog, startup_prog = (
             paddle.fluid.Program(),
             paddle.fluid.Program(),
+=======
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'gradient_merge')
@@ -63,9 +87,13 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('cast', ''.join(vars))
 
     def test_gm_pure_fp16_optimizer(self):
+<<<<<<< HEAD
         train_prog, startup_prog = (
             paddle.fluid.Program(),
             paddle.fluid.Program(),
+=======
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'gradient_merge')
@@ -75,9 +103,14 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
 
         params = train_prog.all_parameters()
         for param in train_prog.all_parameters():
+<<<<<<< HEAD
             self.assertEqual(
                 param.dtype, paddle.fluid.core.VarDesc.VarType.FP16
             )
+=======
+            self.assertEqual(param.dtype,
+                             paddle.fluid.core.VarDesc.VarType.FP16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         vars = [x.name for x in train_prog.list_vars()]
         self.assertIn('@GradientMerge', ''.join(vars))

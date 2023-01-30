@@ -73,12 +73,21 @@ void EyeInferMeta(const Scalar& num_rows,
   out->set_dtype(dtype);
 }
 
+<<<<<<< HEAD
 void GaussianInferMeta(const IntArray& shape,
                        float mean,
                        float std,
                        int seed,
                        DataType dtype,
                        MetaTensor* out) {
+=======
+void GaussianRandomInferMeta(const IntArray& shape,
+                             float mean,
+                             float std,
+                             int seed,
+                             DataType dtype,
+                             MetaTensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto out_dims = phi::make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(dtype);
@@ -112,6 +121,14 @@ void RandintInferMeta(
                               high));
 
   auto& shape_vector = shape.GetData();
+<<<<<<< HEAD
+=======
+  PADDLE_ENFORCE_EQ(
+      shape_vector.empty(),
+      false,
+      errors::InvalidArgument("The shape information should not be empty, it "
+                              "must be set by Attr(shape)."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<int64_t> tensor_shape;
   tensor_shape.reserve(shape_vector.size());

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from typing import List
 
@@ -23,10 +24,24 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+
+class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+<<<<<<< HEAD
         def generate_input():
             return np.ones([1, 3, 32, 32]).astype(np.float32)
 
@@ -53,10 +68,36 @@ class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
                 },
             }
         ]
+=======
+
+        def generate_input():
+            return np.ones([1, 3, 32, 32]).astype(np.float32)
+
+        ops_config = [{
+            "op_type": "nearest_interp_v2",
+            "op_inputs": {
+                "X": ["input_data"]
+            },
+            "op_outputs": {
+                "Out": ["interp_output_data"]
+            },
+            "op_attrs": {
+                "data_layout": "NCHW",
+                "interp_method": "nearest",
+                "align_corners": False,
+                "align_mode": 1,
+                "scale": [2., 2.],
+                "out_d": 0,
+                "out_h": 0,
+                "out_w": 0
+            }
+        }]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         ops = self.generate_op_config(ops_config)
         program_config = ProgramConfig(
             ops=ops,
+<<<<<<< HEAD
             weights={
                 "size_tensor_data0": TensorConfig(data_gen=generate_weight),
                 "size_tensor_data1": TensorConfig(data_gen=generate_weight),
@@ -64,12 +105,22 @@ class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
             inputs={"input_data": TensorConfig(data_gen=generate_input)},
             outputs=["interp_output_data"],
         )
+=======
+            weights={},
+            inputs={"input_data": TensorConfig(data_gen=generate_input)},
+            outputs=["interp_output_data"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -91,23 +142,37 @@ class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-2
+=======
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-2
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test(self):
         self.run_test()

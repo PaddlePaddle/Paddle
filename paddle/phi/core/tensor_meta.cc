@@ -16,29 +16,42 @@ limitations under the License. */
 
 namespace phi {
 
+<<<<<<< HEAD
 DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
     : dims(dims), dtype(dtype) {
   use_gpudnn = true;
 }
+=======
+DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
+    : dims(dims), dtype(dtype) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
                                  size_t offset)
+<<<<<<< HEAD
     : dims(dims), dtype(dtype), layout(layout), offset(offset) {
   use_gpudnn = true;
 }
+=======
+    : dims(dims), dtype(dtype), layout(layout), offset(offset) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
                                  const LoD& lod,
                                  size_t offset)
+<<<<<<< HEAD
     : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
   use_gpudnn = true;
 }
+=======
+    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};

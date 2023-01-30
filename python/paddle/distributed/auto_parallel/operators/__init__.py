@@ -35,4 +35,7 @@ from . import dist_fused_attention
 from . import dist_reduce_sum_p
 from . import dist_shape
 from . import dist_assign
+<<<<<<< HEAD
 from . import dist_scale
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

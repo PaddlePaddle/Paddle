@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 from .. import framework
 
 __all__ = [
+<<<<<<< HEAD
     "Dataset",
     "IterableDataset",
     "TensorDataset",
@@ -27,6 +33,14 @@ __all__ = [
 
 
 class Dataset:
+=======
+    "Dataset", "IterableDataset", "TensorDataset", "ComposeDataset",
+    "ChainDataset", "random_split", "Subset"
+]
+
+
+class Dataset(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     An abstract class to encapsulate methods and behaviors of datasets.
 
@@ -43,25 +57,44 @@ class Dataset:
     see :code:`paddle.io.DataLoader`.
 
     Examples:
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .. code-block:: python
 
             import numpy as np
             from paddle.io import Dataset
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # define a random dataset
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
+<<<<<<< HEAD
 
                 def __len__(self):
                     return self.num_samples
 
+=======
+                
+                def __len__(self):
+                    return self.num_samples
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dataset = RandomDataset(10)
             for i in range(len(dataset)):
                 print(dataset[i])
@@ -72,6 +105,7 @@ class Dataset:
         pass
 
     def __getitem__(self, idx):
+<<<<<<< HEAD
         raise NotImplementedError(
             "'{}' not implement in class "
             "{}".format('__getitem__', self.__class__.__name__)
@@ -82,6 +116,14 @@ class Dataset:
             "'{}' not implement in class "
             "{}".format('__len__', self.__class__.__name__)
         )
+=======
+        raise NotImplementedError("'{}' not implement in class "\
+                "{}".format('__getitem__', self.__class__.__name__))
+
+    def __len__(self):
+        raise NotImplementedError("'{}' not implement in class "\
+                "{}".format('__len__', self.__class__.__name__))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class IterableDataset(Dataset):
@@ -89,14 +131,22 @@ class IterableDataset(Dataset):
     An abstract class to encapsulate methods and behaviors of iterable datasets.
 
     All datasets in iterable-style (can only get sample one by one sequentially, like
+<<<<<<< HEAD
     a Python iterator) should be a subclass of :ref:`api_paddle_io_IterableDataset` . All subclasses should
     implement following methods:
 
     :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :ref:`api_paddle_io_DataLoader` .
+=======
+    a Python iterator) should be a subclass of `paddle.io.IterableDataset`. All subclasses should
+    implement following methods:
+
+    :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :code:`paddle.io.DataLoader`.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     .. note::
         do not implement :code:`__getitem__` and :code:`__len__` in IterableDataset, should not be called either.
 
+<<<<<<< HEAD
     see :ref:`api_paddle_io_DataLoader` .
 
     Examples:
@@ -107,17 +157,36 @@ class IterableDataset(Dataset):
             import numpy as np
             from paddle.io import IterableDataset
 
+=======
+    see :code:`paddle.io.DataLoader`.
+
+    Examples:
+        
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.io import IterableDataset
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # define a random dataset
             class RandomDataset(IterableDataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __iter__(self):
                     for i in range(self.num_samples):
                         image = np.random.random([784]).astype('float32')
                         label = np.random.randint(0, 9, (1, )).astype('int64')
                         yield image, label
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dataset = RandomDataset(10)
             for img, lbl in dataset:
                 print(img, lbl)
@@ -129,10 +198,16 @@ class IterableDataset(Dataset):
     among workers as follows. In both the methods, worker information that can be getted in
     a worker process by `paddle.io.get_worker_info` will be needed.
 
+<<<<<<< HEAD
     splitting data copy in each worker in :code:`__iter__`
 
         .. code-block:: python
             :name: code-example2
+=======
+    Example 1: splitting data copy in each worker in :code:`__iter__`
+
+        .. code-block:: python
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             import math
             import paddle
@@ -171,10 +246,16 @@ class IterableDataset(Dataset):
                 print(data)
                 # outputs: [2, 5, 3, 6, 4, 7]
 
+<<<<<<< HEAD
     splitting data copy in each worker by :code:`worker_init_fn`
 
         .. code-block:: python
             :name: code-example3
+=======
+    Example 2: splitting data copy in each worker by :code:`worker_init_fn`
+
+        .. code-block:: python
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             import math
             import paddle
@@ -213,7 +294,11 @@ class IterableDataset(Dataset):
                 worker_init_fn=worker_init_fn)
 
             for data in dataloader:
+<<<<<<< HEAD
                 print(data)
+=======
+                print(data) 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # outputs: [2, 5, 3, 6, 4, 7]
 
     """
@@ -222,6 +307,7 @@ class IterableDataset(Dataset):
         pass
 
     def __iter__(self):
+<<<<<<< HEAD
         raise NotImplementedError(
             "'{}' not implement in class "
             "{}".format('__iter__', self.__class__.__name__)
@@ -238,6 +324,18 @@ class IterableDataset(Dataset):
             "'{}' should not be called for IterableDataset"
             "{}".format('__len__', self.__class__.__name__)
         )
+=======
+        raise NotImplementedError("'{}' not implement in class "\
+                "{}".format('__iter__', self.__class__.__name__))
+
+    def __getitem__(self, idx):
+        raise RuntimeError("'{}' should not be called for IterableDataset" \
+                "{}".format('__getitem__', self.__class__.__name__))
+
+    def __len__(self):
+        raise RuntimeError("'{}' should not be called for IterableDataset" \
+                "{}".format('__len__', self.__class__.__name__))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TensorDataset(Dataset):
@@ -257,7 +355,11 @@ class TensorDataset(Dataset):
     Examples:
 
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import numpy as np
             import paddle
             from paddle.io import TensorDataset
@@ -279,11 +381,17 @@ class TensorDataset(Dataset):
     def __init__(self, tensors):
         if not framework._non_static_mode():
             raise RuntimeError(
+<<<<<<< HEAD
                 "TensorDataset con only be used in imperative mode"
             )
         assert all(
             [tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]
         ), "tensors not have same shape of the 1st dimension"
+=======
+                "TensorDataset con only be used in imperative mode")
+        assert all([tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]), \
+                "tensors not have same shape of the 1st dimension"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.tensors = tensors
 
     def __getitem__(self, index):
@@ -317,7 +425,11 @@ class ComposeDataset(Dataset):
     Examples:
 
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import numpy as np
             import paddle
             from paddle.io import Dataset, ComposeDataset
@@ -332,7 +444,11 @@ class ComposeDataset(Dataset):
                     image = np.random.random([32]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __len__(self):
                     return self.num_samples
 
@@ -343,13 +459,18 @@ class ComposeDataset(Dataset):
                 print(label1)
                 print(image2)
                 print(label2)
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def __init__(self, datasets):
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets shoule not be empty"
         for i, dataset in enumerate(self.datasets):
+<<<<<<< HEAD
             assert isinstance(
                 dataset, Dataset
             ), "each input dataset should be paddle.io.Dataset"
@@ -360,6 +481,15 @@ class ComposeDataset(Dataset):
                 assert len(dataset) == len(
                     self.datasets[i - 1]
                 ), "lengths of datasets should be same"
+=======
+            assert isinstance(dataset, Dataset), \
+                    "each input dataset should be paddle.io.Dataset"
+            assert not isinstance(dataset, IterableDataset), \
+                    "paddle.io.IterableDataset not supported"
+            if i > 0:
+                assert len(dataset) == len(self.datasets[i-1]), \
+                        "lengths of datasets should be same"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __len__(self):
         return len(self.datasets[0])
@@ -373,6 +503,7 @@ class ComposeDataset(Dataset):
 
 class ChainDataset(IterableDataset):
     """
+<<<<<<< HEAD
     A Dataset which chains multiple iterable-style datasets.
 
     This dataset is used for assembling multiple datasets which should
@@ -383,11 +514,27 @@ class ChainDataset(IterableDataset):
 
     Returns:
         paddle.io.IterableDataset: A Dataset which chains fields of multiple datasets.
+=======
+    A Dataset which chains multiple iterable-tyle datasets.
+
+    This dataset is used for assembling multiple datasets which should
+    be :code:`paddle.io.IterableDataset`.
+
+    Args:
+        datasets(list of Dataset): List of datasets to be chainned.
+
+    Returns:
+        Dataset: A Dataset which chains fields of multiple datasets.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
 
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import numpy as np
             import paddle
             from paddle.io import IterableDataset, ChainDataset
@@ -403,20 +550,33 @@ class ChainDataset(IterableDataset):
                         image = np.random.random([32]).astype('float32')
                         label = np.random.randint(0, 9, (1, )).astype('int64')
                         yield image, label
+<<<<<<< HEAD
 
             dataset = ChainDataset([RandomDataset(10), RandomDataset(10)])
             for image, label in iter(dataset):
                 print(image, label)
 
+=======
+                
+            dataset = ChainDataset([RandomDataset(10), RandomDataset(10)])
+            for image, label in iter(dataset):
+                print(image, label)
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def __init__(self, datasets):
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets shoule not be empty"
         for i, dataset in enumerate(self.datasets):
+<<<<<<< HEAD
             assert isinstance(
                 dataset, IterableDataset
             ), "ChainDataset only support paddle.io.IterableDataset"
+=======
+            assert isinstance(dataset, IterableDataset), \
+                    "ChainDataset only support paddle.io.IterableDataset"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __iter__(self):
         for dataset in self.datasets:
@@ -427,14 +587,22 @@ class ChainDataset(IterableDataset):
 class Subset(Dataset):
     """
     Subset of a dataset at specified indices.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Args:
         dataset (Dataset): The whole Dataset.
         indices (sequence): Indices in the whole set selected for subset.
 
     Returns:
         List[Dataset]: A Dataset which is the subset of the original dataset.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
 
         .. code-block:: python
@@ -485,7 +653,11 @@ def random_split(dataset, lengths, generator=None):
             from paddle.io import random_split
 
             a_list = paddle.io.random_split(range(10), [3, 7])
+<<<<<<< HEAD
             print(len(a_list))
+=======
+            print(len(a_list)) 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # 2
 
             for idx, v in enumerate(a_list[0]):
@@ -516,7 +688,11 @@ def random_split(dataset, lengths, generator=None):
     # For example var.item() and var.tolist()
     indices = paddle.randperm(sum(lengths)).numpy().tolist()
     return [
+<<<<<<< HEAD
         Subset(dataset, indices[offset - length : offset])
+=======
+        Subset(dataset, indices[offset - length:offset])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for offset, length in zip(_accumulate(lengths), lengths)
     ]
 
@@ -524,7 +700,11 @@ def random_split(dataset, lengths, generator=None):
 def _accumulate(iterable, fn=lambda x, y: x + y):
     """
     Return running totals
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Args:
         iterable: any iterable object for example dataset.
         y (x): one element in the iterable object.
@@ -534,9 +714,15 @@ def _accumulate(iterable, fn=lambda x, y: x + y):
         yields total from beginning iterator to current iterator.
 
     Example code:
+<<<<<<< HEAD
 
         .. code-block:: python
 
+=======
+    
+        .. code-block:: python
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             _accumulate([1,2,3,4,5]) --> 1 3 6 10 15
             _accumulate([1,2,3,4,5], operator.mul) --> 1 2 6 24 120
     """

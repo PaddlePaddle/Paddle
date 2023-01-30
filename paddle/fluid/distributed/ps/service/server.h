@@ -68,7 +68,11 @@ class PSServer {
 
   virtual int32_t Configure(
       const PSParameter &config,
+<<<<<<< HEAD
       PSEnvironment &env,  // NOLINT
+=======
+      PSEnvironment &env,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       size_t server_rank,
       const std::vector<framework::ProgramDesc> &server_sub_program = {});
 
@@ -154,14 +158,22 @@ typedef std::function<void(void *)> PServerCallBack;
 
 class PServerClosure : public google::protobuf::Closure {
  public:
+<<<<<<< HEAD
   explicit PServerClosure(PServerCallBack callback) : _callback(callback) {}
+=======
+  PServerClosure(PServerCallBack callback) : _callback(callback) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual ~PServerClosure() {}
   virtual void set_promise_value(int value) {
     for (auto &promise : _promises) {
       promise->set_value(value);
     }
   }
+<<<<<<< HEAD
   void add_promise(const std::shared_ptr<std::promise<int32_t>> &promise) {
+=======
+  void add_promise(std::shared_ptr<std::promise<int32_t>> &promise) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     _promises.push_back(promise);
   }
 
@@ -181,12 +193,21 @@ class PsBaseService : public PsService {
     _config = _server->Config();
     return 0;
   }
+<<<<<<< HEAD
   void service(::google::protobuf::RpcController *controller,
                const PsRequestMessage *request,
                PsResponseMessage *response,
                ::google::protobuf::Closure *done) override = 0;
 
   virtual void set_response_code(PsResponseMessage &response,  // NOLINT
+=======
+  virtual void service(::google::protobuf::RpcController *controller,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
+                       ::google::protobuf::Closure *done) override = 0;
+
+  virtual void set_response_code(PsResponseMessage &response,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  int err_code,
                                  const char *err_msg) {
     response.set_err_msg(err_msg);

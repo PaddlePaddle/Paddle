@@ -42,7 +42,11 @@
   (this is the zlib license)
 */
 #pragma once
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 /* __m128 is ugly to write */
 typedef __m256 v8sf;   // vector of 8 float (avx)

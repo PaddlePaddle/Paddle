@@ -44,10 +44,13 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
     std::vector<int32_t> shape =
         PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));
+<<<<<<< HEAD
     if (str_value == "") {
       float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
       str_value = std::to_string(value);
     }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     float value = std::stof(str_value);
 
     auto* input_shape_tensor = Shape(input);
@@ -69,7 +72,11 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     auto layer = TRT_ENGINE_ADD_LAYER(
         engine_, Fill, nvinfer1::Dims{}, nvinfer1::FillOperation::kLINSPACE);
     std::vector<float> value_vec(1, value);
+<<<<<<< HEAD
     std::vector<float> beta_vec(shape.size(), 0.);
+=======
+    std::vector<float> beta_vec(3, 0.);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     layer->setAlpha(value);
     layer->setBeta(0.f);
     layer->setInput(0, *out_shape_tensor);

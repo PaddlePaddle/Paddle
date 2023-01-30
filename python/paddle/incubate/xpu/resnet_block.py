@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 
 import paddle.fluid as fluid
@@ -21,6 +22,28 @@ from paddle.fluid.layers import utils
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import Layer
 from paddle.nn import initializer as I
+=======
+import copy
+import collections
+import itertools
+import six
+import math
+import sys
+import warnings
+from functools import partial, reduce
+
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from paddle import framework
+from paddle.nn import initializer as I
+from paddle.nn import Layer, LayerList
+from paddle.fluid.layers import utils
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.param_attr import ParamAttr
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = ['resnet_basic_block', 'ResNetBasicBlock']
 
@@ -62,7 +85,11 @@ def resnet_basic_block(
     find_conv_max=True,
 ):
 
+<<<<<<< HEAD
     if fluid.framework._non_static_mode():
+=======
+    if fluid.framework.in_dygraph_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         attrs = (
             'stride1',
             stride1,
@@ -128,7 +155,11 @@ def resnet_basic_block(
             _,
             _,
             _,
+<<<<<<< HEAD
         ) = _legacy_C_ops.resnet_basic_block(
+=======
+        ) = getattr(_C_ops, "resnet_basic_block")(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x,
             filter1,
             scale1,
@@ -475,7 +506,11 @@ class ResNetBasicBlock(Layer):
         trainable_statistics=False,
         find_conv_max=True,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(ResNetBasicBlock, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._stride1 = stride1
         self._stride2 = stride2
         self._kernel1_size = utils.convert_to_list(

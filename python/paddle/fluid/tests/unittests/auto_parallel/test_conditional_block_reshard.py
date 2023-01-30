@@ -17,6 +17,7 @@ import unittest
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
+<<<<<<< HEAD
 from paddle.distributed.fleet import auto
 from paddle.static import InputSpec
 
@@ -26,10 +27,25 @@ class MLPLayer(nn.Layer):
         self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
     ):
         super().__init__()
+=======
+
+from paddle.static import InputSpec
+from paddle.distributed.fleet import auto
+
+
+class MLPLayer(nn.Layer):
+
+    def __init__(self,
+                 hidden_size=64,
+                 intermediate_size=4 * 64,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.norm = nn.LayerNorm(hidden_size, epsilon=1e-5)
         self.linear0 = nn.Linear(
             hidden_size,
             intermediate_size,
+<<<<<<< HEAD
             paddle.ParamAttr(
                 initializer=nn.initializer.Normal(
                     mean=0.0, std=initializer_range
@@ -47,10 +63,22 @@ class MLPLayer(nn.Layer):
             ),
             bias_attr=None,
         )
+=======
+            paddle.ParamAttr(initializer=nn.initializer.Normal(
+                mean=0.0, std=initializer_range)),
+            bias_attr=None)
+        self.linear1 = nn.Linear(
+            intermediate_size,
+            hidden_size,
+            paddle.ParamAttr(initializer=nn.initializer.Normal(
+                mean=0.0, std=initializer_range)),
+            bias_attr=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, input):
         out = self.norm(input)
 
+<<<<<<< HEAD
         auto.shard_tensor(
             self.linear0.weight, auto.ProcessMesh([0, 1], ["x"]), [None, "x"]
         )
@@ -60,6 +88,15 @@ class MLPLayer(nn.Layer):
         auto.shard_tensor(
             self.linear1.weight, auto.ProcessMesh([0, 1], ["x"]), ["x", None]
         )
+=======
+        auto.shard_tensor(self.linear0.weight, auto.ProcessMesh([0, 1], "x"),
+                          [None, "x"])
+        out = self.linear0(out)
+        out = F.gelu(out, approximate=True)
+
+        auto.shard_tensor(self.linear1.weight, auto.ProcessMesh([0, 1], "x"),
+                          ["x", None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = self.linear1(out)
 
         if paddle.mean(out) < 2:
@@ -82,6 +119,10 @@ def loss_fn(predict, label):
 
 
 class TestSubblock(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_subblock(self):
 
         mlp = MLPLayer()
@@ -93,9 +134,15 @@ class TestSubblock(unittest.TestCase):
 
         input_sepc = InputSpec([4, 64], 'float32', 'input')
         label_spec = InputSpec([4, 1], 'float32', 'label')
+<<<<<<< HEAD
         engine.prepare(
             inputs_spec=[input_sepc], labels_spec=[label_spec], mode="predict"
         )
+=======
+        engine.prepare(inputs_spec=[input_sepc],
+                       labels_spec=[label_spec],
+                       mode="predict")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

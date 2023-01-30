@@ -13,11 +13,19 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.tests.unittests.test_fusion_lstm_op import TestFusionLSTMOp
 
 
 class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.use_mkldnn = True
 
@@ -28,12 +36,20 @@ class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):
 
 
 class TestFusionLSTMONEDNNOpReverse(TestFusionLSTMONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.is_reverse = True
         self.use_mkldnn = True
 
 
 class TestFusionLSTMONEDNNOpInitReverse(TestFusionLSTMONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.has_initial_state = True
         self.is_reverse = True
@@ -41,6 +57,10 @@ class TestFusionLSTMONEDNNOpInitReverse(TestFusionLSTMONEDNNOp):
 
 
 class TestFusionLSTMONEDNNOpMD1(TestFusionLSTMONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 36
         self.D = 8
@@ -48,6 +68,10 @@ class TestFusionLSTMONEDNNOpMD1(TestFusionLSTMONEDNNOp):
 
 
 class TestFusionLSTMONEDNNOpMD2(TestFusionLSTMONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 8
         self.D = 8
@@ -55,6 +79,10 @@ class TestFusionLSTMONEDNNOpMD2(TestFusionLSTMONEDNNOp):
 
 
 class TestFusionLSTMONEDNNOpMD3(TestFusionLSTMONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.M = 15
         self.D = 3
@@ -62,6 +90,10 @@ class TestFusionLSTMONEDNNOpMD3(TestFusionLSTMONEDNNOp):
 
 
 class TestFusionLSTMONEDNNOpBS1(TestFusionLSTMONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.lod = [[3]]
         self.D = 16
@@ -69,6 +101,10 @@ class TestFusionLSTMONEDNNOpBS1(TestFusionLSTMONEDNNOp):
 
 
 class TestFusionLSTMONEDNNOpPeepholesInit(TestFusionLSTMONEDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
@@ -77,6 +113,9 @@ class TestFusionLSTMONEDNNOpPeepholesInit(TestFusionLSTMONEDNNOp):
 
 if __name__ == '__main__':
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

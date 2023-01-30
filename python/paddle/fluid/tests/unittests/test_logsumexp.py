@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -24,6 +25,17 @@ import paddle.fluid.core as core
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     if isinstance(axis, int):
         axis = (axis,)
+=======
+import paddle
+import unittest
+import numpy as np
+from op_test import OpTest
+
+
+def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
+    if isinstance(axis, int):
+        axis = (axis, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif isinstance(axis, list):
         axis = tuple(axis)
     if reduce_all:
@@ -38,6 +50,7 @@ def logsumexp_wrapper(x, axis=None, keepdim=False, allreduce=False):
     return paddle.logsumexp(x, axis, keepdim)
 
 
+<<<<<<< HEAD
 def logsumexp_op_grad(x, axis=None, keepdim=False, reduce_all=False):
     paddle.disable_static()
     tensor_x = paddle.to_tensor(x)
@@ -55,6 +68,10 @@ def logsumexp_ref_grad(x):
 
 
 class TestLogsumexp(OpTest):
+=======
+class TestLogsumexp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'logsumexp'
         self.python_api = logsumexp_wrapper
@@ -74,7 +91,11 @@ class TestLogsumexp(OpTest):
         self.attrs = {
             'axis': self.axis,
             'keepdim': self.keepdim,
+<<<<<<< HEAD
             'reduce_all': self.reduce_all,
+=======
+            'reduce_all': self.reduce_all
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.user_defined_grads = None
         self.user_defined_grad_outputs = None
@@ -91,12 +112,19 @@ class TestLogsumexp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
+<<<<<<< HEAD
             ['X'],
             ['Out'],
             user_defined_grads=self.user_defined_grads,
             user_defined_grad_outputs=self.user_defined_grad_outputs,
             check_eager=True,
         )
+=======
+            ['X'], ['Out'],
+            user_defined_grads=self.user_defined_grads,
+            user_defined_grad_outputs=self.user_defined_grad_outputs,
+            check_eager=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def calc_grad(self):
         dy = np.ones(1, dtype=self.dtype)
@@ -105,6 +133,7 @@ class TestLogsumexp(OpTest):
         return dy * np.exp(x - y)
 
 
+<<<<<<< HEAD
 class TestLogsumexp_ZeroDim(TestLogsumexp):
     def set_attrs(self):
         self.shape = []
@@ -112,16 +141,28 @@ class TestLogsumexp_ZeroDim(TestLogsumexp):
 
 
 class TestLogsumexp_shape(TestLogsumexp):
+=======
+class TestLogsumexp_shape(TestLogsumexp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.shape = [4, 5, 6]
 
 
 class TestLogsumexp_axis(TestLogsumexp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.axis = [0, -1]
 
 
 class TestLogsumexp_axis_all(TestLogsumexp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
 
@@ -132,11 +173,19 @@ class TestLogsumexp_axis_all(TestLogsumexp):
 
 
 class TestLogsumexp_keepdim(TestLogsumexp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.keepdim = True
 
 
 class TestLogsumexp_reduce_all(TestLogsumexp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.reduce_all = True
 
@@ -146,6 +195,7 @@ class TestLogsumexp_reduce_all(TestLogsumexp):
             self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
 
 
+<<<<<<< HEAD
 class TestLogsumexp_FP32(TestLogsumexp):
     def set_attrs(self):
         self.dtype = 'float32'
@@ -186,6 +236,10 @@ class TestLogsumexp_FP16(TestLogsumexp):
 
 
 class TestLogsumexpError(unittest.TestCase):
+=======
+class TestLogsumexpError(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
@@ -194,6 +248,7 @@ class TestLogsumexpError(unittest.TestCase):
 
 
 class TestLogsumexpAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
@@ -202,6 +257,14 @@ class TestLogsumexpAPI(unittest.TestCase):
             if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def setUp(self):
+        self.shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+        self.place = paddle.CUDAPlace(0) if paddle.fluid.core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def api_case(self, axis=None, keepdim=False):
         out_ref = ref_logsumexp(self.x, axis, keepdim)

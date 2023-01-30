@@ -27,9 +27,15 @@ template <typename DeviceContext, typename T>
 class LoDResetKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
+<<<<<<< HEAD
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* lod_t = ctx.Input<phi::DenseTensor>("Y");
+=======
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* in = ctx.Input<framework::LoDTensor>("X");
+    auto* lod_t = ctx.Input<framework::LoDTensor>("Y");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool append = ctx.Attr<bool>("append");
 
     framework::TensorCopy(*in, in->place(), out);
@@ -53,7 +59,11 @@ class LoDResetKernel : public framework::OpKernel<T> {
         return;  // early return, since lod already set
       } else {
         auto* lod = lod_t->data<int>();
+<<<<<<< HEAD
         phi::DenseTensor lod_cpu;
+=======
+        framework::Tensor lod_cpu;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if (platform::is_gpu_place(lod_t->place())) {
           framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
@@ -115,8 +125,13 @@ template <typename DeviceContext, typename T>
 class LoDResetGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
+<<<<<<< HEAD
     auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     framework::TensorCopy(*d_out, d_out->place(), d_x);
   }

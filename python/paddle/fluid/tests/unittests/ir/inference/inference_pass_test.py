@@ -12,14 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
+=======
+from __future__ import print_function
+
+import os
+import six
+import random
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+<<<<<<< HEAD
 from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
@@ -27,6 +37,19 @@ class InferencePassTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         paddle.enable_static()
         super().__init__(methodName)
+=======
+from paddle.fluid.core import PaddleTensor
+from paddle.fluid.core import PaddleDType
+from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import create_paddle_predictor
+
+
+class InferencePassTest(unittest.TestCase):
+
+    def __init__(self, methodName='runTest'):
+        paddle.enable_static()
+        super(InferencePassTest, self).__init__(methodName)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
@@ -36,7 +59,11 @@ class InferencePassTest(unittest.TestCase):
         self.enable_mkldnn = False
         self.enable_mkldnn_bfloat16 = False
         self.enable_trt = False
+<<<<<<< HEAD
         self.enable_tensorrt_varseqlen = False
+=======
+        self.enable_tensorrt_varseqlen = True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.trt_parameters = None
         self.dynamic_shape_params = None
         self.enable_lite = False
@@ -48,13 +75,19 @@ class InferencePassTest(unittest.TestCase):
     def _get_place(self):
         return set([False, core.is_compiled_with_cuda()])
 
+<<<<<<< HEAD
     def _save_models(
         self, dirname, feeded_var_names, target_vars, executor, program, scope
     ):
+=======
+    def _save_models(self, dirname, feeded_var_names, target_vars, executor,
+                     program, scope):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with fluid.scope_guard(scope):
             # save models as combined to ensure that
             # there won't be too many useless files
             # after finishing a couple of tests.
+<<<<<<< HEAD
             fluid.io.save_inference_model(
                 dirname, feeded_var_names, target_vars, executor, program
             )
@@ -70,11 +103,29 @@ class InferencePassTest(unittest.TestCase):
                 fetch_list=self.fetch_list,
                 return_numpy=False,
             )
+=======
+            fluid.io.save_inference_model(dirname, feeded_var_names,
+                                          target_vars, executor, program)
+
+    def _get_paddle_outs(self, executor, program, scope):
+        '''
+        Return PaddlePaddle outputs. 
+        '''
+        with fluid.scope_guard(scope):
+            outs = executor.run(program=program,
+                                feed=self.feeds,
+                                fetch_list=self.fetch_list,
+                                return_numpy=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return outs
 
     def _get_inference_outs(self, config):
         '''
+<<<<<<< HEAD
         Return AnalysisPredictor outputs.
+=======
+        Return AnalysisPredictor outputs. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         '''
         predictor = create_paddle_predictor(config)
         tensor_shapes = predictor.get_input_tensor_shape()
@@ -98,11 +149,20 @@ class InferencePassTest(unittest.TestCase):
 
         return outs
 
+<<<<<<< HEAD
     def _get_analysis_config(
         self, use_gpu=False, use_trt=False, use_mkldnn=False
     ):
         '''
         Return a new object of AnalysisConfig.
+=======
+    def _get_analysis_config(self,
+                             use_gpu=False,
+                             use_trt=False,
+                             use_mkldnn=False):
+        '''
+        Return a new object of AnalysisConfig. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         '''
         config = AnalysisConfig(self.path)
         config.disable_gpu()
@@ -118,22 +178,34 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.min_subgraph_size,
                     self.trt_parameters.precision,
                     self.trt_parameters.use_static,
+<<<<<<< HEAD
                     self.trt_parameters.use_calib_mode,
                 )
+=======
+                    self.trt_parameters.use_calib_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if self.trt_parameters.use_inspector:
                     config.enable_tensorrt_inspector()
                     self.assertTrue(
                         config.tensorrt_inspector_enabled(),
+<<<<<<< HEAD
                         "The inspector option is not set correctly.",
                     )
+=======
+                        "The inspector option is not set correctly.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 if self.dynamic_shape_params:
                     config.set_trt_dynamic_shape_info(
                         self.dynamic_shape_params.min_input_shape,
                         self.dynamic_shape_params.max_input_shape,
                         self.dynamic_shape_params.optim_input_shape,
+<<<<<<< HEAD
                         self.dynamic_shape_params.disable_trt_plugin_fp16,
                     )
+=======
+                        self.dynamic_shape_params.disable_trt_plugin_fp16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if self.enable_tensorrt_varseqlen:
                     config.enable_tensorrt_varseqlen()
 
@@ -146,6 +218,7 @@ class InferencePassTest(unittest.TestCase):
 
     def check_output(self, atol=1e-5):
         '''
+<<<<<<< HEAD
         Check whether calculating on CPU and GPU, enable TensorRT
         or disable TensorRT, enable MKLDNN or disable MKLDNN
         are all the same.
@@ -153,10 +226,19 @@ class InferencePassTest(unittest.TestCase):
         self.assertFalse(
             self.feeds is None, "The inputs of the model is None. "
         )
+=======
+        Check whether calculating on CPU and GPU, enable TensorRT 
+        or disable TensorRT, enable MKLDNN or disable MKLDNN 
+        are all the same. 
+        '''
+        self.assertFalse(self.feeds is None,
+                         "The inputs of the model is None. ")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         use_gpu = self._get_place()
         for place_ in use_gpu:
             self.check_output_with_option(place_, atol)
 
+<<<<<<< HEAD
     def check_output_with_option(
         self, use_gpu, atol=1e-5, flatten=False, quant=False, rtol=1e-5
     ):
@@ -164,6 +246,18 @@ class InferencePassTest(unittest.TestCase):
         Check whether calculating on CPU and GPU, enable TensorRT
         or disable TensorRT, enable MKLDNN or disable MKLDNN
         are all the same.
+=======
+    def check_output_with_option(self,
+                                 use_gpu,
+                                 atol=1e-5,
+                                 flatten=False,
+                                 quant=False,
+                                 rtol=1e-5):
+        '''
+        Check whether calculating on CPU and GPU, enable TensorRT 
+        or disable TensorRT, enable MKLDNN or disable MKLDNN 
+        are all the same. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         '''
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         executor = fluid.Executor(place)
@@ -171,6 +265,7 @@ class InferencePassTest(unittest.TestCase):
         device = "GPU" if use_gpu else "CPU"
         with fluid.scope_guard(scope):
             executor.run(self.startup_program)
+<<<<<<< HEAD
         self._save_models(
             self.path,
             list(self.feeds.keys()),
@@ -183,14 +278,26 @@ class InferencePassTest(unittest.TestCase):
         inference_outs = self._get_inference_outs(
             self._get_analysis_config(use_gpu=use_gpu)
         )
+=======
+        self._save_models(self.path, list(self.feeds.keys()), self.fetch_list,
+                          executor, self.main_program, scope)
+        paddle_outs = self._get_paddle_outs(executor, self.main_program, scope)
+        inference_outs = self._get_inference_outs(
+            self._get_analysis_config(use_gpu=use_gpu))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # Check whether the results calculated on CPU and on GPU are the same.
         self.assertTrue(
             len(paddle_outs) == len(inference_outs),
+<<<<<<< HEAD
             "The number of outputs is different between inference and training forward at {}".format(
                 device
             ),
         )
+=======
+            "The number of outputs is different between inference and training forward at {}"
+            .format(device))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for out, inference_out in zip(paddle_outs, inference_outs):
             paddle_out = np.array(out)
@@ -203,14 +310,21 @@ class InferencePassTest(unittest.TestCase):
                 inference_out,
                 rtol=1e-05,
                 atol=atol,
+<<<<<<< HEAD
                 err_msg='Output has diff between inference and training forward at {} '.format(
                     device
                 ),
             )
+=======
+                err_msg=
+                'Output has diff between inference and training forward at {} '.
+                format(device))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # Check whether the trt results and the GPU results are the same.
         if use_gpu and self.enable_trt:
             tensorrt_outputs = self._get_inference_outs(
+<<<<<<< HEAD
                 self._get_analysis_config(
                     use_gpu=use_gpu, use_trt=self.enable_trt
                 )
@@ -232,6 +346,23 @@ class InferencePassTest(unittest.TestCase):
             for paddle_out, tensorrt_output in zip(
                 paddle_outs, tensorrt_outputs
             ):
+=======
+                self._get_analysis_config(use_gpu=use_gpu,
+                                          use_trt=self.enable_trt))
+
+            if self.trt_parameters.use_static:
+                #deserialize
+                tensorrt_outputs = self._get_inference_outs(
+                    self._get_analysis_config(use_gpu=use_gpu,
+                                              use_trt=self.enable_trt))
+
+            self.assertTrue(
+                len(tensorrt_outputs) == len(paddle_outs),
+                "The number of outputs is different between GPU and TensorRT. ")
+
+            for paddle_out, tensorrt_output in zip(paddle_outs,
+                                                   tensorrt_outputs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 paddle_out = np.array(paddle_out)
                 if flatten:
                     paddle_out = paddle_out.flatten()
@@ -242,12 +373,17 @@ class InferencePassTest(unittest.TestCase):
                     paddle_out,
                     rtol=rtol,
                     atol=atol,
+<<<<<<< HEAD
                     err_msg='Output has diff between GPU and TensorRT. ',
                 )
+=======
+                    err_msg='Output has diff between GPU and TensorRT. ')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # Check whether the mkldnn results and the CPU results are the same.
         if (not use_gpu) and self.enable_mkldnn:
             mkldnn_outputs = self._get_inference_outs(
+<<<<<<< HEAD
                 self._get_analysis_config(
                     use_gpu=use_gpu, use_mkldnn=self.enable_mkldnn
                 )
@@ -257,6 +393,14 @@ class InferencePassTest(unittest.TestCase):
                 len(paddle_outs) == len(mkldnn_outputs),
                 "The number of outputs is different between CPU and MKLDNN. ",
             )
+=======
+                self._get_analysis_config(use_gpu=use_gpu,
+                                          use_mkldnn=self.enable_mkldnn))
+
+            self.assertTrue(
+                len(paddle_outs) == len(mkldnn_outputs),
+                "The number of outputs is different between CPU and MKLDNN. ")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             if self.enable_mkldnn_bfloat16:
                 atol = 0.01
@@ -266,6 +410,7 @@ class InferencePassTest(unittest.TestCase):
                     mkldnn_output,
                     rtol=1e-05,
                     atol=atol,
+<<<<<<< HEAD
                     err_msg='Output has diff between CPU and MKLDNN. ',
                 )
 
@@ -284,6 +429,23 @@ class InferencePassTest(unittest.TestCase):
             use_calib_mode,
             use_inspector=False,
         ):
+=======
+                    err_msg='Output has diff between CPU and MKLDNN. ')
+
+    class TensorRTParam:
+        '''
+        Prepare TensorRT subgraph engine parameters. 
+        '''
+
+        def __init__(self,
+                     workspace_size,
+                     max_batch_size,
+                     min_subgraph_size,
+                     precision,
+                     use_static,
+                     use_calib_mode,
+                     use_inspector=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
             self.min_subgraph_size = min_subgraph_size
@@ -294,6 +456,7 @@ class InferencePassTest(unittest.TestCase):
 
     class DynamicShapeParam:
         '''
+<<<<<<< HEAD
         Prepare TensorRT subgraph engine dynamic shape parameters.
         '''
 
@@ -304,6 +467,13 @@ class InferencePassTest(unittest.TestCase):
             optim_input_shape,
             disable_trt_plugin_fp16,
         ):
+=======
+        Prepare TensorRT subgraph engine dynamic shape parameters. 
+        '''
+
+        def __init__(self, min_input_shape, max_input_shape, optim_input_shape,
+                     disable_trt_plugin_fp16):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.min_input_shape = min_input_shape
             self.max_input_shape = max_input_shape
             self.optim_input_shape = optim_input_shape
@@ -311,7 +481,11 @@ class InferencePassTest(unittest.TestCase):
 
     class LiteParam:
         '''
+<<<<<<< HEAD
         Prepare Lite subgraph engine parameters.
+=======
+        Prepare Lite subgraph engine parameters. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         '''
 
         def __init__(self, precision, passes_filter, ops_filter):

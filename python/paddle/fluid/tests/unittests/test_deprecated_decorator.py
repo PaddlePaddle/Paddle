@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 import warnings
@@ -22,6 +23,20 @@ import paddle
 import paddle.fluid as fluid
 import paddle.utils.deprecated as deprecated
 from paddle import _legacy_C_ops
+=======
+from __future__ import print_function
+import paddle
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from paddle.static import Program, program_guard
+import unittest
+import paddle.fluid.core as core
+import sys
+import warnings
+import paddle.utils.deprecated as deprecated
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
@@ -40,7 +55,11 @@ paddle.disable_static()
 
 def get_warning_index(api):
     """
+<<<<<<< HEAD
     Given an paddle API, return the index of the Warinng information in its doc string if exists;
+=======
+    Given an paddle API, return the index of the Warinng information in its doc string if exists; 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     If Warinng information doesn't exist, return the default ERROR_WARNING_POSTION, sys.maxsize.
 
     Args:
@@ -52,11 +71,17 @@ def get_warning_index(api):
 
     doc_lst = api.__doc__.splitlines()
     for idx, val in enumerate(doc_lst):
+<<<<<<< HEAD
         if (
             val.startswith("Warning: ")
             and val.endswith(" instead.")
             and "and will be removed in future versions." in val
         ):
+=======
+        if val.startswith("Warning: ") and val.endswith(
+                " instead."
+        ) and "and will be removed in future versions." in val:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return idx
     return ERROR_WARNING_POSTION
 
@@ -65,13 +90,21 @@ class TestDeprecatedDocorator(unittest.TestCase):
     """
     tests for paddle's Deprecated Docorator.
     test_fluid_data: test for old fluid.data API.
+<<<<<<< HEAD
+=======
+    test_fluid_elementwise_mul: test for old fluid.layers.elementwise_xxx APIs.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     test_new_multiply: test for new api, which should not insert warning information.
     test_ops_elementwise_mul: test for C++ elementwise_mul op, which should not insert warning information.
     """
 
     def test_fluid_data(self):
         """
+<<<<<<< HEAD
         test old fluid elementwise_mul api, it should fire Warinng function,
+=======
+        test old fluid elementwise_mul api, it should fire Warinng function, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         which insert the Warinng info on top of API's doc string.
         """
         paddle.enable_static()
@@ -88,6 +121,31 @@ class TestDeprecatedDocorator(unittest.TestCase):
         # testting
         self.assertGreater(expected, captured)
 
+<<<<<<< HEAD
+=======
+    def test_fluid_elementwise_mul(self):
+        """
+        test old fluid elementwise_mul api, it should trigger Warinng function, 
+        which insert the Warinng info on top of API's doc string.
+        """
+
+        # Initialization
+        a = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
+        b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
+        x = paddle.to_tensor(a)
+        y = paddle.to_tensor(b)
+        res = fluid.layers.elementwise_mul(x, y)
+
+        # expected
+        expected = LOWEST_WARNING_POSTION
+
+        # captured
+        captured = get_warning_index(fluid.layers.elementwise_mul)
+
+        # testting
+        self.assertGreater(expected, captured)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_new_multiply(self):
         """
         Test for new multiply api, expected result should be False.
@@ -110,7 +168,11 @@ class TestDeprecatedDocorator(unittest.TestCase):
 
     def test_ops_elementwise_mul(self):
         """
+<<<<<<< HEAD
         Test for new C++ elementwise_op, expected result should be True,
+=======
+        Test for new C++ elementwise_op, expected result should be True, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         because not matter what fluid.layers.elementwise_mul is deprecated.
         """
 
@@ -124,7 +186,11 @@ class TestDeprecatedDocorator(unittest.TestCase):
         expected = LOWEST_WARNING_POSTION
 
         # captured
+<<<<<<< HEAD
         captured = get_warning_index(paddle.multiply)
+=======
+        captured = get_warning_index(fluid.layers.elementwise_mul)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # testting
         self.assertGreater(expected, captured)
@@ -132,7 +198,11 @@ class TestDeprecatedDocorator(unittest.TestCase):
     def test_tensor_gradient(self):
         paddle.__version__ = '2.1.0'
 
+<<<<<<< HEAD
         x = paddle.to_tensor(5.0, stop_gradient=False)
+=======
+        x = paddle.to_tensor(5., stop_gradient=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         y = paddle.pow(x, 4.0)
         y.backward()
 
@@ -140,8 +210,12 @@ class TestDeprecatedDocorator(unittest.TestCase):
             grad = x.gradient()
             assert (
                 'API "paddle.fluid.dygraph.varbase_patch_methods.gradient" is '
+<<<<<<< HEAD
                 'deprecated since 2.1.0'
             ) in str(w[-1].message)
+=======
+                'deprecated since 2.1.0') in str(w[-1].message)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_softmax_with_cross_entropy(self):
         paddle.__version__ = '2.0.0'
@@ -154,6 +228,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         x = linear(data)
 
         with warnings.catch_warnings(record=True) as w:
+<<<<<<< HEAD
             out = paddle.nn.functional.softmax_with_cross_entropy(
                 logits=x, label=label
             )
@@ -161,6 +236,13 @@ class TestDeprecatedDocorator(unittest.TestCase):
                 'API "paddle.nn.functional.loss.softmax_with_cross_entropy" is '
                 'deprecated since 2.0.0'
             ) in str(w[-1].message)
+=======
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x,
+                                                                  label=label)
+            assert (
+                'API "paddle.nn.functional.loss.softmax_with_cross_entropy" is '
+                'deprecated since 2.0.0') in str(w[-1].message)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_deprecated_error(self):
         paddle.__version__ = '2.1.0'

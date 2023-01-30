@@ -63,7 +63,11 @@ class HashOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) Input tensor of hash operator.");
     AddOutput("Out", "(Tensor) Output tensor of hash operator.");
     AddComment(R"DOC(
+<<<<<<< HEAD
         Execute `num_hash` times xxHash algorithm on all elements on second dimension of input.
+=======
+        Execute `num_hash` times xxHash algorithm on all elements on second dimension of input. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
     AddAttr<int>("num_hash", "").SetDefault(1);
     AddAttr<int64_t>("mod_by", "").SetDefault(100000);

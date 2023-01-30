@@ -28,13 +28,27 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
+=======
+// TODO(phi): remove fluid headers.
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
 // Currently, CudaStream is used in python-side API only
 class CUDAStream {
  public:
+<<<<<<< HEAD
+=======
+  enum class Priority : uint8_t {
+    kNull = 0x0,
+    kHigh = 0x1,
+    kNormal = 0x2,
+  };
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   enum class StreamFlag : uint8_t {
     kDefaultFlag = 0x0,
     kStreamNonBlocking = 0x1,
@@ -44,11 +58,16 @@ class CUDAStream {
   CUDAStream(const Place& place, const Stream& stream)
       : place_(place), stream_(stream) {}
   CUDAStream(const Place& place,
+<<<<<<< HEAD
              const int priority = 0,
+=======
+             const Priority& priority = Priority::kNormal,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              const StreamFlag& flag = StreamFlag::kDefaultFlag) {
     place_ = place;
     gpuStream_t stream = nullptr;
     backends::gpu::GPUDeviceGuard guard(place_.device);
+<<<<<<< HEAD
 
     // Stream priorities follow a convention where lower numbers imply greater
     // priorities
@@ -79,6 +98,26 @@ class CUDAStream {
     VLOG(10) << "Create CUDAStream " << stream
              << " with priority = " << priority
              << ", flag = " << static_cast<unsigned int>(flag);
+=======
+    if (priority == Priority::kHigh) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
+          &stream, static_cast<unsigned int>(flag), -1));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
+          &stream, static_cast<unsigned int>(flag), -1));
+#endif
+    } else if (priority == Priority::kNormal) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
+          &stream, static_cast<unsigned int>(flag), 0));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
+          &stream, static_cast<unsigned int>(flag), 0));
+#endif
+    }
+    VLOG(10) << "CUDAStream " << stream;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     stream_ = Stream(reinterpret_cast<StreamId>(stream));
     owned_ = true;
   }

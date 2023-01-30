@@ -16,10 +16,17 @@
 
 #include <math.h>
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/kernels/funcs/algorithm.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/rmsprop_kernel.h"
 
 namespace phi {
@@ -304,7 +311,11 @@ void RmspropSparseKernel(const Context &ctx,
 
   phi::SelectedRows tmp_merged_grad;
   phi::SelectedRows *merged_grad = &tmp_merged_grad;
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+=======
+  paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   merge_func(ctx, grad, merged_grad);
 
   funcs::ForRange<Context> for_range(ctx, limit);

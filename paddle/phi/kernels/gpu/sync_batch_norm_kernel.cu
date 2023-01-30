@@ -22,6 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void SyncBatchNormKernel(const Context &ctx,
                          const DenseTensor &x,
+<<<<<<< HEAD
                          const DenseTensor &mean,
                          const DenseTensor &variance,
                          const DenseTensor &scale,
@@ -32,6 +33,19 @@ void SyncBatchNormKernel(const Context &ctx,
                          const std::string &data_layout_str,
                          bool use_global_stats,
                          bool trainable_statistics,
+=======
+                         const DenseTensor &scale,
+                         const DenseTensor &bias,
+                         const DenseTensor &mean,
+                         const DenseTensor &variance,
+                         float momentum,
+                         float epsilon_f,
+                         const std::string &data_layout_str,
+                         bool is_test,
+                         bool use_global_stats,
+                         bool trainable_statistics,
+                         bool fuse_with_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          DenseTensor *y,
                          DenseTensor *mean_out,
                          DenseTensor *variance_out,
@@ -47,7 +61,12 @@ void SyncBatchNormKernel(const Context &ctx,
 
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
+<<<<<<< HEAD
   const DataLayout layout = phi::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool test_mode = is_test && (!trainable_statistics);
   const auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -92,17 +111,38 @@ void SyncBatchNormKernel(const Context &ctx,
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
     const int threads = 256;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
+<<<<<<< HEAD
     if (layout == phi::DataLayout::kNCHW) {
       KeLocalStats<T, threads, phi::DataLayout::kNCHW>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
       KeLocalStats<T, threads, phi::DataLayout::kNHWC>
+=======
+    if (layout == paddle::framework::DataLayout::kNCHW) {
+      KeLocalStats<T, threads, paddle::framework::DataLayout::kNCHW>
+          <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
+    } else {
+      KeLocalStats<T, threads, paddle::framework::DataLayout::kNHWC>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
     ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
     if (comm == nullptr) {
+=======
+    int global_gid = 0;
+    ncclComm_t comm = nullptr;
+
+    if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
+            global_gid)) {
+      auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
+          paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
+              global_gid));
+      comm = nccl_pg->NCCLComm(x.place());
+    } else {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       comm = ctx.nccl_comm();
     }
 
@@ -149,8 +189,13 @@ void SyncBatchNormKernel(const Context &ctx,
   }
 
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
+<<<<<<< HEAD
   if (layout == phi::DataLayout::kNCHW) {
     KeNormAffine<T, phi::DataLayout::kNCHW>
+=======
+  if (layout == paddle::framework::DataLayout::kNCHW) {
+    KeNormAffine<T, paddle::framework::DataLayout::kNCHW>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
@@ -162,7 +207,11 @@ void SyncBatchNormKernel(const Context &ctx,
                                       x_numel,
                                       y_d);
   } else {
+<<<<<<< HEAD
     KeNormAffine<T, phi::DataLayout::kNHWC>
+=======
+    KeNormAffine<T, paddle::framework::DataLayout::kNHWC>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,

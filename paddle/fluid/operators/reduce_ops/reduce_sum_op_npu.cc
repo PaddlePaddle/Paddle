@@ -26,8 +26,13 @@ template <typename DeviceContext, typename T>
 class ReduceSumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dims = ctx.Attr<bool>("keep_dim");
     auto dims = ctx.Attr<std::vector<int>>("dim");
@@ -43,8 +48,13 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+<<<<<<< HEAD
     phi::DenseTensor cast_x;
     phi::DenseTensor cast_out;
+=======
+    framework::Tensor cast_x;
+    framework::Tensor cast_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // NOTE: ReduceSumD only supports fp32 and fp16
     if (framework::TransToProtoVarType(x->dtype()) !=
             framework::proto::VarType::FP32 &&
@@ -106,9 +116,16 @@ template <typename DeviceContext, typename T>
 class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dims = ctx.Attr<bool>("keep_dim");
     auto dims = ctx.Attr<std::vector<int>>("dim");
@@ -129,7 +146,11 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
       out_dims = UnsqueezeKernel<DeviceContext, T>::GetOutputShape(
           dims, out_grad->dims());
 
+<<<<<<< HEAD
       phi::DenseTensor out_grad_tmp(out_grad->type());
+=======
+      Tensor out_grad_tmp(out_grad->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       out_grad_tmp.Resize(out_dims);
       out_grad_tmp.mutable_data<T>(ctx.GetPlace());
       framework::TensorCopy(

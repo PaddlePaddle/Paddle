@@ -19,10 +19,16 @@
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -102,10 +108,17 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
              precision_mode == Precision::kBf16) {
     enable_gpu_mixed_ = true;
   } else {
+<<<<<<< HEAD
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Paddle-GPU inference currently only supports "
         "float32/float16/bfloat16 precision. Please check the parameters "
         "you specified in EnableUseGpu or enable_use_gpu function."));
+=======
+    LOG(ERROR)
+        << "The Paddle-GPU inference currently only supports "
+           "float32/float16/bfloat16 precision. Please check the parameters "
+           "you specified in EnableUseGpu or enable_use_gpu function.";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 #else
   LOG(ERROR) << "Please use PaddlePaddle with GPU version.";
@@ -115,6 +128,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   Update();
 }
 
+<<<<<<< HEAD
 void AnalysisConfig::Exp_EnableUseCutlass() {
 #if defined(PADDLE_WITH_CUTLASS)
   use_cutlass_ = true;
@@ -126,6 +140,8 @@ void AnalysisConfig::Exp_EnableUseCutlass() {
   Update();
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void AnalysisConfig::SetExecStream(void *stream) {
   PADDLE_ENFORCE_NOT_NULL(
       stream,
@@ -163,8 +179,12 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size,
                                bool autotune,
                                const std::string &autotune_file,
                                const std::string &precision,
+<<<<<<< HEAD
                                bool adaptive_seqlen,
                                bool enable_multi_stream) {
+=======
+                               bool adaptive_seqlen) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   use_xpu_ = true;
   xpu_l3_workspace_size_ = l3_workspace_size;
   xpu_locked_ = locked;
@@ -172,7 +192,10 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size,
   xpu_autotune_file_ = autotune_file;
   xpu_precision_ = precision;
   xpu_adaptive_seqlen_ = adaptive_seqlen;
+<<<<<<< HEAD
   xpu_enable_multi_stream_ = enable_multi_stream;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   Update();
 }
 
@@ -186,6 +209,7 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
 }
 
 void AnalysisConfig::EnableNpu(int device_id) {
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_ASCEND_CL)
   use_npu_ = true;
   npu_device_id_ = device_id;
@@ -193,10 +217,19 @@ void AnalysisConfig::EnableNpu(int device_id) {
   use_custom_device_ = true;
   custom_device_id_ = device_id;
   custom_device_type_ = "npu";
+=======
+#ifdef PADDLE_WITH_ASCEND_CL
+  use_npu_ = true;
+  npu_device_id_ = device_id;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #else
   LOG(ERROR) << "Please compile with npu to EnableNpu()";
   use_npu_ = false;
 #endif
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   Update();
 }
 
@@ -231,13 +264,20 @@ void AnalysisConfig::EnableIpu(int ipu_device_num,
 void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16,
                                   int ipu_replica_num,
                                   float ipu_available_memory_proportion,
+<<<<<<< HEAD
                                   bool ipu_enable_half_partial,
                                   bool ipu_enable_model_runtime_executor) {
+=======
+                                  bool ipu_enable_half_partial) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ipu_enable_fp16_ = ipu_enable_fp16;
   ipu_replica_num_ = ipu_replica_num;
   ipu_available_memory_proportion_ = ipu_available_memory_proportion;
   ipu_enable_half_partial_ = ipu_enable_half_partial;
+<<<<<<< HEAD
   ipu_enable_model_runtime_executor_ = ipu_enable_model_runtime_executor;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   Update();
 }
@@ -345,9 +385,13 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
       case ipu_config_code::ipu_custom_patterns:
         ipu_custom_patterns_ = string2vector(value);
         break;
+<<<<<<< HEAD
       case ipu_config_code::ipu_enable_model_runtime_executor:
         ipu_enable_model_runtime_executor_ = string2bool(value);
         break;
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "invalid key %s in IPU config", key));
@@ -396,11 +440,18 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(opt_cache_dir_);
   CP_MEMBER(prog_file_);
   CP_MEMBER(params_file_);
+<<<<<<< HEAD
+=======
+  CP_MEMBER(calibration_file_path_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
+<<<<<<< HEAD
   CP_MEMBER(use_cutlass_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CP_MEMBER(use_external_stream_);
   CP_MEMBER(exec_stream_);
   CP_MEMBER(use_cudnn_);
@@ -433,8 +484,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+<<<<<<< HEAD
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -478,10 +532,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_autotune_file_);
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
+<<<<<<< HEAD
   CP_MEMBER(xpu_enable_multi_stream_);
 
   // Lite OpenCL Related
   CP_MEMBER(use_opencl_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // NPU related.
   CP_MEMBER(use_npu_);
@@ -491,9 +548,12 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // profile related.
   CP_MEMBER(with_profile_);
 
+<<<<<<< HEAD
   // cinn compiler related.
   CP_MEMBER(use_cinn_compiler_);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // glog related.
   CP_MEMBER(with_glog_info_);
 
@@ -519,7 +579,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(ipu_replica_num_);
   CP_MEMBER(ipu_available_memory_proportion_);
   CP_MEMBER(ipu_enable_half_partial_);
+<<<<<<< HEAD
   CP_MEMBER(ipu_enable_model_runtime_executor_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   CP_MEMBER(ipu_custom_ops_info_);
   CP_MEMBER(ipu_custom_patterns_);
 
@@ -559,7 +622,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
+<<<<<<< HEAD
   if (use_tensorrt_ || use_cinn_compiler_) {
+=======
+  if (use_tensorrt_) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // Update() will reset all the passes, when some tensorRT pass is deleted in
     // other.pass_builder(), it will set again, so we just remove the
     // deleted_pass.
@@ -638,11 +705,18 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
+<<<<<<< HEAD
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
     LOG(INFO) << "Hardware support for BFLOAT16"
               << (phi::backends::cpu::MayIUse(
                       phi::backends::cpu::cpu_isa_t::avx512_bf16)
+=======
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
+    use_mkldnn_bfloat16_ = true;
+    LOG(INFO) << "Hardware support for BFLOAT16"
+              << (platform::MayIUse(platform::cpu_isa_t::avx512_bf16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       ? " is enabled"
                       : " is disabled. Simulation will be used");
   } else {
@@ -657,6 +731,7 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   Update();
 }
 
+<<<<<<< HEAD
 void AnalysisConfig::DisableMkldnnFcPasses() {
 #ifdef PADDLE_WITH_MKLDNN
   disable_mkldnn_fc_passes_ = true;
@@ -667,6 +742,8 @@ void AnalysisConfig::DisableMkldnnFcPasses() {
   Update();
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void AnalysisConfig::EnableMkldnnInt8(
     const std::unordered_set<std::string> &op_list) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -696,6 +773,17 @@ void AnalysisConfig::EnableMkldnnInt8(
   Update();
 }
 
+<<<<<<< HEAD
+=======
+void AnalysisConfig::SetCalibrationFilePath(
+    const std::string &calibration_file_path) {
+  calibration_file_path_ = calibration_file_path;
+  VLOG(1) << "Set calibration file path of quantize model: " +
+                 calibration_file_path_;
+  Update();
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           platform::errors::PreconditionNotMet(
@@ -710,9 +798,15 @@ void AnalysisConfig::EnableTensorRtEngine(
     AnalysisConfig::Precision precision_mode,
     bool use_static,
     bool use_calib_mode) {
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_TENSORRT
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
+=======
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (!use_gpu()) {
+    LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return;
   }
 
@@ -726,6 +820,7 @@ void AnalysisConfig::EnableTensorRtEngine(
 
   Update();
 #else
+<<<<<<< HEAD
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "To use Paddle-TensorRT, please compile with TENSORRT first."));
 #endif
@@ -755,6 +850,13 @@ void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
   trt_engine_memory_sharing_identifier_ = sharing_identifier;
 }
 
+=======
+  LOG(ERROR)
+      << "To use TensorRT engine, please compile inference lib with GPU first.";
+#endif
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void AnalysisConfig::EnableDlnne(
     int min_subgraph_size,
     int max_batch_size,
@@ -803,7 +905,11 @@ void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
+<<<<<<< HEAD
   auto &&info = SerializeInfoCache();
+=======
+  auto info = SerializeInfoCache();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (info == serialized_info_cache_) return;
 
   // Transfer pass_builder and copy the existing compatible passes.
@@ -890,6 +996,7 @@ void AnalysisConfig::Update() {
     }
   }
 
+<<<<<<< HEAD
   // TODO(wilber): An ugly method to update pass, need to be fixed.
   if (use_cinn_compiler_) {
     pass_builder()->ClearPasses();
@@ -898,6 +1005,8 @@ void AnalysisConfig::Update() {
     }
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (use_dlnne_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kDlnneSubgraphPasses) {
@@ -957,6 +1066,7 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+<<<<<<< HEAD
   if (disable_mkldnn_fc_passes_) {
 #ifdef PADDLE_WITH_MKLDNN
     pass_builder()->DisableMkldnnFcPasses();
@@ -979,6 +1089,15 @@ void AnalysisConfig::Update() {
 #else
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
 #endif
+=======
+#ifdef PADDLE_WITH_MKLDNN
+  // Do not optimize when mkldnn is on
+  if (enable_memory_optim_ && !use_mkldnn_) {
+#else
+  if (enable_memory_optim_) {
+#endif
+    pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   if (use_lite_) {
@@ -1045,6 +1164,11 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << prog_file_;
   ss << params_file_;
 
+<<<<<<< HEAD
+=======
+  ss << calibration_file_path_;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ss << use_gpu_;
   ss << enable_gpu_mixed_;
   ss << use_external_stream_;
@@ -1069,7 +1193,10 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << trt_dla_core_;
 
   ss << enable_memory_optim_;
+<<<<<<< HEAD
   ss << trt_engine_memory_sharing_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ss << use_mkldnn_;
   ss << mkldnn_cache_capacity_;
@@ -1104,7 +1231,10 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_autotune_file_;
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
+<<<<<<< HEAD
   ss << xpu_enable_multi_stream_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ss << use_npu_;
   ss << npu_device_id_;
@@ -1120,7 +1250,10 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_replica_num_;
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
+<<<<<<< HEAD
   ss << ipu_enable_model_runtime_executor_;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (auto custom_op : ipu_custom_ops_info_)
     for (auto attr : custom_op) ss << attr;
   ss << ";";
@@ -1167,10 +1300,13 @@ bool AnalysisConfig::enable_memory_optim() const {
   return enable_memory_optim_;
 }
 
+<<<<<<< HEAD
 bool AnalysisConfig::trt_engine_memory_sharing() const {
   return trt_engine_memory_sharing_;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
                                     size_t prog_buffer_size,
                                     const char *param_buffer,
@@ -1220,11 +1356,14 @@ void AnalysisConfig::EnableLiteEngine(
   Update();
 }
 
+<<<<<<< HEAD
 void AnalysisConfig::EnableOpenCL() {
   use_opencl_ = true;
   Update();
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void AnalysisConfig::PartiallyRelease() {
   prog_file_.clear();
   prog_file_.shrink_to_fit();
@@ -1245,6 +1384,12 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"model_file", prog_file_});
     os.InsertRow({"params_file", params_file_});
   }
+<<<<<<< HEAD
+=======
+  if (!(calibration_file_path_.empty())) {
+    os.InsertRow({"calibration_file_path", calibration_file_path_});
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (model_from_memory_) {
     os.InsertRow({"model_from_memory", params_file_});
@@ -1262,7 +1407,10 @@ std::string AnalysisConfig::Summary() {
   // gpu info
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
+<<<<<<< HEAD
     os.InsertRow({"use_cutlass", use_cutlass_ ? "true" : "false"});
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
     os.InsertRow({"enable_gpu_mixed", std::to_string(enable_gpu_mixed_)});
     os.InsertRow({"memory_pool_init_size",
@@ -1332,8 +1480,11 @@ std::string AnalysisConfig::Summary() {
       if (trt_use_dla_) {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
       }
+<<<<<<< HEAD
       os.InsertRow({"trt_engine_memory_sharing",
                     trt_engine_memory_sharing_ ? "true" : "false"});
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
     }
   }
@@ -1352,9 +1503,12 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"use_lite", use_lite_ ? "true" : "false"});
   }
 
+<<<<<<< HEAD
   // cinn compiler
   os.InsertRow({"use_cinn_compiler", use_cinn_compiler_ ? "true" : "false"});
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // ir info
   os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
   os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
@@ -1440,11 +1594,19 @@ void AnalysisConfig::CollectShapeRangeInfo(
   shape_range_info_path_ = shape_range_info_path;
 }
 
+<<<<<<< HEAD
 const std::string &AnalysisConfig::shape_range_info_path() const {
   return shape_range_info_path_;
 }
 
 bool AnalysisConfig::shape_range_info_collected() const {
+=======
+const std::string &AnalysisConfig::shape_range_info_path() {
+  return shape_range_info_path_;
+}
+
+bool AnalysisConfig::shape_range_info_collected() {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return collect_shape_range_info_;
 }
 
@@ -1455,11 +1617,19 @@ void AnalysisConfig::EnableTunedTensorRtDynamicShape(
   trt_tuned_dynamic_shape_ = true;
 }
 
+<<<<<<< HEAD
 bool AnalysisConfig::tuned_tensorrt_dynamic_shape() const {
   return trt_tuned_dynamic_shape_;
 }
 
 bool AnalysisConfig::trt_allow_build_at_runtime() const {
+=======
+bool AnalysisConfig::tuned_tensorrt_dynamic_shape() {
+  return trt_tuned_dynamic_shape_;
+}
+
+bool AnalysisConfig::trt_allow_build_at_runtime() {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return trt_allow_build_at_runtime_;
 }
 
@@ -1468,6 +1638,7 @@ void AnalysisConfig::Exp_DisableMixedPrecisionOps(
   mixed_black_list_ = black_list;
 }
 
+<<<<<<< HEAD
 void AnalysisConfig::Exp_EnableCINNCompiler() {
 #ifdef PADDLE_WITH_CINN
   use_cinn_compiler_ = true;
@@ -1483,4 +1654,6 @@ bool AnalysisConfig::cinn_compiler_enabled() const {
   return use_cinn_compiler_;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace paddle

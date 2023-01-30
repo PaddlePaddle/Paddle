@@ -546,7 +546,11 @@ void RunBrpcPushSparse() {
   VLOG(0) << "start to pull graph list";
   nodes = client1.pull_graph_list(std::string("user"), 0, 1, 4, 1);
   VLOG(0) << "pull list done";
+<<<<<<< HEAD
   ASSERT_EQ(nodes[0].get_id(), 59UL);
+=======
+  ASSERT_EQ(nodes[0].get_id(), 59);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   nodes.clear();
 
   // Test Pull by step
@@ -566,23 +570,37 @@ void RunBrpcPushSparse() {
         nodes.clear();
       }
     }
+<<<<<<< HEAD
     ASSERT_EQ(count_item_nodes.size(), 12UL);
+=======
+    ASSERT_EQ(count_item_nodes.size(), 12);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   std::pair<std::vector<std::vector<int64_t>>, std::vector<float>> res;
   VLOG(0) << "start to sample neighbors ";
   res = client1.batch_sample_neighbors(
       std::string("user2item"), std::vector<int64_t>(1, 96), 4, true, false);
+<<<<<<< HEAD
   ASSERT_EQ(res.first[0].size(), 3UL);
+=======
+  ASSERT_EQ(res.first[0].size(), 3);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<int64_t> node_ids;
   node_ids.push_back(96);
   node_ids.push_back(37);
   res = client1.batch_sample_neighbors(
       std::string("user2item"), node_ids, 4, true, false);
 
+<<<<<<< HEAD
   ASSERT_EQ(res.first[1].size(), 1UL);
   std::vector<int64_t> nodes_ids = client2.random_sample_nodes("user", 0, 6);
   ASSERT_EQ(nodes_ids.size(), 2UL);
+=======
+  ASSERT_EQ(res.first[1].size(), 1);
+  std::vector<int64_t> nodes_ids = client2.random_sample_nodes("user", 0, 6);
+  ASSERT_EQ(nodes_ids.size(), 2);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ASSERT_EQ(true,
             (nodes_ids[0] == 59 && nodes_ids[1] == 37) ||
                 (nodes_ids[0] == 37 && nodes_ids[1] == 59));
@@ -597,8 +615,13 @@ void RunBrpcPushSparse() {
   feature_names.push_back(std::string("d"));
   auto node_feat =
       client1.get_node_feat(std::string("user"), node_ids, feature_names);
+<<<<<<< HEAD
   ASSERT_EQ(node_feat.size(), 2UL);
   ASSERT_EQ(node_feat[0].size(), 2UL);
+=======
+  ASSERT_EQ(node_feat.size(), 2);
+  ASSERT_EQ(node_feat[0].size(), 2);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   VLOG(0) << "get_node_feat: " << node_feat[0][0];
   VLOG(0) << "get_node_feat: " << node_feat[0][1];
   VLOG(0) << "get_node_feat: " << node_feat[1][0];
@@ -625,8 +648,13 @@ void RunBrpcPushSparse() {
   feature_names.push_back(std::string("b"));
   node_feat =
       client1.get_node_feat(std::string("user"), node_ids, feature_names);
+<<<<<<< HEAD
   ASSERT_EQ(node_feat.size(), 2UL);
   ASSERT_EQ(node_feat[0].size(), 2UL);
+=======
+  ASSERT_EQ(node_feat.size(), 2);
+  ASSERT_EQ(node_feat[0].size(), 2);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   VLOG(0) << "get_node_feat: " << node_feat[0][0].size();
   VLOG(0) << "get_node_feat: " << node_feat[0][1].size();
   VLOG(0) << "get_node_feat: " << node_feat[1][0].size();

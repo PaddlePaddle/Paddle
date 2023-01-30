@@ -19,20 +19,37 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class StackMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto x = ctx.MultiInput<phi::DenseTensor>("X");
     auto* y = ctx.Output<phi::DenseTensor>("Y");
+=======
+    auto x = ctx.MultiInput<Tensor>("X");
+    auto* y = ctx.Output<Tensor>("Y");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += (x[0]->dims().size() + 1);
     int num = static_cast<int>(x.size());
 
+<<<<<<< HEAD
     PADDLE_ENFORCE_GT(num,
                       0,
                       platform::errors::InvalidArgument(
                           "number of input phi::DenseTensor <= 0"));
+=======
+    PADDLE_ENFORCE_GT(
+        num,
+        0,
+        platform::errors::InvalidArgument("number of input Tensor <= 0"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     std::vector<MLUCnnlTensorDesc> x_descs;
     std::vector<cnnlTensorDescriptor_t> x_raw_descs;

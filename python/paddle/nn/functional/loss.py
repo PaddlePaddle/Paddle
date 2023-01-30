@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 # TODO: define loss functions of neural network
 import paddle
 import paddle.fluid as fluid
@@ -30,6 +31,33 @@ __all__ = []
 
 kIgnoreIndex = -100
 
+=======
+import paddle
+from ...fluid.data_feeder import check_variable_and_dtype
+
+# TODO: define loss functions of neural network
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from ...fluid.layers.nn import _elementwise_op_in_dygraph
+from ...tensor.manipulation import reshape
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.framework import _varbase_creator
+from ...static import Variable
+from paddle.utils import deprecated
+from paddle import _C_ops, _legacy_C_ops
+from paddle import in_dynamic_mode
+from paddle.framework import core, _non_static_mode
+from ...fluid.framework import (
+    _in_legacy_dygraph,
+    in_dygraph_mode,
+    _non_static_mode,
+    _current_expected_place,
+)
+
+__all__ = []
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 def dice_loss(input, label, epsilon=0.00001, name=None):
     r"""
@@ -171,17 +199,28 @@ def fluid_softmax_with_cross_entropy(
 ):
     r"""
 
+<<<<<<< HEAD
     This operator implements the cross entropy loss function with softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
+=======
+    This operator implements the cross entropy loss function with softmax. This function 
+    combines the calculation of the softmax operation and the cross entropy loss function 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     to provide a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
 
+<<<<<<< HEAD
     When the attribute :attr:`soft_label` is set :attr:`False`, this operators
     expects mutually exclusive hard labels, each sample in a batch is in exactly
     one class with a probability of 1.0. Each sample in the batch will have a
+=======
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
+    expects mutually exclusive hard labels, each sample in a batch is in exactly 
+    one class with a probability of 1.0. Each sample in the batch will have a 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     single label.
 
     The equation is as follows:
@@ -208,14 +247,21 @@ def fluid_softmax_with_cross_entropy(
     Args:
         logits (Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
         label (Tensor): The ground truth  ``Tensor`` , data type is the same
+<<<<<<< HEAD
             as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`,
             Label is a ``Tensor``  in the same shape with :attr:`logits`.
             If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor``
+=======
+            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`, 
+            Label is a ``Tensor``  in the same shape with :attr:`logits`. 
+            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor`` 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
         soft_label (bool, optional): A flag to indicate whether to interpretant the given
             labels as soft labels. Default False.
         ignore_index (int, optional): Specifies a target value that is ignored and does
                                       not contribute to the input gradient. Only valid
+<<<<<<< HEAD
                                       if :attr:`soft_label` is set to :attr:`False`.
                                       Default: kIgnoreIndex(-100).
         numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
@@ -223,12 +269,25 @@ def fluid_softmax_with_cross_entropy(
                                               when :attr:`soft_label` is :attr:`False`
                                               and GPU is used. When :attr:`soft_label`
                                               is :attr:`True` or CPU is used, the
+=======
+                                      if :attr:`soft_label` is set to :attr:`False`. 
+                                      Default: kIgnoreIndex(-100).
+        numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
+                                              numerically stable algorithm. Only valid
+                                              when :attr:`soft_label` is :attr:`False` 
+                                              and GPU is used. When :attr:`soft_label` 
+                                              is :attr:`True` or CPU is used, the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                               algorithm is always numerically stable.
                                               Note that the speed may be slower when use
                                               stable algorithm. Default: True.
         return_softmax (bool, optional): A flag indicating whether to return the softmax
                                          along with the cross entropy loss. Default: False.
+<<<<<<< HEAD
         axis (int, optional): The index of dimension to perform softmax calculations. It
+=======
+        axis (int, optional): The index of dimension to perform softmax calculations. It 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                               should be in range :math:`[-1, rank - 1]`, while :math:`rank`
                               is the rank of input :attr:`logits`. Default: -1.
 
@@ -253,7 +312,11 @@ def fluid_softmax_with_cross_entropy(
             # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1.15328646])
     """
+<<<<<<< HEAD
     if in_dygraph_mode():
+=======
+    if _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if core.is_compiled_with_npu():
             softmax, backprop, loss = _legacy_C_ops.softmax_with_cross_entropy(
                 logits,
@@ -268,6 +331,7 @@ def fluid_softmax_with_cross_entropy(
                 axis,
             )
         else:
+<<<<<<< HEAD
             softmax, loss = _C_ops.cross_entropy_with_softmax(
                 logits,
                 label,
@@ -277,10 +341,36 @@ def fluid_softmax_with_cross_entropy(
                 ignore_index,
                 axis,
             )
+=======
+            if in_dygraph_mode():
+                softmax, loss = _C_ops.cross_entropy_with_softmax(
+                    logits,
+                    label,
+                    soft_label,
+                    True,
+                    numeric_stable_mode,
+                    ignore_index,
+                    axis,
+                )
+            if _in_legacy_dygraph():
+                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
+                    logits,
+                    label,
+                    'soft_label',
+                    soft_label,
+                    'ignore_index',
+                    ignore_index,
+                    'numeric_stable_mode',
+                    numeric_stable_mode,
+                    'axis',
+                    axis,
+                )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if not return_softmax:
             return loss
         else:
             return loss, softmax
+<<<<<<< HEAD
     else:
         attrs = {
             'soft_label': soft_label,
@@ -309,6 +399,34 @@ def fluid_softmax_with_cross_entropy(
             return loss, softmax
 
         return loss
+=======
+
+    attrs = {
+        'soft_label': soft_label,
+        'ignore_index': ignore_index,
+        'numeric_stable_mode': numeric_stable_mode,
+        'axis': axis,
+    }
+    helper = LayerHelper('softmax_with_cross_entropy', **locals())
+    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+
+    outputs = {'Softmax': softmax, 'Loss': loss}
+    if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        backprop = helper.create_variable_for_type_inference(dtype=logits.dtype)
+        outputs['Backprop'] = backprop
+    helper.append_op(
+        type='softmax_with_cross_entropy',
+        inputs={'Logits': logits, 'Label': label},
+        outputs=outputs,
+        attrs=attrs,
+    )
+
+    if return_softmax:
+        return loss, softmax
+
+    return loss
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
@@ -422,6 +540,7 @@ def square_error_cost(input, label):
         minus_out = _C_ops.subtract(input, label)
         square_out = _C_ops.square(minus_out)
         return square_out
+<<<<<<< HEAD
     else:
         check_variable_and_dtype(
             input, "input", ['float32', 'float64'], 'square_error_cost'
@@ -447,6 +566,33 @@ def square_error_cost(input, label):
         )
         return square_out
 
+=======
+    elif _in_legacy_dygraph():
+        minus_out = _legacy_C_ops.elementwise_sub(input, label)
+        square_out = _legacy_C_ops.square(minus_out)
+        return square_out
+
+    check_variable_and_dtype(
+        input, "input", ['float32', 'float64'], 'square_error_cost'
+    )
+    check_variable_and_dtype(
+        label, "label", ['float32', 'float64'], 'square_error_cost'
+    )
+    helper = LayerHelper('square_error_cost', **locals())
+    minus_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='elementwise_sub',
+        inputs={'X': [input], 'Y': [label]},
+        outputs={'Out': [minus_out]},
+    )
+
+    square_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='square', inputs={'X': [minus_out]}, outputs={'Out': [square_out]}
+    )
+    return square_out
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 def edit_distance(
     input,
@@ -487,11 +633,21 @@ def edit_distance(
         input_length(Tensor): The length for each sequence in `input` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
         label_length(Tensor): The length for each sequence in `label` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
         NOTE: To be avoid unexpected result, the value of every elements in input_length and label_length should be equal to the value of the second dimension of input and label. For example, The input: [[1,2,3,4],[5,6,7,8],[9,10,11,12]], the shape of input is [3,4] and the input_length should be [4,4,4]
+<<<<<<< HEAD
 
     Returns:
         Tuple:
             distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
             sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
+=======
+        NOTE: This Api is different from fluid.metrics.EditDistance
+
+    Returns:
+        Tuple:
+
+        distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
+        sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
         .. code-block:: python
@@ -521,7 +677,12 @@ def edit_distance(
             # [4]
 
     """
+<<<<<<< HEAD
 
+=======
+    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
+    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     helper = LayerHelper("edit_distance", **locals())
 
     # remove some tokens from input and labels
@@ -550,8 +711,11 @@ def edit_distance(
             input, label, input_length, label_length, normalized
         )
 
+<<<<<<< HEAD
     check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
     check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]
@@ -574,7 +738,11 @@ def binary_cross_entropy(
     input, label, weight=None, reduction='mean', name=None
 ):
     """
+<<<<<<< HEAD
     Measure the binary_cross_entropy loss between input predictions ``input``
+=======
+    This op measures the binary_cross_entropy loss between input predictions ``input``
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     and target labels ``label`` . The binary_cross_entropy loss can be described as:
 
     If :attr:`weight` is set, the loss is:
@@ -623,7 +791,11 @@ def binary_cross_entropy(
 
 
     Returns:
+<<<<<<< HEAD
         Tensor. If ``reduction`` is ``'none'``, the shape of output is
+=======
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             same as ``input`` , else the shape of output is scalar.
 
     Examples:
@@ -657,6 +829,7 @@ def binary_cross_entropy(
         else:
             return out
     else:
+<<<<<<< HEAD
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'binary_cross_entropy'
         )
@@ -691,13 +864,68 @@ def binary_cross_entropy(
             return paddle.mean(out, name=name)
         else:
             return out
+=======
+        if _in_legacy_dygraph():
+            out = _legacy_C_ops.bce_loss(input, label)
+            if weight is not None:
+                out = _legacy_C_ops.elementwise_mul(out, weight, 'axis', -1)
+            if reduction == 'sum':
+                return _legacy_C_ops.reduce_sum(
+                    out, 'dim', [0], 'keep_dim', False, "reduce_all", True
+                )
+            elif reduction == 'mean':
+                return _legacy_C_ops.mean(out)
+            else:
+                return out
+        else:
+            check_variable_and_dtype(
+                input, 'input', ['float32', 'float64'], 'binary_cross_entropy'
+            )
+            check_variable_and_dtype(
+                label, 'label', ['float32', 'float64'], 'binary_cross_entropy'
+            )
+
+            sub_name = name if weight is None and reduction == 'none' else None
+            helper = LayerHelper("binary_cross_entropy", name=sub_name)
+            out = helper.create_variable_for_type_inference(dtype=input.dtype)
+            helper.append_op(
+                type='bce_loss',
+                inputs={
+                    'X': [input],
+                    'Label': [label],
+                },
+                outputs={'Out': [out]},
+            )
+
+            if weight is not None:
+                if isinstance(weight, paddle.static.Variable):
+                    weight_name = name if reduction == 'none' else None
+                    out = paddle.multiply(out, weight, name=weight_name)
+                else:
+                    raise ValueError(
+                        "The weight is not a Tensor, please convert to Tensor."
+                    )
+
+            if reduction == 'sum':
+                return paddle.sum(out, name=name)
+            elif reduction == 'mean':
+                return paddle.mean(out, name=name)
+            else:
+                return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def binary_cross_entropy_with_logits(
     logit, label, weight=None, reduction='mean', pos_weight=None, name=None
 ):
     r"""
+<<<<<<< HEAD
     Combine the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+=======
+    This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
+    layer and some reduce operations.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -705,7 +933,11 @@ def binary_cross_entropy_with_logits(
     are not mutually exclusive. For example, a news article can be about
     politics, technology or sports at the same time or none of these.
 
+<<<<<<< HEAD
     Firstly, calculate loss function as follows:
+=======
+    First this operator calculate loss function as follows:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     .. math::
            Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
@@ -721,13 +953,22 @@ def binary_cross_entropy_with_logits(
     .. math::
            Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
+<<<<<<< HEAD
     Then, if ``weight`` or ``pos_weight`` is not None, then multiply the
+=======
+    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
     weight on every items in the batch. The ``pos_weight`` will attach different
     weight on the positive label of each class.
 
+<<<<<<< HEAD
     Finally, apply reduce operation on the loss.
     If :attr:`reduction` set to ``'none'``, will return the original loss `Out`.
+=======
+    Finally, this operator applies reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
 
@@ -756,7 +997,11 @@ def binary_cross_entropy_with_logits(
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
+<<<<<<< HEAD
         Tensor. If ``reduction`` is ``'none'``, the shape of output is
+=======
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             same as ``logit`` , else the shape of output is scalar.
 
     Examples:
@@ -782,7 +1027,11 @@ def binary_cross_entropy_with_logits(
         one = _C_ops.full(
             [1],
             float(1.0),
+<<<<<<< HEAD
             logit.dtype,
+=======
+            core.VarDesc.VarType.FP32,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             _current_expected_place(),
         )
         out = _C_ops.sigmoid_cross_entropy_with_logits(
@@ -802,6 +1051,7 @@ def binary_cross_entropy_with_logits(
             return _C_ops.mean_all(out)
         else:
             return out
+<<<<<<< HEAD
     else:
         check_variable_and_dtype(
             logit,
@@ -861,6 +1111,93 @@ def binary_cross_entropy_with_logits(
         elif reduction == "mean":
             return paddle.mean(out, name=name)
         return out
+=======
+    elif _in_legacy_dygraph():
+        one = _varbase_creator(dtype=logit.dtype)
+        _legacy_C_ops.fill_constant(
+            one,
+            'value',
+            float(1.0),
+            'force_cpu',
+            False,
+            'dtype',
+            one.dtype,
+            'str_value',
+            '1.0',
+            'shape',
+            [1],
+        )
+        out = _legacy_C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+        if pos_weight is not None:
+            log_weight = _legacy_C_ops.elementwise_add(
+                _legacy_C_ops.elementwise_mul(
+                    label, _legacy_C_ops.elementwise_sub(pos_weight, one)
+                ),
+                one,
+            )
+            out = _legacy_C_ops.elementwise_mul(out, log_weight)
+        if weight is not None:
+            out = _legacy_C_ops.elementwise_mul(out, weight)
+
+        if reduction == "sum":
+            return _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == "mean":
+            return _legacy_C_ops.mean(out)
+        else:
+            return out
+
+    check_variable_and_dtype(
+        logit,
+        'logit',
+        ['float32', 'float64'],
+        'binary_cross_entropy_with_logits',
+    )
+    check_variable_and_dtype(
+        label,
+        'label',
+        ['float32', 'float64'],
+        'binary_cross_entropy_with_logits',
+    )
+    sigmoid_name = None
+    if reduction == 'none' and pos_weight is None and weight is None:
+        sigmoid_name = name
+
+    out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
+        logit, label, name=sigmoid_name
+    )
+
+    one = paddle.full(shape=[1], fill_value=1.0, dtype=logit.dtype)
+    if pos_weight is not None:
+        check_variable_and_dtype(
+            pos_weight,
+            'pos_weight',
+            ['float32', 'float64'],
+            'binary_cross_entropy_with_logits',
+        )
+        log_weight = paddle.add(
+            paddle.multiply(label, paddle.subtract(pos_weight, one)), one
+        )
+        pos_weight_name = (
+            name if reduction == 'none' and weight is None else None
+        )
+        out = paddle.multiply(out, log_weight, name=pos_weight_name)
+
+    if weight is not None:
+        check_variable_and_dtype(
+            weight,
+            'weight',
+            ['float32', 'float64'],
+            'binary_cross_entropy_with_logits',
+        )
+        weight_name = name if reduction == 'none' else None
+        out = paddle.multiply(out, weight, name=weight_name)
+
+    if reduction == "sum":
+        return paddle.sum(out, name=name)
+    elif reduction == "mean":
+        return paddle.mean(out, name=name)
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def hsigmoid_loss(
@@ -954,6 +1291,7 @@ def hsigmoid_loss(
             #  [2.11009121]
             #  [1.92374969]]
     """
+<<<<<<< HEAD
     if num_classes < 2:
         raise ValueError(
             'Expected num_classes >= 2 (got {})'.format(num_classes)
@@ -1021,6 +1359,86 @@ def hsigmoid_loss(
             attrs=attrs,
         )
         return out
+=======
+    if in_dygraph_mode():
+        out, _, _ = _C_ops.hierarchical_sigmoid(
+            input,
+            weight,
+            label,
+            path_table,
+            path_code,
+            bias,
+            num_classes,
+            is_sparse,
+            0,
+            [],
+            [],
+            [],
+            is_sparse,
+        )
+        return out
+    elif _in_legacy_dygraph():
+        out, _, _ = _legacy_C_ops.hierarchical_sigmoid(
+            input,
+            weight,
+            label,
+            path_table,
+            path_code,
+            bias,
+            'num_classes',
+            num_classes,
+            'is_sparse',
+            is_sparse,
+            'remote_prefetch',
+            is_sparse,
+        )
+        return out
+
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'hsigmoid_loss'
+    )
+    check_variable_and_dtype(label, 'label', ['int64'], 'hsigmoid_loss')
+    check_variable_and_dtype(
+        weight, 'weight', ['float32', 'float64'], 'hsigmoid_loss'
+    )
+    if bias is not None:
+        check_variable_and_dtype(
+            bias, 'bias', ['float32', 'float64'], 'hsigmoid_loss'
+        )
+    if path_table is not None:
+        check_variable_and_dtype(
+            path_table, 'path_table', ['int64'], 'hsigmoid_loss'
+        )
+    if path_code is not None:
+        check_variable_and_dtype(
+            path_code, 'path_code', ['int64'], 'hsigmoid_loss'
+        )
+
+    attrs = {
+        "num_classes": num_classes,
+        "is_sparse": is_sparse,
+        "remote_prefetch": is_sparse,
+    }
+
+    inputs = {
+        "X": input,
+        "W": weight,
+        "Bias": bias,
+        "PathTable": path_table,
+        "PathCode": path_code,
+        "Label": label,
+    }
+
+    helper = LayerHelper('hsigmoid_loss', **locals())
+    out = helper.create_variable_for_type_inference(input.dtype)
+    pre_out = helper.create_variable_for_type_inference(input.dtype)
+    outputs = {"Out": out, "PreOut": pre_out, "W_Out": weight}
+
+    helper.append_op(
+        type="hierarchical_sigmoid", inputs=inputs, outputs=outputs, attrs=attrs
+    )
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
@@ -1076,16 +1494,28 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             print(output)
             # [0.068004]
     """
+<<<<<<< HEAD
+=======
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
+    )
+    check_variable_and_dtype(
+        label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
+    )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if in_dygraph_mode():
         out, residual = _C_ops.huber_loss(input, label, delta)
     else:
+<<<<<<< HEAD
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
         )
         check_variable_and_dtype(
             label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
         )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         helper = LayerHelper('huber_loss', **locals())
         residual = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype()
@@ -1175,6 +1605,7 @@ def margin_ranking_loss(
         elif reduction == 'mean':
             return _C_ops.mean_all(out)
         return out
+<<<<<<< HEAD
     else:
         helper = LayerHelper("margin_ranking_loss", **locals())
         check_variable_and_dtype(
@@ -1224,6 +1655,66 @@ def margin_ranking_loss(
                 attrs={},
             )
             return result_out
+=======
+    elif _in_legacy_dygraph():
+        out = _legacy_C_ops.elementwise_sub(other, input)
+        out = _legacy_C_ops.elementwise_mul(out, label)
+        if margin != 0.0:
+            margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
+            out = _legacy_C_ops.elementwise_add(out, margin)
+        out = _legacy_C_ops.relu(out)
+        if reduction == 'sum':
+            return _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == 'mean':
+            return _legacy_C_ops.mean(out)
+        return out
+
+    helper = LayerHelper("margin_ranking_loss", **locals())
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'margin_rank_loss'
+    )
+    check_variable_and_dtype(
+        other, 'other', ['float32', 'float64'], 'margin_rank_loss'
+    )
+    check_variable_and_dtype(
+        label, 'label', ['float32', 'float64'], 'margin_rank_loss'
+    )
+
+    out = paddle.subtract(other, input)
+    out = paddle.multiply(out, label)
+
+    if margin != 0.0:
+        margin_var = out.block.create_var(dtype=out.dtype)
+        margin_var = paddle.full(shape=[1], fill_value=margin, dtype=out.dtype)
+        out = paddle.add(out, margin_var)
+
+    result_out = helper.create_variable_for_type_inference(input.dtype)
+
+    if reduction == 'none':
+        helper.append_op(
+            type="relu", inputs={"X": out}, outputs={"Out": result_out}
+        )
+        return result_out
+    elif reduction == 'sum':
+        out = paddle.nn.functional.relu(out)
+        attrs = {"dim": [0], "keep_dim": False, "reduce_all": True}
+        helper.append_op(
+            type="reduce_sum",
+            inputs={"X": out},
+            outputs={"Out": result_out},
+            attrs=attrs,
+        )
+        return result_out
+    elif reduction == 'mean':
+        out = paddle.nn.functional.relu(out)
+        helper.append_op(
+            type="mean",
+            inputs={"X": out},
+            outputs={"Out": result_out},
+            attrs={},
+        )
+        return result_out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def l1_loss(input, label, reduction='mean', name=None):
@@ -1272,6 +1763,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label)
+<<<<<<< HEAD
             print(l1_loss)
             # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [0.34999999])
@@ -1286,6 +1778,19 @@ def l1_loss(input, label, reduction='mean', name=None):
             print(l1_loss)
             # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1.39999998])
+=======
+            print(l1_loss.numpy())
+            # [0.35]
+
+            l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
+            print(l1_loss.numpy())
+            # [[0.20000005 0.19999999]
+            # [0.2        0.79999995]]
+
+            l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
+            print(l1_loss.numpy())
+            # [1.4]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1303,6 +1808,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             return _C_ops.sum(unreduced, [], None, False)
         else:
             return unreduced
+<<<<<<< HEAD
     else:
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64', 'int32', 'int64'], 'l1_loss'
@@ -1319,6 +1825,38 @@ def l1_loss(input, label, reduction='mean', name=None):
             return paddle.mean(unreduced, name=name)
         else:
             return paddle.abs(paddle.subtract(x=input, y=label, name=name))
+=======
+    elif _in_legacy_dygraph():
+        unreduced = _elementwise_op_in_dygraph(
+            input, label, axis=-1, act='abs', op_name='elementwise_sub'
+        )
+        if reduction == 'mean':
+            return _legacy_C_ops.mean(unreduced)
+        elif reduction == 'sum':
+            return _legacy_C_ops.reduce_sum(
+                unreduced, 'dim', [0], 'keep_dim', False, 'reduce_all', True
+            )
+        else:
+            return unreduced
+
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'l1_loss'
+    )
+    check_variable_and_dtype(
+        label, 'label', ['float32', 'float64', 'int32', 'int64'], 'l1_loss'
+    )
+
+    if reduction == 'sum':
+        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        return paddle.sum(unreduced, name=name)
+    elif reduction == 'mean':
+        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        return paddle.mean(unreduced, name=name)
+    else:
+        return paddle.fluid.layers.elementwise_sub(
+            input, label, act='abs', name=name
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def nll_loss(
@@ -1326,8 +1864,12 @@ def nll_loss(
 ):
     """
     This api returns negative log likelihood.
+<<<<<<< HEAD
     See more detail in :ref:`NLLLoss <api_paddle_nn_NLLLoss>` .
 
+=======
+    See more detail in :ref:`api_nn_loss_NLLLoss` .
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Parameters:
          input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
@@ -1378,6 +1920,7 @@ def nll_loss(
 
     input_shape = list(input.shape)
     input_dims = len(input_shape)
+<<<<<<< HEAD
     label_shape = list(label.shape)
     label_dims = len(label_shape)
 
@@ -1389,10 +1932,13 @@ def nll_loss(
             )
         )
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if input_dims < 2:
         raise ValueError(
             'Expected 2 or more dimensions (got {})'.format(input_dims)
         )
+<<<<<<< HEAD
 
     if input_shape[1] < 1:
         raise ValueError(
@@ -1401,6 +1947,8 @@ def nll_loss(
             )
         )
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     n = input_shape[0]
     c = input_shape[1]
     if in_dygraph_mode():
@@ -1414,6 +1962,7 @@ def nll_loss(
         if input_dims != 2 and input_dims != 4 and reduction == 'none':
             out = _C_ops.reshape(out, out_shape)
         return out
+<<<<<<< HEAD
     else:
         helper = LayerHelper('nll_loss', **locals())
 
@@ -1445,6 +1994,55 @@ def nll_loss(
             out = reshape(out, shape=out_shape)
 
         return out
+=======
+    elif _in_legacy_dygraph():
+        if input_dims != 2 and input_dims != 4:
+            input, _ = _legacy_C_ops.reshape2(
+                input, None, 'shape', [n, c, 1, -1]
+            )
+            label, _ = _legacy_C_ops.reshape2(label, None, 'shape', [n, 1, -1])
+            out_shape = [n] + input_shape[2:]
+
+        out, total_weight = _legacy_C_ops.nll_loss(
+            input,
+            label,
+            weight,
+            'ignore_index',
+            ignore_index,
+            'reduction',
+            reduction,
+        )
+        if input_dims != 2 and input_dims != 4 and reduction == 'none':
+            out, _ = _legacy_C_ops.reshape2(out, None, 'shape', out_shape)
+        return out
+
+    helper = LayerHelper('nll_loss', **locals())
+
+    if input_dims != 2 and input_dims != 4:
+        input = reshape(input, shape=[n, c, 1, -1])
+        label = reshape(label, shape=[n, 1, -1])
+        out_shape = [n] + input_shape[2:]
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'nll_loss')
+    check_variable_and_dtype(label, 'label', ['int64'], 'nll_loss')
+    inputs = {'X': input, 'Label': label}
+    attrs = {'reduction': reduction, 'ignore_index': ignore_index}
+    if weight is not None:
+        if isinstance(weight, Variable):
+            inputs['Weight'] = weight
+
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    total_weight = helper.create_variable_for_type_inference(dtype=input.dtype)
+    outputs = {'Out': out, 'Total_weight': total_weight}
+
+    helper.append_op(
+        type='nll_loss', inputs=inputs, outputs=outputs, attrs=attrs
+    )
+    if input_dims != 2 and input_dims != 4 and reduction == 'none':
+        out = reshape(out, shape=out_shape)
+
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def kl_div(input, label, reduction='mean', name=None):
@@ -1457,6 +2055,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
     $$l(x, y) = y * (\log(y) - x)$$
 
+<<<<<<< HEAD
     Here :math:`x` is input and :math:`y` is label.
 
     If `reduction` is ``'none'``, the output loss is the same shape as the input, and the loss at each point is calculated separately. There is no reduction to the result.
@@ -1478,6 +2077,35 @@ def kl_div(input, label, reduction='mean', name=None):
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be apllied.
             Default is ``'mean'``.
+=======
+    While :math:`x` is input and :math:`y` is label.
+
+    While :attr:`reduction` is :attr:`none`, output loss is in
+    the same shape as input, loss in each point is calculated
+    separately and no reduction is applied.
+
+    While :attr:`reduction` is :attr:`mean`, output loss is in
+    shape of [1] and loss value is the mean value of all losses.
+
+    While :attr:`reduction` is :attr:`sum`, output loss is in
+    shape of [1] and loss value is the sum value of all losses.
+
+    While :attr:`reduction` is :attr:`batchmean`, output loss is
+    in shape of [1] and loss value is the sum value of all losses
+    divided by batch size.
+
+    Args:
+        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means
+             any number of additional dimensions. It's data type should be float32, float64.
+        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64.
+        reduction (Tensor): Indicate how to average the loss,
+             the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+             If `reduction` is ``'mean'``, the reduced mean loss is returned;
+             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
+             if `reduction` is ``'sum'``, the reduced sum loss is returned;
+             if `reduction` is ``'none'``, no reduction will be apllied.
+             Default is ``'mean'``.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         name(str, optional): Name for the operation (optional, default is None). For more information,
             please refer to :ref:`api_guide_Name`.
 
@@ -1534,6 +2162,7 @@ def kl_div(input, label, reduction='mean', name=None):
                 batch_size = input.shape[0]
                 out = paddle.sum(out) / batch_size
         return out
+<<<<<<< HEAD
     else:
         helper = LayerHelper('kl_div', **locals())
 
@@ -1561,6 +2190,42 @@ def kl_div(input, label, reduction='mean', name=None):
             batch_size = paddle.shape(input)[0]
             loss = paddle.sum(loss) / batch_size
         return loss
+=======
+    elif _in_legacy_dygraph():
+        out = _legacy_C_ops.kldiv_loss(input, label, 'reduction', 'none')
+        if reduction == 'mean':
+            out = paddle.mean(out)
+        elif reduction == 'sum':
+            out = paddle.sum(out)
+        elif reduction == 'batchmean':
+            if len(input.shape) > 0:
+                batch_size = input.shape[0]
+                out = paddle.sum(out) / batch_size
+        return out
+
+    helper = LayerHelper('kl_div', **locals())
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'kl_div')
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'], 'kl_div')
+    fluid.data_feeder.check_type(reduction, 'reduction', str, 'kl_div')
+
+    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='kldiv_loss',
+        inputs={'X': input, 'Target': label},
+        outputs={'Loss': loss},
+        attrs={'reduction': 'none'},
+    )
+
+    if reduction == 'mean':
+        loss = paddle.mean(loss)
+    elif reduction == 'sum':
+        loss = paddle.sum(loss)
+    elif reduction == 'batchmean':
+        batch_size = paddle.shape(input)[0]
+        loss = paddle.sum(loss) / batch_size
+    return loss
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def mse_loss(input, label, reduction='mean', name=None):
@@ -1658,9 +2323,15 @@ def ctc_loss(
         labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
         input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
+<<<<<<< HEAD
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default: 0.
         reduction (str, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default: ``'mean'``.
         norm_by_times (bool, optional): Whether to normalize the gradients by the number of time-step, which is also the sequence's length. There is no need to normalize the gradients if reduction mode is 'mean'. Default: False.
+=======
+        blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
+        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+        norm_by_times (bool, default False) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
@@ -1722,6 +2393,7 @@ def ctc_loss(
 
     """
 
+<<<<<<< HEAD
     def warpctc(
         input,
         label,
@@ -1775,6 +2447,9 @@ def ctc_loss(
             return loss_out
 
     loss_out = warpctc(
+=======
+    loss_out = fluid.layers.warpctc(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
     )
 
@@ -1787,6 +2462,7 @@ def ctc_loss(
     return loss_out
 
 
+<<<<<<< HEAD
 def rnnt_loss(
     input,
     label,
@@ -1911,6 +2587,8 @@ def rnnt_loss(
     return loss_out
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def margin_cross_entropy(
     logits,
     label,
@@ -2106,7 +2784,11 @@ def margin_cross_entropy(
     """
 
     assert reduction in ['mean', 'sum', 'none', None]
+<<<<<<< HEAD
     if not (group is False or group is None or hasattr(group, 'is_member')):
+=======
+    if not (group == False or group is None or hasattr(group, 'is_member')):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         raise ValueError(
             'Expected group is False, None or instance of paddle.distributed.collective.Group \
              (got group: {})'.format(
@@ -2121,7 +2803,11 @@ def margin_cross_entropy(
     ring_id = 0
     rank = 0
     nranks = 1
+<<<<<<< HEAD
     if group is not False:
+=======
+    if group != False:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ring_id = 0 if group is None else group.id
         if core.is_compiled_with_dist():
             parallel_env = paddle.distributed.ParallelEnv()
@@ -2138,7 +2824,11 @@ def margin_cross_entropy(
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
             'Expected input_dims - 1 = label_dims or input_dims == label_dims\
+<<<<<<< HEAD
              (got input_dims{}, label_dims{})'.format(
+=======
+             (got nput_dims{}, label_dims{})'.format(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 input_dims, label_dims
             )
         )
@@ -2166,6 +2856,7 @@ def margin_cross_entropy(
             return loss
         else:
             return loss, softmax
+<<<<<<< HEAD
     else:
         op_type = 'margin_cross_entropy'
         helper = LayerHelper(op_type, **locals())
@@ -2198,15 +2889,86 @@ def margin_cross_entropy(
             },
         )
 
+=======
+    elif _in_legacy_dygraph():
+        softmax, loss = _legacy_C_ops.margin_cross_entropy(
+            logits,
+            label,
+            'ring_id',
+            ring_id,
+            'rank',
+            rank,
+            'nranks',
+            nranks,
+            'margin1',
+            margin1,
+            'margin2',
+            margin2,
+            'margin3',
+            margin3,
+            'scale',
+            scale,
+            'return_softmax',
+            return_softmax,
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if reduction == 'mean':
             loss = paddle.mean(loss)
         elif reduction == 'sum':
             loss = paddle.sum(loss)
+<<<<<<< HEAD
 
         if not return_softmax:
             return loss
         else:
             return loss, softmax
+=======
+        if not return_softmax:
+            return loss
+        else:
+            return loss, softmax
+
+    op_type = 'margin_cross_entropy'
+    helper = LayerHelper(op_type, **locals())
+    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+
+    check_variable_and_dtype(
+        logits,
+        'logits',
+        ['float16', 'float32', 'float64'],
+        'margin_cross_entropy',
+    )
+    check_variable_and_dtype(
+        label, 'label', ['int32', 'int64'], 'margin_cross_entropy'
+    )
+
+    helper.append_op(
+        type=op_type,
+        inputs={'Logits': logits, 'Label': label},
+        outputs={'Softmax': softmax, 'Loss': loss},
+        attrs={
+            'return_softmax': return_softmax,
+            'ring_id': ring_id,
+            'rank': rank,
+            'nranks': nranks,
+            'margin1': margin1,
+            'margin2': margin2,
+            'margin3': margin3,
+            'scale': scale,
+        },
+    )
+
+    if reduction == 'mean':
+        loss = paddle.mean(loss)
+    elif reduction == 'sum':
+        loss = paddle.sum(loss)
+
+    if not return_softmax:
+        return loss
+    else:
+        return loss, softmax
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
@@ -2228,17 +2990,28 @@ def softmax_with_cross_entropy(
     axis=-1,
 ):
     r"""
+<<<<<<< HEAD
     This operator implements the cross entropy loss function with softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
+=======
+    This operator implements the cross entropy loss function with softmax. This function 
+    combines the calculation of the softmax operation and the cross entropy loss function 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     to provide a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
 
+<<<<<<< HEAD
     When the attribute :attr:`soft_label` is set :attr:`False`, this operators
     expects mutually exclusive hard labels, each sample in a batch is in exactly
     one class with a probability of 1.0. Each sample in the batch will have a
+=======
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
+    expects mutually exclusive hard labels, each sample in a batch is in exactly 
+    one class with a probability of 1.0. Each sample in the batch will have a 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     single label.
 
     The equation is as follows:
@@ -2265,14 +3038,21 @@ def softmax_with_cross_entropy(
     Args:
         logits (Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
         label (Tensor): The ground truth  ``Tensor`` , data type is the same
+<<<<<<< HEAD
             as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`,
             Label is a ``Tensor``  in the same shape with :attr:`logits`.
             If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor``
+=======
+            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`, 
+            Label is a ``Tensor``  in the same shape with :attr:`logits`. 
+            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor`` 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
         soft_label (bool, optional): A flag to indicate whether to interpretant the given
             labels as soft labels. Default False.
         ignore_index (int, optional): Specifies a target value that is ignored and does
                                       not contribute to the input gradient. Only valid
+<<<<<<< HEAD
                                       if :attr:`soft_label` is set to :attr:`False`.
                                       Default: kIgnoreIndex(-100).
         numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
@@ -2280,12 +3060,25 @@ def softmax_with_cross_entropy(
                                               when :attr:`soft_label` is :attr:`False`
                                               and GPU is used. When :attr:`soft_label`
                                               is :attr:`True` or CPU is used, the
+=======
+                                      if :attr:`soft_label` is set to :attr:`False`. 
+                                      Default: kIgnoreIndex(-100).
+        numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
+                                              numerically stable algorithm. Only valid
+                                              when :attr:`soft_label` is :attr:`False` 
+                                              and GPU is used. When :attr:`soft_label` 
+                                              is :attr:`True` or CPU is used, the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                               algorithm is always numerically stable.
                                               Note that the speed may be slower when use
                                               stable algorithm. Default: True.
         return_softmax (bool, optional): A flag indicating whether to return the softmax
                                          along with the cross entropy loss. Default: False.
+<<<<<<< HEAD
         axis (int, optional): The index of dimension to perform softmax calculations. It
+=======
+        axis (int, optional): The index of dimension to perform softmax calculations. It 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                               should be in range :math:`[-1, rank - 1]`, while :math:`rank`
                               is the rank of input :attr:`logits`. Default: -1.
 
@@ -2334,6 +3127,7 @@ def cross_entropy(
 ):
     r"""
 
+<<<<<<< HEAD
     By default, the cross entropy loss function is implemented using softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable computing.
@@ -2349,6 +3143,23 @@ def cross_entropy(
     mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
 
     The calculation includes the following two steps.
+=======
+    By default, this operator implements the cross entropy loss function with softmax. This function
+    combines the calculation of the softmax operation and the cross entropy loss function
+    to provide a more numerically stable computing.
+
+    This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
+
+    By default, this operator will calculate the mean of the result, and you can also affect
+    the default behavior by using the reduction parameter. Please refer to the part of
+    parameters for details.
+
+    This operator can be used to calculate the softmax cross entropy loss with soft and hard labels.
+    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels
+    mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
+
+    The calculation of this operator includes the following two steps.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     - **1.softmax cross entropy**
 
@@ -2513,11 +3324,17 @@ def cross_entropy(
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
+<<<<<<< HEAD
                                         input,
                                         label)
             print(dy_ret)
             # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        [5.34043430])
+=======
+                                       input,
+                                       label)
+            print(dy_ret.numpy()) #[5.41993642]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         .. code-block:: python
 
@@ -2535,6 +3352,7 @@ def cross_entropy(
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
+<<<<<<< HEAD
                                                                     logits,
                                                                     labels,
                                                                     soft_label=True,
@@ -2544,6 +3362,15 @@ def cross_entropy(
             print(paddle_loss_mean)
             # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        [1.11043464])
+=======
+                                                                  logits,
+                                                                  labels,
+                                                                  soft_label=True,
+                                                                  axis=axis,
+                                                                  weight=weight,
+                                                                  reduction=reduction)
+            print(paddle_loss_mean.numpy()) #[1.12908343]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
 
@@ -2553,7 +3380,11 @@ def cross_entropy(
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction
         )
+<<<<<<< HEAD
     if ignore_index > 0 and soft_label:
+=======
+    if ignore_index > 0 and soft_label == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         raise ValueError(
             "When soft_label == True, the value of 'ignore_index' in softmax_cross_entropy"
             "should be '-100', but received %s, which is not allowed."
@@ -2565,16 +3396,34 @@ def cross_entropy(
         raise ValueError('The dimention of input should be larger than zero!')
 
     label_dims = len(list(label.shape))
+<<<<<<< HEAD
+=======
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
+             (got nput_dims{}, label_dims{})'.format(
+                input_dims, label_dims
+            )
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
 
     if in_dygraph_mode():
+<<<<<<< HEAD
         if not soft_label:
+=======
+        if soft_label == False:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
         if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+<<<<<<< HEAD
             if not soft_label:
+=======
+            if soft_label == False:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     valid_label,
@@ -2612,7 +3461,11 @@ def cross_entropy(
         if weight is not None:
 
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
+<<<<<<< HEAD
             if soft_label:
+=======
+            if soft_label == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # chajchaj:
                 # weight's shape is C, where C is class num.
                 # for 1d case: label's shape is [N,C], weight_gather's shape is N.
@@ -2686,13 +3539,21 @@ def cross_entropy(
             # 2. else
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
+<<<<<<< HEAD
             is_ignore = label == ignore_index
             mask = ~is_ignore
             if paddle.count_nonzero(is_ignore) > 0:  # ignore label
+=======
+            if ignore_index >= 0:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 out_sum = _C_ops.sum(out, [], None, False)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
+<<<<<<< HEAD
+=======
+                mask = label != ignore_index
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = _C_ops.sum(mask, [], None, False)
@@ -2719,6 +3580,7 @@ def cross_entropy(
                 out = paddle.squeeze(out, axis=axis)
             return out
 
+<<<<<<< HEAD
     else:
         check_variable_and_dtype(
             input,
@@ -2767,6 +3629,75 @@ def cross_entropy(
             if soft_label:
                 # chajchaj:
                 # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
+=======
+    elif _in_legacy_dygraph():
+        if soft_label == False:
+            valid_label = (
+                paddle.cast(label != ignore_index, dtype=label.dtype) * label
+            )
+            label_min = paddle.min(valid_label)
+            label_max = paddle.max(valid_label)
+            if label_min < 0:
+                raise ValueError(
+                    "Target {} is out of lower bound.".format(label_min.item())
+                )
+            if label_max >= input.shape[axis]:
+                raise ValueError(
+                    "Target {} is out of upper bound.".format(label_max.item())
+                )
+        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+            if soft_label == False:
+                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                    input,
+                    valid_label,
+                    'soft_label',
+                    soft_label,
+                    'ignore_index',
+                    ignore_index,
+                    'numeric_stable_mode',
+                    True,
+                    'axis',
+                    axis,
+                    'use_softmax',
+                    use_softmax,
+                )
+            else:
+                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                    input,
+                    label,
+                    'soft_label',
+                    soft_label,
+                    'ignore_index',
+                    ignore_index,
+                    'numeric_stable_mode',
+                    True,
+                    'axis',
+                    axis,
+                    'use_softmax',
+                    use_softmax,
+                )
+        else:
+            _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                input,
+                label,
+                'soft_label',
+                soft_label,
+                'ignore_index',
+                ignore_index,
+                'numeric_stable_mode',
+                True,
+                'axis',
+                axis,
+                'use_softmax',
+                use_softmax,
+            )
+
+        if weight is not None:
+
+            # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
+            if soft_label == True:
+                # chajchaj:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # weight's shape is C, where C is class num.
                 # for 1d case: label's shape is [N,C], weight_gather's shape is N.
                 # for 2d case: label's shape is [N,H,W,C], weight_gather's shape is [N,H,W].
@@ -2776,10 +3707,19 @@ def cross_entropy(
                     transpose_x=False,
                     transpose_y=True,
                 )
+<<<<<<< HEAD
 
                 out_shape = list(out.shape)
                 weight_gather_reshape = reshape(weight_gather, shape=out_shape)
                 out = paddle.cast(out, weight_gather_reshape.dtype)
+=======
+                out_shape = list(out.shape)
+                weight_gather_reshape = reshape(weight_gather, shape=out_shape)
+                out = paddle.cast(out, weight_gather_reshape.dtype)
+
+                out = _legacy_C_ops.elementwise_mul(out, weight_gather_reshape)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 if input.shape[axis] != weight.shape[-1]:
                     raise ValueError(
@@ -2790,16 +3730,25 @@ def cross_entropy(
                         )
                     )
 
+<<<<<<< HEAD
                 valid_label = paddle.multiply(
                     paddle.cast(label != ignore_index, dtype=label.dtype), label
                 )
                 ignore_weight_mask = paddle.cast(
                     (label != ignore_index), input.dtype
+=======
+                ignore_weight_mask = paddle.cast(
+                    (label != ignore_index), out.dtype
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 )
                 if (
                     ignore_weight_mask.ndim > 1
                     and ignore_weight_mask.shape[axis] == 1
                 ):
+<<<<<<< HEAD
+=======
+                    # TODO: Temporarily use squeeze instead of squeeze_
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     ignore_weight_mask = paddle.squeeze(
                         ignore_weight_mask, axis
                     )
@@ -2813,6 +3762,7 @@ def cross_entropy(
                         )
                         + [axis % valid_label.ndim]
                     )
+<<<<<<< HEAD
                     weight_gather = paddle.gather_nd(
                         weight, paddle.transpose(valid_label, temp_perm)
                     )
@@ -2822,10 +3772,21 @@ def cross_entropy(
                     weight_gather, ignore_weight_mask
                 )
 
+=======
+                    weight_gather = _legacy_C_ops.gather_nd(
+                        weight, valid_label.transpose(temp_perm)
+                    )
+                else:
+                    weight_gather = _legacy_C_ops.gather_nd(weight, valid_label)
+                weight_gather = _legacy_C_ops.elementwise_mul(
+                    weight_gather, ignore_weight_mask
+                )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 input_shape = list(label.shape)
                 weight_gather_reshape = reshape(
                     weight_gather, shape=input_shape
                 )
+<<<<<<< HEAD
             out = paddle.multiply(out, weight_gather_reshape, name=weight_name)
 
         if reduction == "sum":
@@ -2833,12 +3794,32 @@ def cross_entropy(
         elif reduction == "mean":
             if ignore_index >= 0:
                 out_sum = paddle.sum(out, name=name)
+=======
+                out = paddle.cast(out, weight_gather_reshape.dtype)
+                out = _legacy_C_ops.elementwise_mul(out, weight_gather_reshape)
+
+        if reduction == "sum":
+            #   because of fluid_softmax_with_cross_entropy op's inner logic,
+            #   in the out tensor of this op, the loss of sample with class_index==ignore_index is 0
+            #   so, reduce_sum all directly is ok
+            return _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == "mean":
+            # 1. if weight==none,
+            #     numerator: reduce_sum all loss directly is ok causeof fluid_softmax_with_cross_entropy's inner logic
+            #     denominator: count sample num with class_index!=ignore_index
+            # 2. else
+            #     numerator: loss's weighted sum
+            #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
+            if ignore_index >= 0:
+                out_sum = _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
                 mask = label != ignore_index
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
+<<<<<<< HEAD
                     count = paddle.sum(mask, name=name)
                     ret = out_sum / (count + (count == 0.0))
                 else:
@@ -2862,6 +3843,160 @@ def cross_entropy(
 
             return out
 
+=======
+                    count = _legacy_C_ops.reduce_sum(mask, 'reduce_all', True)
+                    ret = out_sum / (count + (count == 0.0))
+                else:
+                    mask = paddle.cast(mask, weight_gather_reshape.dtype)
+                    weight_ignored = _legacy_C_ops.elementwise_mul(
+                        mask, weight_gather_reshape
+                    )
+                    weight_sum = _legacy_C_ops.reduce_sum(
+                        weight_ignored, 'reduce_all', True
+                    )
+                    ret = out_sum / (weight_sum + (weight_sum == 0.0))
+                return ret
+            elif weight is not None:
+                out_sum = _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
+                total_weight = _legacy_C_ops.reduce_sum(
+                    weight_gather_reshape, 'reduce_all', True
+                )
+                return out_sum / (total_weight + (total_weight == 0.0))
+            else:
+                return _legacy_C_ops.mean(out)
+        else:
+            if input_dims - 1 == label_dims:
+                out = paddle.squeeze(out, axis=axis)
+            return out
+
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['float16', 'float32', 'float64'],
+        'softmax_cross_entropy',
+    )
+    check_variable_and_dtype(
+        label,
+        'label',
+        ['uint8', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64'],
+        'softmax_cross_entropy',
+    )
+    attrs = {
+        'soft_label': soft_label,
+        'ignore_index': ignore_index,
+        'numeric_stable_mode': True,
+        'axis': axis,
+        'use_softmax': use_softmax,
+    }
+    helper = LayerHelper('softmax_with_cross_entropy', **locals())
+    softmax = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+    outputs = {'Softmax': softmax, 'Loss': out}
+    if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        backprop = helper.create_variable_for_type_inference(dtype=input.dtype)
+        outputs['Backprop'] = backprop
+    helper.append_op(
+        type='softmax_with_cross_entropy',
+        inputs={'Logits': input, 'Label': label},
+        outputs=outputs,
+        attrs=attrs,
+    )
+
+    if weight is not None:
+        check_variable_and_dtype(
+            weight, 'weight', ['float32', 'float64'], 'softmax_cross_entropy'
+        )
+        weight_name = name if reduction == 'none' else None
+        if soft_label == True:
+            # chajchaj:
+            # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
+            # weight's shape is C, where C is class num.
+            # for 1d case: label's shape is [N,C], weight_gather's shape is N.
+            # for 2d case: label's shape is [N,H,W,C], weight_gather's shape is [N,H,W].
+            weight_gather = paddle.matmul(
+                x=paddle.cast(label, weight.dtype),
+                y=weight,
+                transpose_x=False,
+                transpose_y=True,
+            )
+
+            out_shape = list(out.shape)
+            weight_gather_reshape = reshape(weight_gather, shape=out_shape)
+            out = paddle.cast(out, weight_gather_reshape.dtype)
+        else:
+            if input.shape[axis] != weight.shape[-1]:
+                raise ValueError(
+                    "input's class_dimension({}) must equal to "
+                    "weight's class_dimension({}) "
+                    "when weight is provided".format(
+                        input.shape[axis], weight.shape[-1]
+                    )
+                )
+
+            valid_label = paddle.multiply(
+                paddle.cast(label != ignore_index, dtype=label.dtype), label
+            )
+            ignore_weight_mask = paddle.cast(
+                (label != ignore_index), input.dtype
+            )
+            if (
+                ignore_weight_mask.ndim > 1
+                and ignore_weight_mask.shape[axis] == 1
+            ):
+                ignore_weight_mask = paddle.squeeze(ignore_weight_mask, axis)
+            if axis != -1 and axis != valid_label.ndim - 1:
+                temp_perm = (
+                    list(range(axis % valid_label.ndim))
+                    + list(
+                        range((axis % valid_label.ndim + 1), valid_label.ndim)
+                    )
+                    + [axis % valid_label.ndim]
+                )
+                weight_gather = paddle.gather_nd(
+                    weight, paddle.transpose(valid_label, temp_perm)
+                )
+            else:
+                weight_gather = paddle.gather_nd(weight, valid_label)
+            weight_gather = paddle.multiply(weight_gather, ignore_weight_mask)
+
+            input_shape = list(label.shape)
+            weight_gather_reshape = reshape(weight_gather, shape=input_shape)
+        out = paddle.multiply(out, weight_gather_reshape, name=weight_name)
+
+    if reduction == "sum":
+        return paddle.sum(out, name=name)
+    elif reduction == "mean":
+        if ignore_index >= 0:
+            out_sum = paddle.sum(out, name=name)
+            # for each label[i],set 1 or 0, according to ignore_index
+            # mask[i]=0, if label[i]==ignore_index
+            # mask[i]=1, otherwise
+            mask = label != ignore_index
+            if weight is None:
+                mask = paddle.cast(mask, dtype=out_sum.dtype)
+                count = paddle.sum(mask, name=name)
+                ret = out_sum / (count + (count == 0.0))
+            else:
+                mask = paddle.cast(mask, weight_gather_reshape.dtype)
+                weight_ignored = paddle.multiply(mask, weight_gather_reshape)
+                weight_sum = paddle.sum(weight_ignored, name=name)
+                ret = out_sum / (weight_sum + (weight_sum == 0.0))
+            return ret
+        elif weight is not None:
+            out_sum = paddle.sum(out, name=name)
+            total_weight = paddle.sum(weight_gather_reshape)
+            return out_sum / (total_weight + (total_weight == 0.0))
+        else:
+            return paddle.mean(out, name=name)
+
+    else:
+        if input_dims - 1 == label_dims:
+            out = paddle.squeeze(out, axis=axis)
+
+        return out
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 def sigmoid_focal_loss(
     logit,
@@ -2907,8 +4042,13 @@ def sigmoid_focal_loss(
             ``logit``. The target label whose value should be numbers between 0 and 1.
             Available dtype is float32, float64.
         normalizer (Tensor, optional): The number normalizes the focal loss. It has to be
+<<<<<<< HEAD
             a 1-D Tensor with shape `[1, ]` or 0-D Tensor with shape `[]`. The data type
             is float32, float64. For object detection task, it is the number of positive samples.
+=======
+            a 1-D Tensor whose shape is `[1, ]`. The data type is float32, float64.
+            For object detection task, it is the number of positive samples.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
             it should be between 0 and 1.  Default value is set to 0.25.
@@ -2959,7 +4099,11 @@ def sigmoid_focal_loss(
         normalizer_dims = len(normalizer_shape)
         if normalizer_dims > 1:
             raise ValueError(
+<<<<<<< HEAD
                 "Expected zero or one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
+=======
+                "Expected one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     normalizer_dims
                 )
             )
@@ -3004,6 +4148,7 @@ def sigmoid_focal_loss(
 
         return loss
 
+<<<<<<< HEAD
     else:
         check_variable_and_dtype(
             logit, 'logit', ['float32', 'float64'], 'sigmoid_focal_loss'
@@ -3038,6 +4183,94 @@ def sigmoid_focal_loss(
             loss = paddle.sum(loss, name=name)
 
         return loss
+=======
+    elif _in_legacy_dygraph():
+        one = _varbase_creator(dtype=logit.dtype)
+        _legacy_C_ops.fill_constant(
+            one,
+            'value',
+            float(1.0),
+            'force_cpu',
+            False,
+            'dtype',
+            one.dtype,
+            'str_value',
+            '1.0',
+            'shape',
+            logit.shape,
+        )
+        loss = _legacy_C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+
+        pred = _legacy_C_ops.sigmoid(logit)
+
+        p_t = _legacy_C_ops.elementwise_add(
+            _legacy_C_ops.elementwise_mul(pred, label),
+            _legacy_C_ops.elementwise_mul(
+                _legacy_C_ops.elementwise_sub(one, pred),
+                _legacy_C_ops.elementwise_sub(one, label),
+            ),
+        )
+
+        alpha = fluid.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        alpha_t = _legacy_C_ops.elementwise_add(
+            _legacy_C_ops.elementwise_mul(alpha, label),
+            _legacy_C_ops.elementwise_mul(
+                _legacy_C_ops.elementwise_sub(one, alpha),
+                _legacy_C_ops.elementwise_sub(one, label),
+            ),
+        )
+        loss = _legacy_C_ops.elementwise_mul(alpha_t, loss)
+
+        gamma = fluid.dygraph.base.to_variable([gamma], dtype=loss.dtype)
+        gamma_t = _legacy_C_ops.elementwise_pow(
+            _legacy_C_ops.elementwise_sub(one, p_t), gamma
+        )
+        loss = _legacy_C_ops.elementwise_mul(gamma_t, loss)
+
+        if normalizer is not None:
+            loss = _legacy_C_ops.elementwise_div(loss, normalizer)
+
+        if reduction == "sum":
+            return _legacy_C_ops.reduce_sum(loss, 'reduce_all', True)
+        elif reduction == "mean":
+            return _legacy_C_ops.mean(loss)
+
+        return loss
+
+    check_variable_and_dtype(
+        logit, 'logit', ['float32', 'float64'], 'sigmoid_focal_loss'
+    )
+    check_variable_and_dtype(
+        label, 'label', ['float32', 'float64'], 'sigmoid_focal_loss'
+    )
+
+    bce_name = None
+    if reduction == 'none' and normalizer is None:
+        bce_name = name
+    loss = paddle.nn.functional.binary_cross_entropy_with_logits(
+        logit, label, reduction='none', name=bce_name
+    )
+
+    pred = paddle.nn.functional.sigmoid(logit)
+    p_t = pred * label + (1 - pred) * (1 - label)
+
+    alpha_t = alpha * label + (1 - alpha) * (1 - label)
+    loss = paddle.multiply(alpha_t, loss)
+
+    gamma_t = paddle.pow((1 - p_t), gamma)
+    loss = paddle.multiply(gamma_t, loss)
+
+    if normalizer is not None:
+        normalizer_name = name if reduction == 'none' else None
+        loss = paddle.divide(loss, normalizer, name=normalizer_name)
+
+    if reduction == 'mean':
+        loss = paddle.mean(loss, name=name)
+    elif reduction == 'sum':
+        loss = paddle.sum(loss, name=name)
+
+    return loss
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def multi_label_soft_margin_loss(
@@ -3109,7 +4342,11 @@ def multi_label_soft_margin_loss(
             "but received {}!={}".format(input.shape, label.shape)
         )
 
+<<<<<<< HEAD
     if not in_dygraph_mode():
+=======
+    if not _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_variable_and_dtype(
             input,
             'input',
@@ -3129,7 +4366,11 @@ def multi_label_soft_margin_loss(
     )
 
     if weight is not None:
+<<<<<<< HEAD
         if not in_dygraph_mode():
+=======
+        if not _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             check_variable_and_dtype(
                 weight,
                 'weight',
@@ -3228,7 +4469,11 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
             "but received {}.".format(reduction)
         )
 
+<<<<<<< HEAD
     if not in_dygraph_mode():
+=======
+    if not _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'hinge_embedding_loss'
         )
@@ -3253,7 +4498,11 @@ def cosine_embedding_loss(
     input1, input2, label, margin=0, reduction='mean', name=None
 ):
     r"""
+<<<<<<< HEAD
     Compute the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
+=======
+    This operator computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     If label = 1, then the loss value can be calculated as follow:
 
@@ -3269,12 +4518,21 @@ def cosine_embedding_loss(
      .. math::
         cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
 
+<<<<<<< HEAD
     Parameters:
         input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, which can be 0, 'M' means the length of input array.
                          Available dtypes are float32, float64.
         input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, which can be 0, 'M' means the length of input array.
                          Available dtypes are float32, float64.
         label (Tensor): tensor with shape: [N] or [1], 'N' means the length of input array. The target labels values should be -1 or 1.
+=======
+     Parameters:
+        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          Available dtypes are int32, int64, float32, float64.
         margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
                          :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
@@ -3406,8 +4664,13 @@ def triplet_margin_with_distance_loss(
 
         distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
 
+<<<<<<< HEAD
         margin (float, optional): A nonnegative margin representing the minimum difference
             between the positive and negative distances required for the loss to be 0. Default value is :math:`1`.
+=======
+            margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
+            between the positive and negative distances required for the loss to be 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         swap (bool, optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
@@ -3453,7 +4716,11 @@ def triplet_margin_with_distance_loss(
         raise ValueError(
             "The margin between positive samples and negative samples should be greater than 0."
         )
+<<<<<<< HEAD
     if not in_dygraph_mode():
+=======
+    if not _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_variable_and_dtype(
             input,
             'input',
@@ -3602,7 +4869,11 @@ def triplet_margin_loss(
         raise ValueError(
             "The margin between positive samples and negative samples should be greater than 0."
         )
+<<<<<<< HEAD
     if not in_dygraph_mode():
+=======
+    if not _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'triplet_margin_loss'
         )
@@ -3638,6 +4909,7 @@ def triplet_margin_loss(
         return loss
 
 
+<<<<<<< HEAD
 def multi_margin_loss(
     input,
     label,
@@ -3767,6 +5039,8 @@ def multi_margin_loss(
         return loss
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def soft_margin_loss(input, label, reduction='mean', name=None):
     """
 
@@ -3833,7 +5107,11 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             % reduction
         )
 
+<<<<<<< HEAD
     if not in_dygraph_mode():
+=======
+    if not _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         fluid.data_feeder.check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'soft_margin_loss'
         )

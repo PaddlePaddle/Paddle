@@ -68,6 +68,7 @@ void FusionSeqPoolConcatOp::InferShape(
   }
 }
 
+<<<<<<< HEAD
 phi::KernelKey FusionSeqPoolConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -78,6 +79,17 @@ void FusionSeqPoolConcatOpMaker::Make() {
   AddInput("X", "(phi::DenseTensor) Input tensors of this operator.")
       .AsDuplicable();
   AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
+=======
+framework::OpKernelType FusionSeqPoolConcatOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+}
+
+void FusionSeqPoolConcatOpMaker::Make() {
+  AddInput("X", "(LoDTensor) Input tensors of this operator.").AsDuplicable();
+  AddOutput("Out", "(LoDTensor) Output tensor of concat operator.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddAttr<std::string>("pooltype",
                        "(string, default 'SUM') some of the pooling "
                        "pooltype of SequencePoolOp.")
@@ -96,8 +108,13 @@ template <typename T>
 class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto* out = ctx.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::string pooltype = ctx.Attr<std::string>("pooltype");
     auto x0_lod = ins[0]->lod();
     const auto& x0_dims = ins[0]->dims();

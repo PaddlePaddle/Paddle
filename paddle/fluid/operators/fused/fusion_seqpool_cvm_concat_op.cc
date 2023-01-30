@@ -67,6 +67,7 @@ void FusionSeqPoolCVMConcatOp::InferShape(
   ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
 }
 
+<<<<<<< HEAD
 phi::KernelKey FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -81,6 +82,20 @@ void FusionSeqPoolCVMConcatOpMaker::Make() {
            "where N is the batch "
            "size, 2 is show and click.");
   AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
+=======
+framework::OpKernelType FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+}
+
+void FusionSeqPoolCVMConcatOpMaker::Make() {
+  AddInput("X", "(LoDTensor) Input tensors of this operator.").AsDuplicable();
+  AddInput("CVM",
+           "(Tensor),  a 2-D Tensor with shape [N x 2], where N is the batch "
+           "size, 2 is show and click.");
+  AddOutput("Out", "(LoDTensor) Output tensor of concat operator.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddAttr<std::string>("pooltype",
                        "(string, default 'SUM') some of the pooling "
                        "pooltype of SequencePoolOp.")
@@ -100,8 +115,13 @@ template <typename T>
 class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto* out = ctx.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::string pooltype = ctx.Attr<std::string>("pooltype");
     auto x0_lod = ins[0]->lod();
     const auto& x0_dims = ins[0]->dims();

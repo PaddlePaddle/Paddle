@@ -27,6 +27,10 @@ static void LerpFunction(const Context& ctx,
                          const DenseTensor& weight,
                          DenseTensor* out) {
   ctx.template Alloc<T>(out);
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const auto& out_dims = out->dims();
   auto x_dims = phi::funcs::ExtendDims2Rank(x.dims(), D);
   auto y_dims = phi::funcs::ExtendDims2Rank(y.dims(), D);
@@ -50,6 +54,7 @@ static void LerpFunction(const Context& ctx,
           (eigen_y.broadcast(y_bcast_dims) - eigen_x.broadcast(x_bcast_dims));
 }
 
+<<<<<<< HEAD
 template <typename Context, typename T>
 static void LerpFunctionZero(const Context& ctx,
                              const DenseTensor& x,
@@ -68,6 +73,8 @@ static void LerpFunctionZero(const Context& ctx,
   eigen_out.device(place) = eigen_x + eigen_w * (eigen_y - eigen_x);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, typename Context>
 void LerpKernel(const Context& ctx,
                 const DenseTensor& x,
@@ -77,10 +84,17 @@ void LerpKernel(const Context& ctx,
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(
       rank,
+<<<<<<< HEAD
       0,
       phi::errors::InvalidArgument(
           "The number of dimensions for LerpOp must be "
           "greater than or equal to 0, but the value received is %d.",
+=======
+      1,
+      phi::errors::InvalidArgument(
+          "The number of dimensions for LerpOp must be "
+          "greater than or equal to 1, but the value received is %d.",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           rank));
   PADDLE_ENFORCE_LE(
       rank,
@@ -90,9 +104,12 @@ void LerpKernel(const Context& ctx,
           "less than or equal to 6, but the value received is %d.",
           rank));
   switch (rank) {
+<<<<<<< HEAD
     case 0:
       LerpFunctionZero<Context, T>(ctx, x, y, weight, out);
       break;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     case 1:
       LerpFunction<Context, T, 1>(ctx, x, y, weight, out);
       break;

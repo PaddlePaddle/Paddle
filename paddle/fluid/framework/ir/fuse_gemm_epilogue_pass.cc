@@ -16,7 +16,11 @@
 #include "paddle/fluid/framework/ir/fuse_gemm_epilogue_pass.h"
 
 #include <string>
+<<<<<<< HEAD
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -106,13 +110,21 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     IR_NODE_LINK_TO(ele_bias, gemm_epilogue_node);
     IR_NODE_LINK_TO(gemm_epilogue_node, ele_out);
 
+<<<<<<< HEAD
+=======
+    GraphSafeRemoveNodes(g, {matmul_op, matmul_out, ele_add_op});
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(4) << "\n\t " << subgraph.at(x)->Name() << " and " << matmul_w->Name()
             << " -> " << matmul_op->Name() << " -> " << matmul_out->Name()
             << "\n\t " << matmul_out->Name() << " and " << ele_bias->Name()
             << " -> " << ele_add_op->Name() << " -> " << ele_out->Name()
             << "\n\t " << ele_out->Name();
+<<<<<<< HEAD
 
     GraphSafeRemoveNodes(g, {matmul_op, matmul_out, ele_add_op});
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     found_linear_count++;
   };
 
@@ -218,15 +230,24 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
       IR_NODE_LINK_TO(gemm_epilogue_node, reserve_space_node);
     }
 
+<<<<<<< HEAD
+=======
+    GraphSafeRemoveNodes(g,
+                         {matmul_op, matmul_out, ele_add_op, ele_out, act_op});
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(4) << "\n\t " << subgraph.at(x)->Name() << " and " << matmul_w->Name()
             << " -> " << matmul_op->Name() << " -> " << matmul_out->Name()
             << "\n\t " << matmul_out->Name() << " and " << ele_bias->Name()
             << " -> " << ele_add_op->Name() << " -> " << ele_out->Name()
             << "\n\t " << ele_out->Name() << " -> " << act_op->Name() << " -> "
             << act_out->Name();
+<<<<<<< HEAD
 
     GraphSafeRemoveNodes(g,
                          {matmul_op, matmul_out, ele_add_op, ele_out, act_op});
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     found_linear_act_count++;
   };
 
@@ -318,6 +339,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
         "op_role", matmul_grad_op_desc->GetAttr("op_role"));
     fused_gemm_epilogue_grad_op_desc.SetAttr("trans_x", trans_x);
     fused_gemm_epilogue_grad_op_desc.SetAttr("trans_y", trans_y);
+<<<<<<< HEAD
     auto matmul_grad_op_role_val =
         details::GetOpRoleVarsOrEmpty(*(matmul_grad_op->Op()));
     auto ele_add_grad_op_role_val =
@@ -331,6 +353,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
     }
     fused_gemm_epilogue_grad_op_desc.SetAttr(
         "op_role_var", fused_gemm_epilogue_grad_op_role_var);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto gemm_epilogue_grad_node =
         g->CreateOpNode(&fused_gemm_epilogue_grad_op_desc);
@@ -338,13 +362,21 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
     IR_NODE_LINK_TO(subgraph.at(dout), gemm_epilogue_grad_node);
     IR_NODE_LINK_TO(matmul_grad_x, gemm_epilogue_grad_node);
     IR_NODE_LINK_TO(matmul_grad_w, gemm_epilogue_grad_node);
+<<<<<<< HEAD
     IR_NODE_LINK_TO(ele_grad_bias, gemm_epilogue_grad_node);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     IR_NODE_LINK_TO(gemm_epilogue_grad_node, matmul_grad_dw);
     IR_NODE_LINK_TO(gemm_epilogue_grad_node, ele_grad_dbias);
     if (matmul_grad_dx) {
       IR_NODE_LINK_TO(gemm_epilogue_grad_node, matmul_grad_dx);
     }
 
+<<<<<<< HEAD
+=======
+    GraphSafeRemoveNodes(g, {ele_add_grad_op, ele_grad_dx, matmul_grad_op});
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std::string matmul_grad_dx_name =
         matmul_grad_dx != nullptr ? matmul_grad_dx->Name() : " ";
     VLOG(4) << "\n\t " << subgraph.at(dout)->Name() << " and "
@@ -354,8 +386,11 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
             << matmul_grad_x->Name() << " and " << matmul_grad_w->Name()
             << " -> " << matmul_grad_op->Name() << " -> "
             << matmul_grad_w->Name() << " and " << matmul_grad_dx_name;
+<<<<<<< HEAD
 
     GraphSafeRemoveNodes(g, {ele_add_grad_op, ele_grad_dx, matmul_grad_op});
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     found_ele_add_matmul_act_count++;
   };
 
@@ -456,6 +491,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
         "op_role", matmul_grad_op_desc->GetAttr("op_role"));
     fused_gemm_epilogue_grad_op_desc.SetAttr("trans_x", trans_x);
     fused_gemm_epilogue_grad_op_desc.SetAttr("trans_y", trans_y);
+<<<<<<< HEAD
     auto matmul_grad_op_role_val =
         details::GetOpRoleVarsOrEmpty(*(matmul_grad_op->Op()));
     auto ele_add_grad_op_role_val =
@@ -469,6 +505,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     }
     fused_gemm_epilogue_grad_op_desc.SetAttr(
         "op_role_var", fused_gemm_epilogue_grad_op_role_var);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto gemm_epilogue_grad_node =
         g->CreateOpNode(&fused_gemm_epilogue_grad_op_desc);
@@ -476,12 +514,25 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     IR_NODE_LINK_TO(subgraph.at(dout), gemm_epilogue_grad_node);
     IR_NODE_LINK_TO(matmul_grad_x, gemm_epilogue_grad_node);
     IR_NODE_LINK_TO(matmul_grad_w, gemm_epilogue_grad_node);
+<<<<<<< HEAD
     IR_NODE_LINK_TO(ele_grad_bias, gemm_epilogue_grad_node);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     IR_NODE_LINK_TO(gemm_epilogue_grad_node, act_grad_dx);
     IR_NODE_LINK_TO(gemm_epilogue_grad_node, matmul_grad_dw);
     IR_NODE_LINK_TO(gemm_epilogue_grad_node, ele_grad_dbias);
     IR_NODE_LINK_TO(reserve_space_node, gemm_epilogue_grad_node);
 
+<<<<<<< HEAD
+=======
+    GraphSafeRemoveNodes(g,
+                         {ele_add_grad_op,
+                          ele_grad_dx,
+                          matmul_grad_op,
+                          matmul_grad_dx,
+                          act_grad_op});
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(4) << "\n\t " << subgraph.at(dout)->Name() << " and "
             << ele_grad_bias->Name() << " -> " << ele_add_grad_op->Name()
             << " -> " << ele_grad_dx->Name() << " and "
@@ -491,6 +542,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
             << matmul_grad_dx->Name() << " and " << matmul_grad_w->Name()
             << "\n\t " << matmul_grad_dx->Name() << " -> "
             << act_grad_op->Name() << " -> " << act_grad_dx->Name();
+<<<<<<< HEAD
 
     GraphSafeRemoveNodes(g,
                          {ele_add_grad_op,
@@ -498,6 +550,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
                           matmul_grad_op,
                           matmul_grad_dx,
                           act_grad_op});
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     found_ele_add_matmul_act_count++;
   };
 

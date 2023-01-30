@@ -19,12 +19,22 @@ https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ and
 parse training set and test set into paddle reader creators.
 """
 
+<<<<<<< HEAD
 import os
 import tarfile
 import tempfile
 
 import numpy as np
 
+=======
+from __future__ import print_function
+
+import numpy as np
+import six
+import tempfile
+import tarfile
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 
@@ -33,6 +43,7 @@ __all__ = []
 URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
 feature_names = [
+<<<<<<< HEAD
     'CRIM',
     'ZN',
     'INDUS',
@@ -46,6 +57,10 @@ feature_names = [
     'PTRATIO',
     'B',
     'LSTAT',
+=======
+    'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',
+    'PTRATIO', 'B', 'LSTAT'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]
 
 UCI_TRAIN_DATA = None
@@ -57,6 +72,7 @@ FLUID_MD5_MODEL = '6e6dd637ccd5993961f68bfbde46090b'
 
 def feature_range(maximums, minimums):
     import matplotlib
+<<<<<<< HEAD
 
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -66,6 +82,16 @@ def feature_range(maximums, minimums):
     ax.bar(
         list(range(feature_num)), maximums - minimums, color='r', align='center'
     )
+=======
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    feature_num = len(maximums)
+    ax.bar(list(range(feature_num)),
+           maximums - minimums,
+           color='r',
+           align='center')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ax.set_title('feature scale')
     plt.xticks(list(range(feature_num)), feature_names)
     plt.xlim([-1, feature_num])
@@ -84,6 +110,7 @@ def load_data(filename, feature_num=14, ratio=0.8):
 
     data = np.fromfile(filename, sep=' ')
     data = data.reshape(data.shape[0] // feature_num, feature_num)
+<<<<<<< HEAD
     maximums, minimums, avgs = (
         data.max(axis=0),
         data.min(axis=0),
@@ -92,6 +119,13 @@ def load_data(filename, feature_num=14, ratio=0.8):
     # if you want to print the distribution of input data, you could use function of feature_range
     # feature_range(maximums[:-1], minimums[:-1])
     for i in range(feature_num - 1):
+=======
+    maximums, minimums, avgs = data.max(axis=0), data.min(
+        axis=0), data.sum(axis=0) / data.shape[0]
+    # if you want to print the distribution of input data, you could use function of feature_range
+    #feature_range(maximums[:-1], minimums[:-1])
+    for i in six.moves.range(feature_num - 1):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
     offset = int(data.shape[0] * ratio)
     UCI_TRAIN_DATA = data[:offset]
@@ -102,8 +136,12 @@ def load_data(filename, feature_num=14, ratio=0.8):
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def train():
     """
     UCI_HOUSING training set creator.
@@ -128,8 +166,12 @@ def train():
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def test():
     """
     UCI_HOUSING test set creator.
@@ -151,9 +193,16 @@ def test():
 
 
 def fluid_model():
+<<<<<<< HEAD
     parameter_tar = paddle.dataset.common.download(
         FLUID_URL_MODEL, 'uci_housing', FLUID_MD5_MODEL, 'fit_a_line.fluid.tar'
     )
+=======
+    parameter_tar = paddle.dataset.common.download(FLUID_URL_MODEL,
+                                                   'uci_housing',
+                                                   FLUID_MD5_MODEL,
+                                                   'fit_a_line.fluid.tar')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     tar = tarfile.TarFile(parameter_tar, mode='r')
     dirpath = tempfile.mkdtemp()
@@ -166,8 +215,12 @@ def fluid_model():
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def predict_reader():
     """
     It returns just one tuple data to do inference.
@@ -177,14 +230,22 @@ def predict_reader():
     """
     global UCI_TEST_DATA
     load_data(paddle.dataset.common.download(URL, 'uci_housing', MD5))
+<<<<<<< HEAD
     return (UCI_TEST_DATA[0][:-1],)
+=======
+    return (UCI_TEST_DATA[0][:-1], )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)

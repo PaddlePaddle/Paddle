@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 
 import numpy as np
 import test_collective_api_base as test_collective_base
@@ -22,6 +23,18 @@ import paddle.distributed as dist
 
 
 class StreamSendRecvTestCase:
+=======
+import numpy as np
+import paddle
+import paddle.distributed as dist
+import paddle.fluid as fluid
+import test_collective_api_base as test_collective_base
+import test_communication_api_base as test_base
+
+
+class StreamSendRecvTestCase():
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
         self._use_calc_stream = eval(os.getenv("use_calc_stream"))
@@ -31,8 +44,12 @@ class StreamSendRecvTestCase:
         self._seeds = eval(os.getenv("seeds"))
         if self._backend not in ["nccl", "gloo"]:
             raise NotImplementedError(
+<<<<<<< HEAD
                 "Only support nccl and gloo as the backend for now."
             )
+=======
+                "Only support nccl and gloo as the backend for now.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_DISTRI_BACKEND"] = self._backend
 
     def run_test_case(self):
@@ -41,10 +58,16 @@ class StreamSendRecvTestCase:
         test_data_list = []
         for seed in self._seeds:
             test_data_list.append(
+<<<<<<< HEAD
                 test_collective_base.create_test_data(
                     shape=self._shape, dtype=self._dtype, seed=seed
                 )
             )
+=======
+                test_collective_base.create_test_data(shape=self._shape,
+                                                      dtype=self._dtype,
+                                                      seed=seed))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         src_rank = 0
         dst_rank = 1
@@ -52,6 +75,7 @@ class StreamSendRecvTestCase:
         rank = dist.get_rank()
         tensor = paddle.to_tensor(test_data_list[rank])
         if rank == 0:
+<<<<<<< HEAD
             task = dist.stream.send(
                 tensor,
                 dst=dst_rank,
@@ -65,11 +89,26 @@ class StreamSendRecvTestCase:
                 sync_op=self._sync_op,
                 use_calc_stream=self._use_calc_stream,
             )
+=======
+            task = dist.stream.send(tensor,
+                                    dst=dst_rank,
+                                    sync_op=self._sync_op,
+                                    use_calc_stream=self._use_calc_stream)
+        else:
+            task = dist.stream.recv(tensor,
+                                    src=src_rank,
+                                    sync_op=self._sync_op,
+                                    use_calc_stream=self._use_calc_stream)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if not self._sync_op:
             task.wait()
 
         result = test_data_list[src_rank]
+<<<<<<< HEAD
         np.testing.assert_allclose(tensor, result, rtol=1e-05, atol=1e-05)
+=======
+        assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

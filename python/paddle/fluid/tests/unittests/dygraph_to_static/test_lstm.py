@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
@@ -28,6 +29,24 @@ class LSTMLayer(nn.Layer):
         self.cell = nn.LSTM(
             in_channels, hidden_size, direction='bidirectional', num_layers=2
         )
+=======
+import numpy as np
+import paddle
+import unittest
+from paddle import nn
+import os
+import tempfile
+
+
+class LSTMLayer(nn.Layer):
+
+    def __init__(self, in_channels, hidden_size):
+        super(LSTMLayer, self).__init__()
+        self.cell = nn.LSTM(in_channels,
+                            hidden_size,
+                            direction='bidirectional',
+                            num_layers=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x):
         x, _ = self.cell(x)
@@ -35,8 +54,14 @@ class LSTMLayer(nn.Layer):
 
 
 class Net(nn.Layer):
+<<<<<<< HEAD
     def __init__(self, in_channels, hidden_size):
         super().__init__()
+=======
+
+    def __init__(self, in_channels, hidden_size):
+        super(Net, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.lstm = LSTMLayer(in_channels, hidden_size)
 
     def forward(self, x):
@@ -45,6 +70,10 @@ class Net(nn.Layer):
 
 
 class TestLstm(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -52,7 +81,11 @@ class TestLstm(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def run_lstm(self, to_static):
+<<<<<<< HEAD
         paddle.jit.enable_to_static(to_static)
+=======
+        paddle.jit.ProgramTranslator().enable(to_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         paddle.disable_static()
         paddle.static.default_main_program().random_seed = 1001
@@ -70,24 +103,37 @@ class TestLstm(unittest.TestCase):
         np.testing.assert_allclose(dygraph_out, static_out, rtol=1e-05)
 
     def test_save_in_eval(self, with_training=True):
+<<<<<<< HEAD
         paddle.jit.enable_to_static(True)
+=======
+        paddle.jit.ProgramTranslator().enable(True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         net = Net(12, 2)
         x = paddle.randn((2, 10, 12))
         if with_training:
             x.stop_gradient = False
             dygraph_out = net(x)
             loss = paddle.mean(dygraph_out)
+<<<<<<< HEAD
             sgd = paddle.optimizer.SGD(
                 learning_rate=0.001, parameters=net.parameters()
             )
+=======
+            sgd = paddle.optimizer.SGD(learning_rate=0.001,
+                                       parameters=net.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss.backward()
             sgd.step()
         # switch eval mode firstly
         net.eval()
         x = paddle.randn((2, 10, 12))
         net = paddle.jit.to_static(
+<<<<<<< HEAD
             net, input_spec=[paddle.static.InputSpec(shape=[-1, 10, 12])]
         )
+=======
+            net, input_spec=[paddle.static.InputSpec(shape=[-1, 10, 12])])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         model_path = os.path.join(self.temp_dir.name, 'simple_lstm')
         paddle.jit.save(net, model_path)
 
@@ -101,9 +147,13 @@ class TestLstm(unittest.TestCase):
             static_out.numpy(),
             rtol=1e-05,
             err_msg='dygraph_out is {}\n static_out is \n{}'.format(
+<<<<<<< HEAD
                 dygraph_out, static_out
             ),
         )
+=======
+                dygraph_out, static_out))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # switch back into train mode.
         net.train()
         train_out = net(x)
@@ -112,17 +162,27 @@ class TestLstm(unittest.TestCase):
             train_out.numpy(),
             rtol=1e-05,
             err_msg='dygraph_out is {}\n static_out is \n{}'.format(
+<<<<<<< HEAD
                 dygraph_out, train_out
             ),
         )
+=======
+                dygraph_out, train_out))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_save_without_training(self):
         self.test_save_in_eval(with_training=False)
 
 
 class LinearNet(nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(LinearNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fc = nn.Linear(10, 12)
         self.dropout = nn.Dropout(0.5)
 
@@ -134,6 +194,10 @@ class LinearNet(nn.Layer):
 
 
 class TestSaveInEvalMode(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -141,23 +205,36 @@ class TestSaveInEvalMode(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_save_in_eval(self):
+<<<<<<< HEAD
         paddle.jit.enable_to_static(True)
+=======
+        paddle.jit.ProgramTranslator().enable(True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         net = LinearNet()
         x = paddle.randn((2, 10))
         x.stop_gradient = False
         dygraph_out = net(x)
         loss = paddle.mean(dygraph_out)
+<<<<<<< HEAD
         sgd = paddle.optimizer.SGD(
             learning_rate=0.001, parameters=net.parameters()
         )
+=======
+        sgd = paddle.optimizer.SGD(learning_rate=0.001,
+                                   parameters=net.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss.backward()
         sgd.step()
         # switch eval mode firstly
         net.eval()
         # save directly
         net = paddle.jit.to_static(
+<<<<<<< HEAD
             net, input_spec=[paddle.static.InputSpec(shape=[-1, 10])]
         )
+=======
+            net, input_spec=[paddle.static.InputSpec(shape=[-1, 10])])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_path = os.path.join(self.temp_dir.name, 'linear_net')
         paddle.jit.save(net, model_path)
@@ -173,12 +250,20 @@ class TestSaveInEvalMode(unittest.TestCase):
             infer_out.numpy(),
             rtol=1e-05,
             err_msg='eval_out is {}\n infer_out is \n{}'.format(
+<<<<<<< HEAD
                 eval_out, infer_out
             ),
         )
 
 
 class TestEvalAfterSave(unittest.TestCase):
+=======
+                eval_out, infer_out))
+
+
+class TestEvalAfterSave(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -191,9 +276,14 @@ class TestEvalAfterSave(unittest.TestCase):
         x.stop_gradient = False
         dy_out = net(x)
         loss = paddle.mean(dy_out)
+<<<<<<< HEAD
         sgd = paddle.optimizer.SGD(
             learning_rate=0.001, parameters=net.parameters()
         )
+=======
+        sgd = paddle.optimizer.SGD(learning_rate=0.001,
+                                   parameters=net.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss.backward()
         sgd.step()
         x = paddle.randn((2, 10, 12)).astype('float32')

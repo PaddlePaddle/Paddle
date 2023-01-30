@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import argparse
 import os
@@ -19,6 +24,10 @@ import sys
 import signal
 import time
 from contextlib import closing
+<<<<<<< HEAD
+=======
+from six import string_types
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import math
 import paddle
 import paddle.fluid as fluid
@@ -35,6 +44,10 @@ paddle.enable_static()
 
 
 class TestCollectiveIdentity(TestCollectiveRunnerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 
@@ -42,14 +55,21 @@ class TestCollectiveIdentity(TestCollectiveRunnerBase):
         ring_id = 0
         nranks = 2
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
+=======
+            tindata = layers.data(name="tindata",
+                                  shape=[10, 1000],
+                                  dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             toutdata = main_prog.current_block().create_var(
                 name="outofgather",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
+<<<<<<< HEAD
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
@@ -58,6 +78,16 @@ class TestCollectiveIdentity(TestCollectiveRunnerBase):
                 outputs={'Out': toutdata},
                 attrs={'ring_id': ring_id, 'nranks': nranks},
             )
+=======
+                stop_gradient=False)
+            main_prog.global_block().append_op(type="c_identity",
+                                               inputs={'X': tindata},
+                                               outputs={'Out': toutdata},
+                                               attrs={
+                                                   'ring_id': ring_id,
+                                                   'nranks': nranks
+                                               })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return toutdata
 
 

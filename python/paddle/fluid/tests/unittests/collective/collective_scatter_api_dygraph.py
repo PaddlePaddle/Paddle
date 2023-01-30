@@ -12,14 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import test_collective_api_base as test_base
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
+<<<<<<< HEAD
 
 
 class TestCollectiveScatterAPI(test_base.TestCollectiveAPIRunnerBase):
+=======
+import unittest
+import test_collective_api_base as test_base
+
+
+class TestCollectiveScatterAPI(test_base.TestCollectiveAPIRunnerBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 
@@ -32,9 +45,15 @@ class TestCollectiveScatterAPI(test_base.TestCollectiveAPIRunnerBase):
                 if rank == 0:
                     dist.scatter(subdata1, src=1)
                 else:
+<<<<<<< HEAD
                     dist.scatter(
                         subdata1, tensor_list=[subdata1, subdata2], src=1
                     )
+=======
+                    dist.scatter(subdata1,
+                                 tensor_list=[subdata1, subdata2],
+                                 src=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return [subdata1.cast("float32").numpy()]
             else:
                 tindata = paddle.to_tensor(indata)
@@ -42,9 +61,15 @@ class TestCollectiveScatterAPI(test_base.TestCollectiveAPIRunnerBase):
                 if rank == 0:
                     dist.scatter(subdata1, src=1)
                 else:
+<<<<<<< HEAD
                     dist.scatter(
                         subdata1, tensor_list=[subdata1, subdata2], src=1
                     )
+=======
+                    dist.scatter(subdata1,
+                                 tensor_list=[subdata1, subdata2],
+                                 src=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return [subdata1.numpy()]
 
 

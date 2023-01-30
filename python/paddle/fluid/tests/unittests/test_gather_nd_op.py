@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,15 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle.fluid as fluid
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestGatherNdOpWithEmptyIndex(OpTest):
@@ -41,6 +51,10 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
 
 
 class TestGatherNdOpWithIndex1(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "gather_nd"
         self.python_api = paddle.gather_nd
@@ -56,7 +70,11 @@ class TestGatherNdOpWithIndex1(OpTest):
 
 
 class TestGatherNdOpWithLowIndex(OpTest):
+<<<<<<< HEAD
     # Index has low rank, X has high rank
+=======
+    #Index has low rank, X has high rank
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "gather_nd"
@@ -66,9 +84,13 @@ class TestGatherNdOpWithLowIndex(OpTest):
 
         self.inputs = {'X': xnp, 'Index': index}
 
+<<<<<<< HEAD
         self.outputs = {
             'Out': xnp[tuple(index.T)]
         }  # [[14, 25, 1], [76, 22, 3]]
+=======
+        self.outputs = {'Out': xnp[tuple(index.T)]}  #[[14, 25, 1], [76, 22, 3]]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         self.check_output(check_eager=False)
@@ -78,7 +100,11 @@ class TestGatherNdOpWithLowIndex(OpTest):
 
 
 class TestGatherNdOpIndex1(OpTest):
+<<<<<<< HEAD
     # Index has low rank, X has high rank
+=======
+    #Index has low rank, X has high rank
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "gather_nd"
@@ -98,7 +124,11 @@ class TestGatherNdOpIndex1(OpTest):
 
 
 class TestGatherNdOpWithSameIndexAsX(OpTest):
+<<<<<<< HEAD
     # Index has same rank as X's rank
+=======
+    #Index has same rank as X's rank
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "gather_nd"
@@ -107,7 +137,11 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         index = np.array([[1, 1], [2, 1]]).astype("int64")
 
         self.inputs = {'X': xnp, 'Index': index}
+<<<<<<< HEAD
         self.outputs = {'Out': xnp[tuple(index.T)]}  # [25, 22]
+=======
+        self.outputs = {'Out': xnp[tuple(index.T)]}  #[25, 22]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         self.check_output(check_eager=False)
@@ -117,7 +151,11 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
 
 
 class TestGatherNdOpWithHighRankSame(OpTest):
+<<<<<<< HEAD
     # Both Index and X have high rank, and Rank(Index) = Rank(X)
+=======
+    #Both Index and X have high rank, and Rank(Index) = Rank(X)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "gather_nd"
@@ -137,7 +175,11 @@ class TestGatherNdOpWithHighRankSame(OpTest):
 
 
 class TestGatherNdOpWithHighRankDiff(OpTest):
+<<<<<<< HEAD
     # Both Index and X have high rank, and Rank(Index) < Rank(X)
+=======
+    #Both Index and X have high rank, and Rank(Index) < Rank(X)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "gather_nd"
@@ -157,6 +199,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.check_grad(['X'], 'Out', check_eager=False)
 
 
+<<<<<<< HEAD
 # Test Python API
 class TestGatherNdOpAPI(unittest.TestCase):
     def test_case1(self):
@@ -199,6 +242,46 @@ class TestGatherNdOpRaise(unittest.TestCase):
                 output = paddle.gather_nd(x, index)
             except Exception as e:
                 t = "Input(Index).shape[-1] should be no greater than Input(X).rank"
+=======
+#Test Python API
+class TestGatherNdOpAPI(unittest.TestCase):
+
+    def test_case1(self):
+        x1 = fluid.layers.data(name='x1',
+                               shape=[30, 40, 50, 60],
+                               dtype='float32')
+        index1 = fluid.layers.data(name='index1', shape=[2, 4], dtype='int32')
+        output1 = fluid.layers.gather_nd(x1, index1)
+
+    def test_case2(self):
+        x2 = fluid.layers.data(name='x2', shape=[30, 40, 50], dtype='float32')
+        index2 = fluid.layers.data(name='index2', shape=[2, 2], dtype='int64')
+        output2 = fluid.layers.gather_nd(x2, index2)
+
+    def test_case3(self):
+        x3 = fluid.layers.data(name='x3', shape=[3, 4, 5], dtype='float32')
+        index3 = fluid.layers.data(name='index3', shape=[2, 1], dtype='int32')
+        output3 = fluid.layers.gather_nd(x3, index3, name="gather_nd_layer")
+
+
+#Test Raise Index Error
+class TestGatherNdOpRaise(unittest.TestCase):
+
+    def test_check_raise(self):
+
+        def check_raise_is_test():
+            try:
+                x = fluid.layers.data(name='x',
+                                      shape=[3, 4, 5],
+                                      dtype='float32')
+                index = fluid.layers.data(name='index',
+                                          shape=[2, 10],
+                                          dtype='int32')
+                output = fluid.layers.gather_nd(x, index)
+            except Exception as e:
+                t = \
+                "Input(Index).shape[-1] should be no greater than Input(X).rank"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if t in str(e):
                     raise IndexError
 
@@ -206,17 +289,30 @@ class TestGatherNdOpRaise(unittest.TestCase):
 
 
 class TestGatherNdError(unittest.TestCase):
+<<<<<<< HEAD
     def test_error(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
+=======
+
+    def test_error(self):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             shape = [8, 9, 6]
             x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
             index = paddle.fluid.data(shape=shape, dtype='bool', name='index')
+<<<<<<< HEAD
             index_float = paddle.fluid.data(
                 shape=shape, dtype='float32', name='index_float'
             )
+=======
+            index_float = paddle.fluid.data(shape=shape,
+                                            dtype='float32',
+                                            name='index_float')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np_x = np.random.random(shape).astype('float32')
             np_index = np.array(np.random.randint(2, size=shape, dtype=bool))
 
@@ -237,20 +333,37 @@ class TestGatherNdError(unittest.TestCase):
 
 
 class TestGatherNdAPI2(unittest.TestCase):
+<<<<<<< HEAD
     def test_static(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
             data1.desc.set_need_check_feed(False)
             index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
             index.desc.set_need_check_feed(False)
+=======
+
+    def test_static(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float64')
+            index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out = paddle.gather_nd(data1, index)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
+<<<<<<< HEAD
             index_1 = np.array([[1]]).astype('int32')
             (result,) = exe.run(
                 feed={"data1": input, "index": index_1}, fetch_list=[out]
             )
+=======
+            index_1 = np.array([[1]])
+            result, = exe.run(feed={
+                "data1": input,
+                "index": index_1
+            },
+                              fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_output = np.array([[3, 4]])
         np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
@@ -260,7 +373,11 @@ class TestGatherNdAPI2(unittest.TestCase):
         index_1 = np.array([[1]])
         input = fluid.dygraph.to_variable(input_1)
         index = fluid.dygraph.to_variable(index_1)
+<<<<<<< HEAD
         output = paddle.gather(input, index)
+=======
+        output = paddle.fluid.layers.gather(input, index)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output_np = output.numpy()
         expected_output = np.array([[3, 4]])
         np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)

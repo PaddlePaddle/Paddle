@@ -155,7 +155,11 @@ void Scope::DeleteScope(Scope* scope) const {
     if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
       delete scope;
     } else {
+<<<<<<< HEAD
       phi::Async([scope] { delete scope; });
+=======
+      Async([scope] { delete scope; });
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }

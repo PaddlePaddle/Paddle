@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,13 +20,27 @@ from op_test import OpTest
 
 
 class CrossEntropy2OpTestBase(OpTest):
+=======
+from op_test import OpTest
+import unittest
+import numpy as np
+import six
+
+
+class CrossEntropy2OpTestBase(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         return [32, 64], 'float64', -100, False
 
     def calc_output(self, logits, label, ignore_index):
         ret = np.zeros(shape=label.shape, dtype=logits.dtype)
         match_x = np.zeros(shape=label.shape, dtype=logits.dtype)
+<<<<<<< HEAD
         for idx in range(label.shape[0]):
+=======
+        for idx in six.moves.range(label.shape[0]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if label[idx] == ignore_index:
                 continue
             match_x[idx] = logits[idx][label[idx]]
@@ -33,16 +48,22 @@ class CrossEntropy2OpTestBase(OpTest):
         return ret, match_x
 
     def setUp(self):
+<<<<<<< HEAD
         (
             self.shape,
             self.dtype,
             self.ignore_index,
             self.drop_last_dim,
         ) = self.initParameters()
+=======
+        self.shape, self.dtype, self.ignore_index, self.drop_last_dim = self.initParameters(
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.op_type = 'cross_entropy2'
         feature_size = int(self.shape[-1])
         batch_size = int(np.prod(self.shape) / feature_size)
         logits = (np.random.random(size=self.shape) + 1).astype(self.dtype)
+<<<<<<< HEAD
         label_shape = (
             self.shape[0:-1] if self.drop_last_dim else self.shape[0:-1] + [1]
         )
@@ -54,12 +75,26 @@ class CrossEntropy2OpTestBase(OpTest):
             np.reshape(label, [batch_size, 1]),
             self.ignore_index,
         )
+=======
+        label_shape = self.shape[
+            0:-1] if self.drop_last_dim else self.shape[0:-1] + [1]
+        label = np.random.random_integers(low=0,
+                                          high=feature_size - 1,
+                                          size=label_shape).astype('int64')
+        outputs, match_x = self.calc_output(
+            np.reshape(logits, [batch_size, feature_size]),
+            np.reshape(label, [batch_size, 1]), self.ignore_index)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {'X': logits, 'Label': label}
         out_shape = label_shape
         self.outputs = {
             'Y': np.reshape(outputs, out_shape),
             'MatchX': np.reshape(match_x, self.shape[:-1] + [1]),
+<<<<<<< HEAD
             'XShape': np.zeros(shape=logits.shape, dtype=logits.dtype),
+=======
+            'XShape': np.zeros(shape=logits.shape, dtype=logits.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'ignore_index': self.ignore_index}
 
@@ -67,6 +102,7 @@ class CrossEntropy2OpTestBase(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             inputs_to_check=['X'],
             output_names=['Y'],
@@ -75,26 +111,51 @@ class CrossEntropy2OpTestBase(OpTest):
 
 
 class CrossEntropy2OpTest2(CrossEntropy2OpTestBase):
+=======
+        self.check_grad(inputs_to_check=['X'],
+                        output_names=['Y'],
+                        no_grad_set=['XShape', 'MatchX', 'Label'])
+
+
+class CrossEntropy2OpTest2(CrossEntropy2OpTestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         return [32, 64], 'float64', 3, False
 
 
 class CrossEntropy2OpTest2RemoveLastDim(CrossEntropy2OpTestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         return [32, 64], 'float64', 3, True
 
 
 class CrossEntropy2OpTest3(CrossEntropy2OpTestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         return [4, 8, 16, 32], 'float64', -100, False
 
 
 class CrossEntropy2OpTest3RemoveLastDim(CrossEntropy2OpTestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         return [4, 8, 16, 32], 'float64', -100, True
 
 
 class CrossEntropy2OpTest4(CrossEntropy2OpTestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         return [4, 8, 16, 32], 'float64', 3, False
 

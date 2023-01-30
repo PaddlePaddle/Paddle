@@ -14,6 +14,7 @@
 
 import os
 import sys
+<<<<<<< HEAD
 import tempfile
 import unittest
 
@@ -21,6 +22,15 @@ import numpy as np
 
 
 class TestCustomCPUPlugin(unittest.TestCase):
+=======
+import unittest
+import numpy as np
+import tempfile
+
+
+class TestCustomCPUPlugin(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -32,30 +42,54 @@ class TestCustomCPUPlugin(unittest.TestCase):
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8'.format(
+<<<<<<< HEAD
             self.temp_dir.name, os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG')
         )
+=======
+            self.temp_dir.name, os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
+<<<<<<< HEAD
             cur_dir,
             '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
                 self.temp_dir.name
             ),
         )
+=======
+            cur_dir, '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
+                self.temp_dir.name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def tearDown(self):
         self.temp_dir.cleanup()
         del os.environ['CUSTOM_DEVICE_ROOT']
 
     def test_custom_device(self):
+<<<<<<< HEAD
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
         self._test_eager_backward_api()
         self._test_eager_copy_to()
         self._test_fallback_kernel()
         self._test_scalar()
+=======
+        import paddle
+
+        with paddle.fluid.framework._test_eager_guard():
+            self._test_custom_device_dataloader()
+            self._test_custom_device_mnist()
+            self._test_eager_backward_api()
+            self._test_eager_copy_to()
+            self._test_fallback_kernel()
+            self._test_scalar()
+        self._test_custom_device_dataloader()
+        self._test_custom_device_mnist()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _test_custom_device_dataloader(self):
         import paddle
@@ -63,6 +97,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
         paddle.set_device('custom_cpu')
         dataset = paddle.vision.datasets.MNIST(
             mode='test',
+<<<<<<< HEAD
             transform=paddle.vision.transforms.Compose(
                 [
                     paddle.vision.transforms.CenterCrop(20),
@@ -75,6 +110,18 @@ class TestCustomCPUPlugin(unittest.TestCase):
         loader = paddle.io.DataLoader(
             dataset, batch_size=32, num_workers=1, shuffle=True
         )
+=======
+            transform=paddle.vision.transforms.Compose([
+                paddle.vision.transforms.CenterCrop(20),
+                paddle.vision.transforms.RandomResizedCrop(14),
+                paddle.vision.transforms.Normalize(),
+                paddle.vision.transforms.ToTensor()
+            ]))
+        loader = paddle.io.DataLoader(dataset,
+                                      batch_size=32,
+                                      num_workers=1,
+                                      shuffle=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for image, label in loader:
             self.assertTrue(image.place.is_custom_place())
             self.assertTrue(label.place.is_custom_place())
@@ -84,6 +131,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
         import paddle
 
         class MNIST(paddle.nn.Layer):
+<<<<<<< HEAD
             def __init__(self):
                 super().__init__()
                 self.shape = 1 * 28 * 28
@@ -91,6 +139,15 @@ class TestCustomCPUPlugin(unittest.TestCase):
                 self.output_weight = self.create_parameter(
                     [self.shape, self.size]
                 )
+=======
+
+            def __init__(self):
+                super(MNIST, self).__init__()
+                self.shape = 1 * 28 * 28
+                self.size = 10
+                self.output_weight = self.create_parameter(
+                    [self.shape, self.size])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self.accuracy = paddle.metric.Accuracy()
 
             def forward(self, inputs, label=None):
@@ -110,6 +167,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
         dataset = paddle.vision.datasets.MNIST(
             mode='train',
             transform=paddle.vision.transforms.Compose(
+<<<<<<< HEAD
                 [paddle.vision.transforms.ToTensor()]
             ),
         )
@@ -121,6 +179,17 @@ class TestCustomCPUPlugin(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.01, parameters=mnist.parameters()
         )
+=======
+                [paddle.vision.transforms.ToTensor()]))
+        loader = paddle.io.DataLoader(dataset,
+                                      batch_size=64,
+                                      num_workers=1,
+                                      shuffle=True)
+
+        mnist = MNIST()
+        sgd = paddle.optimizer.SGD(learning_rate=0.01,
+                                   parameters=mnist.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         data = next(loader())
         img = data[0]
@@ -141,9 +210,13 @@ class TestCustomCPUPlugin(unittest.TestCase):
         grad = np.ones([2, 2]).astype("float32")
 
         import paddle
+<<<<<<< HEAD
 
         paddle.set_device('custom_cpu')
         paddle.device.get_available_device()
+=======
+        paddle.set_device('custom_cpu')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x_tensor = paddle.to_tensor(x, stop_gradient=False)
         y_tensor = paddle.to_tensor(y)
         z1_tensor = paddle.matmul(x_tensor, y_tensor)
@@ -156,6 +229,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
     def _test_eager_copy_to(self):
         import paddle
+<<<<<<< HEAD
 
         x = np.random.random([2, 2]).astype("float32")
         # cpu -> custom
@@ -165,12 +239,25 @@ class TestCustomCPUPlugin(unittest.TestCase):
         custom_cpu_tensor = cpu_tensor._copy_to(
             paddle.CustomPlace('custom_cpu', 0), True
         )
+=======
+        x = np.random.random([2, 2]).astype("float32")
+        # cpu -> custom
+        cpu_tensor = paddle.to_tensor(x,
+                                      dtype='float32',
+                                      place=paddle.CPUPlace())
+        custom_cpu_tensor = cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(custom_cpu_tensor, x)
         self.assertTrue(custom_cpu_tensor.place.is_custom_place())
         # custom -> custom
         another_custom_cpu_tensor = custom_cpu_tensor._copy_to(
+<<<<<<< HEAD
             paddle.CustomPlace('custom_cpu', 0), True
         )
+=======
+            paddle.CustomPlace('custom_cpu', 0), True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(another_custom_cpu_tensor, x)
         self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
         # custom -> cpu
@@ -179,15 +266,22 @@ class TestCustomCPUPlugin(unittest.TestCase):
         self.assertTrue(another_cpu_tensor.place.is_cpu_place())
         # custom -> custom self
         another_custom_cpu_tensor = another_custom_cpu_tensor._copy_to(
+<<<<<<< HEAD
             paddle.CustomPlace('custom_cpu', 0), True
         )
+=======
+            paddle.CustomPlace('custom_cpu', 0), True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_array_equal(another_custom_cpu_tensor, x)
         self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
 
     def _test_fallback_kernel(self):
         # using (custom_cpu, add, int16) which is not registered
         import paddle
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         r = np.array([6, 6, 6], 'int16')
         x = paddle.to_tensor([5, 4, 3], 'int16')
         y = paddle.to_tensor([1, 2, 3], 'int16')
@@ -196,6 +290,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
     def _test_scalar(self):
         import paddle
+<<<<<<< HEAD
 
         data_1 = paddle.to_tensor(
             [[[[1.0, 4.0, 5.0, 7.0], [3.0, 4.0, 5.0, 6.0]]]]
@@ -257,6 +352,13 @@ class TestCustomCPUPlugin(unittest.TestCase):
         avg_loss.backward()
         sgd.step()
 
+=======
+        data_1 = paddle.to_tensor([[[[1.0, 4.0, 5.0, 7.0], [3.0, 4.0, 5.0,
+                                                            6.0]]]])
+        k_t = paddle.to_tensor([3], dtype="int32")
+        value_1, indices_1 = paddle.topk(data_1, k=k_t)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     if os.name == 'nt' or sys.platform.startswith('darwin'):

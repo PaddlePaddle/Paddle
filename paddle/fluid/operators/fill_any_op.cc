@@ -30,7 +30,11 @@ class FillAnyOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>("value_int", "The int var to fill in Tensor").SetDefault(0);
     AddComment(R"DOC(Fill operator with backward;
+<<<<<<< HEAD
                 Fill an tensor with `value`.
+=======
+                Fill an tensor with `value`. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 )DOC");
   };
 };

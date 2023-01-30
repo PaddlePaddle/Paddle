@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,6 +23,22 @@ from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 def nearest_neighbor_interp_mkldnn_np(
     X, out_h, out_w, out_size=None, actual_shape=None, data_layout='NCHW'
 ):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
+
+
+def nearest_neighbor_interp_mkldnn_np(X,
+                                      out_h,
+                                      out_w,
+                                      out_size=None,
+                                      actual_shape=None,
+                                      data_layout='NCHW'):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """nearest neighbor interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         X = np.transpose(X, (0, 3, 1, 2))  # NHWC => NCHW
@@ -35,9 +52,15 @@ def nearest_neighbor_interp_mkldnn_np(
     n, c, in_h, in_w = X.shape
 
     fh = fw = 0.0
+<<<<<<< HEAD
     if out_h > 1:
         fh = out_h * 1.0 / in_h
     if out_w > 1:
+=======
+    if (out_h > 1):
+        fh = out_h * 1.0 / in_h
+    if (out_w > 1):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         fw = out_w * 1.0 / in_w
 
     out = np.zeros((n, c, out_h, out_w))
@@ -56,11 +79,19 @@ def nearest_neighbor_interp_mkldnn_np(
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
 class TestNearestInterpMKLDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         pass
 
     def init_data_type(self):
+<<<<<<< HEAD
         self.dtype = np.float32
+=======
+        pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "nearest_interp"
@@ -69,6 +100,10 @@ class TestNearestInterpMKLDNNOp(OpTest):
         self.use_mkldnn = True
         self.input_shape = [1, 1, 2, 2]
         self.data_layout = 'NCHW'
+<<<<<<< HEAD
+=======
+        self.dtype = np.float32
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # priority: actual_shape > out_size > scale > out_h & out_w
         self.out_h = 1
         self.out_w = 1
@@ -83,9 +118,14 @@ class TestNearestInterpMKLDNNOp(OpTest):
             input_np = np.random.random(self.input_shape).astype(self.dtype)
         else:
             init_low, init_high = (-5, 5) if self.dtype == np.int8 else (0, 10)
+<<<<<<< HEAD
             input_np = np.random.randint(
                 init_low, init_high, self.input_shape
             ).astype(self.dtype)
+=======
+            input_np = np.random.randint(init_low, init_high,
+                                         self.input_shape).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
@@ -101,6 +141,7 @@ class TestNearestInterpMKLDNNOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
+<<<<<<< HEAD
         output_np = nearest_neighbor_interp_mkldnn_np(
             input_np,
             out_h,
@@ -109,6 +150,12 @@ class TestNearestInterpMKLDNNOp(OpTest):
             self.actual_shape,
             self.data_layout,
         )
+=======
+        output_np = nearest_neighbor_interp_mkldnn_np(input_np, out_h, out_w,
+                                                      self.out_size,
+                                                      self.actual_shape,
+                                                      self.data_layout)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {'X': input_np}
         if self.out_size is not None:
@@ -121,7 +168,11 @@ class TestNearestInterpMKLDNNOp(OpTest):
             'out_w': self.out_w,
             'scale': self.scale,
             'data_layout': self.data_layout,
+<<<<<<< HEAD
             'use_mkldnn': self.use_mkldnn,
+=======
+            'use_mkldnn': self.use_mkldnn
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': output_np}
 
@@ -130,6 +181,10 @@ class TestNearestInterpMKLDNNOp(OpTest):
 
 
 class TestNearestInterpOpMKLDNNNHWC(TestNearestInterpMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 27
@@ -139,35 +194,64 @@ class TestNearestInterpOpMKLDNNNHWC(TestNearestInterpMKLDNNOp):
 
 
 class TestNearestNeighborInterpMKLDNNCase2(TestNearestInterpMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
+<<<<<<< HEAD
         self.scale = 1.0
 
 
 class TestNearestNeighborInterpCase3(TestNearestInterpMKLDNNOp):
+=======
+        self.scale = 1.
+
+
+class TestNearestNeighborInterpCase3(TestNearestInterpMKLDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 128
+<<<<<<< HEAD
         self.scale = 0.0
 
 
 class TestNearestNeighborInterpCase4(TestNearestInterpMKLDNNOp):
+=======
+        self.scale = 0.
+
+
+class TestNearestNeighborInterpCase4(TestNearestInterpMKLDNNOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
+<<<<<<< HEAD
         self.scale = 0.0
+=======
+        self.scale = 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_size = np.array([65, 129]).astype("int32")
 
 
 class TestNearestNeighborInterpSame(TestNearestInterpMKLDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
         self.out_w = 64
+<<<<<<< HEAD
         self.scale = 0.0
 
 
@@ -177,10 +261,25 @@ def create_test_class(parent):
     '''
 
     class TestInt8Case(parent):
+=======
+        self.scale = 0.
+
+
+def create_test_class(parent):
+
+    class TestFp32Case(parent):
+
+        def init_data_type(self):
+            self.dtype = np.float32
+
+    class TestInt8Case(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data_type(self):
             self.dtype = np.int8
 
     class TestUint8Case(parent):
+<<<<<<< HEAD
         def init_data_type(self):
             self.dtype = np.uint8
 
@@ -188,6 +287,18 @@ def create_test_class(parent):
     TestUint8Case.__name__ = "{0}_{1}".format(parent.__name__, "UINT8")
     globals()[TestInt8Case.__name__] = TestInt8Case
     globals()[TestUint8Case.__name__] = TestUint8Case
+=======
+
+        def init_data_type(self):
+            self.dtype = np.uint8
+
+    TestFp32Case.__name__ = parent.__name__
+    TestInt8Case.__name__ = parent.__name__
+    TestUint8Case.__name__ = parent.__name__
+    globals()[parent.__name__] = TestFp32Case
+    globals()[parent.__name__] = TestInt8Case
+    globals()[parent.__name__] = TestUint8Case
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 create_test_class(TestNearestInterpMKLDNNOp)
@@ -195,10 +306,17 @@ create_test_class(TestNearestInterpOpMKLDNNNHWC)
 create_test_class(TestNearestNeighborInterpMKLDNNCase2)
 create_test_class(TestNearestNeighborInterpCase3)
 create_test_class(TestNearestNeighborInterpCase4)
+<<<<<<< HEAD
+=======
+create_test_class(TestNearestInterpOpMKLDNNNHWC)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 create_test_class(TestNearestNeighborInterpSame)
 
 if __name__ == "__main__":
     from paddle import enable_static
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     enable_static()
     unittest.main()

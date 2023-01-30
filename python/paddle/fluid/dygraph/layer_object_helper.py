@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 from ..framework import Parameter, in_dygraph_mode, _global_flags
 from ..param_attr import ParamAttr
 from .. import core
 
+=======
+from __future__ import print_function
+
+import copy
+import six
+from ..framework import Parameter, _non_static_mode, _global_flags
+from ..param_attr import ParamAttr
+from .. import core
+from six.moves import zip
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from ..layer_helper_base import LayerHelperBase
 from ..dygraph_utils import _append_activation_in_dygraph
 
 
 class LayerObjectHelper(LayerHelperBase):
+<<<<<<< HEAD
     def __init__(self, name):
         super().__init__(name, layer_type=name)
 
@@ -33,6 +45,18 @@ class LayerObjectHelper(LayerHelperBase):
         attrs=None,
         stop_gradient=None,
     ):
+=======
+
+    def __init__(self, name):
+        super(LayerObjectHelper, self).__init__(name, layer_type=name)
+
+    def append_op(self,
+                  type=None,
+                  inputs=None,
+                  outputs=None,
+                  attrs=None,
+                  stop_gradient=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """append an operator for this layer object.
 
            Args:
@@ -49,8 +73,12 @@ class LayerObjectHelper(LayerHelperBase):
             inputs=inputs,
             outputs=outputs,
             attrs=attrs,
+<<<<<<< HEAD
             stop_gradient=stop_gradient,
         )
+=======
+            stop_gradient=stop_gradient)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _multiple_input(self, inputs_in):
         inputs = inputs_in
@@ -75,12 +103,20 @@ class LayerObjectHelper(LayerHelperBase):
             param_attr = [param_attr]
 
         if len(param_attr) != 1 and len(param_attr) != length:
+<<<<<<< HEAD
             raise ValueError(
                 "parameter number mismatch in {}".format(self.name)
             )
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
             for i in range(length):
+=======
+            raise ValueError("parameter number mismatch in {}".format(
+                self.name))
+        elif len(param_attr) == 1 and length != 1:
+            tmp = [None] * length
+            for i in six.moves.range(length):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
         return param_attr
@@ -96,9 +132,14 @@ class LayerObjectHelper(LayerHelperBase):
         """
         param_attr_in = ParamAttr._to_attr(param_attr_in)
         if isinstance(param_attr_in, bool):
+<<<<<<< HEAD
             raise ValueError(
                 'Param_attr should not be False in {}'.format(self.name)
             )
+=======
+            raise ValueError('Param_attr should not be False in {}'.format(
+                self.name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs)
         param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
@@ -120,10 +161,15 @@ class LayerObjectHelper(LayerHelperBase):
             if dtype is None:
                 dtype = each.dtype
             elif dtype != each.dtype:
+<<<<<<< HEAD
                 raise ValueError(
                     "Data Type mismatch: %d to %d in %s"
                     % (dtype, each.dtype, self.name)
                 )
+=======
+                raise ValueError("Data Type mismatch: %d to %d in %s" %
+                                 (dtype, each.dtype, self.name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return dtype
 
     def get_parameter(self, name):
@@ -136,9 +182,14 @@ class LayerObjectHelper(LayerHelperBase):
         """
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
+<<<<<<< HEAD
             raise ValueError(
                 "no Parameter name %s found in %s" % (name, self.name)
             )
+=======
+            raise ValueError("no Parameter name %s found in %s" %
+                             (name, self.name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return param
 
     # TODO: this should not be called anymore after all activation func move to Layers
@@ -156,12 +207,20 @@ class LayerObjectHelper(LayerHelperBase):
         act = act
         if act is None:
             return input_var
+<<<<<<< HEAD
         if isinstance(act, str):
             act = {'type': act}
         else:
             raise TypeError(
                 str(act) + " should be unicode or str in %s ", self.name
             )
+=======
+        if isinstance(act, six.string_types):
+            act = {'type': act}
+        else:
+            raise TypeError(
+                str(act) + " should be unicode or str in %s ", self.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
@@ -169,6 +228,7 @@ class LayerObjectHelper(LayerHelperBase):
         if (use_mkldnn is not None) and use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
+<<<<<<< HEAD
         if in_dygraph_mode():
             res = _append_activation_in_dygraph(
                 input_var, act_type, use_cudnn, use_mkldnn
@@ -182,6 +242,18 @@ class LayerObjectHelper(LayerHelperBase):
                 outputs={"Out": [tmp]},
                 attrs=act,
             )
+=======
+        if _non_static_mode():
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn,
+                                                use_mkldnn)
+            return res
+        else:
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+            self.append_op(type=act_type,
+                           inputs={"X": [input_var]},
+                           outputs={"Out": [tmp]},
+                           attrs=act)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return tmp
 
     def is_instance(self, param, cls):
@@ -197,8 +269,12 @@ class LayerObjectHelper(LayerHelperBase):
         if not isinstance(param, cls):
             raise TypeError(
                 "The input {0} parameter of method {1} must be {2}, in layer {3}",
+<<<<<<< HEAD
                 param,
                 self.layer_type,
                 cls.__name__,
                 self.name,
             )
+=======
+                param, self.layer_type, cls.__name__, self.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

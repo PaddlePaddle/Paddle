@@ -12,17 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+=======
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import numpy as np
+import os
+import shutil
+import paddle.fluid.core as core
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.layers.nn import _pull_box_sparse
 from paddle.fluid.transpiler import collective
 
 
 class TestTranspile(unittest.TestCase):
+<<<<<<< HEAD
     """TestCases for BoxPS Preload"""
+=======
+    """  TestCases for BoxPS Preload """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_transpile(self, mode, trainers="127.0.0.1:6174"):
         config = fluid.DistributeTranspilerConfig()
@@ -35,6 +50,7 @@ class TestTranspile(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         t = self.get_transpile("single_process_multi_thread")
+<<<<<<< HEAD
         t.transpile(
             trainer_id=0,
             startup_program=startup_program,
@@ -49,12 +65,25 @@ class TestTranspile(unittest.TestCase):
                 trainers="127.0.0.1:6174",
                 program=main_program,
             )
+=======
+        t.transpile(trainer_id=0,
+                    startup_program=startup_program,
+                    trainers="127.0.0.1:6174",
+                    program=main_program)
+        t = self.get_transpile("grad_allreduce")
+        try:
+            t.transpile(trainer_id=0,
+                        startup_program=startup_program,
+                        trainers="127.0.0.1:6174",
+                        program=main_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         except ValueError as e:
             print(e)
 
     def test_single_trainers(self):
         transpiler = collective.GradAllReduce(0)
         try:
+<<<<<<< HEAD
             transpiler.transpile(
                 startup_program=fluid.Program(),
                 main_program=fluid.Program(),
@@ -63,10 +92,19 @@ class TestTranspile(unittest.TestCase):
                 current_endpoint="127.0.0.1:6174",
                 wait_port="6174",
             )
+=======
+            transpiler.transpile(startup_program=fluid.Program(),
+                                 main_program=fluid.Program(),
+                                 rank=1,
+                                 endpoints="127.0.0.1:6174",
+                                 current_endpoint="127.0.0.1:6174",
+                                 wait_port="6174")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         except ValueError as e:
             print(e)
         transpiler = collective.LocalSGD(0)
         try:
+<<<<<<< HEAD
             transpiler.transpile(
                 startup_program=fluid.Program(),
                 main_program=fluid.Program(),
@@ -75,12 +113,24 @@ class TestTranspile(unittest.TestCase):
                 current_endpoint="127.0.0.1:6174",
                 wait_port="6174",
             )
+=======
+            transpiler.transpile(startup_program=fluid.Program(),
+                                 main_program=fluid.Program(),
+                                 rank=1,
+                                 endpoints="127.0.0.1:6174",
+                                 current_endpoint="127.0.0.1:6174",
+                                 wait_port="6174")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         except ValueError as e:
             print(e)
 
 
 class TestRunCmd(unittest.TestCase):
+<<<<<<< HEAD
     """TestCases for run_cmd"""
+=======
+    """ TestCases for run_cmd"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_run_cmd(self):
         ret1 = int(core.run_cmd("ls; echo $?").strip().split('\n')[-1])
@@ -90,18 +140,33 @@ class TestRunCmd(unittest.TestCase):
 
 
 class TestPullBoxSparseOP(unittest.TestCase):
+<<<<<<< HEAD
     """TestCases for _pull_box_sparse op"""
+=======
+    """ TestCases for _pull_box_sparse op"""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_pull_box_sparse_op(self):
         paddle.enable_static()
         program = fluid.Program()
         with fluid.program_guard(program):
+<<<<<<< HEAD
             x = paddle.static.data(
                 name='x', shape=[-1, 1], dtype='int64', lod_level=0
             )
             y = paddle.static.data(
                 name='y', shape=[-1, 1], dtype='int64', lod_level=0
             )
+=======
+            x = fluid.layers.data(name='x',
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=0)
+            y = fluid.layers.data(name='y',
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             emb_x, emb_y = _pull_box_sparse([x, y], size=1)
 
 

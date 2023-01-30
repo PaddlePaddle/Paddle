@@ -153,7 +153,11 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
 
   // dx
   if (dx != nullptr) {
+<<<<<<< HEAD
     auto *dx_data = ctx.template Alloc<T>(dx);
+=======
+    auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
         phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
@@ -163,8 +167,12 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
       // the result of dy wrong.
       if (dx->IsSharedBufferWith(dout)) {
         dx->clear();
+<<<<<<< HEAD
         dx->Resize(x.dims());
         ctx.template Alloc<T>(dx);
+=======
+        dx->mutable_data<T>(x.dims(), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
@@ -174,7 +182,11 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
   }
   // dy
   if (dy != nullptr) {
+<<<<<<< HEAD
     auto *dy_data = ctx.template Alloc<T>(dy);
+=======
+    auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
         phi::Copy(ctx, dout, ctx.GetPlace(), false, dy);
@@ -218,11 +230,20 @@ void ElementwiseAddGrad(const GPUContext &ctx,
                  PREDEFINED_BLOCK_SIZE,
              1);
     SimpleElemwiseAddGradCUDAKernel<T>
+<<<<<<< HEAD
         <<<grid_size, block_size, 0, ctx.stream()>>>(dout.data<T>(),
                                                      size,
                                                      vec_size,
                                                      ctx.template Alloc<T>(dx),
                                                      ctx.template Alloc<T>(dy));
+=======
+        <<<grid_size, block_size, 0, ctx.stream()>>>(
+            dout.data<T>(),
+            size,
+            vec_size,
+            dx->mutable_data<T>(ctx.GetPlace()),
+            dy->mutable_data<T>(ctx.GetPlace()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "and dx_data is the same as dout_data, do not need "
@@ -264,7 +285,11 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
   auto *dout_data = dout.data<T>();
   // dx
   if (dx != nullptr) {
+<<<<<<< HEAD
     auto *dx_data = ctx.template Alloc<T>(dx);
+=======
+    auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
         phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
@@ -274,8 +299,12 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       // the result of dy wrong.
       if (dx->IsSharedBufferWith(dout)) {
         dx->clear();
+<<<<<<< HEAD
         dx->Resize(x.dims());
         ctx.template Alloc<T>(dx);
+=======
+        dx->mutable_data<T>(x.dims(), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
@@ -285,7 +314,11 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
   }
   // dy
   if (dy != nullptr) {
+<<<<<<< HEAD
     auto *dy_data = ctx.template Alloc<T>(dy);
+=======
+    auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
         dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
@@ -294,7 +327,14 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
             dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
         SimpleElemwiseSubGradCUDAKernel<T>
             <<<grid_size, block_size, 0, ctx.stream()>>>(
+<<<<<<< HEAD
                 dout.data<T>(), size, nullptr, ctx.template Alloc<T>(dy));
+=======
+                dout.data<T>(),
+                size,
+                nullptr,
+                dy->mutable_data<T>(ctx.GetPlace()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     } else {
       std::vector<int> reduce_dims =
@@ -318,10 +358,18 @@ void elementwise_sub_grad(const GPUContext &ctx,
   dim3 grid_size =
       dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
   SimpleElemwiseSubGradCUDAKernel<T>
+<<<<<<< HEAD
       <<<grid_size, block_size, 0, ctx.stream()>>>(dout.data<T>(),
                                                    size,
                                                    ctx.template Alloc<T>(dx),
                                                    ctx.template Alloc<T>(dy));
+=======
+      <<<grid_size, block_size, 0, ctx.stream()>>>(
+          dout.data<T>(),
+          size,
+          dx->mutable_data<T>(ctx.GetPlace()),
+          dy->mutable_data<T>(ctx.GetPlace()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 /*
 ******************************

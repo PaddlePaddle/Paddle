@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import sys
 import unittest
@@ -33,6 +34,28 @@ sys.path.append("..")
 
 
 class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
+=======
+import sys
+import random
+import numpy as np
+
+import unittest
+import paddle
+import paddle.nn as nn
+import paddle.distributed.fleet as fleet
+from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
+from paddle.distributed.passes import new_pass, PassManager, PassContext
+from auto_parallel_pass_test_base import AutoPallelPassTestBase
+
+sys.path.append("..")
+import auto_parallel_gpt_model as modeling
+from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
+
+
+class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
@@ -60,13 +83,21 @@ class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
         self._apply_pass = False
 
     def test_bs_8(self):
+<<<<<<< HEAD
         self.check_main(
             gpus=[0, 1], batch_size=8, sequence_len=512, vocab_size=1000
         )
+=======
+        self.check_main(gpus=[0, 1],
+                        batch_size=8,
+                        sequence_len=512,
+                        vocab_size=1000)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # test scaling with fillconstant
     def get_model(self, place, batch_size, sequence_len, vocab_size):
 
+<<<<<<< HEAD
         (
             dist_main_prog,
             dist_startup_prog,
@@ -76,13 +107,24 @@ class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
         ) = self.get_gpt_model(
             'dp', place, batch_size, sequence_len, vocab_size
         )
+=======
+        dist_main_prog, dist_startup_prog, data_holder, [
+            loss
+        ], gen_data = self.get_gpt_model('dp', place, batch_size, sequence_len,
+                                         vocab_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if self._apply_pass:
             config = {}
             config["dist_context"] = get_default_distributed_context()
             config["global_rank"] = paddle.distributed.get_rank()
+<<<<<<< HEAD
             dp_pass = new_pass(
                 "auto_parallel_data_parallel_optimization", config
             )
+=======
+            dp_pass = new_pass("auto_parallel_data_parallel_optimization",
+                               config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dp_pass.apply([dist_main_prog], [dist_startup_prog], PassContext())
 
         return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data
@@ -93,6 +135,7 @@ class TestDataParallelPassWithScale2(TestDataParallelPassWithScale1):
     # test scaling with optimizer rescale_grad
     def get_model(self, place, batch_size, sequence_len, vocab_size):
 
+<<<<<<< HEAD
         (
             dist_main_prog,
             dist_startup_prog,
@@ -107,18 +150,34 @@ class TestDataParallelPassWithScale2(TestDataParallelPassWithScale1):
             vocab_size,
             optimizer='LarsMomentum',
         )
+=======
+        dist_main_prog, dist_startup_prog, data_holder, [
+            loss
+        ], gen_data = self.get_gpt_model('dp',
+                                         place,
+                                         batch_size,
+                                         sequence_len,
+                                         vocab_size,
+                                         optimizer='LarsMomentum')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if self._apply_pass:
             config = {}
             config["dist_context"] = get_default_distributed_context()
             config["global_rank"] = paddle.distributed.get_rank()
+<<<<<<< HEAD
             dp_pass = new_pass(
                 "auto_parallel_data_parallel_optimization", config
             )
+=======
+            dp_pass = new_pass("auto_parallel_data_parallel_optimization",
+                               config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dp_pass.apply([dist_main_prog], [dist_startup_prog], PassContext())
 
         return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data
 
 
+<<<<<<< HEAD
 class TestDataParallelPassWithStandaloneEXE(TestDataParallelPassWithScale1):
     def init(self):
         if paddle.is_compiled_with_cuda():
@@ -176,5 +235,7 @@ class TestDataParallelPassWithStandaloneEXE(TestDataParallelPassWithScale1):
         return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

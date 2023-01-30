@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -123,11 +128,19 @@ class TestPowNet(unittest.TestCase):
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
 
+<<<<<<< HEAD
             fc_1 = paddle.static.nn.fc(x=z, size=128)
             prediction = paddle.static.nn.fc(x=fc_1, size=2)
 
             cost = paddle.nn.functional.softmax_with_cross_entropy(prediction, label)
             loss = paddle.mean(cost)
+=======
+            fc_1 = fluid.layers.fc(input=z, size=128)
+            prediction = fluid.layers.fc(input=fc_1, size=2)
+
+            cost = fluid.layers.softmax_with_cross_entropy(prediction, label)
+            loss = fluid.layers.reduce_mean(cost)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -160,7 +173,11 @@ class TestPowNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         mlu_pred, mlu_loss = self._test(True)
 
+<<<<<<< HEAD
         np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=1e-5)
+=======
+        np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=2e-5)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(mlu_loss, cpu_loss)
 
 

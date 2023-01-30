@@ -49,12 +49,20 @@ std::set<paddle::experimental::Tensor*> GetTensorsFromPyObject(PyObject* obj) {
   if (obj == nullptr) {
     return result;
   }
+<<<<<<< HEAD
   if (PyCheckTensor(obj)) {
+=======
+  if (IsEagerTensor(obj)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     result.insert(&reinterpret_cast<TensorObject*>(obj)->tensor);  // NOLINT
   } else if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     for (Py_ssize_t i = 0; i < len; i++) {
+<<<<<<< HEAD
       if (PyCheckTensor(PyList_GetItem(obj, i))) {
+=======
+      if (IsEagerTensor(PyList_GetItem(obj, i))) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         result.insert(
             &reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))  // NOLINT
                  ->tensor);
@@ -63,7 +71,11 @@ std::set<paddle::experimental::Tensor*> GetTensorsFromPyObject(PyObject* obj) {
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
     for (Py_ssize_t i = 0; i < len; i++) {
+<<<<<<< HEAD
       if (PyCheckTensor(PyTuple_GetItem(obj, i))) {
+=======
+      if (IsEagerTensor(PyTuple_GetItem(obj, i))) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         result.insert(
             &reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))  // NOLINT
                  ->tensor);
@@ -78,7 +90,10 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   if (obj) {
     auto v = reinterpret_cast<PyLayerObject*>(obj);
     v->materialize_grads = true;
+<<<<<<< HEAD
     v->container_be_packed = false;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     new (&v->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
     new (&v->forward_input_tensor_is_duplicable) std::vector<bool>();
     new (&v->forward_output_tensor_is_duplicable) std::vector<bool>();
@@ -97,7 +112,10 @@ static void PyLayerDealloc(PyLayerObject* self) {
     Py_DECREF(self->not_inplace_tensors);
   }
   self->grad_node.~weak_ptr<egr::GradNodePyLayer>();
+<<<<<<< HEAD
   self->unpack_hook = nullptr;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   self->forward_input_tensor_is_duplicable.~vector();
   self->forward_output_tensor_is_duplicable.~vector();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
@@ -138,8 +156,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
   if (!ctx) {
+<<<<<<< HEAD
     PADDLE_THROW(paddle::platform::errors::External(
         pybind11::detail::error_string().c_str()));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
@@ -177,7 +198,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
     } else {
       obj = PyTuple_GET_ITEM(args, i);
     }
+<<<<<<< HEAD
     if (PyCheckTensor(obj)) {
+=======
+    if (IsEagerTensor(obj)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       input_tensorbases.insert(
           reinterpret_cast<TensorObject*>(obj)->tensor.impl().get());
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
@@ -196,7 +221,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_ssize_t len = PyList_Size(obj);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
+<<<<<<< HEAD
         if (PyCheckTensor(o)) {
+=======
+        if (IsEagerTensor(o)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -219,7 +248,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_ssize_t len = PyTuple_Size(obj);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
+<<<<<<< HEAD
         if (PyCheckTensor(o)) {
+=======
+        if (IsEagerTensor(o)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -292,7 +325,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
   ctx->forward_output_tensor_is_duplicable.reserve(outputs_size);
   for (Py_ssize_t i = 0; i < outputs_size; i++) {
     PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
+<<<<<<< HEAD
     if (PyCheckTensor(obj)) {
+=======
+    if (IsEagerTensor(obj)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       outputs_tensor.push_back(
           {&(reinterpret_cast<TensorObject*>(obj)->tensor)});
       outputs_autograd_meta.push_back({egr::EagerUtils::autograd_meta(
@@ -316,7 +353,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_ssize_t len = PyList_Size(obj);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
+<<<<<<< HEAD
         if (PyCheckTensor(o)) {
+=======
+        if (IsEagerTensor(o)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
           if (input_tensorbases.count(
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
@@ -344,7 +385,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_ssize_t len = PyTuple_Size(obj);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
+<<<<<<< HEAD
         if (PyCheckTensor(o)) {
+=======
+        if (IsEagerTensor(o)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
           if (input_tensorbases.count(
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
@@ -444,6 +489,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   if (outputs_size == 1) {
+<<<<<<< HEAD
     if (!PyTuple_Check(outputs) && !PyList_Check(outputs)) {
       Py_XDECREF(outputs);
       outputs = PyTuple_GetItem(outputs_tuple, 0);
@@ -452,6 +498,13 @@ PyObject* pylayer_method_apply(PyObject* cls,
     }
   }
 
+=======
+    Py_XDECREF(outputs);
+    outputs = PyTuple_GetItem(outputs_tuple, 0);
+    Py_INCREF(outputs);
+    Py_XDECREF(outputs_tuple);
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   Py_XDECREF(forward_args);
   Py_XDECREF(kwargs_value_list);
   Py_XDECREF(backward_function);
@@ -462,6 +515,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+<<<<<<< HEAD
 PyObject* call_unpack_hook(PyLayerObject* self) {
   auto unpack_hook = self->unpack_hook;
   auto packed_value = self->container;
@@ -504,11 +558,14 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
   return unpacked_value;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   EAGER_TRY
   if (self->container == nullptr) {
     RETURN_PY_NONE;
   }
+<<<<<<< HEAD
   if (self->container_be_packed) {
     return call_unpack_hook(self);
   } else {
@@ -593,10 +650,18 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
   self->container_be_packed = true;
 }
 
+=======
+  Py_INCREF(self->container);
+  return self->container;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 int tensor_properties_set_container(PyLayerObject* self,
                                     PyObject* value,
                                     void* closure) {
   EAGER_TRY
+<<<<<<< HEAD
   if (egr::SavedTensorsHooks::GetInstance().IsEnable()) {
     call_pack_hook(self, value);
   } else {
@@ -604,6 +669,11 @@ int tensor_properties_set_container(PyLayerObject* self,
     Py_XDECREF(self->container);
     self->container = value;
   }
+=======
+  Py_XINCREF(value);
+  Py_XDECREF(self->container);
+  self->container = value;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }

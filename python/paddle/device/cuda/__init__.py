@@ -208,7 +208,11 @@ def max_memory_allocated(device=None):
         For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
+<<<<<<< HEAD
         device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
+=======
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -239,7 +243,11 @@ def max_memory_reserved(device=None):
     Return the peak size of GPU memory that is held by the allocator of the given device.
 
     Args:
+<<<<<<< HEAD
         device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
+=======
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -355,8 +363,13 @@ def _set_current_stream(stream):
 @signature_safe_contextmanager
 def stream_guard(stream):
     '''
+<<<<<<< HEAD
     Notes:
         This API only supports dynamic graph mode currently.
+=======
+    **Notes**:
+        **This API only supports dygraph mode currently.**
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     A context manager that specifies the current stream context by the given stream.
 
@@ -396,7 +409,11 @@ def get_device_properties(device=None):
     Return the properties of given device.
 
     Args:
+<<<<<<< HEAD
         device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
+=======
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             the string name of device like 'gpu:x' which to get the properties of the
             device from. If device is None, the device is the current device.
             Default: None.

@@ -19,10 +19,17 @@
 #include <algorithm>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/send_u_recv_kernel.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/graph_send_recv_kernel.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -32,7 +39,11 @@ struct GraphSendRecvSumCUDAFunctor {
                                 T* output,
                                 const IndexT& in_i,
                                 const IndexT& out_i) {
+<<<<<<< HEAD
     phi::CudaAtomicAdd(output + out_i, *(params + in_i));
+=======
+    paddle::platform::CudaAtomicAdd(output + out_i, *(params + in_i));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -42,7 +53,11 @@ struct GraphSendRecvMaxCUDAFunctor {
                                 T* output,
                                 const IndexT& in_i,
                                 const IndexT& out_i) {
+<<<<<<< HEAD
     phi::CudaAtomicMax(output + out_i, *(params + in_i));
+=======
+    paddle::platform::CudaAtomicMax(output + out_i, *(params + in_i));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -52,7 +67,11 @@ struct GraphSendRecvMinCUDAFunctor {
                                 T* output,
                                 const IndexT& in_i,
                                 const IndexT& out_i) {
+<<<<<<< HEAD
     phi::CudaAtomicMin(output + out_i, *(params + in_i));
+=======
+    paddle::platform::CudaAtomicMin(output + out_i, *(params + in_i));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -106,7 +125,11 @@ __global__ void ComputeCountCUDAKernel(int32_t* count,
                                        size_t index_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size, int64_t) {
     IndexT dst_i = dst_indices[i];
+<<<<<<< HEAD
     phi::CudaAtomicAdd(count + dst_i, 1);
+=======
+    paddle::platform::CudaAtomicAdd(count + dst_i, 1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -140,8 +163,13 @@ __global__ void ManipulateMeanGradCUDAKernel(const T* params,
     IndexT dst_i = dst_indices[indices_i];
     int64_t in_i = src_i * slice_size + slice_i;
     int64_t out_i = dst_i * slice_size + slice_i;
+<<<<<<< HEAD
     phi::CudaAtomicAdd(output + out_i,
                        *(params + in_i) / static_cast<T>(dst_count[src_i]));
+=======
+    paddle::platform::CudaAtomicAdd(
+        output + out_i, *(params + in_i) / static_cast<T>(dst_count[src_i]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -162,9 +190,16 @@ __global__ void ManipulateMinMaxGradCUDAKernel(const T* params,
     IndexT dst_i = dst_indices[indices_i];
     int64_t in_i = src_i * slice_size + slice_i;
     int64_t out_i = dst_i * slice_size + slice_i;
+<<<<<<< HEAD
     phi::CudaAtomicAdd(output + out_i,
                        *(params + in_i) * static_cast<T>(*(ptr_input + out_i) ==
                                                          *(ptr_output + in_i)));
+=======
+    paddle::platform::CudaAtomicAdd(
+        output + out_i,
+        *(params + in_i) *
+            static_cast<T>(*(ptr_input + out_i) == *(ptr_output + in_i)));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

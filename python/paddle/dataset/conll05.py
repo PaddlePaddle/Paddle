@@ -20,11 +20,23 @@ dataset. And a pre-trained word vector model based on Wikipedia corpus is used
 to initialize SRL model.
 """
 
+<<<<<<< HEAD
 import gzip
 import tarfile
 
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
+=======
+from __future__ import print_function
+
+import tarfile
+import gzip
+import itertools
+import paddle.dataset.common
+import paddle.compat as cpt
+import paddle.utils.deprecated as deprecated
+from six.moves import zip, range
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -84,14 +96,23 @@ def corpus_reader(data_path, words_name, props_name):
         wf = tf.extractfile(words_name)
         pf = tf.extractfile(props_name)
         with gzip.GzipFile(fileobj=wf) as words_file, gzip.GzipFile(
+<<<<<<< HEAD
             fileobj=pf
         ) as props_file:
+=======
+                fileobj=pf) as props_file:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sentences = []
             labels = []
             one_seg = []
             for word, label in zip(words_file, props_file):
+<<<<<<< HEAD
                 word = word.strip().decode()
                 label = label.strip().decode().split()
+=======
+                word = cpt.to_text(word.strip())
+                label = cpt.to_text(label.strip().split())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):
@@ -110,14 +131,21 @@ def corpus_reader(data_path, words_name, props_name):
                             lbl_seq = []
                             verb_word = ''
                             for l in lbl:
+<<<<<<< HEAD
                                 if l == '*' and not is_in_bracket:
                                     lbl_seq.append('O')
                                 elif l == '*' and is_in_bracket:
+=======
+                                if l == '*' and is_in_bracket == False:
+                                    lbl_seq.append('O')
+                                elif l == '*' and is_in_bracket == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                     lbl_seq.append('I-' + cur_tag)
                                 elif l == '*)':
                                     lbl_seq.append('I-' + cur_tag)
                                     is_in_bracket = False
                                 elif l.find('(') != -1 and l.find(')') != -1:
+<<<<<<< HEAD
                                     cur_tag = l[1 : l.find('*')]
                                     lbl_seq.append('B-' + cur_tag)
                                     is_in_bracket = False
@@ -129,6 +157,18 @@ def corpus_reader(data_path, words_name, props_name):
                                     raise RuntimeError(
                                         'Unexpected label: %s' % l
                                     )
+=======
+                                    cur_tag = l[1:l.find('*')]
+                                    lbl_seq.append('B-' + cur_tag)
+                                    is_in_bracket = False
+                                elif l.find('(') != -1 and l.find(')') == -1:
+                                    cur_tag = l[1:l.find('*')]
+                                    lbl_seq.append('B-' + cur_tag)
+                                    is_in_bracket = True
+                                else:
+                                    raise RuntimeError('Unexpected label: %s' %
+                                                       l)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                             yield sentences, verb_list[i], lbl_seq
 
@@ -146,9 +186,17 @@ def corpus_reader(data_path, words_name, props_name):
     return reader
 
 
+<<<<<<< HEAD
 def reader_creator(
     corpus_reader, word_dict=None, predicate_dict=None, label_dict=None
 ):
+=======
+def reader_creator(corpus_reader,
+                   word_dict=None,
+                   predicate_dict=None,
+                   label_dict=None):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def reader():
         for sentence, predicate, labels in corpus_reader():
 
@@ -194,7 +242,12 @@ def reader_creator(
             pred_idx = [predicate_dict.get(predicate)] * sen_len
             label_idx = [label_dict.get(w) for w in labels]
 
+<<<<<<< HEAD
             yield word_idx, ctx_n2_idx, ctx_n1_idx, ctx_0_idx, ctx_p1_idx, ctx_p2_idx, pred_idx, mark, label_idx
+=======
+            yield word_idx, ctx_n2_idx, ctx_n1_idx, \
+              ctx_0_idx, ctx_p1_idx, ctx_p2_idx, pred_idx, mark, label_idx
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return reader
 
@@ -203,13 +256,18 @@ def reader_creator(
     since="2.0.0",
     update_to="paddle.text.datasets.Conll05st",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def get_dict():
     """
     Get the word, verb and label dictionary of Wikipedia corpus.
     """
     word_dict = load_dict(
+<<<<<<< HEAD
         paddle.dataset.common.download(WORDDICT_URL, 'conll05st', WORDDICT_MD5)
     )
     verb_dict = load_dict(
@@ -218,6 +276,13 @@ def get_dict():
     label_dict = load_label_dict(
         paddle.dataset.common.download(TRGDICT_URL, 'conll05st', TRGDICT_MD5)
     )
+=======
+        paddle.dataset.common.download(WORDDICT_URL, 'conll05st', WORDDICT_MD5))
+    verb_dict = load_dict(
+        paddle.dataset.common.download(VERBDICT_URL, 'conll05st', VERBDICT_MD5))
+    label_dict = load_label_dict(
+        paddle.dataset.common.download(TRGDICT_URL, 'conll05st', TRGDICT_MD5))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return word_dict, verb_dict, label_dict
 
 
@@ -225,8 +290,12 @@ def get_dict():
     since="2.0.0",
     update_to="paddle.text.datasets.Conll05st",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def get_embedding():
     """
     Get the trained word vector based on Wikipedia corpus.
@@ -238,8 +307,12 @@ def get_embedding():
     since="2.0.0",
     update_to="paddle.text.datasets.Conll05st",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def test():
     """
     Conll05 test set creator.
@@ -256,8 +329,12 @@ def test():
     reader = corpus_reader(
         paddle.dataset.common.download(DATA_URL, 'conll05st', DATA_MD5),
         words_name='conll05st-release/test.wsj/words/test.wsj.words.gz',
+<<<<<<< HEAD
         props_name='conll05st-release/test.wsj/props/test.wsj.props.gz',
     )
+=======
+        props_name='conll05st-release/test.wsj/props/test.wsj.props.gz')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return reader_creator(reader, word_dict, verb_dict, label_dict)
 
 
@@ -265,8 +342,12 @@ def test():
     since="2.0.0",
     update_to="paddle.text.datasets.Conll05st",
     level=1,
+<<<<<<< HEAD
     reason="Please use new dataset API which supports paddle.io.DataLoader",
 )
+=======
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def fetch():
     paddle.dataset.common.download(WORDDICT_URL, 'conll05st', WORDDICT_MD5)
     paddle.dataset.common.download(VERBDICT_URL, 'conll05st', VERBDICT_MD5)

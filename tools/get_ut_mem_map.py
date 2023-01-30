@@ -14,8 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import json
 import os
+=======
+import os
+import json
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 
@@ -39,30 +44,44 @@ def get_ut_mem(rootPath):
                     mem_reserved = round(
                         float(
                             line.split(' : Reserved = ')[1].split(
+<<<<<<< HEAD
                                 ', Allocated = '
                             )[0]
                         ),
                         2,
                     )
+=======
+                                ', Allocated = ')[0]), 2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     if mem_reserved > mem_reserved1:
                         mem_reserved1 = mem_reserved
                 if 'MAX_GPU_MEMORY_USE=' in line:
                     mem_nvidia = round(
                         float(
+<<<<<<< HEAD
                             line.split('MAX_GPU_MEMORY_USE=')[1]
                             .split('\\n')[0]
                             .strip()
                         ),
                         2,
                     )
+=======
+                            line.split('MAX_GPU_MEMORY_USE=')[1].split('\\n')
+                            [0].strip()), 2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     if mem_nvidia > mem_nvidia1:
                         mem_nvidia1 = mem_nvidia
                 if 'Total Test time (real)' in line:
                     caseTime = float(
+<<<<<<< HEAD
                         line.split('Total Test time (real) =')[1]
                         .split('sec')[0]
                         .strip()
                     )
+=======
+                        line.split('Total Test time (real) =')[1].split('sec')
+                        [0].strip())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if mem_reserved1 != -1:
                 case_dic[ut]['mem_reserved'] = mem_reserved1
             if mem_nvidia1 != -1:

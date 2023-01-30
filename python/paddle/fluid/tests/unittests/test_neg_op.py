@@ -13,13 +13,21 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
+=======
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
 class TestNegOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.init_dtype_type()
         self.input = (np.random.random((32, 8)) * 100).astype(self.dtype)
@@ -31,9 +39,15 @@ class TestNegOp(unittest.TestCase):
         input = paddle.to_tensor(self.input)
         dy_result = paddle.neg(input)
         expected_result = np.negative(self.input)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             dy_result.numpy(), expected_result, rtol=1e-05
         )
+=======
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def run_static(self, use_gpu=False):
         input = paddle.fluid.data(name='input', shape=[32, 8], dtype=self.dtype)
@@ -67,26 +81,46 @@ class TestNegOp(unittest.TestCase):
 
 
 class TestNegOpFp32(TestNegOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.float32
 
 
 class TestNegOpInt64(TestNegOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.int64
 
 
 class TestNegOpInt32(TestNegOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.int32
 
 
 class TestNegOpInt16(TestNegOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.int16
 
 
 class TestNegOpInt8(TestNegOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype_type(self):
         self.dtype = np.int8
 

@@ -12,10 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import itertools
 import unittest
 
 import numpy as np
+=======
+from __future__ import print_function
+
+import unittest
+import itertools
+import numpy as np
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from op_test import OpTest
 
 
@@ -33,7 +42,11 @@ def py_pnpair_op(score, label, query, column=-1, weight=None):
 
     # accumulate statistics
     pos, neg, neu = 0, 0, 0
+<<<<<<< HEAD
     for _, ranks in predictions.items():
+=======
+    for _, ranks in six.iteritems(predictions):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for e1, e2 in itertools.combinations(ranks, 2):
             s1, s2, l1, l2, w1, w2 = e1[0], e2[0], e1[1], e2[1], e1[2], e2[2]
             w = (w1 + w2) * 0.5
@@ -46,6 +59,7 @@ def py_pnpair_op(score, label, query, column=-1, weight=None):
             else:
                 neg += w
 
+<<<<<<< HEAD
     return (
         np.array(pos).astype('float32'),
         np.array(neg).astype('float32'),
@@ -54,6 +68,14 @@ def py_pnpair_op(score, label, query, column=-1, weight=None):
 
 
 class TestPositiveNegativePairOp(OpTest):
+=======
+    return np.array(pos).astype('float32'), np.array(neg).astype(
+        'float32'), np.array(neu).astype('float32')
+
+
+class TestPositiveNegativePairOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'positive_negative_pair'
         batch_size = 20
@@ -61,8 +83,12 @@ class TestPositiveNegativePairOp(OpTest):
         score = np.random.normal(size=(batch_size, 1)).astype('float32')
         label = np.random.normal(size=(batch_size, 1)).astype('float32')
         query = np.array(
+<<<<<<< HEAD
             [np.random.randint(max_query_id) for i in range(batch_size)]
         )
+=======
+            [np.random.randint(max_query_id) for i in range(batch_size)])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         query = np.reshape(query, newshape=(batch_size, 1)).astype('int64')
 
         pos, neg, neu = py_pnpair_op(score, label, query)
@@ -71,7 +97,11 @@ class TestPositiveNegativePairOp(OpTest):
         self.outputs = {
             'PositivePair': pos,
             'NegativePair': neg,
+<<<<<<< HEAD
             'NeutralPair': neu,
+=======
+            'NeutralPair': neu
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):
@@ -79,6 +109,10 @@ class TestPositiveNegativePairOp(OpTest):
 
 
 class TestPositiveNegativePairOpAccumulateWeight(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'positive_negative_pair'
         batch_size = 20
@@ -89,6 +123,7 @@ class TestPositiveNegativePairOpAccumulateWeight(OpTest):
         label = np.random.normal(size=(batch_size, 1)).astype('float32')
         weight = np.random.normal(size=(batch_size, 1)).astype('float32')
         query = np.array(
+<<<<<<< HEAD
             [np.random.randint(max_query_id) for i in range(batch_size)]
         )
         query = np.reshape(query, newshape=(batch_size, 1)).astype('int64')
@@ -106,6 +141,23 @@ class TestPositiveNegativePairOpAccumulateWeight(OpTest):
         pos, neg, neu = py_pnpair_op(
             score, label, query, column=column, weight=weight
         )
+=======
+            [np.random.randint(max_query_id) for i in range(batch_size)])
+        query = np.reshape(query, newshape=(batch_size, 1)).astype('int64')
+        acc_pos = np.reshape(np.random.randint(max_random_num),
+                             newshape=(1)).astype('float32')
+        acc_neg = np.reshape(np.random.randint(max_random_num),
+                             newshape=(1)).astype('float32')
+        acc_neu = np.reshape(np.random.randint(max_random_num),
+                             newshape=(1)).astype('float32')
+        column = np.random.randint(score_dim)
+
+        pos, neg, neu = py_pnpair_op(score,
+                                     label,
+                                     query,
+                                     column=column,
+                                     weight=weight)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {
             'Score': score,
             'Label': label,
@@ -113,13 +165,21 @@ class TestPositiveNegativePairOpAccumulateWeight(OpTest):
             'AccumulatePositivePair': acc_pos,
             'AccumulateNegativePair': acc_neg,
             'AccumulateNeutralPair': acc_neu,
+<<<<<<< HEAD
             'Weight': weight,
+=======
+            'Weight': weight
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'column': column}
         self.outputs = {
             'PositivePair': pos + acc_pos,
             'NegativePair': neg + acc_neg,
+<<<<<<< HEAD
             'NeutralPair': neu + acc_neu,
+=======
+            'NeutralPair': neu + acc_neu
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def test_check_output(self):

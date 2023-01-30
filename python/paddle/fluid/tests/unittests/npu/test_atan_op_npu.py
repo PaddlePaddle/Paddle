@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -26,6 +31,10 @@ SEED = 1024
 
 
 class TestAtan(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "atan"
@@ -52,11 +61,19 @@ class TestAtan(OpTest):
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
             np_x = np.array([0.1])
+<<<<<<< HEAD
             data = paddle.static.data(name="X", shape=[1])
             out = paddle.atan(data, name='Y')
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)
             (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
+=======
+            data = fluid.layers.data(name="X", shape=[1])
+            out = paddle.atan(data, name='Y')
+            place = paddle.NPUPlace(0)
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"X": np_x}, fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected = np.arctan(np_x)
             self.assertEqual(result, expected)
 
@@ -73,11 +90,19 @@ class TestAtan(OpTest):
 
 
 class TestAtanShape(TestAtan):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.shape = [12, 23, 10]
 
 
 class TestAtanFloat16(TestAtan):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.dtype = np.float16
 

@@ -111,6 +111,7 @@ TEST(Analyzer_Resnet50_ipu, compare_results_2_batch) {
   }
 }
 
+<<<<<<< HEAD
 // multi threading
 TEST(Analyzer_Resnet50_ipu, model_runtime_multi_thread) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
@@ -174,5 +175,7 @@ TEST(Analyzer_Resnet50_ipu, model_runtime_multi_thread) {
     }
   }
 }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace inference
 }  // namespace paddle

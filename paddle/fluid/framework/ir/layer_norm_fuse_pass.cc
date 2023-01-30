@@ -267,8 +267,12 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(shift, shift, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(shift_out, shift_out, layer_norm_pattern);
 
+<<<<<<< HEAD
     auto* eps_tensor =
         scope->FindVar(eps->Name())->GetMutable<phi::DenseTensor>();
+=======
+    auto* eps_tensor = scope->FindVar(eps->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const auto& x_shape = x->Var()->GetShape();
 
     // ------------------ subgraph node's validation ---------------------------
@@ -337,8 +341,12 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     // gamma/beta must be a 1-dimensional tensor of size on layer_norm
     auto layer_norm_x_mat_dims =
         phi::flatten_to_2d(phi::make_ddim(x_shape), begin_norm_axis);
+<<<<<<< HEAD
     auto* gamma_tensor =
         scope->FindVar(gamma->Name())->GetMutable<phi::DenseTensor>();
+=======
+    auto* gamma_tensor = scope->FindVar(gamma->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VarDesc new_gamma_desc(patterns::PDNodeName("layer_norm_fuse", "Scale"));
     new_gamma_desc.SetShape({layer_norm_x_mat_dims[1]});
     new_gamma_desc.SetDataType(
@@ -347,14 +355,22 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     new_gamma_desc.SetPersistable(true);
     auto* new_gamma_node = g->CreateVarNode(&new_gamma_desc);
     auto* new_gamma_tensor =
+<<<<<<< HEAD
         scope->Var(new_gamma_node->Name())->GetMutable<phi::DenseTensor>();
+=======
+        scope->Var(new_gamma_node->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     new_gamma_tensor->Resize(phi::make_ddim({layer_norm_x_mat_dims[1]}));
     memcpy(new_gamma_tensor->mutable_data<float>(platform::CPUPlace()),
            gamma_tensor->mutable_data<float>(platform::CPUPlace()),
            layer_norm_x_mat_dims[1] * sizeof(float));
 
+<<<<<<< HEAD
     auto* beta_tensor =
         scope->FindVar(beta->Name())->GetMutable<phi::DenseTensor>();
+=======
+    auto* beta_tensor = scope->FindVar(beta->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VarDesc new_beta_desc(patterns::PDNodeName("layer_norm_fuse", "Bias"));
     new_beta_desc.SetShape({layer_norm_x_mat_dims[1]});
     new_beta_desc.SetDataType(
@@ -363,7 +379,11 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     new_beta_desc.SetPersistable(true);
     auto* new_beta_node = g->CreateVarNode(&new_beta_desc);
     auto* new_beta_tensor =
+<<<<<<< HEAD
         scope->Var(new_beta_node->Name())->GetMutable<phi::DenseTensor>();
+=======
+        scope->Var(new_beta_node->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     new_beta_tensor->Resize(phi::make_ddim({layer_norm_x_mat_dims[1]}));
     memcpy(new_beta_tensor->mutable_data<float>(platform::CPUPlace()),
@@ -425,8 +445,12 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
 
   gpd(graph, handler);
   AddStatis(found_layer_norm_count);
+<<<<<<< HEAD
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       (found_layer_norm_count > 0))
+=======
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PrettyLogDetail("---    Fused %d subgraphs into layer_norm op.",
                     found_layer_norm_count);
 }

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 import hashlib
 import os
@@ -28,6 +29,21 @@ from paddle.dataset.common import download
 DATA_URL = (
     "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"
 )
+=======
+import xml.etree.ElementTree
+from PIL import Image
+import numpy as np
+import os
+import sys
+from paddle.dataset.common import download
+import tarfile
+from six.moves import StringIO
+import hashlib
+import tarfile
+import argparse
+
+DATA_URL = "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DATA_DIR = os.path.expanduser("~/.cache/paddle/dataset/pascalvoc/")
 TAR_FILE = "VOCtest_06-Nov-2007.tar"
 TAR_PATH = os.path.join(DATA_DIR, TAR_FILE)
@@ -110,8 +126,12 @@ def convert_pascalvoc_local2bin(args):
             bbox_sample = []
             # start from 1
             bbox_sample.append(
+<<<<<<< HEAD
                 float(label_list.index(object.find('name').text))
             )
+=======
+                float(label_list.index(object.find('name').text)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             bbox = object.find('bndbox')
             difficult = float(object.find('difficult').text)
             bbox_sample.append(float(bbox.find('xmin').text) / im_width)
@@ -122,8 +142,12 @@ def convert_pascalvoc_local2bin(args):
             bbox_labels.append(bbox_sample)
 
         bbox_labels = np.array(bbox_labels)
+<<<<<<< HEAD
         if len(bbox_labels) == 0:
             continue
+=======
+        if len(bbox_labels) == 0: continue
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         lbls.extend(bbox_labels[:, 0])
         boxes.extend(bbox_labels[:, 1:5])
@@ -136,6 +160,7 @@ def convert_pascalvoc_local2bin(args):
     f1.close()
 
     object_nums_sum = sum(object_nums)
+<<<<<<< HEAD
     # The data should be contains
     # number of images + all images data + an array that represent object numbers of each image
     # + labels of all objects in images + bboxes of all objects + difficulties of all objects
@@ -151,6 +176,17 @@ def convert_pascalvoc_local2bin(args):
             "Success! \nThe local data output binary file can be found at: ",
             output_file_path,
         )
+=======
+    # The data should be contains 
+    # number of images + all images data + an array that represent object numbers of each image
+    # + labels of all objects in images + bboxes of all objects + difficulties of all objects
+    # so the target size should be as follows:
+    target_size = SIZE_INT64 + image_nums * 3 * args.resize_h * args.resize_h * SIZE_FLOAT32 + image_nums * SIZE_INT64 + object_nums_sum * (
+        SIZE_INT64 + 4 * SIZE_FLOAT32 + SIZE_INT64)
+    if (os.path.getsize(output_file_path) == target_size):
+        print("Success! \nThe local data output binary file can be found at: ",
+              output_file_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         print("Conversion failed!")
 
@@ -158,9 +194,14 @@ def convert_pascalvoc_local2bin(args):
 def print_processbar(done_percentage):
     done_filled = done_percentage * '='
     empty_filled = (100 - done_percentage) * ' '
+<<<<<<< HEAD
     sys.stdout.write(
         "\r[%s%s]%d%%" % (done_filled, empty_filled, done_percentage)
     )
+=======
+    sys.stdout.write("\r[%s%s]%d%%" %
+                     (done_filled, empty_filled, done_percentage))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     sys.stdout.flush()
 
 
@@ -175,6 +216,7 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
 
     # map label to number (index)
     label_list = [
+<<<<<<< HEAD
         "background",
         "aeroplane",
         "bicycle",
@@ -199,6 +241,15 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
     ]
     print_processbar(0)
     # read from tar file and write to bin
+=======
+        "background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
+        "car", "cat", "chair", "cow", "diningtable", "dog", "horse",
+        "motorbike", "person", "pottedplant", "sheep", "sofa", "train",
+        "tvmonitor"
+    ]
+    print_processbar(0)
+    #read from tar file and write to bin
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tar = tarfile.open(tar_path, "r")
     f_test = tar.extractfile(TEST_LIST_KEY).read()
     lines = f_test.split('\n')
@@ -240,8 +291,12 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
         for object in objects:
             bbox_sample = []
             bbox_sample.append(
+<<<<<<< HEAD
                 float(label_list.index(object.find('name').text))
             )
+=======
+                float(label_list.index(object.find('name').text)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             bbox = object.find('bndbox')
             difficult = float(object.find('difficult').text)
             bbox_sample.append(float(bbox.find('xmin').text) / im_width)
@@ -252,8 +307,12 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
             bbox_labels.append(bbox_sample)
 
         bbox_labels = np.array(bbox_labels)
+<<<<<<< HEAD
         if len(bbox_labels) == 0:
             continue
+=======
+        if len(bbox_labels) == 0: continue
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         lbls.extend(bbox_labels[:, 0])
         boxes.extend(bbox_labels[:, 1:5])
         difficults.extend(bbox_labels[:, -1])
@@ -261,7 +320,11 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
         if line_idx % per_percentage:
             print_processbar(line_idx / per_percentage)
 
+<<<<<<< HEAD
     # The data should be stored in binary in following sequence:
+=======
+    # The data should be stored in binary in following sequence: 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # number of images->all images data->an array that represent object numbers in each image
     # ->labels of all objects in images->bboxes of all objects->difficulties of all objects
     f1.write(np.array(object_nums).astype('uint64').tobytes())
@@ -289,6 +352,7 @@ def download_pascalvoc(data_url, data_dir, tar_targethash, tar_path):
 def run_convert():
     try_limit = 2
     retry = 0
+<<<<<<< HEAD
     while not (
         os.path.exists(DATA_OUT_PATH)
         and os.path.getsize(DATA_OUT_PATH) == BIN_FULLSIZE
@@ -299,6 +363,14 @@ def run_convert():
             sys.stderr.write(
                 "The existing binary file is broken. It is being removed...\n"
             )
+=======
+    while not (os.path.exists(DATA_OUT_PATH) and
+               os.path.getsize(DATA_OUT_PATH) == BIN_FULLSIZE and BIN_TARGETHASH
+               == hashlib.md5(open(DATA_OUT_PATH, 'rb').read()).hexdigest()):
+        if os.path.exists(DATA_OUT_PATH):
+            sys.stderr.write(
+                "The existing binary file is broken. It is being removed...\n")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             os.remove(DATA_OUT_PATH)
         if retry < try_limit:
             retry = retry + 1
@@ -312,6 +384,7 @@ def main_pascalvoc_preprocess(args):
     parser = argparse.ArgumentParser(
         description="Convert the full pascalvoc val set or local data to binary file.",
         usage=None,
+<<<<<<< HEAD
         add_help=True,
     )
     parser.add_argument(
@@ -322,48 +395,85 @@ def main_pascalvoc_preprocess(args):
     parser.add_argument(
         "--data_dir", default="", type=str, help="Dataset root directory"
     )
+=======
+        add_help=True)
+    parser.add_argument(
+        '--local',
+        action="store_true",
+        help="If used, user need to set --data_dir and then convert file")
+    parser.add_argument(
+        "--data_dir", default="", type=str, help="Dataset root directory")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     parser.add_argument(
         "--img_annotation_list",
         type=str,
         default="test_100.txt",
+<<<<<<< HEAD
         help="A file containing the image file path and corresponding annotation file path",
+=======
+        help="A file containing the image file path and corresponding annotation file path"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     )
     parser.add_argument(
         "--label_file",
         type=str,
         default="label_list",
+<<<<<<< HEAD
         help="List of object labels with same sequence as denoted in the annotation file",
+=======
+        help="List of object labels with same sequence as denoted in the annotation file"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     )
     parser.add_argument(
         "--output_file",
         type=str,
         default="pascalvoc_small.bin",
+<<<<<<< HEAD
         help="File path of the output binary file",
     )
+=======
+        help="File path of the output binary file")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     parser.add_argument(
         "--resize_h",
         type=int,
         default=RESIZE_H,
+<<<<<<< HEAD
         help="Image preprocess with resize_h",
     )
+=======
+        help="Image preprocess with resize_h")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     parser.add_argument(
         "--resize_w",
         type=int,
         default=RESIZE_W,
+<<<<<<< HEAD
         help="Image prerocess with resize_w",
     )
+=======
+        help="Image prerocess with resize_w")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     parser.add_argument(
         "--mean_value",
         type=str,
         default=MEAN_VALUE,
+<<<<<<< HEAD
         help="Image preprocess with mean_value",
     )
+=======
+        help="Image preprocess with mean_value")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     parser.add_argument(
         "--ap_version",
         type=str,
         default=AP_VERSION,
+<<<<<<< HEAD
         help="Image preprocess with ap_version",
     )
+=======
+        help="Image preprocess with ap_version")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     args = parser.parse_args()
     if args.local:
         convert_pascalvoc_local2bin(args)

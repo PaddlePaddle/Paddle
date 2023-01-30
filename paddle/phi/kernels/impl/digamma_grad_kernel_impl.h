@@ -42,7 +42,11 @@ void DigammaGradKernel(const Context& ctx,
                        const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
+<<<<<<< HEAD
   ctx.template Alloc<T>(x_grad);
+=======
+  x_grad->mutable_data<T>(ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto* dout_data = out_grad.data<T>();
   auto* x_data = x.data<T>();

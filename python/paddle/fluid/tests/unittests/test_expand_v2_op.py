@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import gradient_checker
@@ -22,10 +23,28 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, core, program_guard
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard, core
+import paddle
+from paddle.fluid.framework import _test_eager_guard
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # Situation 1: shape is a list(without tensor)
 class TestExpandV2OpRank1(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_v2"
         self.init_data()
@@ -49,6 +68,10 @@ class TestExpandV2OpRank1(OpTest):
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = [120]
         self.shape = [2, 120]
@@ -56,6 +79,10 @@ class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
 
 
 class TestExpandV2OpRank2(TestExpandV2OpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = [1, 140]
         self.shape = [12, 140]
@@ -63,6 +90,10 @@ class TestExpandV2OpRank2(TestExpandV2OpRank1):
 
 
 class TestExpandV2OpRank3_Corner(TestExpandV2OpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.shape = (2, 10, 5)
@@ -70,6 +101,10 @@ class TestExpandV2OpRank3_Corner(TestExpandV2OpRank1):
 
 
 class TestExpandV2OpRank4(TestExpandV2OpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = (2, 4, 5, 7)
         self.shape = (-1, -1, -1, -1)
@@ -78,14 +113,23 @@ class TestExpandV2OpRank4(TestExpandV2OpRank1):
 
 # Situation 2: shape is a list(with tensor)
 class TestExpandV2OpRank1_tensor_attr(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_v2"
         self.init_data()
         expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
+<<<<<<< HEAD
             expand_shapes_tensor.append(
                 ("x" + str(index), np.ones((1)).astype('int32') * ele)
             )
+=======
+            expand_shapes_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype("float64"),
@@ -109,6 +153,10 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
 
 
 class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.ori_shape = [12, 14]
         self.expand_times = [1, 1]
@@ -118,6 +166,10 @@ class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
 
 # Situation 3: shape is a tensor
 class TestExpandV2OpRank1_tensor(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_v2"
         self.init_data()
@@ -144,6 +196,10 @@ class TestExpandV2OpRank1_tensor(OpTest):
 
 # Situation 4: input x is Integer
 class TestExpandV2OpInteger(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_v2"
         self.inputs = {
@@ -159,6 +215,10 @@ class TestExpandV2OpInteger(OpTest):
 
 # Situation 5: input x is Bool
 class TestExpandV2OpBoolean(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_v2"
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
@@ -172,6 +232,10 @@ class TestExpandV2OpBoolean(OpTest):
 
 # Situation 56: input x is Integer
 class TestExpandV2OpInt64_t(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "expand_v2"
         self.inputs = {
@@ -186,6 +250,7 @@ class TestExpandV2OpInt64_t(OpTest):
 
 
 class TestExpandV2Error(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         with program_guard(Program(), Program()):
             x1 = fluid.create_lod_tensor(
@@ -196,12 +261,25 @@ class TestExpandV2Error(unittest.TestCase):
             x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
             self.assertRaises(TypeError, paddle.tensor.expand, x2, shape)
             x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
+=======
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
+            shape = [2, 2]
+            self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, paddle.tensor.expand, x2, shape)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.expand, x3, shape)
 
 
 # Test python API
 class TestExpandV2API(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
         input = np.random.random([12, 14]).astype("float32")
         x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
@@ -212,6 +290,21 @@ class TestExpandV2API(unittest.TestCase):
             shape=[2],
             dtype="int32",
         )
+=======
+
+    def test_api(self):
+        input = np.random.random([12, 14]).astype("float32")
+        x = fluid.layers.data(name='x',
+                              shape=[12, 14],
+                              append_batch_size=False,
+                              dtype="float32")
+
+        positive_2 = fluid.layers.fill_constant([1], "int32", 12)
+        expand_shape = fluid.layers.data(name="expand_shape",
+                                         shape=[2],
+                                         append_batch_size=False,
+                                         dtype="int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         out_1 = paddle.expand(x, shape=[12, 14])
         out_2 = paddle.expand(x, shape=[positive_2, 14])
@@ -220,6 +313,7 @@ class TestExpandV2API(unittest.TestCase):
         g0 = fluid.backward.calc_gradient(out_2, x)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
+<<<<<<< HEAD
         res_1, res_2, res_3 = exe.run(
             fluid.default_main_program(),
             feed={
@@ -228,20 +322,39 @@ class TestExpandV2API(unittest.TestCase):
             },
             fetch_list=[out_1, out_2, out_3],
         )
+=======
+        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
+                                      feed={
+                                          "x":
+                                          input,
+                                          "expand_shape":
+                                          np.array([12, 14]).astype("int32")
+                                      },
+                                      fetch_list=[out_1, out_2, out_3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert np.array_equal(res_1, np.tile(input, (1, 1)))
         assert np.array_equal(res_2, np.tile(input, (1, 1)))
         assert np.array_equal(res_3, np.tile(input, (1, 1)))
 
 
 class TestExpandInferShape(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_shape_with_var(self):
         with program_guard(Program(), Program()):
             x = paddle.static.data(shape=[-1, 1, 3], name='x')
             fake_var = paddle.randn([2, 3])
             target_shape = [
+<<<<<<< HEAD
                 -1,
                 paddle.shape(fake_var)[0],
                 paddle.shape(fake_var)[1],
+=======
+                -1, paddle.shape(fake_var)[0],
+                paddle.shape(fake_var)[1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
             out = paddle.expand(x, shape=target_shape)
             self.assertListEqual(list(out.shape), [-1, -1, -1])
@@ -249,17 +362,43 @@ class TestExpandInferShape(unittest.TestCase):
 
 # Test python Dygraph API
 class TestExpandV2DygraphAPI(unittest.TestCase):
+<<<<<<< HEAD
     def test_expand_times_is_tensor(self):
         with paddle.fluid.dygraph.guard():
+=======
+
+    def test_expand_times_is_tensor(self):
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                paddle.seed(1)
+                a = paddle.rand([2, 5])
+                egr_expand_1 = paddle.expand(a, shape=[2, 5])
+                np_array = np.array([2, 5])
+                egr_expand_2 = paddle.expand(a, shape=np_array)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.seed(1)
             a = paddle.rand([2, 5])
             expand_1 = paddle.expand(a, shape=[2, 5])
             np_array = np.array([2, 5])
             expand_2 = paddle.expand(a, shape=np_array)
+<<<<<<< HEAD
             np.testing.assert_array_equal(expand_1.numpy(), expand_2.numpy())
 
 
 class TestExpandDoubleGradCheck(unittest.TestCase):
+=======
+
+            np.testing.assert_array_equal(egr_expand_1.numpy(),
+                                          egr_expand_2.numpy())
+            np.testing.assert_array_equal(expand_1.numpy(), expand_2.numpy())
+            np.testing.assert_array_equal(expand_1.numpy(),
+                                          egr_expand_1.numpy())
+
+
+class TestExpandDoubleGradCheck(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def expand_wrapper(self, x):
         return paddle.expand(x[0], [2, 3])
 
@@ -269,17 +408,35 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
+<<<<<<< HEAD
         data = paddle.static.data('data', [2, 3], dtype)
+=======
+        data = layers.data('data', [2, 3], False, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data.persistable = True
         out = paddle.expand(data, [2, 3])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.expand_wrapper, [data], out, x_init=[data_arr], place=place
         )
+=======
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.expand_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()
@@ -291,6 +448,10 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
 
 
 class TestExpandTripleGradCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def expand_wrapper(self, x):
         return paddle.expand(x[0], [2, 3])
 
@@ -300,17 +461,35 @@ class TestExpandTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
+<<<<<<< HEAD
         data = paddle.static.data('data', [2, 3], dtype)
+=======
+        data = layers.data('data', [2, 3], False, dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data.persistable = True
         out = paddle.expand(data, [2, 3])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
         gradient_checker.triple_grad_check_for_dygraph(
             self.expand_wrapper, [data], out, x_init=[data_arr], place=place
         )
+=======
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.expand_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad(self):
         paddle.enable_static()

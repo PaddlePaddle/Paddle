@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,21 +23,44 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layer_helper import LayerHelper
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+
+import paddle
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 # default kNCHW
 class TestTransferLayoutOpkNCHWTokNHWC(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         ipt = np.random.random(size=[2, 3, 10, 10])
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.transpose([0, 2, 3, 1])}
+<<<<<<< HEAD
         self.attrs = {'src_layout': 0, 'dst_layout': 1}  # kNHWC
+=======
+        self.attrs = {
+            'src_layout': 0,
+            'dst_layout': 1  # kNHWC
+        }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.op_type = 'transfer_layout'
 
     def test_check_output(self):
         self.check_output()
 
 
+<<<<<<< HEAD
 def softmax_with_data_format(x, data_format, axis=-1, dtype=None, name=None):
     helper = LayerHelper("softmax", **locals())
     outs_cast = x
@@ -85,6 +109,8 @@ class TestTransferLayoutOpGpu(unittest.TestCase):
         assert ret[0].shape == (n, h, w, c)
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

@@ -24,6 +24,11 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+<<<<<<< HEAD
+=======
+using framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /*
  * Convert Input from Fluid to TensorRT Engine.
  * Convert Output from TensorRT Engine to Fluid.
@@ -36,17 +41,26 @@ class EngineIOConverter {
  public:
   EngineIOConverter() {}
 
+<<<<<<< HEAD
   virtual void operator()(const phi::DenseTensor& in,
                           void* out,
                           size_t max_size) {}
   virtual void operator()(const void* in,
                           phi::DenseTensor* out,
                           size_t max_size) {}
+=======
+  virtual void operator()(const LoDTensor& in, void* out, size_t max_size) {}
+  virtual void operator()(const void* in, LoDTensor* out, size_t max_size) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void SetStream(cudaStream_t* stream) { stream_ = stream; }
 
   static void ConvertInput(const std::string& op_type,
+<<<<<<< HEAD
                            const phi::DenseTensor& in,
+=======
+                           const LoDTensor& in,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            void* out,
                            size_t max_size,
                            cudaStream_t* stream) {
@@ -65,7 +79,11 @@ class EngineIOConverter {
 
   static void ConvertOutput(const std::string& op_type,
                             const void* in,
+<<<<<<< HEAD
                             phi::DenseTensor* out,
+=======
+                            LoDTensor* out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             size_t max_size,
                             cudaStream_t* stream) {
     PADDLE_ENFORCE_NOT_NULL(stream,

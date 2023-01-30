@@ -207,7 +207,10 @@ function(select_nvcc_arch_flags out_variable)
 
   set(nvcc_flags "")
   set(nvcc_archs_readable "")
+<<<<<<< HEAD
   set(nvcc_archs_bin_list "")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   # Tell NVCC to add binaries for the specified GPUs
   foreach(arch ${cuda_arch_bin})
@@ -216,12 +219,18 @@ function(select_nvcc_arch_flags out_variable)
       string(APPEND nvcc_flags
              " -gencode arch=compute_${CMAKE_MATCH_2},code=sm_${CMAKE_MATCH_1}")
       string(APPEND nvcc_archs_readable " sm_${CMAKE_MATCH_1}")
+<<<<<<< HEAD
       string(APPEND nvcc_archs_bin_list " ${CMAKE_MATCH_1}")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else()
       # User didn't explicitly specify PTX for the concrete BIN, we assume PTX=BIN
       string(APPEND nvcc_flags " -gencode arch=compute_${arch},code=sm_${arch}")
       string(APPEND nvcc_archs_readable " sm_${arch}")
+<<<<<<< HEAD
       string(APPEND nvcc_archs_bin_list " ${arch}")
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     endif()
   endforeach()
 
@@ -233,17 +242,23 @@ function(select_nvcc_arch_flags out_variable)
   endforeach()
 
   string(REPLACE ";" " " nvcc_archs_readable "${nvcc_archs_readable}")
+<<<<<<< HEAD
   string(REGEX MATCHALL "[0-9()]+" nvcc_archs_bin_list "${nvcc_archs_bin_list}")
   string(JOIN "," nvcc_real_archs ${nvcc_archs_bin_list})
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   set(${out_variable}
       ${nvcc_flags}
       PARENT_SCOPE)
   set(${out_variable}_readable
       ${nvcc_archs_readable}
       PARENT_SCOPE)
+<<<<<<< HEAD
   set(${out_variable}_real_archs
       ${nvcc_real_archs}
       PARENT_SCOPE)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endfunction()
 
 message(STATUS "CUDA detected: " ${CMAKE_CUDA_COMPILER_VERSION})

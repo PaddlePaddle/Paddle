@@ -59,23 +59,36 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Ins");
     return phi::KernelKey(data_type, ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Ins");
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 class FilterByInstagOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("Ins", "(phi::DenseTensor) embeded tensor");
     AddInput("Ins_tag", "(phi::DenseTensor) ins tag list");
+=======
+    AddInput("Ins", "(LoDTensor) embeded tensor");
+    AddInput("Ins_tag", "(LoDTensor) ins tag list");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddInput("Filter_tag", "(1D Tensor) filter tag list");
     AddAttr<bool>("is_lod", "is Ins with LoD info or not, default True");
     AddAttr<int64_t>("out_val_if_empty",
                      "if the output after filter is empty, the output value")
         .SetDefault(0);
+<<<<<<< HEAD
     AddOutput("Out", "(phi::DenseTensor) embeded tensor filtered by instag");
     AddOutput("LossWeight", "(Tensor) loss weight.");
     AddOutput("IndexMap",
@@ -90,6 +103,21 @@ Third is tags to filter.
 
 There are 3 outputs. First is filtered embeded ins, Second is Loss Weight,
 Third is the IndexMap from Out line number to X1 line number.
+=======
+    AddOutput("Out", "(LoDTensor) embeded tensor filtered by instag");
+    AddOutput("LossWeight", "(Tensor) loss weight.");
+    AddOutput("IndexMap", "(LoDTensor) mapping from Out rows to X1 rows");
+    AddComment(R"DOC(
+Filter By Instag Op 
+
+This operator is used to filter embeded ins.
+
+There are 3 inputs. First is embeded ins, Second is tags for ins, 
+Third is tags to filter.
+
+There are 3 outputs. First is filtered embeded ins, Second is Loss Weight,
+Third is the IndexMap from Out line number to X1 line number. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
   }
 };
@@ -126,11 +154,19 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     return phi::KernelKey(data_type, ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

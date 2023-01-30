@@ -36,8 +36,11 @@ class ConvAffineChannelFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph*) const override;
+<<<<<<< HEAD
   void FuseConvAffineChannel(ir::Graph* graph,
                              const std::string& conv_type) const;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const std::string name_scope_{"conv_affine_channel_mkldnn_fuse"};
 };
 

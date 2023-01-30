@@ -14,12 +14,21 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+using Tensor = framework::Tensor;
+using platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #define CUDA_BLOCK_SIZE 16
 
 template <typename T>
@@ -47,10 +56,17 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
         true,
         platform::errors::InvalidArgument(
             "The polygon_box_transform operator needs to be executed on GPU."));
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("Input");
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     auto* out = ctx.Output<phi::DenseTensor>("Output");
+=======
+    auto* in = ctx.Input<Tensor>("Input");
+    auto in_dims = in->dims();
+    const T* in_data = in->data<T>();
+    auto* out = ctx.Output<Tensor>("Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     int batch_size = in_dims[0];

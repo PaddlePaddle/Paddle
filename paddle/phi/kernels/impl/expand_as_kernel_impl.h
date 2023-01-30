@@ -120,6 +120,7 @@ void ExpandAsKernel(const Context& ctx,
                         target_rank,
                         MAX_RANK_SUPPORTED));
 
+<<<<<<< HEAD
   std::vector<int> real_target_shape = target_shape;
   for (size_t i = 0; i < target_shape.size(); ++i) {
     if (target_shape[i] == -1) {
@@ -150,6 +151,26 @@ void ExpandAsKernel(const Context& ctx,
       break;
     case 6:
       ExpandAs<Context, T, 6>(ctx, x, real_target_shape, out);
+=======
+  switch (target_rank) {
+    case 1:
+      ExpandAs<Context, T, 1>(ctx, x, target_shape, out);
+      break;
+    case 2:
+      ExpandAs<Context, T, 2>(ctx, x, target_shape, out);
+      break;
+    case 3:
+      ExpandAs<Context, T, 3>(ctx, x, target_shape, out);
+      break;
+    case 4:
+      ExpandAs<Context, T, 4>(ctx, x, target_shape, out);
+      break;
+    case 5:
+      ExpandAs<Context, T, 5>(ctx, x, target_shape, out);
+      break;
+    case 6:
+      ExpandAs<Context, T, 6>(ctx, x, target_shape, out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       break;
   }
 }

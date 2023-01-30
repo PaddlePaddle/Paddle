@@ -37,5 +37,8 @@ no_check_set_white_list = [
     'class_center_sample',
     'einsum',
     'rmsprop',
+<<<<<<< HEAD
     'rrelu',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

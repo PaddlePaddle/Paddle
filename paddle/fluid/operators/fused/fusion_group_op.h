@@ -24,10 +24,18 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext>
+<<<<<<< HEAD
 static void MutableMultiTypeData(std::vector<phi::DenseTensor*>* var,
                                  const std::vector<int>& data_type,
                                  const DeviceContext& dev_ctx,
                                  const platform::Place& place) {
+=======
+static void MutableMultiTypeData(
+    std::vector<paddle::framework::LoDTensor*>* var,
+    const std::vector<int>& data_type,
+    const DeviceContext& dev_ctx,
+    const platform::Place& place) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (size_t i = 0; i < var->size(); i++) {
     if (data_type[i] == framework::proto::VarType::FP32) {
       dev_ctx.template Alloc<float>((*var)[i],
@@ -46,8 +54,13 @@ template <typename DeviceContext, typename T>
 class FusionGroupKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto ins = ctx.MultiInput<phi::DenseTensor>("Inputs");
     auto outs = ctx.MultiOutput<phi::DenseTensor>("Outs");
+=======
+    auto ins = ctx.MultiInput<framework::LoDTensor>("Inputs");
+    auto outs = ctx.MultiOutput<framework::LoDTensor>("Outs");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int type = ctx.Attr<int>("type");
     const auto& outs_dtype = ctx.Attr<std::vector<int>>("outs_dtype");
     const auto& inputs_dtype = ctx.Attr<std::vector<int>>("inputs_dtype");

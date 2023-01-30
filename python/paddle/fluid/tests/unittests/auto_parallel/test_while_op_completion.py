@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -24,6 +25,24 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.fleet import auto
+=======
+import paddle
+import numpy as np
+import paddle.nn as nn
+import paddle.utils as utils
+import paddle.static as static
+import paddle.nn.functional as F
+from paddle.distributed.fleet import auto
+
+from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.utils import make_data_unshard
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
+from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
+from paddle.distributed.auto_parallel.operators import find_compatible_distributed_operator_impls
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -41,18 +60,27 @@ def get_random_inputs_and_labels(input_shape, label_shape):
 
 
 def batch_generator_creator():
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __reader__():
         for _ in range(batch_size):
             batch_input, batch_label = get_random_inputs_and_labels(
                 [batch_size, sequence_len, hidden_size],
+<<<<<<< HEAD
                 [batch_size, sequence_len, 1],
             )
+=======
+                [batch_size, sequence_len, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             yield batch_input, batch_label
 
     return __reader__
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -66,18 +94,36 @@ class MLPLayer(nn.Layer):
         param_initializer = nn.initializer.Normal(
             mean=0.0, std=initializer_range
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        param_initializer = nn.initializer.Normal(mean=0.0,
+                                                  std=initializer_range)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.linear0 = nn.Linear(
             d_model,
             dim_feedforward,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
+<<<<<<< HEAD
             bias_attr=None,
         )
+=======
+            bias_attr=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear1 = nn.Linear(
             dim_feedforward,
             d_model,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
+<<<<<<< HEAD
             bias_attr=None,
         )
 
@@ -91,6 +137,18 @@ class MLPLayer(nn.Layer):
         auto.shard_tensor(
             self.linear1.weight, _g_process_mesh[:, 1], ['x', None]
         )
+=======
+            bias_attr=None)
+
+    def forward(self, input):
+        out = self.norm(input)
+        auto.shard_tensor(self.linear0.weight, _g_process_mesh[:, 0],
+                          [None, 'x'])
+        out = self.linear0(out)
+        out = F.gelu(out, approximate=True)
+        auto.shard_tensor(self.linear1.weight, _g_process_mesh[:, 1],
+                          ['x', None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = self.linear1(out)
 
         return out
@@ -102,6 +160,7 @@ def loop_cond(i, loop_len, input_array):
 
 def loop_body(i, loop_len, input_array):
     pre_input = paddle.tensor.array_read(array=input_array, i=i)
+<<<<<<< HEAD
     mlp_while0 = MLPLayer(
         hidden_size=hidden_size,
         intermediate_size=4 * hidden_size,
@@ -115,6 +174,17 @@ def loop_body(i, loop_len, input_array):
         dropout_ratio=0.1,
         initializer_range=0.02,
     )
+=======
+    mlp_while0 = MLPLayer(hidden_size=hidden_size,
+                          intermediate_size=4 * hidden_size,
+                          dropout_ratio=0.1,
+                          initializer_range=0.02)
+
+    mlp_while1 = MLPLayer(hidden_size=hidden_size,
+                          intermediate_size=4 * hidden_size,
+                          dropout_ratio=0.1,
+                          initializer_range=0.02)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     output = mlp_while0(pre_input)
     cur_pred = mlp_while1(output)
@@ -139,6 +209,7 @@ def get_program():
         loop_len = paddle.full(shape=[1], fill_value=epoch_num, dtype='int64')
 
         # input
+<<<<<<< HEAD
         input = static.data(
             name="input",
             shape=[batch_size, sequence_len, hidden_size],
@@ -155,20 +226,44 @@ def get_program():
         dataloader.set_batch_generator(
             batch_generator_creator(), places=paddle.static.cuda_places()
         )
+=======
+        input = static.data(name="input",
+                            shape=[batch_size, sequence_len, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, sequence_len, 1],
+                            dtype='float32')
+        data_holder = [input, label]
+        # dataloader
+        dataloader = paddle.io.DataLoader.from_generator(feed_list=data_holder,
+                                                         capacity=4 *
+                                                         batch_size,
+                                                         iterable=False)
+        dataloader.set_batch_generator(batch_generator_creator(),
+                                       places=paddle.static.cuda_places())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # data dist_attr
         auto.shard_tensor(input, _g_process_mesh[:, 0], [None, None, None])
         auto.shard_tensor(label, _g_process_mesh[:, 0], [None, None, None])
 
+<<<<<<< HEAD
         mlp_start = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
             dropout_ratio=0.1,
             initializer_range=0.02,
         )
+=======
+        mlp_start = MLPLayer(hidden_size=hidden_size,
+                             intermediate_size=4 * hidden_size,
+                             dropout_ratio=0.1,
+                             initializer_range=0.02)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         pred = mlp_start(input)
 
         input_array = paddle.tensor.array_write(pred, i)
         i, loop_len, input_array = static.nn.while_loop(
+<<<<<<< HEAD
             cond=loop_cond, body=loop_body, loop_vars=[i, loop_len, input_array]
         )
         end_pred = paddle.tensor.array_read(array=input_array, i=i)
@@ -179,6 +274,17 @@ def get_program():
             dropout_ratio=0.1,
             initializer_range=0.02,
         )
+=======
+            cond=loop_cond,
+            body=loop_body,
+            loop_vars=[i, loop_len, input_array])
+        end_pred = paddle.tensor.array_read(array=input_array, i=i)
+
+        mlp_end = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         pred = mlp_end(end_pred)
 
         error_cost = paddle.nn.functional.square_error_cost(pred, label)
@@ -188,13 +294,21 @@ def get_program():
 
 
 class TestMLP(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_completer(self):
         train_program, start_program, dataloader, i, loss = get_program()
         dist_context = DistributedContext()
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
+<<<<<<< HEAD
             train_program
         )
+=======
+            train_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # print_program_with_dist_attr(complete_train_program, dist_context)
 
     def test_completer_by_dist_op(self):
@@ -202,8 +316,12 @@ class TestMLP(unittest.TestCase):
         dist_context = DistributedContext()
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
+<<<<<<< HEAD
             train_program
         )
+=======
+            train_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         complete_train_program = completer._complete_tensor_dist_attr_by_op()
 
 

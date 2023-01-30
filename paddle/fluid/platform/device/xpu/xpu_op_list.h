@@ -15,12 +15,16 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace platform {
 
+<<<<<<< HEAD
 using phi::backends::xpu::is_in_xpu_black_list;
 using phi::backends::xpu::is_xpu_support_op;
 
@@ -32,6 +36,24 @@ using vartype = paddle::framework::proto::VarType;
 using XPUOpListMap =
     std::unordered_map<std::string, std::vector<vartype::Type>>;
 
+=======
+using pOpKernelType = paddle::framework::OpKernelType;
+using vartype = paddle::framework::proto::VarType;
+using XPUOpListMap =
+    std::unordered_map<std::string, std::vector<vartype::Type>>;
+
+bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type);
+bool is_in_xpu_black_list(const std::string& op_name);
+
+#ifdef PADDLE_WITH_XPU_KP
+bool is_xpu_kp_support_op(const std::string& op_name,
+                          const pOpKernelType& type);
+bool is_in_xpu_kpwhite_list(const std::string& op_name);
+std::vector<vartype::Type> get_xpu_kp_op_support_type(
+    const std::string& op_name, phi::backends::xpu::XPUVersion version);
+#endif
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 std::vector<vartype::Type> get_xpu_op_support_type(
     const std::string& op_name, phi::backends::xpu::XPUVersion version);
 XPUOpListMap get_xpu_op_list(phi::backends::xpu::XPUVersion version);

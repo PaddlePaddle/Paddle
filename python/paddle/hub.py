@@ -12,8 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from .hapi.hub import help  # noqa: F401
 from .hapi.hub import list  # noqa: F401
 from .hapi.hub import load  # noqa: F401
 
 __all__ = ['list', 'help', 'load']  # noqa
+=======
+from .hapi.hub import list  # noqa: F401
+from .hapi.hub import help  # noqa: F401
+from .hapi.hub import load  # noqa: F401
+
+__all__ = [  #noqa
+    'list', 'help', 'load'
+]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

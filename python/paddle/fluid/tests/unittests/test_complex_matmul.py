@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -22,6 +23,17 @@ import paddle.fluid.dygraph as dg
 
 
 class TestComplexMatMulLayer(unittest.TestCase):
+=======
+import paddle
+import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestComplexMatMulLayer(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [fluid.CPUPlace()]
@@ -39,12 +51,19 @@ class TestComplexMatMulLayer(unittest.TestCase):
                     pd_result,
                     np_result,
                     rtol=1e-05,
+<<<<<<< HEAD
                     err_msg='\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'.format(
                         place,
                         pd_result[~np.isclose(pd_result, np_result)],
                         np_result[~np.isclose(pd_result, np_result)],
                     ),
                 )
+=======
+                    err_msg=
+                    '\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'
+                    .format(place, pd_result[~np.isclose(pd_result, np_result)],
+                            np_result[~np.isclose(pd_result, np_result)]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def compare_op_by_basic_api(self, x, y, np_result):
         for place in self._places:
@@ -57,6 +76,7 @@ class TestComplexMatMulLayer(unittest.TestCase):
                     pd_result,
                     np_result,
                     rtol=1e-05,
+<<<<<<< HEAD
                     err_msg='\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'.format(
                         place,
                         pd_result[~np.isclose(pd_result, np_result)],
@@ -72,6 +92,21 @@ class TestComplexMatMulLayer(unittest.TestCase):
             y = np.random.random((2, 3, 5, 4)).astype(
                 dtype
             ) + 1j * np.random.random((2, 3, 5, 4)).astype(dtype)
+=======
+                    err_msg=
+                    '\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'
+                    .format(place, pd_result[~np.isclose(pd_result, np_result)],
+                            np_result[~np.isclose(pd_result, np_result)]))
+
+    def test_complex_xy(self):
+        for dtype in self._dtypes:
+            x = np.random.random(
+                (2, 3, 4, 5)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 4, 5)).astype(dtype)
+            y = np.random.random(
+                (2, 3, 5, 4)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 5, 4)).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             np_result = np.matmul(x, y)
 
@@ -80,9 +115,15 @@ class TestComplexMatMulLayer(unittest.TestCase):
 
     def test_complex_x_real_y(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = np.random.random((2, 3, 4, 5)).astype(
                 dtype
             ) + 1j * np.random.random((2, 3, 4, 5)).astype(dtype)
+=======
+            x = np.random.random(
+                (2, 3, 4, 5)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 4, 5)).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             y = np.random.random((2, 3, 5, 4)).astype(dtype)
 
             np_result = np.matmul(x, y)
@@ -94,9 +135,15 @@ class TestComplexMatMulLayer(unittest.TestCase):
     def test_real_x_complex_y(self):
         for dtype in self._dtypes:
             x = np.random.random((2, 3, 4, 5)).astype(dtype)
+<<<<<<< HEAD
             y = np.random.random((2, 3, 5, 4)).astype(
                 dtype
             ) + 1j * np.random.random((2, 3, 5, 4)).astype(dtype)
+=======
+            y = np.random.random(
+                (2, 3, 5, 4)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 5, 4)).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             np_result = np.matmul(x, y)
 
@@ -107,12 +154,20 @@ class TestComplexMatMulLayer(unittest.TestCase):
     # for coverage
     def test_complex_xy_gemv(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = np.random.random((2, 1, 100)).astype(
                 dtype
             ) + 1j * np.random.random((2, 1, 100)).astype(dtype)
             y = np.random.random((100)).astype(dtype) + 1j * np.random.random(
                 (100)
             ).astype(dtype)
+=======
+            x = np.random.random(
+                (2, 1, 100)).astype(dtype) + 1J * np.random.random(
+                    (2, 1, 100)).astype(dtype)
+            y = np.random.random((100)).astype(dtype) + 1J * np.random.random(
+                (100)).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             np_result = np.matmul(x, y)
 
@@ -122,18 +177,38 @@ class TestComplexMatMulLayer(unittest.TestCase):
     # for coverage
     def test_complex_xy_gemm(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = np.random.random((1, 2, 50)).astype(
                 dtype
             ) + 1j * np.random.random((1, 2, 50)).astype(dtype)
             y = np.random.random((1, 50, 2)).astype(
                 dtype
             ) + 1j * np.random.random((1, 50, 2)).astype(dtype)
+=======
+            x = np.random.random(
+                (1, 2, 50)).astype(dtype) + 1J * np.random.random(
+                    (1, 2, 50)).astype(dtype)
+            y = np.random.random(
+                (1, 50, 2)).astype(dtype) + 1J * np.random.random(
+                    (1, 50, 2)).astype(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             np_result = np.matmul(x, y)
 
             self.compare_by_basic_api(x, y, np_result)
             self.compare_op_by_basic_api(x, y, np_result)
 
+<<<<<<< HEAD
+=======
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_complex_xy_gemm()
+            self.test_complex_xy_gemv()
+            self.test_real_x_complex_y()
+            self.test_complex_x_real_y()
+            self.test_complex_xy()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

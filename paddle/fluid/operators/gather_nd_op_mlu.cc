@@ -20,13 +20,24 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class GatherNdMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *x = ctx.Input<phi::DenseTensor>("X");
     auto *index = ctx.Input<phi::DenseTensor>("Index");
     auto *out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto *x = ctx.Input<Tensor>("X");
+    auto *index = ctx.Input<Tensor>("Index");
+    auto *out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto place = ctx.GetPlace();
     out->template mutable_data<T>(place);
@@ -69,10 +80,17 @@ template <typename T>
 class GatherNdGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *index = ctx.Input<phi::DenseTensor>("Index");
     auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *x = ctx.Input<phi::DenseTensor>("X");
+=======
+    auto *index = ctx.Input<Tensor>("Index");
+    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *x = ctx.Input<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if (dx->numel() == 0) return;
     if (index->numel() == 0) {
@@ -81,8 +99,13 @@ class GatherNdGradMLUKernel : public framework::OpKernel<T> {
       return;
     }
 
+<<<<<<< HEAD
     phi::DenseTensor tmp_tensor(index->type());
     phi::DenseTensor tmp_tensor2(dout->type());
+=======
+    framework::Tensor tmp_tensor(index->type());
+    framework::Tensor tmp_tensor2(dout->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);

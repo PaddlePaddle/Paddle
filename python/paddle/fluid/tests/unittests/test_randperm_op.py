@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
@@ -26,22 +27,42 @@ def check_randperm_out(n, data_np):
     assert isinstance(
         data_np, np.ndarray
     ), "The input data_np should be np.ndarray."
+=======
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.fluid.core as core
+from paddle.static import program_guard, Program
+from paddle.fluid.framework import _test_eager_guard
+import os
+
+
+def check_randperm_out(n, data_np):
+    assert isinstance(data_np, np.ndarray), \
+        "The input data_np should be np.ndarray."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     gt_sorted = np.arange(n)
     out_sorted = np.sort(data_np)
     return list(gt_sorted == out_sorted)
 
 
 def error_msg(data_np):
+<<<<<<< HEAD
     return (
         "The sorted ground truth and sorted out should "
         + "be equal, out = "
         + str(data_np)
     )
+=======
+    return "The sorted ground truth and sorted out should " + \
+ "be equal, out = " + str(data_np)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def convert_dtype(dtype_str):
     dtype_str_list = ["int32", "int64", "float32", "float64"]
     dtype_num_list = [
+<<<<<<< HEAD
         core.VarDesc.VarType.INT32,
         core.VarDesc.VarType.INT64,
         core.VarDesc.VarType.FP32,
@@ -50,11 +71,22 @@ def convert_dtype(dtype_str):
     assert dtype_str in dtype_str_list, (
         dtype_str + " should in " + str(dtype_str_list)
     )
+=======
+        core.VarDesc.VarType.INT32, core.VarDesc.VarType.INT64,
+        core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64
+    ]
+    assert dtype_str in dtype_str_list, dtype_str + \
+        " should in " + str(dtype_str_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return dtype_num_list[dtype_str_list.index(dtype_str)]
 
 
 class TestRandpermOp(OpTest):
+<<<<<<< HEAD
     """Test randperm op."""
+=======
+    """ Test randperm op."""
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.op_type = "randperm"
@@ -78,32 +110,61 @@ class TestRandpermOp(OpTest):
 
     def verify_output(self, outs):
         out_np = np.array(outs[0])
+<<<<<<< HEAD
         self.assertTrue(
             check_randperm_out(self.n, out_np), msg=error_msg(out_np)
         )
 
 
 class TestRandpermOpN(TestRandpermOp):
+=======
+        self.assertTrue(check_randperm_out(self.n, out_np),
+                        msg=error_msg(out_np))
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_check_output()
+
+
+class TestRandpermOpN(TestRandpermOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.n = 10000
 
 
 class TestRandpermOpInt32(TestRandpermOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.dtype = "int32"
 
 
 class TestRandpermOpFloat32(TestRandpermOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.dtype = "float32"
 
 
 class TestRandpermOpFloat64(TestRandpermOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_attrs(self):
         self.dtype = "float64"
 
 
 class TestRandpermOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
             self.assertRaises(ValueError, paddle.randperm, -3)
@@ -111,6 +172,7 @@ class TestRandpermOpError(unittest.TestCase):
 
 
 class TestRandpermAPI(unittest.TestCase):
+<<<<<<< HEAD
     def test_out(self):
         n = 10
         place = (
@@ -118,6 +180,13 @@ class TestRandpermAPI(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+
+    def test_out(self):
+        n = 10
+        place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         with program_guard(Program(), Program()):
             x1 = paddle.randperm(n)
             x2 = paddle.randperm(n, 'float32')
@@ -132,19 +201,29 @@ class TestRandpermAPI(unittest.TestCase):
 
 
 class TestRandpermImperative(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_out(self):
         paddle.disable_static()
         n = 10
         for dtype in ['int32', np.int64, 'float32', 'float64']:
             data_p = paddle.randperm(n, dtype)
             data_np = data_p.numpy()
+<<<<<<< HEAD
             self.assertTrue(
                 check_randperm_out(n, data_np), msg=error_msg(data_np)
             )
+=======
+            self.assertTrue(check_randperm_out(n, data_np),
+                            msg=error_msg(data_np))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
 
 
 class TestRandpermEager(unittest.TestCase):
+<<<<<<< HEAD
     def test_out(self):
         paddle.disable_static()
         n = 10
@@ -154,10 +233,26 @@ class TestRandpermEager(unittest.TestCase):
             self.assertTrue(
                 check_randperm_out(n, data_np), msg=error_msg(data_np)
             )
+=======
+
+    def test_out(self):
+        paddle.disable_static()
+        n = 10
+        with _test_eager_guard():
+            for dtype in ['int32', np.int64, 'float32', 'float64']:
+                data_p = paddle.randperm(n, dtype)
+                data_np = data_p.numpy()
+                self.assertTrue(check_randperm_out(n, data_np),
+                                msg=error_msg(data_np))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
 
 
 class TestRandomValue(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_fixed_random_number(self):
         # Test GPU Fixed random number, which is generated by 'curandStatePhilox4_32_10_t'
         if not paddle.is_compiled_with_cuda():
@@ -170,6 +265,7 @@ class TestRandomValue(unittest.TestCase):
 
         x = paddle.randperm(30000, dtype='int32').numpy()
         expect = [
+<<<<<<< HEAD
             24562,
             8409,
             9379,
@@ -206,11 +302,23 @@ class TestRandomValue(unittest.TestCase):
             9950,
             15940,
             28343,
+=======
+            24562, 8409, 9379, 10328, 20503, 18059, 9681, 21883, 11783, 27413
+        ]
+        np.testing.assert_array_equal(x[0:10], expect)
+        expect = [
+            29477, 27100, 9643, 16637, 8605, 16892, 27767, 2724, 1612, 13096
+        ]
+        np.testing.assert_array_equal(x[10000:10010], expect)
+        expect = [
+            298, 4104, 16479, 22714, 28684, 7510, 14667, 9950, 15940, 28343
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         np.testing.assert_array_equal(x[20000:20010], expect)
 
         x = paddle.randperm(30000, dtype='int64').numpy()
         expect = [
+<<<<<<< HEAD
             6587,
             1909,
             5525,
@@ -234,6 +342,13 @@ class TestRandomValue(unittest.TestCase):
             1651,
             25806,
             4818,
+=======
+            6587, 1909, 5525, 23001, 6488, 14981, 14355, 3083, 29561, 8171
+        ]
+        np.testing.assert_array_equal(x[0:10], expect)
+        expect = [
+            23460, 12394, 22501, 5427, 20185, 9100, 5127, 1651, 25806, 4818
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         np.testing.assert_array_equal(x[10000:10010], expect)
         expect = [5829, 4508, 16193, 24836, 8526, 242, 9984, 9243, 1977, 11839]
@@ -241,6 +356,7 @@ class TestRandomValue(unittest.TestCase):
 
         x = paddle.randperm(30000, dtype='float32').numpy()
         expect = [
+<<<<<<< HEAD
             5154.0,
             10537.0,
             14362.0,
@@ -277,11 +393,26 @@ class TestRandomValue(unittest.TestCase):
             16899.0,
             16339.0,
             4662.0,
+=======
+            5154., 10537., 14362., 29843., 27185., 28399., 27561., 4144.,
+            22906., 10705.
+        ]
+        np.testing.assert_array_equal(x[0:10], expect)
+        expect = [
+            1958., 18414., 20090., 21910., 22746., 27346., 22347., 3002., 4564.,
+            26991.
+        ]
+        np.testing.assert_array_equal(x[10000:10010], expect)
+        expect = [
+            25580., 12606., 553., 16387., 29536., 4241., 20946., 16899., 16339.,
+            4662.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         np.testing.assert_array_equal(x[20000:20010], expect)
 
         x = paddle.randperm(30000, dtype='float64').numpy()
         expect = [
+<<<<<<< HEAD
             19051.0,
             2449.0,
             21940.0,
@@ -318,6 +449,20 @@ class TestRandomValue(unittest.TestCase):
             26753.0,
             12202.0,
             21404.0,
+=======
+            19051., 2449., 21940., 11121., 282., 7330., 13747., 24321., 21147.,
+            9163.
+        ]
+        np.testing.assert_array_equal(x[0:10], expect)
+        expect = [
+            15483., 1315., 5723., 20954., 13251., 25539., 5074., 1823., 14945.,
+            17624.
+        ]
+        np.testing.assert_array_equal(x[10000:10010], expect)
+        expect = [
+            10516., 2552., 29970., 5941., 986., 8007., 24805., 26753., 12202.,
+            21404.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         np.testing.assert_array_equal(x[20000:20010], expect)
         paddle.enable_static()

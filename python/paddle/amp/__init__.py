@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .auto_cast import auto_cast  # noqa: F401
+<<<<<<< HEAD
 from .auto_cast import decorate  # noqa: F401
 from .auto_cast import amp_guard  # noqa: F401
 from .auto_cast import amp_decorate  # noqa: F401
@@ -26,5 +27,9 @@ from . import grad_scaler  # noqa: F401
 from .grad_scaler import GradScaler  # noqa: F401
 from .grad_scaler import AmpScaler  # noqa: F401
 from .grad_scaler import OptimizerState  # noqa: F401
+=======
+from .grad_scaler import GradScaler  # noqa: F401
+from .auto_cast import decorate  # noqa: F401
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = ['auto_cast', 'GradScaler', 'decorate']

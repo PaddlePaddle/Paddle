@@ -146,7 +146,11 @@ class Pass {
     }
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
+<<<<<<< HEAD
       VLOG(8) << "deleting " << attr_name;
+=======
+      VLOG(3) << "deleting " << attr_name;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       delete attr;
     };
   }

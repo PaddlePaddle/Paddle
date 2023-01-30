@@ -19,6 +19,7 @@
 #     Copyright 2021, Jiaao He. All rights reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
+<<<<<<< HEAD
 import paddle
 import paddle.nn as nn
 
@@ -26,6 +27,17 @@ from .base_gate import BaseGate
 
 
 class NaiveGate(BaseGate):
+=======
+from .base_gate import BaseGate
+
+import paddle
+import paddle.nn as nn
+import paddle.nn.functional as F
+
+
+class NaiveGate(BaseGate):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, d_model, num_expert, world_size, topk=2):
         super().__init__(num_expert, world_size)
         self.gate = nn.Linear(d_model, self.tot_expert)
@@ -35,9 +47,17 @@ class NaiveGate(BaseGate):
 
     def forward(self, inp, return_all_scores=False):
         gate = self.gate(inp)
+<<<<<<< HEAD
         gate_top_k_val, gate_top_k_idx = paddle.topk(
             gate, k=self.top_k, axis=-1, largest=True, sorted=False
         )
+=======
+        gate_top_k_val, gate_top_k_idx = paddle.topk(gate,
+                                                     k=self.top_k,
+                                                     axis=-1,
+                                                     largest=True,
+                                                     sorted=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if return_all_scores:
             return gate_top_k_val, gate_top_k_idx, gate

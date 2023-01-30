@@ -188,7 +188,11 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
       if (var == nullptr) {
         feed_vec_[i] = nullptr;
       } else {
+<<<<<<< HEAD
         feed_vec_[i] = var->GetMutable<phi::DenseTensor>();
+=======
+        feed_vec_[i] = var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
     }
   }
@@ -257,7 +261,11 @@ void DataFeed::CheckStart() {
 void DataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
+<<<<<<< HEAD
     feed_vec_[i] = scope.FindVar(use_slots_[i])->GetMutable<phi::DenseTensor>();
+=======
+    feed_vec_[i] = scope.FindVar(use_slots_[i])->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -1889,8 +1897,12 @@ void PaddleBoxDataFeed::AssignFeedVar(const Scope& scope) {
   // set rank offset memory
   int phase = GetCurrentPhase();  // join: 1, update: 0
   if (enable_pv_merge_ && phase == 1) {
+<<<<<<< HEAD
     rank_offset_ =
         scope.FindVar(rank_offset_name_)->GetMutable<phi::DenseTensor>();
+=======
+    rank_offset_ = scope.FindVar(rank_offset_name_)->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -2112,6 +2124,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetConfig(data_feed_desc);
 #endif
+<<<<<<< HEAD
   if (gpu_graph_mode_) {
     train_mode_ = true;
   } else {
@@ -2132,6 +2145,9 @@ void SlotRecordInMemoryDataFeed::InitGraphTrainResource() {
 #endif
 }
 #endif
+=======
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
   VLOG(3) << "SlotRecord LoadIntoMemory() begin, thread_id=" << thread_id_;
@@ -2498,7 +2514,11 @@ void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
   for (int i = 0; i < use_slot_size_; ++i) {
     feed_vec_[i] =
+<<<<<<< HEAD
         scope.FindVar(used_slots_info_[i].slot)->GetMutable<phi::DenseTensor>();
+=======
+        scope.FindVar(used_slots_info_[i].slot)->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -2669,7 +2689,11 @@ bool SlotRecordInMemoryDataFeed::Start() {
   pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
 #endif
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+<<<<<<< HEAD
   gpu_graph_data_generator_.SetFeedVec(feed_vec_);
+=======
+  gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
   return true;
 }
@@ -2711,12 +2735,15 @@ int SlotRecordInMemoryDataFeed::Next() {
 #endif
 }
 
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::DoWalkandSage() {
   gpu_graph_data_generator_.DoWalkandSage();
 }
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
   int offset_cols_size = (ins_num + 1);
@@ -2743,8 +2770,13 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
   // alloc gpu memory
   pack_->resize_tensor();
 
+<<<<<<< HEAD
   phi::DenseTensor& float_tensor = pack_->float_tensor();
   phi::DenseTensor& uint64_tensor = pack_->uint64_tensor();
+=======
+  LoDTensor& float_tensor = pack_->float_tensor();
+  LoDTensor& uint64_tensor = pack_->uint64_tensor();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int64_t float_offset = 0;
   int64_t uint64_offset = 0;

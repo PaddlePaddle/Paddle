@@ -38,12 +38,21 @@ template <typename DeviceContext, typename T>
 class MarginRankLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
+<<<<<<< HEAD
     auto* out_t = ctx.Output<phi::DenseTensor>("Out");
     auto* act_t = ctx.Output<phi::DenseTensor>("Activated");
 
     auto* label_t = ctx.Input<phi::DenseTensor>("Label");
     auto* x1_t = ctx.Input<phi::DenseTensor>("X1");
     auto* x2_t = ctx.Input<phi::DenseTensor>("X2");
+=======
+    auto* out_t = ctx.Output<framework::Tensor>("Out");
+    auto* act_t = ctx.Output<framework::Tensor>("Activated");
+
+    auto* label_t = ctx.Input<framework::Tensor>("Label");
+    auto* x1_t = ctx.Input<framework::Tensor>("X1");
+    auto* x2_t = ctx.Input<framework::Tensor>("X2");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     out_t->mutable_data<T>(ctx.GetPlace());
     act_t->mutable_data<T>(ctx.GetPlace());
@@ -66,12 +75,23 @@ template <typename DeviceContext, typename T>
 class MarginRankLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
+<<<<<<< HEAD
     auto* d_x1_t = ctx.Output<phi::DenseTensor>(framework::GradVarName("X1"));
     auto* d_x2_t = ctx.Output<phi::DenseTensor>(framework::GradVarName("X2"));
 
     auto* act_t = ctx.Input<phi::DenseTensor>("Activated");
     auto* d_out_t = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* label_t = ctx.Input<phi::DenseTensor>("Label");
+=======
+    auto* d_x1_t =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X1"));
+    auto* d_x2_t =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("X2"));
+
+    auto* act_t = ctx.Input<framework::Tensor>("Activated");
+    auto* d_out_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* label_t = ctx.Input<framework::Tensor>("Label");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto d_out = framework::EigenVector<T>::Flatten(*d_out_t);
     auto act = framework::EigenVector<T>::Flatten(*act_t);

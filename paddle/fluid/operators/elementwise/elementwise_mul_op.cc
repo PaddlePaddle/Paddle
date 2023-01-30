@@ -19,9 +19,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
+<<<<<<< HEAD
 #include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -31,6 +34,7 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X \\\\odot Y"; }
 
   void AddInputX() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
@@ -42,6 +46,17 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
         "Y",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
         "should be int32, int64, float32, float64.");
+=======
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   std::string GetOpFuntionality() const override {
@@ -66,6 +81,7 @@ class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+<<<<<<< HEAD
 class ElementwiseMulGradCompositeOpMaker
     : public prim::GradCompositeOpMakerBase {
   using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
@@ -94,6 +110,8 @@ class ElementwiseMulGradCompositeOpMaker
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class ElementwiseMulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -154,8 +172,12 @@ REGISTER_OPERATOR(elementwise_mul,
                   ops::ElementwiseMulOpMaker,
                   ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
+<<<<<<< HEAD
                   ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>,
                   ops::ElementwiseMulGradCompositeOpMaker);
+=======
+                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 REGISTER_OPERATOR(
     elementwise_mul_grad,
     ops::ElementwiseOpGrad,

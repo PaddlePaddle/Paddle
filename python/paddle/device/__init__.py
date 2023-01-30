@@ -22,7 +22,10 @@ from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
 from . import cuda
+<<<<<<< HEAD
 from . import xpu
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = [  # noqa
     'get_cudnn_version',
@@ -38,7 +41,10 @@ __all__ = [  # noqa
     'is_compiled_with_rocm',
     'is_compiled_with_npu',
     'is_compiled_with_mlu',
+<<<<<<< HEAD
     'is_compiled_with_custom_device',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'get_all_device_type',
     'get_all_custom_device_type',
     'get_available_device',
@@ -54,8 +60,12 @@ def is_compiled_with_npu():
     """
     Whether paddle was built with WITH_ASCEND_CL=ON to support Ascend NPU.
 
+<<<<<<< HEAD
     Return:
         bool, ``True`` if NPU is supported, otherwise ``False``.
+=======
+    Returns (bool): `True` if NPU is supported, otherwise `False`.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
         .. code-block:: python
@@ -66,6 +76,7 @@ def is_compiled_with_npu():
     return core.is_compiled_with_npu()
 
 
+<<<<<<< HEAD
 def is_compiled_with_custom_device(device_type):
     """
     Whether paddle was built with Paddle_CUSTOM_DEVICE .
@@ -84,6 +95,8 @@ def is_compiled_with_custom_device(device_type):
     return core.is_compiled_with_custom_device(device_type)
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 def is_compiled_with_ipu():
     """
     Whether paddle was built with WITH_IPU=ON to support Graphcore IPU.
@@ -140,7 +153,11 @@ def XPUPlace(dev_id):
         .. code-block:: python
 
             # required: xpu
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
             place = paddle.device.XPUPlace(0)
     """
@@ -184,15 +201,25 @@ def MLUPlace(dev_id):
 
 def get_cudnn_version():
     """
+<<<<<<< HEAD
     This funciton return the version of cudnn. the retuen value is int which represents the
     cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
 
+=======
+    This funciton return the version of cudnn. the retuen value is int which represents the 
+    cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         int: A int value which represents the cudnn version. If cudnn version is not installed, it return None.
 
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
 
             cudnn_version = paddle.device.get_cudnn_version()
@@ -216,6 +243,7 @@ def get_cudnn_version():
 
 def _convert_to_place(device):
     lower_device = device.lower()
+<<<<<<< HEAD
     if device in core.get_all_custom_device_type():
         selected_devices = os.getenv(
             "FLAGS_selected_{}s".format(device), "0"
@@ -237,21 +265,40 @@ def _convert_to_place(device):
                 "The device should not be 'xpu', "
                 "since PaddlePaddle is not compiled with XPU"
             )
+=======
+    if lower_device == 'cpu':
+        place = core.CPUPlace()
+    elif lower_device == 'gpu':
+        if not core.is_compiled_with_cuda():
+            raise ValueError("The device should not be 'gpu', "
+                             "since PaddlePaddle is not compiled with CUDA")
+        place = core.CUDAPlace(ParallelEnv().dev_id)
+    elif lower_device == 'xpu':
+        if not core.is_compiled_with_xpu():
+            raise ValueError("The device should not be 'xpu', "
+                             "since PaddlePaddle is not compiled with XPU")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
         device_id = int(selected_xpus[0])
         place = core.XPUPlace(device_id)
     elif lower_device == 'npu':
         if not core.is_compiled_with_npu():
+<<<<<<< HEAD
             raise ValueError(
                 "The device should not be 'npu', "
                 "since PaddlePaddle is not compiled with NPU"
             )
+=======
+            raise ValueError("The device should not be 'npu', "
+                             "since PaddlePaddle is not compiled with NPU")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
         device_id = int(selected_npus[0])
         place = core.NPUPlace(device_id)
     elif lower_device == 'ipu':
         if not core.is_compiled_with_ipu():
             raise ValueError(
+<<<<<<< HEAD
                 "The device should not be 'ipu', "
                 "since PaddlePaddle is not compiled with IPU"
             )
@@ -265,17 +312,54 @@ def _convert_to_place(device):
         selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
         device_id = int(selected_mlus[0])
         place = core.MLUPlace(device_id)
+=======
+                "The device should not be 'ipu', " \
+                "since PaddlePaddle is not compiled with IPU")
+        place = core.IPUPlace()
+    elif lower_device == 'mlu':
+        if not core.is_compiled_with_mlu():
+            raise ValueError("The device should not be 'mlu', "
+                             "since PaddlePaddle is not compiled with MLU")
+        selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
+        device_id = int(selected_mlus[0])
+        place = core.MLUPlace(device_id)
+    elif device in core.get_all_custom_device_type():
+        selected_devices = os.getenv("FLAGS_selected_{}s".format(device),
+                                     "0").split(",")
+        device_id = int(selected_devices[0])
+        place = core.CustomPlace(device, device_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
         avaliable_npu_device = re.match(r'npu:\d+', lower_device)
         avaliable_mlu_device = re.match(r'mlu:\d+', lower_device)
+<<<<<<< HEAD
+=======
+        if not avaliable_gpu_device and not avaliable_xpu_device and not avaliable_npu_device and not avaliable_mlu_device:
+            device_info_list = device.split(':', 1)
+            device_type = device_info_list[0]
+            if device_type in core.get_all_custom_device_type():
+                device_id = device_info_list[1]
+                device_id = int(device_id)
+                place = core.CustomPlace(device_type, device_id)
+            else:
+                raise ValueError(
+                    "The device must be a string which is like 'cpu', {}".
+                    format(', '.join("'{}', '{}:x'".format(x, x)
+                                     for x in ['gpu', 'xpu', 'npu', 'mlu'] +
+                                     core.get_all_custom_device_type())))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
                 raise ValueError(
                     "The device should not be {}, since PaddlePaddle is "
+<<<<<<< HEAD
                     "not compiled with CUDA".format(avaliable_gpu_device)
                 )
+=======
+                    "not compiled with CUDA".format(avaliable_gpu_device))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
@@ -284,14 +368,19 @@ def _convert_to_place(device):
             if not core.is_compiled_with_xpu():
                 raise ValueError(
                     "The device should not be {}, since PaddlePaddle is "
+<<<<<<< HEAD
                     "not compiled with XPU".format(avaliable_xpu_device)
                 )
+=======
+                    "not compiled with XPU".format(avaliable_xpu_device))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.XPUPlace(device_id)
         if avaliable_npu_device:
             if not core.is_compiled_with_npu():
+<<<<<<< HEAD
                 device_info_list = device.split(':', 1)
                 device_type = device_info_list[0]
                 if device_type in core.get_all_custom_device_type():
@@ -306,6 +395,11 @@ def _convert_to_place(device):
                             avaliable_npu_device
                         )
                     )
+=======
+                raise ValueError(
+                    "The device should not be {}, since PaddlePaddle is "
+                    "not compiled with NPU".format(avaliable_npu_device))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
@@ -314,12 +408,17 @@ def _convert_to_place(device):
             if not core.is_compiled_with_mlu():
                 raise ValueError(
                     "The device should not be {}, since PaddlePaddle is "
+<<<<<<< HEAD
                     "not compiled with mlu".format(avaliable_mlu_device)
                 )
+=======
+                    "not compiled with mlu".format(avaliable_mlu_device))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.MLUPlace(device_id)
+<<<<<<< HEAD
         if (
             not avaliable_gpu_device
             and not avaliable_xpu_device
@@ -342,6 +441,8 @@ def _convert_to_place(device):
                         )
                     )
                 )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return place
 
 
@@ -359,7 +460,11 @@ def set_device(device):
     Examples:
 
      .. code-block:: python
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         import paddle
 
         paddle.device.set_device("cpu")
@@ -376,13 +481,21 @@ def get_device():
     """
     This funciton can get the current global device of the program is running.
     It's a string which is like 'cpu', 'gpu:x', 'xpu:x', 'mlu:x' and 'npu:x'. if the global device is not
+<<<<<<< HEAD
     set, it will return a string which is 'gpu:x' when cuda is avaliable or it
+=======
+    set, it will return a string which is 'gpu:x' when cuda is avaliable or it 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     will return a string which is 'cpu' when cuda is not avaliable.
 
     Examples:
 
      .. code-block:: python
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         import paddle
         device = paddle.device.get_device()
 
@@ -448,7 +561,11 @@ def get_all_custom_device_type():
     """
     Get all available custom device types.
 
+<<<<<<< HEAD
     Returns:
+=======
+    Returns: 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         A list of all available custom device types.
 
     Examples:

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -23,6 +24,17 @@ import paddle.static as static
 from paddle.distributed.fleet import auto
 from paddle.io import Dataset
 
+=======
+import numpy as np
+import paddle
+import paddle.static as static
+import paddle.nn as nn
+import paddle.nn.functional as F
+from paddle.io import Dataset
+
+from paddle.distributed.fleet import auto
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
@@ -41,7 +53,11 @@ my_feed_vars = []
 
 class TrainDataset(Dataset):
     def __init__(self, num_samples):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(TrainDataset, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.num_samples = num_samples
 
     def __getitem__(self, index):
@@ -55,7 +71,11 @@ class TrainDataset(Dataset):
 
 class TestDataset(Dataset):
     def __init__(self, num_samples):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(TestDataset, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.num_samples = num_samples
 
     def __getitem__(self, index):
@@ -74,7 +94,11 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MLPLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(

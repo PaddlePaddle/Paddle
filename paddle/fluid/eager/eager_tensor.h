@@ -136,8 +136,12 @@ class VariableCompatTensor
 
   void* AllocateFrom(phi::Allocator* allocator,
                      phi::DataType dtype,
+<<<<<<< HEAD
                      size_t requested_size = 0,
                      bool fake_alloc = false) override {
+=======
+                     size_t requested_size = 0) override {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "VariableCompatTensor does not support `AllocateFrom` method."));
   }
@@ -248,7 +252,12 @@ class EagerVariable final {
   std::shared_ptr<phi::TensorBase> GetTensorBase() {
     // Construct allocation only once.
     if (var_.IsInitialized()) {
+<<<<<<< HEAD
       if (var_.IsType<phi::DenseTensor>() || var_.IsType<phi::DenseTensor>()) {
+=======
+      if (var_.IsType<paddle::framework::LoDTensor>() ||
+          var_.IsType<paddle::framework::Tensor>()) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return SetImplWithLegacyTensor<phi::DenseTensor>();
       } else if (var_.IsType<phi::SelectedRows>()) {
         return SetImplWithLegacyTensor<phi::SelectedRows>();
@@ -286,7 +295,11 @@ class EagerVariable final {
   template <typename VarType>
   void ConstructVariableFromTensor(const paddle::experimental::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<VarType>();
+<<<<<<< HEAD
     // Contruct phi::DenseTensor from egr::EagerVariable
+=======
+    // Contruct framework::Tensor from egr::EagerVariable
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
     PADDLE_ENFORCE_EQ(
         (tensor_dense.get() && tensor_dense),
@@ -303,7 +316,11 @@ class EagerVariable final {
   void ConstructVariableFromCompatTensor(
       const paddle::experimental::Tensor& tensor) {
     auto* framework_holder = var_.GetMutable<VarType>();
+<<<<<<< HEAD
     // Contruct phi::DenseTensor from egr::EagerVariable
+=======
+    // Contruct framework::Tensor from egr::EagerVariable
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* compat_tensor =
         static_cast<VariableCompatTensor*>(tensor.impl().get());
     PADDLE_ENFORCE_NOT_NULL(compat_tensor,

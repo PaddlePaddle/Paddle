@@ -20,7 +20,11 @@
 namespace phi {
 
 template <typename InT, typename OutT>
+<<<<<<< HEAD
 struct CastFunctor {
+=======
+struct CastFuctor {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   __device__ __forceinline__ OutT operator()(const InT x) const {
     return static_cast<OutT>(x);
   }
@@ -36,7 +40,11 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   outputs.emplace_back(out);
   dev_ctx.Alloc<OutT>(out);
   phi::funcs::ElementwiseKernel<OutT>(
+<<<<<<< HEAD
       dev_ctx, inputs, &outputs, CastFunctor<InT, OutT>());
+=======
+      dev_ctx, inputs, &outputs, CastFuctor<InT, OutT>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

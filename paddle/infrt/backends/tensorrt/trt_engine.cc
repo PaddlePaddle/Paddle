@@ -244,11 +244,19 @@ bool TrtEngine::SetupNetworkAndConfig(const BuildOptions& build,
 }
 
 void TrtEngine::PrepareOutputHandle(const std::string& out_name) {
+<<<<<<< HEAD
   ::Tensor t;
   outputs_.emplace(out_name, t);
 }
 
 ::Tensor* TrtEngine::GetOutput(const std::string& name) {
+=======
+  ::phi::DenseTensor t;
+  outputs_.emplace(out_name, t);
+}
+
+::phi::DenseTensor* TrtEngine::GetOutput(const std::string& name) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return &outputs_[name];
 }
 
@@ -256,7 +264,11 @@ size_t TrtEngine::GetOutputNum() const { return outputs_.size(); }
 
 bool TrtEngine::SetUpInference(
     const InferenceOptions& inference,
+<<<<<<< HEAD
     const std::unordered_map<std::string, ::Tensor*>& inputs) {
+=======
+    const std::unordered_map<std::string, ::phi::DenseTensor*>& inputs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // TODO(wilber): now only create one exec_context
   FreshDeviceId();
   CHECK(engine_ != nullptr);

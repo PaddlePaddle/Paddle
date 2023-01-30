@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
@@ -21,6 +22,17 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+import os
+
+os.environ["WITH_DISTRIBUTE"] = "ON"
+import paddle.fluid as fluid
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
+import unittest
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -36,6 +48,7 @@ batch_size = 4
 
 
 class TestExponentialDecay(unittest.TestCase):
+<<<<<<< HEAD
     def net(self):
         input_data = paddle.static.data(
             name="sparse_input", shape=[None, 1], dtype="int64"
@@ -47,6 +60,20 @@ class TestExponentialDecay(unittest.TestCase):
         embedding = paddle.static.nn.embedding(
             input_data, is_sparse=True, size=[1000, 128]
         )
+=======
+
+    def net(self):
+        input_data = paddle.static.data(name="sparse_input",
+                                        shape=[None, 1],
+                                        dtype="int64")
+        input_label = paddle.static.data(name="label",
+                                         shape=[None, 1],
+                                         dtype="int64")
+        label = paddle.cast(input_label, dtype="float32")
+        embedding = paddle.static.nn.embedding(input_data,
+                                               is_sparse=True,
+                                               size=[1000, 128])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         fc1 = paddle.static.nn.fc(embedding, size=1024, activation="relu")
         fc2 = paddle.static.nn.fc(fc1, size=512, activation="relu")
@@ -59,6 +86,7 @@ class TestExponentialDecay(unittest.TestCase):
 
     def test(self):
         endpoints = [
+<<<<<<< HEAD
             "127.0.0.1:36004",
             "127.0.0.1:36005",
             "127.0.0.1:36006",
@@ -77,6 +105,22 @@ class TestExponentialDecay(unittest.TestCase):
         scheduler = paddle.optimizer.lr.InverseTimeDecay(
             learning_rate=base_lr, gamma=0.999, verbose=True
         )
+=======
+            "127.0.0.1:36004", "127.0.0.1:36005", "127.0.0.1:36006",
+            "127.0.0.1:36007"
+        ]
+
+        role = role_maker.UserDefinedRoleMaker(current_id=0,
+                                               role=role_maker.Role.SERVER,
+                                               worker_num=2,
+                                               server_endpoints=endpoints)
+
+        fleet.init(role)
+        loss = self.net()
+        scheduler = paddle.optimizer.lr.InverseTimeDecay(learning_rate=base_lr,
+                                                         gamma=0.999,
+                                                         verbose=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         optimizer = fluid.optimizer.Adam(scheduler)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()

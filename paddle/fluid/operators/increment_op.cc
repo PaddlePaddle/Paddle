@@ -39,12 +39,20 @@ class IncrementOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // IncrementOp kernel's device type is decided by input tensor place
     kt.set_backend(
         phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    // IncrementOp kernel's device type is decided by input tensor place
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return kt;
   }
 };
@@ -62,7 +70,11 @@ class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Increment Operator.
 
+<<<<<<< HEAD
 The equation is:
+=======
+The equation is: 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 $$Out = X + step$$
 
 )DOC");

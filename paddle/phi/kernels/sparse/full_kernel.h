@@ -22,14 +22,22 @@
 namespace phi {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void FullLikeCooKernel(const Context& dev_ctx,
+=======
+void CooFullLikeKernel(const Context& dev_ctx,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                        const SparseCooTensor& x,
                        const Scalar& val,
                        DataType dtype,
                        SparseCooTensor* out);
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void FullLikeCsrKernel(const Context& dev_ctx,
+=======
+void CsrFullLikeKernel(const Context& dev_ctx,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                        const SparseCsrTensor& x,
                        const Scalar& val,
                        DataType dtype,

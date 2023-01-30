@@ -71,6 +71,76 @@ inline void CompareAllKernelImpl(const Context& ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
+=======
+PD_REGISTER_KERNEL(less_than,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LessThanKernel,
+                   bool,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(less_equal,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LessEqualKernel,
+                   bool,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(greater_than,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::GreaterThanKernel,
+                   bool,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(greater_equal,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::GreaterEqualKernel,
+                   bool,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(equal,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::EqualKernel,
+                   bool,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(not_equal,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::NotEqualKernel,
+                   bool,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_KERNEL(equal_all,
                    CPU,
                    ALL_LAYOUT,
@@ -80,6 +150,7 @@ PD_REGISTER_KERNEL(equal_all,
                    int64_t,
                    float,
                    double) {}
+<<<<<<< HEAD
 
 #define PD_REGISTER_COMPARE_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name,                     \
@@ -110,3 +181,5 @@ PD_REGISTER_COMPARE_KERNEL(greater_than, GreaterThan)
 PD_REGISTER_COMPARE_KERNEL(greater_equal, GreaterEqual)
 PD_REGISTER_COMPARE_KERNEL(equal, Equal)
 PD_REGISTER_COMPARE_KERNEL(not_equal, NotEqual)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -55,6 +55,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/save_load_util.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -72,6 +76,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -88,7 +96,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -295,9 +306,15 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Default 100.
 
                 .. note::
+<<<<<<< HEAD
                     1. If you fetch data when calling the 'run', the ParallelExecutor
                     will clean up the temp variables at the end of the current iteration.
                     2. In some NLP model, it may cause the GPU memory is insufficient,
+=======
+                    1. If you fetch data when calling the 'run', the ParallelExecutor 
+                    will clean up the temp variables at the end of the current iteration. 
+                    2. In some NLP model, it may cause the GPU memory is insufficient, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     in this case, you should reduce `num_iteration_per_drop_scope`.
 
                 Examples:
@@ -633,6 +650,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, int nranks) {
             self.hierarchical_allreduce_inter_nranks_ = nranks;
           })
+<<<<<<< HEAD
       .def_property(
           "build_cinn_pass",
           [](const BuildStrategy &self) { return self.build_cinn_pass_; },
@@ -660,6 +678,9 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                               build_strategy = static.BuildStrategy()
                               build_strategy.build_cinn_pass = True
                     )DOC")
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
@@ -715,6 +736,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         build_strategy.fuse_gemm_epilogue = True
                      )DOC")
       .def_property(
+<<<<<<< HEAD
           "fused_attention",
           [](const BuildStrategy &self) { return self.fused_attention_; },
           [](BuildStrategy &self, bool b) {
@@ -741,6 +763,8 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         build_strategy.fused_attention = True
                      )DOC")
       .def_property(
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {
@@ -910,7 +934,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 synchronous batch normalization which synchronizes the mean
                 and variance through multi-devices in training phase.
                 Current implementation doesn't support FP16 training and CPU.
+<<<<<<< HEAD
                 And only synchronous on one machine, not all machines.
+=======
+                And only synchronous on one machine, not all machines. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 Default is False.
 
                 Examples:
@@ -948,9 +976,15 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           R"DOC((bool, optional): memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
+<<<<<<< HEAD
                 Default None. None means framework would choose to use or not use
                 this strategy automatically. Currently, None means that it is
                 enabled when GC is disabled, and disabled when GC is enabled.
+=======
+                Default None. None means framework would choose to use or not use 
+                this strategy automatically. Currently, None means that it is 
+                enabled when GC is disabled, and disabled when GC is enabled. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 True means enabling and False means disabling. Default is None.
 
                 Examples:
@@ -963,7 +997,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.memory_optimize = True
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 )DOC")
       .def_property(
           "is_distribution",
@@ -1038,12 +1076,15 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
              new_bs.ClearFinalized();
              return new_bs;
            })
+<<<<<<< HEAD
       .def("__str__",
            [](const BuildStrategy &self) {
              std::stringstream ss;
              ss << self;
              return ss.str();
            })
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def(
           "_finalize_strategy_and_create_passes",
           [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
@@ -1106,7 +1147,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
   using VarQuantScale =
+<<<<<<< HEAD
       std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+=======
+      std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)

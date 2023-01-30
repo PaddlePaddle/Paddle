@@ -56,7 +56,11 @@ using GradOpPtr = typename details::GradOpPtrTrait<T>::Type;
   operator fwd_op. After it is called (through operator()), the pairs of
   (gradient variable, corresponding input variable of fwd_op) will be added to
   grad_to_var. If an input variable of fwd_op is contained in no_grad_set, its
+<<<<<<< HEAD
   gradient variable will be ignored or kEmptyVarName depending on the template
+=======
+  gradient varialbe will be ignored or kEmptyVarName depending on the template
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   argument DropEmptyIG in the derived classes.
  */
 class GradOpDescMakerBase {

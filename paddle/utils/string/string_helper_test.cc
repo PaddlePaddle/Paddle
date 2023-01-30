@@ -63,6 +63,7 @@ TEST(StringHelper, JoinStringsWithConversion) {
       paddle::string::join_strings(v, ",", [](int x) { return x * x; });
   EXPECT_EQ(result, "4,9");
 }
+<<<<<<< HEAD
 
 TEST(StringHelper, SplitString) {
   std::string line = "hello world my world";
@@ -83,3 +84,5 @@ TEST(StringHelper, SplitString) {
   num = paddle::string::split_string_ptr(line.c_str(), -1, ' ', &vals, 3);
   EXPECT_EQ(num, 0);
 }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

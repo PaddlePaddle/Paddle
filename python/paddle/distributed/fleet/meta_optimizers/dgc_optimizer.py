@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+<<<<<<< HEAD
 import logging
 from functools import reduce
 
@@ -442,18 +443,39 @@ class DGCMomentumOptimizer(Optimizer):
 class DGCOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super().__init__(optimizer)
+=======
+from paddle.fluid.optimizer import Momentum, DGCMomentumOptimizer
+from .meta_optimizer_base import MetaOptimizerBase
+import logging
+
+__all__ = []
+
+
+class DGCOptimizer(MetaOptimizerBase):
+
+    def __init__(self, optimizer):
+        super(DGCOptimizer, self).__init__(optimizer)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inner_opt = optimizer
         self.dgc_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
         self.meta_optimizers_black_list = []
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
         super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(DGCOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _init_dgc_opt(self):
         if self.dgc_opt is not None:
@@ -483,8 +505,12 @@ class DGCOptimizer(MetaOptimizerBase):
             num_trainers=self.role_maker._worker_num(),
             regularization=opt.regularization,
             grad_clip=opt._grad_clip,
+<<<<<<< HEAD
             name=opt._name,
         )
+=======
+            name=opt._name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -510,6 +536,7 @@ class DGCOptimizer(MetaOptimizerBase):
         dist_strategy.dgc = True
         dist_strategy.dgc_configs = {"rampup_begin_step": 0, "rampup_step": 1}
 
+<<<<<<< HEAD
     def backward(
         self,
         loss,
@@ -522,6 +549,17 @@ class DGCOptimizer(MetaOptimizerBase):
         return self.dgc_opt.backward(
             loss, startup_program, parameter_list, no_grad_set, callbacks
         )
+=======
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+        self._init_dgc_opt()
+        return self.dgc_opt.backward(loss, startup_program, parameter_list,
+                                     no_grad_set, callbacks)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def apply_gradients(self, params_grads):
         self._init_dgc_opt()
@@ -529,6 +567,7 @@ class DGCOptimizer(MetaOptimizerBase):
 
     def apply_optimize(self, loss, startup_program, params_grads):
         self._init_dgc_opt()
+<<<<<<< HEAD
         return self.dgc_opt.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
@@ -540,4 +579,19 @@ class DGCOptimizer(MetaOptimizerBase):
         optimize_ops, params_grads = self.dgc_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )
+=======
+        return self.dgc_opt.apply_optimize(loss,
+                                           startup_program=startup_program,
+                                           params_grads=params_grads)
+
+    def minimize_impl(self,
+                      loss,
+                      startup_program=None,
+                      parameter_list=None,
+                      no_grad_set=None):
+        self._init_dgc_opt()
+        optimize_ops, params_grads = \
+            self.dgc_opt.minimize(loss, startup_program,
+                                  parameter_list, no_grad_set)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return optimize_ops, params_grads

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import inspect
 import unittest
 
@@ -20,11 +21,26 @@ from numpy import append
 import paddle
 from paddle.jit.dy2static.utils import FunctionNameLivenessAnalysis
 from paddle.utils import gast
+=======
+from __future__ import print_function
+
+import unittest
+
+import paddle
+from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
+from paddle.utils import gast
+import inspect
+from numpy import append
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 global_a = []
 
 
 class JudgeVisitor(gast.NodeVisitor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, ans, mod):
         self.ans = ans
         self.mod = mod
@@ -34,30 +50,49 @@ class JudgeVisitor(gast.NodeVisitor):
         expected = self.ans.get(node.name, set())
         exp_mod = self.mod.get(node.name, set())
         assert scope.existed_vars() == expected, "Not Equals."
+<<<<<<< HEAD
         assert (
             scope.modified_vars() == exp_mod
         ), "Not Equals in function:{} . expect {} , but get {}".format(
             node.name, exp_mod, scope.modified_vars()
         )
+=======
+        assert scope.modified_vars(
+        ) == exp_mod, "Not Equals in function:{} . expect {} , but get {}".format(
+            node.name, exp_mod, scope.modified_vars())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.generic_visit(node)
 
 
 class JudgePushPopVisitor(gast.NodeVisitor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, push_pop_vars):
         self.pp_var = push_pop_vars
 
     def visit_FunctionDef(self, node):
         scope = node.pd_scope
         expected = self.pp_var.get(node.name, set())
+<<<<<<< HEAD
         assert (
             scope.push_pop_vars == expected
         ), "Not Equals in function:{} . expect {} , but get {}".format(
             node.name, expected, scope.push_pop_vars
         )
+=======
+        assert scope.push_pop_vars == expected, "Not Equals in function:{} . expect {} , but get {}".format(
+            node.name, expected, scope.push_pop_vars)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.generic_visit(node)
 
 
 def test_normal_0(x):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def func():
         if True:
             i = 1
@@ -106,7 +141,12 @@ def test_nonlocal(x, *args, **kargs):
 
 
 def test_push_pop_1(x, *args, **kargs):
+<<<<<<< HEAD
     """push_pop_vars in main_function is : `l`, `k`"""
+=======
+    """ push_pop_vars in main_function is : `l`, `k`
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     l = []
     k = []
     for i in range(10):
@@ -116,7 +156,12 @@ def test_push_pop_1(x, *args, **kargs):
 
 
 def test_push_pop_2(x, *args, **kargs):
+<<<<<<< HEAD
     """push_pop_vars in main_function is : `k`"""
+=======
+    """ push_pop_vars in main_function is : `k`
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     l = []
     k = []
 
@@ -129,10 +174,17 @@ def test_push_pop_2(x, *args, **kargs):
 
 
 def test_push_pop_3(x, *args, **kargs):
+<<<<<<< HEAD
     """push_pop_vars in main_function is : `k`
     NOTE: One may expect `k` and `l` because l
           is nonlocal. Name bind analysis is
           not implemented yet.
+=======
+    """ push_pop_vars in main_function is : `k`
+        NOTE: One may expect `k` and `l` because l
+              is nonlocal. Name bind analysis is 
+              not implemented yet.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     l = []
     k = []
@@ -147,7 +199,12 @@ def test_push_pop_3(x, *args, **kargs):
 
 
 def test_push_pop_4(x, *args, **kargs):
+<<<<<<< HEAD
     """push_pop_vars in main_function is : `k`"""
+=======
+    """ push_pop_vars in main_function is : `k`
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     l = []
     k = []
     for i in range(10):
@@ -160,12 +217,17 @@ def test_push_pop_4(x, *args, **kargs):
 
 
 class TestClosureAnalysis(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.judge_type = "var and w_vars"
         self.init_dygraph_func()
 
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
+<<<<<<< HEAD
             test_nonlocal,
             test_global,
             test_normal_0,
@@ -173,6 +235,15 @@ class TestClosureAnalysis(unittest.TestCase):
         ]
         self.answer = [
             {'func': set('k'), 'test_nonlocal': set('i')},
+=======
+            test_nonlocal, test_global, test_normal_0, test_normal_argument
+        ]
+        self.answer = [
+            {
+                'func': set('k'),
+                'test_nonlocal': set('i')
+            },
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             {
                 'func': set({'i'}),
             },
@@ -185,27 +256,55 @@ class TestClosureAnalysis(unittest.TestCase):
         ]
 
         self.modified_var = [
+<<<<<<< HEAD
             {'func': set('ki'), 'test_nonlocal': set('i')},
             {'func': set({'i'}), 'test_global': set({"t"})},
             {
                 'func': set('i'),
             },
             {'func': set('i'), 'test_normal_argument': set('x')},
+=======
+            {
+                'func': set('ki'),
+                'test_nonlocal': set('i')
+            },
+            {
+                'func': set({'i'}),
+                'test_global': set({"t"})
+            },
+            {
+                'func': set('i'),
+            },
+            {
+                'func': set('i'),
+                'test_normal_argument': set('x')
+            },
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
     def test_main(self):
         if self.judge_type == 'push_pop_vars':
+<<<<<<< HEAD
             for push_pop_vars, func in zip(
                 self.push_pop_vars, self.all_dygraph_funcs
             ):
+=======
+            for push_pop_vars, func in zip(self.push_pop_vars,
+                                           self.all_dygraph_funcs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 test_func = inspect.getsource(func)
                 gast_root = gast.parse(test_func)
                 name_visitor = FunctionNameLivenessAnalysis(gast_root)
                 JudgePushPopVisitor(push_pop_vars).visit(gast_root)
         else:
+<<<<<<< HEAD
             for mod, ans, func in zip(
                 self.modified_var, self.answer, self.all_dygraph_funcs
             ):
+=======
+            for mod, ans, func in zip(self.modified_var, self.answer,
+                                      self.all_dygraph_funcs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 test_func = inspect.getsource(func)
                 gast_root = gast.parse(test_func)
                 name_visitor = FunctionNameLivenessAnalysis(gast_root)
@@ -219,10 +318,15 @@ def TestClosureAnalysis_Attribute_func():
 
 
 class TestClosureAnalysis_Attribute(TestClosureAnalysis):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dygraph_func(self):
 
         self.all_dygraph_funcs = [TestClosureAnalysis_Attribute_func]
         self.answer = [{"TestClosureAnalysis_Attribute_func": set({'i'})}]
+<<<<<<< HEAD
         self.modified_var = [
             {
                 "TestClosureAnalysis_Attribute_func": set(
@@ -261,6 +365,38 @@ class TestClosureAnalysis_PushPop(TestClosureAnalysis):
 
 class TestPushPopTrans(unittest.TestCase):
     def test(self):
+=======
+        self.modified_var = [{
+            "TestClosureAnalysis_Attribute_func":
+            set({'i', 'self.current.function'})
+        }]
+
+
+class TestClosureAnalysis_PushPop(TestClosureAnalysis):
+
+    def init_dygraph_func(self):
+        self.judge_type = "push_pop_vars"
+        self.all_dygraph_funcs = [
+            test_push_pop_1, test_push_pop_2, test_push_pop_3, test_push_pop_4
+        ]
+        self.push_pop_vars = [{
+            "test_push_pop_1": set({'l', 'k'}),
+        }, {
+            "test_push_pop_2": set({'k'}),
+            "func": set("l"),
+        }, {
+            "test_push_pop_3": set({'k'}),
+            "func": set("l"),
+        }, {
+            "test_push_pop_4": set({'k', 'l'}),
+        }]
+
+
+class TestPushPopTrans(unittest.TestCase):
+
+    def test(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def vlist_of_dict(x):
             ma = {'a': []}
             for i in range(3):
@@ -298,7 +434,10 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     def test4(self):
+<<<<<<< HEAD
         import numpy as np
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])
@@ -311,7 +450,10 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     def test5(self):
+<<<<<<< HEAD
         import numpy as np
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])

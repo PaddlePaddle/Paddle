@@ -56,15 +56,26 @@ void Dropout(const std::vector<T> &x,
              bool is_test) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
+<<<<<<< HEAD
   auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   framework::TensorFromVector(x, ctx, tensor_x);
   tensor_x->Resize(x_dim);
 
   auto var_out = scope.Var("Out");
+<<<<<<< HEAD
   auto tensor_out = var_out->GetMutable<phi::DenseTensor>();
 
   auto var_mask = scope.Var("Mask");
   auto tensor_mask = var_mask->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+
+  auto var_mask = scope.Var("Mask");
+  auto tensor_mask = var_mask->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   framework::AttributeMap attrs;
   attrs.insert({"fix_seed", 1});
@@ -103,17 +114,29 @@ void DropoutGrad(std::vector<T> *dx,
   framework::Scope scope;
   const size_t n = x_dim[0] * x_dim[1];
   auto var_out = scope.Var("DOut");
+<<<<<<< HEAD
   auto tensor_out = var_out->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   framework::TensorFromVector(dout, ctx, tensor_out);
   tensor_out->Resize(x_dim);
 
   auto var_mask = scope.Var("Mask");
+<<<<<<< HEAD
   auto tensor_mask = var_mask->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_mask = var_mask->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   framework::TensorFromVector(mask, ctx, tensor_mask);
   tensor_mask->Resize(x_dim);
 
   auto var_dx = scope.Var("DX");
+<<<<<<< HEAD
   auto tensor_dx = var_dx->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_dx = var_dx->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   framework::AttributeMap attrs;
   attrs.insert({"dropout_prob", dropout_prob});
@@ -151,19 +174,33 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                const phi::GPUContext &ctx) {
   framework::Scope scope;
   auto place = ctx.GetPlace();
+<<<<<<< HEAD
   paddle::optional<phi::DenseTensor> scale_opt;
   if (scale.size() > 0) {
     auto var_scale = scope.Var("Scale");
     auto tensor_scale = var_scale->GetMutable<phi::DenseTensor>();
+=======
+  paddle::optional<framework::LoDTensor> scale_opt;
+  if (scale.size() > 0) {
+    auto var_scale = scope.Var("Scale");
+    auto tensor_scale = var_scale->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorFromVector(scale, ctx, tensor_scale);
     tensor_scale->Resize({cols});
     scale_opt = *tensor_scale;
   }
 
+<<<<<<< HEAD
   paddle::optional<phi::DenseTensor> bias_opt;
   if (bias.size() > 0) {
     auto var_bias = scope.Var("Bias");
     auto tensor_bias = var_bias->GetMutable<phi::DenseTensor>();
+=======
+  paddle::optional<framework::LoDTensor> bias_opt;
+  if (bias.size() > 0) {
+    auto var_bias = scope.Var("Bias");
+    auto tensor_bias = var_bias->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorFromVector(bias, ctx, tensor_bias);
     tensor_bias->Resize({cols});
 
@@ -171,11 +208,16 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
   }
 
   auto var_x = scope.Var("X");
+<<<<<<< HEAD
   auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   framework::TensorFromVector(x, ctx, tensor_x);
   tensor_x->Resize({rows, cols});
 
   auto var_y = scope.Var("Y");
+<<<<<<< HEAD
   auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
   tensor_y->Resize({rows, cols});
 
@@ -185,6 +227,17 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
 
   auto var_variance = scope.Var("Variance");
   auto tensor_variance = var_variance->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  tensor_y->Resize({rows, cols});
+
+  auto var_mean = scope.Var("Mean");
+  auto tensor_mean = var_mean->GetMutable<framework::LoDTensor>();
+  tensor_mean->Resize({rows});
+
+  auto var_variance = scope.Var("Variance");
+  auto tensor_variance = var_variance->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor_variance->Resize({rows});
   ctx.Wait();
   phi::LayerNormKernel<T>(static_cast<const phi::GPUContext &>(ctx),
@@ -193,6 +246,10 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                           bias_opt,
                           1e-5,
                           1,
+<<<<<<< HEAD
+=======
+                          false,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           tensor_y,
                           tensor_mean,
                           tensor_variance);

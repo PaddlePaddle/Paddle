@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -29,10 +34,16 @@ paddle.enable_static()
 def conv3dtranspose_forward_naive(input_, filter_, attrs):
     padding_algorithm = attrs['padding_algorithm']
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
+<<<<<<< HEAD
         raise ValueError(
             "Unknown Attr(padding_algorithm): '%s'. "
             "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
         )
+=======
+        raise ValueError("Unknown Attr(padding_algorithm): '%s'. "
+                         "It can only be 'SAME' or 'VALID'." %
+                         str(padding_algorithm))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if attrs['data_format'] == 'NHWC':
         input_ = np.transpose(input_, [0, 4, 1, 2, 3])
@@ -43,6 +54,7 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     out_c = f_out_c * groups
     sub_in_c = in_c // groups
 
+<<<<<<< HEAD
     stride, pad, dilations = (
         attrs['strides'],
         attrs['paddings'],
@@ -58,6 +70,19 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
             pad_sum = np.max(
                 ((out_size - 1) * stride_size + filter_size - input_size, 0)
             )
+=======
+    stride, pad, dilations = attrs['strides'], attrs['paddings'], attrs[
+        'dilations']
+
+    def _get_padding_with_SAME(input_shape, kernel_size, kernel_stride):
+        padding = []
+        for input_size, filter_size, stride_size in zip(input_shape,
+                                                        kernel_size,
+                                                        kernel_stride):
+            out_size = int((input_size + stride_size - 1) / stride_size)
+            pad_sum = np.max(
+                ((out_size - 1) * stride_size + filter_size - input_size, 0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             pad_0 = int(pad_sum / 2)
             pad_1 = int(pad_sum - pad_0)
             padding.append(pad_0)
@@ -93,6 +118,7 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
             for i in range(in_h):
                 for j in range(in_w):
                     for g in range(groups):
+<<<<<<< HEAD
                         input_masked = input_[
                             n, g * sub_in_c : (g + 1) * sub_in_c, d, i, j
                         ]  # (c)
@@ -131,12 +157,39 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
         pad_h_0 : out_h - pad_h_1,
         pad_w_0 : out_w - pad_w_1,
     ]
+=======
+                        input_masked = input_[n,
+                                              g * sub_in_c:(g + 1) * sub_in_c,
+                                              d, i, j]  # (c)
+                        input_masked = np.reshape(input_masked,
+                                                  (sub_in_c, 1, 1, 1))
+                        input_masked = np.tile(input_masked, (1, f_d, f_h, f_w))
+
+                        for k in range(f_out_c):
+                            tmp_out = np.sum(input_masked *
+                                             filter_[g * sub_in_c:(g + 1) *
+                                                     sub_in_c, k, :, :, :],
+                                             axis=0)
+                            d1, d2 = d * stride[0], d * stride[0] + d_bolck_d
+                            i1, i2 = i * stride[1], i * stride[1] + d_bolck_h
+                            j1, j2 = j * stride[2], j * stride[2] + d_bolck_w
+                            out[n, g * f_out_c + k, d1:d2:dilations[0],
+                                i1:i2:dilations[1],
+                                j1:j2:dilations[2]] += tmp_out
+
+    out = out[:, :, pad_d_0:out_d - pad_d_1, pad_h_0:out_h - pad_h_1,
+              pad_w_0:out_w - pad_w_1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if attrs['data_format'] == 'NHWC':
         out = np.transpose(out, [0, 2, 3, 4, 1])
     return out
 
 
 class TestConv3DTransposeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -162,12 +215,20 @@ class TestConv3DTransposeOp(OpTest):
             'padding_algorithm': self.padding_algorithm,
             'dilations': self.dilations,
             'groups': self.groups,
+<<<<<<< HEAD
             'data_format': self.data_format,
         }
 
         output = conv3dtranspose_forward_naive(
             input_, filter_, self.attrs
         ).astype("float32")
+=======
+            'data_format': self.data_format
+        }
+
+        output = conv3dtranspose_forward_naive(input_, filter_,
+                                               self.attrs).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.outputs = {'Output': output}
 
@@ -188,6 +249,10 @@ class TestConv3DTransposeOp(OpTest):
 
 
 class TestWithSymmetricPad(TestConv3DTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.check_no_input = True
         self.pad = [1, 1, 1]
@@ -200,6 +265,10 @@ class TestWithSymmetricPad(TestConv3DTransposeOp):
 
 
 class TestWithAsymmetricPad(TestConv3DTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 0, 1, 0, 1, 2]
         self.stride = [1, 1, 1]
@@ -211,6 +280,10 @@ class TestWithAsymmetricPad(TestConv3DTransposeOp):
 
 
 class TestWithSAMEPad(TestConv3DTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1, 2]
         self.dilations = [1, 2, 1]
@@ -222,6 +295,10 @@ class TestWithSAMEPad(TestConv3DTransposeOp):
 
 
 class TestWithVALIDPad(TestConv3DTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [2, 1, 1]
         self.dilations = [1, 1, 1]
@@ -233,6 +310,10 @@ class TestWithVALIDPad(TestConv3DTransposeOp):
 
 
 class TestWithStride(TestConv3DTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.check_no_filter = True
         self.pad = [1, 1, 1]
@@ -245,6 +326,10 @@ class TestWithStride(TestConv3DTransposeOp):
 
 
 class TestWithDilation(TestConv3DTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -256,6 +341,10 @@ class TestWithDilation(TestConv3DTransposeOp):
 
 
 class Test_NHWC(TestConv3DTransposeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]

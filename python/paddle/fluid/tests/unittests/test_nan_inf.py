@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import subprocess
 import sys
@@ -23,6 +24,22 @@ import paddle
 
 
 class TestNanInf(unittest.TestCase):
+=======
+from __future__ import unicode_literals
+from __future__ import print_function
+
+import unittest
+import os
+import sys
+import subprocess
+import paddle
+
+paddle.enable_static()
+
+
+class TestNanInf(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self._python_interp = sys.executable
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
@@ -33,12 +50,19 @@ class TestNanInf(unittest.TestCase):
     def check_nan_inf(self):
         cmd = self._python_interp
 
+<<<<<<< HEAD
         proc = subprocess.Popen(
             cmd.split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=self.env,
         )
+=======
+        proc = subprocess.Popen(cmd.split(" "),
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                env=self.env)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         out, err = proc.communicate()
         returncode = proc.returncode
@@ -47,7 +71,15 @@ class TestNanInf(unittest.TestCase):
         print(err)
 
         # in python3, type(out+err) is 'bytes', need use encode
+<<<<<<< HEAD
         assert (out + err).find('There are NAN or INF'.encode()) != -1
+=======
+        if paddle.fluid.core.is_compiled_with_cuda():
+            assert (out + err).find('find nan or inf==='.encode()) != -1
+        else:
+            assert (out + err).find(
+                'There are `nan` or `inf` in tensor'.encode()) != -1
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_nan_inf_in_static_mode(self):
         self._python_interp += " check_nan_inf_base.py"
@@ -59,13 +91,20 @@ class TestNanInf(unittest.TestCase):
 
 
 class TestNanInfEnv(TestNanInf):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestNanInfEnv, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # windows python have some bug with env, so need use str to pass ci
         # otherwise, "TypeError: environment can only contain strings"
         self.env[str("PADDLE_INF_NAN_SKIP_OP")] = str("mul")
         self.env[str("PADDLE_INF_NAN_SKIP_ROLE")] = str("loss")
         self.env[str("PADDLE_INF_NAN_SKIP_VAR")] = str(
+<<<<<<< HEAD
             "elementwise_add:fc_0.tmp_1"
         )
 
@@ -160,6 +199,9 @@ class TestNanInfCheckResult(unittest.TestCase):
         )
         if paddle.fluid.core.is_compiled_with_cuda():
             self.check_nan_inf_level(use_cuda=True, dtype="float16")
+=======
+            "elementwise_add:fc_0.tmp_1")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

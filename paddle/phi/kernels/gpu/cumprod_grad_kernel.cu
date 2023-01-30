@@ -16,15 +16,24 @@
 
 #include <thrust/transform.h>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/inclusive_scan.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/inclusive_scan.h"
 // NOTE(@xiongkun): use of IsComplex<>
 #include "paddle/phi/core/utils/data_type.h"
+=======
+// NOTE(@xiongkun): use of IsComplex<>
+#include "paddle/fluid/framework/data_type.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -136,10 +145,13 @@ void CumprodGradKernel(const Context &dev_ctx,
 
   size_t outer_dim, mid_dim, inner_dim;
   GetCumprodDimInfo(x.dims(), dim, &outer_dim, &mid_dim, &inner_dim);
+<<<<<<< HEAD
   if (x.dims().size() == 0) {
     phi::Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
     return;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
   size_t numel = outer_dim * mid_dim * inner_dim;
@@ -156,7 +168,11 @@ void CumprodGradKernel(const Context &dev_ctx,
   const T *y_data_deal;
   Allocator::AllocationPtr x_conj;
   Allocator::AllocationPtr y_conj;
+<<<<<<< HEAD
   if (phi::IsComplexType(x.dtype())) {
+=======
+  if (paddle::framework::IsComplex<T>::value) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_conj = const_cast<Allocator &>(dev_ctx.GetAllocator())
                  .Allocate(numel * sizeof(T));
     auto *x_data_conj = reinterpret_cast<T *>(x_conj->ptr());
@@ -198,6 +214,7 @@ void CumprodGradKernel(const Context &dev_ctx,
   auto zero_mask = const_cast<Allocator &>(dev_ctx.GetAllocator())
                        .Allocate(numel * sizeof(uint8_t));
   auto *zero_mask_data = reinterpret_cast<uint8_t *>(zero_mask->ptr());
+<<<<<<< HEAD
   phi::funcs::InclusiveScan<uint8_t, cub::Max>(zero_mask_without_cummax_data,
                                                zero_mask_data,
                                                outer_dim,
@@ -207,6 +224,18 @@ void CumprodGradKernel(const Context &dev_ctx,
                                                cub::Max(),
                                                /*reverse=*/false,
                                                dev_ctx);
+=======
+  paddle::operators::math::InclusiveScan<uint8_t, cub::Max>(
+      zero_mask_without_cummax_data,
+      zero_mask_data,
+      outer_dim,
+      mid_dim,
+      inner_dim,
+      static_cast<uint8_t>(0),
+      cub::Max(),
+      /*reverse=*/false,
+      dev_ctx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   zero_mask_without_cummax = nullptr;
 
   // Step 2: calculate reversed cumsum(dy * y)
@@ -225,6 +254,7 @@ void CumprodGradKernel(const Context &dev_ctx,
           .Allocate(numel * sizeof(T));
   auto *dy_mul_y_reversed_cumsum_data =
       reinterpret_cast<T *>(dy_mul_y_reversed_cumsum->ptr());
+<<<<<<< HEAD
   phi::funcs::InclusiveScan<T, cub::Sum>(dy_mul_y_data,
                                          dy_mul_y_reversed_cumsum_data,
                                          outer_dim,
@@ -234,6 +264,18 @@ void CumprodGradKernel(const Context &dev_ctx,
                                          cub::Sum(),
                                          /*reverse=*/true,
                                          dev_ctx);
+=======
+  paddle::operators::math::InclusiveScan<T, cub::Sum>(
+      dy_mul_y_data,
+      dy_mul_y_reversed_cumsum_data,
+      outer_dim,
+      mid_dim,
+      inner_dim,
+      static_cast<T>(0),
+      cub::Sum(),
+      /*reverse=*/true,
+      dev_ctx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Step 3: calculate the gradient value except the first zero position.
   // The gradient value of the first zero position is filled with out[idx-1],
@@ -264,7 +306,11 @@ void CumprodGradKernel(const Context &dev_ctx,
   // Step 4: calculate cumprod of x_filled_one
   auto *x_filled_one_cumprod_data =
       dy_mul_y_reversed_cumsum_data;  // reuse former allocated memory
+<<<<<<< HEAD
   phi::funcs::InclusiveScan<T, funcs::MultiplyFunctor<T>>(
+=======
+  paddle::operators::math::InclusiveScan<T, funcs::MultiplyFunctor<T>>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       x_filled_one_data,
       x_filled_one_cumprod_data,
       outer_dim,
@@ -286,7 +332,11 @@ void CumprodGradKernel(const Context &dev_ctx,
                     funcs::MultiplyFunctor<T>());
   auto *dy_mul_x_filled_one_cumprod_reversed_cumsum =
       dy_mul_y_reversed_cumsum_data;  // reuse former allocated memory
+<<<<<<< HEAD
   phi::funcs::InclusiveScan<T, cub::Sum>(
+=======
+  paddle::operators::math::InclusiveScan<T, cub::Sum>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       dy_mul_x_filled_one_cumprod,
       dy_mul_x_filled_one_cumprod_reversed_cumsum,
       outer_dim,

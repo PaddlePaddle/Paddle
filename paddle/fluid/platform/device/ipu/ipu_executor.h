@@ -14,10 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include <mutex>
 
 #include <model_runtime/ModelRunner.hpp>
 #include <model_runtime/Tensor.hpp>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <popart/dataflow.hpp>
 #include <popart/half.hpp>
 #include <popart/names.hpp>
@@ -61,11 +64,14 @@ class Executor {
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
+<<<<<<< HEAD
   // Run popef session
   void RunPopef(const std::vector<const Tensor *> &inputs,
                 const std::vector<Tensor *> &outputs,
                 const framework::ExecutionContext &ctx);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Sync weights from popart to paddle
   void WeightsToHost();
 
@@ -97,15 +103,22 @@ class Executor {
   void ConvertWeights(bool);
   void WeightsFromPaddle();
   void WeightsToPaddle();
+<<<<<<< HEAD
   void PreparePopefSession();
   void ResetPopef();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   // Not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
   CompilerResources *compiler_resources_ = nullptr;
+<<<<<<< HEAD
   model_runtime::QueueManager *queue_manager_ = nullptr;
+=======
+  bool compile_only_ = false;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Deviceinfo for popart session
   std::shared_ptr<popart::DeviceInfo> device_;
@@ -113,6 +126,7 @@ class Executor {
   std::unique_ptr<popart::Session> session_;
   // A ExecutorResources corresponds to a graph
   std::unique_ptr<ExecutorResources> executor_resources_;
+<<<<<<< HEAD
   // mutex to lock session run.
   mutable std::mutex mutex_;
   // popef session
@@ -127,6 +141,8 @@ class Executor {
   // deconstruct before executor and cause undefined behavior.
   bool enable_model_runtime_executor_ = false;
   std::atomic_bool stop_ = {false};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace ipu

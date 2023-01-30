@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -46,6 +47,41 @@ class ConvBNLayer(fluid.Layer):
         self._batch_norm = paddle.nn.BatchNorm(
             num_filters, data_layout=data_format
         )
+=======
+from __future__ import print_function
+
+import unittest
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+from paddle.fluid.backward import calc_gradient
+import numpy as np
+
+
+class ConvBNLayer(fluid.Layer):
+
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 groups=1,
+                 data_format="NCHW"):
+        super(ConvBNLayer, self).__init__()
+
+        self._conv = paddle.nn.Conv2D(in_channels=num_channels,
+                                      out_channels=num_filters,
+                                      kernel_size=filter_size,
+                                      stride=stride,
+                                      padding=(filter_size - 1) // 2,
+                                      groups=groups,
+                                      bias_attr=False,
+                                      data_format=data_format)
+
+        self._batch_norm = paddle.nn.BatchNorm(num_filters,
+                                               data_layout=data_format)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -61,6 +97,7 @@ def create_program(data_format="NCHW"):
         x.stop_gradient = False
         if data_format == "NHWC":
             x = paddle.transpose(x, [0, 2, 3, 1])
+<<<<<<< HEAD
         x = paddle.static.nn.prelu(x, mode="channel")
         conv = ConvBNLayer(
             num_channels=3,
@@ -71,6 +108,16 @@ def create_program(data_format="NCHW"):
         y = conv(x) + x
 
         loss = paddle.sum(y)
+=======
+        x = fluid.layers.prelu(x, mode="channel")
+        conv = ConvBNLayer(num_channels=3,
+                           num_filters=3,
+                           filter_size=1,
+                           data_format=data_format)
+        y = conv(x) + x
+
+        loss = fluid.layers.reduce_sum(y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         sgd = fluid.optimizer.SGD(learning_rate=0.01)
         sgd.minimize(loss)
@@ -79,7 +126,13 @@ def create_program(data_format="NCHW"):
 
 
 class TestInplaceAddto(unittest.TestCase):
+<<<<<<< HEAD
     def check_result(self, data_format="NCHW"):
+=======
+
+    def check_result(self, data_format="NCHW"):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def run_program(enable_addto):
             np.random.seed(10)
             paddle.seed(10)
@@ -88,16 +141,22 @@ class TestInplaceAddto(unittest.TestCase):
                 fluid.set_flags({"FLAGS_cudnn_deterministic": True})
             fluid.set_flags({"FLAGS_max_inplace_grad_add": 2})
             loss, main, startup, w = create_program(data_format=data_format)
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if fluid.core.is_compiled_with_cuda()
                 else fluid.CPUPlace()
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = fluid.Executor(place)
 
             strategy = fluid.BuildStrategy()
             strategy.enable_addto = enable_addto
             compiled = fluid.CompiledProgram(main).with_data_parallel(
+<<<<<<< HEAD
                 loss_name=loss.name, build_strategy=strategy
             )
 
@@ -109,6 +168,17 @@ class TestInplaceAddto(unittest.TestCase):
                 res = exe.run(
                     compiled, feed={'img': img}, fetch_list=[loss.name, w.name]
                 )
+=======
+                loss_name=loss.name, build_strategy=strategy)
+
+            exe.run(startup)
+            img = np.random.uniform(-128, 128,
+                                    [8, 3, 224, 224]).astype(np.float32)
+            for i in range(10):
+                res = exe.run(compiled,
+                              feed={'img': img},
+                              fetch_list=[loss.name, w.name])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return res
 
         res1, w1 = run_program(True)

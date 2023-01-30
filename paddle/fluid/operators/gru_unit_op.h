@@ -23,6 +23,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 
 template <typename DeviceContext, typename T>
@@ -53,6 +58,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* input = context.Input<phi::DenseTensor>("Input");
     auto* hidden_prev = context.Input<phi::DenseTensor>("HiddenPrev");
     auto* weight = context.Input<phi::DenseTensor>("Weight");
@@ -63,6 +69,17 @@ class GRUUnitKernel : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>("ResetHiddenPrev");
     reset_hidden_prev->mutable_data<T>(context.GetPlace());
     auto* hidden = context.Output<phi::DenseTensor>("Hidden");
+=======
+    auto* input = context.Input<Tensor>("Input");
+    auto* hidden_prev = context.Input<Tensor>("HiddenPrev");
+    auto* weight = context.Input<Tensor>("Weight");
+    auto* bias = context.Input<Tensor>("Bias");
+    auto* gate = context.Output<Tensor>("Gate");
+    gate->mutable_data<T>(context.GetPlace());
+    auto* reset_hidden_prev = context.Output<Tensor>("ResetHiddenPrev");
+    reset_hidden_prev->mutable_data<T>(context.GetPlace());
+    auto* hidden = context.Output<Tensor>("Hidden");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     hidden->mutable_data<T>(context.GetPlace());
 
     int batch_size = input->dims()[0];
@@ -174,6 +191,7 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* input = context.Input<phi::DenseTensor>("Input");
     auto* hidden_prev = context.Input<phi::DenseTensor>("HiddenPrev");
     auto* weight = context.Input<phi::DenseTensor>("Weight");
@@ -192,6 +210,22 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
     phi::DenseTensor gate_grad;
     phi::DenseTensor reset_hidden_prev_grad;
+=======
+    auto* input = context.Input<Tensor>("Input");
+    auto* hidden_prev = context.Input<Tensor>("HiddenPrev");
+    auto* weight = context.Input<Tensor>("Weight");
+    auto* gate = context.Input<Tensor>("Gate");
+    auto* reset_hidden_prev = context.Input<Tensor>("ResetHiddenPrev");
+    auto* hidden_grad = context.Input<Tensor>(framework::GradVarName("Hidden"));
+    auto* input_grad = context.Output<Tensor>(framework::GradVarName("Input"));
+    auto* hidden_prev_grad =
+        context.Output<Tensor>(framework::GradVarName("HiddenPrev"));
+    auto* weight_grad =
+        context.Output<Tensor>(framework::GradVarName("Weight"));
+    auto* bias_grad = context.Output<Tensor>(framework::GradVarName("Bias"));
+    Tensor gate_grad;
+    Tensor reset_hidden_prev_grad;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const T* hidden_prev_data = hidden_prev->data<T>();
     const T* weight_data = weight->data<T>();

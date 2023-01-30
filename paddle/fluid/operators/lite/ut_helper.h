@@ -67,7 +67,11 @@ void serialize_params(std::string* str,
         scope->FindVar(param),
         platform::errors::NotFound("Block should already have a '%s' variable",
                                    param));
+<<<<<<< HEAD
     auto* tensor = scope->FindVar(param)->GetMutable<phi::DenseTensor>();
+=======
+    auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::SerializeToStream(os, *tensor, ctx);
   }
   *str = os.str();
@@ -81,7 +85,12 @@ float random(float low, float high) {
   std::uniform_real_distribution<double> dist(low, high);
   return dist(mt);
 }
+<<<<<<< HEAD
 void RandomizeTensor(phi::DenseTensor* tensor, const platform::Place& place) {
+=======
+void RandomizeTensor(framework::LoDTensor* tensor,
+                     const platform::Place& place) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(num_elements,
@@ -90,7 +99,11 @@ void RandomizeTensor(phi::DenseTensor* tensor, const platform::Place& place) {
                         "The input tensor dimension of the randomized tensor "
                         "function should be greater than zero."));
   platform::CPUPlace cpu_place;
+<<<<<<< HEAD
   phi::DenseTensor temp_tensor;
+=======
+  framework::LoDTensor temp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   temp_tensor.Resize(dims);
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
   for (size_t i = 0; i < num_elements; i++) {
@@ -104,7 +117,11 @@ void CreateTensor(framework::Scope* scope,
                   const std::vector<int64_t>& shape,
                   bool in_cuda = true) {
   auto* var = scope->Var(name);
+<<<<<<< HEAD
   auto* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
   platform::Place place;

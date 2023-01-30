@@ -155,7 +155,11 @@ class DDim {
 
   std::string to_str() const;
 
+<<<<<<< HEAD
   DDim reshape(std::vector<int>& shape) const;  // NOLINT
+=======
+  DDim reshape(std::vector<int>& shape) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   DDim transpose(const std::vector<int>& axis) const;
 
@@ -262,6 +266,7 @@ using DDim = phi::DDim;
 
 }  // namespace framework
 }  // namespace paddle
+<<<<<<< HEAD
 
 namespace std {
 template <>
@@ -269,3 +274,5 @@ struct hash<phi::DDim> {
   std::size_t operator()(phi::DDim const& ddim) const;
 };
 }  // namespace std
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

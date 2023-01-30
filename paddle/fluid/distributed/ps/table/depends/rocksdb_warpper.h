@@ -16,12 +16,17 @@
 #include <glog/logging.h>
 #include <rocksdb/db.h>
 #include <rocksdb/filter_policy.h>
+<<<<<<< HEAD
 #include <rocksdb/iostats_context.h>
 #include <rocksdb/options.h>
 #include <rocksdb/perf_context.h>
 #include <rocksdb/perf_level.h>
 #include <rocksdb/slice.h>
 #include <rocksdb/slice_transform.h>
+=======
+#include <rocksdb/options.h>
+#include <rocksdb/slice.h>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <rocksdb/table.h>
 #include <rocksdb/write_batch.h>
 
@@ -31,6 +36,7 @@
 namespace paddle {
 namespace distributed {
 
+<<<<<<< HEAD
 class Uint64Comparator : public rocksdb::Comparator {
   int Compare(const rocksdb::Slice& a, const rocksdb::Slice& b) const {
     uint64_t A = *(reinterpret_cast<const uint64_t*>(a.data()));
@@ -80,6 +86,8 @@ class RocksDBCtx {
   int cur_index;
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class RocksDBHandler {
  public:
   RocksDBHandler() {}
@@ -91,6 +99,7 @@ class RocksDBHandler {
   }
 
   int initialize(const std::string& db_path, const int colnum) {
+<<<<<<< HEAD
     VLOG(0) << "db path: " << db_path << " colnum: " << colnum;
     _dbs.resize(colnum);
     for (int i = 0; i < colnum; i++) {
@@ -154,6 +163,57 @@ class RocksDBHandler {
       assert(s.ok());
     }
     VLOG(0) << "DB initialize success, colnum:" << colnum;
+=======
+    VLOG(3) << "db path: " << db_path << " colnum: " << colnum;
+    rocksdb::Options options;
+    rocksdb::BlockBasedTableOptions bbto;
+    bbto.block_size = 4 * 1024;
+    bbto.block_cache = rocksdb::NewLRUCache(64 * 1024 * 1024);
+    bbto.block_cache_compressed = rocksdb::NewLRUCache(64 * 1024 * 1024);
+    bbto.cache_index_and_filter_blocks = false;
+    bbto.filter_policy.reset(rocksdb::NewBloomFilterPolicy(20, false));
+    bbto.whole_key_filtering = true;
+    options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
+
+    options.keep_log_file_num = 100;
+    options.max_log_file_size = 50 * 1024 * 1024;  // 50MB
+    options.create_if_missing = true;
+    options.use_direct_reads = true;
+    options.max_background_flushes = 5;
+    options.max_background_compactions = 5;
+    options.base_background_compactions = 10;
+    options.write_buffer_size = 256 * 1024 * 1024;  // 256MB
+    options.max_write_buffer_number = 8;
+    options.max_bytes_for_level_base =
+        options.max_write_buffer_number * options.write_buffer_size;
+    options.min_write_buffer_number_to_merge = 1;
+    options.target_file_size_base = 1024 * 1024 * 1024;  // 1024MB
+    options.memtable_prefix_bloom_size_ratio = 0.02;
+    options.num_levels = 4;
+    options.max_open_files = -1;
+
+    options.compression = rocksdb::kNoCompression;
+    options.level0_file_num_compaction_trigger = 8;
+    options.level0_slowdown_writes_trigger =
+        1.8 * options.level0_file_num_compaction_trigger;
+    options.level0_stop_writes_trigger =
+        3.6 * options.level0_file_num_compaction_trigger;
+
+    if (!db_path.empty()) {
+      std::string rm_cmd = "rm -rf " + db_path;
+      system(rm_cmd.c_str());
+    }
+
+    rocksdb::Status s = rocksdb::DB::Open(options, db_path, &_db);
+    assert(s.ok());
+    _handles.resize(colnum);
+    for (int i = 0; i < colnum; i++) {
+      s = _db->CreateColumnFamily(
+          options, "shard_" + std::to_string(i), &_handles[i]);
+      assert(s.ok());
+    }
+    LOG(INFO) << "DB initialize success, colnum:" << colnum;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return 0;
   }
 
@@ -161,32 +221,60 @@ class RocksDBHandler {
       int id, const char* key, int key_len, const char* value, int value_len) {
     rocksdb::WriteOptions options;
     options.disableWAL = true;
+<<<<<<< HEAD
     rocksdb::Status s = _dbs[id]->Put(options,
                                       rocksdb::Slice(key, key_len),
                                       rocksdb::Slice(value, value_len));
+=======
+    rocksdb::Status s = _db->Put(options,
+                                 _handles[id],
+                                 rocksdb::Slice(key, key_len),
+                                 rocksdb::Slice(value, value_len));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     assert(s.ok());
     return 0;
   }
 
   int put_batch(int id,
+<<<<<<< HEAD
                 std::vector<std::pair<char*, int>>& ssd_keys,    // NOLINT
                 std::vector<std::pair<char*, int>>& ssd_values,  // NOLINT
+=======
+                std::vector<std::pair<char*, int>>& ssd_keys,
+                std::vector<std::pair<char*, int>>& ssd_values,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 int n) {
     rocksdb::WriteOptions options;
     options.disableWAL = true;
     rocksdb::WriteBatch batch(n * 128);
     for (int i = 0; i < n; i++) {
+<<<<<<< HEAD
       batch.Put(rocksdb::Slice(ssd_keys[i].first, ssd_keys[i].second),
                 rocksdb::Slice(ssd_values[i].first, ssd_values[i].second));
     }
     rocksdb::Status s = _dbs[id]->Write(options, &batch);
+=======
+      batch.Put(_handles[id],
+                rocksdb::Slice(ssd_keys[i].first, ssd_keys[i].second),
+                rocksdb::Slice(ssd_values[i].first, ssd_values[i].second));
+    }
+    rocksdb::Status s = _db->Write(options, &batch);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     assert(s.ok());
     return 0;
   }
 
+<<<<<<< HEAD
   int get(int id, const char* key, int key_len, std::string& value) {  // NOLINT
     rocksdb::Status s = _dbs[id]->Get(
         rocksdb::ReadOptions(), rocksdb::Slice(key, key_len), &value);
+=======
+  int get(int id, const char* key, int key_len, std::string& value) {
+    rocksdb::Status s = _db->Get(rocksdb::ReadOptions(),
+                                 _handles[id],
+                                 rocksdb::Slice(key, key_len),
+                                 &value);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (s.IsNotFound()) {
       return 1;
     }
@@ -194,6 +282,7 @@ class RocksDBHandler {
     return 0;
   }
 
+<<<<<<< HEAD
   void multi_get(int id,
                  const size_t num_keys,
                  const rocksdb::Slice* keys,
@@ -211,17 +300,29 @@ class RocksDBHandler {
     rocksdb::WriteOptions options;
     options.disableWAL = true;
     rocksdb::Status s = _dbs[id]->Delete(options, rocksdb::Slice(key, key_len));
+=======
+  int del_data(int id, const char* key, int key_len) {
+    rocksdb::WriteOptions options;
+    options.disableWAL = true;
+    rocksdb::Status s =
+        _db->Delete(options, _handles[id], rocksdb::Slice(key, key_len));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     assert(s.ok());
     return 0;
   }
 
   int flush(int id) {
+<<<<<<< HEAD
     rocksdb::Status s = _dbs[id]->Flush(rocksdb::FlushOptions());
+=======
+    rocksdb::Status s = _db->Flush(rocksdb::FlushOptions(), _handles[id]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     assert(s.ok());
     return 0;
   }
 
   rocksdb::Iterator* get_iterator(int id) {
+<<<<<<< HEAD
     return _dbs[id]->NewIterator(rocksdb::ReadOptions());
   }
 
@@ -243,14 +344,25 @@ class RocksDBHandler {
     ifo.move_files = true;
     rocksdb::Status s = _dbs[id]->IngestExternalFile(sst_filelist, ifo);
     assert(s.ok());
+=======
+    return _db->NewIterator(rocksdb::ReadOptions(), _handles[id]);
+  }
+
+  int get_estimate_key_num(uint64_t& num_keys) {
+    _db->GetAggregatedIntProperty("rocksdb.estimate-num-keys", &num_keys);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return 0;
   }
 
  private:
   std::vector<rocksdb::ColumnFamilyHandle*> _handles;
+<<<<<<< HEAD
   // rocksdb::DB* _db;
   std::vector<rocksdb::DB*> _dbs;
   Uint64Comparator _comparator;
+=======
+  rocksdb::DB* _db;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 }  // namespace distributed
 }  // namespace paddle

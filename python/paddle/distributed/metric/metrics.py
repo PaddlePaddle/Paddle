@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import logging
 
 import yaml
 
+=======
+import sys
+import yaml
+import paddle.fluid as fluid
+import logging
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.utils.log_utils import get_logger
 
 __all__ = []
@@ -23,6 +30,7 @@ logger = get_logger(logging.INFO, name="metrics")
 
 
 # read metric config from yaml and init MetricMsg in fleet_wrapper
+<<<<<<< HEAD
 def init_metric(
     metric_ptr,
     metric_yaml_path,
@@ -37,6 +45,22 @@ def init_metric(
     yaml_fobj = open(metric_yaml_path)
 
     content = yaml.load(yaml_fobj, Loader=yaml.FullLoader)
+=======
+def init_metric(metric_ptr,
+                metric_yaml_path,
+                cmatch_rank_var="",
+                mask_var="",
+                uid_var="",
+                phase=-1,
+                cmatch_rank_group="",
+                ignore_rank=False,
+                bucket_size=1000000):
+    yaml_fobj = open(metric_yaml_path)
+    if sys.version.startswith('2.7.13'):
+        content = yaml.load(yaml_fobj)
+    else:
+        content = yaml.load(yaml_fobj, Loader=yaml.FullLoader)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     print("yaml metric config: \n")
     print(content)
@@ -50,6 +74,7 @@ def init_metric(
         phase = 1 if is_join else 0
 
         if metric_runner['method'] == 'AucCalculator':
+<<<<<<< HEAD
             metric_ptr.init_metric(
                 metric_runner['method'],
                 metric_runner['name'],
@@ -146,6 +171,55 @@ def init_metric(
                 ignore_rank,
                 bucket_size,
             )
+=======
+            metric_ptr.init_metric(metric_runner['method'],
+                                   metric_runner['name'],
+                                   metric_runner['label'],
+                                   metric_runner['target'], cmatch_rank_var,
+                                   mask_var, uid_var, phase, cmatch_rank_group,
+                                   ignore_rank, bucket_size)
+        elif metric_runner['method'] == 'MultiTaskAucCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                metric_runner['cmatch_var'], mask_var, uid_var, phase,
+                metric_runner['cmatch_group'], ignore_rank, bucket_size)
+        elif metric_runner['method'] == 'CmatchRankAucCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                metric_runner['cmatch_var'], mask_var, uid_var, phase,
+                metric_runner['cmatch_group'], metric_runner['ignore_rank'],
+                bucket_size)
+        elif metric_runner['method'] == 'MaskAucCalculator':
+            metric_ptr.init_metric(metric_runner['method'],
+                                   metric_runner['name'],
+                                   metric_runner['label'],
+                                   metric_runner['target'], cmatch_rank_var,
+                                   metric_runner['mask'], uid_var, phase,
+                                   cmatch_rank_group, ignore_rank, bucket_size)
+        elif metric_runner['method'] == 'CmatchRankMaskAucCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                metric_runner['cmatch_var'], metric_runner['mask'], uid_var,
+                phase, metric_runner['cmatch_group'],
+                metric_runner['ignore_rank'], bucket_size)
+        elif metric_runner['method'] == 'WuAucCalculator':
+            metric_ptr.init_metric(metric_runner['method'],
+                                   metric_runner['name'],
+                                   metric_runner['label'],
+                                   metric_runner['target'], cmatch_rank_var,
+                                   mask_var, metric_runner['uid'], phase,
+                                   cmatch_rank_group, ignore_rank, bucket_size)
+        else:
+            metric_ptr.init_metric(metric_runner['method'],
+                                   metric_runner['name'],
+                                   metric_runner['label'],
+                                   metric_runner['target'], cmatch_rank_var,
+                                   mask_var, phase, cmatch_rank_group,
+                                   ignore_rank, bucket_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def print_metric(metric_ptr, name):
@@ -154,6 +228,7 @@ def print_metric(metric_ptr, name):
     """
     if name.find("wuauc") != -1:
         metric = metric_ptr.get_wuauc_metric_msg(name)
+<<<<<<< HEAD
         monitor_msg = (
             "%s: User Count=%.0f INS Count=%.0f UAUC=%.6f WUAUC=%.6f "
             % (name, metric[0], metric[1], metric[4], metric[5])
@@ -175,6 +250,16 @@ def print_metric(metric_ptr, name):
                 metric[7],
             )
         )
+=======
+        monitor_msg = "%s: User Count=%.0f INS Count=%.0f UAUC=%.6f WUAUC=%.6f "\
+           % (name, metric[0], metric[1], metric[4], metric[5])
+    else:
+        metric = metric_ptr.get_metric_msg(name)
+        monitor_msg = "%s: AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f RMSE=%.6f "\
+            "Actual CTR=%.6f Predicted CTR=%.6f COPC=%.6f INS Count=%.0f"\
+            % (name, metric[0], metric[1], metric[2], metric[3], metric[4],
+                    metric[5], metric[6], metric[7])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     # logger.info(monitor_msg)
     return monitor_msg
 

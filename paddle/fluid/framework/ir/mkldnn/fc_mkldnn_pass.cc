@@ -14,8 +14,12 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_mkldnn_pass.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -36,17 +40,30 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   Init("fc_mkldnn_pass", graph);
 
   GraphPatternDetector gpd;
+<<<<<<< HEAD
   patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
   // searching for fc+residual  doesn't make sense at this stage
   fc_pattern(false /*with_residual*/);
+=======
+  auto* x = gpd.mutable_pattern()
+                ->NewNode("fc_mkldnn_pass/x")
+                ->AsInput()
+                ->assert_is_op_input("fc", "Input");
+  patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
+  fc_pattern(x, true /*with bias*/);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "Handle FC MKL-DNN pass";
     if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
+<<<<<<< HEAD
       VLOG(3) << "do not enable FC MKL-DNN because it doesn't have use_mkldnn "
                  "attribute.";
+=======
+      VLOG(3) << "do not perform fc fuse";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
@@ -76,6 +93,7 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_fc_count);
+<<<<<<< HEAD
 
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       (found_fc_count > 0)) {
@@ -83,6 +101,8 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
                          std::to_string(found_fc_count) + " fc ops ";
     string::PrettyLogDetail(msg_ss.c_str());
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace ir

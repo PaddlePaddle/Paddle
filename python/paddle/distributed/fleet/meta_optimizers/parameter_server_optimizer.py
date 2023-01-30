@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+<<<<<<< HEAD
 import os
 import platform
 import re
@@ -22,17 +23,34 @@ from paddle.framework import core
 
 from ..base.private_helper_function import wait_server_ready
 from .meta_optimizer_base import MetaOptimizerBase
+=======
+from paddle import fluid
+from .meta_optimizer_base import MetaOptimizerBase
+from paddle.fluid import core
+import subprocess
+import re
+import os
+import platform
+from ..base.private_helper_function import wait_server_ready
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
+<<<<<<< HEAD
     def __init__(self, optimizer):
         super().__init__(optimizer)
+=======
+
+    def __init__(self, optimizer):
+        super(ParameterServerOptimizer, self).__init__(optimizer)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
@@ -45,6 +63,18 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         self.num_microbatches = user_defined_strategy.pipeline_configs[
             'accumulate_steps'
         ]
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(ParameterServerOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+
+        #self.micro_batch_size = user_defined_strategy.pipeline_configs[
+        #    'micro_batch_size']
+        self.num_microbatches = user_defined_strategy.pipeline_configs[
+            'accumulate_steps']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _is_graph_out(self):
         return False
@@ -70,6 +100,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             'trainer_id': trainer_id,
             'num_trainers': num_trainers,
             'current_endpoint': current_endpoint,
+<<<<<<< HEAD
             'trainer_endpoints': trainer_endpoints,
         }
 
@@ -77,6 +108,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             StrategyFactory,
         )
+=======
+            'trainer_endpoints': trainer_endpoints
+        }
+
+    def _get_distributed_strategy(self):
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         strategy = None
@@ -96,9 +134,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return strategy
 
     def _build_trainer_programs(self, compiled_config):
+<<<<<<< HEAD
         from paddle.fluid.incubate.fleet.parameter_server.ir import (
             trainer_pass as worker,
         )
+=======
+        from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
@@ -106,6 +148,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         use_ps_gpu = self.user_defined_strategy.a_sync_configs["use_ps_gpu"]
 
         if not compiled_config.is_geo_mode():
+<<<<<<< HEAD
             from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
                 _add_lr_decay_table_pass,
             )
@@ -120,17 +163,32 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _main = worker.distributed_ops_pass(
                 _main, compiled_config, use_ps_gpu
             )
+=======
+            from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
+            _add_lr_decay_table_pass(
+                _main, compiled_config,
+                self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
+
+            # for main program
+            _main = worker.distributed_ops_pass(_main, compiled_config,
+                                                use_ps_gpu)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if not use_ps_gpu:
                 _main = worker.delete_optimizer_pass(_main, compiled_config)
                 _main = worker.append_send_ops_pass(_main, compiled_config)
                 _startup = worker.delete_extra_optimizes_pass(
+<<<<<<< HEAD
                     _startup, compiled_config
                 )
+=======
+                    _startup, compiled_config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
             if use_ps_gpu:
                 _main = worker.ps_gpu_pass(_main)
+<<<<<<< HEAD
                 from paddle.fluid.transpiler.collective import (
                     SingleProcessMultiThread,
                 )
@@ -145,20 +203,36 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     current_endpoint=env['current_endpoint'],
                     wait_port=False,
                 )
+=======
+                from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+                t = SingleProcessMultiThread()
+                env = self.get_dist_env()
+                t.transpile(startup_program=_startup,
+                            main_program=_main,
+                            rank=env["trainer_id"],
+                            endpoints=env["trainer_endpoints"],
+                            current_endpoint=env['current_endpoint'],
+                            wait_port=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             compiled_config.set_origin_ps_main_program(_main)
             compiled_config.set_origin_ps_startup_program(_startup)
             # for heter program
             if self.role_maker._is_heter_parameter_server_mode:
+<<<<<<< HEAD
                 from paddle.fluid.incubate.fleet.parameter_server.ir import (
                     heter_trainer_pass as heter_worker,
                 )
 
+=======
+                from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if self.role_maker._is_heter_worker():
                     # for heter worker
                     stage_id = self.role_maker._get_stage_id()
                     device = self.role_maker._heter_device_type().lower()
                     _main = heter_worker.split_heter_worker_ops_pass(
+<<<<<<< HEAD
                         _main, compiled_config, stage_id, device
                     )
                 else:
@@ -166,6 +240,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     _main = heter_worker.split_trainer_ops_pass(
                         _main, compiled_config
                     )
+=======
+                        _main, compiled_config, stage_id, device)
+                else:
+                    # for default worker
+                    _main = heter_worker.split_trainer_ops_pass(
+                        _main, compiled_config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
@@ -173,8 +254,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             compiled_config.set_origin_ps_startup_program(_startup)
 
         launch_barrier = self.user_defined_strategy.a_sync_configs[
+<<<<<<< HEAD
             "launch_barrier"
         ]
+=======
+            "launch_barrier"]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
         if launch_barrier and launch_barrier_flag:
             # for trainer wait server ready
@@ -188,6 +273,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
+<<<<<<< HEAD
         _main = paddle.static.Program()
         _startup = paddle.static.Program()
 
@@ -201,6 +287,16 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 _get_optimize_ops,
             )
 
+=======
+        _main = fluid.Program()
+        _startup = fluid.Program()
+
+        from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
+
+        if not compiled_config.is_geo_mode():
+
+            from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             is_sgd_adam = False
 
             main_program = compiled_config.get_origin_main_program()
@@ -209,6 +305,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             if len(ops) == 0:
                 return _main, _startup
 
+<<<<<<< HEAD
             from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
                 _add_lr_decay_table_pass,
             )
@@ -219,6 +316,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _add_lr_decay_table_pass(
                 main_program, compiled_config, lr_decay_steps
             )
+=======
+            from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
+            lr_decay_steps = self.user_defined_strategy.a_sync_configs[
+                "lr_decay_steps"]
+            _add_lr_decay_table_pass(main_program, compiled_config,
+                                     lr_decay_steps)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             for op in ops:
                 if op.type in ["sgd", "adam"]:
@@ -231,6 +335,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
             _main = server.add_optimizer_pass(_main, compiled_config)
+<<<<<<< HEAD
             _main = server.large_scale_sparse_pass(
                 _main, _main, compiled_config, False
             )
@@ -249,26 +354,56 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _startup = server.delete_unused_in_startup_pass(
                 _startup, _main, compiled_config
             )
+=======
+            _main = server.large_scale_sparse_pass(_main, _main,
+                                                   compiled_config, False)
+            _startup = server.build_pserver_startup_program_pass(
+                _startup, _main, compiled_config)
+            _startup = server.large_scale_sparse_pass(_startup, _main,
+                                                      compiled_config, True)
+
+            if not compiled_config.is_sync_mode():
+                _main = server.delete_unused_in_main_pass(
+                    _main, compiled_config)
+
+            _startup = server.delete_unused_in_startup_pass(
+                _startup, _main, compiled_config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
             _main = server.add_geo_optimizer_pass(_main, compiled_config)
             _startup = server.build_pserver_startup_program_pass(
+<<<<<<< HEAD
                 _startup, _main, compiled_config
             )
             _startup = server.delete_unused_in_startup_pass(
                 _startup, _main, compiled_config
             )
+=======
+                _startup, _main, compiled_config)
+            _startup = server.delete_unused_in_startup_pass(
+                _startup, _main, compiled_config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return _main, _startup
 
     def _can_apply_geo(self, dist_strategy, program):
+<<<<<<< HEAD
         def get_sys_free_mem():
             plat = platform.system()
             if platform.system() == "Darwin":
                 vm = subprocess.Popen(
                     ['vm_stat'], stdout=subprocess.PIPE
                 ).communicate()[0]
+=======
+
+        def get_sys_free_mem():
+            plat = platform.system()
+            if platform.system() == "Darwin":
+                vm = subprocess.Popen(['vm_stat'],
+                                      stdout=subprocess.PIPE).communicate()[0]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # Process vm_stat
                 vmLines = vm.split('\n')
                 sep = re.compile(r':[\s]+')
@@ -276,9 +411,14 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 for row in range(1, len(vmLines) - 2):
                     rowText = vmLines[row].strip()
                     rowElements = sep.split(rowText)
+<<<<<<< HEAD
                     vmStats[(rowElements[0])] = (
                         int(rowElements[1].strip(r'\.')) * 4096
                     )
+=======
+                    vmStats[(rowElements[0])] = int(
+                        rowElements[1].strip(r'\.')) * 4096
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return vmStats["Pages free"]
             elif platform.system() == "Linux":
                 mems = {}
@@ -290,27 +430,41 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 return free
             else:
                 raise ValueError(
+<<<<<<< HEAD
                     "%s platform is unsupported is parameter server optimizer"
                     % (platform.system())
                 )
+=======
+                    "%s platform is unsupported is parameter server optimizer" %
+                    (platform.system()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if not isinstance(self.inner_opt, fluid.optimizer.SGDOptimizer):
             return False
 
         free = get_sys_free_mem()
 
+<<<<<<< HEAD
         from paddle.fluid.incubate.fleet.parameter_server.ir import (
             vars_metatools,
         )
+=======
+        from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         processed_var_names = set(["@EMPTY@"])
         param_memory_size = 0
         for varname in program.global_block().vars:
             var = program.global_block().vars[varname]
+<<<<<<< HEAD
             if (
                 not var.persistable
                 or var.desc.type() != core.VarDesc.VarType.LOD_TENSOR
             ):
+=======
+            if not var.persistable or var.desc.type(
+            ) != core.VarDesc.VarType.LOD_TENSOR:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 continue
             param = vars_metatools.create_var_struct(var)
             param_memory_size += param.m_size
@@ -336,6 +490,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     if x < 0:
                         if neg_dim_count >= 1:
                             raise ValueError(
+<<<<<<< HEAD
                                 "Var %s has more than one negative dim."
                                 % (var_name)
                             )
@@ -348,6 +503,17 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     neg_dim_count,
                     vars_metatools.dtype_to_size[var.dtype],
                 )
+=======
+                                "Var %s has more than one negative dim." %
+                                (var_name))
+                        neg_dim_count += 1
+                        data_count *= (-x)
+                    else:
+                        data_count *= x
+                program_tmp_vars[var_name] = (
+                    data_count, neg_dim_count,
+                    vars_metatools.dtype_to_size[var.dtype])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for varname in program_tmp_vars:
             data_count, neg_dim_count, type_size = program_tmp_vars[varname]
@@ -361,16 +527,27 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         else:
             return False
 
+<<<<<<< HEAD
     def minimize_impl(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
         self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )
+=======
+    def minimize_impl(self,
+                      loss,
+                      startup_program=None,
+                      parameter_list=None,
+                      no_grad_set=None):
+        self.inner_opt.minimize(loss, startup_program, parameter_list,
+                                no_grad_set)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         strategy = self._get_distributed_strategy()
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program
+<<<<<<< HEAD
         from paddle.fluid.incubate.fleet.parameter_server.ir import (
             public as public,
         )
@@ -381,12 +558,23 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             strategy,
             self.role_maker,
         )
+=======
+        from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
+
+        compiled_config = public.CompileTimeStrategy(_origin_main_program,
+                                                     _origin_startup_program,
+                                                     strategy, self.role_maker)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         compiled_config.strategy = strategy
 
         if self.role_maker._is_worker() or self.role_maker._is_heter_worker():
             main_program, startup_program = self._build_trainer_programs(
+<<<<<<< HEAD
                 compiled_config
             )
+=======
+                compiled_config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if self.role_maker._is_heter_parameter_server_mode:
                 _origin_startup_program._heter_pipeline_opt = {
                     "startup_program": startup_program,
@@ -397,12 +585,21 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 loss.block.program._heter_pipeline_opt = {
                     "trainer": "HeterPipelineTrainer",
                     "device_worker": "HeterSection",
+<<<<<<< HEAD
                     "trainers": self.role_maker._get_stage_trainers(),  # trainer num in each stage
                     "trainer_id": int(self.role_maker._role_id()),
                     "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
                     "num_pipeline_stages": int(
                         self.role_maker._get_num_stage()
                     ),
+=======
+                    "trainers": self.role_maker._get_stage_trainers(
+                    ),  ## trainer num in each stage
+                    "trainer_id": int(self.role_maker._role_id()),
+                    "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
+                    "num_pipeline_stages":
+                    int(self.role_maker._get_num_stage()),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     "section_program": main_program,
                     "num_microbatches": self.num_microbatches,
                     "heter_place": self.role_maker._heter_device(),
@@ -413,14 +610,22 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         elif self.role_maker._is_server():
             main_program, startup_program = self._build_pserver_programs(
+<<<<<<< HEAD
                 compiled_config
             )
+=======
+                compiled_config)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss.block.program = main_program
             fluid.framework.switch_startup_program(startup_program)
         return None, None
 
     def _disable_strategy(self, dist_strategy):
+<<<<<<< HEAD
         # if self.role_maker._is_heter_parameter_server_mode:
+=======
+        #if self.role_maker._is_heter_parameter_server_mode:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         #    dist_strategy.pipeline = False
         #    dist_strategy.pipeline_configs = {
         #        "micro_batch_size": 1,
@@ -432,7 +637,11 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         dist_strategy.a_sync_configs = a_sync_configs
 
     def _enable_strategy(self, dist_strategy, context):
+<<<<<<< HEAD
         # if self.role_maker._is_heter_parameter_server_mode:
+=======
+        #if self.role_maker._is_heter_parameter_server_mode:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         #    dist_strategy.pipeline = True
         #    dist_strategy.pipeline_configs = {
         #        "micro_batch_size": 1,
@@ -445,9 +654,14 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         dist_strategy.a_sync = True
         a_sync_configs = dist_strategy.a_sync_configs
 
+<<<<<<< HEAD
         is_geo = self._can_apply_geo(
             dist_strategy, context["origin_main_program"]
         )
+=======
+        is_geo = self._can_apply_geo(dist_strategy,
+                                     context["origin_main_program"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if is_geo:
             a_sync_configs["k_steps"] = 800

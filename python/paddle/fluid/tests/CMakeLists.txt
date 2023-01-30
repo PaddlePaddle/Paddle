@@ -13,3 +13,8 @@ add_subdirectory(book)
 add_subdirectory(custom_op)
 add_subdirectory(custom_kernel)
 add_subdirectory(custom_runtime)
+<<<<<<< HEAD
+=======
+
+set_tests_properties(test_beam_search_decoder PROPERTIES TIMEOUT 120)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

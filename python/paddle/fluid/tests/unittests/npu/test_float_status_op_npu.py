@@ -23,6 +23,10 @@ import paddle._legacy_C_ops as ops
 
 
 class TestGetFloatStatusOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         device = paddle.set_device('npu')
 
@@ -63,6 +67,10 @@ class TestGetFloatStatusOp(unittest.TestCase):
 
 
 class TestClearFloatStatusOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         device = paddle.set_device('npu')
 

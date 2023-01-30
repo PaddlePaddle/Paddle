@@ -142,6 +142,7 @@ class FleetWrapper {
 
   // Pull sparse variables from server in sync mode
   // pull immediately to tensors
+<<<<<<< HEAD
   void PullSparseToTensorSync(
       const uint64_t table_id,
       int fea_dim,
@@ -149,6 +150,14 @@ class FleetWrapper {
       platform::Place place,
       std::vector<const phi::DenseTensor*>* inputs,  // NOLINT
       std::vector<phi::DenseTensor*>* outputs);      // NOLINT
+=======
+  void PullSparseToTensorSync(const uint64_t table_id,
+                              int fea_dim,
+                              uint64_t padding_id,
+                              platform::Place place,
+                              std::vector<const LoDTensor*>* inputs,  // NOLINT
+                              std::vector<LoDTensor*>* outputs);      // NOLINT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
@@ -257,8 +266,13 @@ class FleetWrapper {
       const std::string& click_name,
       platform::Place place,
       const std::vector<std::string>& input_names,
+<<<<<<< HEAD
       std::vector<const phi::DenseTensor*>* inputs,    // NOLINT
       std::vector<const phi::DenseTensor*>* outputs);  // NOLINT
+=======
+      std::vector<const LoDTensor*>* inputs,    // NOLINT
+      std::vector<const LoDTensor*>* outputs);  // NOLINT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -299,7 +313,11 @@ class FleetWrapper {
   // flush all push requests
   void ClientFlush();
   // load from paddle model
+<<<<<<< HEAD
   void LoadFromPaddleModel(Scope& scope,             // NOLINT
+=======
+  void LoadFromPaddleModel(Scope& scope,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            const uint64_t table_id,  // NOLINT
                            std::vector<std::string> var_list,
                            std::string model_path,

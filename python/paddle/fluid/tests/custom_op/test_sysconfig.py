@@ -14,11 +14,18 @@
 
 import os
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
 class SysConfigTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_include(self):
         inc_dir = paddle.sysconfig.get_include()
         inc_dirs = inc_dir.split(os.sep)

@@ -13,11 +13,16 @@
 # limitations under the License.
 
 from collections import OrderedDict
+<<<<<<< HEAD
 from collections.abc import Iterable, Mapping
 
 from ...fluid.dygraph.base import param_guard
 from ...fluid.framework import Parameter
 from .. import Layer
+=======
+from .. import Layer
+from collections.abc import Iterable, Mapping
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -25,7 +30,11 @@ __all__ = []
 class LayerDict(Layer):
     """
     LayerDict holds sublayers in the ordered dictionary, and sublayers it contains are properly registered.
+<<<<<<< HEAD
     Holded sublayers can be accessed like a regular ordered python dictionary.
+=======
+    Holded sublayers can be accessed like a regular ordered python dictionary. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Parameters:
         sublayers (LayerDict|OrderedDict|list[(key,Layer)...], optional): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
@@ -68,7 +77,11 @@ class LayerDict(Layer):
     """
 
     def __init__(self, sublayers=None):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(LayerDict, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if sublayers is not None:
             self.update(sublayers)
 
@@ -158,7 +171,11 @@ class LayerDict(Layer):
 
         Parameters:
             None.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -174,7 +191,11 @@ class LayerDict(Layer):
                 layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
                 for k in layer_dict.keys():
                     print(k)
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 #conv1d
                 #conv2d
                 #conv3d
@@ -188,7 +209,11 @@ class LayerDict(Layer):
 
         Parameters:
             None.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -218,7 +243,11 @@ class LayerDict(Layer):
 
         Parameters:
             None.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -248,7 +277,11 @@ class LayerDict(Layer):
 
         Parameters:
             sublayers (LayerDict|OrderedDict|list[(key,Layer)...]): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         Examples:
             .. code-block:: python
 
@@ -268,7 +301,11 @@ class LayerDict(Layer):
                 layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
 
                 layer_dict.update(new_sublayers)
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 for k, v in layer_dict.items():
                     print(k, ":", v)
                 #conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
@@ -278,10 +315,17 @@ class LayerDict(Layer):
 
         """
 
+<<<<<<< HEAD
         assert isinstance(sublayers, Iterable), (
             "The type of sublayers is not iterable of key/value pairs, the type of sublayers is "
             + type(sublayers).__name__
         )
+=======
+        assert isinstance(
+            sublayers, Iterable
+        ), "The type of sublayers is not iterable of key/value pairs, the type of sublayers is " + type(
+            sublayers).__name__
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if isinstance(sublayers, (OrderedDict, LayerDict, Mapping)):
             for key, layer in sublayers.items():
@@ -290,6 +334,7 @@ class LayerDict(Layer):
             # handle this format [(key1, layer1), (key2, layer2)...]
             for i, kv in enumerate(sublayers):
                 if len(kv) != 2:
+<<<<<<< HEAD
                     raise ValueError(
                         "The length of the "
                         + str(i)
@@ -605,3 +650,9 @@ class Sequential(Layer):
         for layer in self._sub_layers.values():
             input = layer(input)
         return input
+=======
+                    raise ValueError("The length of the " + str(i) +
+                                     "'s element in sublayers is " +
+                                     str(len(kv)) + ", which must be 2.")
+                self.add_sublayer(kv[0], kv[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

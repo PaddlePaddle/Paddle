@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 from paddle.distributed.passes.pass_base import PassBase
 from paddle.distributed.passes.pass_base import (
@@ -24,6 +25,16 @@ from paddle.distributed.passes.pass_base import new_pass, register_pass
 class TestConcretePass(PassBase):
     def __init__(self):
         super().__init__()
+=======
+from paddle.distributed.passes.pass_base import register_pass, PassBase, new_pass
+from paddle.distributed.passes.pass_base import _make_rule_from_white_lists_dict as make_white_lists_rule
+
+
+class TestConcretePass(PassBase):
+
+    def __init__(self):
+        super(TestConcretePass, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _check_self(self):
         return True
@@ -37,35 +48,69 @@ class TestConcretePass(PassBase):
 
 @register_pass("A")
 class A(TestConcretePass):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(A, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @register_pass("B")
 class B(TestConcretePass):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(B, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @register_pass("C")
 class C(TestConcretePass):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(C, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @register_pass("D")
 class D(TestConcretePass):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(D, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @register_pass("E")
 class E(TestConcretePass):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
 
 
 class TestMakeWhiteListsRule(unittest.TestCase):
+=======
+
+    def __init__(self):
+        super(E, self).__init__()
+
+
+class TestMakeWhiteListsRule(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         before_white_lists = {"A": ["B", "C"]}
         after_white_lists = {"D": ["C"]}

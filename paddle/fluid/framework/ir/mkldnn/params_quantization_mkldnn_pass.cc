@@ -16,7 +16,11 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+<<<<<<< HEAD
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -25,8 +29,12 @@ namespace ir {
 namespace {
 
 template <typename T_out>
+<<<<<<< HEAD
 void QuantizeParams(phi::DenseTensor* param_tensor,
                     const std::vector<float>& scales) {
+=======
+void QuantizeParams(LoDTensor* param_tensor, const std::vector<float>& scales) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<T_out> tmp_data;
   tmp_data.reserve(param_tensor->numel());
 
@@ -60,24 +68,41 @@ void QuantizeConvInput(Scope* scope,
                        const std::string& input_name,
                        const std::string& scales_attr_name) {
   auto var = scope->GetVar(input_name);
+<<<<<<< HEAD
   if (var->Get<phi::DenseTensor>().dtype() != phi::DataType::FLOAT32) {
     VLOG(0) << "Skipping convolution filter: " << input_name
             << " because it is detected again.";
     conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
+=======
+  if (var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
+    VLOG(1) << "Skipping quantize the input: " << input_name
+            << " of convolution because it is detected again.";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     const auto scales =
         conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
 
+<<<<<<< HEAD
     auto* tensor = scope->GetVar(input_name)->GetMutable<phi::DenseTensor>();
     QuantizeParams<T>(tensor, scales);
     conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
   }
+=======
+    auto* tensor = scope->GetVar(input_name)->GetMutable<LoDTensor>();
+    QuantizeParams<T>(tensor, scales);
+  }
+  conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace
 
 ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
+<<<<<<< HEAD
   AddOpCompat(OpCompat("fused_conv2d"))
+=======
+  AddOpCompat(OpCompat("conv2d"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -117,11 +142,18 @@ ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
 }
 
 void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
+<<<<<<< HEAD
                                                 const std::string& conv_type,
                                                 bool with_residual_data) const {
   GraphPatternDetector gpd;
   patterns::ConvResidual conv_pattern(gpd.mutable_pattern(), name_scope_);
   conv_pattern(conv_type, with_residual_data);
+=======
+                                                bool with_residual_data) const {
+  GraphPatternDetector gpd;
+  patterns::ConvResidual conv_pattern(gpd.mutable_pattern(), name_scope_);
+  conv_pattern(with_residual_data);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int params_to_int8_conv_found = 0;
 
@@ -160,8 +192,13 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
   AddStatis(params_to_int8_conv_found);
 
   std::stringstream msg_ss;
+<<<<<<< HEAD
   msg_ss << "Quantized params of " << params_to_int8_conv_found << " "
          << conv_type << " ops";
+=======
+  msg_ss << "Quantized params of " << params_to_int8_conv_found
+         << " conv2d ops";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (with_residual_data) msg_ss << " with residual connection";
   paddle::string::PrettyLogDetail(msg_ss.str().c_str());
 }
@@ -171,8 +208,13 @@ void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init(name_scope_, graph);
+<<<<<<< HEAD
   QuantizeConv(graph, "fused_conv2d", true /*with_residual_data*/);
   QuantizeConv(graph, "fused_conv2d", false /*with_residual_data*/);
+=======
+  QuantizeConv(graph, true /*with_residual_data*/);
+  QuantizeConv(graph, false /*with_residual_data*/);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace ir

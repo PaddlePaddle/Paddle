@@ -12,10 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import sys
+import os
+import paddle
+import re
+import collections
+import time
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.distributed.fleet as fleet
 
 
 class MyDataset(fleet.MultiSlotDataGenerator):
+<<<<<<< HEAD
     def generate_sample(self, line):
         def data_iter():
             elements = line.strip().split()[0:]
@@ -24,6 +34,16 @@ class MyDataset(fleet.MultiSlotDataGenerator):
                 ("click", [int(elements[1])]),
                 ("slot1", [int(elements[2])]),
             ]
+=======
+
+    def generate_sample(self, line):
+
+        def data_iter():
+            elements = line.strip().split()[0:]
+            output = [("show", [int(elements[0])]),
+                      ("click", [int(elements[1])]),
+                      ("slot1", [int(elements[2])])]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             yield output
 
         return data_iter

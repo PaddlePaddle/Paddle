@@ -13,13 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace plat = paddle::platform;
 
 #define FINAL_MASK 0xffffffff

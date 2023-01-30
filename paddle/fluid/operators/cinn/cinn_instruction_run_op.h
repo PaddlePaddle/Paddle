@@ -60,7 +60,11 @@ class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
                                      &ctx](const std::string& var_name) {
       cinn_buffer_t* buffer = launch_context->GetCinnBufferOfVar(var_name);
       framework::Variable* var = ctx.scope().GetVar(var_name);
+<<<<<<< HEAD
       auto* tensor = var->template GetMutable<phi::DenseTensor>();
+=======
+      auto* tensor = var->template GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       buffer->memory = reinterpret_cast<uint8_t*>(tensor->mutable_data(
           ctx.GetPlace(),
           framework::paddle2cinn::TransToPaddleDataType(buffer->type)));

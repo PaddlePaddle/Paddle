@@ -100,8 +100,13 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsYWithElementwiseAddRelu) {
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
+<<<<<<< HEAD
   EXPECT_TRUE(test::AssertOpsCount(
       graph, {{"fused_conv2d", 1}, {"elementwise_add", 0}}));
+=======
+  EXPECT_TRUE(
+      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass,
@@ -134,8 +139,13 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
+<<<<<<< HEAD
   EXPECT_TRUE(test::AssertOpsCount(
       graph, {{"conv2d", 1}, {"fused_conv2d", 1}, {"elementwise_add", 0}}));
+=======
+  EXPECT_TRUE(
+      test::AssertOpsCount(graph, {{"conv2d", 2}, {"elementwise_add", 0}}));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass,
@@ -159,8 +169,13 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
+<<<<<<< HEAD
   EXPECT_TRUE(test::AssertOpsCount(
       graph, {{"fused_conv2d", 1}, {"elementwise_add", 0}}));
+=======
+  EXPECT_TRUE(
+      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsXWithElementwiseAddRelu) {
@@ -185,8 +200,13 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsXWithElementwiseAddRelu) {
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
+<<<<<<< HEAD
   EXPECT_TRUE(test::AssertOpsCount(
       graph, {{"fused_conv2d", 1}, {"elementwise_add", 0}}));
+=======
+  EXPECT_TRUE(
+      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass,
@@ -210,8 +230,13 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
+<<<<<<< HEAD
   EXPECT_TRUE(test::AssertOpsCount(
       graph, {{"fused_conv2d", 1}, {"elementwise_add", 0}}));
+=======
+  EXPECT_TRUE(
+      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass, NoFusion) {

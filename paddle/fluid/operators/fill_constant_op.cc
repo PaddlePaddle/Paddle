@@ -56,6 +56,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
@@ -81,11 +82,37 @@ class FillConstantOp : public framework::OperatorWithKernel {
     // will be setted by force_cpu and place_type here.
     if (ctx.Attr<bool>("force_cpu")) {
       kt.set_backend(phi::Backend::CPU);
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
+      return expected_kernel_type;
+    } else {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = framework::OpKernelType(
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
+        ctx.GetPlace());
+    // TODO(zyfncg) The force_cpu and place_type are conflicted, it's a issue
+    // lefted before, and we may merge them in the future.
+    // In order to invoke new fill_constant kernel, the place of OpKernelType
+    // will be setted by force_cpu and place_type here.
+    if (ctx.Attr<bool>("force_cpu")) {
+      kt.place_ = platform::CPUPlace();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     auto place_type = ctx.Attr<int>("place_type");
     if (place_type != -1) {
       switch (place_type) {
         case 0:
+<<<<<<< HEAD
           kt.set_backend(phi::Backend::CPU);
           break;
         case 1:
@@ -97,6 +124,19 @@ class FillConstantOp : public framework::OperatorWithKernel {
           break;
         case 4:
           kt.set_backend(phi::Backend::NPU);
+=======
+          kt.place_ = platform::CPUPlace();
+          break;
+        case 1:
+        case 2:
+          kt.place_ = platform::CUDAPlace();
+          break;
+        case 3:
+          kt.place_ = platform::XPUPlace();
+          break;
+        case 4:
+          kt.place_ = platform::NPUPlace();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           break;
         default:
           PADDLE_THROW(platform::errors::Unimplemented(
@@ -105,6 +145,21 @@ class FillConstantOp : public framework::OperatorWithKernel {
       }
     }
 
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_MKLDNN
+    auto input_data_type =
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
+
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return kt;
   }
 };

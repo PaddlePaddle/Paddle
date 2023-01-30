@@ -12,20 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <algorithm>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 DECLARE_int32(check_nan_inf_level);
+=======
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
+#include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
+#include "paddle/fluid/framework/scope.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -138,6 +147,7 @@ __global__ void CheckNanInfKernel(const T* value,
   PrintNanInfKernel(value, numel, print_num, debug_info);
 }
 
+<<<<<<< HEAD
 template <typename T, int ReduceType>
 __device__ T BlockReduce(T value) {
   __shared__ T shared_mem[1024];
@@ -326,15 +336,35 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
                                  const std::string& op_type,
                                  const std::string& var_name,
                                  int dev_id) {
+=======
+template <>
+template <typename T>
+void TensorCheckerVisitor<phi::GPUContext>::apply(
+    typename std::enable_if<
+        std::is_floating_point<T>::value ||
+        std::is_same<T, ::paddle::platform::complex<float>>::value ||
+        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
+    const {
+  int print_num = 3;
+
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
+      platform::DeviceContextPool::Instance().Get(tensor_.place()));
+  int dev_id = tensor_.place().device;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_EQ(
       (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()),
       true,
       platform::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
                                    multi_op_var2gpu_str_mutex().size()));
 
+<<<<<<< HEAD
   std::string op_var =
       GetCpuHintString<T>(op_type, var_name, ctx.GetPlace(), dev_id);
   char* gpu_str_ptr = nullptr;
+=======
+  std::string op_var = "[op=" + op_type_ + "] [tensor=" + var_name_ + "]";
+  char* gpu_str_ptr = NULL;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   {
     auto& op_var2gpu_str_mutex = multi_op_var2gpu_str_mutex().at(dev_id);
@@ -343,9 +373,15 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
     std::lock_guard<std::mutex> guard(op_var2gpu_str_mutex);
     if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {  // insert
       auto gpu_str_tensor = paddle::memory::Alloc(
+<<<<<<< HEAD
           ctx.GetPlace(),
           op_var.length() + 1,
           phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+=======
+          dev_ctx->GetPlace(),
+          op_var.length() + 1,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx->stream())));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       gpu_str_ptr = reinterpret_cast<char*>(gpu_str_tensor->ptr());
 
       op_var2gpu_str.emplace(op_var, std::move(gpu_str_tensor));
@@ -363,13 +399,21 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
                                                 iter->first.c_str(),
                                                 op_var.length() + 1,
                                                 hipMemcpyHostToDevice,
+<<<<<<< HEAD
                                                 ctx.stream()));
+=======
+                                                dev_ctx->stream()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(gpu_str_ptr,
                                                  iter->first.c_str(),
                                                  op_var.length() + 1,
                                                  cudaMemcpyHostToDevice,
+<<<<<<< HEAD
                                                  ctx.stream()));
+=======
+                                                 dev_ctx->stream()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
     } else {  // get
       auto iter = op_var2gpu_str.find(op_var);
@@ -382,6 +426,7 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
       gpu_str_ptr = reinterpret_cast<char*>(iter->second->ptr());
     }
   }
+<<<<<<< HEAD
   return gpu_str_ptr;
 }
 
@@ -398,6 +443,8 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
   int dev_id = tensor.place().device;
   char* gpu_str_ptr =
       GetGpuHintStringPtr<T>(*dev_ctx, op_type, var_name, dev_id);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #ifdef __HIPCC__
   // HIP will throw GPU memory access fault if threads > 256
@@ -407,15 +454,21 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 #endif
   size_t blocks =
       std::min(static_cast<size_t>(128),
+<<<<<<< HEAD
                static_cast<size_t>((tensor.numel() + threads - 1) / threads));
 #ifdef __HIPCC__
   int print_num = 3;
 
+=======
+               static_cast<size_t>((tensor_.numel() + threads - 1) / threads));
+#ifdef __HIPCC__
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   hipLaunchKernelGGL(CheckNanInfKernel,
                      dim3(blocks),
                      dim3(threads),
                      0,
                      dev_ctx->stream(),
+<<<<<<< HEAD
                      tensor.data<T>(),
                      tensor.numel(),
                      print_num,
@@ -457,13 +510,26 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                        tensor.numel(),
                                        numel_max_min,
                                        check_nan_inf_level);
+=======
+                     tensor_.data<T>(),
+                     tensor_.numel(),
+                     print_num,
+                     gpu_str_ptr);
+#else
+  CheckNanInfKernel<<<blocks, threads, 0, dev_ctx->stream()>>>(
+      tensor_.data<T>(), tensor_.numel(), print_num, gpu_str_ptr);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
 template <>
 void tensor_check<phi::GPUContext>(const std::string& op_type,
                                    const std::string& var_name,
+<<<<<<< HEAD
                                    const phi::DenseTensor& tensor,
+=======
+                                   const framework::Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                    const platform::Place& place) {
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 

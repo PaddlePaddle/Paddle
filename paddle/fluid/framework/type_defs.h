@@ -96,6 +96,7 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     std::unordered_map<std::string, std::string>* /*grad_to_var*/,
     const std::vector<BlockDesc*>& grad_block)>;
 
+<<<<<<< HEAD
 using GradCompositeOpMakerFN =
     std::function<std::vector<std::unique_ptr<OpDesc>>(
         const OpDesc&,
@@ -104,6 +105,8 @@ using GradCompositeOpMakerFN =
         const BlockDesc*,
         const std::vector<BlockDesc*>& grad_block)>;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using DygraphGradOpMakerFN =
     std::function<std::shared_ptr<imperative::GradOpNode>(
         const std::string& /*op_type*/,

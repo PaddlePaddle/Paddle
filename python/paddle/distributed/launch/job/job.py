@@ -19,7 +19,12 @@ class JobMode:
     HETER = 'heter'
 
 
+<<<<<<< HEAD
 class Job:
+=======
+class Job(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, jid='default', mode=JobMode.COLLECTIVE, nnodes="1"):
         self._mode = mode
         self._id = jid
@@ -33,6 +38,7 @@ class Job:
 
     def __str__(self):
         return "Job: {}, mode {}, replicas {}[{}:{}], elastic {}".format(
+<<<<<<< HEAD
             self.id,
             self.mode,
             self._replicas,
@@ -40,6 +46,10 @@ class Job:
             self._replicas_max,
             self.elastic,
         )
+=======
+            self.id, self.mode, self._replicas, self._replicas_min,
+            self._replicas_max, self.elastic)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def mode(self):
@@ -80,9 +90,13 @@ class Job:
             self._elastic = True
         else:
             self._replicas = int(np)
+<<<<<<< HEAD
             self._replicas_min, self._replicas_max = (
                 self._replicas,
                 self._replicas,
             )
+=======
+            self._replicas_min, self._replicas_max = self._replicas, self._replicas
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self._elastic = False

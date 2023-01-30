@@ -27,10 +27,17 @@ template <typename T>
 class Pow2DecayWithLinearWarmupXPUOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const {
+<<<<<<< HEAD
     const auto *lr = ctx.Input<phi::DenseTensor>("LearningRate");
     const auto *step = ctx.Input<phi::DenseTensor>("Step");
     auto *lr_out = ctx.Output<phi::DenseTensor>("LearningRateOut");
     auto *step_out = ctx.Output<phi::DenseTensor>("StepOut");
+=======
+    const auto *lr = ctx.Input<framework::Tensor>("LearningRate");
+    const auto *step = ctx.Input<framework::Tensor>("Step");
+    auto *lr_out = ctx.Output<framework::Tensor>("LearningRateOut");
+    auto *step_out = ctx.Output<framework::Tensor>("StepOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         lr,
         lr_out,

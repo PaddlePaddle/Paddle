@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/top_k_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -21,6 +22,17 @@
 
 namespace phi {
 
+=======
+#include "paddle/fluid/operators/top_k_function_cuda.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+
+namespace phi {
+
+namespace ops = paddle::operators;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, typename Context>
 void TopkGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -48,7 +60,11 @@ void TopkGradKernel(const Context& dev_ctx,
   const int64_t* indices_data = indices.data<int64_t>();
 
   int pre, n, post;
+<<<<<<< HEAD
   phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
+=======
+  ops::GetDims(in_dims, axis, &pre, &n, &post);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // calcluate the block and grid num
   auto ComputeBlockSize = [](int col) {
@@ -69,14 +85,22 @@ void TopkGradKernel(const Context& dev_ctx,
   int grid_size = std::min(max_blocks, pre);
 
   // lanuch the cuda kernel to assign the grad
+<<<<<<< HEAD
   phi::funcs::AssignGradWithAxis<T>
+=======
+  ops::AssignGradWithAxis<T>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
           out_grad_data, indices_data, x_grad_data, pre, post, n, k);
 }
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(topk_grad,
+=======
+PD_REGISTER_KERNEL(top_k_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    GPU,
                    ALL_LAYOUT,
                    phi::TopkGradKernel,

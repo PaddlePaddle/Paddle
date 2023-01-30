@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import socket
 import threading
 import unittest
@@ -22,6 +23,21 @@ class TestFleetPrivateFunction(unittest.TestCase):
         def init_server(port):
             import time
 
+=======
+import unittest
+import os
+import paddle
+import socket
+import threading
+
+
+class TestFleetPrivateFunction(unittest.TestCase):
+
+    def test_wait_port(self):
+
+        def init_server(port):
+            import time
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             time.sleep(5)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.bind(("127.0.0.1", port))
@@ -32,11 +48,18 @@ class TestFleetPrivateFunction(unittest.TestCase):
                 c.close()
                 break
 
+<<<<<<< HEAD
         thr = threading.Thread(target=init_server, args=(9292,))
         thr.start()
 
         import paddle.distributed.fleet as fleet
 
+=======
+        thr = threading.Thread(target=init_server, args=(9292, ))
+        thr.start()
+
+        import paddle.distributed.fleet as fleet
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ep = ["127.0.0.1:9292"]
         fleet.base.private_helper_function.wait_server_ready(ep)
 

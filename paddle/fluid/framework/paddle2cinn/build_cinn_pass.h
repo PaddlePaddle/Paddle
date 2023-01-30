@@ -14,19 +14,25 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 class MemOptVarInfo;
+<<<<<<< HEAD
 class Node;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace ir
 
 namespace paddle2cinn {
@@ -38,6 +44,7 @@ constexpr char kInternalVars[] = "InternalVars";
 constexpr char kOutputVars[] = "OutputVars";
 constexpr char kMemOptVarInfoFromMainGraph[] =
     "mem_opt_var_info_from_main_graph";
+<<<<<<< HEAD
 constexpr char kSkipGcVarNames[] = "skip_gc_vars";
 constexpr char kInplaceVarNames[] = "InplaceVars";
 
@@ -79,6 +86,11 @@ class OpTransInfo {
 
   std::unordered_set<std::string> default_deny_ops_{"feed", "fetch"};
 };
+=======
+using Name2VarInfoMap =
+    std::unordered_map<std::string,
+                       std::shared_ptr<framework::ir::MemOptVarInfo>>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 // A pass named BuildCinnPass, the function of this pass is:
 //

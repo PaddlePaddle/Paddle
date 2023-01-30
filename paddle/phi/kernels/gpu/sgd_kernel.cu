@@ -15,10 +15,17 @@
 #include "paddle/phi/kernels/sgd_kernel.h"
 
 #include "paddle/fluid/framework/mixed_vector.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
+=======
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_helper.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -56,7 +63,11 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
     for (int64_t index = threadIdx.x; index < row_numel; index += blockDim.x) {
       // Since index in rows of SelectedRows can be duplicate, we have to use
       // Atomic Operation to avoid concurrent write error.
+<<<<<<< HEAD
       phi::CudaAtomicAdd(
+=======
+      paddle::platform::CudaAtomicAdd(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           tensor_out_ptr + index,
           -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[index]);
     }
@@ -72,7 +83,11 @@ void SGDDenseKernel(const Context& dev_ctx,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
+<<<<<<< HEAD
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+=======
+  using MPDType = typename paddle::operators::details::MPTypeTrait<T>::Type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // do check here
   // if (multi_precision) {
   //   bool has_master =
@@ -82,8 +97,14 @@ void SGDDenseKernel(const Context& dev_ctx,
   const MPDType* master_in_data =
       multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
+<<<<<<< HEAD
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
                       : nullptr;
+=======
+      multi_precision
+          ? master_param_out->mutable_data<MPDType>(dev_ctx.GetPlace())
+          : nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int block = 512;
   int grid = (param.numel() + block - 1) / block;
@@ -93,7 +114,11 @@ void SGDDenseKernel(const Context& dev_ctx,
       grad.data<T>(),
       learning_rate.data<T>(),
       param.numel(),
+<<<<<<< HEAD
       dev_ctx.template Alloc<T>(param_out),
+=======
+      param_out->mutable_data<T>(dev_ctx.GetPlace()),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       master_in_data,
       master_out_data);
 }
@@ -108,7 +133,11 @@ void SGDDenseParamSparseGradKernel(
     bool multi_precision,
     DenseTensor* param_out,
     DenseTensor* master_param_out) {
+<<<<<<< HEAD
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+=======
+  using MPDType = typename paddle::operators::details::MPTypeTrait<T>::Type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // do some check here
   // if (multi_precision) {
   //   bool has_master =
@@ -118,8 +147,14 @@ void SGDDenseParamSparseGradKernel(
   const MPDType* master_in_data =
       multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
+<<<<<<< HEAD
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
                       : nullptr;
+=======
+      multi_precision
+          ? master_param_out->mutable_data<MPDType>(dev_ctx.GetPlace())
+          : nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PADDLE_ENFORCE_EQ(
       &param,

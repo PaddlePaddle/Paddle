@@ -17,8 +17,13 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
 #include "paddle/phi/core/enforce.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/cupti_lib_path.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -470,6 +475,7 @@ void* GetWarpCTCDsoHandle() {
 #endif
 }
 
+<<<<<<< HEAD
 void* GetWarpRNNTDsoHandle() {
   std::string warprnnt_dir = "";
   if (!s_py_site_pkg_path.path.empty()) {
@@ -484,6 +490,8 @@ void* GetWarpRNNTDsoHandle() {
 #endif
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void* GetNCCLDsoHandle() {
 #ifdef PADDLE_WITH_HIP
   std::string warning_msg(
@@ -493,7 +501,11 @@ void* GetNCCLDsoHandle() {
 #else
   std::string warning_msg(
       "You may need to install 'nccl2' from NVIDIA official website: "
+<<<<<<< HEAD
       "https://developer.nvidia.com/nccl/nccl-download "
+=======
+      "https://developer.nvidia.com/nccl/nccl-download"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "before install PaddlePaddle.");
 #endif
 

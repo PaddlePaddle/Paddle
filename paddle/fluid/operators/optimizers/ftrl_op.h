@@ -15,12 +15,21 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/for_range.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -119,6 +128,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* grad_var = ctx.InputVar("Grad");
 
+<<<<<<< HEAD
     auto* lr_in = ctx.Input<phi::DenseTensor>("LearningRate");
 
     auto* param_in = ctx.Input<phi::DenseTensor>("Param");
@@ -128,6 +138,17 @@ class FTRLOpKernel : public framework::OpKernel<T> {
     auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
     auto* sq_accum_out = ctx.Output<phi::DenseTensor>("SquaredAccumOut");
     auto* lin_accum_out = ctx.Output<phi::DenseTensor>("LinearAccumOut");
+=======
+    auto* lr_in = ctx.Input<Tensor>("LearningRate");
+
+    auto* param_in = ctx.Input<Tensor>("Param");
+    auto* sq_accum_in = ctx.Input<Tensor>("SquaredAccumulator");
+    auto* lin_accum_in = ctx.Input<Tensor>("LinearAccumulator");
+
+    auto* param_out = ctx.Output<Tensor>("ParamOut");
+    auto* sq_accum_out = ctx.Output<Tensor>("SquaredAccumOut");
+    auto* lin_accum_out = ctx.Output<Tensor>("LinearAccumOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     param_out->mutable_data<T>(ctx.GetPlace());
     sq_accum_out->mutable_data<T>(ctx.GetPlace());
@@ -137,8 +158,13 @@ class FTRLOpKernel : public framework::OpKernel<T> {
     auto l2 = static_cast<T>(ctx.Attr<float>("l2")) + static_cast<T>(1e-10);
     auto lr_power = static_cast<T>(ctx.Attr<float>("lr_power"));
 
+<<<<<<< HEAD
     if (grad_var->IsType<phi::DenseTensor>()) {
       auto grad = ctx.Input<phi::DenseTensor>("Grad");
+=======
+    if (grad_var->IsType<framework::LoDTensor>()) {
+      auto grad = ctx.Input<Tensor>("Grad");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto g = EigenVector<T>::Flatten(*grad);
 
       auto p = EigenVector<T>::Flatten(*param_in);
@@ -192,7 +218,11 @@ class FTRLOpKernel : public framework::OpKernel<T> {
 
       phi::SelectedRows tmp_merged_grad;
       phi::SelectedRows* merged_grad = &tmp_merged_grad;
+<<<<<<< HEAD
       phi::funcs::scatter::MergeAdd<DeviceContext, T> merge_func;
+=======
+      math::scatter::MergeAdd<DeviceContext, T> merge_func;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       merge_func(
           ctx.template device_context<DeviceContext>(), *grad, merged_grad);
 

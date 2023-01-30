@@ -28,13 +28,20 @@ limitations under the License. */
 
 namespace paddle {
 namespace inference {
+<<<<<<< HEAD
 #if defined _WIN32
 #else
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 TEST(AnalysisPredictor, no_fp16) {
   std::vector<float> result = {0.597841, 0.219972, 0.182187};
   trt_ernie(false, result);
 }
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace inference
 }  // namespace paddle

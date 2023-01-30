@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -31,6 +36,10 @@ paddle.enable_static()
 
 
 class TestArgsortOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "argsort"
@@ -49,11 +58,17 @@ class TestArgsortOp(OpTest):
     def get_output(self):
         if self.descending:
             self.indices = np.flip(
+<<<<<<< HEAD
                 np.argsort(self.x, kind='heapsort', axis=self.axis), self.axis
             )
             self.sorted_x = np.flip(
                 np.sort(self.x, kind='heapsort', axis=self.axis), self.axis
             )
+=======
+                np.argsort(self.x, kind='heapsort', axis=self.axis), self.axis)
+            self.sorted_x = np.flip(
+                np.sort(self.x, kind='heapsort', axis=self.axis), self.axis)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             self.indices = np.argsort(self.x, kind='heapsort', axis=self.axis)
             self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
@@ -79,56 +94,100 @@ class TestArgsortOp(OpTest):
 
 
 class TestArgsortOpAxis0NPU(TestArgsortOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = 0
 
 
 class TestArgsortOpAxis1NPU(TestArgsortOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = 1
 
 
 class TestArgsortOpAxis2NPU(TestArgsortOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = 2
 
 
 class TestArgsortOpAxisNeg1NPU(TestArgsortOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = -1
 
 
 class TestArgsortOpAxisNeg2NPU(TestArgsortOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = -2
 
 
 class TestArgsortOpDescendingAxisNPU(TestArgsortOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis0NPU(TestArgsortOpAxis0NPU):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis1NPU(TestArgsortOpAxis1NPU):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis2NPU(TestArgsortOpAxis2NPU):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg1NPU(TestArgsortOpAxisNeg1NPU):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg2NPU(TestArgsortOpAxisNeg2NPU):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
@@ -141,6 +200,10 @@ class TestArgsortOpDescendingAxisNeg2NPU(TestArgsortOpAxisNeg2NPU):
 
 
 class TestArgsortOpAxis0NPUFP32(TestArgsortOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = 0
 
@@ -154,63 +217,113 @@ class TestArgsortOpAxis0NPUFP32(TestArgsortOp):
         self.__class__.use_npu = True
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place, ["X"], "Out", max_relative_error=0.03
         )
 
 
 class TestArgsortOpAxis1NPUFP32(TestArgsortOpAxis0NPUFP32):
+=======
+        self.check_grad_with_place(self.place, ["X"],
+                                   "Out",
+                                   max_relative_error=0.03)
+
+
+class TestArgsortOpAxis1NPUFP32(TestArgsortOpAxis0NPUFP32):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = 1
 
 
 class TestArgsortOpAxis2NPUFP32(TestArgsortOpAxis0NPUFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = 2
 
 
 class TestArgsortOpAxisNeg1NPUFP32(TestArgsortOpAxis0NPUFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = -1
 
 
 class TestArgsortOpAxisNeg2NPUFP32(TestArgsortOpAxis0NPUFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = -2
 
 
 class TestArgsortOpDescendingAxisNPUFP32(TestArgsortOpAxis0NPUFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis0NPUFP32(TestArgsortOpAxis0NPUFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis1NPUFP32(TestArgsortOpAxis1NPUFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis2NPUFP32(TestArgsortOpAxis2NPUFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg1NPUFP32(TestArgsortOpAxisNeg1NPUFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg2NPUFP32(TestArgsortOpAxisNeg2NPUFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 # test cases for int64
 class TestArgsortOpAxis0NPUINT64(TestArgsortOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.op_type = "argsort"
@@ -220,9 +333,16 @@ class TestArgsortOpAxis0NPUINT64(TestArgsortOp):
         self.init_axis()
         self.init_direction()
 
+<<<<<<< HEAD
         self.x = np.random.randint(
             low=-100, high=100, size=self.input_shape, dtype=self.dtype
         ).astype(self.dtype)
+=======
+        self.x = np.random.randint(low=-100,
+                                   high=100,
+                                   size=self.input_shape,
+                                   dtype=self.dtype).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.inputs = {"X": self.x}
         self.attrs = {"axis": self.axis, "descending": self.descending}
         self.get_output()
@@ -242,51 +362,91 @@ class TestArgsortOpAxis0NPUINT64(TestArgsortOp):
 
 
 class TestArgsortOpAxis1NPUINT64(TestArgsortOpAxis0NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = 1
 
 
 class TestArgsortOpAxis2NPUINT64(TestArgsortOpAxis0NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = 2
 
 
 class TestArgsortOpAxisNeg1NPUINT64(TestArgsortOpAxis0NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = -1
 
 
 class TestArgsortOpAxisNeg2NPUINT64(TestArgsortOpAxis0NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_axis(self):
         self.axis = -2
 
 
 class TestArgsortOpDescendingAxisNPUINT64(TestArgsortOpAxis0NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis0NPUINT64(TestArgsortOpAxis0NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis1NPUINT64(TestArgsortOpAxis1NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis2NPUINT64(TestArgsortOpAxis2NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg1NPUINT64(TestArgsortOpAxisNeg1NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg2NPUINT64(TestArgsortOpAxisNeg2NPUINT64):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_direction(self):
         self.descending = True
 

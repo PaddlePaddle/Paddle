@@ -12,11 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import queue
 import sys
 import threading
 import time
+=======
+from xml.etree import ElementTree
+import re
+import time
+import queue
+import threading
+import os
+import json
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 taskQueue = queue.Queue()
 lock = threading.RLock()
@@ -32,12 +43,18 @@ def worker(fun):
 def threadPool(threadPoolNum):
     threadPool = []
     for i in range(threadPoolNum):
+<<<<<<< HEAD
         thread = threading.Thread(
             target=worker,
             args={
                 doFun,
             },
         )
+=======
+        thread = threading.Thread(target=worker, args={
+            doFun,
+        })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         thread.daemon = True
         threadPool.append(thread)
     return threadPool
@@ -52,9 +69,14 @@ def getPyCovResult(params):
     os.system('cd %s && coverage combine `ls python-coverage.data.*`' % path)
     os.system('cd %s && pwd && coverage xml -i -o python-coverage.xml' % path)
     xml_path = '%s/python-coverage.xml' % path
+<<<<<<< HEAD
     os.system(
         "python2.7 %s/tools/analysisPyXml.py %s %s" % (rootPath, rootPath, ut)
     )
+=======
+    os.system("python2.7 %s/tools/analysisPyXml.py %s %s" %
+              (rootPath, rootPath, ut))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     endTime = int(time.time())
     print('pyCov Time: %s' % (endTime - startTime))
 

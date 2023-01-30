@@ -12,10 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
 from paddle import fluid, static
+=======
+import os
+import unittest
+import six
+import paddle
+from paddle import fluid
+from paddle import static
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -31,6 +40,10 @@ def IRGraph_to_program(ir_graph):
 
 
 class GraphToProgramPassTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def check_vars_equal(self, o_block, c_block):
         o_params = sorted(o_block.all_parameters(), key=lambda p: p.name)
         c_params = sorted(c_block.all_parameters(), key=lambda p: p.name)
@@ -68,12 +81,21 @@ class GraphToProgramPassTest(unittest.TestCase):
             o_attr = o_attrs[attr_idx]
             c_attr = c_attrs[attr_idx]
             self.assertEqual(o_attr, c_attr)
+<<<<<<< HEAD
             self.assertEqual(
                 o_op.desc.attr_type(o_attr), c_op.desc.attr_type(c_attr)
             )
 
 
 class SingleGraphToProgramPass(GraphToProgramPassTest):
+=======
+            self.assertEqual(o_op.desc.attr_type(o_attr),
+                             c_op.desc.attr_type(c_attr))
+
+
+class SingleGraphToProgramPass(GraphToProgramPassTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.origin_program = self.build_program()
         ir_graph = program_to_IRGraph(self.origin_program)
@@ -90,12 +112,19 @@ class SingleGraphToProgramPass(GraphToProgramPassTest):
         return program
 
     def test_check_parameter(self):
+<<<<<<< HEAD
         origin_parameter = sorted(
             self.origin_program.all_parameters(), key=lambda p: p.name
         )
         converted_parameter = sorted(
             self.converted_program.all_parameters(), key=lambda p: p.name
         )
+=======
+        origin_parameter = sorted(self.origin_program.all_parameters(),
+                                  key=lambda p: p.name)
+        converted_parameter = sorted(self.converted_program.all_parameters(),
+                                     key=lambda p: p.name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertEqual(len(origin_parameter), len(converted_parameter))
 

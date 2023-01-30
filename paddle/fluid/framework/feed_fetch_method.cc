@@ -28,7 +28,11 @@ namespace framework {
 class Variable;
 
 void SetFeedVariable(Scope* scope,
+<<<<<<< HEAD
                      const phi::DenseTensor& input,
+=======
+                     const LoDTensor& input,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      const std::string& var_name,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
@@ -40,14 +44,22 @@ void SetFeedVariable(Scope* scope,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
+<<<<<<< HEAD
   auto& val = PADDLE_GET(phi::DenseTensor, feed_inputs[index]);
+=======
+  auto& val = PADDLE_GET(LoDTensor, feed_inputs[index]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   val.ShareDataWith(input);
   // set lod
   val.set_lod(input.lod());
 }
 
 void SetFeedVariable(Scope* scope,
+<<<<<<< HEAD
                      const std::vector<std::string>& input,
+=======
+                     const Strings& input,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      const std::string& var_name,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
@@ -59,7 +71,11 @@ void SetFeedVariable(Scope* scope,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
+<<<<<<< HEAD
   feed_inputs[index] = Strings(input);
+=======
+  feed_inputs[index] = input;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 FetchType& GetFetchVariable(const Scope& scope,
@@ -86,17 +102,29 @@ FetchType& GetFetchVariable(const Scope& scope,
   return tensor;
 }
 
+<<<<<<< HEAD
 phi::DenseTensor& GetVariableTensor(const Scope& scope,
                                     const std::string& var_name) {
+=======
+LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   Variable* var = scope.FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(var,
                           platform::errors::NotFound(
                               "Variable %s is not found in scope.", var_name));
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                     true,
                     platform::errors::InvalidArgument(
                         "Only support lod tensor in GetVariableTensor now."));
   return *var->GetMutable<phi::DenseTensor>();
+=======
+  PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Only support lod tensor in GetVariableTensor now."));
+  return *var->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace framework

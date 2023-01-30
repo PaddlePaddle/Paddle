@@ -44,8 +44,13 @@ if(WITH_ASCEND OR WITH_ASCEND_CL)
     CONFIGURE_COMMAND ""
     BUILD_COMMAND
       mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake
+<<<<<<< HEAD
       .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND} --build . &&
       mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
+=======
+      .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make && mkdir -p
+      ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy
                     ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/"
@@ -62,8 +67,13 @@ else()
     CONFIGURE_COMMAND ""
     BUILD_COMMAND
       mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake
+<<<<<<< HEAD
       .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND} --build . &&
       mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
+=======
+      .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make && mkdir -p
+      ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy
                     ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/"

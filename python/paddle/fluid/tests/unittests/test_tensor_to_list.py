@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -25,15 +26,36 @@ class TensorToListTest(unittest.TestCase):
         self.shape = [11, 25, 32, 43]
 
     def test_tensor_tolist(self):
+=======
+import paddle.fluid as fluid
+import unittest
+import numpy as np
+import six
+import paddle
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TensorToListTest(unittest.TestCase):
+
+    def setUp(self):
+        self.shape = [11, 25, 32, 43]
+
+    def func_tensor_tolist(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
             places.append(fluid.CUDAPinnedPlace())
 
         for p in places:
+<<<<<<< HEAD
             np_arr = np.reshape(
                 np.array(range(np.prod(self.shape))), self.shape
             )
+=======
+            np_arr = np.reshape(np.array(six.moves.range(np.prod(self.shape))),
+                                self.shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expectlist = np_arr.tolist()
 
             t = paddle.to_tensor(np_arr, place=p)
@@ -41,6 +63,14 @@ class TensorToListTest(unittest.TestCase):
 
             self.assertEqual(tensorlist, expectlist)
 
+<<<<<<< HEAD
+=======
+    def test_tensor_tolist(self):
+        with _test_eager_guard():
+            self.func_tensor_tolist()
+        self.func_tensor_tolist()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

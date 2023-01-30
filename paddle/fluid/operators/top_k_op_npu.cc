@@ -18,7 +18,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 void gen_assist_seq(phi::DenseTensor* assit_tensor,
+=======
+void gen_assist_seq(framework::Tensor* assit_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     int64_t dim,
                     const framework::ExecutionContext& ctx) {
   const int64_t dimx2 = dim;
@@ -42,9 +46,15 @@ class TopkNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // read input
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto* indices = ctx.Output<phi::DenseTensor>("Indices");
+=======
+    auto* input = ctx.Input<framework::LoDTensor>("X");
+    auto* output = ctx.Output<framework::LoDTensor>("Out");
+    auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
@@ -55,7 +65,11 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     auto size = input->dims().size();
     // dim is the last dimension of input
     auto dim = input->dims()[size - 1];
+<<<<<<< HEAD
     phi::DenseTensor assist_seq_tensor;
+=======
+    framework::Tensor assist_seq_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     assist_seq_tensor.Resize({2 * dim});
     assist_seq_tensor.mutable_data<T>(ctx.GetPlace());
     gen_assist_seq(&assist_seq_tensor, dim, ctx);
@@ -65,7 +79,11 @@ class TopkNPUKernel : public framework::OpKernel<T> {
                                              {"dim", -1},
                                              {"largest", true}};
 
+<<<<<<< HEAD
     phi::DenseTensor tmp_indices(experimental::DataType::INT32);
+=======
+    Tensor tmp_indices(experimental::DataType::INT32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp_indices.Resize(indices->dims());
     tmp_indices.mutable_data<int>(ctx.GetPlace());
 

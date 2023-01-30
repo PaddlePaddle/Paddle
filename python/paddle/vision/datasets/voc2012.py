@@ -12,15 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import io
 import tarfile
 
+=======
+from __future__ import print_function
+
+import io
+import tarfile
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 from PIL import Image
 
 import paddle
+<<<<<<< HEAD
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
+=======
+from paddle.io import Dataset
+from paddle.dataset.common import _check_exists_and_download
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -103,6 +115,7 @@ class VOC2012(Dataset):
                 # <class 'numpy.ndarray'> (281, 500)
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         data_file=None,
@@ -116,27 +129,48 @@ class VOC2012(Dataset):
             'valid',
             'test',
         ], "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+=======
+    def __init__(self,
+                 data_file=None,
+                 mode='train',
+                 transform=None,
+                 download=True,
+                 backend=None):
+        assert mode.lower() in ['train', 'valid', 'test'], \
+            "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if backend is None:
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
                 "Expected backend are one of ['pil', 'cv2'], but got {}".format(
+<<<<<<< HEAD
                     backend
                 )
             )
+=======
+                    backend))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.backend = backend
 
         self.flag = MODE_FLAG_MAP[mode.lower()]
 
         self.data_file = data_file
         if self.data_file is None:
+<<<<<<< HEAD
             assert (
                 download
             ), "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
                 data_file, VOC_URL, VOC_MD5, CACHE_DIR, download
             )
+=======
+            assert download, "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(data_file, VOC_URL,
+                                                        VOC_MD5, CACHE_DIR,
+                                                        download)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.transform = transform
 
         # read dataset into memory

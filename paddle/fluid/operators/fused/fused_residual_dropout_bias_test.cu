@@ -50,8 +50,13 @@ struct FusedResidualDropoutBiasTester {
   bool has_bias = true;
   bool add_residual = true;
 
+<<<<<<< HEAD
   phi::DenseTensor src, residual, bias, out, mask;
   phi::DenseTensor dsrc, dbias;
+=======
+  framework::Tensor src, residual, bias, out, mask;
+  framework::Tensor dsrc, dbias;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<T> src_vec, residual_vec, bias_vec;
   std::vector<T> correct_out, correct_dsrc, correct_dbias;
@@ -258,14 +263,22 @@ struct FusedResidualDropoutBiasTester {
     std::vector<T> fused_out(n);
     std::vector<uint8_t> fused_mask(n);
     framework::TensorToVector(out, *ctx, &fused_out);
+<<<<<<< HEAD
     if (!is_test && dropout_prob != 0.0f) {
+=======
+    if (!is_test) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorToVector<uint8_t>(mask, *ctx, &fused_mask);
     }
     ctx->Wait();
 
     for (int i = 0; i < n; i++) {
       EXPECT_LT(std::abs(fused_out[i] - correct_out[i]), diff);
+<<<<<<< HEAD
       if (!is_test && dropout_prob != 0.0f) {
+=======
+      if (!is_test) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         EXPECT_EQ(fused_mask[i], correct_mask[i]);
       }
     }

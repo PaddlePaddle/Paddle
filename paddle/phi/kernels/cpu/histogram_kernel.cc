@@ -34,7 +34,11 @@ void HistogramKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   auto input_numel = input.numel();
 
+<<<<<<< HEAD
   int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
+=======
+  int64_t* out_data = output->mutable_data<int64_t>(dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<Context, int64_t>()(
       dev_ctx, output, static_cast<int64_t>(0));
 

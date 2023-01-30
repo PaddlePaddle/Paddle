@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -28,6 +33,10 @@ paddle.enable_static()
 
 
 class TestMomentumOp1(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -47,7 +56,11 @@ class TestMomentumOp1(OpTest):
             'Param': param,
             'Grad': grad,
             'Velocity': velocity,
+<<<<<<< HEAD
             'LearningRate': learning_rate,
+=======
+            'LearningRate': learning_rate
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {'mu': mu, 'use_nesterov': self.use_nesterov}
@@ -58,8 +71,12 @@ class TestMomentumOp1(OpTest):
             mu=mu,
             velocity=velocity,
             use_nesterov=self.use_nesterov,
+<<<<<<< HEAD
             learning_rate=learning_rate,
         )
+=======
+            learning_rate=learning_rate)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 
@@ -75,6 +92,10 @@ class TestMomentumOp1(OpTest):
 
 
 class TestMomentumOpFp16(TestMomentumOp1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -83,21 +104,35 @@ class TestMomentumOpFp16(TestMomentumOp1):
 
 
 class TestMomentumOp2(TestMomentumOp1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_case(self):
         self.shape = (123, 321)
         self.use_nesterov = True
 
 
 class TestMomentumV2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_momentum_dygraph(self):
         paddle.disable_static(place=fluid.NPUPlace(0))
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
         # This can be any optimizer supported by dygraph.
+<<<<<<< HEAD
         adam = paddle.optimizer.Momentum(
             learning_rate=0.01, momentum=0.9, parameters=linear.parameters()
         )
+=======
+        adam = paddle.optimizer.Momentum(learning_rate=0.01,
+                                         momentum=0.9,
+                                         parameters=linear.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = linear(a)
         out.backward()
         adam.step()
@@ -108,6 +143,7 @@ class TestMomentumV2(unittest.TestCase):
         place = fluid.NPUPlace(0)
         main = fluid.Program()
         with fluid.program_guard(main):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
@@ -123,6 +159,21 @@ class TestMomentumV2(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.uci_housing.train(), batch_size=1
             )
+=======
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = paddle.mean(cost)
+
+            rms_optimizer = paddle.optimizer.Momentum(learning_rate=0.1,
+                                                      momentum=0.9)
+            rms_optimizer.minimize(avg_cost)
+
+            fetch_list = [avg_cost]
+            train_reader = paddle.batch(paddle.dataset.uci_housing.train(),
+                                        batch_size=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -130,13 +181,23 @@ class TestMomentumV2(unittest.TestCase):
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
     def test_raise_error(self):
+<<<<<<< HEAD
         self.assertRaises(
             ValueError, paddle.optimizer.Momentum, learning_rate=None
         )
+=======
+        self.assertRaises(ValueError,
+                          paddle.optimizer.Momentum,
+                          learning_rate=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertRaises(ValueError, paddle.optimizer.Momentum, momentum=None)
 
 
 class TestMomentumOpWithDecay(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -162,14 +223,22 @@ class TestMomentumOpWithDecay(OpTest):
             'Param': param,
             'Grad': grad,
             'Velocity': velocity,
+<<<<<<< HEAD
             'LearningRate': learning_rate,
+=======
+            'LearningRate': learning_rate
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         self.attrs = {
             'mu': mu,
             'use_nesterov': use_nesterov,
             'regularization_method': regularization_method,
+<<<<<<< HEAD
             'regularization_coeff': regularization_coeff,
+=======
+            'regularization_coeff': regularization_coeff
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         grad = grad + regularization_coeff * param
@@ -180,8 +249,12 @@ class TestMomentumOpWithDecay(OpTest):
             mu=mu,
             velocity=velocity,
             use_nesterov=use_nesterov,
+<<<<<<< HEAD
             learning_rate=learning_rate,
         )
+=======
+            learning_rate=learning_rate)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 
@@ -194,6 +267,10 @@ class TestMomentumOpWithDecay(OpTest):
 
 
 class TestMomentumOpWithDecayFP16(TestMomentumOpWithDecay):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = np.float16
 
@@ -203,11 +280,19 @@ class TestMomentumOpWithDecayFP16(TestMomentumOpWithDecay):
 
 
 class TestMomentumOpWithDecay2(TestMomentumOpWithDecay):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.use_nesterov = False
 
 
 class TestMomentumOpWithDecayAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _test_momentum_dygraph_common(self, regularization):
         paddle.disable_static(fluid.NPUPlace(0))
         inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
@@ -220,22 +305,31 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             learning_rate=0.01,
             momentum=0.9,
             parameter_list=linear.parameters(),
+<<<<<<< HEAD
             regularization=regularization,
         )
+=======
+            regularization=regularization)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         momentum.minimize(loss)
 
     def test_momentum_dygraph_1(self):
         self._test_momentum_dygraph_common(
             regularization=paddle.fluid.regularizer.L2Decay(
+<<<<<<< HEAD
                 regularization_coeff=0.1
             )
         )
+=======
+                regularization_coeff=0.1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_momentum_static(self):
         paddle.enable_static()
         place = fluid.NPUPlace(0)
         main = fluid.Program()
         with fluid.program_guard(main):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
@@ -251,6 +345,21 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.uci_housing.train(), batch_size=1
             )
+=======
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = paddle.mean(cost)
+
+            momentum_optimizer = paddle.fluid.contrib.optimizer.Momentum(
+                learning_rate=0.1, momentum=0.9)
+            momentum_optimizer.minimize(avg_cost)
+
+            fetch_list = [avg_cost]
+            train_reader = paddle.batch(paddle.dataset.uci_housing.train(),
+                                        batch_size=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -259,11 +368,19 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
 
 
 class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
+<<<<<<< HEAD
     def __update_params(self, momentum, linear):
         for i in range(10):
             inp = paddle.full(
                 shape=[2, 2], fill_value=i, dtype='float32'
             ).astype("float32")
+=======
+
+    def __update_params(self, momentum, linear):
+        for i in range(10):
+            inp = paddle.full(shape=[2, 2], fill_value=i,
+                              dtype='float32').astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             inp = paddle.to_tensor(inp)
             out = linear(inp)
             loss = paddle.mean(out)
@@ -277,45 +394,69 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             2,
             2,
             weight_attr=paddle.nn.initializer.Constant(value=2.0),
+<<<<<<< HEAD
             bias_attr=paddle.nn.initializer.Constant(value=2.0),
         )
+=======
+            bias_attr=paddle.nn.initializer.Constant(value=2.0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         momentum_old = paddle.fluid.optimizer.Momentum(
             learning_rate=0.01,
             momentum=0.9,
             parameter_list=linear_old.parameters(),
             regularization=paddle.fluid.regularizer.L2Decay(
+<<<<<<< HEAD
                 regularization_coeff=0.1
             ),
         )
+=======
+                regularization_coeff=0.1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.__update_params(momentum=momentum_old, linear=linear_old)
 
         linear_new = paddle.nn.Linear(
             2,
             2,
             weight_attr=paddle.nn.initializer.Constant(value=2.0),
+<<<<<<< HEAD
             bias_attr=paddle.nn.initializer.Constant(value=2.0),
         )
+=======
+            bias_attr=paddle.nn.initializer.Constant(value=2.0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         momentum_new = paddle.fluid.contrib.optimizer.Momentum(
             learning_rate=0.01,
             momentum=0.9,
             parameter_list=linear_new.parameters(),
             regularization=paddle.fluid.regularizer.L2Decay(
+<<<<<<< HEAD
                 regularization_coeff=0.1
             ),
         )
+=======
+                regularization_coeff=0.1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.__update_params(momentum=momentum_new, linear=linear_new)
 
         self.assertEqual(
             (linear_old.weight.numpy() == linear_new.weight.numpy()).all(),
             True,
+<<<<<<< HEAD
             'the param weight updated by two Momentum optimizers should equal',
         )
+=======
+            'the param weight updated by two Momentum optimizers should equal')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_vs(self, place=fluid.NPUPlace(0)):
         self.__test_vs(place=place)
 
 
 class TestMomentumV2Group(TestMomentumV2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_momentum_dygraph(self):
         paddle.disable_static(place=fluid.NPUPlace(0))
         value = np.arange(26).reshape(2, 13).astype("float32")
@@ -323,6 +464,7 @@ class TestMomentumV2Group(TestMomentumV2):
         linear_1 = paddle.nn.Linear(13, 5)
         linear_2 = paddle.nn.Linear(5, 3)
         # This can be any optimizer supported by dygraph.
+<<<<<<< HEAD
         adam = paddle.optimizer.Momentum(
             learning_rate=0.01,
             parameters=[
@@ -337,6 +479,24 @@ class TestMomentumV2Group(TestMomentumV2):
             weight_decay=0.1,
             momentum=0.9,
         )
+=======
+        adam = paddle.optimizer.Momentum(learning_rate=0.01,
+                                         parameters=[{
+                                             'params':
+                                             linear_1.parameters()
+                                         }, {
+                                             'params':
+                                             linear_2.parameters(),
+                                             'weight_decay':
+                                             0.001,
+                                             'learning_rate':
+                                             0.1,
+                                             'momentum':
+                                             0.99
+                                         }],
+                                         weight_decay=0.1,
+                                         momentum=0.9)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = linear_1(a)
         out = linear_2(out)
         out.backward()

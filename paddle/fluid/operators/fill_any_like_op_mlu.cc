@@ -28,7 +28,11 @@ class FillAnyLikeMLUKernel : public framework::OpKernel<T> {
                                 T>::type>::type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(ctx.GetPlace());
 
     float value = ctx.Attr<float>("value");

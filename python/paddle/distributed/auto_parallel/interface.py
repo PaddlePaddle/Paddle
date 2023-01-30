@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle
 
 from .dist_context import get_default_distributed_context
@@ -23,6 +24,20 @@ from .utils import (
     convert_to_dims_mapping,
     verify_shard_spec,
 )
+=======
+from collections import defaultdict
+
+import paddle
+from paddle.fluid import core
+from .process_mesh import ProcessMesh
+from .process_mesh import get_current_process_mesh
+from .process_mesh import set_current_process_mesh
+from .process_mesh import reset_current_process_mesh
+from .dist_context import get_default_distributed_context
+from .dist_tensor import DistributedTensor
+from .dist_op import DistributedOperatorHelper
+from .utils import verify_shard_spec, convert_to_dims_mapping
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def shard_tensor(x, process_mesh=None, shard_spec=None):
@@ -66,6 +81,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     """
 
     if process_mesh is not None:
+<<<<<<< HEAD
         assert isinstance(
             process_mesh, ProcessMesh
         ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
@@ -83,10 +99,27 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     serial_tensor = dist_tensor.serial_tensor
     dist_tensor.dist_attr.process_mesh = process_mesh
     if serial_tensor.type in __no_shape_var_type__:
+=======
+        assert isinstance(process_mesh, ProcessMesh), \
+            "Argument process_mesh {} is not an instance of ProcessMesh".format(process_mesh)
+    else:
+        process_mesh = get_current_process_mesh()
+        assert  process_mesh is not None, \
+            "Specify the process mesh argument or use ProcessMesh context manager first."
+    assert isinstance(shard_spec, list), \
+        "Argument shard_spec {} is not an instance of list".format(shard_spec)
+    dist_tensor = DistributedTensor(x)
+    serial_tensor = dist_tensor.serial_tensor
+    dist_tensor.dist_attr.process_mesh = process_mesh
+    if serial_tensor.type == core.VarDesc.VarType.READER \
+        or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+        or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         tensor_shape = []
     else:
         tensor_shape = serial_tensor.shape
     if shard_spec is not None:
+<<<<<<< HEAD
         assert verify_shard_spec(
             shard_spec, tensor_shape, process_mesh
         ), "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
@@ -95,6 +128,13 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
         dist_tensor.dist_attr.dims_mapping = convert_to_dims_mapping(
             shard_spec, process_mesh
         )
+=======
+        assert verify_shard_spec(shard_spec, tensor_shape, process_mesh), \
+            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+                serial_tensor.name, shard_spec, tensor_shape, process_mesh)
+        dist_tensor.dist_attr.dims_mapping = convert_to_dims_mapping(
+            shard_spec, process_mesh)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if process_mesh is not None:
         dist_tensor.dist_attr.mark_annotated("process_mesh")
     if shard_spec is not None:
@@ -149,6 +189,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     """
 
     if process_mesh is not None:
+<<<<<<< HEAD
         assert isinstance(
             process_mesh, ProcessMesh
         ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
@@ -172,10 +213,27 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
                 in_dims_mappings.append(
                     convert_to_dims_mapping(shard_spec, process_mesh)
                 )
+=======
+        assert isinstance(process_mesh, ProcessMesh), \
+            "Argument process_mesh {} is not an instance of ProcessMesh".format(process_mesh)
+    else:
+        process_mesh = get_current_process_mesh()
+        assert  process_mesh is not None, \
+            "Specify the process mesh argument or use ProcessMesh context manager first."
+    in_dims_mappings = []
+    if in_shard_specs is not None:
+        assert all((isinstance(shard_spec, list) or shard_spec is None) for shard_spec in in_shard_specs), \
+            "in_shard_spec {} is not a list of list or None".format(in_shard_specs)
+        for shard_spec in in_shard_specs:
+            if shard_spec is not None:
+                in_dims_mappings.append(
+                    convert_to_dims_mapping(shard_spec, process_mesh))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 in_dims_mappings.append(None)
     out_dims_mappings = []
     if out_shard_specs is not None:
+<<<<<<< HEAD
         assert all(
             (isinstance(shard_spec, list) or shard_spec is None)
             for shard_spec in out_shard_specs
@@ -203,11 +261,34 @@ def recompute(op):
     _g_recompute_idx += 1
 
     class RecomputeOperator:
+=======
+        assert all((isinstance(shard_spec, list) or shard_spec is None) for shard_spec in out_shard_specs), \
+            "out_shard_spec {} is not a list of list or None".format(out_shard_specs)
+        for shard_spec in out_shard_specs:
+            if shard_spec is not None:
+                out_dims_mappings.append(
+                    convert_to_dims_mapping(shard_spec, process_mesh))
+            else:
+                out_dims_mappings.append(None)
+    op = DistributedOperatorHelper(op, process_mesh, in_dims_mappings,
+                                   out_dims_mappings)
+    return op
+
+
+def recompute(op):
+
+    class RecomputeOperator:
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def __init__(self, op):
             self._op = op
 
         def __call__(self, *args, **kwargs):
+<<<<<<< HEAD
             default_prog = paddle.static.default_main_program()
+=======
+            default_prog = paddle.fluid.default_main_program()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             cur_block = default_prog.current_block()
             op_size = len(cur_block.ops)
             output = self._op(*args, **kwargs)
@@ -215,9 +296,13 @@ def recompute(op):
 
             for idx in range(op_size, new_op_size):
                 op = cur_block.ops[idx]
+<<<<<<< HEAD
                 op._set_attr(
                     'op_namescope', "/auto_parallel/rc_" + str(_g_recompute_idx)
                 )
+=======
+                op._set_attr("is_recompute@auto_parallel", True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             return output
 
@@ -227,7 +312,11 @@ def recompute(op):
 _g_collections = {}
 
 
+<<<<<<< HEAD
 class CollectionNames:
+=======
+class CollectionNames(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     FETCHES = "fetches"
     LOGGING = "logging"
 
@@ -245,6 +334,7 @@ def add_to_collection(collection_name, value, name=None):
         _g_collections[collection_name] = []
     if name is not None:
         for _, v in _g_collections[collection_name]:
+<<<<<<< HEAD
             if v == value:
                 return
         _g_collections[collection_name].append((name, value))
@@ -252,10 +342,18 @@ def add_to_collection(collection_name, value, name=None):
         for _, v in _g_collections[collection_name]:
             if v == value:
                 return
+=======
+            if v == value: return
+        _g_collections[collection_name].append((name, value))
+    else:
+        for _, v in _g_collections[collection_name]:
+            if v == value: return
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         _g_collections[collection_name].append((None, value))
 
 
 def fetch(tensor, name=None, logging=False):
+<<<<<<< HEAD
     if isinstance(tensor, paddle.static.Variable):
         tensor = tensor.name
     elif isinstance(tensor, str):
@@ -266,6 +364,8 @@ def fetch(tensor, name=None, logging=False):
                 type(tensor)
             )
         )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
         add_to_collection(CollectionNames.LOGGING, tensor, name)

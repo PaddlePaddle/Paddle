@@ -123,6 +123,7 @@ int xpu_activation_1attr_func(const Context& dev_ctx,
 }
 
 template <typename Context, typename T, typename XPUType>
+<<<<<<< HEAD
 int xpu_activation_2attr_func(const Context& dev_ctx,
                               const DenseTensor& x,
                               DenseTensor* out,
@@ -137,14 +138,28 @@ int xpu_activation_2attr_func(const Context& dev_ctx,
                                                 const float*,
                                                 float*)> func) {
   // does not support "const float* max_x, float* max_y" now
+=======
+int xpu_activation_2attr_func(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    DenseTensor* out,
+    float attr1,
+    float attr2,
+    std::function<
+        int(xpu::Context*, const XPUType*, XPUType*, int, float, float)> func) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int r = func(dev_ctx.x_context(),
                reinterpret_cast<const XPUType*>(x.data<T>()),
                reinterpret_cast<XPUType*>(out->data<T>()),
                x.numel(),
                attr1,
+<<<<<<< HEAD
                attr2,
                nullptr,
                nullptr);
+=======
+               attr2);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return r;
 }
 
@@ -213,6 +228,7 @@ void PowKernel(const Context& dev_ctx,
                        static_cast<void*>(&pow_factor),
                        sizeof(T));
 
+<<<<<<< HEAD
   auto x_dims = vectorize<int>(x.dims());
   // use [1] to replace [], because xpu not support []
   if (x_dims.size() == 0) {
@@ -221,12 +237,18 @@ void PowKernel(const Context& dev_ctx,
 
   // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
   //    std::vector<int>& xshape, const std::vector<int>& yshape);
+=======
+  // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
+  // std::vector<int>& xshape, const std::vector<int>& yshape);
+  auto x_dims = vectorize<int>(x.dims());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int r =
       xpu::broadcast_pow(xpu_context, x_data, factor_data, y_data, x_dims, {1});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
 }
 
 template <typename T>
+<<<<<<< HEAD
 struct XPUHardSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
   float slope;
   float offset;
@@ -246,6 +268,8 @@ struct XPUHardSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct XPUHardSwishFunctor : public funcs::BaseActivationFunctor<T> {
   float threshold;
   float scale;
@@ -323,6 +347,7 @@ struct XPURelu6Functor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
+<<<<<<< HEAD
 struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   template <typename Context>
@@ -341,6 +366,8 @@ struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct XPUSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   template <typename Context>
@@ -398,10 +425,17 @@ struct XPUMishFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void SwishRawKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     float beta,
                     DenseTensor* out) {
+=======
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 float beta,
+                 DenseTensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   int r = xpu::swish(dev_ctx.x_context(),
@@ -444,6 +478,7 @@ struct XPUTanhFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+<<<<<<< HEAD
 template <typename T>
 struct XPUFloorFunctor : public funcs::BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -459,6 +494,9 @@ struct XPUFloorFunctor : public funcs::BaseActivationFunctor<T> {
 
 DEFINE_XPU_ACTIVATION_KERNEL(Exp, XPUExpFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Floor, XPUFloorFunctor)
+=======
+DEFINE_XPU_ACTIVATION_KERNEL(Exp, XPUExpFunctor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DEFINE_XPU_ACTIVATION_KERNEL(Log, XPULogFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Reciprocal, XPUReciprocalFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Relu, XPUReluFunctor)
@@ -466,20 +504,28 @@ DEFINE_XPU_ACTIVATION_KERNEL(Sigmoid, XPUSigmoidFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Square, XPUSquareFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Sqrt, XPUSqrtFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Tanh, XPUTanhFunctor)
+<<<<<<< HEAD
 DEFINE_XPU_ACTIVATION_KERNEL(Silu, XPUSiluFunctor)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
                                             XPULeakyReluFunctor,
                                             alpha)
+<<<<<<< HEAD
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Relu6Raw,
                                             XPURelu6Functor,
                                             threshold)
+=======
+DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Relu6, XPURelu6Functor, threshold)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus,
                                             XPUSoftplusFunctor,
                                             beta,
                                             threshold)
+<<<<<<< HEAD
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                             XPUHardSigmoidFunctor,
                                             slope,
@@ -492,6 +538,16 @@ void HardSwishRawKernel(const Context& dev_ctx,
                         float scale,
                         float offset,
                         DenseTensor* out) {
+=======
+
+template <typename T, typename Context>
+void HardSwishKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     float threshold,
+                     float scale,
+                     float offset,
+                     DenseTensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   XPUHardSwishFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
@@ -505,8 +561,11 @@ void HardSwishRawKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     relu, XPU, ALL_LAYOUT, phi::ReluKernel, float, phi::dtype::float16) {}
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(
     silu, XPU, ALL_LAYOUT, phi::SiluKernel, float, phi::dtype::float16) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
@@ -514,6 +573,7 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(
     square, XPU, ALL_LAYOUT, phi::SquareKernel, float, phi::dtype::float16) {}
 
@@ -531,3 +591,18 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
+=======
+PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
+PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
+PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
+PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
+PD_REGISTER_ACTIVATION_KERNEL(square, SquareKernel)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

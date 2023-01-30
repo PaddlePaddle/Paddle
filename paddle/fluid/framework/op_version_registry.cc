@@ -70,11 +70,14 @@ OpVersionDesc&& OpVersionDesc::DeleteOutput(const std::string& name,
   return std::move(*this);
 }
 
+<<<<<<< HEAD
 OpVersionRegistrar& OpVersionRegistrar::GetInstance() {
   static OpVersionRegistrar instance;
   return instance;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 OpVersion& OpVersionRegistrar::Register(const std::string& op_type) {
   PADDLE_ENFORCE_EQ(
       op_version_map_.find(op_type),
@@ -94,11 +97,14 @@ uint32_t OpVersionRegistrar::version_id(const std::string& op_type) const {
   return op_version_map_.find(op_type)->second.version_id();
 }
 
+<<<<<<< HEAD
 PassVersionCheckerRegistrar& PassVersionCheckerRegistrar::GetInstance() {
   static PassVersionCheckerRegistrar instance;
   return instance;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // Provide a fake registration item for pybind testing.
 #include "paddle/fluid/framework/op_version_registry.inl"
 

@@ -12,13 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from op_test import OpTest
 
 
 class TestFlattenOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "flatten"
         self.init_test_case()
@@ -42,6 +54,10 @@ class TestFlattenOp(OpTest):
 
 
 class TestFlattenOp1(TestFlattenOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (3, 2, 2, 10)
         self.axis = 0
@@ -49,6 +65,10 @@ class TestFlattenOp1(TestFlattenOp):
 
 
 class TestFlattenOpWithDefaultAxis(TestFlattenOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (10, 2, 2, 3)
         self.new_shape = (10, 12)
@@ -58,6 +78,10 @@ class TestFlattenOpWithDefaultAxis(TestFlattenOp):
 
 
 class TestFlattenOpSixDims(TestFlattenOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4

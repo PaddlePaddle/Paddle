@@ -41,9 +41,15 @@ struct TestFusedLayernormResidualDropoutBias {
   bool has_bias = true;
   bool has_scale = true;
   bool has_layernorm_bias = true;
+<<<<<<< HEAD
   phi::DenseTensor src, residual, bias, out, mask, scale, layernorm_bias,
       layernorm_out, means, vars;
   phi::DenseTensor dsrc, dbias;
+=======
+  framework::Tensor src, residual, bias, out, mask, scale, layernorm_bias,
+      layernorm_out, means, vars;
+  framework::Tensor dsrc, dbias;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<T> src_vec, residual_vec, bias_vec;
   std::vector<LayerNormParamType<T>> means_vec, vars_vec, scale_vec,
@@ -290,7 +296,11 @@ struct TestFusedLayernormResidualDropoutBias {
     framework::TensorToVector(layernorm_out, *ctx, &_layernorm_out);
     framework::TensorToVector(means, *ctx, &_means);
     framework::TensorToVector(vars, *ctx, &_vars);
+<<<<<<< HEAD
     if (!is_test && dropout_prob != 0.0f) {
+=======
+    if (!is_test) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       framework::TensorToVector(mask, *ctx, &_mask);
     }
     ctx->Wait();
@@ -298,9 +308,13 @@ struct TestFusedLayernormResidualDropoutBias {
     for (int i = 0; i < n; i++) {
       EXPECT_LT(std::abs(_out[i] - correct_out[i]), diff);
       EXPECT_LT(std::abs(_layernorm_out[i] - correct_layernorm_out[i]), diff);
+<<<<<<< HEAD
       if (!is_test && dropout_prob != 0.0f) {
         EXPECT_EQ(_mask[i], correct_mask[i]);
       }
+=======
+      if (!is_test) EXPECT_EQ(_mask[i], correct_mask[i]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     for (int i = 0; i < rows; i++) {
       EXPECT_LT(std::abs(_means[i] - correct_means[i]), static_cast<U>(diff));

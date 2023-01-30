@@ -22,12 +22,23 @@
 
 #include "paddle/fluid/operators/limit_by_capacity_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 __global__ void limit_by_capacity_impl(
     const T* expc, T* cap, T* out, const int n_expert, const int n_worker) {
@@ -36,7 +47,11 @@ __global__ void limit_by_capacity_impl(
     wid = i / n_expert;
     eid = i % n_expert;
     auto proposal = expc[wid * n_expert + eid];
+<<<<<<< HEAD
     auto cap_left = phi::CudaAtomicAdd(cap + eid, proposal * (-1));
+=======
+    auto cap_left = paddle::platform::CudaAtomicAdd(cap + eid, proposal * (-1));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (cap_left >= proposal) {
       out[wid * n_expert + eid] = proposal;
     } else if (cap_left >= 0) {
@@ -51,10 +66,17 @@ template <typename T>
 class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto expert_count = context.Input<phi::DenseTensor>("expert_count");
     auto capacity = context.Input<phi::DenseTensor>("capacity");
     auto n_worker = context.Attr<int>("n_worker");
     auto out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto expert_count = context.Input<Tensor>("expert_count");
+    auto capacity = context.Input<Tensor>("capacity");
+    auto n_worker = context.Attr<int>("n_worker");
+    auto out = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto n_expert = expert_count->numel() / n_worker;
     const auto place = context.GetPlace();
@@ -65,7 +87,11 @@ class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
     auto out_data = out->mutable_data<T>(place);
     const T* ec_data = expert_count->data<T>();
 
+<<<<<<< HEAD
     phi::DenseTensor capacity_copy;
+=======
+    framework::Tensor capacity_copy;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorCopy(*capacity, place, dev_ctx, &capacity_copy);
     T* cap_data = capacity_copy.mutable_data<T>(place);
 

@@ -14,7 +14,11 @@
 
 #include "paddle/fluid/imperative/flags.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/flags.h"
+=======
+#include "paddle/fluid/platform/flags.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 PADDLE_DEFINE_EXPORTED_uint64(dygraph_debug,
                               0,

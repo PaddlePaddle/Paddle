@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 
 import numpy as np
@@ -40,6 +41,31 @@ def check():
         "check: FLAGS_tracer_mkldnn_ops_off=",
         _global_flags()['FLAGS_tracer_mkldnn_ops_off'],
     )
+=======
+from __future__ import unicode_literals
+from __future__ import print_function
+
+import numpy as np
+import paddle.fluid as fluid
+import os
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import _global_flags
+from paddle.fluid.framework import _enable_legacy_dygraph
+
+_enable_legacy_dygraph()
+
+
+def check():
+    print("check: _global_flags()['FLAGS_use_mkldnn']=",
+          _global_flags()["FLAGS_use_mkldnn"])
+    print("check: fluid.get_flags('FLAGS_use_mkldnn')=",
+          fluid.get_flags(['FLAGS_use_mkldnn']))
+    print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])
+    print("check: FLAGS_tracer_mkldnn_ops_on=",
+          _global_flags()['FLAGS_tracer_mkldnn_ops_on'])
+    print("check: FLAGS_tracer_mkldnn_ops_off=",
+          _global_flags()['FLAGS_tracer_mkldnn_ops_off'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
     b_np = np.random.uniform(-5, 5, (10, 20, 30)).astype(np.float32)
     helper = LayerHelper(fluid.unique_name.generate(str("test")), act="relu")
@@ -47,8 +73,13 @@ def check():
     with fluid.dygraph.guard(fluid.core.CPUPlace()):
         a = fluid.dygraph.to_variable(a_np)
         b = fluid.dygraph.to_variable(b_np)
+<<<<<<< HEAD
         y = paddle.add(x=a, y=b)
         y = paddle.matmul(x=y, y=b, transpose_y=True)
+=======
+        y = fluid.layers.elementwise_add(x=a, y=b)
+        y = fluid.layers.matmul(x=y, y=b, transpose_y=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         res1 = func(y)
 
         np_res = np.add(a_np, b_np)

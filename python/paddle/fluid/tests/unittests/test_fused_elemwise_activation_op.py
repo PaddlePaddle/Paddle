@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -19,6 +20,14 @@ import numpy as np
 from op_test import OpTest
 
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+from functools import partial
+import paddle.fluid.core as core
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #   TestFusedElementwiseActivationOp
 #   TestFusedElementwiseActivationOp_scalar
@@ -34,10 +43,21 @@ import paddle.fluid.core as core
 #   TestFusedElementwiseActivationOp_channelwise_add
 
 
+<<<<<<< HEAD
 def create_test_class(
     test_case, callback, attrs, dtype=np.float32, grad_chek=True
 ):
     class TestFusedElementwiseActivationOp_base(OpTest):
+=======
+def create_test_class(test_case,
+                      callback,
+                      attrs,
+                      dtype=np.float32,
+                      grad_chek=True):
+
+    class TestFusedElementwiseActivationOp_base(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "fused_elemwise_activation"
             self.dtype = dtype
@@ -52,12 +72,20 @@ def create_test_class(
 
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
                 'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+=======
+                'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             if self.attrs["save_intermediate_out"]:
                 self.outputs = {
                     'Out': self.out,
+<<<<<<< HEAD
                     "IntermediateOut": self.intermediate_out,
+=======
+                    "IntermediateOut": self.intermediate_out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 }
             else:
                 self.outputs = {'Out': self.out}
@@ -68,9 +96,14 @@ def create_test_class(
             self.axis = -1
 
         def init_output(self):
+<<<<<<< HEAD
             self.x, self.y, self.intermediate_out, self.out = callback(
                 self.x, self.y, self.x, self.y
             )
+=======
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def init_attr(self):
             self.attrs = {
@@ -100,6 +133,7 @@ def create_test_class(
             if not grad_chek:
                 return
             if self.attrs["save_intermediate_out"]:
+<<<<<<< HEAD
                 self.check_grad(
                     ['Y'],
                     ['Out'],
@@ -113,11 +147,21 @@ def create_test_class(
                     max_relative_error=0.005,
                     no_grad_set=set("X"),
                 )
+=======
+                self.check_grad(['Y'], ['Out'],
+                                max_relative_error=0.005,
+                                no_grad_set=set("X"))
+            else:
+                self.check_grad(['Y'], ['Out'],
+                                max_relative_error=0.005,
+                                no_grad_set=set("X"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_grad_ingore_y(self):
             if not grad_chek:
                 return
             if self.attrs["save_intermediate_out"]:
+<<<<<<< HEAD
                 self.check_grad(
                     ['X'],
                     ['Out'],
@@ -135,18 +179,37 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_scalar(
         TestFusedElementwiseActivationOp_base
     ):
+=======
+                self.check_grad(['X'], ['Out'],
+                                max_relative_error=0.005,
+                                no_grad_set=set("Y"))
+            else:
+                self.check_grad(['X'], ['Out'],
+                                max_relative_error=0.005,
+                                no_grad_set=set("Y"))
+
+    class TestFusedElementwiseActivationOp_scalar(
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(1).astype(self.dtype)
 
     class TestFusedElementwiseActivationOp_scalar2(
+<<<<<<< HEAD
         TestFusedElementwiseActivationOp_base
     ):
+=======
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(1, 1).astype(self.dtype)
 
     class TestFusedElementwiseActivationOp_Vector(
+<<<<<<< HEAD
         TestFusedElementwiseActivationOp_base
     ):
         def init_input(self):
@@ -156,12 +219,24 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_broadcast_0(
         TestFusedElementwiseActivationOp_base
     ):
+=======
+            TestFusedElementwiseActivationOp_base):
+
+        def init_input(self):
+            self.x = np.random.random((32, )).astype(self.dtype)
+            self.y = np.random.random((32, )).astype(self.dtype)
+
+    class TestFusedElementwiseActivationOp_broadcast_0(
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(2).astype(self.dtype)
             self.axis = 0
 
         def init_output(self):
+<<<<<<< HEAD
             self.x, self.y, self.intermediate_out, self.out = callback(
                 self.x, self.y, self.x, self.y.reshape(2, 1, 1)
             )
@@ -169,12 +244,21 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_broadcast_1(
         TestFusedElementwiseActivationOp_base
     ):
+=======
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(2, 1, 1))
+
+    class TestFusedElementwiseActivationOp_broadcast_1(
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(3).astype(self.dtype)
             self.axis = 1
 
         def init_output(self):
+<<<<<<< HEAD
             self.x, self.y, self.intermediate_out, self.out = callback(
                 self.x, self.y, self.x, self.y.reshape(1, 3, 1)
             )
@@ -182,11 +266,20 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_broadcast_2(
         TestFusedElementwiseActivationOp_base
     ):
+=======
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 3, 1))
+
+    class TestFusedElementwiseActivationOp_broadcast_2(
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(4).astype(self.dtype)
 
         def init_output(self):
+<<<<<<< HEAD
             self.x, self.y, self.intermediate_out, self.out = callback(
                 self.x, self.y, self.x, self.y.reshape(1, 1, 4)
             )
@@ -194,12 +287,21 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_broadcast_3(
         TestFusedElementwiseActivationOp_base
     ):
+=======
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 1, 4))
+
+    class TestFusedElementwiseActivationOp_broadcast_3(
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
             self.y = np.random.rand(3, 4).astype(self.dtype)
             self.axis = 1
 
         def init_output(self):
+<<<<<<< HEAD
             self.x, self.y, self.intermediate_out, self.out = callback(
                 self.x, self.y, self.x, self.y.reshape(1, 3, 4, 1)
             )
@@ -207,12 +309,21 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_broadcast_4(
         TestFusedElementwiseActivationOp_base
     ):
+=======
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 3, 4, 1))
+
+    class TestFusedElementwiseActivationOp_broadcast_4(
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
             self.y = np.random.rand(2, 1).astype(self.dtype)
             self.axis = 0
 
         def init_output(self):
+<<<<<<< HEAD
             self.x, self.y, self.intermediate_out, self.out = callback(
                 self.x, self.y, self.x, self.y.reshape(2, 1, 1, 1)
             )
@@ -220,12 +331,21 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_rowwise_add_0(
         TestFusedElementwiseActivationOp_base
     ):
+=======
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(2, 1, 1, 1))
+
+    class TestFusedElementwiseActivationOp_rowwise_add_0(
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(3, 4).astype(self.dtype)
             self.axis = 1
 
         def init_output(self):
+<<<<<<< HEAD
             self.x, self.y, self.intermediate_out, self.out = callback(
                 self.x, self.y, self.x, self.y.reshape(1, 3, 4)
             )
@@ -233,12 +353,21 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_rowwise_add_1(
         TestFusedElementwiseActivationOp_base
     ):
+=======
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 3, 4))
+
+    class TestFusedElementwiseActivationOp_rowwise_add_1(
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(2, 1).astype(self.dtype)
             self.y = np.random.rand(1).astype(self.dtype)
             self.axis = 1
 
         def init_output(self):
+<<<<<<< HEAD
             self.x, self.y, self.intermediate_out, self.out = callback(
                 self.x, self.y, self.x, self.y.reshape(1, 1)
             )
@@ -246,6 +375,14 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_channelwise_add(
         TestFusedElementwiseActivationOp_base
     ):
+=======
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 1))
+
+    class TestFusedElementwiseActivationOp_channelwise_add(
+            TestFusedElementwiseActivationOp_base):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_input(self):
             self.x = np.random.rand(3, 20, 20).astype(self.dtype)
             self.y = np.random.rand(3, 1, 1).astype(self.dtype)
@@ -254,6 +391,7 @@ def create_test_class(
     TestFusedElementwiseActivationOp_scalar.__name__ = test_case + "_scalar"
     TestFusedElementwiseActivationOp_scalar2.__name__ = test_case + "_scalar2"
     TestFusedElementwiseActivationOp_Vector.__name__ = test_case + "_Vector"
+<<<<<<< HEAD
     TestFusedElementwiseActivationOp_broadcast_0.__name__ = (
         test_case + "_broadcast_0"
     )
@@ -278,11 +416,22 @@ def create_test_class(
     TestFusedElementwiseActivationOp_channelwise_add.__name__ = (
         test_case + "_channelwise_add"
     )
+=======
+    TestFusedElementwiseActivationOp_broadcast_0.__name__ = test_case + "_broadcast_0"
+    TestFusedElementwiseActivationOp_broadcast_1.__name__ = test_case + "_broadcast_1"
+    TestFusedElementwiseActivationOp_broadcast_2.__name__ = test_case + "_broadcast_2"
+    TestFusedElementwiseActivationOp_broadcast_3.__name__ = test_case + "_broadcast_3"
+    TestFusedElementwiseActivationOp_broadcast_4.__name__ = test_case + "_broadcast_4"
+    TestFusedElementwiseActivationOp_rowwise_add_0.__name__ = test_case + "_rowwise_add_0"
+    TestFusedElementwiseActivationOp_rowwise_add_1.__name__ = test_case + "_rowwise_add_1"
+    TestFusedElementwiseActivationOp_channelwise_add.__name__ = test_case + "_channelwise_add"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     globals()[test_case + "_base"] = TestFusedElementwiseActivationOp_base
     globals()[test_case + "_scalar"] = TestFusedElementwiseActivationOp_scalar
     globals()[test_case + "_scalar2"] = TestFusedElementwiseActivationOp_scalar2
     globals()[test_case + "_Vector"] = TestFusedElementwiseActivationOp_Vector
+<<<<<<< HEAD
     globals()[
         test_case + "_broadcast_0"
     ] = TestFusedElementwiseActivationOp_broadcast_0
@@ -307,6 +456,25 @@ def create_test_class(
     globals()[
         test_case + "_channelwise_add"
     ] = TestFusedElementwiseActivationOp_channelwise_add
+=======
+    globals()[test_case +
+              "_broadcast_0"] = TestFusedElementwiseActivationOp_broadcast_0
+    globals()[test_case +
+              "_broadcast_1"] = TestFusedElementwiseActivationOp_broadcast_1
+    globals()[test_case +
+              "_broadcast_2"] = TestFusedElementwiseActivationOp_broadcast_2
+    globals()[test_case +
+              "_broadcast_3"] = TestFusedElementwiseActivationOp_broadcast_3
+    globals()[test_case +
+              "_broadcast_4"] = TestFusedElementwiseActivationOp_broadcast_4
+    globals()[test_case +
+              "_rowwise_add_0"] = TestFusedElementwiseActivationOp_rowwise_add_0
+    globals()[test_case +
+              "_rowwise_add_1"] = TestFusedElementwiseActivationOp_rowwise_add_1
+    globals()[
+        test_case +
+        "_channelwise_add"] = TestFusedElementwiseActivationOp_channelwise_add
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def scale_add_func(x, y, x_bcast, y_bcast, scale, mode=0):
@@ -379,6 +547,7 @@ for mode in {0, 1}:
     gelu_add_func = partial(gelu_add_func, mode=mode)
 
     for save_intermediate_out in {True, False}:
+<<<<<<< HEAD
         suffix = ("_save_intermediate_out" if save_intermediate_out else "") + (
             "_mode_" + str(mode)
         )
@@ -433,28 +602,77 @@ for mode in {0, 1}:
                 'save_intermediate_out': save_intermediate_out,
             },
         )
+=======
+        suffix = ("_save_intermediate_out" if save_intermediate_out else "") \
+                 + ("_mode_"+ str(mode))
+        create_test_class(
+            'scale_add' + suffix, scale_add_func, {
+                'scale': scale,
+                'functor_list': ["scale", "elementwise_add"],
+                'save_intermediate_out': save_intermediate_out,
+            })
+        create_test_class(
+            'add_scale' + suffix, add_scale_func, {
+                'scale': scale,
+                'functor_list': ["elementwise_add", "scale"],
+                'save_intermediate_out': save_intermediate_out,
+            })
+        create_test_class(
+            'add_relu' + suffix, add_relu_func, {
+                'functor_list': ["elementwise_add", "relu"],
+                'save_intermediate_out': save_intermediate_out,
+            })
+        create_test_class(
+            'relu_add' + suffix, relu_add_func, {
+                'functor_list': ["relu", "elementwise_add"],
+                'save_intermediate_out': save_intermediate_out,
+            })
+        create_test_class(
+            'mul_scale' + suffix, mul_scale_func, {
+                'scale': scale,
+                'functor_list': ["elementwise_mul", "scale"],
+                'save_intermediate_out': save_intermediate_out,
+            })
+        create_test_class(
+            'gelu_add' + suffix, gelu_add_func, {
+                'functor_list': ["gelu", "elementwise_add"],
+                'save_intermediate_out': save_intermediate_out,
+            })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if core.is_compiled_with_cuda():
             create_test_class(
                 'scale_add_fp16' + suffix,
+<<<<<<< HEAD
                 scale_add_func,
                 {
+=======
+                scale_add_func, {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     'scale': scale,
                     'functor_list': ["scale", "elementwise_add"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
+<<<<<<< HEAD
                 grad_chek=False,
             )
             create_test_class(
                 'add_scale_fp16' + suffix,
                 add_scale_func,
                 {
+=======
+                grad_chek=False)
+            create_test_class(
+                'add_scale_fp16' + suffix,
+                add_scale_func, {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     'scale': scale,
                     'functor_list': ["elementwise_add", "scale"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
+<<<<<<< HEAD
                 grad_chek=False,
             )
 
@@ -462,46 +680,81 @@ for mode in {0, 1}:
                 'add_relu_fp16' + suffix,
                 add_relu_func,
                 {
+=======
+                grad_chek=False)
+
+            create_test_class(
+                'add_relu_fp16' + suffix,
+                add_relu_func, {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     'functor_list': ["elementwise_add", "relu"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
+<<<<<<< HEAD
                 grad_chek=False,
             )
             create_test_class(
                 'relu_add_fp16' + suffix,
                 relu_add_func,
                 {
+=======
+                grad_chek=False)
+            create_test_class(
+                'relu_add_fp16' + suffix,
+                relu_add_func, {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     'functor_list': ["relu", "elementwise_add"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
+<<<<<<< HEAD
                 grad_chek=False,
             )
             create_test_class(
                 'mul_scale_fp16' + suffix,
                 mul_scale_func,
                 {
+=======
+                grad_chek=False)
+            create_test_class(
+                'mul_scale_fp16' + suffix,
+                mul_scale_func, {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     'scale': scale,
                     'functor_list': ["elementwise_mul", "scale"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
+<<<<<<< HEAD
                 grad_chek=False,
             )
             create_test_class(
                 'gelu_add_fp16' + suffix,
                 gelu_add_func,
                 {
+=======
+                grad_chek=False)
+            create_test_class(
+                'gelu_add_fp16' + suffix,
+                gelu_add_func, {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     'functor_list': ["gelu", "elementwise_add"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
+<<<<<<< HEAD
                 grad_chek=False,
             )
 
 if __name__ == '__main__':
     import paddle
 
+=======
+                grad_chek=False)
+
+if __name__ == '__main__':
+    import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     paddle.enable_static()
     unittest.main()

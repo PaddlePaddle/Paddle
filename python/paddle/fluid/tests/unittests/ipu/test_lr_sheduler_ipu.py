@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -25,6 +26,20 @@ from paddle.optimizer.lr import LRScheduler
 class LR_New(LRScheduler):
     def __init__(self, learning_rate=1e-5, last_epoch=-1, verbose=False):
         super().__init__(learning_rate, last_epoch, verbose)
+=======
+import numpy as np
+import unittest
+import paddle
+import paddle.static
+from paddle.optimizer.lr import LRScheduler
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+
+
+class LR_New(LRScheduler):
+
+    def __init__(self, learning_rate=1e-5, last_epoch=-1, verbose=False):
+        super(LR_New, self).__init__(learning_rate, last_epoch, verbose)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_lr(self):
         self.base_lr = self.base_lr + 1e-4
@@ -33,6 +48,7 @@ class LR_New(LRScheduler):
 
 
 class TestConvNet(IPUOpTest):
+<<<<<<< HEAD
     @IPUOpTest.static_graph
     def build_model(self):
         image = paddle.static.data(
@@ -41,6 +57,18 @@ class TestConvNet(IPUOpTest):
         conv1 = paddle.static.nn.conv2d(
             image, num_filters=3, filter_size=3, bias_attr=False
         )
+=======
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        image = paddle.static.data(name='image',
+                                   shape=[1, 3, 10, 10],
+                                   dtype='float32')
+        conv1 = paddle.static.nn.conv2d(image,
+                                        num_filters=3,
+                                        filter_size=3,
+                                        bias_attr=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         loss = paddle.mean(conv1)
 
         opt = paddle.optimizer.Lamb(learning_rate=LR_New())
@@ -60,8 +88,14 @@ class TestConvNet(IPUOpTest):
             ipu_strategy = paddle.static.IpuStrategy()
             ipu_strategy.set_graph_config(is_training=True)
             program = paddle.static.IpuCompiledProgram(
+<<<<<<< HEAD
                 self.main_prog, ipu_strategy=ipu_strategy
             ).compile(self.feed_list, self.fetch_list)
+=======
+                self.main_prog,
+                ipu_strategy=ipu_strategy).compile(self.feed_list,
+                                                   self.fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             program = self.main_prog
 
@@ -69,9 +103,15 @@ class TestConvNet(IPUOpTest):
         for _ in range(100):
             if hasattr(program, "lr_sheduler"):
                 program.lr_sheduler.step()
+<<<<<<< HEAD
             loss_res = exe.run(
                 program, feed=self.feed, fetch_list=self.fetch_list
             )
+=======
+            loss_res = exe.run(program,
+                               feed=self.feed,
+                               fetch_list=self.fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             result.append(loss_res)
         return np.array(result)
 

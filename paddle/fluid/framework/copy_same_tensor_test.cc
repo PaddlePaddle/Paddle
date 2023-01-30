@@ -46,7 +46,11 @@ static bool CopySameTensorTestMain(const DDim &dims,
   FLAGS_use_system_allocator = true;  // force to use system allocator
 
   // Step 1: create a cpu tensor and initialize it with random value;
+<<<<<<< HEAD
   phi::DenseTensor src_cpu_tensor;
+=======
+  Tensor src_cpu_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   {
     src_cpu_tensor.Resize(dims);
     auto *src_ptr_cpu = src_cpu_tensor.mutable_data<T>(platform::CPUPlace());
@@ -60,9 +64,15 @@ static bool CopySameTensorTestMain(const DDim &dims,
   }
 
   // Step 2: copy the source tensor to dst place
+<<<<<<< HEAD
   phi::DenseTensor dst_cpu_tensor;
   {
     phi::DenseTensor src_tensor;
+=======
+  Tensor dst_cpu_tensor;
+  {
+    Tensor src_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TensorCopySync(src_cpu_tensor, src_place, &src_tensor);
 
     // The source tensor and dst_tensor is the same

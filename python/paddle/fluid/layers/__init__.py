@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+from . import ops
+from .ops import *
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from . import nn
 from .nn import *
 from . import io
@@ -20,16 +27,48 @@ from . import tensor
 from .tensor import *
 from . import control_flow
 from .control_flow import *
+<<<<<<< HEAD
 from . import math_op_patch
 from .math_op_patch import *
 from .learning_rate_scheduler import *
 from .collective import *
 from .sequence_lod import *
+=======
+from . import device
+from .device import *
+from . import math_op_patch
+from .math_op_patch import *
+from . import loss
+from .loss import *
+from . import detection
+from .detection import *
+from . import metric_op
+from .metric_op import *
+from .learning_rate_scheduler import *
+from .collective import *
+from .distributions import *
+from .sequence_lod import *
+from . import rnn
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 __all__ += nn.__all__
 __all__ += io.__all__
 __all__ += tensor.__all__
 __all__ += control_flow.__all__
+<<<<<<< HEAD
 __all__ += learning_rate_scheduler.__all__
 __all__ += sequence_lod.__all__
+=======
+__all__ += ops.__all__
+__all__ += device.__all__
+__all__ += detection.__all__
+__all__ += metric_op.__all__
+__all__ += learning_rate_scheduler.__all__
+__all__ += distributions.__all__
+__all__ += sequence_lod.__all__
+__all__ += loss.__all__
+__all__ += rnn.__all__
+
+from .rnn import *
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import itertools
 import unittest
 
@@ -24,6 +25,22 @@ import paddle.fluid.core as core
 
 
 class TestQrOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import itertools
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle.fluid.core as core
+from op_test import OpTest
+
+
+class TestQrOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         self.python_api = paddle.linalg.qr
@@ -74,6 +91,7 @@ class TestQrOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'],
             ['Q', 'R'],
@@ -84,26 +102,52 @@ class TestQrOp(OpTest):
 
 
 class TestQrOpCase1(TestQrOp):
+=======
+        self.check_grad(['X'], ['Q', 'R'],
+                        check_eager=True,
+                        numeric_grad_delta=1e-5,
+                        max_relative_error=1e-6)
+
+
+class TestQrOpCase1(TestQrOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_shape(self):
         return (10, 12)
 
 
 class TestQrOpCase2(TestQrOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_shape(self):
         return (16, 15)
 
 
 class TestQrOpCase3(TestQrOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_shape(self):
         return (2, 12, 16)
 
 
 class TestQrOpCase4(TestQrOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_shape(self):
         return (3, 16, 15)
 
 
 class TestQrOpCase5(TestQrOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_mode(self):
         return "complete"
 
@@ -112,6 +156,10 @@ class TestQrOpCase5(TestQrOp):
 
 
 class TestQrOpCase6(TestQrOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_mode(self):
         return "complete"
 
@@ -120,6 +168,10 @@ class TestQrOpCase6(TestQrOp):
 
 
 class TestQrAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_dygraph(self):
         paddle.disable_static()
         np.random.seed(7)
@@ -177,13 +229,21 @@ class TestQrAPI(unittest.TestCase):
             (4, 5, 3),  # 3-dim Tensors
             (2, 5, 3, 5),
             (3, 5, 5, 5),
+<<<<<<< HEAD
             (4, 5, 5, 3),  # 4-dim Tensors
+=======
+            (4, 5, 5, 3)  # 4-dim Tensors
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         modes = ["reduced", "complete", "r"]
         dtypes = ["float32", "float64"]
         for tensor_shape, mode, dtype in itertools.product(
+<<<<<<< HEAD
             tensor_shapes, modes, dtypes
         ):
+=======
+                tensor_shapes, modes, dtypes):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             run_qr_dygraph(tensor_shape, mode, dtype)
 
     def test_static(self):
@@ -225,6 +285,7 @@ class TestQrAPI(unittest.TestCase):
                             tmp_q, tmp_r = np.linalg.qr(a[coord], mode=mode)
                             np_q[coord] = tmp_q
                             np_r[coord] = tmp_r
+<<<<<<< HEAD
                     x = paddle.fluid.data(
                         name="input", shape=shape, dtype=dtype
                     )
@@ -253,6 +314,35 @@ class TestQrAPI(unittest.TestCase):
                         np.testing.assert_allclose(
                             fetches[1], np_r, rtol=1e-05, atol=1e-05
                         )
+=======
+                    x = paddle.fluid.data(name="input",
+                                          shape=shape,
+                                          dtype=dtype)
+                    if mode == "r":
+                        r = paddle.linalg.qr(x, mode=mode)
+                        exe = fluid.Executor(place)
+                        fetches = exe.run(fluid.default_main_program(),
+                                          feed={"input": a},
+                                          fetch_list=[r])
+                        np.testing.assert_allclose(fetches[0],
+                                                   np_r,
+                                                   rtol=1e-05,
+                                                   atol=1e-05)
+                    else:
+                        q, r = paddle.linalg.qr(x, mode=mode)
+                        exe = fluid.Executor(place)
+                        fetches = exe.run(fluid.default_main_program(),
+                                          feed={"input": a},
+                                          fetch_list=[q, r])
+                        np.testing.assert_allclose(fetches[0],
+                                                   np_q,
+                                                   rtol=1e-05,
+                                                   atol=1e-05)
+                        np.testing.assert_allclose(fetches[1],
+                                                   np_r,
+                                                   rtol=1e-05,
+                                                   atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         tensor_shapes = [
             (3, 5),
@@ -263,13 +353,21 @@ class TestQrAPI(unittest.TestCase):
             (4, 5, 3),  # 3-dim Tensors
             (2, 5, 3, 5),
             (3, 5, 5, 5),
+<<<<<<< HEAD
             (4, 5, 5, 3),  # 4-dim Tensors
+=======
+            (4, 5, 5, 3)  # 4-dim Tensors
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         modes = ["reduced", "complete", "r"]
         dtypes = ["float32", "float64"]
         for tensor_shape, mode, dtype in itertools.product(
+<<<<<<< HEAD
             tensor_shapes, modes, dtypes
         ):
+=======
+                tensor_shapes, modes, dtypes):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             run_qr_static(tensor_shape, mode, dtype)
 
 

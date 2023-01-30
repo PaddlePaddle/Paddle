@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 
 import numpy as np
 import test_collective_api_base as test_collective_base
@@ -22,6 +23,16 @@ import paddle.distributed as dist
 
 
 class StreamBroadcastTestCase:
+=======
+import numpy as np
+import paddle
+import paddle.distributed as dist
+import test_collective_api_base as test_collective_base
+
+
+class StreamBroadcastTestCase():
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
         self._use_calc_stream = eval(os.getenv("use_calc_stream"))
@@ -31,8 +42,12 @@ class StreamBroadcastTestCase:
         self._seeds = eval(os.getenv("seeds"))
         if self._backend not in ["nccl", "gloo"]:
             raise NotImplementedError(
+<<<<<<< HEAD
                 "Only support nccl and gloo as the backend for now."
             )
+=======
+                "Only support nccl and gloo as the backend for now.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_DISTRI_BACKEND"] = self._backend
 
     def run_test_case(self):
@@ -40,6 +55,7 @@ class StreamBroadcastTestCase:
 
         src_rank = 1
         result = test_collective_base.create_test_data(
+<<<<<<< HEAD
             shape=self._shape, dtype=self._dtype, seed=self._seeds[src_rank]
         )
         tensor = paddle.to_tensor(result)
@@ -53,6 +69,18 @@ class StreamBroadcastTestCase:
             task.wait()
 
         np.testing.assert_allclose(tensor, result, rtol=1e-05, atol=1e-05)
+=======
+            shape=self._shape, dtype=self._dtype, seed=self._seeds[src_rank])
+        tensor = paddle.to_tensor(result)
+        task = dist.stream.broadcast(tensor,
+                                     src=src_rank,
+                                     sync_op=self._sync_op,
+                                     use_calc_stream=self._use_calc_stream)
+        if not self._sync_op:
+            task.wait()
+
+        assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

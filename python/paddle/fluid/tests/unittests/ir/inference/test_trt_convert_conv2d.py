@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import itertools
 import unittest
 from functools import partial
@@ -25,6 +26,20 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertConv2dTest(TrtLayerAutoScanTest):
+=======
+import unittest
+import itertools
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import numpy as np
+import paddle.inference as paddle_infer
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+
+
+class TrtConvertConv2dTest(TrtLayerAutoScanTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -32,17 +47,26 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
+<<<<<<< HEAD
         if (
             inputs['input_data'].shape[1]
             != weights['conv2d_weight'].shape[1] * attrs[0]['groups']
         ):
+=======
+        if inputs['input_data'].shape[
+                1] != weights['conv2d_weight'].shape[1] * attrs[0]['groups']:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return False
 
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
             if attrs[0]['padding_algorithm'] == 'SAME' and (
+<<<<<<< HEAD
                 attrs[0]['strides'][0] > 1 or attrs[0]['strides'][1] > 1
             ):
+=======
+                    attrs[0]['strides'][0] > 1 or attrs[0]['strides'][1] > 1):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return False
 
         return True
@@ -51,12 +75,17 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
+<<<<<<< HEAD
             return (
                 np.ones([batch, attrs[0]['groups'] * 3, 64, 64]).astype(
                     np.float32
                 )
                 / 4
             )
+=======
+            return np.ones([batch, attrs[0]['groups'] * 3, 64, 64]).astype(
+                np.float32) / 4
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([9, 3, 3, 3]).astype(np.float32) - 0.5
@@ -79,6 +108,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             data_format_options,
         ]
 
+<<<<<<< HEAD
         for (
             batch,
             strides,
@@ -119,12 +149,48 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                     "op_attrs": attrs[1],
                 },
             ]
+=======
+        for batch, strides, paddings, groups, padding_algorithm, dilations, data_format in itertools.product(
+                *configurations):
+
+            attrs = [{
+                "data_fromat": data_format,
+                "dilations": dilations,
+                "padding_algorithm": padding_algorithm,
+                "groups": groups,
+                "paddings": paddings,
+                "strides": strides,
+                "data_format": data_format,
+            }, {}]
+
+            ops_config = [{
+                "op_type": "conv2d",
+                "op_inputs": {
+                    "Input": ["input_data"],
+                    "Filter": ["conv2d_weight"]
+                },
+                "op_outputs": {
+                    "Output": ["conv_output_data"]
+                },
+                "op_attrs": attrs[0]
+            }, {
+                "op_type": "relu",
+                "op_inputs": {
+                    "X": ["conv_output_data"]
+                },
+                "op_outputs": {
+                    "Out": ["output_data"]
+                },
+                "op_attrs": attrs[1]
+            }]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             ops = self.generate_op_config(ops_config)
 
             program_config = ProgramConfig(
                 ops=ops,
                 weights={
+<<<<<<< HEAD
                     "conv2d_weight": TensorConfig(
                         data_gen=partial(generate_weight1, attrs)
                     )
@@ -136,16 +202,33 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                 },
                 outputs=["output_data"],
             )
+=======
+                    "conv2d_weight":
+                    TensorConfig(data_gen=partial(generate_weight1, attrs))
+                },
+                inputs={
+                    "input_data":
+                    TensorConfig(
+                        data_gen=partial(generate_input1, batch, attrs))
+                },
+                outputs=["output_data"])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def generate_dynamic_shape(attrs):
             input_groups = attrs[0]['groups'] * 3
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, input_groups, 32, 32],
+<<<<<<< HEAD
                 "output_data": [1, 24, 32, 32],
             }
             self.dynamic_shape.max_input_shape = {
@@ -155,6 +238,17 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {
                 "input_data": [1, input_groups, 64, 64],
                 "output_data": [1, 24, 64, 64],
+=======
+                "output_data": [1, 24, 32, 32]
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [4, input_groups, 64, 64],
+                "output_data": [4, 24, 64, 64]
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [1, input_groups, 64, 64],
+                "output_data": [1, 24, 64, 64]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         def clear_dynamic_shape():
@@ -173,6 +267,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
@@ -183,11 +278,21 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), (1e-2, 1e-2)
+=======
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), (1e-3, 1e-3)
+        self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), (1e-2, 1e-2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
@@ -198,6 +303,15 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-2, 1e-2)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-3, 1e-3)
+        self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-2, 1e-2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test(self):
         self.run_test()

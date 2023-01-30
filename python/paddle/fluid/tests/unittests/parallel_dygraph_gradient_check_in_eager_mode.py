@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -20,6 +21,23 @@ import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
 from paddle.nn import Linear
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+import os
+import copy
+
+import paddle
+import numpy as np
+import paddle.distributed as dist
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.dygraph.parallel import ParallelEnv
+import paddle.fluid.core as core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.seed(1024)
 np.random.seed(2021)
@@ -30,6 +48,7 @@ out_dim = 20
 
 
 class SimpleNet(fluid.Layer):
+<<<<<<< HEAD
     def __init__(self, train_id):
         super().__init__()
         self.w1 = self.create_parameter(
@@ -43,6 +62,19 @@ class SimpleNet(fluid.Layer):
         self.unused_param = self.create_parameter(
             shape=[out_dim, in_dim], dtype="float64"
         )
+=======
+
+    def __init__(self, train_id):
+        super(SimpleNet, self).__init__()
+        self.w1 = self.create_parameter(shape=[in_dim, out_dim],
+                                        dtype="float32")
+        self.w2 = self.create_parameter(shape=[in_dim, out_dim],
+                                        dtype="float32")
+        self.share_net = Linear(out_dim, 10)
+
+        self.unused_param = self.create_parameter(shape=[out_dim, in_dim],
+                                                  dtype="float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # just for test sync_params_buffers
         # self.register_buffer("queue", paddle.randn([10, 5]))
@@ -52,10 +84,16 @@ class SimpleNet(fluid.Layer):
         self.trainer_id = train_id
 
     def forward(self, x):
+<<<<<<< HEAD
         is_use = (
             paddle.equal_all(x, paddle.ones(shape=(batch, in_dim))).numpy()[0]
             and self.trainer_id == 1
         )
+=======
+        is_use = (paddle.equal_all(
+            x, paddle.ones(shape=(batch, in_dim))).numpy()[0]
+                  and self.trainer_id == 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if is_use:
             tmp = paddle.matmul(x, self.w1)
@@ -66,6 +104,7 @@ class SimpleNet(fluid.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
+<<<<<<< HEAD
     def test_multiple_gpus(self):
         self.trainer_id = dist.get_rank()
         self.pg = dist.init_parallel_env()
@@ -119,6 +158,59 @@ class TestDistTraning(unittest.TestCase):
             )
 
             model_a.clear_gradients()
+=======
+
+    def test_multiple_gpus(self):
+        self.trainer_id = dist.get_rank()
+        with _test_eager_guard():
+            self.pg = dist.init_parallel_env()
+
+            model_a = SimpleNet(self.trainer_id)
+            model_b = SimpleNet(self.trainer_id)
+
+            state_dict = model_a.state_dict()
+            model_b.set_state_dict(state_dict)
+
+            model_a = paddle.DataParallel(model_a,
+                                          find_unused_parameters=True,
+                                          group=self.pg)
+            model_b = paddle.DataParallel(model_b,
+                                          find_unused_parameters=True,
+                                          group=self.pg)
+
+            ones_input = paddle.ones(shape=(batch, in_dim))
+            ones_input.stop_gradient = True
+
+            w1_grad_sum = np.zeros((in_dim, out_dim), dtype='float32')
+            w2_grad_sum = np.zeros((in_dim, out_dim), dtype='float32')
+
+            for step_id in range(5):
+                random_input = paddle.rand(shape=(batch, in_dim))
+                random_input.stop_gradient = True
+
+                if step_id % 2 == 0:
+                    out_a = model_a(random_input)
+                    out_b = model_b(random_input)
+                else:
+                    out_a = model_a(ones_input)
+                    out_b = model_b(ones_input)
+
+                out_a.sum().backward()
+                out_b.sum().backward()
+
+                self.check_gradient(model_a.parameters())
+                self.check_gradient(model_b.parameters())
+
+                # test acc gradient
+                w1_grad_sum = self.check_acc(model_a._layers.w1.grad,
+                                             w1_grad_sum,
+                                             model_b._layers.w1.grad)
+                w2_grad_sum = self.check_acc(model_a._layers.w2.grad,
+                                             w2_grad_sum,
+                                             model_b._layers.w2.grad)
+
+                model_a.clear_gradients()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_acc(self, grad, grad_sum, acc_grad):
         if grad is not None:

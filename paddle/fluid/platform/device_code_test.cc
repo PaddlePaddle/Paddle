@@ -56,9 +56,15 @@ TEST(DeviceCode, cuda) {
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
 
+<<<<<<< HEAD
   phi::DenseTensor cpu_x;
   phi::DenseTensor cpu_y;
   phi::DenseTensor cpu_z;
+=======
+  paddle::framework::Tensor cpu_x;
+  paddle::framework::Tensor cpu_y;
+  paddle::framework::Tensor cpu_z;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   float scale = 2;
   auto dims =
@@ -74,9 +80,15 @@ TEST(DeviceCode, cuda) {
     cpu_y.data<float>()[i] = static_cast<float>(0.5);
   }
 
+<<<<<<< HEAD
   phi::DenseTensor x;
   phi::DenseTensor y;
   phi::DenseTensor z;
+=======
+  paddle::framework::Tensor x;
+  paddle::framework::Tensor y;
+  paddle::framework::Tensor z;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   float* x_data = x.mutable_data<float>(dims, place);
   float* y_data = y.mutable_data<float>(dims, place);

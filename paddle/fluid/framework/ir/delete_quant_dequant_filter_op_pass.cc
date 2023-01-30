@@ -123,8 +123,13 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     auto dequant_type = quant_dequant_op->Op()->Type();
 
     // get weight tensor
+<<<<<<< HEAD
     auto* weight_tensor = scope->GetVar(quant_dequant_op_x->Name())
                               ->GetMutable<phi::DenseTensor>();
+=======
+    auto* weight_tensor =
+        scope->GetVar(quant_dequant_op_x->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto w_dims = weight_tensor->dims();
 
     float* quantized_weight_data =
@@ -148,8 +153,13 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                             "Scales size in channel-wise quant dequantize op "
                             "should be 1, got %d.",
                             scales_name.size()));
+<<<<<<< HEAD
       const phi::DenseTensor& channel_scale_tensor =
           scope->FindVar(scales_name[0])->Get<phi::DenseTensor>();
+=======
+      const LoDTensor& channel_scale_tensor =
+          scope->FindVar(scales_name[0])->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE(
           paddle::platform::is_cpu_place(channel_scale_tensor.place()),
           platform::errors::InvalidArgument(

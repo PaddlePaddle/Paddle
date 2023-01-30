@@ -22,14 +22,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class SigmoidFocalLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
     const phi::DenseTensor *Labels = context.Input<phi::DenseTensor>("Label");
     const phi::DenseTensor *FgNum = context.Input<phi::DenseTensor>("FgNum");
     phi::DenseTensor *Out = context.Output<phi::DenseTensor>("Out");
+=======
+    const Tensor *X = context.Input<Tensor>("X");
+    const Tensor *Labels = context.Input<Tensor>("Label");
+    const Tensor *FgNum = context.Input<Tensor>("FgNum");
+    Tensor *Out = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));
     auto out_data = Out->mutable_data<T>(context.GetPlace());
@@ -77,6 +89,7 @@ template <typename DeviceContext, typename T>
 class SigmoidFocalLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
     const phi::DenseTensor *Labels = context.Input<phi::DenseTensor>("Label");
     const phi::DenseTensor *FgNum = context.Input<phi::DenseTensor>("FgNum");
@@ -84,6 +97,13 @@ class SigmoidFocalLossGradKernel : public framework::OpKernel<T> {
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     phi::DenseTensor *dX =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    const Tensor *X = context.Input<Tensor>("X");
+    const Tensor *Labels = context.Input<Tensor>("Label");
+    const Tensor *FgNum = context.Input<Tensor>("FgNum");
+    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
+    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto dx_data = dX->mutable_data<T>(context.GetPlace());
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));

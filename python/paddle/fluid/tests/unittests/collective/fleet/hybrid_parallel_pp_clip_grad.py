@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from hybrid_parallel_pp_alexnet import TestDistPPTraning
@@ -30,10 +31,31 @@ class TestPPClipGrad(TestDistPPTraning):
             grad_clip=grad_clip,
             parameters=model.parameters(),
         )
+=======
+from __future__ import division
+from __future__ import print_function
+
+import paddle
+import unittest
+from hybrid_parallel_pp_alexnet import TestDistPPTraning
+
+
+class TestPPClipGrad(TestDistPPTraning):
+
+    def build_optimizer(self, model):
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(0.5)
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
+                                                       values=[0.001, 0.002],
+                                                       verbose=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
+                                         grad_clip=grad_clip,
+                                         parameters=model.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return scheduler, optimizer
 
 
 class TestPPClipGradParamGroup(TestDistPPTraning):
+<<<<<<< HEAD
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(0.5)
         scheduler = paddle.optimizer.lr.PiecewiseDecay(
@@ -44,6 +66,20 @@ class TestPPClipGradParamGroup(TestDistPPTraning):
             grad_clip=grad_clip,
             parameters=[{"params": model.parameters()}],
         )
+=======
+
+    def build_optimizer(self, model):
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(0.5)
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
+                                                       values=[0.001, 0.002],
+                                                       verbose=True)
+        optimizer = paddle.optimizer.Momentum(learning_rate=scheduler,
+                                              grad_clip=grad_clip,
+                                              parameters=[{
+                                                  "params":
+                                                  model.parameters()
+                                              }])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return scheduler, optimizer
 
 

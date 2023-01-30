@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from .tensor import inverse as inv  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import cholesky_solve  # noqa: F401
@@ -34,11 +35,39 @@ from .tensor.linalg import qr  # noqa: F401
 from .tensor.linalg import slogdet  # noqa: F401
 from .tensor.linalg import solve  # noqa: F401
 from .tensor.linalg import svd  # noqa: F401
+=======
+from .tensor.linalg import cholesky  # noqa: F401
+from .tensor.linalg import norm  # noqa: F401
+from .tensor.linalg import eig  # noqa: F401
+from .tensor.linalg import cov  # noqa: F401
+from .tensor.linalg import corrcoef  # noqa: F401
+from .tensor.linalg import cond  # noqa: F401
+from .tensor.linalg import matrix_power  # noqa: F401
+from .tensor.linalg import solve  # noqa: F401
+from .tensor.linalg import cholesky_solve  # noqa: F401
+from .tensor import inverse as inv  # noqa: F401
+from .tensor.linalg import eigvals  # noqa: F401
+from .tensor.linalg import multi_dot  # noqa: F401
+from .tensor.linalg import matrix_rank  # noqa: F401
+from .tensor.linalg import svd  # noqa: F401
+from .tensor.linalg import eigvalsh  # noqa: F401
+from .tensor.linalg import qr  # noqa: F401
+from .tensor.linalg import lu  # noqa: F401
+from .tensor.linalg import lu_unpack  # noqa: F401
+from .tensor.linalg import eigh  # noqa: F401
+from .tensor.linalg import det  # noqa: F401
+from .tensor.linalg import slogdet  # noqa: F401
+from .tensor.linalg import pinv  # noqa: F401
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .tensor.linalg import triangular_solve  # noqa: F401
 from .tensor.linalg import lstsq
 
 __all__ = [
+<<<<<<< HEAD
     'cholesky',  # noqa
+=======
+    'cholesky',  #noqa
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'norm',
     'cond',
     'cov',
@@ -61,5 +90,9 @@ __all__ = [
     'solve',
     'cholesky_solve',
     'triangular_solve',
+<<<<<<< HEAD
     'lstsq',
+=======
+    'lstsq'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

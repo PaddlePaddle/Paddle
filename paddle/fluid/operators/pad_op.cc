@@ -22,6 +22,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class PadOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -30,6 +35,7 @@ class PadOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad");
   }
+<<<<<<< HEAD
 
  protected:
   phi::KernelKey GetExpectedKernelType(
@@ -37,6 +43,8 @@ class PadOp : public framework::OperatorWithKernel {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class PadOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -64,7 +72,11 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Pad Operator.
 
+<<<<<<< HEAD
 Pad input into output, as specified by paddings and pad_value.
+=======
+Pad input into output, as specified by paddings and pad_value. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
 Given:
@@ -105,6 +117,7 @@ class PadOpGrad : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, dout_dims);
     }
   }
+<<<<<<< HEAD
 
  protected:
   phi::KernelKey GetExpectedKernelType(
@@ -113,6 +126,8 @@ class PadOpGrad : public framework::OperatorWithKernel {
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename T>

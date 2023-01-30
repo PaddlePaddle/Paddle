@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+import six
+import warnings
+import sys
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
 from paddle.fluid.data_feeder import check_type
@@ -22,6 +31,7 @@ __all__ = [
 ]
 
 
+<<<<<<< HEAD
 class ParamAttr:
     """
 
@@ -29,6 +39,15 @@ class ParamAttr:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
         There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` ,
+=======
+class ParamAttr(object):
+    """
+
+    Note:
+        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
 
     Create a object to represent the attribute of parameter. The attributes are:
@@ -44,10 +63,17 @@ class ParamAttr:
         learning_rate (float, optional): The parameter's learning rate. The learning rate when
                 optimize is the global learning rates times the parameter's learning rate times
                 the factor of learning rate scheduler. Default 1.0.
+<<<<<<< HEAD
         regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method:
                 :ref:`api_paddle_regularizer_L1Decay` , :ref:`api_paddle_regularizer_L2Decay` . If
                 regularizer is also set in ``optimizer`` (such as :ref:`api_paddle_optimizer_SGD` ),
                 that regularizer setting in optimizer will be ignored. Default None, meaning there is
+=======
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
+                :ref:`api_paddle_regularizer_L1Decay` , :ref:`api_paddle_regularizer_L2Decay` . If 
+                regularizer is also set in ``optimizer`` (such as :ref:`api_paddle_optimizer_SGD` ), 
+                that regularizer setting in optimizer will be ignored. Default None, meaning there is 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 no regularization.
         trainable (bool, optional): Whether this parameter is trainable. Default True.
         do_model_average (bool, optional): Whether this parameter should do model average
@@ -58,7 +84,11 @@ class ParamAttr:
        ParamAttr Object.
 
     Examples:
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .. code-block:: python
 
             import paddle
@@ -71,6 +101,7 @@ class ParamAttr:
             paddle.nn.Linear(3, 4, weight_attr=weight_attr)
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         name=None,
@@ -83,10 +114,26 @@ class ParamAttr:
     ):
 
         check_type(name, "name", (str, type(None)), "ParamAttr")
+=======
+    def __init__(self,
+                 name=None,
+                 initializer=None,
+                 learning_rate=1.0,
+                 regularizer=None,
+                 trainable=True,
+                 do_model_average=True,
+                 need_clip=True):
+
+        if sys.version_info.major == 2:
+            check_type(name, "name", (str, type(None), unicode), "ParamAttr")
+        else:
+            check_type(name, "name", (str, type(None)), "ParamAttr")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
         check_type(need_clip, "need_clip", (bool), "ParamAttr")
+<<<<<<< HEAD
         check_type(
             initializer, "initializer", (Initializer, type(None)), "ParamAttr"
         )
@@ -96,6 +143,12 @@ class ParamAttr:
             (WeightDecayRegularizer, type(None)),
             "ParamAttr",
         )
+=======
+        check_type(initializer, "initializer", (Initializer, type(None)),
+                   "ParamAttr")
+        check_type(regularizer, "regularizer",
+                   (WeightDecayRegularizer, type(None)), "ParamAttr")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.name = name
         if self.name == "":
@@ -175,7 +228,11 @@ class ParamAttr:
             return [ParamAttr._to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
+<<<<<<< HEAD
         elif isinstance(arg, str):
+=======
+        elif isinstance(arg, six.string_types):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return ParamAttr(name=arg)
         elif isinstance(arg, Initializer):
             return ParamAttr(initializer=arg)
@@ -198,11 +255,21 @@ class ParamAttr:
         """
         kwargs = {
             'name': self.name,
+<<<<<<< HEAD
             'optimize_attr': {'learning_rate': self.learning_rate},
             'regularizer': self.regularizer,
             'trainable': self.trainable,
             'do_model_average': self.do_model_average,
             'need_clip': self.need_clip,
+=======
+            'optimize_attr': {
+                'learning_rate': self.learning_rate
+            },
+            'regularizer': self.regularizer,
+            'trainable': self.trainable,
+            'do_model_average': self.do_model_average,
+            'need_clip': self.need_clip
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
@@ -214,6 +281,7 @@ class WeightNormParamAttr(ParamAttr):
 
     Note:
         Please use 'paddle.nn.utils.weight_norm' in dygraph mode.
+<<<<<<< HEAD
 
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0.
@@ -221,6 +289,15 @@ class WeightNormParamAttr(ParamAttr):
         There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` ,
         :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
 
+=======
+	
+    Note:
+        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
+        :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
+	
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Parameter of weight Norm. Weight Norm is a reparameterization of the weight vectors
     in a neural network that decouples the magnitude of those weight vectors from
     their direction. Weight Norm has been implemented as discussed in this
@@ -254,9 +331,15 @@ class WeightNormParamAttr(ParamAttr):
         need_clip (bool, optional): Whether the parameter gradient need to be cliped in optimizer. Default is True.
 
     Examples:
+<<<<<<< HEAD
 
         .. code-block:: python
 
+=======
+    
+        .. code-block:: python
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             import paddle
 
             paddle.enable_static()
@@ -282,6 +365,7 @@ class WeightNormParamAttr(ParamAttr):
     # these paramters for inference.
     params_with_weight_norm = []
 
+<<<<<<< HEAD
     def __init__(
         self,
         dim=None,
@@ -302,4 +386,23 @@ class WeightNormParamAttr(ParamAttr):
             do_model_average=do_model_average,
             need_clip=need_clip,
         )
+=======
+    def __init__(self,
+                 dim=None,
+                 name=None,
+                 initializer=None,
+                 learning_rate=1.0,
+                 regularizer=None,
+                 trainable=True,
+                 do_model_average=False,
+                 need_clip=True):
+        super(WeightNormParamAttr,
+              self).__init__(name=name,
+                             initializer=initializer,
+                             learning_rate=learning_rate,
+                             regularizer=regularizer,
+                             trainable=trainable,
+                             do_model_average=do_model_average,
+                             need_clip=need_clip)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dim = dim

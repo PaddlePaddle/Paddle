@@ -29,6 +29,7 @@ class LambOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const {
     auto input_data_type =
@@ -46,6 +47,23 @@ class LambOp : public framework::OperatorWithKernel {
     } else {
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const {
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
+      return expected_kernel_type;
+    } else {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };
@@ -54,10 +72,17 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
+<<<<<<< HEAD
              "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input parameter that has to be updated.");
     AddInput("Grad",
              "(phi::DenseTensor, default phi::DenseTensor<float>) "
+=======
+             "(LoDTensor, default LoDTensor<float>) "
+             "Input parameter that has to be updated.");
+    AddInput("Grad",
+             "(LoDTensor, default LoDTensor<float>) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "Input gradient of the parameter.");
     AddInput("LearningRate", "(Tensor) Learning rate.");
     AddInput("Moment1", "(Tensor) Input first moment.");
@@ -65,7 +90,11 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator.");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator.");
     AddInput("MasterParam",
+<<<<<<< HEAD
              "(phi::DenseTensor, default phi::DenseTensor<float>) "
+=======
+             "(LoDTensor, default LoDTensor<float>) "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "Input master parameter that has to be updated.")
         .AsDispensable();
     AddInput(
@@ -103,8 +132,13 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
+<<<<<<< HEAD
 LAMB Optimizer is designed to scale up the batch size of training without losing
 accuracy, which supports adaptive element-wise updating and accurate layer-wise
+=======
+LAMB Optimizer is designed to scale up the batch size of training without losing 
+accuracy, which supports adaptive element-wise updating and accurate layer-wise 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 correction. For more information, please refer to https://arxiv.org/abs/1904.00962.
 
 The updating of parameters follows:
@@ -123,7 +157,11 @@ r_t &= \frac{m_t}{\sqrt{v_t}+\epsilon} \\
 w_t &= w_{t-1} -\eta_t \frac{\left \| w_{t-1}\right \|}{\left \| r_t + \lambda w_{t-1}\right \|} (r_t + \lambda w_{t-1})
 $$
 
+<<<<<<< HEAD
 where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the
+=======
+where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 learning rate, $\lambda$ the weight decay rate.
 )DOC");
   }

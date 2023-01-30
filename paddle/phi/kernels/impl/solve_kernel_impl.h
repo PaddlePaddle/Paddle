@@ -169,7 +169,11 @@ static void linalg_solve(const Context& dev_ctx,
     out_tmp.Resize(out->dims());
     out_tmp = *out;
 
+<<<<<<< HEAD
     phi::Squeeze<T, Context>(dev_ctx, out_tmp, {-1}, out);
+=======
+    phi::SqueezeKernel<T, Context>(dev_ctx, out_tmp, {-1}, out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     PADDLE_ENFORCE_EQ(
         x_dim[x_dim_size - 1],

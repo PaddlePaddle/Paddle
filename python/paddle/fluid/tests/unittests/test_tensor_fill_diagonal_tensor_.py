@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,12 +23,26 @@ import paddle.nn.functional as F
 
 
 class TensorFillDiagTensor_Test(unittest.TestCase):
+=======
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+import unittest
+import numpy as np
+import six
+import paddle
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TensorFillDiagTensor_Test(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.typelist = ['float32', 'float64', 'int32', 'int64']
         self.places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
+<<<<<<< HEAD
     def test_dim2(self):
         expected_np = np.array(
             [[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2]]
@@ -35,6 +50,13 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
         expected_grad = np.array(
             [[0, 1, 1], [1, 0, 1], [1, 1, 0], [1, 1, 1]]
         ).astype('float32')
+=======
+    def func_dim2(self):
+        expected_np = np.array([[1, 2, 2], [2, 1, 2], [2, 2, 1],
+                                [2, 2, 2]]).astype('float32')
+        expected_grad = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0],
+                                  [1, 1, 1]]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for idx, p in enumerate(self.places):
             if idx == 0:
@@ -42,17 +64,26 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             else:
                 paddle.set_device('gpu')
             for dtype in self.typelist:
+<<<<<<< HEAD
                 v = paddle.ones((3,), dtype=dtype)
                 var = np.random.random() + 1
                 x = paddle.ones((4, 3), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
                 y.retain_grads()
+=======
+                v = paddle.ones((3, ), dtype=dtype)
+                var = (np.random.random() + 1)
+                x = paddle.ones((4, 3), dtype=dtype)
+                x.stop_gradient = False
+                y = x * 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 y.fill_diagonal_tensor_(v, offset=0, dim1=0, dim2=1)
                 loss = y.sum()
                 loss.backward()
 
                 self.assertEqual(
+<<<<<<< HEAD
                     (y.numpy().astype('float32') == expected_np).all(), True
                 )
                 self.assertEqual(
@@ -67,6 +98,25 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
         expected_grad = np.array(
             [[1, 1, 1], [0, 1, 1], [1, 0, 1], [1, 1, 0]]
         ).astype('float32')
+=======
+                    (y.numpy().astype('float32') == expected_np).all(), True)
+                self.assertEqual(
+                    (y.grad.numpy().astype('float32') == expected_grad).all(),
+                    True)
+
+    def test_dim2(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        with _test_eager_guard():
+            self.func_dim2()
+        self.func_dim2()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def func_dim2_offset_1(self):
+        expected_np = np.array([[2, 2, 2], [1, 2, 2], [2, 1, 2],
+                                [2, 2, 1]]).astype('float32')
+        expected_grad = np.array([[1, 1, 1], [0, 1, 1], [1, 0, 1],
+                                  [1, 1, 0]]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for idx, p in enumerate(self.places):
             if idx == 0:
@@ -74,17 +124,26 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             else:
                 paddle.set_device('gpu')
             for dtype in self.typelist:
+<<<<<<< HEAD
                 v = paddle.ones((3,), dtype=dtype)
                 var = np.random.random() + 1
                 x = paddle.ones((4, 3), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
                 y.retain_grads()
+=======
+                v = paddle.ones((3, ), dtype=dtype)
+                var = (np.random.random() + 1)
+                x = paddle.ones((4, 3), dtype=dtype)
+                x.stop_gradient = False
+                y = x * 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 y.fill_diagonal_tensor_(v, offset=-1, dim1=0, dim2=1)
                 loss = y.sum()
                 loss.backward()
 
                 self.assertEqual(
+<<<<<<< HEAD
                     (y.numpy().astype('float32') == expected_np).all(), True
                 )
                 self.assertEqual(
@@ -99,6 +158,25 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
         expected_grad = np.array(
             [[1, 0, 1], [1, 1, 0], [1, 1, 1], [1, 1, 1]]
         ).astype('float32')
+=======
+                    (y.numpy().astype('float32') == expected_np).all(), True)
+                self.assertEqual(
+                    (y.grad.numpy().astype('float32') == expected_grad).all(),
+                    True)
+
+    def test_dim2_offset_1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        with _test_eager_guard():
+            self.func_dim2_offset_1()
+        self.func_dim2_offset_1()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def func_dim2_offset1(self):
+        expected_np = np.array([[2, 1, 2], [2, 2, 1], [2, 2, 2],
+                                [2, 2, 2]]).astype('float32')
+        expected_grad = np.array([[1, 0, 1], [1, 1, 0], [1, 1, 1],
+                                  [1, 1, 1]]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for idx, p in enumerate(self.places):
             if idx == 0:
@@ -106,17 +184,26 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             else:
                 paddle.set_device('gpu')
             for dtype in self.typelist:
+<<<<<<< HEAD
                 v = paddle.ones((2,), dtype=dtype)
                 var = np.random.random() + 1
                 x = paddle.ones((4, 3), dtype=dtype)
                 x.stop_gradient = False
                 y = x * 2
                 y.retain_grads()
+=======
+                v = paddle.ones((2, ), dtype=dtype)
+                var = (np.random.random() + 1)
+                x = paddle.ones((4, 3), dtype=dtype)
+                x.stop_gradient = False
+                y = x * 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 y.fill_diagonal_tensor_(v, offset=1, dim1=0, dim2=1)
                 loss = y.sum()
                 loss.backward()
 
                 self.assertEqual(
+<<<<<<< HEAD
                     (y.numpy().astype('float32') == expected_np).all(), True
                 )
                 self.assertEqual(
@@ -157,6 +244,37 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 ],
             ]
         ).astype('float32')
+=======
+                    (y.numpy().astype('float32') == expected_np).all(), True)
+                self.assertEqual(
+                    (y.grad.numpy().astype('float32') == expected_grad).all(),
+                    True)
+
+    def test_dim2_offset1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        with _test_eager_guard():
+            self.func_dim2_offset1()
+        self.func_dim2_offset1()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def func_dim4(self):
+        expected_np = np.array([[[[0, 3], [2, 2], [2, 2]],
+                                 [[2, 2], [1, 4], [2, 2]],
+                                 [[2, 2], [2, 2], [2, 5]],
+                                 [[2, 2], [2, 2], [2, 2]]],
+                                [[[6, 9], [2, 2], [2, 2]],
+                                 [[2, 2], [7, 10], [2, 2]],
+                                 [[2, 2], [2, 2], [8, 11]],
+                                 [[2, 2], [2, 2], [2, 2]]]]).astype('float32')
+        expected_grad = np.array([[[[0, 0], [1, 1], [1, 1]],
+                                   [[1, 1], [0, 0], [1, 1]],
+                                   [[1, 1], [1, 1], [0, 0]],
+                                   [[1, 1], [1, 1], [1, 1]]],
+                                  [[[0, 0], [1, 1], [1, 1]],
+                                   [[1, 1], [0, 0], [1, 1]],
+                                   [[1, 1], [1, 1], [0, 0]],
+                                   [[1, 1], [1, 1], [1, 1]]]]).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for idx, p in enumerate(self.places):
             if idx == 0:
@@ -164,6 +282,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             else:
                 paddle.set_device('gpu')
             for dtype in self.typelist:
+<<<<<<< HEAD
                 v = paddle.to_tensor(
                     np.arange(12).reshape(2, 2, 3), dtype=dtype
                 )
@@ -172,11 +291,20 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 x.stop_gradient = False
                 y = x * 2
                 y.retain_grads()
+=======
+                v = paddle.to_tensor(np.arange(12).reshape(2, 2, 3),
+                                     dtype=dtype)
+                var = (np.random.random() + 1)
+                x = paddle.ones((2, 4, 3, 2), dtype=dtype)
+                x.stop_gradient = False
+                y = x * 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 y.fill_diagonal_tensor_(v, offset=0, dim1=1, dim2=2)
                 loss = y.sum()
                 loss.backward()
 
                 self.assertEqual(
+<<<<<<< HEAD
                     (y.numpy().astype('float32') == expected_np).all(), True
                 )
                 self.assertEqual(
@@ -186,18 +314,41 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_largedim(self):
         # large dim only test on gpu because the cpu version is too slow for ci test, and the memory is limited
+=======
+                    (y.numpy().astype('float32') == expected_np).all(), True)
+                self.assertEqual(
+                    (y.grad.numpy().astype('float32') == expected_grad).all(),
+                    True)
+
+    def test_func_dim4(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        with _test_eager_guard():
+            self.func_dim4()
+        self.func_dim4()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def func_largedim(self):
+        #large dim only test on gpu because the cpu version is too slow for ci test, and the memory is limited
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if len(self.places) > 1:
             bsdim = 1024
             fsdim = 128
             paddle.set_device('gpu')
             for dtype in self.typelist:
                 v = paddle.arange(bsdim * fsdim, dtype=dtype).reshape(
+<<<<<<< HEAD
                     (bsdim, fsdim)
                 )
                 y = paddle.ones((bsdim, fsdim, fsdim), dtype=dtype)
                 y.stop_gradient = False
                 y = y * 2
                 y.retain_grads()
+=======
+                    (bsdim, fsdim))
+                y = paddle.ones((bsdim, fsdim, fsdim), dtype=dtype)
+                y.stop_gradient = False
+                y = y * 2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 y.fill_diagonal_tensor_(v, offset=0, dim1=1, dim2=2)
                 loss = y.sum()
                 loss.backward()
@@ -210,6 +361,16 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 self.assertEqual((y == expected_pred).all(), True)
                 self.assertEqual((y.grad == expected_grad).all(), True)
 
+<<<<<<< HEAD
+=======
+    def test_largedim(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        with _test_eager_guard():
+            self.func_largedim()
+        self.func_largedim()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

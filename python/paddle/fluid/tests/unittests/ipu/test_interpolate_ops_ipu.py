@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -45,9 +52,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         out = paddle.nn.functional.interpolate(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -63,12 +76,20 @@ class TestBase(IPUOpTest):
 
 
 class TestCase0(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs["size"] = [3, 4]
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs["scale_factor"] = [2, 1]
@@ -76,16 +97,28 @@ class TestCase1(TestBase):
 
 @unittest.skip("Only one of size or scale_factor should be defined")
 class TestCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"size": [12, 12], "scale_factor": [2, 1]}
 
 
 class TestCase3(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"scale_factor": 2.5}
 
 
 class TestBilinear(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @property
     def fp16_enabled(self):
         return False
@@ -102,6 +135,10 @@ class TestBilinear(TestBase):
 
 # Take long time
 class TestBicubic(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @property
     def fp16_enabled(self):
         return False
@@ -118,6 +155,10 @@ class TestBicubic(TestBase):
 
 # Trilinear requires 5-D input
 class TestTrilinear(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @property
     def fp16_enabled(self):
         return False
@@ -137,12 +178,20 @@ class TestTrilinear(TestBase):
         self.attrs = {
             "size": [12, 12, 12],
             "mode": "trilinear",
+<<<<<<< HEAD
             "data_format": "NCDHW",
+=======
+            "data_format": "NCDHW"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 # Linear requires 3-D input
 class TestLinear(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @property
     def fp16_enabled(self):
         return False
@@ -163,9 +212,15 @@ class TestLinear(TestBase):
 
 
 @unittest.skip(
+<<<<<<< HEAD
     "Transfer to Pool Op with 2-D ksize, now we only support 1-D ksize."
 )
 class TestArea(TestBase):
+=======
+    "Transfer to Pool Op with 2-D ksize, now we only support 1-D ksize.")
+class TestArea(TestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_data_feed(self):
         x = np.random.uniform(size=[2, 3, 6, 6])
         self.feed_fp32 = {"x": x.astype(np.float32)}
@@ -177,6 +232,10 @@ class TestArea(TestBase):
 
 # align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear
 class TestAlignCorners(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @property
     def fp16_enabled(self):
         return False
@@ -185,12 +244,20 @@ class TestAlignCorners(TestBase):
         self.attrs = {
             "size": [12, 12],
             "align_corners": True,
+<<<<<<< HEAD
             "mode": "bilinear",
+=======
+            "mode": "bilinear"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 #
 class TestAlignMode(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"size": [12, 12], "align_mode": 1}
 

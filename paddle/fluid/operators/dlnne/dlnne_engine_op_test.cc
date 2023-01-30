@@ -36,7 +36,11 @@ void CreateCUDATensor(framework::Scope* scope,
                       const std::string& name,
                       const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
+<<<<<<< HEAD
   auto* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
   platform::CUDAPlace place;

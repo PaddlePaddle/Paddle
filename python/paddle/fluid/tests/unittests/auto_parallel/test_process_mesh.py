@@ -13,6 +13,7 @@
 # limitations under the License
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -28,6 +29,18 @@ from paddle.distributed.auto_parallel.process_mesh import (
     compute_compatible_process_mesh,
     merge_process_meshes,
 )
+=======
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.nn as nn
+import paddle.nn.functional as F
+import paddle.static as static
+from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -38,6 +51,7 @@ sequence_len = 512
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -51,20 +65,41 @@ class MLPLayer(nn.Layer):
         param_initializer = nn.initializer.Normal(
             mean=0.0, std=initializer_range
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        param_initializer = nn.initializer.Normal(mean=0.0,
+                                                  std=initializer_range)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.linear0 = nn.Linear(
             d_model,
             dim_feedforward,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
+<<<<<<< HEAD
             bias_attr=None,
         )
+=======
+            bias_attr=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear1 = nn.Linear(
             dim_feedforward,
             d_model,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
+<<<<<<< HEAD
             bias_attr=None,
         )
+=======
+            bias_attr=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, input):
         out = self.norm(input)
@@ -75,6 +110,10 @@ class MLPLayer(nn.Layer):
 
 
 class TestProcessMesh(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_construction(self):
         mesh = [[0, 1, 2], [3, 4, 5]]
         process_mesh = ProcessMesh(mesh, dim_names=["x", "y"])
@@ -117,6 +156,7 @@ class TestProcessMesh(unittest.TestCase):
 
     def test_context_manager(self):
         mesh = np.array([1, 2, 3, 4])
+<<<<<<< HEAD
         input = static.data(
             name="input",
             shape=[batch_size, sequence_len, hidden_size],
@@ -134,6 +174,21 @@ class TestProcessMesh(unittest.TestCase):
         )
 
         with ProcessMesh(mesh, ["d"]):
+=======
+        input = static.data(name="input",
+                            shape=[batch_size, sequence_len, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, sequence_len, 1],
+                            dtype='float32')
+
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       dropout_ratio=0.1,
+                       initializer_range=0.02)
+
+        with ProcessMesh(mesh, "d"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out = mlp(input)
 
         default_program = paddle.fluid.default_main_program()
@@ -142,6 +197,7 @@ class TestProcessMesh(unittest.TestCase):
         for block in default_program.blocks:
             for tensor in block.vars.values():
                 dist_tensor = default_dist_context.get_dist_tensor_for_program(
+<<<<<<< HEAD
                     tensor
                 )
                 if dist_tensor is not None:
@@ -224,6 +280,17 @@ class TestProcessMesh(unittest.TestCase):
         self.assertEqual(
             merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7])
         )
+=======
+                    tensor)
+                if dist_tensor is not None:
+                    self.assertEqual(dist_tensor.dist_attr.process_mesh,
+                                     ProcessMesh(mesh))
+            for op in block.ops:
+                dist_op = default_dist_context.get_dist_op_for_program(op)
+                if dist_op is not None:
+                    self.assertEqual(dist_op.dist_attr.process_mesh,
+                                     ProcessMesh(mesh))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

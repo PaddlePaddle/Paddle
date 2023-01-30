@@ -16,6 +16,7 @@ TestCases for TrainerDesc,
 including config, etc.
 """
 
+<<<<<<< HEAD
 import unittest
 
 import paddle.fluid as fluid
@@ -23,6 +24,18 @@ import paddle.fluid as fluid
 
 class TestTrainerDesc(unittest.TestCase):
     """TestCases for TrainerDesc."""
+=======
+from __future__ import print_function
+import paddle.fluid as fluid
+import numpy as np
+import os
+import shutil
+import unittest
+
+
+class TestTrainerDesc(unittest.TestCase):
+    """  TestCases for TrainerDesc. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_config(self):
         """

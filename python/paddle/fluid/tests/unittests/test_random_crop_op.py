@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,11 +24,31 @@ class TestRandomCropOp(OpTest):
         to_crop = np.array(
             [[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]] * 5
         ).astype(np.int32)
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid.core as core
+from op_test import OpTest
+import paddle.fluid as fluid
+
+
+class TestRandomCropOp(OpTest):
+
+    def setUp(self):
+        to_crop = np.array([[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]] *
+                           5).astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.possible_res = [
             np.array([[1, 2, 3], [5, 6, 7]]).astype(np.int32),
             np.array([[2, 3, 4], [6, 7, 8]]).astype(np.int32),
             np.array([[5, 6, 7], [9, 10, 11]]).astype(np.int32),
+<<<<<<< HEAD
             np.array([[6, 7, 8], [10, 11, 12]]).astype(np.int32),
+=======
+            np.array([[6, 7, 8], [10, 11, 12]]).astype(np.int32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         self.op_type = "random_crop"
         self.inputs = {'X': to_crop, 'Seed': np.array([10]).astype('int64')}
@@ -44,5 +65,36 @@ class TestRandomCropOp(OpTest):
             self.assertIn(True, is_equal)
 
 
+<<<<<<< HEAD
+=======
+class TestRandomCropOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_x_type():
+                input_data = np.random.random(2, 3, 256, 256).astype("float32")
+                fluid.layers.random_crop(input_data)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_x_dtype():
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[None, 3, 256, 256],
+                                       dtype='float16')
+                fluid.layers.random_crop(x2)
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+            def test_shape_type():
+                x3 = fluid.layers.data(name='x3',
+                                       shape=[None, 3, 256, 256],
+                                       dtype='float32')
+                fluid.layers.random_crop(x3, shape=1)
+
+            self.assertRaises(TypeError, test_shape_type)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -25,11 +30,19 @@ from paddle.static import Program, program_guard
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 from paddle.fluid.dygraph import to_variable
+<<<<<<< HEAD
+=======
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestInstanceNorm(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_dygraph(self):
         places = [fluid.NPUPlace(0)]
         for p in places:
@@ -37,7 +50,11 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
+<<<<<<< HEAD
                     bn = paddle.nn.InstanceNorm(shape[1])
+=======
+                    bn = fluid.dygraph.InstanceNorm(shape[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -60,7 +77,11 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
+<<<<<<< HEAD
                     ins = paddle.nn.InstanceNorm(shape[1])
+=======
+                    ins = fluid.dygraph.InstanceNorm(shape[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = ins(x)
                     exe.run(fluid.default_startup_program())

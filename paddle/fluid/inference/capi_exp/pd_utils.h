@@ -42,6 +42,7 @@ PADDLE_CAPI_EXPORT extern void PD_OneDimArrayInt32Destroy(
     __pd_take PD_OneDimArrayInt32* array);
 
 ///
+<<<<<<< HEAD
 /// \brief Destroy the PD_OneDimArrayInt64 object pointed to by the pointer.
 ///
 /// \param[in] array pointer to the PD_OneDimArrayInt64 object.
@@ -50,6 +51,8 @@ PADDLE_CAPI_EXPORT extern void PD_OneDimArrayInt64Destroy(
     __pd_take PD_OneDimArrayInt64* array);
 
 ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /// \brief Destroy the PD_OneDimArrayCstr object pointed to by the pointer.
 ///
 /// \param[in] array pointer to the PD_OneDimArrayCstr object.
@@ -82,6 +85,7 @@ PADDLE_CAPI_EXPORT extern void PD_TwoDimArraySizeDestroy(
 ///
 PADDLE_CAPI_EXPORT extern void PD_CstrDestroy(__pd_take PD_Cstr* cstr);
 
+<<<<<<< HEAD
 ///
 /// \brief Destroy the PD_IOInfo object pointed to by the pointer.
 ///
@@ -97,6 +101,8 @@ PADDLE_CAPI_EXPORT extern void PD_IOInfoDestroy(__pd_take PD_IOInfo* io_info);
 PADDLE_CAPI_EXPORT extern void PD_IOInfosDestroy(
     __pd_take PD_IOInfos* io_infos);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef __cplusplus
 }  // extern "C"
 #endif

@@ -22,7 +22,10 @@ limitations under the License. */
 
 #include "acl/acl.h"
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/npu/npu_info.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace platform {
@@ -70,7 +73,12 @@ size_t NPUInitAllocSize();
 //! Get the re-allocation size of current NPU device.
 size_t NPUReallocSize();
 
+<<<<<<< HEAD
 using phi::backends::npu::NPUMinChunkSize;
+=======
+//! Get the minimum chunk size for NPU buddy allocator.
+size_t NPUMinChunkSize();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 //! Get the maximum chunk size for NPU buddy allocator.
 size_t NPUMaxChunkSize();

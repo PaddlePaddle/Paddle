@@ -154,8 +154,12 @@ int PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(
     /*const Scope* scope*/) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
+<<<<<<< HEAD
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
   std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<std::vector<std::pair<Node*, Node*>>> start_pattern_in_nodes;
   std::vector<Node*> start_pattern_out_node;
   std::vector<std::unordered_set<Node*>> start_pattern_remove_nodes;
@@ -332,8 +336,22 @@ int PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(
     new_op_desc.SetType("fused_preln_embedding_eltwise_layernorm");
     new_op_desc.SetInput("Ids", ids);
     new_op_desc.SetInput("Embs", embs);
+<<<<<<< HEAD
     new_op_desc.SetInput("PosId", {pos_id});
     new_op_desc.SetInput("MaskId", {mask_id});
+=======
+    new_op_desc.SetInput("WordId", {ids[0]});
+    new_op_desc.SetInput("PosId", {ids[1]});
+    if (ids.size() > 2) {
+      new_op_desc.SetInput("SentId", {ids[2]});
+    }
+
+    new_op_desc.SetInput("WordEmbedding", {embs[0]});
+    new_op_desc.SetInput("PosEmbedding", {embs[1]});
+    if (embs.size() > 2) {
+      new_op_desc.SetInput("SentEmbedding", {embs[2]});
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     new_op_desc.SetInput("Bias", {end_pattern_biases[k]->Name()});
     new_op_desc.SetInput("Scale", {end_pattern_scales[k]->Name()});
@@ -433,6 +451,11 @@ PrelnEmbeddingEltwiseLayerNormFusePass::
 }
 
 void PrelnEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
+<<<<<<< HEAD
+=======
+  FusePassBase::Init(name_scope_, graph);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool enable_int8 = Get<bool>("enable_int8");
   bool use_varseqlen = Get<bool>("use_varseqlen");
   bool with_interleaved = Get<bool>("with_interleaved");
@@ -448,7 +471,10 @@ void PrelnEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
                "please reconfig.";
     return;
   }
+<<<<<<< HEAD
   FusePassBase::Init(name_scope_, graph);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int fusion_count =
       PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(graph, name_scope_);
   if (fusion_count > 0) {

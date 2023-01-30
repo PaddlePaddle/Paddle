@@ -12,15 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import shutil
 import tempfile
 import unittest
+=======
+from __future__ import division
+from __future__ import print_function
+
+import unittest
+import os
+import numpy as np
+import shutil
+import tempfile
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from paddle.hapi.logger import setup_logger
 
 
 class TestSetupLogger(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
         self.save_file = os.path.join(self.save_dir, 'logger.txt')

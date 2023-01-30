@@ -14,38 +14,154 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace platform {
 
+<<<<<<< HEAD
 // NOTE: These APIs are not thread-safe.
 #ifdef PADDLE_WITH_CUDA
 using CUDAGraph = phi::backends::gpu::CUDAGraph;
 
 void BeginCUDAGraphCapture(phi::GPUPlace place,
+=======
+#ifdef PADDLE_WITH_CUDA
+#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(__cond,                            \
+                                           __kernel_func,                     \
+                                           __grid,                            \
+                                           __block,                           \
+                                           __sm_size,                         \
+                                           __stream,                          \
+                                           __seed_inc,                        \
+                                           __seed_expr,                       \
+                                           __offset_expr,                     \
+                                           ...)                               \
+  do {                                                                        \
+    if (::paddle::platform::CUDAGraph::IsThisThreadCapturing() && (__cond)) { \
+      using __Helper =                                                        \
+          ::paddle::platform::IsSameKernelHelper<decltype(&__kernel_func),    \
+                                                 &__kernel_func>;             \
+      auto *dev_ctx =                                                         \
+          ::paddle::platform::DeviceContextPool::Instance().GetByPlace(       \
+              ::paddle::platform::CUDAGraph::CapturingPlace());               \
+      auto __set_seed_func =                                                  \
+          [=](::paddle::platform::CUDAKernelParams *__params,                 \
+              bool __check_only) -> bool {                                    \
+        if (__check_only) {                                                   \
+          return __params->func() == &__kernel_func &&                        \
+                 __Helper::Compare(*__params, __VA_ARGS__);                   \
+        }                                                                     \
+        auto &KERNEL_PARAMS = *__params;                                      \
+        uint64_t __seed, __offset;                                            \
+        ::paddle::operators::GetSeedDataAndIncrement(                         \
+            *dev_ctx, nullptr, false, 0, __seed_inc, &__seed, &__offset);     \
+        __seed_expr = static_cast<decltype(__seed_expr)>(__seed);             \
+        __offset_expr = static_cast<decltype(__offset_expr)>(__offset);       \
+        return true;                                                          \
+      };                                                                      \
+      ::paddle::platform::CUDAGraph::RecordRandomKernelInfo(__set_seed_func); \
+    }                                                                         \
+    __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__);     \
+  } while (0)
+#else
+#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(__cond,                        \
+                                           __kernel_func,                 \
+                                           __grid,                        \
+                                           __block,                       \
+                                           __sm_size,                     \
+                                           __stream,                      \
+                                           __seed_inc,                    \
+                                           __seed_expr,                   \
+                                           __offset_expr,                 \
+                                           ...)                           \
+  do {                                                                    \
+    __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__); \
+  } while (0)
+#endif
+
+// NOTE: These APIs are not thread-safe.
+#ifdef PADDLE_WITH_CUDA
+void BeginCUDAGraphCapture(platform::CUDAPlace place,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            cudaStreamCaptureMode mode,
                            int64_t pool_id = CUDAGraph::kInvalidPoolID);
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 #endif
 
+<<<<<<< HEAD
 inline phi::GPUPlace CUDAGraphCapturingPlace() {
 #ifdef PADDLE_WITH_CUDA
   return CUDAGraph::CapturingPlace();
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
+=======
+inline bool IsCUDAGraphCapturing() {
+#ifdef PADDLE_WITH_CUDA
+  return CUDAGraph::IsCapturing();
+#else
+  return false;
+#endif
+}
+
+inline platform::CUDAPlace CUDAGraphCapturingPlace() {
+#ifdef PADDLE_WITH_CUDA
+  return CUDAGraph::CapturingPlace();
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "CUDA Graph is only supported on NVIDIA GPU device."));
 #endif
 }
 
+<<<<<<< HEAD
 using phi::backends::gpu::IsCUDAGraphCapturing;
 
 using phi::backends::gpu::AddResetCallbackIfCapturingCUDAGraph;
 
 using phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph;
+=======
+// Add reset callback if CUDA Graph is capturing.
+// Otherwise, invoke callback directly.
+template <typename Callback>
+inline void AddResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
+#ifdef PADDLE_WITH_CUDA
+  if (UNLIKELY(IsCUDAGraphCapturing())) {
+    return CUDAGraph::AddResetCallbackDuringCapturing(
+        std::forward<Callback>(callback));
+  }
+#endif
+  callback();
+}
+
+template <typename T>
+inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
+  static_assert(std::is_trivial<T>::value, "T must be trivial type");
+  static_assert(!std::is_same<T, void>::value, "T cannot be void");
+#ifdef PADDLE_WITH_CUDA
+  if (UNLIKELY(IsCUDAGraphCapturing())) {
+    size_t nbytes = size * sizeof(T);
+    void *new_host_mem = new uint8_t[nbytes];
+    std::memcpy(new_host_mem, host_mem, nbytes);
+    AddResetCallbackIfCapturingCUDAGraph(
+        [new_host_mem] { delete[] reinterpret_cast<uint8_t *>(new_host_mem); });
+    return reinterpret_cast<T *>(new_host_mem);
+  }
+#endif
+  return host_mem;
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class SkipCUDAGraphCaptureGuard {
   DISABLE_COPY_AND_ASSIGN(SkipCUDAGraphCaptureGuard);

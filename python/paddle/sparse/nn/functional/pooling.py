@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layers import utils
+=======
+from paddle.fluid.layers import utils
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.nn.functional.pooling import _update_padding_nd
 
 __all__ = []

@@ -14,9 +14,15 @@
 
 #include "paddle/phi/kernels/dropout_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/dropout_impl.cu.h"
+=======
+#include "paddle/fluid/operators/dropout_impl.cu.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -29,6 +35,7 @@ void DropoutGradRawKernel(const Context& dev_ctx,
                           const std::string& mode,
                           DenseTensor* x_grad) {
   bool upscale_in_train = (mode == "upscale_in_train");
+<<<<<<< HEAD
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::DropoutGradGPUKernelDriver<T>(dev_ctx,
                                             is_test,
@@ -38,6 +45,17 @@ void DropoutGradRawKernel(const Context& dev_ctx,
                                             mask,
                                             x_grad,
                                             false);
+=======
+  x_grad->mutable_data<T>(dev_ctx.GetPlace());
+  paddle::operators::DropoutGradGPUKernelDriver<T>(dev_ctx,
+                                                   is_test,
+                                                   p.to<float>(),
+                                                   upscale_in_train,
+                                                   out_grad,
+                                                   mask,
+                                                   x_grad,
+                                                   false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T, typename Context>
@@ -51,6 +69,7 @@ void DropoutNdGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad) {
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(x_grad);
+<<<<<<< HEAD
   phi::funcs::DropoutGradGPUKernelDriver<T>(dev_ctx,
                                             is_test,
                                             p.to<float>(),
@@ -59,6 +78,16 @@ void DropoutNdGradKernel(const Context& dev_ctx,
                                             mask,
                                             x_grad,
                                             true);
+=======
+  paddle::operators::DropoutGradGPUKernelDriver<T>(dev_ctx,
+                                                   is_test,
+                                                   p.to<float>(),
+                                                   upscale_in_train,
+                                                   out_grad,
+                                                   mask,
+                                                   x_grad,
+                                                   true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

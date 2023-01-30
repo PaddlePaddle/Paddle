@@ -75,6 +75,7 @@ class ProgramDesc {
   // fetch_ops.
   const std::vector<std::string> GetFetchTargetNames();
 
+<<<<<<< HEAD
   // The input variable of feed_op that holds input phi::DenseTensor provided by
   // users is referenced as feed_holder. This function is used to change or
   // unify the feed_holder variables' name.
@@ -83,6 +84,16 @@ class ProgramDesc {
   // The output variable of fetch_op that holds output phi::DenseTensor needed
   // by users is referenced as fetch_holder. This function is used to change or
   // unify the fetch_holder variables' name.
+=======
+  // The input variable of feed_op that holds input Tensor provided by users is
+  // referenced as feed_holder.
+  // This function is used to change or unify the feed_holder variables' name.
+  void SetFeedHolderName(const std::string &feed_holder_name);
+
+  // The output variable of fetch_op that holds output Tensor needed by users is
+  // referenced as fetch_holder.
+  // This function is used to change or unify the fetch_holder variables' name.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void SetFetchHolderName(const std::string &fetch_holder_name);
 
   std::string CachedHashString();

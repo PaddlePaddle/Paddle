@@ -12,21 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 
 import yaml
 from api_base import PREFIX_TENSOR_NAME
 from api_gen import ForwardAPI
+=======
+import os
+import yaml
+import argparse
+import re
+
+from api_gen import ForwardAPI
+from api_base import PREFIX_TENSOR_NAME
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class SparseAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
+<<<<<<< HEAD
         super().__init__(api_item_yaml)
+=======
+        super(SparseAPI, self).__init__(api_item_yaml)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
+<<<<<<< HEAD
 {super().gene_api_declaration()}
+=======
+{super(SparseAPI, self).gene_api_declaration()}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 """
 
     def gene_output(
@@ -221,9 +239,12 @@ class SparseAPI(ForwardAPI):
     auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
         "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
     const auto& phi_kernel = kernel_result.kernel;
+<<<<<<< HEAD
     if (FLAGS_low_precision_op_list) {{
       phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
     }}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(6) << "{self.api} api sparse kernel: " << phi_kernel;
 
     auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
@@ -327,8 +348,11 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/multiary.h"
+<<<<<<< HEAD
 
 DECLARE_int32(low_precision_op_list);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 """
 
 

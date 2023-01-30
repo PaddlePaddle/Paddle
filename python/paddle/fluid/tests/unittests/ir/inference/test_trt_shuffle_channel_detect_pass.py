@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from inference_pass_test import InferencePassTest
@@ -33,14 +34,39 @@ class ShuffleChannelFuseTRTPassTest(InferencePassTest):
             trans = paddle.transpose(x=reshape1, perm=[0, 2, 1, 3, 4])
             reshape2 = paddle.reshape(x=trans, shape=[-1, 6, 64, 64])
             out = nn.batch_norm(reshape2, is_test=True)
+=======
+import numpy as np
+from inference_pass_test import InferencePassTest
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.core import PassVersionChecker
+from paddle.fluid.core import AnalysisConfig
+
+
+class ShuffleChannelFuseTRTPassTest(InferencePassTest):
+
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data",
+                              shape=[-1, 6, 64, 64],
+                              dtype="float32")
+            reshape1 = fluid.layers.reshape(x=data, shape=[-1, 2, 3, 64, 64])
+            trans = fluid.layers.transpose(x=reshape1, perm=[0, 2, 1, 3, 4])
+            reshape2 = fluid.layers.reshape(x=trans, shape=[-1, 6, 64, 64])
+            out = fluid.layers.batch_norm(reshape2, is_test=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = ShuffleChannelFuseTRTPassTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
         )
+=======
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -48,8 +74,12 @@ class ShuffleChannelFuseTRTPassTest(InferencePassTest):
         self.check_output()
 
         self.assertTrue(
+<<<<<<< HEAD
             PassVersionChecker.IsCompatible('shuffle_channel_detect_pass')
         )
+=======
+            PassVersionChecker.IsCompatible('shuffle_channel_detect_pass'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

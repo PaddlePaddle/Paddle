@@ -27,9 +27,17 @@ class LoadCombineOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = framework::OpKernelType(
+        framework::proto::VarType::FP32, ctx.GetPlace());
+    return kt;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -60,7 +68,11 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LoadCombine Operator.
 
+<<<<<<< HEAD
 LoadCombine operator loads phi::DenseTensor variables from a file, which could be
+=======
+LoadCombine operator loads LoDTensor variables from a file, which could be
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 loaded in memory already. The file should contain one or more LoDTensors
 serialized using the SaveCombine operator. The
 LoadCombine operator applies a deserialization strategy to appropriately load

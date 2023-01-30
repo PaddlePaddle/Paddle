@@ -23,16 +23,23 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
+<<<<<<< HEAD
 #include "paddle/utils/string/string_helper.h"
 
 DECLARE_bool(enable_auto_detect_gpu_topo);
 DECLARE_bool(enable_auto_rdma_trans);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
 
 #if defined(PADDLE_WITH_CUDA)
+<<<<<<< HEAD
 GPUResource::GPUResource(std::vector<int> &dev_ids, int index) {
+=======
+GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   index_ = index;
   dev_ids_ = dev_ids;
   dev_id_ = dev_ids_[index];
@@ -66,7 +73,11 @@ GPUResource::~GPUResource() {
 }
 
 #elif defined(PADDLE_WITH_XPU_KP)
+<<<<<<< HEAD
 XPUResource::XPUResource(std::vector<int> &dev_ids, int index) {
+=======
+XPUResource::XPUResource(std::vector<int>& dev_ids, int index) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   index_ = index;
   dev_ids_ = dev_ids;
   dev_id_ = dev_ids_[index];
@@ -123,6 +134,7 @@ void HeterPsResource::enable_p2p() {
   }
 #endif
 }
+<<<<<<< HEAD
 static std::string excute_cmd_result(const std::string &cmd) {
   FILE *fp = popen(cmd.c_str(), "r");
   if (fp == NULL) {
@@ -241,6 +253,10 @@ bool GpuRDMAChecker::check_device_status(const int &device_count,
 #endif
 
 HeterPsResource::HeterPsResource(const std::vector<int> &dev_ids) {
+=======
+
+HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   dev_ids_ = dev_ids;
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
     std::shared_ptr<DevResource> resource =

@@ -14,12 +14,20 @@
 
 import paddle
 import unittest
+<<<<<<< HEAD
 from paddle.static.amp.fp16_lists import (
     AutoMixedPrecisionLists,
 )
 
 
 class TestAMPList(unittest.TestCase):
+=======
+from paddle.fluid.contrib.mixed_precision.fp16_lists import AutoMixedPrecisionLists
+
+
+class TestAMPList(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         custom_white_list = [
             'lookup_table',
@@ -32,11 +40,16 @@ class TestAMPList(unittest.TestCase):
             self.assertTrue(op not in amp_list.unsupported_list)
 
         default_black_list = [
+<<<<<<< HEAD
             'linear_interp_v2',
             'nearest_interp_v2',
             'bilinear_interp_v2',
             'bicubic_interp_v2',
             'trilinear_interp_v2',
+=======
+            'linear_interp_v2', 'nearest_interp_v2', 'bilinear_interp_v2',
+            'bicubic_interp_v2', 'trilinear_interp_v2'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         for op in default_black_list:
             self.assertTrue(op in amp_list.black_list)

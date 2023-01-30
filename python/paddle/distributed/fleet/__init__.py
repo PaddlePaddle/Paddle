@@ -24,9 +24,13 @@ from .dataset import QueueDataset  # noqa: F401
 from .dataset import FileInstantDataset  # noqa: F401
 from .dataset import BoxPSDataset  # noqa: F401
 from .data_generator.data_generator import MultiSlotDataGenerator  # noqa: F401
+<<<<<<< HEAD
 from .data_generator.data_generator import (
     MultiSlotStringDataGenerator,
 )  # noqa: F401
+=======
+from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa: F401
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
@@ -36,6 +40,7 @@ from .optimizer import distributed_optimizer
 from .scaler import distributed_scaler
 from .utils import log_util
 
+<<<<<<< HEAD
 __all__ = [  # noqa
     "CommunicateTopology",
     "UtilBase",
@@ -47,6 +52,13 @@ __all__ = [  # noqa
     "MultiSlotDataGenerator",
     "PaddleCloudRoleMaker",
     "Fleet",
+=======
+__all__ = [  #noqa
+    "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
+    "MultiSlotStringDataGenerator", "UserDefinedRoleMaker",
+    "DistributedStrategy", "Role", "MultiSlotDataGenerator",
+    "PaddleCloudRoleMaker", "Fleet"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]
 
 fleet = Fleet()
@@ -102,5 +114,8 @@ distributed_scaler = distributed_scaler
 set_log_level = log_util.set_log_level
 get_log_level_code = log_util.get_log_level_code
 get_log_level_name = log_util.get_log_level_name
+<<<<<<< HEAD
 save_cache_table = fleet.save_cache_table
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .. import auto_parallel as auto

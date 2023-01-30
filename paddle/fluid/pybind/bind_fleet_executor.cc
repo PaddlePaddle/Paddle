@@ -65,7 +65,10 @@ struct npy_format_descriptor<paddle::platform::float16> {
 namespace paddle {
 namespace pybind {
 
+<<<<<<< HEAD
 using paddle::distributed::DependType;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using paddle::distributed::DistModel;
 using paddle::distributed::DistModelConfig;
 using paddle::distributed::DistModelDataBuf;
@@ -165,17 +168,30 @@ void BindFleetExecutor(py::module* m) {
       .def(
           "run", &FleetExecutor::Run, py::call_guard<py::gil_scoped_release>());
 
+<<<<<<< HEAD
   py::enum_<DependType>(*m, "DependType")
       .value("NORMAL", DependType::NORMAL)
       .value("LOOP", DependType::LOOP)
       .value("STOP_LOOP", DependType::STOP_LOOP);
 
   py::class_<TaskNode>(*m, "TaskNode")
+=======
+  py::class_<TaskNode>(*m, "TaskNode")
+      .def(py::init<framework::ProgramDesc*,
+                    int64_t,
+                    int64_t,
+                    int64_t,
+                    int64_t>())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def(py::init<framework::ProgramDesc*, int64_t, int64_t, int64_t>())
       .def(py::init<int32_t,
                     const std::vector<framework::OpDesc*>&,
                     int64_t,
                     int64_t,
+<<<<<<< HEAD
+=======
+                    int64_t,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     int64_t>())
       .def("task_id", &TaskNode::task_id)
       .def("add_upstream_task", &TaskNode::AddUpstreamTask)
@@ -183,7 +199,10 @@ void BindFleetExecutor(py::module* m) {
       .def("set_run_pre_steps", &TaskNode::SetRunPerSteps)
       .def("set_run_at_offset", &TaskNode::SetRunAtOffset)
       .def("set_type", &TaskNode::SetType)
+<<<<<<< HEAD
       .def("set_cond_var_name", &TaskNode::SetCondVarName)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def("role", &TaskNode::role)
       .def("init", [](TaskNode& self) { self.Init(); })
       .def("set_program", &TaskNode::SetProgram);

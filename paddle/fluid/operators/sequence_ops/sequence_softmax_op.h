@@ -19,30 +19,55 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxFunctor {
   void operator()(
       const DeviceContext &ctx,
+<<<<<<< HEAD
       const phi::DenseTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *out);
+=======
+      const LoDTensor &x,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      LoDTensor *out);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxGradFunctor {
   void operator()(const DeviceContext &ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor &dout,
                   const phi::DenseTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   phi::DenseTensor *dx);
+=======
+                  const LoDTensor &dout,
+                  const LoDTensor &out,
+                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  LoDTensor *dx);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename T>
 struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   phi::DenseTensor *out) {
+=======
+                  const LoDTensor &x,
+                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  LoDTensor *out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     size_t height = ref_lod.size() - 1;
     const T *in_data = x.data<T>();
     T *out_data = out->mutable_data<T>(ctx.GetPlace());
@@ -62,10 +87,17 @@ struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
 template <typename T>
 struct SequenceSoftmaxGradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor &dout,
                   const phi::DenseTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   phi::DenseTensor *dx) {
+=======
+                  const LoDTensor &dout,
+                  const LoDTensor &out,
+                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  LoDTensor *dx) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     size_t height = ref_lod.size() - 1;
 
     const T *softmax_grad_data = dout.data<T>();
@@ -91,6 +123,7 @@ template <typename DeviceContext, typename T>
 class SequenceSoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *x = ctx.Input<phi::DenseTensor>("X");
     auto *out = ctx.Output<phi::DenseTensor>("Out");
 
@@ -102,6 +135,19 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
                           "Input(X) phi::DenseTensor of SequenceSoftmax "
                           "operator does not contain "
                           "LoD information."));
+=======
+    auto *x = ctx.Input<LoDTensor>("X");
+    auto *out = ctx.Output<LoDTensor>("Out");
+
+    auto lod = x->lod();
+    auto dims = x->dims();
+    PADDLE_ENFORCE_EQ(
+        lod.empty(),
+        false,
+        platform::errors::InvalidArgument(
+            "Input(X) Tensor of SequenceSoftmax operator does not contain "
+            "LoD information."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const size_t level = lod.size() - 1;
     PADDLE_ENFORCE_EQ(
@@ -135,10 +181,17 @@ template <typename DeviceContext, typename T>
 class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *out = ctx.Input<phi::DenseTensor>("Out");
     auto *out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto *x = ctx.Input<phi::DenseTensor>("X");
     auto *x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto *out = ctx.Input<LoDTensor>("Out");
+    auto *out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto *x = ctx.Input<LoDTensor>("X");
+    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!x_grad) {
       return;
     }

@@ -16,7 +16,13 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/params_quantization_mkldnn_pass.h"  // NOLINT
 #include "paddle/fluid/imperative/type_defs.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
+=======
+#include "paddle/fluid/platform/place.h"
+
+using LoDTensor = phi::DenseTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -46,15 +52,25 @@ struct Data {
 struct TestScope {
   void CreateTensor(const std::string& var_name, const Data& data) {
     auto variable = scope.Var(var_name);
+<<<<<<< HEAD
     auto tensor = variable->GetMutable<phi::DenseTensor>();
+=======
+    auto tensor = variable->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tensor->Resize(phi::make_ddim(data.getShape()));
     auto dptr = tensor->mutable_data<float>(place);
     std::copy(data.getData().begin(), data.getData().end(), dptr);
   }
 
+<<<<<<< HEAD
   const phi::DenseTensor& GetTensor(const std::string& input) const {
     Variable* var = scope.FindVar(input);
     return var->Get<phi::DenseTensor>();
+=======
+  const LoDTensor& GetTensor(const std::string& input) const {
+    Variable* var = scope.FindVar(input);
+    return var->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   framework::Scope* Scope() { return &scope; }
@@ -141,7 +157,11 @@ struct ConvProgramStrategy : public ProgramStrategy {
  protected:
   OpDesc* CreateBasicConvOp(const std::string conv_name = "Conv1") {
     auto op = program.MutableBlock(0)->AppendOp();
+<<<<<<< HEAD
     op->SetType("fused_conv2d");
+=======
+    op->SetType("conv2d");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     op->SetAttr("use_mkldnn", true);
     op->SetAttr("name", conv_name);
     op->SetAttr("mkldnn_data_type", std::string{"int8"});

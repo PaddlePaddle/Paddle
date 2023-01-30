@@ -18,15 +18,28 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class CropNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
 
     std::vector<int> offset_list;
     if (ctx.HasInput("Offsets")) {
       auto* offsets_tensor = ctx.Input<phi::DenseTensor>("Offsets");
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+
+    std::vector<int> offset_list;
+    if (ctx.HasInput("Offsets")) {
+      auto* offsets_tensor = ctx.Input<framework::Tensor>("Offsets");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       paddle::framework::TensorToVector(
           *offsets_tensor, ctx.device_context(), &offset_list);
       if (offset_list.empty()) {
@@ -54,11 +67,19 @@ class CropNPUKernel : public framework::OpKernel<T> {
     int axis_int = 0;
     framework::NPUAttributeMap attr_input = {{"offsets", offset_list},
                                              {"axis", axis_int}};
+<<<<<<< HEAD
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     if (ctx.HasInput("Y")) {
       auto* shape = ctx.Input<phi::DenseTensor>("Y");
+=======
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+
+    if (ctx.HasInput("Y")) {
+      auto* shape = ctx.Input<framework::Tensor>("Y");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_EQ(shape->dims().size(),
                         x->dims().size(),
                         platform::errors::InvalidArgument(
@@ -69,7 +90,11 @@ class CropNPUKernel : public framework::OpKernel<T> {
                             x->dims().size()));
 
       // shape memory maybe have gc.
+<<<<<<< HEAD
       phi::DenseTensor tmp_shape(*shape);
+=======
+      Tensor tmp_shape(*shape);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tmp_shape.mutable_data<T>(ctx.GetPlace());
 
       const auto& runner =
@@ -88,7 +113,11 @@ class CropNPUKernel : public framework::OpKernel<T> {
                             "(%d) of the Input(X).",
                             shape_size.size(),
                             x->dims().size()));
+<<<<<<< HEAD
       phi::DenseTensor tmp_shape(x->dtype());
+=======
+      Tensor tmp_shape(x->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tmp_shape.Resize(phi::make_ddim(shape_size));
       tmp_shape.mutable_data<T>(ctx.GetPlace());
       const auto& runner =

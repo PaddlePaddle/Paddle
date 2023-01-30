@@ -23,6 +23,7 @@ PD_REGISTER_KERNEL(slice_grad,
                    ALL_LAYOUT,
                    phi::SliceGradRawKernel,
                    bool,
+<<<<<<< HEAD
                    uint8_t,
                    int,
                    int64_t,
@@ -50,6 +51,8 @@ PD_REGISTER_KERNEL(slice_array_dense_grad,
                    ALL_LAYOUT,
                    phi::SliceArrayDenseGradKernel,
                    bool,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    int,
                    int64_t,
                    float,

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 import os
 import re
@@ -19,6 +20,13 @@ import re
 import numpy as np
 
 import paddle
+=======
+import paddle
+import argparse
+import numpy as np
+import os
+import re
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.inference import _get_phi_kernel_name
 
 paddle.enable_static()
@@ -26,12 +34,19 @@ paddle.enable_static()
 
 def parse_args():
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument(
         '--model_dir',
         type=str,
         default="",
         help='Directory of the inference models.',
     )
+=======
+    parser.add_argument('--model_dir',
+                        type=str,
+                        default="",
+                        help='Directory of the inference models.')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return parser.parse_args()
 
 
@@ -62,7 +77,11 @@ if __name__ == '__main__':
     args = parse_args()
     for root, dirs, files in os.walk(args.model_dir, topdown=True):
         for name in files:
+<<<<<<< HEAD
             if re.match(r'.*pdmodel', name):
+=======
+            if (re.match(r'.*pdmodel', name)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ops_set = get_model_ops(os.path.join(root, name))
     phi_set = get_model_phi_kernels(ops_set)
     ops = ";".join(ops_set)

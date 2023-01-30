@@ -17,6 +17,10 @@ NOT_CHECK_OP_LIST = ['deformable_conv', 'row_conv', 'kron']
 
 # TODO(Shixiaowei02): Check if the items do not need fix.
 # no_grad_set has value in NEED_TO_FIX_OP_LIST
+<<<<<<< HEAD
+=======
+# yapf: disable
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 NEED_TO_FIX_OP_LIST = [
     'affine_channel',
     'affine_grid',
@@ -71,3 +75,7 @@ NEED_TO_FIX_OP_LIST = [
     'spectral_norm',
     'complex',
 ]
+<<<<<<< HEAD
+=======
+# yapf: enable
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

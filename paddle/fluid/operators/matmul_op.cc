@@ -61,10 +61,17 @@ class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto &x = GET_DATA_SAFELY(
+<<<<<<< HEAD
         context.Input<phi::DenseTensor>("X"), "Input", "X", "MatMul");
     auto &y = GET_DATA_SAFELY(
         context.Input<phi::DenseTensor>("Y"), "Input", "Y", "MatMul");
     auto *out = context.Output<phi::DenseTensor>("Out");
+=======
+        context.Input<framework::Tensor>("X"), "Input", "X", "MatMul");
+    auto &y = GET_DATA_SAFELY(
+        context.Input<framework::Tensor>("Y"), "Input", "Y", "MatMul");
+    auto *out = context.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
     dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
@@ -116,7 +123,11 @@ class MatMulKernel : public framework::OpKernel<T> {
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
+<<<<<<< HEAD
 static phi::DenseTensor FoldInitDims(const phi::DenseTensor &input) {
+=======
+static framework::Tensor FoldInitDims(const framework::Tensor &input) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
@@ -129,13 +140,22 @@ static phi::DenseTensor FoldInitDims(const phi::DenseTensor &input) {
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
 template <typename DeviceContext, typename T>
+<<<<<<< HEAD
 static phi::DenseTensor FoldHeadAndLastDims(const DeviceContext &context,
                                             const phi::DenseTensor &input) {
+=======
+static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
+                                             const framework::Tensor &input) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto in_dims = input.dims();
   if (in_dims.size() != 3) {
     return input;
   }
+<<<<<<< HEAD
   phi::DenseTensor output;
+=======
+  framework::Tensor output;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   output.mutable_data<T>(context.GetPlace());
   std::vector<int> axis = {1, 0, 2};
@@ -153,7 +173,11 @@ static phi::DenseTensor FoldHeadAndLastDims(const DeviceContext &context,
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
+<<<<<<< HEAD
     phi::DenseTensor *x, const phi::funcs::MatDescriptor &descriptor) {
+=======
+    framework::Tensor *x, const phi::funcs::MatDescriptor &descriptor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -181,9 +205,15 @@ static void ReshapeTensorIntoMatrixSequence(
  * If any of `X` and `Y` has batch size BatchSize, the out will have the
  * BatchSize.
  */
+<<<<<<< HEAD
 static void ReshapeXYOutIntoMatrixSequence(phi::DenseTensor *x,
                                            phi::DenseTensor *y,
                                            phi::DenseTensor *out,
+=======
+static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
+                                           framework::Tensor *y,
+                                           framework::Tensor *out,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                            bool trans_x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
@@ -231,11 +261,19 @@ template <typename DeviceContext, typename T>
 class MatMulGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
+<<<<<<< HEAD
               const phi::DenseTensor &a,
               bool trans_a,
               const phi::DenseTensor &b,
               bool trans_b,
               phi::DenseTensor *out) const {
+=======
+              const framework::Tensor &a,
+              bool trans_a,
+              const framework::Tensor &b,
+              bool trans_b,
+              framework::Tensor *out) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(context.GetPlace());
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
@@ -266,6 +304,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 
   void CalcInputGrad(const framework::ExecutionContext &context,
+<<<<<<< HEAD
                      const phi::DenseTensor &a,
                      bool trans_a,
                      bool is_fold_init_dims_a,
@@ -273,6 +312,15 @@ class MatMulGradKernel : public framework::OpKernel<T> {
                      bool trans_b,
                      bool is_fold_init_dims_b,
                      phi::DenseTensor *out) const {
+=======
+                     const framework::Tensor &a,
+                     bool trans_a,
+                     bool is_fold_init_dims_a,
+                     const framework::Tensor &b,
+                     bool trans_b,
+                     bool is_fold_init_dims_b,
+                     framework::Tensor *out) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
                         out->dims().size() == 2;
@@ -293,11 +341,20 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto x = *context.Input<phi::DenseTensor>("X");
     auto y = *context.Input<phi::DenseTensor>("Y");
     auto dout = *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *dy = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+=======
+    auto x = *context.Input<framework::Tensor>("X");
+    auto y = *context.Input<framework::Tensor>("Y");
+    auto dout =
+        *context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *dy = context.Output<framework::Tensor>(framework::GradVarName("Y"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
 
@@ -369,12 +426,21 @@ template <typename DeviceContext, typename T>
 class MatMulDoubleGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
+<<<<<<< HEAD
               const phi::DenseTensor &a,
               bool trans_a,
               const phi::DenseTensor &b,
               bool trans_b,
               bool flag,
               phi::DenseTensor *out) const {
+=======
+              const framework::Tensor &a,
+              bool trans_a,
+              const framework::Tensor &b,
+              bool trans_b,
+              bool flag,
+              framework::Tensor *out) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(context.GetPlace());
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
@@ -403,6 +469,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
   }
 
   void CalcInputGrad(const framework::ExecutionContext &context,
+<<<<<<< HEAD
                      const phi::DenseTensor &a,
                      bool trans_a,
                      bool is_fold_init_dims_a,
@@ -411,6 +478,16 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
                      bool is_fold_init_dims_b,
                      bool flag,
                      phi::DenseTensor *out) const {
+=======
+                     const framework::Tensor &a,
+                     bool trans_a,
+                     bool is_fold_init_dims_a,
+                     const framework::Tensor &b,
+                     bool trans_b,
+                     bool is_fold_init_dims_b,
+                     bool flag,
+                     framework::Tensor *out) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
                         out->dims().size() == 2;
@@ -432,6 +509,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto x = *context.Input<phi::DenseTensor>("X");
     auto y = *context.Input<phi::DenseTensor>("Y");
     auto dout = *context.Input<phi::DenseTensor>("DOut");
@@ -441,6 +519,17 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
     auto *dx = context.Output<phi::DenseTensor>("DX");
     auto *dy = context.Output<phi::DenseTensor>("DY");
     auto *ddout = context.Output<phi::DenseTensor>("DDOut");
+=======
+    auto x = *context.Input<framework::Tensor>("X");
+    auto y = *context.Input<framework::Tensor>("Y");
+    auto dout = *context.Input<framework::LoDTensor>("DOut");
+    auto *ddx = context.Input<framework::LoDTensor>("DDX");
+    auto *ddy = context.Input<framework::LoDTensor>("DDY");
+
+    auto *dx = context.Output<framework::LoDTensor>("DX");
+    auto *dy = context.Output<framework::LoDTensor>("DY");
+    auto *ddout = context.Output<framework::LoDTensor>("DDOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
@@ -587,8 +676,13 @@ class MatMulOp : public framework::OperatorWithKernel {
     // to be computed like instead x*y we are to do y*x
     bool channelwise_onednn =
         context->IsRunMKLDNNKernel() &&
+<<<<<<< HEAD
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
          phi::DataLayout::kNHWC);
+=======
+        (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+         framework::DataLayout::kNHWC);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (channelwise_onednn) {
       std::swap(dim_x, dim_y);
     }
@@ -693,6 +787,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     context->ShareLoD("X", "Out");
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
@@ -707,11 +802,41 @@ class MatMulOp : public framework::OperatorWithKernel {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+
+#ifdef PADDLE_WITH_MKLDNN
+    using dnnl::memory;
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
+          tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul is first oneDNN op in a chain (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
+<<<<<<< HEAD
       if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
           phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -723,6 +848,21 @@ class MatMulOp : public framework::OperatorWithKernel {
 #endif
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+      if ((expected_kernel_type.data_layout_ ==
+           framework::DataLayout::kMKLDNN) &&
+          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+          paddle::platform::MKLDNNDeviceContext::tls()
+                  .get_cur_paddle_data_layout() ==
+              framework::DataLayout::kNHWC) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(),
+                                       framework::DataLayout::kNHWC);
+      }
+#endif
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 };
@@ -766,13 +906,21 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>(
         "fused_reshape_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
+<<<<<<< HEAD
               "it's a shape attribute of fused reshape for `Out` output.)DOC")
+=======
+              "it's a shape atribute of fused reshape for `Out` output.)DOC")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .SetDefault({})
         .AsExtra();
     AddAttr<std::vector<int>>(
         "fused_transpose_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
+<<<<<<< HEAD
               "it's a axis attribute of fused transpose for `Out` output.)DOC")
+=======
+              "it's a axis atribute of fused transpose for `Out` output.)DOC")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .SetDefault({})
         .AsExtra();
     AddAttr<bool>(
@@ -871,11 +1019,28 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
     }
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
     return phi::KernelKey(input_data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

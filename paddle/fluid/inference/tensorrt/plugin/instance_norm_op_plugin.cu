@@ -131,6 +131,7 @@ int InstanceNormPlugin::enqueue(int batch_size,
   return cudaGetLastError() != cudaSuccess;
 }
 
+<<<<<<< HEAD
 int InstanceNormPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::DimsExprs InstanceNormPluginDynamic::getOutputDimensions(
@@ -240,6 +241,8 @@ void InstanceNormPluginDynamic::configurePlugin(
     const nvinfer1::DynamicPluginTensorDesc *out,
     int nbOutputs) TRT_NOEXCEPT {}
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

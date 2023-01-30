@@ -15,9 +15,13 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+<<<<<<< HEAD
 #include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -36,6 +40,7 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X - Y"; }
 
   void AddInputX() override {
+<<<<<<< HEAD
     AddInput(
         "X",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
@@ -47,6 +52,17 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
         "Y",
         "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
         "should be int32, int64, float32, float64.");
+=======
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   std::string GetOpFuntionality() const override {
@@ -54,6 +70,7 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
   }
 };
 
+<<<<<<< HEAD
 class ElementwiseSubGradCompositeOpMaker
     : public prim::GradCompositeOpMakerBase {
   using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
@@ -77,6 +94,8 @@ class ElementwiseSubGradCompositeOpMaker
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -109,7 +128,10 @@ REGISTER_OPERATOR(elementwise_sub,
                   ::paddle::operators::ElementwiseOpInferVarType,
                   elementwise_subGradMaker<::paddle::framework::OpDesc>,
                   elementwise_subGradMaker<::paddle::imperative::OpBase>,
+<<<<<<< HEAD
                   ::paddle::operators::ElementwiseSubGradCompositeOpMaker,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   ::paddle::operators::ElementwiseOpInplaceInferer);
 
 REGISTER_OPERATOR(

@@ -23,7 +23,11 @@ set(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 # in case of low internet speed
 #set(WARPCTC_REPOSITORY  https://gitee.com/tianjianhe/warp-ctc.git)
 set(WARPCTC_REPOSITORY ${GIT_URL}/baidu-research/warp-ctc.git)
+<<<<<<< HEAD
 set(WARPCTC_TAG bdc2b4550453e0ef2d3b5190f9c6103a84eff184)
+=======
+set(WARPCTC_TAG 37ece0e1bbe8a0019a63ac7e6462c36591c66a5b)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 set(WARPCTC_INCLUDE_DIR
     "${WARPCTC_INSTALL_DIR}/include"

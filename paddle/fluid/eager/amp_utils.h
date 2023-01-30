@@ -103,9 +103,12 @@ inline paddle::experimental::DataType GetAmpDestDtype(
         return paddle::experimental::DataType::FLOAT16;
       } else if (paddle::imperative::AmpOperators::Instance()
                      .GetMutableBlockOps()
+<<<<<<< HEAD
                      ->count(op_name) ||
                  paddle::imperative::AmpOperators::Instance()
                      .GetMutableUnsupportedFp16Ops()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      ->count(op_name)) {
         return paddle::experimental::DataType::FLOAT32;
       } else {

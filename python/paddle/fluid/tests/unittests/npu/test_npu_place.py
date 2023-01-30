@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import paddle
 import numpy as np
@@ -21,6 +26,10 @@ paddle.enable_static()
 
 
 class TestNpuPlace(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test(self):
         p = core.Place()
         p.set_place(paddle.NPUPlace(0))
@@ -30,6 +39,10 @@ class TestNpuPlace(unittest.TestCase):
 
 
 class TestNpuPlaceError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_static(self):
         # NPU is not supported in ParallelExecutor
         prog = paddle.static.Program()
@@ -46,9 +59,14 @@ class TestNpuPlaceError(unittest.TestCase):
         place = paddle.NPUPlace(0)
         exe = paddle.static.Executor(place)
 
+<<<<<<< HEAD
         with self.assertRaisesRegex(
             RuntimeError, "NPU is not supported in ParallelExecutor"
         ):
+=======
+        with self.assertRaisesRegex(RuntimeError,
+                                    "NPU is not supported in ParallelExecutor"):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe.run(compiled_prog, feed={"x": x_np, "y": y_np})
 
 

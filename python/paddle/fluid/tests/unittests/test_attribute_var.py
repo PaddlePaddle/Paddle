@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import tempfile
 import unittest
 
@@ -21,11 +22,24 @@ import numpy as np
 import paddle
 import paddle.inference as paddle_infer
 from paddle.fluid.framework import OpProtoHolder, Program, program_guard
+=======
+import unittest
+import tempfile
+import paddle
+import paddle.inference as paddle_infer
+from paddle.fluid.framework import program_guard, Program
+from paddle.fluid.framework import OpProtoHolder
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class UnittestBase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.init_info()
@@ -41,9 +55,14 @@ class UnittestBase(unittest.TestCase):
         return type(self).__name__
 
     def infer_prog(self):
+<<<<<<< HEAD
         config = paddle_infer.Config(
             self.save_path + '.pdmodel', self.save_path + '.pdiparams'
         )
+=======
+        config = paddle_infer.Config(self.save_path + '.pdmodel',
+                                     self.save_path + '.pdiparams')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         predictor = paddle_infer.create_predictor(config)
         input_names = predictor.get_input_names()
         for i, shape in enumerate(self.shapes):
@@ -66,6 +85,10 @@ class UnittestBase(unittest.TestCase):
 
 
 class TestDropout(UnittestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_info(self):
         self.shapes = [[10, 10]]
         self.save_path = os.path.join(self.temp_dir.name, 'dropout')
@@ -98,11 +121,19 @@ class TestDropout(UnittestBase):
 
             self.assertEqual(
                 main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
+<<<<<<< HEAD
                 p.name,
             )
 
 
 class TestTileTensorList(UnittestBase):
+=======
+                p.name)
+
+
+class TestTileTensorList(UnittestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'tile_tensors')
@@ -136,6 +167,10 @@ class TestTileTensorList(UnittestBase):
 
 
 class TestTileTensor(UnittestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'tile_tensor')
@@ -168,12 +203,20 @@ class TestTileTensor(UnittestBase):
 
 
 class TestRegiterSupportTensorInOpMaker(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.all_protos = OpProtoHolder.instance()
         self.support_tensor_attrs = {
             'dropout': ['dropout_prob'],
             'tile': ['repeat_times'],
+<<<<<<< HEAD
             'concat': ['axis'],
+=======
+            'concat': ['axis']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         # Just add a op example to test not support tensor
         self.not_support_tensor_attrs = {'svd': ['full_matrices']}
@@ -187,9 +230,14 @@ class TestRegiterSupportTensorInOpMaker(unittest.TestCase):
         # All Attribute not tagged with .SupportTensor() in OpMaker will return False
         for op_type, attr_names in self.not_support_tensor_attrs.items():
             for attr_name in attr_names:
+<<<<<<< HEAD
                 self.assertFalse(
                     self.is_support_tensor_attr(op_type, attr_name)
                 )
+=======
+                self.assertFalse(self.is_support_tensor_attr(
+                    op_type, attr_name))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def is_support_tensor_attr(self, op_type, attr_name):
         proto = self.all_protos.get_op_proto(op_type)

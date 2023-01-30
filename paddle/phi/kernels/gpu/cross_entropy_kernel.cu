@@ -22,17 +22,29 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+=======
+#include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax.h"
+=======
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace phi {
@@ -46,7 +58,11 @@ template <typename T>
 static __device__ __forceinline__ T Log(T x) {
   using AccT = typename dtype::MPTypeTrait<T>::Type;
   AccT logx = std::log(static_cast<AccT>(x));
+<<<<<<< HEAD
   return phi::funcs::TolerableValue<T>()(static_cast<T>(logx));
+=======
+  return paddle::operators::math::TolerableValue<T>()(static_cast<T>(logx));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 // Wrapper of exp function. Use exp(float32) for float16
@@ -54,7 +70,11 @@ template <typename T>
 static __device__ __forceinline__ T Exp(T x) {
   using AccT = typename dtype::MPTypeTrait<T>::Type;
   AccT expx = std::exp(static_cast<AccT>(x));
+<<<<<<< HEAD
   return phi::funcs::TolerableValue<T>()(static_cast<T>(expx));
+=======
+  return paddle::operators::math::TolerableValue<T>()(static_cast<T>(expx));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename Tx, typename Ty = Tx>
@@ -772,10 +792,17 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
         handle,
+<<<<<<< HEAD
         phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
         logits_data,
         phi::backends::gpu::CudnnDataType<T>::kZero(),
+=======
+        paddle::platform::CudnnDataType<T>::kOne(),
+        descp,
+        logits_data,
+        paddle::platform::CudnnDataType<T>::kZero(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         descp,
         softmax_data,
         MIOPEN_SOFTMAX_LOG,
@@ -787,10 +814,17 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
         handle,
         CUDNN_SOFTMAX_LOG,
         mode,
+<<<<<<< HEAD
         phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
         logits_data,
         phi::backends::gpu::CudnnDataType<T>::kZero(),
+=======
+        paddle::platform::CudnnDataType<T>::kOne(),
+        descp,
+        logits_data,
+        paddle::platform::CudnnDataType<T>::kZero(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         descp,
         softmax_data));
 #endif
@@ -1206,10 +1240,17 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
         handle,
+<<<<<<< HEAD
         phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
         logits_data,
         phi::backends::gpu::CudnnDataType<T>::kZero(),
+=======
+        paddle::platform::CudnnDataType<T>::kOne(),
+        descp,
+        logits_data,
+        paddle::platform::CudnnDataType<T>::kZero(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         descp,
         softmax_data,
         MIOPEN_SOFTMAX_LOG,
@@ -1221,10 +1262,17 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
         handle,
         CUDNN_SOFTMAX_LOG,
         mode,
+<<<<<<< HEAD
         phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
         logits_data,
         phi::backends::gpu::CudnnDataType<T>::kZero(),
+=======
+        paddle::platform::CudnnDataType<T>::kOne(),
+        descp,
+        logits_data,
+        paddle::platform::CudnnDataType<T>::kZero(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         descp,
         softmax_data));
 #endif
@@ -1285,6 +1333,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
     DenseTensor softmax_out_2d(*softmax_out);
     softmax_out_2d.Resize({n, d});
 
+<<<<<<< HEAD
     // phi::funcs::CrossEntropyFunctor support axis is the last
     if (axis_v == -1) {
       phi::funcs::CrossEntropyFunctor<GPUContext, T>()(dev_ctx,
@@ -1294,6 +1343,18 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                                        soft_label,
                                                        ignore_index,
                                                        axis_dim);
+=======
+    // math::CrossEntropyFunctor support axis is the last
+    if (axis_v == -1) {
+      paddle::operators::math::CrossEntropyFunctor<GPUContext, T>()(
+          dev_ctx,
+          &loss_2d,
+          &softmax_2d,
+          &labels_2d,
+          soft_label,
+          ignore_index,
+          axis_dim);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       return;
     }
 
@@ -1386,6 +1447,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
       labels_2d.Resize({n, label.numel() / n});
       DenseTensor loss_2d(*loss);
       loss_2d.Resize({n, 1});
+<<<<<<< HEAD
       phi::funcs::SoftmaxCUDNNFunctor<T, GPUContext>()(
           dev_ctx, &logits_2d, &softmax_2d);
       phi::funcs::CrossEntropyFunctor<GPUContext, T>()(dev_ctx,
@@ -1395,6 +1457,18 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                                        false,
                                                        ignore_index,
                                                        axis_dim);
+=======
+      paddle::operators::math::SoftmaxCUDNNFunctor<T, GPUContext>()(
+          dev_ctx, &logits_2d, &softmax_2d);
+      paddle::operators::math::CrossEntropyFunctor<GPUContext, T>()(
+          dev_ctx,
+          &loss_2d,
+          &softmax_2d,
+          &labels_2d,
+          false,
+          ignore_index,
+          axis_dim);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     } else {
       auto* logits_data = logits.data<T>();
       auto* labels_data = label.data<LabelT>();
@@ -1468,6 +1542,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    float,
                    phi::dtype::float16) {}
 #else
+<<<<<<< HEAD
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,
@@ -1478,6 +1553,8 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #else
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,
                    ALL_LAYOUT,
@@ -1486,4 +1563,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    double,
                    phi::dtype::float16) {}
 #endif
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

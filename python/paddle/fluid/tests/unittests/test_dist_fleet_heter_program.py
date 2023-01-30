@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import os
 import unittest
@@ -20,11 +21,23 @@ import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
 from paddle.distributed.fleet import fleet
+=======
+from __future__ import print_function
+import unittest
+import paddle
+import os
+import math
+import paddle.fluid as fluid
+import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet import fleet
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestDistFleetHeterProgram(unittest.TestCase):
+<<<<<<< HEAD
     def build_role(self):
         environs = {}
         environs[
@@ -37,6 +50,18 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         environs[
             "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"
         ] = "127.0.0.1:36014,127.0.0.1:36015"
+=======
+
+    def build_role(self):
+        environs = {}
+        environs[
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36012,127.0.0.1:36013"
+        environs["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36014,127.0.0.1:36015"
+        environs[
+            "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = "127.0.0.1:36016,127.0.0.1:36017"
+        environs[
+            "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"] = "127.0.0.1:36014,127.0.0.1:36015"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         environs["PADDLE_HETER_TRAINER_DEVICE"] = "gpu"
         environs["TRAINING_ROLE"] = "HETER_TRAINER"
         environs["STAGE_ID"] = 2
@@ -60,11 +85,16 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         self.strategy.a_sync = True
         self.strategy.a_sync_configs = {
             "launch_barrier": False,
+<<<<<<< HEAD
             "heter_worker_device_guard": "gpu",
+=======
+            "heter_worker_device_guard": "gpu"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         return self.strategy
 
     def build_input(self):
+<<<<<<< HEAD
         dense_input = paddle.static.data(
             name="dense_input", shape=[-1, 10], dtype="float32"
         )
@@ -77,11 +107,29 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         ]
 
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="float32")
+=======
+        dense_input = fluid.layers.data(name="dense_input",
+                                        shape=[10],
+                                        dtype="float32")
+
+        sparse_input_ids = [
+            fluid.layers.data(name="C" + str(i),
+                              shape=[1],
+                              lod_level=1,
+                              dtype="int64") for i in range(1, 27)
+        ]
+
+        label = fluid.layers.data(name="label", shape=[1], dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         inputs = [dense_input] + sparse_input_ids + [label]
         return inputs
 
     def build_net(self, inputs):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def embedding_layer(input):
             return fluid.layers.embedding(
                 input=input,
@@ -89,8 +137,12 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=[100001, 10],
                 param_attr=fluid.ParamAttr(
                     name="SparseFeatFactors",
+<<<<<<< HEAD
                     initializer=fluid.initializer.Uniform(),
                 ),
+=======
+                    initializer=fluid.initializer.Uniform()),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
         sparse_embed_seq = list(map(embedding_layer, inputs[1:-1]))
@@ -98,6 +150,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         concated = fluid.layers.concat(sparse_embed_seq + inputs[0:1], axis=1)
 
         with fluid.device_guard("gpu"):
+<<<<<<< HEAD
             fc1 = paddle.static.nn.fc(
                 x=concated,
                 size=400,
@@ -146,14 +199,54 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                         scale=1 / math.sqrt(fc3.shape[1])
                     )
                 ),
+=======
+            fc1 = fluid.layers.fc(
+                input=concated,
+                size=400,
+                act="relu",
+                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
+                    scale=1 / math.sqrt(concated.shape[1]))),
+                name="fc1")
+
+        with fluid.device_guard("cpu"):
+            fc2 = fluid.layers.fc(
+                input=fc1,
+                size=400,
+                act="relu",
+                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
+                    scale=1 / math.sqrt(fc1.shape[1]))),
+                name="fc2")
+
+        with fluid.device_guard("gpu"):
+            fc3 = fluid.layers.fc(
+                input=fc2,
+                size=400,
+                act="relu",
+                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
+                    scale=1 / math.sqrt(fc2.shape[1]))),
+                name="fc3")
+
+        with fluid.device_guard("cpu"):
+            predict = fluid.layers.fc(
+                input=fc3,
+                size=2,
+                act="softmax",
+                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
+                    scale=1 / math.sqrt(fc3.shape[1]))),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
         with fluid.device_guard("gpu"):
             labels = fluid.layers.cast(inputs[-1], dtype="int64")
+<<<<<<< HEAD
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=labels, reduction='none', use_softmax=False
             )
             avg_cost = paddle.sum(cost)
+=======
+            cost = fluid.layers.cross_entropy(input=predict, label=labels)
+            avg_cost = fluid.layers.reduce_sum(cost)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return avg_cost
 

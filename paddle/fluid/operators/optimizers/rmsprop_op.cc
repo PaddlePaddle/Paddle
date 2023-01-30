@@ -66,7 +66,11 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("centered", "(bool, default false) use centered rmsprop.")
         .SetDefault(false);
     AddComment(R"DOC(
+<<<<<<< HEAD
 Rmsprop Optimizer.
+=======
+Rmsprop Optimizer. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 $$
 MeanSquareOut = decay * MeanSquare + (1 - decay) * Grad * Grad \\

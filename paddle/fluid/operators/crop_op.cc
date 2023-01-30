@@ -21,6 +21,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class CropOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -58,10 +63,18 @@ class CropOp : public framework::OperatorWithKernel {
     }
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -99,6 +112,7 @@ Crop Operator.
 Crop input into output, as specified by offsets and shape.
 
 There are two ways to set the offsets:
+<<<<<<< HEAD
 1. In runtime: Using the input 'Offsets', which is a Variable and can be
                output of other operators. This way is suitable for
                dynamic offsets.
@@ -107,6 +121,16 @@ There are two ways to set the offsets:
                              suitable for fixed offsets.
 You CANNOT use these two ways at the same time. An exception will be raised
 if input 'Offset' is configured and meanwhile the attribute 'offsets' is
+=======
+1. In runtime: Using the input 'Offsets', which is a Variable and can be 
+               output of other operators. This way is suitable for 
+               dynamic offsets.
+2. In network configuration: Using the attribute 'offsets', which will be 
+                             set in Python configure script. This way is 
+                             suitable for fixed offsets.
+You CANNOT use these two ways at the same time. An exception will be raised 
+if input 'Offset' is configured and meanwhile the attribute 'offsets' is 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 not empty.
 
 There are two ways to set shape:
@@ -181,11 +205,19 @@ class CropOpGrad : public framework::OperatorWithKernel {
     }
   }
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

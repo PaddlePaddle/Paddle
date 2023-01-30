@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 
 import numpy as np
 import test_collective_api_base as test_collective_base
@@ -22,6 +23,16 @@ import paddle.distributed as dist
 
 
 class StreamScatterTestCase:
+=======
+import numpy as np
+import paddle
+import paddle.distributed as dist
+import test_collective_api_base as test_collective_base
+
+
+class StreamScatterTestCase():
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
         self._use_calc_stream = eval(os.getenv("use_calc_stream"))
@@ -31,8 +42,12 @@ class StreamScatterTestCase:
         self._seeds = eval(os.getenv("seeds"))
         if self._backend not in ["nccl", "gloo"]:
             raise NotImplementedError(
+<<<<<<< HEAD
                 "Only support nccl and gloo as the backend for now."
             )
+=======
+                "Only support nccl and gloo as the backend for now.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_DISTRI_BACKEND"] = self._backend
 
     def run_test_case(self):
@@ -41,6 +56,7 @@ class StreamScatterTestCase:
         test_data_list = []
         for seed in self._seeds:
             test_data_list.append(
+<<<<<<< HEAD
                 test_collective_base.create_test_data(
                     shape=self._shape, dtype=self._dtype, seed=seed
                 )
@@ -50,12 +66,23 @@ class StreamScatterTestCase:
         src_data = test_data_list[src_rank]
         result1 = src_data[0 : src_data.shape[0] // 2]
         result2 = src_data[src_data.shape[0] // 2 :]
+=======
+                test_collective_base.create_test_data(shape=self._shape,
+                                                      dtype=self._dtype,
+                                                      seed=seed))
+
+        src_rank = 1
+        src_data = test_data_list[src_rank]
+        result1 = src_data[0:src_data.shape[0] // 2]
+        result2 = src_data[src_data.shape[0] // 2:]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         rank = dist.get_rank()
 
         # case 1: pass a pre-sized tensor list
         tensor = paddle.to_tensor(test_data_list[rank])
         t1, t2 = paddle.split(tensor, 2, axis=0)
+<<<<<<< HEAD
         task = dist.stream.scatter(
             t1,
             [t1, t2],
@@ -69,10 +96,23 @@ class StreamScatterTestCase:
             np.testing.assert_allclose(t1, result2, rtol=1e-05, atol=1e-05)
         else:
             np.testing.assert_allclose(t1, result1, rtol=1e-05, atol=1e-05)
+=======
+        task = dist.stream.scatter(t1, [t1, t2],
+                                   src=src_rank,
+                                   sync_op=self._sync_op,
+                                   use_calc_stream=self._use_calc_stream)
+        if not self._sync_op:
+            task.wait()
+        if rank == src_rank:
+            assert np.allclose(t1, result2, rtol=1e-05, atol=1e-05)
+        else:
+            assert np.allclose(t1, result1, rtol=1e-05, atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # case 2: pass a pre-sized tensor
         tensor = paddle.to_tensor(src_data)
         t1 = paddle.empty_like(t1)
+<<<<<<< HEAD
         task = dist.stream.scatter(
             t1,
             tensor,
@@ -86,6 +126,19 @@ class StreamScatterTestCase:
             np.testing.assert_allclose(t1, result2, rtol=1e-05, atol=1e-05)
         else:
             np.testing.assert_allclose(t1, result1, rtol=1e-05, atol=1e-05)
+=======
+        task = dist.stream.scatter(t1,
+                                   tensor,
+                                   src=src_rank,
+                                   sync_op=self._sync_op,
+                                   use_calc_stream=self._use_calc_stream)
+        if not self._sync_op:
+            task.wait()
+        if rank == src_rank:
+            assert np.allclose(t1, result2, rtol=1e-05, atol=1e-05)
+        else:
+            assert np.allclose(t1, result1, rtol=1e-05, atol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

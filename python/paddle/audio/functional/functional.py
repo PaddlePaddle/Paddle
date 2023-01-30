@@ -13,15 +13,25 @@
 # limitations under the License.
 # Modified from librosa(https://github.com/librosa/librosa)
 import math
+<<<<<<< HEAD
 from typing import Optional, Union
+=======
+from typing import Optional
+from typing import Union
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 from paddle import Tensor
 
 
+<<<<<<< HEAD
 def hz_to_mel(
     freq: Union[Tensor, float], htk: bool = False
 ) -> Union[Tensor, float]:
+=======
+def hz_to_mel(freq: Union[Tensor, float],
+              htk: bool = False) -> Union[Tensor, float]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Convert Hz to Mels.
 
     Args:
@@ -61,6 +71,7 @@ def hz_to_mel(
     logstep = math.log(6.4) / 27.0  # step size for log region
 
     if isinstance(freq, Tensor):
+<<<<<<< HEAD
         target = (
             min_log_mel + paddle.log(freq / min_log_hz + 1e-10) / logstep
         )  # prevent nan with 1e-10
@@ -68,6 +79,13 @@ def hz_to_mel(
         mels = target * mask + mels * (
             1 - mask
         )  # will replace by masked_fill OP in future
+=======
+        target = min_log_mel + paddle.log(
+            freq / min_log_hz + 1e-10) / logstep  # prevent nan with 1e-10
+        mask = (freq > min_log_hz).astype(freq.dtype)
+        mels = target * mask + mels * (
+            1 - mask)  # will replace by masked_fill OP in future
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         if freq >= min_log_hz:
             mels = min_log_mel + math.log(freq / min_log_hz + 1e-10) / logstep
@@ -75,9 +93,14 @@ def hz_to_mel(
     return mels
 
 
+<<<<<<< HEAD
 def mel_to_hz(
     mel: Union[float, Tensor], htk: bool = False
 ) -> Union[float, Tensor]:
+=======
+def mel_to_hz(mel: Union[float, Tensor],
+              htk: bool = False) -> Union[float, Tensor]:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Convert mel bin numbers to frequencies.
 
     Args:
@@ -99,7 +122,11 @@ def mel_to_hz(
 
     """
     if htk:
+<<<<<<< HEAD
         return 700.0 * (10.0 ** (mel / 2595.0) - 1.0)
+=======
+        return 700.0 * (10.0**(mel / 2595.0) - 1.0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     f_min = 0.0
     f_sp = 200.0 / 3
@@ -112,14 +139,19 @@ def mel_to_hz(
         target = min_log_hz * paddle.exp(logstep * (mel - min_log_mel))
         mask = (mel > min_log_mel).astype(mel.dtype)
         freqs = target * mask + freqs * (
+<<<<<<< HEAD
             1 - mask
         )  # will replace by masked_fill OP in future
+=======
+            1 - mask)  # will replace by masked_fill OP in future
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         if mel >= min_log_mel:
             freqs = min_log_hz * math.exp(logstep * (mel - min_log_mel))
     return freqs
 
 
+<<<<<<< HEAD
 def mel_frequencies(
     n_mels: int = 64,
     f_min: float = 0.0,
@@ -127,6 +159,13 @@ def mel_frequencies(
     htk: bool = False,
     dtype: str = 'float32',
 ) -> Tensor:
+=======
+def mel_frequencies(n_mels: int = 64,
+                    f_min: float = 0.0,
+                    f_max: float = 11025.0,
+                    htk: bool = False,
+                    dtype: str = 'float32') -> Tensor:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Compute mel frequencies.
 
     Args:
@@ -183,6 +222,7 @@ def fft_frequencies(sr: int, n_fft: int, dtype: str = 'float32') -> Tensor:
     return paddle.linspace(0, float(sr) / 2, int(1 + n_fft // 2), dtype=dtype)
 
 
+<<<<<<< HEAD
 def compute_fbank_matrix(
     sr: int,
     n_fft: int,
@@ -193,6 +233,16 @@ def compute_fbank_matrix(
     norm: Union[str, float] = 'slaney',
     dtype: str = 'float32',
 ) -> Tensor:
+=======
+def compute_fbank_matrix(sr: int,
+                         n_fft: int,
+                         n_mels: int = 64,
+                         f_min: float = 0.0,
+                         f_max: Optional[float] = None,
+                         htk: bool = False,
+                         norm: Union[str, float] = 'slaney',
+                         dtype: str = 'float32') -> Tensor:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Compute fbank matrix.
 
     Args:
@@ -228,6 +278,7 @@ def compute_fbank_matrix(
     fftfreqs = fft_frequencies(sr=sr, n_fft=n_fft, dtype=dtype)
 
     # 'Center freqs' of mel bands - uniformly spaced between limits
+<<<<<<< HEAD
     mel_f = mel_frequencies(
         n_mels + 2, f_min=f_min, f_max=f_max, htk=htk, dtype=dtype
     )
@@ -235,6 +286,17 @@ def compute_fbank_matrix(
     fdiff = mel_f[1:] - mel_f[:-1]  # np.diff(mel_f)
     ramps = mel_f.unsqueeze(1) - fftfreqs.unsqueeze(0)
     # ramps = np.subtract.outer(mel_f, fftfreqs)
+=======
+    mel_f = mel_frequencies(n_mels + 2,
+                            f_min=f_min,
+                            f_max=f_max,
+                            htk=htk,
+                            dtype=dtype)
+
+    fdiff = mel_f[1:] - mel_f[:-1]  #np.diff(mel_f)
+    ramps = mel_f.unsqueeze(1) - fftfreqs.unsqueeze(0)
+    #ramps = np.subtract.outer(mel_f, fftfreqs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for i in range(n_mels):
         # lower and upper slopes for all bins
@@ -242,6 +304,7 @@ def compute_fbank_matrix(
         upper = ramps[i + 2] / fdiff[i + 1]
 
         # .. then intersect them with each other and zero
+<<<<<<< HEAD
         weights[i] = paddle.maximum(
             paddle.zeros_like(lower), paddle.minimum(lower, upper)
         )
@@ -249,6 +312,14 @@ def compute_fbank_matrix(
     # Slaney-style mel is scaled to be approx constant energy per channel
     if norm == 'slaney':
         enorm = 2.0 / (mel_f[2 : n_mels + 2] - mel_f[:n_mels])
+=======
+        weights[i] = paddle.maximum(paddle.zeros_like(lower),
+                                    paddle.minimum(lower, upper))
+
+    # Slaney-style mel is scaled to be approx constant energy per channel
+    if norm == 'slaney':
+        enorm = 2.0 / (mel_f[2:n_mels + 2] - mel_f[:n_mels])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         weights *= enorm.unsqueeze(1)
     elif isinstance(norm, int) or isinstance(norm, float):
         weights = paddle.nn.functional.normalize(weights, p=norm, axis=-1)
@@ -256,12 +327,19 @@ def compute_fbank_matrix(
     return weights
 
 
+<<<<<<< HEAD
 def power_to_db(
     spect: Tensor,
     ref_value: float = 1.0,
     amin: float = 1e-10,
     top_db: Optional[float] = 80.0,
 ) -> Tensor:
+=======
+def power_to_db(spect: Tensor,
+                ref_value: float = 1.0,
+                amin: float = 1e-10,
+                top_db: Optional[float] = 80.0) -> Tensor:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Convert a power spectrogram (amplitude squared) to decibel (dB) units. The function computes the scaling `10 * log10(x / ref)` in a numerically stable way.
 
     Args:
@@ -300,6 +378,7 @@ def power_to_db(
     return log_spec
 
 
+<<<<<<< HEAD
 def create_dct(
     n_mfcc: int,
     n_mels: int,
@@ -310,6 +389,16 @@ def create_dct(
 
     Args:
         n_mfcc (int): Number of mel frequency cepstral coefficients.
+=======
+def create_dct(n_mfcc: int,
+               n_mels: int,
+               norm: Optional[str] = 'ortho',
+               dtype: str = 'float32') -> Tensor:
+    """Create a discrete cosine transform(DCT) matrix.
+
+    Args:
+        n_mfcc (int): Number of mel frequency cepstral coefficients. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         n_mels (int): Number of mel filterbanks.
         norm (Optional[str], optional): Normalizaiton type. Defaults to 'ortho'.
         dtype (str, optional): The data type of the return matrix. Defaults to 'float32'.
@@ -327,9 +416,14 @@ def create_dct(
     """
     n = paddle.arange(n_mels, dtype=dtype)
     k = paddle.arange(n_mfcc, dtype=dtype).unsqueeze(1)
+<<<<<<< HEAD
     dct = paddle.cos(
         math.pi / float(n_mels) * (n + 0.5) * k
     )  # size (n_mfcc, n_mels)
+=======
+    dct = paddle.cos(math.pi / float(n_mels) * (n + 0.5) *
+                     k)  # size (n_mfcc, n_mels)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if norm is None:
         dct *= 2.0
     else:

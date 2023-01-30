@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 import os
 import re
@@ -24,6 +25,20 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+=======
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle.fluid.core as core
+from paddle.static import Program, program_guard
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
+import paddle.nn.functional as F
+import os
+import re
+import copy
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def get_cuda_version():
@@ -223,7 +238,11 @@ class TestSparseAttentionOp(OpTest):
 
         self.key_padding_mask = key_padding_mask.astype(self.dtype)
         self.attn_mask = attn_mask.astype(self.dtype)
+<<<<<<< HEAD
         if self.use_mask:
+=======
+        if self.use_mask == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             result, result_sdd, result_softmax = ref_batch_sparse_attention(
                 self.q,
                 self.k,
@@ -238,7 +257,11 @@ class TestSparseAttentionOp(OpTest):
                 self.q, self.k, self.v, self.offset, self.columns
             )
 
+<<<<<<< HEAD
         if self.use_mask:
+=======
+        if self.use_mask == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.inputs = {
                 'Q': self.q,
                 'K': self.k,
@@ -328,7 +351,11 @@ class TestSparseAttentionAPI(unittest.TestCase):
             )
             key_padding_mask_shape = (self.shape[0], self.shape[2])
             attn_mask_shape = (self.shape[2], self.shape[2])
+<<<<<<< HEAD
             if self.use_mask:
+=======
+            if self.use_mask == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 key_padding_mask = paddle.static.data(
                     name="KeyPaddingMask",
                     shape=key_padding_mask_shape,
@@ -369,7 +396,11 @@ class TestSparseAttentionAPI(unittest.TestCase):
             attn_mask_np = attn_mask_np.astype(self.dtype)
 
             exe = fluid.Executor(self.place)
+<<<<<<< HEAD
             if self.use_mask:
+=======
+            if self.use_mask == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 fetches_result = exe.run(
                     feed={
                         "Q": Q_np,
@@ -438,7 +469,11 @@ class TestSparseAttentionAPI(unittest.TestCase):
         paddle_kp_mask = paddle.to_tensor(key_padding_mask, place=self.place)
         paddle_attn_mask = paddle.to_tensor(attn_mask, place=self.place)
 
+<<<<<<< HEAD
         if self.use_mask:
+=======
+        if self.use_mask == True:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle_result = F.sparse_attention(
                 paddle_query,
                 paddle_key,

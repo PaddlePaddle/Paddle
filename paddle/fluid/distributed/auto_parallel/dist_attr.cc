@@ -29,6 +29,7 @@ namespace auto_parallel {
 std::vector<std::string> TensorDistAttr::fields_{
     "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
 
+<<<<<<< HEAD
 static inline std::vector<int64_t> get_tensor_shape(const VarDesc* tensor) {
   if (tensor == nullptr) return std::vector<int64_t>();
   switch (tensor->GetType()) {
@@ -66,6 +67,20 @@ TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
 }
 
 void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
+=======
+TensorDistAttr::TensorDistAttr(const VarDesc& tensor)
+    : tensor_(&tensor), batch_dim_(0) {
+  set_default_dims_mapping();
+  std::vector<int64_t> tensor_shape = tensor_->GetShape();
+  for (std::size_t i = 0; i < tensor_shape.size(); ++i) {
+    dynamic_dims_.push_back(false);
+  }
+}
+
+TensorDistAttr::TensorDistAttr(const TensorDistAttr& dist_attr) {
+  if (tensor_ == nullptr) {
+    tensor_ = dist_attr.tensor();
+  }
   set_process_mesh(dist_attr.process_mesh());
   set_dims_mapping(dist_attr.dims_mapping());
   set_batch_dim(dist_attr.batch_dim());
@@ -73,35 +88,102 @@ void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_annotated(dist_attr.annotated());
 }
 
+TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
+  if (tensor_ == nullptr) {
+    tensor_ = dist_attr.tensor();
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
+  set_process_mesh(dist_attr.process_mesh());
+  set_dims_mapping(dist_attr.dims_mapping());
+  set_batch_dim(dist_attr.batch_dim());
+  set_dynamic_dims(dist_attr.dynamic_dims());
+  set_annotated(dist_attr.annotated());
+<<<<<<< HEAD
+}
+
 void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
+=======
+  return *this;
+}
+
+void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
+  PADDLE_ENFORCE_EQ(verify_process_mesh(process_mesh),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Wrong process mesh %s.", process_mesh.to_string()));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   process_mesh_ = process_mesh;
 }
 
 void TensorDistAttr::set_dims_mapping(
     const std::vector<int64_t>& dims_mapping) {
+<<<<<<< HEAD
+=======
+  PADDLE_ENFORCE_EQ(verify_dims_mapping(dims_mapping),
+                    true,
+                    platform::errors::InvalidArgument("Wrong dims_mapping %s.",
+                                                      str_join(dims_mapping)));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   dims_mapping_ = dims_mapping;
 }
 
 void TensorDistAttr::set_batch_dim(int64_t batch_dim) {
+<<<<<<< HEAD
   batch_dim_ = batch_dim;
 }
 
 void TensorDistAttr::set_dynamic_dims(const std::vector<bool>& dynamic_dims) {
+=======
+  PADDLE_ENFORCE_EQ(
+      verify_batch_dim(batch_dim),
+      true,
+      platform::errors::InvalidArgument(
+          "Wrong batch_dim %d in this distributed attribute.", batch_dim));
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+    int64_t canonical_batch_dim = canonical_dim(batch_dim, tensor_shape.size());
+    batch_dim_ = canonical_batch_dim;
+  } else {
+    batch_dim_ = batch_dim;
+  }
+}
+
+void TensorDistAttr::set_dynamic_dims(const std::vector<bool>& dynamic_dims) {
+  PADDLE_ENFORCE_EQ(
+      verify_dynamic_dims(dynamic_dims),
+      true,
+      platform::errors::InvalidArgument("The dynamic_dims [%s] is wrong.",
+                                        str_join(dynamic_dims)));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   dynamic_dims_ = dynamic_dims;
 }
 
 void TensorDistAttr::set_annotated(
     const std::map<std::string, bool>& annotated) {
+<<<<<<< HEAD
   annotated_ = annotated;
 }
 
 void TensorDistAttr::set_default_dims_mapping(
     const std::vector<int64_t>& tensor_shape) {
   if (tensor_shape.size() != 0) {
+=======
+  PADDLE_ENFORCE_EQ(verify_annotated(annotated),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The annotated [%s] is wrong.", str_join(annotated)));
+  annotated_ = annotated;
+}
+
+void TensorDistAttr::set_default_dims_mapping() {
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dims_mapping_ = std::vector<int64_t>(tensor_shape.size(), -1);
   }
 }
 
+<<<<<<< HEAD
 void TensorDistAttr::set_default_dynamic_dims(
     const std::vector<int64_t>& tensor_shape) {
   if (tensor_shape.size() != 0) {
@@ -110,6 +192,9 @@ void TensorDistAttr::set_default_dynamic_dims(
 }
 
 void TensorDistAttr::mark_annotated(const std::string& name) {
+=======
+void TensorDistAttr::annotate(const std::string& name) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto result = std::find(std::begin(fields_), std::end(fields_), name);
   if (result != std::end(fields_)) {
     annotated_[name] = true;
@@ -118,11 +203,17 @@ void TensorDistAttr::mark_annotated(const std::string& name) {
 
 bool TensorDistAttr::verify_process_mesh(
     const ProcessMesh& process_mesh) const {
+<<<<<<< HEAD
   VLOG(4) << "[TensorDistAttr verify_process_mesh] "
           << process_mesh.to_string();
   if (!process_mesh_.empty()) {
     for (int64_t dim_mapping : dims_mapping_) {
       if (dim_mapping >= process_mesh_.ndim()) {
+=======
+  if (!process_mesh_.empty()) {
+    for (int64_t dim_mapping : dims_mapping_) {
+      if (dim_mapping < -1 || dim_mapping >= process_mesh_.ndim()) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return false;
       }
     }
@@ -131,11 +222,20 @@ bool TensorDistAttr::verify_process_mesh(
 }
 
 bool TensorDistAttr::verify_dims_mapping(
+<<<<<<< HEAD
     const std::vector<int64_t>& dims_mapping,
     const std::vector<int64_t>& tensor_shape) const {
   VLOG(4) << "[TensorDistAttr verify_dims_mapping] " << str_join(dims_mapping);
   if (dims_mapping.size() != tensor_shape.size()) {
     return false;
+=======
+    const std::vector<int64_t>& dims_mapping) const {
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+    if (dims_mapping.size() != tensor_shape.size()) {
+      return false;
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   std::unordered_map<int64_t, int64_t> map;
   if (!process_mesh_.empty()) {
@@ -159,11 +259,18 @@ bool TensorDistAttr::verify_dims_mapping(
   return true;
 }
 
+<<<<<<< HEAD
 bool TensorDistAttr::verify_batch_dim(
     int64_t dim, const std::vector<int64_t>& tensor_shape) const {
   VLOG(4) << "[TensorDistAttr verify_batch_dim] " << dim;
   int64_t ndim = tensor_shape.size();
   if (ndim > 0) {
+=======
+bool TensorDistAttr::verify_batch_dim(int64_t dim) const {
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+    int64_t ndim = tensor_shape.size();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (dim < 0) {
       dim = dim + ndim;
     }
@@ -175,18 +282,30 @@ bool TensorDistAttr::verify_batch_dim(
 }
 
 bool TensorDistAttr::verify_dynamic_dims(
+<<<<<<< HEAD
     const std::vector<bool>& dynamic_dims,
     const std::vector<int64_t>& tensor_shape) const {
   VLOG(4) << "[TensorDistAttr verify_dynamic_dims] " << str_join(dynamic_dims);
   if (dynamic_dims.size() > 0 && dynamic_dims.size() != tensor_shape.size()) {
     return false;
+=======
+    const std::vector<bool>& dynamic_dims) const {
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+    if (dynamic_dims.size() != tensor_shape.size()) {
+      return false;
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   return true;
 }
 
 bool TensorDistAttr::verify_annotated(
     const std::map<std::string, bool>& annotated) const {
+<<<<<<< HEAD
   VLOG(4) << "[TensorDistAttr verify_annotated] " << str_join(annotated);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (const auto& item : annotated) {
     auto result = std::find(std::begin(fields_), std::end(fields_), item.first);
     if (result == std::end(fields_)) {
@@ -196,6 +315,7 @@ bool TensorDistAttr::verify_annotated(
   return true;
 }
 
+<<<<<<< HEAD
 bool TensorDistAttr::verify(const VarDesc* tensor) const {
   auto tensor_shape = get_tensor_shape(tensor);
   if (!verify_process_mesh(process_mesh_)) {
@@ -208,6 +328,22 @@ bool TensorDistAttr::verify(const VarDesc* tensor) const {
     return false;
   }
   if (!verify_dynamic_dims(dynamic_dims_, tensor_shape)) {
+=======
+bool TensorDistAttr::verify() const {
+  if (tensor_ == nullptr) {
+    return false;
+  }
+  if (!verify_process_mesh(process_mesh_)) {
+    return false;
+  }
+  if (!verify_dims_mapping(dims_mapping_)) {
+    return false;
+  }
+  if (!verify_batch_dim(batch_dim_)) {
+    return false;
+  }
+  if (!verify_dynamic_dims(dynamic_dims_)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return false;
   }
   if (!verify_annotated(annotated_)) {
@@ -218,7 +354,16 @@ bool TensorDistAttr::verify(const VarDesc* tensor) const {
 
 std::string TensorDistAttr::to_string() const {
   std::string dist_str;
+<<<<<<< HEAD
   dist_str += "{process_mesh: " + process_mesh_.to_string() + ", ";
+=======
+  if (tensor_ != nullptr) {
+    dist_str = "{tensor_name: " + tensor_->Name() + ", ";
+  } else {
+    dist_str = "{tensor_name: None, ";
+  }
+  dist_str += "process_mesh: " + process_mesh_.to_string() + ", ";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   dist_str += "dims_mappings: [" + str_join(dims_mapping_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "], ";
@@ -226,6 +371,7 @@ std::string TensorDistAttr::to_string() const {
   return dist_str;
 }
 
+<<<<<<< HEAD
 void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
   process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
   dims_mapping_.resize(proto.dims_mapping_size());
@@ -237,6 +383,21 @@ void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
   for (int64_t i = 0; i < proto.dynamic_dims_size(); ++i) {
     dynamic_dims_[i] = proto.dynamic_dims(i);
   }
+=======
+TensorDistAttr TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
+  TensorDistAttr dist_attr;
+  dist_attr.process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
+  dist_attr.dims_mapping_.resize(proto.dims_mapping_size());
+  for (int64_t i = 0; i < proto.dims_mapping_size(); ++i) {
+    dist_attr.dims_mapping_[i] = proto.dims_mapping(i);
+  }
+  dist_attr.batch_dim_ = proto.batch_dim();
+  dist_attr.dynamic_dims_.resize(proto.dynamic_dims_size());
+  for (int64_t i = 0; i < proto.dynamic_dims_size(); ++i) {
+    dist_attr.dynamic_dims_[i] = proto.dynamic_dims(i);
+  }
+  return dist_attr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 TensorDistAttrProto TensorDistAttr::to_proto() const {
@@ -252,6 +413,7 @@ TensorDistAttrProto TensorDistAttr::to_proto() const {
   return proto;
 }
 
+<<<<<<< HEAD
 std::string TensorDistAttr::serialize_to_string() {
   std::string data;
   auto proto = to_proto();
@@ -272,6 +434,8 @@ void TensorDistAttr::parse_from_string(const std::string& data) {
   from_proto(proto);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   if (lhs.process_mesh() != rhs.process_mesh()) {
     return false;
@@ -288,6 +452,7 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   return true;
 }
 
+<<<<<<< HEAD
 std::vector<std::string> OperatorDistAttr::fields_{"process_mesh",
                                                    "impl_type",
                                                    "impl_idx",
@@ -382,10 +547,70 @@ void OperatorDistAttr::set_output_dist_attrs(
   for (const auto& item : dist_attrs) {
     set_output_dist_attr(item.first, item.second);
   }
+=======
+std::vector<std::string> OperatorDistAttr::fields_{
+    "process_mesh", "impl_type", "impl_idx"};
+
+OperatorDistAttr::OperatorDistAttr(const OpDesc& op) : op_(&op) {
+  for (std::string name : op_->InputArgumentNames()) {
+    VarDesc* input = op_->Block()->FindVarRecursive(name);
+    inputs_[name] = input;
+    input_dist_attrs_[name] = TensorDistAttr(*input);
+  }
+  for (std::string name : op_->OutputArgumentNames()) {
+    VarDesc* output = op_->Block()->FindVarRecursive(name);
+    outputs_[name] = output;
+    output_dist_attrs_[name] = TensorDistAttr(*output);
+  }
+  impl_type_ = "default";
+  impl_idx_ = 0;
+}
+
+OperatorDistAttr::OperatorDistAttr(const OperatorDistAttr& dist_attr) {
+  if (op_ == nullptr) {
+    op_ = dist_attr.op();
+  }
+  for (const auto& item : dist_attr.input_dist_attrs()) {
+    set_input_dist_attr(item.first, item.second);
+  }
+  for (const auto& item : dist_attr.output_dist_attrs()) {
+    set_output_dist_attr(item.first, item.second);
+  }
+  set_process_mesh(dist_attr.process_mesh());
+  set_impl_type(dist_attr.impl_type());
+  set_impl_idx(dist_attr.impl_idx());
+  set_annotated(dist_attr.annotated());
+}
+
+OperatorDistAttr& OperatorDistAttr::operator=(
+    const OperatorDistAttr& dist_attr) {
+  if (op_ == nullptr) {
+    op_ = dist_attr.op();
+  }
+  for (const auto& item : dist_attr.input_dist_attrs()) {
+    set_input_dist_attr(item.first, item.second);
+  }
+  for (const auto& item : dist_attr.output_dist_attrs()) {
+    set_output_dist_attr(item.first, item.second);
+  }
+  set_process_mesh(dist_attr.process_mesh());
+  set_impl_type(dist_attr.impl_type());
+  set_impl_idx(dist_attr.impl_idx());
+  set_annotated(dist_attr.annotated());
+  return *this;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void OperatorDistAttr::set_input_dist_attr(const std::string& name,
                                            const TensorDistAttr& dist_attr) {
+<<<<<<< HEAD
+=======
+  PADDLE_ENFORCE_EQ(
+      verify_input_dist_attr(name, dist_attr),
+      true,
+      platform::errors::InvalidArgument(
+          "Wrong dist_attr %s for %s.", dist_attr.to_string(), name));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   input_dist_attrs_[name] = dist_attr;
   // Make sure the process mesh of input be same as that of the op
   input_dist_attrs_[name].set_process_mesh(process_mesh_);
@@ -393,6 +618,14 @@ void OperatorDistAttr::set_input_dist_attr(const std::string& name,
 
 void OperatorDistAttr::set_output_dist_attr(const std::string& name,
                                             const TensorDistAttr& dist_attr) {
+<<<<<<< HEAD
+=======
+  PADDLE_ENFORCE_EQ(
+      verify_output_dist_attr(name, dist_attr),
+      true,
+      platform::errors::InvalidArgument(
+          "Wrong dist_attr %s for %s.", dist_attr.to_string(), name));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   output_dist_attrs_[name] = dist_attr;
   // Make sure the process mesh of output be same as that of the op
   output_dist_attrs_[name].set_process_mesh(process_mesh_);
@@ -408,26 +641,38 @@ void OperatorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
   process_mesh_ = process_mesh;
 }
 
+<<<<<<< HEAD
 void OperatorDistAttr::set_annotated(
     const std::map<std::string, bool>& annotated) {
   annotated_ = annotated;
 }
 
 void OperatorDistAttr::mark_annotated(const std::string& name) {
+=======
+void OperatorDistAttr::annotate(const std::string& name) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto result = std::find(std::begin(fields_), std::end(fields_), name);
   if (result != std::end(fields_)) {
     annotated_[name] = true;
   }
   if (name == "process_mesh") {
     for (auto& item : input_dist_attrs_) {
+<<<<<<< HEAD
       item.second.mark_annotated(name);
     }
     for (auto& item : output_dist_attrs_) {
       item.second.mark_annotated(name);
+=======
+      item.second.annotate(name);
+    }
+    for (auto& item : output_dist_attrs_) {
+      item.second.annotate(name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }
 
+<<<<<<< HEAD
 void OperatorDistAttr::clear_annotated() {
   annotated_.clear();
   for (auto& item : input_dist_attrs_) {
@@ -495,13 +740,60 @@ bool OperatorDistAttr::verify_output_dist_attr(const std::string& name,
   if (output_dist_attrs_.count(name) == 0) {
     return false;
   }
+=======
+void OperatorDistAttr::set_annotated(
+    const std::map<std::string, bool>& annotated) {
+  PADDLE_ENFORCE_EQ(verify_annotated(annotated),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The annotated [%s] is wrong.", str_join(annotated)));
+  annotated_ = annotated;
+}
+
+bool OperatorDistAttr::verify_input_dist_attr(
+    const std::string& name, const TensorDistAttr& dist_attr) const {
+  if (!dist_attr.verify()) {
+    return false;
+  }
+  if (op_ != nullptr) {
+    if (dist_attr.tensor() != nullptr) {
+      if (name != dist_attr.tensor()->Name()) {
+        return false;
+      }
+    }
+    if (input_dist_attrs_.count(name) == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool OperatorDistAttr::verify_output_dist_attr(
+    const std::string& name, const TensorDistAttr& dist_attr) const {
+  if (!dist_attr.verify()) {
+    return false;
+  }
+  if (op_ != nullptr) {
+    if (dist_attr.tensor() != nullptr) {
+      if (name != dist_attr.tensor()->Name()) {
+        return false;
+      }
+    }
+    if (output_dist_attrs_.count(name) == 0) {
+      return false;
+    }
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return true;
 }
 
 bool OperatorDistAttr::verify_process_mesh(
     const ProcessMesh& process_mesh) const {
+<<<<<<< HEAD
   VLOG(4) << "[OperatorDistAttr verify_process_mesh] "
           << process_mesh.to_string();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (process_mesh != process_mesh_) {
     return false;
   }
@@ -520,7 +812,10 @@ bool OperatorDistAttr::verify_process_mesh(
 
 bool OperatorDistAttr::verify_annotated(
     const std::map<std::string, bool>& annotated) const {
+<<<<<<< HEAD
   VLOG(4) << "[OperatorDistAttr verify_annotated] " << str_join(annotated);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (const auto& item : annotated) {
     auto result = std::find(std::begin(fields_), std::end(fields_), item.first);
     if (result == std::end(fields_)) {
@@ -528,15 +823,21 @@ bool OperatorDistAttr::verify_annotated(
     }
   }
   for (auto& item : input_dist_attrs_) {
+<<<<<<< HEAD
     VLOG(4) << "[OperatorDistAttr verify_annotated input] "
             << str_join(item.second.annotated());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!item.second.verify_annotated(item.second.annotated())) {
       return false;
     }
   }
   for (auto& item : output_dist_attrs_) {
+<<<<<<< HEAD
     VLOG(4) << "[OperatorDistAttr verify_annotated output] "
             << str_join(item.second.annotated());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!item.second.verify_annotated(item.second.annotated())) {
       return false;
     }
@@ -544,37 +845,61 @@ bool OperatorDistAttr::verify_annotated(
   return true;
 }
 
+<<<<<<< HEAD
 bool OperatorDistAttr::verify(const OpDesc* op) const {
+=======
+bool OperatorDistAttr::verify() const {
+  if (op_ == nullptr) {
+    return false;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (!verify_process_mesh(process_mesh_)) {
     return false;
   }
   for (auto const& item : input_dist_attrs_) {
+<<<<<<< HEAD
     auto input_names = op->InputArgumentNames();
+=======
+    auto input_names = op_->InputArgumentNames();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto found =
         std::find(std::begin(input_names), std::end(input_names), item.first);
     if (found == std::end(input_names)) {
       return false;
     }
+<<<<<<< HEAD
     auto tensor = op->Block()->FindVarRecursive(item.first);
     if (!verify_input_dist_attr(item.first, item.second, tensor)) {
+=======
+    if (!verify_input_dist_attr(item.first, item.second)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       return false;
     }
   }
   for (auto const& item : output_dist_attrs_) {
+<<<<<<< HEAD
     auto output_names = op->OutputArgumentNames();
+=======
+    auto output_names = op_->OutputArgumentNames();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto found =
         std::find(std::begin(output_names), std::end(output_names), item.first);
     if (found == std::end(output_names)) {
       return false;
     }
+<<<<<<< HEAD
     auto tensor = op->Block()->FindVarRecursive(item.first);
     if (!verify_output_dist_attr(item.first, item.second, tensor)) {
+=======
+    if (!verify_output_dist_attr(item.first, item.second)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       return false;
     }
   }
   return true;
 }
 
+<<<<<<< HEAD
 void OperatorDistAttr::rename_input(const std::string& old_name,
                                     const std::string& new_name) {
   if (old_name == new_name) return;
@@ -606,21 +931,41 @@ std::string OperatorDistAttr::to_string() const {
   str += "execution_stream: " + execution_stream_ + ", ";
   str += "stream_priority: " + std::to_string(stream_priority_) + ", ";
   str += "scheduling_priority: " + std::to_string(scheduling_priority_) + ", ";
+=======
+std::string OperatorDistAttr::to_string() const {
+  std::string str;
+  if (op_ != nullptr) {
+    str += "{op_type: " + op_->Type() + ", ";
+  } else {
+    str += "{op_type: None, ";
+  }
+  str += "impl_type: " + impl_type_ + ", ";
+  str += "impl_idx: " + std::to_string(impl_idx_) + ", ";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   str += "annotated: [" + str_join(annotated_) + "], ";
   str += "\nprocess_mesh: " + process_mesh_.to_string() + ", ";
   str += "\ninput_dist_attrs: [\n";
   for (auto const& item : input_dist_attrs_) {
+<<<<<<< HEAD
     str += "  " + item.first + ": " + item.second.to_string() + ",\n";
+=======
+    str += "  " + item.second.to_string() + ",\n";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   str.replace(str.size() - 2, 2, "]");
   str += "\noutput_dist_attrs: [\n";
   for (auto const& item : output_dist_attrs_) {
+<<<<<<< HEAD
     str += "  " + item.first + ": " + item.second.to_string() + ",\n";
+=======
+    str += "  " + item.second.to_string() + ",\n";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   str.replace(str.size() - 2, 2, "]}");
   return str;
 }
 
+<<<<<<< HEAD
 void OperatorDistAttr::from_proto(const OperatorDistAttrProto& proto) {
   for (int64_t i = 0; i < proto.input_dist_attrs_size(); ++i) {
     TensorDistAttr dist_attr;
@@ -637,6 +982,25 @@ void OperatorDistAttr::from_proto(const OperatorDistAttrProto& proto) {
   process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
   impl_type_ = proto.impl_type();
   impl_idx_ = proto.impl_idx();
+=======
+OperatorDistAttr OperatorDistAttr::from_proto(
+    const OperatorDistAttrProto& proto) {
+  OperatorDistAttr dist_attr;
+  for (int64_t i = 0; i < proto.input_dist_attrs_size(); ++i) {
+    dist_attr.input_dist_attrs_[proto.input_dist_attrs(i).name()] =
+        TensorDistAttr::from_proto(
+            proto.input_dist_attrs(i).tensor_dist_attr());
+  }
+  for (int64_t i = 0; i < proto.output_dist_attrs_size(); ++i) {
+    dist_attr.output_dist_attrs_[proto.output_dist_attrs(i).name()] =
+        TensorDistAttr::from_proto(
+            proto.output_dist_attrs(i).tensor_dist_attr());
+  }
+  dist_attr.process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
+  dist_attr.impl_type_ = proto.impl_type();
+  dist_attr.impl_idx_ = proto.impl_idx();
+  return dist_attr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 OperatorDistAttrProto OperatorDistAttr::to_proto() const {
@@ -657,6 +1021,7 @@ OperatorDistAttrProto OperatorDistAttr::to_proto() const {
   return proto;
 }
 
+<<<<<<< HEAD
 std::string OperatorDistAttr::serialize_to_string() {
   std::string data;
   auto proto = to_proto();
@@ -677,6 +1042,8 @@ void OperatorDistAttr::parse_from_string(const std::string& data) {
   from_proto(proto);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
   if (lhs.process_mesh() != rhs.process_mesh()) {
     return false;
@@ -687,6 +1054,7 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
   if (lhs.impl_idx() != rhs.impl_idx()) {
     return false;
   }
+<<<<<<< HEAD
   if (lhs.execution_stream() != rhs.execution_stream()) {
     return false;
   }
@@ -696,6 +1064,8 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
   if (lhs.scheduling_priority() != rhs.scheduling_priority()) {
     return false;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (auto const& item : lhs.input_dist_attrs()) {
     if (rhs.input_dist_attrs().count(item.first) != 1) {
       return false;

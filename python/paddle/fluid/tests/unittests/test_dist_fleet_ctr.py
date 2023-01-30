@@ -12,13 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
+=======
+from __future__ import print_function
+
+import os
+import unittest
+import tempfile
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from test_dist_fleet_base import TestFleetBase
 
 
 class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
+<<<<<<< HEAD
     def _setup_config(self):
         self._mode = "async"
         # self._reader = "pyreader"
@@ -27,6 +36,19 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
+=======
+
+    def _setup_config(self):
+        self._mode = "async"
+        #self._reader = "pyreader"
+        self._reader = "dataset"
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -36,10 +58,21 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
             "CPU_NUM": "2",
             "LOG_DIRNAME": "/tmp",
             "SAVE_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/model",
+<<<<<<< HEAD
             "SAVE_CACHE_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/cache_model",
             "SAVE_DENSE_PARAM_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/dense_param",
             "SAVE_ONE_TABLE_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/table_0",
             "SAVE_PATCH_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/patch_model",
+=======
+            "SAVE_CACHE_DIRNAME":
+            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/cache_model",
+            "SAVE_DENSE_PARAM_DIRNAME":
+            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/dense_param",
+            "SAVE_ONE_TABLE_DIRNAME":
+            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/table_0",
+            "SAVE_PATCH_DIRNAME":
+            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/patch_model",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "LOG_PREFIX": self.__class__.__name__,
         }
 
@@ -52,19 +85,37 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
         )
 
 
 class TestDistMnistAsync2x2(TestFleetBase):
+=======
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
+
+
+class TestDistMnistAsync2x2(TestFleetBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
 
+<<<<<<< HEAD
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
+=======
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -85,19 +136,37 @@ class TestDistMnistAsync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
         )
 
 
 class TestDistCtrHalfAsync2x2(TestFleetBase):
+=======
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
+
+
+class TestDistCtrHalfAsync2x2(TestFleetBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
 
+<<<<<<< HEAD
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
+=======
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -121,9 +190,15 @@ class TestDistCtrHalfAsync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
         )
+=======
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

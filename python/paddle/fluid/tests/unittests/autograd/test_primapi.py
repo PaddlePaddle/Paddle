@@ -15,10 +15,17 @@
 import typing
 import unittest
 
+<<<<<<< HEAD
+=======
+import numpy as np
+import paddle
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import autograd
 import autograd.numpy as anp
 import autograd.scipy as ascipy
 import config
+<<<<<<< HEAD
 import numpy as np
 import utils
 
@@ -102,10 +109,15 @@ class TestFowardApi(unittest.TestCase):
         for i, j in zip(actual, expected):
             np.testing.assert_allclose(i, j, rtol=1e-6)
 
+=======
+import utils
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
+<<<<<<< HEAD
     (
         (
             'dropout',
@@ -212,6 +224,19 @@ class TestWithoutProgramGuard(unittest.TestCase):
             .get("first_order_grad")
             .get("atol")
         )
+=======
+    (('matmul', paddle.matmul,
+      (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'), ))
+class TestWithoutProgramGuard(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
+        cls._rtol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("rtol")
+        cls._atol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("atol")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         paddle.enable_static()
@@ -222,12 +247,17 @@ class TestWithoutProgramGuard(unittest.TestCase):
         paddle.disable_static()
 
     def test_forward_grad_without_program_guard(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def with_program_guard():
             paddle.incubate.autograd.enable_prim()
             sp = paddle.static.Program()
             mp = paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 ys = (
@@ -238,6 +268,13 @@ class TestWithoutProgramGuard(unittest.TestCase):
                 ys_grad = paddle.incubate.autograd.forward_grad(
                     ys, static_xs, static_v
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+                ys_grad = paddle.incubate.autograd.forward_grad(
+                    ys, static_xs, static_v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -248,6 +285,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
         def without_program_guard():
             paddle.incubate.autograd.enable_prim()
             feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                 self.xs, self.v, stop_gradient=False
             )
             ys = (
@@ -258,6 +296,13 @@ class TestWithoutProgramGuard(unittest.TestCase):
             ys_grad = paddle.incubate.autograd.forward_grad(
                 ys, static_xs, static_v
             )
+=======
+                self.xs, self.v, stop_gradient=False)
+            ys = self.fun(*static_xs) if isinstance(
+                static_xs, typing.Sequence) else self.fun(static_xs)
+            ys_grad = paddle.incubate.autograd.forward_grad(
+                ys, static_xs, static_v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             sp = paddle.fluid.framework.default_startup_program()
             mp = paddle.fluid.framework.default_main_program()
             exe = paddle.static.Executor()
@@ -269,6 +314,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
         expected = with_program_guard()
         actual = without_program_guard()
         self.assertEqual(type(actual), type(expected))
+<<<<<<< HEAD
         np.testing.assert_allclose(
             np.concatenate(actual),
             np.concatenate(expected),
@@ -277,12 +323,22 @@ class TestWithoutProgramGuard(unittest.TestCase):
         )
 
     def test_grad_without_program_guard(self):
+=======
+        np.testing.assert_allclose(np.concatenate(actual),
+                                   np.concatenate(expected),
+                                   rtol=self._rtol,
+                                   atol=self._atol)
+
+    def test_grad_without_program_guard(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def with_program_guard():
             paddle.incubate.autograd.enable_prim()
             sp = paddle.static.Program()
             mp = paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 ys = (
@@ -290,6 +346,11 @@ class TestWithoutProgramGuard(unittest.TestCase):
                     if isinstance(static_xs, typing.Sequence)
                     else self.fun(static_xs)
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 xs_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
@@ -301,6 +362,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
         def without_program_guard():
             paddle.incubate.autograd.enable_prim()
             feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                 self.xs, self.v, stop_gradient=False
             )
             ys = (
@@ -308,6 +370,11 @@ class TestWithoutProgramGuard(unittest.TestCase):
                 if isinstance(static_xs, typing.Sequence)
                 else self.fun(static_xs)
             )
+=======
+                self.xs, self.v, stop_gradient=False)
+            ys = self.fun(*static_xs) if isinstance(
+                static_xs, typing.Sequence) else self.fun(static_xs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             xs_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
             sp = paddle.fluid.framework.default_startup_program()
             mp = paddle.fluid.framework.default_main_program()
@@ -321,6 +388,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
         actual = without_program_guard()
         for i, j in zip(actual, expected):
             self.assertEqual(type(i), type(j))
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 np.concatenate(i),
                 np.concatenate(j),
@@ -406,6 +474,42 @@ class TestForwardGrad(unittest.TestCase):
             .get("first_order_grad")
             .get("atol")
         )
+=======
+            np.testing.assert_allclose(np.concatenate(i),
+                                       np.concatenate(j),
+                                       rtol=self._rtol,
+                                       atol=self._atol)
+
+
+@utils.place(config.DEVICES)
+@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'), (
+    ('matmul', paddle.matmul,
+     (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
+    ('multiply', paddle.multiply,
+     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+    ('add', paddle.add,
+     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+    ('input_not_sequence', paddle.tanh,
+     (np.random.rand(5, 5), ), None, 'float64'),
+    ('input_gradients_not_none', paddle.matmul,
+     (np.random.rand(3, 3), np.random.rand(3, 3)),
+     (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
+    ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
+    ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                           (10, 10)), ), None, 'float32'),
+))
+# paddle.where, paddle.pow, paddle.maximum has no double grad definition,
+# can not compute forward grad use double trick
+class TestForwardGrad(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
+        cls._rtol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("rtol")
+        cls._atol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("atol")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         paddle.enable_static()
@@ -416,17 +520,27 @@ class TestForwardGrad(unittest.TestCase):
         paddle.disable_static()
 
     def test_forward_grad(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def expected():
             paddle.incubate.autograd.disable_prim()
             sp = paddle.static.Program()
             mp = paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 _, ys_grad = paddle.incubate.autograd.jvp(
                     self.fun, static_xs, static_v
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                _, ys_grad = paddle.incubate.autograd.jvp(
+                    self.fun, static_xs, static_v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(mp, feed=feed, fetch_list=ys_grad)
@@ -439,6 +553,7 @@ class TestForwardGrad(unittest.TestCase):
             mp = paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 ys = (
@@ -449,6 +564,13 @@ class TestForwardGrad(unittest.TestCase):
                 ys_grad = paddle.incubate.autograd.forward_grad(
                     ys, static_xs, static_v
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+                ys_grad = paddle.incubate.autograd.forward_grad(
+                    ys, static_xs, static_v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -459,12 +581,19 @@ class TestForwardGrad(unittest.TestCase):
         actual = actual()
         expected = expected()
         self.assertEqual(type(actual), type(expected))
+<<<<<<< HEAD
         np.testing.assert_allclose(
             np.concatenate(actual),
             np.concatenate(expected),
             rtol=self._rtol,
             atol=self._atol,
         )
+=======
+        np.testing.assert_allclose(np.concatenate(actual),
+                                   np.concatenate(expected),
+                                   rtol=self._rtol,
+                                   atol=self._atol)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_prim_disabled(self):
         paddle.incubate.autograd.disable_prim()
@@ -473,6 +602,7 @@ class TestForwardGrad(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 ys = (
@@ -483,6 +613,13 @@ class TestForwardGrad(unittest.TestCase):
                 ys_grad = paddle.incubate.autograd.forward_grad(
                     ys, static_xs, static_v
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+                ys_grad = paddle.incubate.autograd.forward_grad(
+                    ys, static_xs, static_v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -493,6 +630,7 @@ class TestForwardGrad(unittest.TestCase):
         paddle.incubate.autograd.enable_prim()
         with self.assertRaises(TypeError):
             paddle.incubate.autograd.forward_grad(
+<<<<<<< HEAD
                 1, paddle.static.data('inputs', shape=[1])
             )
 
@@ -500,6 +638,13 @@ class TestForwardGrad(unittest.TestCase):
             paddle.incubate.autograd.forward_grad(
                 paddle.static.data('targets', shape=[1]), 1
             )
+=======
+                1, paddle.static.data('inputs', shape=[1]))
+
+        with self.assertRaises(TypeError):
+            paddle.incubate.autograd.forward_grad(
+                paddle.static.data('targets', shape=[1]), 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.incubate.autograd.disable_prim()
 
 
@@ -510,6 +655,7 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
     (
+<<<<<<< HEAD
         (
             'matmul',
             paddle.matmul,
@@ -750,6 +896,74 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
     ),
 )
 class TestGrad(unittest.TestCase):
+=======
+        ('matmul', paddle.matmul,
+         (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
+        ('multiply', paddle.multiply,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+        ('div', paddle.divide,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+        ('add', paddle.add,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+        ('input_not_sequence', paddle.tanh,
+         (np.random.rand(5, 5), ), None, 'float64'),
+        ('input_gradients_not_none', paddle.matmul,
+         (np.random.rand(3, 3), np.random.rand(3, 3)),
+         (np.random.rand(3, 3), ), 'float64'),
+        ('sin', paddle.sin, (np.random.rand(100, 200), ), None, 'float32'),
+        ('cos', paddle.cos, (np.random.rand(200, 90), ), None, 'float32'),
+        ('exp', paddle.exp, (np.random.rand(299, 320), ), None, 'float32'),
+        # In where op, grad of condition computed by paddle.static.gradients is None,
+        # and paddle.incubate.autograd.grad will replace None with zeros while transpose
+        # will just return None because cond_dot is unused, that is a diff.
+        ('select', where_wrap,
+         (np.random.rand(3, 4), np.random.rand(3, 4)), None, 'float32'),
+        # pow_p and pow has diff when compute z_dot of 0^0
+        ('pow', paddle.pow,
+         (np.array([1, 2, 3]), np.array([0, 2, 7])), None, 'float32'),
+        # To make max_p consistent with paddle.maximum, be sure x.grad = 0 and y.grad = 1 when x==y.
+        ('max', paddle.maximum, (
+            np.array([1, 2, 3]),
+            np.array([2, 2, 2]),
+        ), None, 'float32'),
+        ('erf', paddle.erf, (np.random.rand(300, 288), ), None, 'float32'),
+        ('gelu', paddle.nn.functional.gelu,
+         (np.random.rand(200, 189), ), None, 'float32'),
+        ('gelu_approximate', lambda x: paddle.nn.functional.gelu(x, True),
+         (np.random.rand(200, 189), ), None, 'float32'),
+        ('sum', paddle.sum, (np.random.rand(200, 345), ), None, 'float32'),
+        ('sum_with_axis', lambda x: paddle.sum(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('sum_with_keepdim', lambda x: paddle.sum(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean', paddle.mean, (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis', lambda x: paddle.mean(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_keepdim', lambda x: paddle.mean(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis_keepdim',
+         lambda x: paddle.mean(x, axis=0, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                               (200, 345)), ), None, 'float32'),
+        ('cast_float', lambda x: paddle.cast(x, paddle.float64),
+         (np.random.rand(10, 20), ), None, 'float32'),
+        ('cast_int', lambda x: paddle.cast(x, paddle.int32),
+         (np.random.rand(10, 20), ), None, 'float32'),
+        ('square', paddle.square, (np.random.rand(100), ), None, 'float32'),
+        ('pow_scalar', lambda x: paddle.pow(x, 2),
+         (np.random.rand(20, 30), ), None, 'float32'),
+        ('var', paddle.var, (np.random.rand(200, 324), ), None, 'float32'),
+        ('var_with_axis', lambda x: paddle.var(x, axis=1),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('var_without_unbiased',
+         lambda x: paddle.var(x, axis=1, unbiased=False),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('var_with_keepdim', lambda x: paddle.var(x, axis=1, keepdim=True),
+         (np.random.rand(10, 20, 30), ), None, 'float32')))
+class TestGrad(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         paddle.incubate.autograd.enable_prim()
@@ -761,6 +975,7 @@ class TestGrad(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
+<<<<<<< HEAD
         cls._rtol = (
             config.TOLERANCE.get(str(cls.dtype))
             .get("first_order_grad")
@@ -773,17 +988,32 @@ class TestGrad(unittest.TestCase):
         )
 
     def test_grad(self):
+=======
+        cls._rtol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("rtol")
+        cls._atol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("atol")
+
+    def test_grad(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def expected():
             paddle.incubate.autograd.disable_prim()
             sp = paddle.static.Program()
             mp = paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 _, ys_grad = paddle.incubate.autograd.vjp(
                     self.fun, static_xs, static_v
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                _, ys_grad = paddle.incubate.autograd.vjp(
+                    self.fun, static_xs, static_v)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(mp, feed=feed, fetch_list=ys_grad)
@@ -796,6 +1026,7 @@ class TestGrad(unittest.TestCase):
             mp = paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 ys = (
@@ -803,6 +1034,11 @@ class TestGrad(unittest.TestCase):
                     if isinstance(static_xs, typing.Sequence)
                     else self.fun(static_xs)
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ys_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
@@ -821,6 +1057,7 @@ class TestGrad(unittest.TestCase):
         paddle.incubate.autograd.enable_prim()
         with self.assertRaises(TypeError):
             paddle.incubate.autograd.grad(
+<<<<<<< HEAD
                 1, paddle.static.data('inputs', shape=[1])
             )
 
@@ -831,12 +1068,24 @@ class TestGrad(unittest.TestCase):
         paddle.incubate.autograd.disable_prim()
 
     def test_disable_prim(self):
+=======
+                1, paddle.static.data('inputs', shape=[1]))
+
+        with self.assertRaises(TypeError):
+            paddle.incubate.autograd.grad(
+                paddle.static.data('targets', shape=[1]), 1)
+        paddle.incubate.autograd.disable_prim()
+
+    def test_disable_prim(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def expected():
             paddle.incubate.autograd.disable_prim()
             sp = paddle.static.Program()
             mp = paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 ys = (
@@ -844,6 +1093,11 @@ class TestGrad(unittest.TestCase):
                     if isinstance(static_xs, typing.Sequence)
                     else self.fun(static_xs)
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ys_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -857,6 +1111,7 @@ class TestGrad(unittest.TestCase):
             mp = paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 ys = (
@@ -864,6 +1119,11 @@ class TestGrad(unittest.TestCase):
                     if isinstance(static_xs, typing.Sequence)
                     else self.fun(static_xs)
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ys_grad = paddle.static.gradients(ys, static_xs, static_v)
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -889,10 +1149,16 @@ multiply_ag = lambda xs: xs[0] * xs[0] * xs[0] * xs[0] * xs[0]
 sin_ag = lambda xs: anp.sin(xs[0])
 cos_ag = lambda xs: anp.cos(xs[0])
 exp_ag = lambda xs: anp.exp(xs[0])
+<<<<<<< HEAD
 pow_ag = lambda xs: xs[0] ** xs[1]
 log_ag = lambda xs: anp.log(xs[0])
 erf_ag = lambda xs: ascipy.special.erf(xs[0])
 sigmoid_ag = lambda xs: 1.0 / (1 + anp.exp(-xs[0]))
+=======
+pow_ag = lambda xs: xs[0]**xs[1]
+log_ag = lambda xs: anp.log(xs[0])
+erf_ag = lambda xs: ascipy.special.erf(xs[0])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def gelu_ag(x, approximate=False):
@@ -907,6 +1173,7 @@ def gelu_ag(x, approximate=False):
 @utils.place(config.DEVICES)
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'),
+<<<<<<< HEAD
     (
         (
             'multiply',
@@ -963,6 +1230,25 @@ def gelu_ag(x, approximate=False):
     ),
 )
 class TestGradWithHigherOrder(unittest.TestCase):
+=======
+    (('multiply', multiply_pd, multiply_ag,
+      (np.random.rand(3, 5), ), None, 'float32'),
+     ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
+     ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
+     ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
+     ('pow', paddle.pow, pow_ag,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+     ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
+     ('erf', paddle.erf, erf_ag, (np.random.rand(100, 200), ), None, 'float32'),
+     ('gelu', paddle.nn.functional.gelu, lambda xs: gelu_ag(xs[0]),
+      (np.random.rand(10, 20, 30), ), None, 'float32'),
+     ('gelu_approximate',
+      lambda x: paddle.nn.functional.gelu(x, approximate=True),
+      lambda xs: gelu_ag(xs[0], approximate=True),
+      (np.random.rand(10, 20, 30), ), None, 'float32')))
+class TestGradWithHigherOrder(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         paddle.incubate.autograd.enable_prim()
@@ -974,6 +1260,7 @@ class TestGradWithHigherOrder(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
+<<<<<<< HEAD
         cls._rtol = (
             config.TOLERANCE.get(str(cls.dtype))
             .get("first_order_grad")
@@ -986,6 +1273,15 @@ class TestGradWithHigherOrder(unittest.TestCase):
         )
 
     def test_grad(self):
+=======
+        cls._rtol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("rtol")
+        cls._atol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("atol")
+
+    def test_grad(self):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def expected():
             egrad = autograd.elementwise_grad
             grad_3 = egrad(egrad(egrad(self.fun_ag)))(self.xs)
@@ -1001,6 +1297,7 @@ class TestGradWithHigherOrder(unittest.TestCase):
             startup = paddle.static.Program()
             with paddle.static.program_guard(main, startup):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                     self.xs, self.v, stop_gradient=False
                 )
                 ys = (
@@ -1008,6 +1305,11 @@ class TestGradWithHigherOrder(unittest.TestCase):
                     if isinstance(static_xs, typing.Sequence)
                     else self.fun_pd(static_xs)
                 )
+=======
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun_pd(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun_pd(static_xs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 grad1 = paddle_grad(ys, static_xs, static_v)
                 grad2 = paddle_grad(grad1, static_xs, static_v)

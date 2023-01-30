@@ -12,16 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from math import exp, log
 
 import numpy as np
 from op_test import OpTest
 from scipy.special import logit
+=======
+import numpy as np
+from math import log
+from math import exp
+from op_test import OpTest
+from scipy.special import logit
+from scipy.special import expit
+import unittest
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TestTeacherStudentSigmoidLossOp(OpTest):
     """
+<<<<<<< HEAD
     Test teacher_student_sigmoid_loss with discrete one-hot labels.
+=======
+        Test teacher_student_sigmoid_loss with discrete one-hot labels.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     def setUp(self):
@@ -29,6 +44,7 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
         batch_size = 100
         num_classes = 1
         self.inputs = {
+<<<<<<< HEAD
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes)).astype(
                     "float64"
@@ -37,6 +53,14 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
             'Label': np.random.uniform(0, 2, (batch_size, num_classes)).astype(
                 "float64"
             ),
+=======
+            'X':
+            logit(
+                np.random.uniform(0, 1,
+                                  (batch_size, num_classes)).astype("float64")),
+            'Label':
+            np.random.uniform(0, 2, (batch_size, num_classes)).astype("float64")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         outs = []
         for index, label in enumerate(self.inputs["Label"]):
@@ -46,6 +70,7 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
             elif label < 0.0:
                 outs.append(max(x, 0.0) - x + log(1.0 + exp(-abs(x))))
             elif label < 1.0:
+<<<<<<< HEAD
                 outs.append(
                     max(x, 0.0)
                     + log(1.0 + exp(-abs(x)))
@@ -62,6 +87,13 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
                     - x * (label - 1.0)
                     + log(1.0 + exp(-abs(x)))
                 )
+=======
+                outs.append(max(x, 0.0) + log(1.0 + exp(-abs(x))) + \
+                            max(x, 0.0) - x * label + log(1.0 + exp(-abs(x))))
+            else:
+                outs.append(max(x, 0.0) - x + log(1.0 + exp(-abs(x))) + \
+                            max(x, 0.0) - x * (label - 1.0) + log(1.0 + exp(-abs(x))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.outputs = {'Y': np.array(outs)}
 
     def test_check_output(self):
@@ -69,3 +101,25 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Y", numeric_grad_delta=0.005)
+<<<<<<< HEAD
+=======
+
+
+class TestTeacherStudentSigmoidLossInvalidInput(unittest.TestCase):
+
+    def test_error(self):
+
+        def test_invalid_input():
+            input = [512, 1]
+            label = fluid.data(name='label', shape=[None, 1], dtype='float32')
+            loss = fluid.layers.teacher_student_sigmoid_loss(input, label)
+
+        self.assertRaises(TypeError, test_invalid_input)
+
+        def test_invalid_label():
+            input = fluid.data(name='input1', shape=[None, 1], dtype='float32')
+            label = [512, 1]
+            loss = fluid.layers.teacher_student_sigmoid_loss(input, label)
+
+        self.assertRaises(TypeError, test_invalid_label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

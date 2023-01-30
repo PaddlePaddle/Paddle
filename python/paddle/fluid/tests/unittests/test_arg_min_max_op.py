@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
@@ -25,6 +26,23 @@ from paddle.fluid import Program, program_guard
 
 
 class BaseTestCase(OpTest):
+=======
+from __future__ import print_function
+
+import os
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+from test_attribute_var import UnittestBase
+
+
+class BaseTestCase(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -46,6 +64,10 @@ class BaseTestCase(OpTest):
 
 
 class TestCase0(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -54,6 +76,10 @@ class TestCase0(BaseTestCase):
 
 
 class TestCase1(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -62,6 +88,10 @@ class TestCase1(BaseTestCase):
 
 
 class TestCase2(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -69,10 +99,17 @@ class TestCase2(BaseTestCase):
         self.axis = 0
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
 )
 class TestCase0FP16(BaseTestCase):
+=======
+@unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                 "FP16 test runs only on GPU")
+class TestCase0FP16(BaseTestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -80,10 +117,17 @@ class TestCase0FP16(BaseTestCase):
         self.axis = 0
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
 )
 class TestCase1FP16(BaseTestCase):
+=======
+@unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                 "FP16 test runs only on GPU")
+class TestCase1FP16(BaseTestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -92,6 +136,10 @@ class TestCase1FP16(BaseTestCase):
 
 
 class TestCase2_1(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -100,29 +148,54 @@ class TestCase2_1(BaseTestCase):
 
 
 class TestCase3(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (3, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dtype = 'int64'
         self.axis = 0
 
 
 class TestCase4(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (1,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (1, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dtype = 'int32'
         self.axis = 0
 
 
 class TestCase3_(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (3, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.axis = 0
 
 
 class BaseTestComplex1_1(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (4, 5, 6)
@@ -146,6 +219,10 @@ class BaseTestComplex1_1(OpTest):
 
 
 class BaseTestComplex1_2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (4, 5, 6)
@@ -169,6 +246,10 @@ class BaseTestComplex1_2(OpTest):
 
 
 class BaseTestComplex2_1(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (4, 5, 6)
@@ -184,6 +265,7 @@ class BaseTestComplex2_1(OpTest):
         self.attrs = {'keep_dims': True}
         if self.op_type == "arg_min":
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.argmin(self.x, axis=self.axis)
                 .asdtype("int32")
                 .reshape(4, 5, 1)
@@ -193,10 +275,25 @@ class BaseTestComplex2_1(OpTest):
                 'Out': np.argmax(self.x, axis=self.axis)
                 .asdtype("int32")
                 .reshape(4, 5, 1)
+=======
+                'Out':
+                np.argmin(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+            }
+        else:
+            self.outputs = {
+                'Out':
+                np.argmax(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
 
 class BaseTestComplex2_2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (4, 5, 6)
@@ -212,6 +309,7 @@ class BaseTestComplex2_2(OpTest):
         self.attrs = {'keep_dims': True}
         if self.op_type == "arg_min":
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.argmin(self.x, axis=self.axis)
                 .asdtype("int32")
                 .reshape(4, 5, 1)
@@ -221,10 +319,25 @@ class BaseTestComplex2_2(OpTest):
                 'Out': np.argmax(self.x, axis=self.axis)
                 .asdtype("int32")
                 .reshape(4, 5, 1)
+=======
+                'Out':
+                np.argmin(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+            }
+        else:
+            self.outputs = {
+                'Out':
+                np.argmax(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
 
 class TestArgMaxTensorAxis(UnittestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.x = [np.random.randn(*shape) for shape in self.shapes]
@@ -248,9 +361,14 @@ class TestArgMaxTensorAxis(UnittestBase):
             exe = paddle.static.Executor()
             exe.run(starup_prog)
             res = exe.run(fetch_list=[feat, out])
+<<<<<<< HEAD
             paddle.static.save_inference_model(
                 self.save_path, [x], [feat, out], exe
             )
+=======
+            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
+                                               exe)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             gt = np.argmax(res[0], 0)
             np.testing.assert_allclose(res[1], gt)
 
@@ -272,6 +390,10 @@ class TestArgMaxTensorAxis(UnittestBase):
 
 
 class TestArgMinTensorAxis(TestArgMaxTensorAxis):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_static(self):
         main_prog = Program()
         starup_prog = Program()
@@ -290,9 +412,14 @@ class TestArgMinTensorAxis(TestArgMaxTensorAxis):
             exe = paddle.static.Executor()
             exe.run(starup_prog)
             res = exe.run(fetch_list=[feat, out])
+<<<<<<< HEAD
             paddle.static.save_inference_model(
                 self.save_path, [x], [feat, out], exe
             )
+=======
+            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
+                                               exe)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             gt = np.argmin(res[0], 1)
             np.testing.assert_allclose(np.squeeze(res[1]), gt)
 

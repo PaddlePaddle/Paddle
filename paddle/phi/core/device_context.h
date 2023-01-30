@@ -21,7 +21,10 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/generator.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/utils/type_registry.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 class TensorBase;
@@ -83,6 +86,7 @@ class PADDLE_API DeviceContext {
   void SetZeroAllocator(const Allocator*);
 
   /**
+<<<<<<< HEAD
    * @brief Set the zero-size host Allocator object.
    *
    * @param allocator
@@ -90,6 +94,8 @@ class PADDLE_API DeviceContext {
   void SetHostZeroAllocator(const Allocator*);
 
   /**
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    * @brief Set the zero-size Allocator object.
    *
    * @param allocator
@@ -112,8 +118,11 @@ class PADDLE_API DeviceContext {
 
   const Allocator& GetZeroAllocator() const;
 
+<<<<<<< HEAD
   const Allocator& GetHostZeroAllocator() const;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const Allocator& GetPinnedAllocator() const;
 
 #ifdef PADDLE_WITH_CUDA
@@ -149,8 +158,12 @@ class PADDLE_API DeviceContext {
   void* Alloc(TensorBase*,
               DataType dtype,
               size_t requested_size = 0,
+<<<<<<< HEAD
               bool pinned = false,
               bool fake_alloc = false) const;
+=======
+              bool pinned = false) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   template <typename T>
   T* Alloc(TensorBase* tensor,
@@ -162,8 +175,12 @@ class PADDLE_API DeviceContext {
    */
   void* HostAlloc(TensorBase* tensor,
                   DataType dtype,
+<<<<<<< HEAD
                   size_t requested_size = 0,
                   bool fake_alloc = false) const;
+=======
+                  size_t requested_size = 0) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   template <typename T>
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;
@@ -200,6 +217,7 @@ class PADDLE_API DeviceContext {
    */
   Generator* GetHostGenerator() const;
 
+<<<<<<< HEAD
   /**
    * @brief Return the type information of the derived class to support
    *        safely downcast in non-rtti environment.
@@ -215,6 +233,11 @@ class PADDLE_API DeviceContext {
   template <typename T, typename U>
   friend class TypeInfoTraits;
   TypeInfo<DeviceContext> type_info_{TypeInfo<DeviceContext>::kUnknownType};
+=======
+ private:
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace phi

@@ -12,12 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
 import paddle
+=======
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+import unittest
+import numpy as np
+import six
+import paddle
+from op_test import OpTest
+from paddle.fluid.layers import core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):
@@ -36,15 +47,23 @@ def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):
         diagonal = np.lib.stride_tricks.as_strided(
             x[:, offset:] if dim_sum == 1 else x[:, :, offset:],
             shape=(shape[dim3], diagdim),
+<<<<<<< HEAD
             strides=(strides[dim3], strides[dim1] + strides[dim2]),
         )
+=======
+            strides=(strides[dim3], strides[dim1] + strides[dim2]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         diagdim = min(shape[dim2], shape[dim1] + offset)
         diagonal = np.lib.stride_tricks.as_strided(
             x[-offset:, :] if dim_sum in [1, 2] else x[:, -offset:],
             shape=(shape[dim3], diagdim),
+<<<<<<< HEAD
             strides=(strides[dim3], strides[dim1] + strides[dim2]),
         )
+=======
+            strides=(strides[dim3], strides[dim1] + strides[dim2]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     diagonal[...] = value
     return x
@@ -83,12 +102,20 @@ def fill_gt(x, y, offset, dim1, dim2):
 
 
 class TensorFillDiagTensor_Test(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((10, 10)).astype(self.dtype)
+<<<<<<< HEAD
         y = np.random.random((10,)).astype(self.dtype)
+=======
+        y = np.random.random((10, )).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         dim1 = 0
         dim2 = 1
         offset = 0
@@ -109,6 +136,10 @@ class TensorFillDiagTensor_Test(OpTest):
 
 
 class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
@@ -129,6 +160,10 @@ class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
 
 
 class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor

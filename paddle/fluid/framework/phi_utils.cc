@@ -100,6 +100,7 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
                         framework::TransToPhiDataType(kernel_type.data_type_));
 }
 
+<<<<<<< HEAD
 phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op) {
 #ifdef PADDLE_WITH_XPU
@@ -108,48 +109,89 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
     VLOG(3) << "phi missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << kernel_key
             << ", fallback to CPU one!";
+=======
+phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
+                             const phi::KernelKey& kernel_key,
+                             const framework::OperatorBase& op) {
+#ifdef PADDLE_WITH_XPU
+  if (platform::is_xpu_place(expected_kernel_key.place_) ||
+      paddle::platform::is_in_xpu_black_list(op.Type())) {
+    VLOG(3) << "phi missing XPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
+<<<<<<< HEAD
   if (kernel_key.backend() == phi::Backend::NPU) {
     VLOG(3) << "phi missing NPU kernel: " << op.Type()
             << ", expected_kernel_key:" << kernel_key
             << ", fallback to CPU one!";
+=======
+  if (platform::is_npu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "phi missing NPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_MLU
+<<<<<<< HEAD
   if (kernel_key.backend() == phi::Backend::MLU) {
     VLOG(3) << "phi missing MLU kernel: " << op.Type()
             << ", expected_kernel_key:" << kernel_key
             << ", fallback to CPU one!";
+=======
+  if (platform::is_mlu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "phi missing MLU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_IPU
+<<<<<<< HEAD
   if (kernel_key.backend() == phi::Backend::IPU) {
     VLOG(3) << "phi missing IPU kernel: " << op.Type()
             << ", expected_kernel_key:" << kernel_key
             << ", fallback to CPU one!";
+=======
+  if (platform::is_ipu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "phi missing IPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+<<<<<<< HEAD
   auto place = phi::TransToPhiPlace(kernel_key.backend());
   if (platform::is_custom_place(place)) {
     VLOG(3) << "phi missing " << place.GetDeviceType()
             << " kernel: " << op.Type()
             << ", expected_kernel_key:" << kernel_key
             << ", fallback to CPU one!";
+=======
+  if (platform::is_custom_place(expected_kernel_key.place_)) {
+    VLOG(3) << "phi missing " << expected_kernel_key.place_.GetDeviceType()
+            << " kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return phi::KernelKey(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == phi::Backend::GPU ||
       kernel_key.backend() == phi::Backend::GPUDNN) {
@@ -158,6 +200,8 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
   }
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return phi::KernelKey();
 }
 

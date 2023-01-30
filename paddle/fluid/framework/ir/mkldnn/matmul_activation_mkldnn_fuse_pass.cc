@@ -14,9 +14,15 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/matmul_activation_mkldnn_fuse_pass.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -25,7 +31,11 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
+<<<<<<< HEAD
   auto act_types = GetSupportedActivations();
+=======
+  auto act_types = paddle::platform::GetSupportedActivations();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto matmul_types = {"matmul", "matmul_v2"};
 
   for (const auto& matmul_type : matmul_types)
@@ -37,7 +47,11 @@ void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
 void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     Graph* graph, const std::string& matmul_type, std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
+<<<<<<< HEAD
       graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+=======
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   FusePassBase::Init(matmul_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -61,8 +75,29 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation_out, activation_out, matmul_act_pattern);
 
+<<<<<<< HEAD
     SetActivationAttrs(matmul->Op(), activation->Op(), act_type);
     matmul->Op()->SetOutput("Out", {activation_out->Name()});
+=======
+    OpDesc* matmul_op = matmul->Op();
+    OpDesc* act_op = activation->Op();
+
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    for (const auto& attrs : attr_map) {
+      if (act_op->HasAttr(attrs.first)) {
+        matmul_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
+      }
+    }
+
+    if (act_type == "gelu" && activation->Op()->HasAttr("approximate")) {
+      act_type =
+          PADDLE_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
+              ? "gelu_tanh"
+              : "gelu_erf";
+    }
+    matmul_op->SetAttr("fuse_activation", act_type);
+    matmul_op->SetOutput("Out", {activation_out->Name()});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     IR_NODE_LINK_TO(matmul, activation_out);
     GraphSafeRemoveNodes(graph, {activation, matmul_out});
@@ -71,8 +106,12 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
 
   gpd(graph, handler);
   AddStatis(found_matmul_activation_count);
+<<<<<<< HEAD
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       (found_matmul_activation_count > 0)) {
+=======
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PrettyLogDetail("---    fused %d %s with %s activation",
                     found_matmul_activation_count,
                     matmul_type,

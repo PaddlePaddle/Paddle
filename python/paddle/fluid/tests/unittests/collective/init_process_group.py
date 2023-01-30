@@ -12,12 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
 
 
 class TestProcessGroupFp32(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import unittest
+import random
+import numpy as np
+import os
+import shutil
+
+import paddle
+from paddle.fluid import core
+import datetime
+from datetime import timedelta
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.dygraph.parallel import ParallelEnv
+
+
+class TestProcessGroupFp32(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.config()
 
@@ -25,6 +47,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         pass
 
     def test_init_process_group(self):
+<<<<<<< HEAD
         paddle.distributed.init_parallel_env()
         paddle.distributed.new_group()
         group = paddle.distributed.new_group([-1, -2])
@@ -33,6 +56,17 @@ class TestProcessGroupFp32(unittest.TestCase):
         group = paddle.distributed.collective.Group(-1, 2, 0, [-1, -2])
         ret = paddle.distributed.barrier(group)
         assert ret is None
+=======
+        with _test_eager_guard():
+            paddle.distributed.init_parallel_env()
+            paddle.distributed.new_group()
+            group = paddle.distributed.new_group([-1, -2])
+            assert group.process_group == None
+
+            group = paddle.distributed.collective.Group(-1, 2, 0, [-1, -2])
+            ret = paddle.distributed.barrier(group)
+            assert ret == None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.enable_static()
         in_tensor = paddle.empty((1, 2))
         in_tensor2 = paddle.empty((1, 2))

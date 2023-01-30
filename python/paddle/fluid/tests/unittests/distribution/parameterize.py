@@ -12,19 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import collections
+<<<<<<< HEAD
+=======
+import contextlib
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import functools
 import inspect
 import re
 import sys
+<<<<<<< HEAD
 from unittest import SkipTest
 
 import config
 import numpy as np
+=======
+
+import numpy as np
+import config
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 TEST_CASE_NAME = 'suffix'
 
 
 def xrand(shape=(10, 10, 10), dtype=config.DEFAULT_DTYPE, min=1.0, max=10.0):
+<<<<<<< HEAD
     return (np.random.rand(*shape).astype(dtype)) * (max - min) + min
 
 
@@ -33,6 +44,18 @@ def place(devices, key='place'):
         module = sys.modules[cls.__module__].__dict__
         raw_classes = {
             k: v for k, v in module.items() if k.startswith(cls.__name__)
+=======
+    return ((np.random.rand(*shape).astype(dtype)) * (max - min) + min)
+
+
+def place(devices, key='place'):
+
+    def decorate(cls):
+        module = sys.modules[cls.__module__].__dict__
+        raw_classes = {
+            k: v
+            for k, v in module.items() if k.startswith(cls.__name__)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         for raw_name, raw_cls in raw_classes.items():
@@ -40,7 +63,11 @@ def place(devices, key='place'):
                 test_cls = dict(raw_cls.__dict__)
                 test_cls.update({key: d})
                 new_name = raw_name + '.' + d.__class__.__name__
+<<<<<<< HEAD
                 module[new_name] = type(new_name, (raw_cls,), test_cls)
+=======
+                module[new_name] = type(new_name, (raw_cls, ), test_cls)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             del module[raw_name]
         return cls
 
@@ -59,7 +86,11 @@ def parameterize_cls(fields, values=None):
             name = cls.__name__ + str(k)
             name = name + '.' + v.get('suffix') if v.get('suffix') else name
 
+<<<<<<< HEAD
             test_cls_module[name] = type(name, (cls,), test_cls)
+=======
+            test_cls_module[name] = type(name, (cls, ), test_cls)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for m in list(cls.__dict__):
             if m.startswith("test"):
@@ -69,9 +100,17 @@ def parameterize_cls(fields, values=None):
     return decorate
 
 
+<<<<<<< HEAD
 def parameterize_func(
     input, name_func=None, doc_func=None, skip_on_empty=False
 ):
+=======
+def parameterize_func(input,
+                      name_func=None,
+                      doc_func=None,
+                      skip_on_empty=False):
+    doc_func = doc_func or default_doc_func
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     name_func = name_func or default_name_func
 
     def wrapper(f, instance=None):
@@ -84,6 +123,7 @@ def parameterize_func(
                 raise ValueError(
                     "Parameters iterable is empty (hint: use "
                     "`parameterized.expand([], skip_on_empty=True)` to skip "
+<<<<<<< HEAD
                     "this test when the input is empty)"
                 )
             return functools.wraps(f)(skip_on_empty_helper)
@@ -93,16 +133,32 @@ def parameterize_func(
             name = name_func(
                 f, "{num:0>{digits}}".format(digits=digits, num=num), p
             )
+=======
+                    "this test when the input is empty)")
+            return wraps(f)(skip_on_empty_helper)
+
+        digits = len(str(len(parameters) - 1))
+        for num, p in enumerate(parameters):
+            name = name_func(f, "{num:0>{digits}}".format(digits=digits,
+                                                          num=num), p)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # If the original function has patches applied by 'mock.patch',
             # re-construct all patches on the just former decoration layer
             # of param_as_standalone_func so as not to share
             # patch objects between new functions
             nf = reapply_patches_if_need(f)
             frame_locals[name] = param_as_standalone_func(p, nf, name)
+<<<<<<< HEAD
             frame_locals[name].__doc__ = f.__doc__
 
         # Delete original patches to prevent new function from evaluating
         # original patching object as well as re-constrfucted patches.
+=======
+            frame_locals[name].__doc__ = doc_func(f, num, p)
+
+        # Delete original patches to prevent new function from evaluating
+        # original patching object as well as re-constructed patches.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         delete_patches_if_need(f)
 
         f.__test__ = False
@@ -111,8 +167,15 @@ def parameterize_func(
 
 
 def reapply_patches_if_need(func):
+<<<<<<< HEAD
     def dummy_wrapper(orgfunc):
         @functools.wraps(orgfunc)
+=======
+
+    def dummy_wrapper(orgfunc):
+
+        @wraps(orgfunc)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def dummy_func(*args, **kwargs):
             return orgfunc(*args, **kwargs)
 
@@ -134,14 +197,44 @@ def delete_patches_if_need(func):
 
 def default_name_func(func, num, p):
     base_name = func.__name__
+<<<<<<< HEAD
     name_suffix = "_%s" % (num,)
+=======
+    name_suffix = "_%s" % (num, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if len(p.args) > 0 and isinstance(p.args[0], str):
         name_suffix += "_" + to_safe_name(p.args[0])
     return base_name + name_suffix
 
 
+<<<<<<< HEAD
 def param_as_standalone_func(p, func, name):
+=======
+def default_doc_func(func, num, p):
+    if func.__doc__ is None:
+        return None
+
+    all_args_with_values = parameterized_argument_value_pairs(func, p)
+
+    # Assumes that the function passed is a bound method.
+    descs = ["%s=%s" % (n, short_repr(v)) for n, v in all_args_with_values]
+
+    # The documentation might be a multiline string, so split it
+    # and just work with the first string, ignoring the period
+    # at the end if there is one.
+    first, nl, rest = func.__doc__.lstrip().partition("\n")
+    suffix = ""
+    if first.endswith("."):
+        suffix = "."
+        first = first[:-1]
+    args = "%s[with %s]" % (len(first) and " " or "", ", ".join(descs))
+    return "".join(to_text(x) for x in [first.rstrip(), args, suffix, nl, rest])
+
+
+def param_as_standalone_func(p, func, name):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @functools.wraps(func)
     def standalone_func(*a):
         return func(*(a + p.args), **p.kwargs)
@@ -183,11 +276,16 @@ _param = collections.namedtuple("param", "args kwargs")
 
 
 class param(_param):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __new__(cls, *args, **kwargs):
         return _param.__new__(cls, args, kwargs)
 
     @classmethod
     def explicit(cls, args=None, kwargs=None):
+<<<<<<< HEAD
         """Creates a ``param`` by explicitly specifying ``args`` and
         ``kwargs``::
             >>> param.explicit([1,2,3])
@@ -195,12 +293,22 @@ class param(_param):
             >>> param.explicit(kwargs={"foo": 42})
             param(*(), **{"foo": "42"})
         """
+=======
+        """ Creates a ``param`` by explicitly specifying ``args`` and
+            ``kwargs``::
+                >>> param.explicit([1,2,3])
+                param(*(1, 2, 3))
+                >>> param.explicit(kwargs={"foo": 42})
+                param(*(), **{"foo": "42"})
+            """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         args = args or ()
         kwargs = kwargs or {}
         return cls(*args, **kwargs)
 
     @classmethod
     def from_decorator(cls, args):
+<<<<<<< HEAD
         """Returns an instance of ``param()`` for ``@parameterized`` argument
         ``args``::
             >>> param.from_decorator((42, ))
@@ -212,6 +320,19 @@ class param(_param):
             return args
         elif isinstance(args, str):
             args = (args,)
+=======
+        """ Returns an instance of ``param()`` for ``@parameterized`` argument
+            ``args``::
+                >>> param.from_decorator((42, ))
+                param(args=(42, ), kwargs={})
+                >>> param.from_decorator("foo")
+                param(args=("foo", ), kwargs={})
+            """
+        if isinstance(args, param):
+            return args
+        elif isinstance(args, str):
+            args = (args, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         try:
             return cls(*args)
         except TypeError as e:
@@ -219,8 +340,12 @@ class param(_param):
                 raise
             raise TypeError(
                 "Parameters must be tuples, but %r is not (hint: use '(%r, )')"
+<<<<<<< HEAD
                 % (args, args),
             )
+=======
+                % (args, args), )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __repr__(self):
         return "param(*%r, **%r)" % self
@@ -230,6 +355,25 @@ def to_safe_name(s):
     return str(re.sub("[^a-zA-Z0-9_]+", "_", s))
 
 
+<<<<<<< HEAD
+=======
+@contextlib.contextmanager
+def stgraph(func, *args):
+    """static graph exec context"""
+    paddle.enable_static()
+    mp, sp = paddle.static.Program(), paddle.static.Program()
+    with paddle.static.program_guard(mp, sp):
+        input = paddle.static.data('input', x.shape, dtype=x.dtype)
+        output = func(input, n, axes, norm)
+
+    exe = paddle.static.Executor(place)
+    exe.run(sp)
+    [output] = exe.run(mp, feed={'input': x}, fetch_list=[output])
+    yield output
+    paddle.disable_static()
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # alias
 parameterize = parameterize_func
 param_cls = parameterize_cls

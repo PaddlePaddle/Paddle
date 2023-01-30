@@ -13,11 +13,21 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
 
 import paddle
+=======
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
+
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def compute_graph_send_uv(inputs, attributes):
@@ -40,12 +50,21 @@ def compute_graph_send_uv(inputs, attributes):
 
 
 def graph_send_uv_wrapper(x, y, src_index, dst_index, message_op="add"):
+<<<<<<< HEAD
     return paddle.geometric.send_uv(
         x, y, src_index, dst_index, message_op.lower()
     )
 
 
 class TestGraphSendUVOp(OpTest):
+=======
+    return paddle.geometric.send_uv(x, y, src_index, dst_index,
+                                    message_op.lower())
+
+
+class TestGraphSendUVOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.enable_static()
         self.python_api = graph_send_uv_wrapper
@@ -56,7 +75,11 @@ class TestGraphSendUVOp(OpTest):
             'x': self.x,
             'y': self.y,
             'src_index': self.src_index,
+<<<<<<< HEAD
             'dst_index': self.dst_index,
+=======
+            'dst_index': self.dst_index
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'message_op': self.message_op}
         out = compute_graph_send_uv(self.inputs, self.attrs)
@@ -78,6 +101,10 @@ class TestGraphSendUVOp(OpTest):
 
 
 class TestCase1(TestGraphSendUVOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
         self.y = np.random.random((10, 20)).astype("float64")
@@ -88,6 +115,10 @@ class TestCase1(TestGraphSendUVOp):
 
 
 class TestCase2(TestGraphSendUVOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
         self.y = np.random.random((100, 20)).astype("float64")
@@ -98,6 +129,10 @@ class TestCase2(TestGraphSendUVOp):
 
 
 class TestCase3(TestGraphSendUVOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_config(self):
         self.x = np.random.random((100, 20)).astype("float64")
         self.y = np.random.random((100, 1)).astype("float64")
@@ -108,6 +143,10 @@ class TestCase3(TestGraphSendUVOp):
 
 
 class TestCase4(TestGraphSendUVOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
         self.y = np.random.random((100, 20)).astype("float64")
@@ -118,6 +157,10 @@ class TestCase4(TestGraphSendUVOp):
 
 
 class TestCase5(TestGraphSendUVOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_config(self):
         self.x = np.random.random((100, 20)).astype("float64")
         self.y = np.random.random((100, 1)).astype("float64")
@@ -128,6 +171,10 @@ class TestCase5(TestGraphSendUVOp):
 
 
 class TestCase6(TestGraphSendUVOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_config(self):
         self.x = np.random.random((10, 10, 1)).astype("float64")
         self.y = np.random.random((10, 10, 10))
@@ -138,6 +185,10 @@ class TestCase6(TestGraphSendUVOp):
 
 
 class TestCase7(TestGraphSendUVOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_config(self):
         self.x = np.random.random((10, 10, 1)).astype("float64")
         self.y = np.random.random((10, 10, 10))
@@ -148,6 +199,10 @@ class TestCase7(TestGraphSendUVOp):
 
 
 class API_GeometricSendUVTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_compute_all_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
@@ -155,6 +210,7 @@ class API_GeometricSendUVTest(unittest.TestCase):
         src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
         dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
 
+<<<<<<< HEAD
         res_add = paddle.geometric.send_uv(
             x, y, src_index, dst_index, message_op="add"
         )
@@ -182,6 +238,39 @@ class API_GeometricSendUVTest(unittest.TestCase):
             [[0, 2 / 3, 0.75], [0.25, 0.8, 5 / 6], [1, 2, 7 / 4], [0, 2, 1.5]],
             dtype="float32",
         )
+=======
+        res_add = paddle.geometric.send_uv(x,
+                                           y,
+                                           src_index,
+                                           dst_index,
+                                           message_op="add")
+        res_sub = paddle.geometric.send_uv(x,
+                                           y,
+                                           src_index,
+                                           dst_index,
+                                           message_op="sub")
+        res_mul = paddle.geometric.send_uv(x,
+                                           y,
+                                           src_index,
+                                           dst_index,
+                                           message_op="mul")
+        res_div = paddle.geometric.send_uv(x,
+                                           y,
+                                           src_index,
+                                           dst_index,
+                                           message_op="div")
+        res = [res_add, res_sub, res_mul, res_div]
+
+        np_add = np.array([[2, 5, 7], [5, 9, 11], [4, 9, 11], [1, 3, 5]],
+                          dtype="float32")
+        np_sub = np.array([[-2, -1, -1], [-3, -1, -1], [0, 3, 3], [-1, 1, 1]],
+                          dtype="float32")
+        np_mul = np.array([[0, 6, 12], [4, 20, 30], [4, 18, 28], [0, 2, 6]],
+                          dtype="float32")
+        np_div = np.array(
+            [[0, 2 / 3, 0.75], [0.25, 0.8, 5 / 6], [1, 2, 7 / 4], [0, 2, 1.5]],
+            dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
             np.testing.assert_allclose(
@@ -189,10 +278,15 @@ class API_GeometricSendUVTest(unittest.TestCase):
                 paddle_res,
                 rtol=1e-05,
                 atol=1e-06,
+<<<<<<< HEAD
                 err_msg='two value is                {}\n{}, check diff!'.format(
                     np_res, paddle_res
                 ),
             )
+=======
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, paddle_res))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_compute_all_static(self):
         paddle.enable_static()
@@ -201,6 +295,7 @@ class API_GeometricSendUVTest(unittest.TestCase):
             y = paddle.static.data(name="y", shape=[3, 3], dtype="float32")
             src_index = paddle.static.data(name="src", shape=[4], dtype="int32")
             dst_index = paddle.static.data(name="dst", shape=[4], dtype="int32")
+<<<<<<< HEAD
             res_add = paddle.geometric.send_uv(
                 x, y, src_index, dst_index, message_op="add"
             )
@@ -213,6 +308,28 @@ class API_GeometricSendUVTest(unittest.TestCase):
             res_div = paddle.geometric.send_uv(
                 x, y, src_index, dst_index, message_op="div"
             )
+=======
+            res_add = paddle.geometric.send_uv(x,
+                                               y,
+                                               src_index,
+                                               dst_index,
+                                               message_op="add")
+            res_sub = paddle.geometric.send_uv(x,
+                                               y,
+                                               src_index,
+                                               dst_index,
+                                               message_op="sub")
+            res_mul = paddle.geometric.send_uv(x,
+                                               y,
+                                               src_index,
+                                               dst_index,
+                                               message_op="mul")
+            res_div = paddle.geometric.send_uv(x,
+                                               y,
+                                               src_index,
+                                               dst_index,
+                                               message_op="div")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
@@ -220,6 +337,7 @@ class API_GeometricSendUVTest(unittest.TestCase):
             data3 = np.array([0, 1, 2, 0], dtype="int32")
             data4 = np.array([1, 2, 1, 0], dtype="int32")
 
+<<<<<<< HEAD
             np_add = np.array(
                 [[2, 5, 7], [5, 9, 11], [4, 9, 11], [1, 3, 5]], dtype="float32"
             )
@@ -253,11 +371,34 @@ class API_GeometricSendUVTest(unittest.TestCase):
             for np_res, paddle_res in zip(
                 [np_add, np_sub, np_mul, np_div], ret
             ):
+=======
+            np_add = np.array([[2, 5, 7], [5, 9, 11], [4, 9, 11], [1, 3, 5]],
+                              dtype="float32")
+            np_sub = np.array(
+                [[-2, -1, -1], [-3, -1, -1], [0, 3, 3], [-1, 1, 1]],
+                dtype="float32")
+            np_mul = np.array([[0, 6, 12], [4, 20, 30], [4, 18, 28], [0, 2, 6]],
+                              dtype="float32")
+            np_div = np.array([[0, 2 / 3, 0.75], [0.25, 0.8, 5 / 6],
+                               [1, 2, 7 / 4], [0, 2, 1.5]],
+                              dtype="float32")
+
+            ret = exe.run(feed={
+                'x': data1,
+                'y': data2,
+                'src': data3,
+                'dst': data4,
+            },
+                          fetch_list=[res_add, res_sub, res_mul, res_div])
+            for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div],
+                                          ret):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 np.testing.assert_allclose(
                     np_res,
                     paddle_res,
                     rtol=1e-05,
                     atol=1e-06,
+<<<<<<< HEAD
                     err_msg='two value is                    {}\n{}, check diff!'.format(
                         np_res, paddle_res
                     ),
@@ -266,3 +407,11 @@ class API_GeometricSendUVTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+=======
+                    err_msg='two value is                    {}\n{}, check diff!'
+                    .format(np_res, paddle_res))
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_compute_all_dygraph()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

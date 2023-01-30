@@ -15,6 +15,7 @@
 import math
 import unittest
 
+<<<<<<< HEAD
 import config
 import numpy as np
 import scipy.stats
@@ -24,11 +25,24 @@ from test_distribution import DistributionNumpy
 import paddle
 from paddle import fluid
 from paddle.distribution import Normal
+=======
+import numpy as np
+import paddle
+from paddle import fluid
+from paddle.distribution import *
+from paddle.fluid import layers
+
+from test_distribution import DistributionNumpy
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 np.random.seed(2022)
 
 
 class NormalNumpy(DistributionNumpy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, loc, scale):
         self.loc = np.array(loc)
         self.scale = np.array(scale)
@@ -43,6 +57,7 @@ class NormalNumpy(DistributionNumpy):
     def log_prob(self, value):
         var = self.scale * self.scale
         log_scale = np.log(self.scale)
+<<<<<<< HEAD
         return (
             -((value - self.loc) * (value - self.loc)) / (2.0 * var)
             - log_scale
@@ -67,10 +82,34 @@ class NormalNumpy(DistributionNumpy):
         var_ratio = var_ratio * var_ratio
         t1 = (self.loc - other.loc) / other.scale
         t1 = t1 * t1
+=======
+        return -((value - self.loc) *
+                 (value - self.loc)) / (2. * var) - log_scale - math.log(
+                     math.sqrt(2. * math.pi))
+
+    def probs(self, value):
+        var = self.scale * self.scale
+        return np.exp(-1. * ((value - self.loc) * (value - self.loc)) /
+                      (2. * var)) / (math.sqrt(2 * math.pi) * self.scale)
+
+    def entropy(self):
+        return 0.5 + 0.5 * np.log(
+            np.array(2. * math.pi).astype(self.loc.dtype)) + np.log(self.scale)
+
+    def kl_divergence(self, other):
+        var_ratio = (self.scale / other.scale)
+        var_ratio = var_ratio * var_ratio
+        t1 = ((self.loc - other.loc) / other.scale)
+        t1 = (t1 * t1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return 0.5 * (var_ratio + t1 - 1 - np.log(var_ratio))
 
 
 class NormalTest(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self, use_gpu=False, batch_size=2, dims=3):
         self.use_gpu = use_gpu
         if not use_gpu:
@@ -116,9 +155,15 @@ class NormalTest(unittest.TestCase):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = paddle.static.data(
                 name='values', shape=[-1], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[],
+                                             dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
         sample, entropy, log_prob, probs, kl = fetch_list
@@ -137,6 +182,7 @@ class NormalTest(unittest.TestCase):
         # There is a loss of accuracy in this conversion.
         # So set the tolerance from 1e-6 to 1e-4.
         log_tolerance = 1e-4
+<<<<<<< HEAD
         np.testing.assert_equal(sample.shape, np_sample.shape)
         np.testing.assert_allclose(
             entropy, np_entropy, rtol=tolerance, atol=tolerance
@@ -150,6 +196,26 @@ class NormalTest(unittest.TestCase):
         np.testing.assert_allclose(
             kl, np_kl, rtol=log_tolerance, atol=log_tolerance
         )
+=======
+
+        np.testing.assert_equal(sample.shape, np_sample.shape)
+        np.testing.assert_allclose(entropy,
+                                   np_entropy,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(log_prob,
+                                   np_lp,
+                                   rtol=log_tolerance,
+                                   atol=log_tolerance)
+        np.testing.assert_allclose(probs,
+                                   np_p,
+                                   rtol=log_tolerance,
+                                   atol=log_tolerance)
+        np.testing.assert_allclose(kl,
+                                   np_kl,
+                                   rtol=log_tolerance,
+                                   atol=log_tolerance)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_normal_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
         paddle.disable_static(self.place)
@@ -174,9 +240,14 @@ class NormalTest(unittest.TestCase):
             entropy = normal.entropy()
             log_prob = normal.log_prob(self.static_values)
             probs = normal.probs(self.static_values)
+<<<<<<< HEAD
             other_normal = Normal(
                 self.static_other_loc, self.static_other_scale
             )
+=======
+            other_normal = Normal(self.static_other_loc,
+                                  self.static_other_scale)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             kl = normal.kl_divergence(other_normal)
 
             fetch_list = [sample, entropy, log_prob, probs, kl]
@@ -186,6 +257,7 @@ class NormalTest(unittest.TestCase):
             'scale': self.scale_np,
             'values': self.values_np,
             'other_loc': self.other_loc_np,
+<<<<<<< HEAD
             'other_scale': self.other_scale_np,
         }
 
@@ -193,11 +265,24 @@ class NormalTest(unittest.TestCase):
         fetch_list = self.executor.run(
             program=self.test_program, feed=feed_vars, fetch_list=fetch_list
         )
+=======
+            'other_scale': self.other_scale_np
+        }
+
+        self.executor.run(fluid.default_startup_program())
+        fetch_list = self.executor.run(program=self.test_program,
+                                       feed=feed_vars,
+                                       fetch_list=fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.compare_with_numpy(fetch_list)
 
 
 class NormalTest2(NormalTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_numpy_data(self, batch_size, dims):
         # loc ans scale are 'int'
         self.loc_np = int((np.random.ranf() - 0.5) * 8)
@@ -213,6 +298,10 @@ class NormalTest2(NormalTest):
 
 
 class NormalTest3(NormalTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_numpy_data(self, batch_size, dims):
         # test broadcast: loc is float, scale is numpy.ndarray with dtype 'float32'.
         self.loc_np = (np.random.ranf() - 0.5) * 4
@@ -222,6 +311,7 @@ class NormalTest3(NormalTest):
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = (np.random.ranf() - 0.5) * 4
+<<<<<<< HEAD
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float32'
         )
@@ -229,6 +319,13 @@ class NormalTest3(NormalTest):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
+=======
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float32')
+        while not np.all(self.scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_static_data(self, batch_size, dims):
         self.static_loc = self.loc_np
@@ -236,12 +333,22 @@ class NormalTest3(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
 
 
 class NormalTest4(NormalTest):
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+
+
+class NormalTest4(NormalTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are numpy.ndarray with dtype 'float32'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float32')
@@ -251,6 +358,7 @@ class NormalTest4(NormalTest):
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = np.random.randn(batch_size, dims).astype('float32')
+<<<<<<< HEAD
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float32'
         )
@@ -258,6 +366,13 @@ class NormalTest4(NormalTest):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
+=======
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float32')
+        while not np.all(self.scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_static_data(self, batch_size, dims):
         self.static_loc = self.loc_np
@@ -265,12 +380,22 @@ class NormalTest4(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
 
 
 class NormalTest5(NormalTest):
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+
+
+class NormalTest5(NormalTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are numpy.ndarray with dtype 'float64'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float64')
@@ -280,6 +405,7 @@ class NormalTest5(NormalTest):
         self.values_np = np.random.randn(batch_size, dims).astype('float64')
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = np.random.randn(batch_size, dims).astype('float64')
+<<<<<<< HEAD
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float64'
         )
@@ -287,6 +413,13 @@ class NormalTest5(NormalTest):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float64'
             )
+=======
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float64')
+        while not np.all(self.scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_dynamic_data(self, batch_size, dims):
         self.dynamic_loc = self.loc_np
@@ -301,12 +434,22 @@ class NormalTest5(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float64'
             )
 
 
 class NormalTest6(NormalTest):
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float64')
+
+
+class NormalTest6(NormalTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are Tensor with dtype 'VarType.FP32'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float32')
@@ -316,6 +459,7 @@ class NormalTest6(NormalTest):
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = np.random.randn(batch_size, dims).astype('float32')
+<<<<<<< HEAD
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float32'
         )
@@ -323,6 +467,13 @@ class NormalTest6(NormalTest):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
+=======
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float32')
+        while not np.all(self.scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_dynamic_data(self, batch_size, dims):
         self.dynamic_loc = paddle.to_tensor(self.loc_np)
@@ -333,6 +484,7 @@ class NormalTest6(NormalTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float32'
             )
@@ -351,6 +503,27 @@ class NormalTest6(NormalTest):
 
 
 class NormalTest7(NormalTest):
+=======
+            self.static_loc = layers.data(name='loc',
+                                          shape=[dims],
+                                          dtype='float32')
+            self.static_scale = layers.data(name='scale',
+                                            shape=[dims],
+                                            dtype='float32')
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+            self.static_other_loc = layers.data(name='other_loc',
+                                                shape=[dims],
+                                                dtype='float32')
+            self.static_other_scale = layers.data(name='other_scale',
+                                                  shape=[dims],
+                                                  dtype='float32')
+
+
+class NormalTest7(NormalTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are Tensor with dtype 'VarType.FP64'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float64')
@@ -360,6 +533,7 @@ class NormalTest7(NormalTest):
         self.values_np = np.random.randn(batch_size, dims).astype('float64')
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = np.random.randn(batch_size, dims).astype('float64')
+<<<<<<< HEAD
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float64'
         )
@@ -367,11 +541,19 @@ class NormalTest7(NormalTest):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float64'
             )
+=======
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float64')
+        while not np.all(self.scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_dynamic_data(self, batch_size, dims):
         self.dynamic_loc = paddle.to_tensor(self.loc_np, dtype='float64')
         self.dynamic_scale = paddle.to_tensor(self.scale_np, dtype='float64')
         self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
+<<<<<<< HEAD
         self.dynamic_other_loc = paddle.to_tensor(
             self.other_loc_np, dtype='float64'
         )
@@ -399,6 +581,34 @@ class NormalTest7(NormalTest):
 
 
 class NormalTest8(NormalTest):
+=======
+        self.dynamic_other_loc = paddle.to_tensor(self.other_loc_np,
+                                                  dtype='float64')
+        self.dynamic_other_scale = paddle.to_tensor(self.other_scale_np,
+                                                    dtype='float64')
+
+    def init_static_data(self, batch_size, dims):
+        with fluid.program_guard(self.test_program):
+            self.static_loc = layers.data(name='loc',
+                                          shape=[dims],
+                                          dtype='float64')
+            self.static_scale = layers.data(name='scale',
+                                            shape=[dims],
+                                            dtype='float64')
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float64')
+            self.static_other_loc = layers.data(name='other_loc',
+                                                shape=[dims],
+                                                dtype='float64')
+            self.static_other_scale = layers.data(name='other_scale',
+                                                  shape=[dims],
+                                                  dtype='float64')
+
+
+class NormalTest8(NormalTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are Tensor with dtype 'VarType.FP64'. value's dtype is 'VarType.FP32'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float64')
@@ -408,6 +618,7 @@ class NormalTest8(NormalTest):
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = np.random.randn(batch_size, dims).astype('float64')
+<<<<<<< HEAD
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float64'
         )
@@ -415,11 +626,19 @@ class NormalTest8(NormalTest):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float64'
             )
+=======
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float64')
+        while not np.all(self.scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_dynamic_data(self, batch_size, dims):
         self.dynamic_loc = paddle.to_tensor(self.loc_np, dtype='float64')
         self.dynamic_scale = paddle.to_tensor(self.scale_np, dtype='float64')
         self.dynamic_values = paddle.to_tensor(self.values_np)
+<<<<<<< HEAD
         self.dynamic_other_loc = paddle.to_tensor(
             self.other_loc_np, dtype='float64'
         )
@@ -452,12 +671,45 @@ class NormalTest9(NormalTest):
         self.loc_np = (
             np.random.randn(batch_size, dims).astype('float32').tolist()
         )
+=======
+        self.dynamic_other_loc = paddle.to_tensor(self.other_loc_np,
+                                                  dtype='float64')
+        self.dynamic_other_scale = paddle.to_tensor(self.other_scale_np,
+                                                    dtype='float64')
+
+    def init_static_data(self, batch_size, dims):
+        with fluid.program_guard(self.test_program):
+            self.static_loc = layers.data(name='loc',
+                                          shape=[dims],
+                                          dtype='float64')
+            self.static_scale = layers.data(name='scale',
+                                            shape=[dims],
+                                            dtype='float64')
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+            self.static_other_loc = layers.data(name='other_loc',
+                                                shape=[dims],
+                                                dtype='float64')
+            self.static_other_scale = layers.data(name='other_scale',
+                                                  shape=[dims],
+                                                  dtype='float64')
+
+
+class NormalTest9(NormalTest):
+
+    def init_numpy_data(self, batch_size, dims):
+        # loc and scale are list.
+        self.loc_np = np.random.randn(batch_size,
+                                      dims).astype('float32').tolist()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.scale_np = np.random.randn(batch_size, dims).astype('float32')
         while not np.all(self.scale_np > 0):
             self.scale_np = np.random.randn(batch_size, dims).astype('float32')
         self.scale_np = self.scale_np.tolist()
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
         # used to construct another Normal object to calculate kl_divergence
+<<<<<<< HEAD
         self.other_loc_np = (
             np.random.randn(batch_size, dims).astype('float32').tolist()
         )
@@ -468,6 +720,15 @@ class NormalTest9(NormalTest):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
+=======
+        self.other_loc_np = np.random.randn(batch_size,
+                                            dims).astype('float32').tolist()
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float32')
+        while not np.all(self.other_scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.other_scale_np = self.other_scale_np.tolist()
 
     def init_static_data(self, batch_size, dims):
@@ -476,6 +737,7 @@ class NormalTest9(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -487,6 +749,19 @@ class NormalTest10(NormalTest):
         self.loc_np = tuple(
             np.random.randn(batch_size, dims).astype('float32').tolist()
         )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+
+
+class NormalTest10(NormalTest):
+
+    def init_numpy_data(self, batch_size, dims):
+        # loc and scale are tuple.
+        self.loc_np = tuple(
+            np.random.randn(batch_size, dims).astype('float32').tolist())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.scale_np = np.random.randn(batch_size, dims).astype('float32')
         while not np.all(self.scale_np > 0):
             self.scale_np = np.random.randn(batch_size, dims).astype('float32')
@@ -494,6 +769,7 @@ class NormalTest10(NormalTest):
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = tuple(
+<<<<<<< HEAD
             np.random.randn(batch_size, dims).astype('float32').tolist()
         )
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
@@ -503,6 +779,14 @@ class NormalTest10(NormalTest):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
+=======
+            np.random.randn(batch_size, dims).astype('float32').tolist())
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float32')
+        while not np.all(self.other_scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.other_scale_np = tuple(self.other_scale_np.tolist())
 
     def init_static_data(self, batch_size, dims):
@@ -511,6 +795,7 @@ class NormalTest10(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -688,6 +973,11 @@ class TestNormalRSampleStaic(unittest.TestCase):
             self.assertTrue(
                 kstest(self.loc[i], self.scale[i], self.rsamples[:, i])
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,6 +22,19 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestFillZerosLike2Op(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle.fluid as fluid
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from op_test import OpTest
+
+
+class TestFillZerosLike2Op(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "fill_zeros_like2"
         self.dtype = np.float32
@@ -37,14 +51,58 @@ class TestFillZerosLike2Op(OpTest):
 
 
 class TestFillZerosLike2OpFp16(TestFillZerosLike2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestFillZerosLike2OpFp64(TestFillZerosLike2Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float64
 
 
+<<<<<<< HEAD
+=======
+class TestZerosError(unittest.TestCase):
+
+    def test_errors(self):
+
+        def test_zeros_like_type_error():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                fluid.layers.zeros_like([10], dtype="float")
+
+        self.assertRaises(TypeError, test_zeros_like_type_error)
+
+        def test_zeros_like_dtype_error():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float16")
+                fluid.layers.zeros_like(data, dtype="float32")
+
+        self.assertRaises(TypeError, test_zeros_like_dtype_error)
+
+        def test_zeros_like_out_type_error():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                fluid.layers.zeros_like(data, dtype="float32", out=[10])
+
+        self.assertRaises(TypeError, test_zeros_like_out_type_error)
+
+        def test_zeros_like_out_dtype_error():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                out = fluid.data(name="out", shape=[10], dtype="float16")
+                fluid.layers.zeros_like(data, dtype="float32", out=out)
+
+        self.assertRaises(TypeError, test_zeros_like_out_dtype_error)
+
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     unittest.main()

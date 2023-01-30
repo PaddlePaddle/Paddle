@@ -124,7 +124,11 @@ message VarType {
     FP16 = 4;
     FP32 = 5;
     FP64 = 6;
+<<<<<<< HEAD
     // phi::DenseTensor<size_t> is used in C++.
+=======
+    // Tensor<size_t> is used in C++.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     SIZE_T = 19;
     UINT8 = 20;
     INT8 = 21;

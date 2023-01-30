@@ -30,6 +30,10 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
+<<<<<<< HEAD
+=======
+static bool PyCheckTensor(PyObject* obj);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
 static bool PyCheckInteger(PyObject* obj) {
@@ -137,7 +141,11 @@ static int _PySlice_GetIndices(PySliceObject* r,
   return 0;
 }
 
+<<<<<<< HEAD
 static void ParseIndexingSlice(phi::DenseTensor* tensor,
+=======
+static void ParseIndexingSlice(framework::LoDTensor* tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                PyObject* _index,
                                std::vector<int>* slice_axes,
                                std::vector<int>* slice_starts,

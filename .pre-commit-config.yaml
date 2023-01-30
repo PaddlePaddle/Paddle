@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Exclude all third-party libraries and auto-generated files globally
 exclude: |
     (?x)^(
@@ -11,6 +12,24 @@ exclude: |
     )$
 repos:
 # Common hooks
+=======
+repos:
+-   repo: https://github.com/Lucas-C/pre-commit-hooks.git
+    rev: v1.1.14
+    hooks:
+    -   id: remove-crlf
+        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
+-   repo: https://github.com/psf/black.git
+    rev: 22.8.0
+    hooks:
+    -   id: black
+        files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
+        exclude: |
+            (?x)^(
+                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py|
+                python/paddle/fluid/tests/unittests/dygraph_to_static/test_origin_info.py
+            )$
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.1.0
     hooks:
@@ -18,6 +37,7 @@ repos:
     -   id: check-merge-conflict
     -   id: check-symlinks
     -   id: detect-private-key
+<<<<<<< HEAD
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
         files: (ops|backward|op_[a-z_]+)\.yaml$
@@ -78,6 +98,32 @@ repos:
             - --ignore-pass-after-docstring
             - --ignore-init-module-imports
             - --exclude=python/paddle/fluid/[!t]**,python/paddle/fluid/tra**
+=======
+        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
+    -   id: end-of-file-fixer
+    -   id: sort-simple-yaml
+        files: (op|backward|op_[a-z_]+)\.yaml$
+-   repo: local
+    hooks:
+    -   id: clang-format
+        name: clang-format
+        description: Format files with ClangFormat.
+        entry: bash ./tools/codestyle/clang_format.hook -i
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+        exclude: |
+            (?x)^(
+                paddle/fluid/distributed/ps/thirdparty/round_robin.h
+            )$
+-   repo: local
+    hooks:
+    -   id: cpplint-cpp-source
+        name: cpplint
+        description: Check C++ code style using cpplint.py.
+        entry: bash ./tools/codestyle/cpplint_pre_commit.hook
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 -   repo: local
     hooks:
     -   id: pylint-doc-string
@@ -86,6 +132,7 @@ repos:
         entry: bash ./tools/codestyle/pylint_pre_commit.hook
         language: system
         files: \.(py)$
+<<<<<<< HEAD
 # For C++ files
 -   repo: local
     hooks:
@@ -108,6 +155,19 @@ repos:
             - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
             - --quiet
 # For CMake files
+=======
+-   repo: local
+    hooks:
+    -   id: copyright_checker
+        name: copyright_checker
+        entry: python ./tools/codestyle/copyright.hook
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
+        exclude: |
+            (?x)^(
+                paddle/utils/.*
+            )$
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 -   repo: local
     hooks:
     -   id: auto-generate-cmakelists
@@ -125,6 +185,10 @@ repos:
             (?x)^(
                 paddle/fluid/operators/CMakeLists.txt
             )$
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 -   repo: https://github.com/cmake-lint/cmake-lint
     rev: 1.4.2
     hooks:

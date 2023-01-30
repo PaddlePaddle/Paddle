@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -49,6 +56,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
@@ -64,13 +72,39 @@ class TestBase(IPUOpTest):
         conv4 = paddle.static.nn.conv2d(
             conv3, num_filters=3, filter_size=3, bias_attr=False
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        conv1 = paddle.static.nn.conv2d(x,
+                                        num_filters=3,
+                                        filter_size=3,
+                                        bias_attr=False)
+        conv2 = paddle.static.nn.conv2d(conv1,
+                                        num_filters=3,
+                                        filter_size=3,
+                                        bias_attr=False)
+        conv3 = paddle.static.nn.conv2d(conv2,
+                                        num_filters=3,
+                                        filter_size=3,
+                                        bias_attr=False)
+        conv4 = paddle.static.nn.conv2d(conv3,
+                                        num_filters=3,
+                                        filter_size=3,
+                                        bias_attr=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fetch_list = [conv4.name]
 
     def run_model(self, exec_mode):
         ipu_strategy = paddle.static.IpuStrategy()
+<<<<<<< HEAD
         ipu_strategy.set_graph_config(
             is_training=self.is_training, micro_batch_size=2
         )
+=======
+        ipu_strategy.set_graph_config(is_training=self.is_training,
+                                      micro_batch_size=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.run_op_test(exec_mode, ipu_strategy)
 
     def test(self):

@@ -40,11 +40,16 @@ def get_pull(pull_id):
             repo = github.get_repo('PaddlePaddle/Paddle')
         except Exception as e:
             print(e)
+<<<<<<< HEAD
             print(
                 "get_repo error, retry {} times after {} secs.".format(
                     idx, idx * 10
                 )
             )
+=======
+            print("get_repo error, retry {} times after {} secs.".format(
+                idx, idx * 10))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             break
         idx += 1

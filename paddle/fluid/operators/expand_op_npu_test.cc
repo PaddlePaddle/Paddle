@@ -39,9 +39,15 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto in = scope->Var("X");
   auto expand_times = scope->Var("ExpandTimes");
   auto out = scope->Var("Out");
+<<<<<<< HEAD
   auto in_t = in->GetMutable<phi::DenseTensor>();
   auto out_t = out->GetMutable<phi::DenseTensor>();
   auto expand_times_t = expand_times->GetMutable<phi::DenseTensor>();
+=======
+  auto in_t = in->GetMutable<f::LoDTensor>();
+  auto out_t = out->GetMutable<f::LoDTensor>();
+  auto expand_times_t = expand_times->GetMutable<f::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorFromVector(std::vector<T>(3 * 1 * 7, 1), ctx, in_t);

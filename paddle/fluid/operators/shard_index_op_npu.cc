@@ -18,13 +18,23 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class ShardIndexNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     VLOG(4) << "start kernel";
+<<<<<<< HEAD
     auto* in = context.Input<phi::DenseTensor>("X");
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* in = context.Input<LoDTensor>("X");
+    auto* out = context.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int index_num = context.Attr<int>("index_num");
     int nshards = context.Attr<int>("nshards");
     int shard_id = context.Attr<int>("shard_id");
@@ -66,6 +76,7 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     out->set_lod(in->lod());
     out->mutable_data<T>(place);
 
+<<<<<<< HEAD
     phi::DenseTensor tmp(in->type());
     tmp.mutable_data<T>(framework::DDim({1}), place);
     FillNpuTensorWithConstant(&tmp, shard_size);
@@ -77,6 +88,19 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     tmp2.mutable_data<T>(in->dims(), place);
 
     phi::DenseTensor tmp3(in->type());
+=======
+    Tensor tmp(in->type());
+    tmp.mutable_data<T>(framework::DDim({1}), place);
+    FillNpuTensorWithConstant(&tmp, shard_size);
+
+    Tensor condition(experimental::DataType::BOOL);
+    condition.mutable_data<bool>(in->dims(), place);
+
+    Tensor tmp2(in->type());
+    tmp2.mutable_data<T>(in->dims(), place);
+
+    Tensor tmp3(in->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp3.mutable_data<T>(in->dims(), place);
 
     auto stream =
@@ -102,7 +126,11 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     runner2.SetType("Equal");
     runner2.Run(stream);
 
+<<<<<<< HEAD
     phi::DenseTensor tmp4(in->type());
+=======
+    Tensor tmp4(in->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp4.mutable_data<T>(in->dims(), place);
     FillNpuTensorWithConstant(&tmp4, ignore_value);
     tmp4.Resize(in->dims());

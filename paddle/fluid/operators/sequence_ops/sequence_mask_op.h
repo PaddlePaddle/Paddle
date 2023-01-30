@@ -28,6 +28,12 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename Tx, typename Ty>
 struct SequenceMaskForRangeFunctor {
   HOSTDEVICE SequenceMaskForRangeFunctor(const Tx *x, Ty *y, int maxlen)
@@ -47,11 +53,16 @@ struct SequenceMaskForRangeFunctor {
 
 template <typename DeviceContext, typename Tx>
 struct SequenceMaskFunctor {
+<<<<<<< HEAD
   SequenceMaskFunctor(const DeviceContext &ctx,
                       const Tx *x,
                       phi::DenseTensor *y,
                       int limits,
                       int maxlen)
+=======
+  SequenceMaskFunctor(
+      const DeviceContext &ctx, const Tx *x, Tensor *y, int limits, int maxlen)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       : ctx_(ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
 
   template <typename Ty>
@@ -64,13 +75,18 @@ struct SequenceMaskFunctor {
  private:
   const DeviceContext &ctx_;
   const Tx *x_;
+<<<<<<< HEAD
   phi::DenseTensor *y_;
+=======
+  Tensor *y_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int limits_;
   int maxlen_;
 };
 
 template <typename DeviceContext, typename Tx>
 class SequenceMaskKernel : public framework::OpKernel<Tx> {
+<<<<<<< HEAD
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *x = ctx.Input<phi::DenseTensor>("X");
@@ -78,12 +94,27 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
     int maxlen = ctx.Attr<int>("maxlen");
     if (ctx.HasInput("MaxLenTensor")) {
       auto max_len_tensor = ctx.Input<phi::DenseTensor>("MaxLenTensor");
+=======
+  using Tensor = framework::LoDTensor;
+
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Y");
+    int maxlen = ctx.Attr<int>("maxlen");
+    if (ctx.HasInput("MaxLenTensor")) {
+      auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_NOT_NULL(max_len_tensor,
                               platform::errors::InvalidArgument(
                                   "Input(MaxLenTensor) should not be NULL."
                                   "But received Input(MaxLenTensor) is NULL"));
       if (platform::is_gpu_place(max_len_tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::TensorCopySync(
             *max_len_tensor, platform::CPUPlace(), &temp);
         maxlen = *temp.data<int32_t>();
@@ -106,6 +137,7 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
 
     auto *x_data = x->data<Tx>();
     auto x_numel = x->numel();
+<<<<<<< HEAD
 
     if (maxlen < 0) {
       if (x_numel == 0) {
@@ -123,6 +155,20 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
         maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif
       }
+=======
+    if (maxlen < 0) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+      VLOG(10)
+          << "SequenceMaskOp on GPU may be slow when maxlen is not provided.";
+      maxlen = static_cast<int>(
+          thrust::reduce(thrust::device_pointer_cast(x_data),
+                         thrust::device_pointer_cast(x_data) + x_numel,
+                         static_cast<Tx>(0),
+                         thrust::maximum<Tx>()));
+#else
+      maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto y_dim = phi::vectorize<int>(x->dims());
       y_dim.push_back(maxlen);
       y->Resize(phi::make_ddim(y_dim));

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 
 import paddle
@@ -28,7 +32,11 @@ class TestSparseIsSameShapeAPI(unittest.TestCase):
         self.tensors = [
             paddle.rand(self.shapes[0]),
             paddle.rand(self.shapes[0]),
+<<<<<<< HEAD
             paddle.rand(self.shapes[1]),
+=======
+            paddle.rand(self.shapes[1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
         self.sparse_dim = 2
 
@@ -39,6 +47,7 @@ class TestSparseIsSameShapeAPI(unittest.TestCase):
 
     def test_dense_csr(self):
         self.assertTrue(
+<<<<<<< HEAD
             is_same_shape(self.tensors[0], self.tensors[1].to_sparse_csr())
         )
         self.assertFalse(
@@ -169,6 +178,87 @@ class TestSparseIsSameShapeAPI(unittest.TestCase):
                 self.tensors[2].to_sparse_coo(self.sparse_dim),
             )
         )
+=======
+            is_same_shape(self.tensors[0], self.tensors[1].to_sparse_csr()))
+        self.assertFalse(
+            is_same_shape(self.tensors[0], self.tensors[2].to_sparse_csr()))
+        self.assertFalse(
+            is_same_shape(self.tensors[1], self.tensors[2].to_sparse_csr()))
+
+    def test_dense_coo(self):
+        self.assertTrue(
+            is_same_shape(self.tensors[0],
+                          self.tensors[1].to_sparse_coo(self.sparse_dim)))
+        self.assertFalse(
+            is_same_shape(self.tensors[0],
+                          self.tensors[2].to_sparse_coo(self.sparse_dim)))
+        self.assertFalse(
+            is_same_shape(self.tensors[1],
+                          self.tensors[2].to_sparse_coo(self.sparse_dim)))
+
+    def test_csr_dense(self):
+        self.assertTrue(
+            is_same_shape(self.tensors[0].to_sparse_csr(), self.tensors[1]))
+        self.assertFalse(
+            is_same_shape(self.tensors[0].to_sparse_csr(), self.tensors[2]))
+        self.assertFalse(
+            is_same_shape(self.tensors[1].to_sparse_csr(), self.tensors[2]))
+
+    def test_csr_csr(self):
+        self.assertTrue(
+            is_same_shape(self.tensors[0].to_sparse_csr(),
+                          self.tensors[1].to_sparse_csr()))
+        self.assertFalse(
+            is_same_shape(self.tensors[0].to_sparse_csr(),
+                          self.tensors[2].to_sparse_csr()))
+        self.assertFalse(
+            is_same_shape(self.tensors[1].to_sparse_csr(),
+                          self.tensors[2].to_sparse_csr()))
+
+    def test_csr_coo(self):
+        self.assertTrue(
+            is_same_shape(self.tensors[0].to_sparse_csr(),
+                          self.tensors[1].to_sparse_coo(self.sparse_dim)))
+        self.assertFalse(
+            is_same_shape(self.tensors[0].to_sparse_csr(),
+                          self.tensors[2].to_sparse_coo(self.sparse_dim)))
+        self.assertFalse(
+            is_same_shape(self.tensors[1].to_sparse_csr(),
+                          self.tensors[2].to_sparse_coo(self.sparse_dim)))
+
+    def test_coo_dense(self):
+        self.assertTrue(
+            is_same_shape(self.tensors[0].to_sparse_coo(self.sparse_dim),
+                          self.tensors[1]))
+        self.assertFalse(
+            is_same_shape(self.tensors[0].to_sparse_coo(self.sparse_dim),
+                          self.tensors[2]))
+        self.assertFalse(
+            is_same_shape(self.tensors[1].to_sparse_coo(self.sparse_dim),
+                          self.tensors[2]))
+
+    def test_coo_csr(self):
+        self.assertTrue(
+            is_same_shape(self.tensors[0].to_sparse_coo(self.sparse_dim),
+                          self.tensors[1].to_sparse_csr()))
+        self.assertFalse(
+            is_same_shape(self.tensors[0].to_sparse_coo(self.sparse_dim),
+                          self.tensors[2].to_sparse_csr()))
+        self.assertFalse(
+            is_same_shape(self.tensors[1].to_sparse_coo(self.sparse_dim),
+                          self.tensors[2].to_sparse_csr()))
+
+    def test_coo_coo(self):
+        self.assertTrue(
+            is_same_shape(self.tensors[0].to_sparse_coo(self.sparse_dim),
+                          self.tensors[1].to_sparse_coo(self.sparse_dim)))
+        self.assertFalse(
+            is_same_shape(self.tensors[0].to_sparse_coo(self.sparse_dim),
+                          self.tensors[2].to_sparse_coo(self.sparse_dim)))
+        self.assertFalse(
+            is_same_shape(self.tensors[1].to_sparse_coo(self.sparse_dim),
+                          self.tensors[2].to_sparse_coo(self.sparse_dim)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ if(LITE_WITH_XPU)
   endif()
 endif()
 
+<<<<<<< HEAD
 if(WITH_ARM)
   if(LITE_WITH_XPU)
     set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.xpu)
@@ -50,6 +51,8 @@ else()
   set(LITE_OUTPUT_BIN_DIR inference_lite_lib)
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(LITE_WITH_NNADAPTER)
   add_definitions(-DLITE_SUBGRAPH_WITH_NNADAPTER)
   if(NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
@@ -65,12 +68,15 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_PROJECT extern_lite)
   set(LITE_PREFIX_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
+<<<<<<< HEAD
   set(LITE_BINARY_DIR ${LITE_PREFIX_DIR}/src/extern_lite-build)
   set(LITE_SOURCE_DIR ${LITE_PREFIX_DIR}/src/extern_lite)
 
   set(LITE_SHARED_LIB
       ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
   )
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if(NOT LITE_GIT_TAG)
     set(LITE_GIT_TAG 81ef66554099800c143a0feff6e0a491b3b0d12e)
@@ -82,8 +88,12 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
 
   # No quotes, so cmake can resolve it as a command with arguments.
   if(WITH_ARM)
+<<<<<<< HEAD
     set(LITE_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target
                            publish_inference -j)
+=======
+    set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     message(WARNING "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
     set(LITE_OPTIONAL_ARGS
         -DWITH_MKL=OFF
@@ -132,11 +142,17 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                  -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                  ${EXTERNAL_OPTIONAL_ARGS}
+<<<<<<< HEAD
                  ${LITE_OPTIONAL_ARGS}
       BUILD_BYPRODUCTS ${LITE_SHARED_LIB})
   else()
     set(LITE_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target
                            publish_inference -j)
+=======
+                 ${LITE_OPTIONAL_ARGS})
+  else()
+    set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     set(LITE_OPTIONAL_ARGS
         -DWITH_MKL=ON
         -DLITE_WITH_CUDA=OFF
@@ -181,9 +197,34 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                  -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                  ${EXTERNAL_OPTIONAL_ARGS}
+<<<<<<< HEAD
                  ${LITE_OPTIONAL_ARGS}
       BUILD_BYPRODUCTS ${LITE_SHARED_LIB})
   endif()
+=======
+                 ${LITE_OPTIONAL_ARGS})
+  endif()
+  ExternalProject_Get_Property(${LITE_PROJECT} BINARY_DIR)
+  ExternalProject_Get_Property(${LITE_PROJECT} SOURCE_DIR)
+  set(LITE_BINARY_DIR ${BINARY_DIR})
+  set(LITE_SOURCE_DIR ${SOURCE_DIR})
+
+endif()
+
+if(WITH_ARM)
+  if(LITE_WITH_XPU)
+    set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.xpu)
+  elseif(LITE_WITH_NNADAPTER)
+    message("Enable LITE_WITH_NNADAPTER")
+    if(NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+      set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.nnadapter)
+    endif()
+  else()
+    set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
+  endif()
+else()
+  set(LITE_OUTPUT_BIN_DIR inference_lite_lib)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 message(STATUS "Paddle-lite BINARY_DIR: ${LITE_BINARY_DIR}")
@@ -204,9 +245,18 @@ function(external_lite_libs alias path)
 endfunction()
 
 external_lite_libs(
+<<<<<<< HEAD
   lite_full_shared
   ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
 )
+=======
+  lite_full_static
+  ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
+)
+set(LITE_SHARED_LIB
+    ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
+)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(LITE_WITH_NNADAPTER)
   set(LITE_NNADAPTER_LIB
@@ -216,13 +266,21 @@ if(LITE_WITH_NNADAPTER)
       lite_nnadapter
       ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so
       ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
+<<<<<<< HEAD
     set(LITE_DEPS lite_full_shared lite_nnadapter)
+=======
+    set(LITE_DEPS lite_full_static lite_nnadapter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     set(LITE_NNADAPTER_NPU_LIB
         ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so
     )
   endif()
 else()
+<<<<<<< HEAD
   set(LITE_DEPS lite_full_shared)
+=======
+  set(LITE_DEPS lite_full_static)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 add_definitions(-DPADDLE_WITH_LITE)

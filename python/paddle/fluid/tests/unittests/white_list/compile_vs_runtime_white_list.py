@@ -19,6 +19,7 @@
 # reasons for skipping compile_vs_runtime test or be fixed later.
 
 COMPILE_RUN_OP_WHITE_LIST = [
+<<<<<<< HEAD
     'sequence_pool',
     'sequence_slice',
     'generate_proposals',
@@ -35,4 +36,22 @@ COMPILE_RUN_OP_WHITE_LIST = [
     'detection_map',
     'locality_aware_nms',
     'var_conv_2d',
+=======
+    'sequence_pool', \
+    'sequence_slice', \
+    'generate_proposals', \
+    'mine_hard_examples', \
+    'retinanet_detection_output', \
+    'ctc_align', \
+    'fusion_seqpool_cvm_concat', \
+    'gru', \
+    'rpn_target_assign', \
+    'retinanet_target_assign', \
+    'filter_by_instag', \
+    'im2sequence', \
+    'generate_proposal_labels', \
+    'detection_map', \
+    'locality_aware_nms', \
+    'var_conv_2d'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]

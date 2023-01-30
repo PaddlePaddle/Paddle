@@ -15,7 +15,11 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
+<<<<<<< HEAD
 // #include "paddle/fluid/distributed/ps/table/sparse_geo_table.h"
+=======
+//#include "paddle/fluid/distributed/ps/table/sparse_geo_table.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace distributed {

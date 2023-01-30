@@ -29,6 +29,7 @@ template <typename DeviceContext, typename T>
 class AffineChannelXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
@@ -42,6 +43,22 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
     auto dims = x->dims();
     int N = dims[0];
     int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* scale = ctx.Input<framework::Tensor>("Scale");
+    auto* bias = ctx.Input<framework::Tensor>("Bias");
+
+    auto* y = ctx.Output<framework::Tensor>("Out");
+    y->mutable_data<T>(ctx.GetPlace());
+
+    const framework::DataLayout layout =
+        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+
+    auto dims = x->dims();
+    int N = dims[0];
+    int C = layout == framework::DataLayout::kNCHW ? dims[1]
+                                                   : dims[dims.size() - 1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int HxW = x->numel() / N / C;
 
     auto* scale_d = scale->data<T>();
@@ -52,7 +69,11 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     std::vector<int> x_shape;
     std::vector<int> b_shape;
+<<<<<<< HEAD
     if (layout == phi::DataLayout::kNCHW) {
+=======
+    if (layout == framework::DataLayout::kNCHW) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       x_shape.push_back(N);
       x_shape.push_back(C);
       x_shape.push_back(HxW);
@@ -89,6 +110,7 @@ template <typename DeviceContext, typename T>
 class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
     auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -104,6 +126,24 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
     auto dims = x->dims();
     int N = dims[0];
     int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* scale = ctx.Input<framework::Tensor>("Scale");
+    auto* dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+
+    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dscale =
+        ctx.Output<framework::Tensor>(framework::GradVarName("Scale"));
+    auto* dbias = ctx.Output<framework::Tensor>(framework::GradVarName("Bias"));
+
+    const framework::DataLayout layout =
+        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+
+    auto dims = x->dims();
+    int N = dims[0];
+    int C = layout == framework::DataLayout::kNCHW ? dims[1]
+                                                   : dims[dims.size() - 1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int HxW = x->numel() / N / C;
 
     auto* dy_d = dy->data<T>();
@@ -117,7 +157,11 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
     std::vector<int> x_shape;
     std::vector<int> b_shape;
     std::vector<int> rdims;
+<<<<<<< HEAD
     if (layout == phi::DataLayout::kNCHW) {
+=======
+    if (layout == framework::DataLayout::kNCHW) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       x_shape.push_back(N);
       x_shape.push_back(C);
       x_shape.push_back(HxW);

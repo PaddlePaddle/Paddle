@@ -53,11 +53,18 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
+<<<<<<< HEAD
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
 
 #ifdef PADDLE_WITH_MKLDNN
+=======
+  inplace_version_counter_ = other.inplace_version_counter_;
+
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = other.format_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   mem_desc_ = other.mem_desc_;
 #endif
 }
@@ -65,10 +72,16 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   meta_ = other.meta();
   holder_ = other.holder_;
+<<<<<<< HEAD
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
 #ifdef PADDLE_WITH_MKLDNN
+=======
+  inplace_version_counter_ = other.inplace_version_counter_;
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = other.format_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
@@ -77,9 +90,15 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
 DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
+<<<<<<< HEAD
   storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
 #ifdef PADDLE_WITH_MKLDNN
+=======
+  std::swap(inplace_version_counter_, other.inplace_version_counter_);
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = other.format_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
@@ -98,8 +117,12 @@ bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
 
 void* DenseTensor::AllocateFrom(Allocator* allocator,
                                 DataType dtype,
+<<<<<<< HEAD
                                 size_t requested_size,
                                 bool fake_alloc) {
+=======
+                                size_t requested_size) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_NOT_NULL(
       allocator,
       phi::errors::InvalidArgument(
@@ -108,6 +131,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
     VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
     meta_.dtype = dtype;
   }
+<<<<<<< HEAD
 
   size_t bytes = numel() * SizeOf(this->dtype());
 
@@ -130,12 +154,30 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
     }
   }
 
+=======
+  PADDLE_ENFORCE(
+      valid(),
+      phi::errors::PreconditionNotMet(
+          "The meta data must be valid when call the mutable data function."));
+  size_t bytes = numel() * SizeOf(this->dtype());
+  if (requested_size) {
+    PADDLE_ENFORCE_GE(requested_size,
+                      bytes,
+                      phi::errors::InvalidArgument(
+                          "The reserved size %d should be enough to meet the "
+                          "volume required by metadata %d.",
+                          requested_size,
+                          bytes));
+    bytes = requested_size;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // NOTE(paddle-dev): In case of the allocator of storage_ is different with
   // the incoming allocator, we will re-alloc data using the incoming
   // allocator. See DeviceContext.Alloc in core/device_context.cc.
   if (!holder_ || holder_->size() < bytes + meta_.offset) {
     meta_.offset = 0;
     VLOG(10) << "Allocate data with bytes: " << bytes;
+<<<<<<< HEAD
     auto holder = allocator->Allocate(bytes);
     if (holder_) {
       PADDLE_ENFORCE_LE(
@@ -146,6 +188,9 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
               "The size of Holder is not enough to store the Tensor."));
     }
     holder_ = std::move(holder);
+=======
+    ResetHolder(allocator->Allocate(bytes));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -158,10 +203,15 @@ const T* DenseTensor::data() const {
       dtype(),
       paddle::experimental::CppTypeToDataType<T>::Type(),
       phi::errors::InvalidArgument(
+<<<<<<< HEAD
           "The type of data we are trying to retrieve (%s) does not match the "
           "type of data (%s) currently contained in the container.",
           paddle::experimental::CppTypeToDataType<T>::Type(),
           dtype()));
+=======
+          "The type of data we are trying to retrieve does not match the "
+          "type of data currently contained in the container."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return static_cast<const T*>(data());
 }
 
@@ -171,10 +221,15 @@ T* DenseTensor::data() {
   PADDLE_ENFORCE(
       (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
       phi::errors::InvalidArgument(
+<<<<<<< HEAD
           "The type of data we are trying to retrieve (%s) does not match the "
           "type of data (%s) currently contained in the container.",
           paddle::experimental::CppTypeToDataType<T>::Type(),
           dtype()));
+=======
+          "The type of data we are trying to retrieve does not match the "
+          "type of data currently contained in the container."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return ret;
 }
 
@@ -217,10 +272,16 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.layout = meta.layout;
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
+<<<<<<< HEAD
   meta_.use_gpudnn = meta.use_gpudnn;
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
+=======
+}
+
+/* @jim19930609: This interface will be further modified util we finalized the
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:
    1. Designed behaviour: DenseTensor constructed with its underlying storage_
@@ -261,6 +322,7 @@ DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>);
 
 #undef DATA_MEMBER_FUNC_INSTANTIATION
 
+<<<<<<< HEAD
 template <typename DeviceT>
 const DeviceT& DenseTensor::storage_properties() const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -290,4 +352,6 @@ void DenseTensor::set_storage_properties(
   storage_properties_ = std::move(storage_properties);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

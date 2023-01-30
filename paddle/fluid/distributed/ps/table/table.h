@@ -62,8 +62,11 @@ struct TableContext {
   size_t num;
   bool use_ptr = false;
   uint32_t trainer_id;  // for GEO and global step
+<<<<<<< HEAD
   int shard_id;         // for gpups
   uint16_t pass_id;     // for gpups ssd
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class Table {
@@ -149,7 +152,10 @@ class Table {
 
   virtual void *GetShard(size_t shard_idx) = 0;
   virtual std::pair<int64_t, int64_t> PrintTableStat() { return {0, 0}; }
+<<<<<<< HEAD
   virtual int32_t CacheTable(uint16_t pass_id) { return 0; }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // for patch model
   virtual void Revert() {}

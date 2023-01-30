@@ -28,7 +28,10 @@ __all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]  # noqa
 def recompute(function, *args, **kwargs):
     """
     recompute intermediate activations to save then memory.
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Parameters:
         function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
@@ -38,7 +41,10 @@ def recompute(function, *args, **kwargs):
               indicate whether to save the forward rng. If it is True, then the last forward rng value will be
               restored when the forward recalculation of backpropagation is performed. The default
               preserve_rng_state is True.
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         Output of function on args.
 

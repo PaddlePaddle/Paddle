@@ -27,24 +27,39 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "FpnRois");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "FpnRois");
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("FpnRois",
              "(phi::DenseTensor) The RoIs at all levels in shape (-1, 4)");
+=======
+    AddInput("FpnRois", "(LoDTensor) The RoIs at all levels in shape (-1, 4)");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddInput("RoisNum",
              "(Tensor) The number of RoIs in shape (B),"
              "B is the number of images")
         .AsDispensable();
+<<<<<<< HEAD
     AddOutput("MultiFpnRois",
               "(phi::DenseTensor) Output with distribute operator")
+=======
+    AddOutput("MultiFpnRois", "(LoDTensor) Output with distribute operator")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .AsDuplicable();
     AddOutput("RestoreIndex",
               "(Tensor) An array of positive number which is "

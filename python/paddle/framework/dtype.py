@@ -39,7 +39,11 @@ bool = VarDesc.VarType.BOOL
 def iinfo(dtype):
     """
 
+<<<<<<< HEAD
     paddle.iinfo is a function that returns an object that represents the numerical properties of
+=======
+    paddle.iinfo is a function that returns an object that represents the numerical properties of 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     an integer paddle.dtype.
     This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
 

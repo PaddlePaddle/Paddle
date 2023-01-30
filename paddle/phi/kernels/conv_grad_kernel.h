@@ -25,10 +25,20 @@ void ConvGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings,
+<<<<<<< HEAD
                     const std::string& padding_algorithm,
                     const std::vector<int>& dilations,
                     int groups,
                     const std::string& data_format,
+=======
+                    const std::string& paddding_algorithm,
+                    int groups,
+                    const std::vector<int>& dilations,
+                    const std::string& data_format,
+                    bool use_addto,
+                    int workspace_size_MB,
+                    bool exhaustive_search,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     DenseTensor* input_grad,
                     DenseTensor* filter_grad);
 
@@ -39,10 +49,20 @@ void Conv3DGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
+<<<<<<< HEAD
                       const std::string& padding_algorithm,
                       int groups,
                       const std::vector<int>& dilations,
                       const std::string& data_format,
+=======
+                      const std::string& paddding_algorithm,
+                      int groups,
+                      const std::vector<int>& dilations,
+                      const std::string& data_format,
+                      bool use_addto,
+                      int workspace_size_MB,
+                      bool exhaustive_search,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       DenseTensor* input_grad,
                       DenseTensor* filter_grad);
 
@@ -53,6 +73,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                              const DenseTensor& out_grad,
                              const std::vector<int>& strides,
                              const std::vector<int>& paddings,
+<<<<<<< HEAD
                              const std::string& padding_algorithm,
                              int groups,
                              const std::vector<int>& dilations,
@@ -95,4 +116,17 @@ void Conv3DDoubleGradKernel(
     DenseTensor* filter_grad,
     DenseTensor* out_grad_grad);
 
+=======
+                             const std::string& paddding_algorithm,
+                             int groups,
+                             const std::vector<int>& dilations,
+                             const std::string& data_format,
+                             bool use_addto,
+                             int workspace_size_MB,
+                             bool exhaustive_search,
+                             bool fuse_relu,
+                             DenseTensor* input_grad,
+                             DenseTensor* filter_grad);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

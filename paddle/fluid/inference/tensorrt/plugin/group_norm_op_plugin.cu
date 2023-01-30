@@ -1,6 +1,9 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+<<<<<<< HEAD
 SPDX-FileCopyrightText: Copyright (c) 1993-2022 NVIDIA CORPORATION &
 AFFILIATES. All rights reserved. SPDX-License-Identifier: Apache-2.0
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 #include "paddle/phi/kernels/group_norm_kernel.h"
 
+<<<<<<< HEAD
 #include <cub/cub.cuh>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -26,6 +32,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
 
 static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
@@ -341,6 +348,11 @@ bool GroupNormPlugin::supportsFormat(
             (format == nvinfer1::PluginFormat::kLINEAR));
   }
 }
+=======
+using DataLayout = framework::DataLayout;
+
+int GroupNormPlugin::initialize() TRT_NOEXCEPT { return 0; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 nvinfer1::Dims GroupNormPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
@@ -385,6 +397,7 @@ int GroupNormPlugin::enqueue(int batch_size,
           "but got channel number:%d, bias's size:%d.",
           C,
           bias_.size()));
+<<<<<<< HEAD
   float *mean_d = static_cast<float *>(workspace);
   float *variance_d = mean_d + input_shape[0] * groups_;
   float *temp_variance_d = variance_d + input_shape[0] * groups_;
@@ -427,6 +440,50 @@ int GroupNormPlugin::enqueue(int batch_size,
     PADDLE_THROW(platform::errors::Fatal(
         "The GroupNorm TRT Plugin's input type should be float or half."));
   }
+=======
+
+  int device_id;
+  cudaGetDevice(&device_id);
+  const float *input = static_cast<const float *>(inputs[0]);
+  float *output = static_cast<float *>(outputs[0]);
+
+  scale_t.Resize(phi::make_ddim({C}));
+  bias_t.Resize(phi::make_ddim({C}));
+
+  mean_t.Resize(phi::make_ddim(mean_shape_));
+  variance_t.Resize(phi::make_ddim(variance_shape_));
+  float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *variance_d =
+      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+
+  framework::Tensor temp_variance_t;
+  temp_variance_t.Resize(phi::make_ddim(variance_shape_));
+  float *temp_variance_d =
+      temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  cudaMemcpyAsync(scale_d,
+                  scale_.data(),
+                  sizeof(float) * C,
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(
+      bias_d, bias_.data(), sizeof(float) * C, cudaMemcpyHostToDevice, stream);
+  phi::GroupNormDirectCUDAFunctor<float> group_norm;
+  group_norm(stream,
+             input,
+             input_shape,
+             bias_d,
+             scale_d,
+             mean_d,
+             temp_variance_d,
+             groups_,
+             eps_,
+             output,
+             mean_d,
+             variance_d,
+             DataLayout::kNCHW);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return cudaGetLastError() != cudaSuccess;
 }
 nvinfer1::DimsExprs GroupNormPluginDynamic::getOutputDimensions(
@@ -455,6 +512,7 @@ bool GroupNormPluginDynamic::supportsFormatCombination(
                                         nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
+<<<<<<< HEAD
     if (with_fp16_) {
       return ((in.type == nvinfer1::DataType::kHALF) &&
               (in.format == nvinfer1::PluginFormat::kLINEAR ||
@@ -463,6 +521,10 @@ bool GroupNormPluginDynamic::supportsFormatCombination(
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
+=======
+    return (in.type == nvinfer1::DataType::kFLOAT) &&
+           (in.format == nvinfer1::TensorFormat::kLINEAR);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
   // output
@@ -479,6 +541,7 @@ nvinfer1::DataType GroupNormPluginDynamic::getOutputDataType(
                         "The groupnorm Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
                      input_types[0] == nvinfer1::DataType::kHALF),
                     true,
@@ -523,6 +586,10 @@ int GroupNormPluginDynamic::initialize() TRT_NOEXCEPT {
   }
   return 0;
 }
+=======
+  return input_types[0];
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 int GroupNormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
@@ -545,7 +612,13 @@ int GroupNormPluginDynamic::enqueue(
   int C = input_shape[1];
   int image_size = input_shape[2] * input_shape[3];
   int batchSize = input_shape[0];
+<<<<<<< HEAD
 
+=======
+  std::vector<int64_t> batched_mean_shape = {batchSize * mean_shape_[0]};
+  std::vector<int64_t> batched_variance_shape = {batchSize *
+                                                 variance_shape_[0]};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_EQ(
       C,
       scale_.size(),
@@ -563,6 +636,7 @@ int GroupNormPluginDynamic::enqueue(
           C,
           bias_.size()));
 
+<<<<<<< HEAD
   float *mean_d = static_cast<float *>(workspace);
   float *variance_d = mean_d + input_shape[0] * groups_;
   float *temp_variance_d = variance_d + input_shape[0] * groups_;
@@ -577,6 +651,48 @@ int GroupNormPluginDynamic::enqueue(
                input_shape,
                reinterpret_cast<float *>(bias_gpu_),
                reinterpret_cast<float *>(scale_gpu_),
+=======
+  int device_id;
+  cudaGetDevice(&device_id);
+  auto input_type = input_desc[0].type;
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    const float *input = static_cast<const float *>(inputs[0]);
+    float *output = static_cast<float *>(outputs[0]);
+    scale_t.Resize(phi::make_ddim({C}));
+    bias_t.Resize(phi::make_ddim({C}));
+
+    mean_t.Resize(phi::make_ddim(batched_mean_shape));
+    variance_t.Resize(phi::make_ddim(batched_variance_shape));
+    float *scale_d =
+        scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *variance_d =
+        variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+
+    framework::Tensor temp_variance_t;
+    temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
+    float *temp_variance_d =
+        temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    cudaMemcpyAsync(scale_d,
+                    scale_.data(),
+                    sizeof(float) * C,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d,
+                    bias_.data(),
+                    sizeof(float) * C,
+                    cudaMemcpyHostToDevice,
+                    stream);
+
+    phi::GroupNormDirectCUDAFunctor<float> group_norm;
+    group_norm(stream,
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
+               mean_d,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                temp_variance_d,
                groups,
                eps,
@@ -584,6 +700,7 @@ int GroupNormPluginDynamic::enqueue(
                mean_d,
                variance_d,
                DataLayout::kNCHW);
+<<<<<<< HEAD
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp16";
     const half *input = reinterpret_cast<const half *>(inputs[0]);
@@ -661,6 +778,13 @@ int GroupNormPluginDynamic::enqueue(
         "The Groupnorm TRT Plugin's only support fp32 or fp16 input"));
   }
 
+=======
+  } else {
+    // input not float
+    PADDLE_THROW(platform::errors::Fatal(
+        "The Groupnorm TRT Plugin's only support fp32 input"));
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return cudaGetLastError() != cudaSuccess;
 }
 

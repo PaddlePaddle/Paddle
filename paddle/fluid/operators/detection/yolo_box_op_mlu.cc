@@ -77,7 +77,11 @@ class YoloBoxMLUKernel : public framework::OpKernel<T> {
     MLUOpTensorDesc x_desc(*x, MLUOP_LAYOUT_ARRAY, ToMluOpDataType<T>());
     MLUOpTensorDesc img_size_desc(
         *img_size, MLUOP_LAYOUT_ARRAY, ToMluOpDataType<int32_t>());
+<<<<<<< HEAD
     phi::DenseTensor anchors_temp(framework::TransToPhiDataType(VT::INT32));
+=======
+    Tensor anchors_temp(framework::TransToPhiDataType(VT::INT32));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     anchors_temp.Resize({size});
     paddle::framework::TensorFromVector(
         anchors, ctx.device_context(), &anchors_temp);

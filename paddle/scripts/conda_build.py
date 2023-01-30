@@ -1,6 +1,7 @@
 #!/bin/python
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+<<<<<<< HEAD
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -8,17 +9,35 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+=======
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import argparse
 import os
 
 #
 import platform
+=======
+#
+import platform
+from sys import argv
+import argparse
+import os
+import time
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def parse_args():
@@ -27,8 +46,12 @@ def parse_args():
         "--paddle_version",
         type=str,
         required=True,
+<<<<<<< HEAD
         help="paddle version for conda build.",
     )
+=======
+        help="paddle version for conda build.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     args = parser.parse_args()
 
     return args
@@ -56,6 +79,10 @@ requirements:
     - protobuf>=3.1.0
     - gast==0.3.3
     - Pillow
+<<<<<<< HEAD
+=======
+    - six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     - decorator
     - astor
 """
@@ -67,6 +94,10 @@ requirements:
     - protobuf>=3.1.0
     - gast==0.3.3
     - Pillow
+<<<<<<< HEAD
+=======
+    - six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     - decorator
     - astor
 """
@@ -87,7 +118,11 @@ about:
         self.build_const = r"""
 """
 
+<<<<<<< HEAD
         self.blt_const = r"""
+=======
+        self.blt_const = r""" 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 """
 
         self.python36 = r"    - python>=3.6, <3.7"
@@ -96,10 +131,14 @@ about:
         self.python39 = r"    - python>=3.9, <3.10"
 
         self.python_version = [
+<<<<<<< HEAD
             self.python36,
             self.python37,
             self.python38,
             self.python39,
+=======
+            self.python36, self.python37, self.python38, self.python39
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
         self.cuda101 = r"""
@@ -115,11 +154,17 @@ about:
     - cudnn>=8.1, <8.2
     """
 
+<<<<<<< HEAD
         self.cuda_info = [
             (self.cuda101, "cuda10.1", ".post101"),
             (self.cuda102, "cuda10.2", ""),
             (self.cuda112, "cuda11.2", ".post112"),
         ]
+=======
+        self.cuda_info = [(self.cuda101, "cuda10.1", ".post101"),
+                          (self.cuda102, "cuda10.2", ""),
+                          (self.cuda112, "cuda11.2", ".post112")]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.py_str = ["py36", "py37", "py38", "py39"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
@@ -127,6 +172,7 @@ about:
         self.pip_gpu = "_gpu-"
         self.pip_cpu = "-"
         self.mac_pip = [
+<<<<<<< HEAD
             "-cp36-cp36m-macosx_10_6_intel",
             "-cp37-cp37m-macosx_10_6_intel",
             "-cp38-cp38-macosx_10_14_x86_64",
@@ -143,10 +189,23 @@ about:
             "-cp37-cp37m-win_amd64",
             "-cp38-cp38-win_amd64",
             "-cp39-cp39-win_amd64",
+=======
+            "-cp36-cp36m-macosx_10_6_intel", "-cp37-cp37m-macosx_10_6_intel",
+            "-cp38-cp38-macosx_10_14_x86_64", "-cp39-cp39-macosx_10_14_x86_64"
+        ]
+        self.linux_pip = [
+            "-cp36-cp36m-linux_x86_64", "-cp37-cp37m-linux_x86_64",
+            "-cp38-cp38-linux_x86_64", "-cp39-cp39-linux_x86_64"
+        ]
+        self.windows_pip = [
+            "-cp36-cp36m-win_amd64", "-cp37-cp37m-win_amd64",
+            "-cp38-cp38-win_amd64", "-cp39-cp39-win_amd64"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
 
 def meta_build_mac(var, python_str, paddle_version, build_var, build_name_str):
+<<<<<<< HEAD
     package_str = (
         """
 package:
@@ -157,6 +216,13 @@ package:
     requirement = (
         var.requirement_build + python_str + var.requirement_run + python_str
     )
+=======
+    package_str = """
+package:
+  name: paddlepaddle
+  version: """ + paddle_version
+    requirement = var.requirement_build + python_str + var.requirement_run + python_str
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     meta_build = var.build + build_name_str
     meta_str = package_str + meta_build + requirement + var.test + var.about
     build_str = var.build_const + build_var
@@ -169,6 +235,7 @@ package:
         f.write(build_str)
 
 
+<<<<<<< HEAD
 def meta_build_linux(
     var, python_str, paddle_version, build_var, build_name_str, cuda_str=None
 ):
@@ -194,6 +261,28 @@ package:
     meta_build = var.build + build_name_str
     meta_str = package_str + meta_build + requirement
     if not (cuda_str is None):
+=======
+def meta_build_linux(var,
+                     python_str,
+                     paddle_version,
+                     build_var,
+                     build_name_str,
+                     cuda_str=None):
+    if cuda_str == None:
+        package_str = """
+package:
+  name: paddlepaddle
+  version: """ + paddle_version
+    else:
+        package_str = """
+package:
+  name: paddlepaddle-gpu
+  version: """ + paddle_version
+    requirement = var.requirement_build + python_str + var.requirement_run + python_str
+    meta_build = var.build + build_name_str
+    meta_str = package_str + meta_build + requirement
+    if not (cuda_str == None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         meta_str = meta_str + cuda_str
     meta_str = meta_str + var.test + var.about
 
@@ -207,6 +296,7 @@ package:
         f.write(build_str)
 
 
+<<<<<<< HEAD
 def meta_build_windows(
     var, python_str, paddle_version, blt_var, build_name_str, cuda_str=None
 ):
@@ -237,6 +327,30 @@ package:
     meta_str = package_str + meta_build + requirement
 
     if not (cuda_str is None):
+=======
+def meta_build_windows(var,
+                       python_str,
+                       paddle_version,
+                       blt_var,
+                       build_name_str,
+                       cuda_str=None):
+    if cuda_str == None:
+        package_str = """
+package:
+  name: paddlepaddle
+  version: """ + paddle_version
+    else:
+        package_str = """
+package:
+  name: paddlepaddle-gpu
+  version: """ + paddle_version
+
+    requirement = var.requirement_build + python_str + var.requirement_run_windows + python_str
+    meta_build = var.build + build_name_str
+    meta_str = package_str + meta_build + requirement
+
+    if not (cuda_str == None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         meta_str = meta_str + cuda_str
 
     blt_str = var.blt_const + blt_var
@@ -252,6 +366,7 @@ package:
 
 def conda_build(paddle_version, var):
     sysstr = platform.system()
+<<<<<<< HEAD
     if sysstr == "Windows":
         os.system("mkdir paddle")
         os.chdir(r"./paddle")
@@ -263,6 +378,14 @@ def conda_build(paddle_version, var):
                 + var.windows_pip[i]
                 + var.pip_end
             )
+=======
+    if (sysstr == "Windows"):
+        os.system("mkdir paddle")
+        os.chdir(r"./paddle")
+        for i in range(len(var.python_version)):
+            blt_var = var.pip_prefix_windows + var.pip_cpu + paddle_version + var.windows_pip[
+                i] + var.pip_end
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             name = var.py_str[i] + "_cpu_windows"
             python_str = var.python_version[i]
             meta_build_windows(var, python_str, paddle_version, blt_var, name)
@@ -271,6 +394,7 @@ def conda_build(paddle_version, var):
         for i in range(len(var.python_version)):
             for cuda_str in var.cuda_info:
                 post = cuda_str[2]
+<<<<<<< HEAD
                 blt_var = (
                     var.pip_prefix_windows
                     + var.pip_gpu
@@ -303,6 +427,23 @@ def conda_build(paddle_version, var):
                 + var.linux_pip[i]
                 + var.pip_end
             )
+=======
+                blt_var = var.pip_prefix_windows + var.pip_gpu + paddle_version + post + var.windows_pip[
+                    i] + var.pip_end
+                name = var.py_str[i] + "_gpu_" + cuda_str[1] + "_windows"
+                cuda_cudnn_str = cuda_str[0]
+                python_str = var.python_version[i]
+                meta_build_windows(var, python_str, paddle_version, blt_var,
+                                   name, cuda_cudnn_str)
+                os.system("conda build .")
+
+    elif (sysstr == "Linux"):
+        os.system("mkdir paddle")
+        os.chdir(r"./paddle")
+        for i in range(len(var.python_version)):
+            build_var = var.pip_prefix_linux + var.pip_cpu + paddle_version + var.linux_pip[
+                i] + var.pip_end
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             name = var.py_str[i] + "_cpu_many_linux"
             python_str = var.python_version[i]
             meta_build_linux(var, python_str, paddle_version, build_var, name)
@@ -311,6 +452,7 @@ def conda_build(paddle_version, var):
         for i in range(len(var.python_version)):
             for cuda_str in var.cuda_info:
                 post = cuda_str[2]
+<<<<<<< HEAD
                 build_var = (
                     var.pip_prefix_linux
                     + var.pip_gpu
@@ -330,10 +472,20 @@ def conda_build(paddle_version, var):
                     name,
                     cuda_cudnn_str,
                 )
+=======
+                build_var = var.pip_prefix_linux + var.pip_gpu + paddle_version + post + var.linux_pip[
+                    i] + var.pip_end
+                name = var.py_str[i] + "_gpu_" + cuda_str[1] + "_many_linux"
+                cuda_cudnn_str = cuda_str[0]
+                python_str = var.python_version[i]
+                meta_build_linux(var, python_str, paddle_version, build_var,
+                                 name, cuda_cudnn_str)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 os.system("conda build .")
 
         os.system("cd ..")
 
+<<<<<<< HEAD
     elif sysstr == "Darwin":
         os.system("mkdir paddle")
         os.chdir(r"./paddle")
@@ -345,6 +497,14 @@ def conda_build(paddle_version, var):
                 + var.mac_pip[i]
                 + var.pip_end
             )
+=======
+    elif (sysstr == "Darwin"):
+        os.system("mkdir paddle")
+        os.chdir(r"./paddle")
+        for i in range(len(var.python_version)):
+            build_var = var.pip_prefix_linux + var.pip_cpu + paddle_version + var.mac_pip[
+                i] + var.pip_end
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             name = var.py_str[i] + "_mac"
             python_str = var.python_version[i]
             meta_build_mac(var, python_str, paddle_version, build_var, name)

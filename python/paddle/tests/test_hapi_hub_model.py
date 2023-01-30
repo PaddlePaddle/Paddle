@@ -12,13 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.nn as nn
 import paddle.nn.functional as F
 
 
 class MM(nn.Layer):
+<<<<<<< HEAD
     def __init__(self, out_channels):
         super().__init__()
+=======
+
+    def __init__(self, out_channels):
+        super(MM, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.conv = nn.Conv2D(3, out_channels, 3, 2, 1)
 
     def forward(self, x):

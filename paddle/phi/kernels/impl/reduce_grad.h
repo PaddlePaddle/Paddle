@@ -34,7 +34,10 @@ void ComputeFromInput(const Context& dev_ctx,
                       bool keep_dim,
                       bool reduce_all,
                       DenseTensor* x_grad) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* input0 = &x;
   auto* input1 = out.get_ptr();
   auto* output = x_grad;
@@ -92,8 +95,14 @@ void ReduceGradKernel(const Context& dev_ctx,
                       bool keep_dim,
                       bool reduce_all,
                       DenseTensor* x_grad) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
 
+=======
+  if (dims.size() == 0) {
+    reduce_all = true;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (x.dtype() != out_grad.dtype()) {
     DenseTensorMeta x_grad_meta(
         out_grad.dtype(), x_grad->dims(), x_grad->layout());

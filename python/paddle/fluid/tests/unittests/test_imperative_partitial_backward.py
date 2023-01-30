@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -31,6 +32,28 @@ class TestImperativePartitialBackward(unittest.TestCase):
             y = linear1(x[:, :2])
             z = linear2(x[:, 2:])
             loss = paddle.mean(y)
+=======
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+import numpy as np
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestImperativePartitialBackward(unittest.TestCase):
+
+    def func_partitial_backward(self):
+        with fluid.dygraph.guard():
+            x = np.random.randn(2, 4, 5).astype("float32")
+            x = fluid.dygraph.to_variable(x)
+            linear1 = fluid.dygraph.Linear(5, 10)
+            linear2 = fluid.dygraph.Linear(5, 10)
+
+            y = linear1(x[:, :2])
+            z = linear2(x[:, 2:])
+            loss = fluid.layers.reduce_mean(y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss.backward()
 
             for param in linear1.parameters():
@@ -40,6 +63,7 @@ class TestImperativePartitialBackward(unittest.TestCase):
                 self.assertIsNone(param._grad_ivar())
 
             optimizer = fluid.optimizer.AdamOptimizer(
+<<<<<<< HEAD
                 parameter_list=(linear1.parameters() + linear2.parameters())
             )
             _, params_grads = optimizer.minimize(loss)
@@ -48,10 +72,25 @@ class TestImperativePartitialBackward(unittest.TestCase):
                 sorted([p.name for p in linear1.parameters()]),
                 sorted([p_g[0].name for p_g in params_grads]),
             )
+=======
+                parameter_list=(linear1.parameters() + linear2.parameters()))
+            _, params_grads = optimizer.minimize(loss)
+
+            self.assertListEqual(sorted([p.name for p in linear1.parameters()]),
+                                 sorted([p_g[0].name for p_g in params_grads]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             linear1.clear_gradients()
             linear2.clear_gradients()
 
+<<<<<<< HEAD
+=======
+    def test_partitial_backward(self):
+        with _test_eager_guard():
+            self.func_partitial_backward()
+        self.func_partitial_backward()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

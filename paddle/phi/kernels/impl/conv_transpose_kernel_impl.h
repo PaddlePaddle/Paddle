@@ -14,15 +14,24 @@
 
 #pragma once
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/fluid/operators/math/vol2col.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/funcs/vol2col.h"
+=======
+#include "paddle/phi/kernels/funcs/slice.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -37,7 +46,12 @@ void ConvTransposeRawKernel(const Context& ctx,
                             const std::vector<int>& dilations,
                             const std::string& data_format,
                             DenseTensor* out) {
+<<<<<<< HEAD
   const DataLayout data_layout = phi::StringToDataLayout(data_format);
+=======
+  const DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_format);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // The filter will be reshaped, so it should not be constant
   DenseTensor filter_ = filter;
   std::vector<int> paddings_ = paddings;
@@ -136,8 +150,15 @@ void ConvTransposeRawKernel(const Context& ctx,
       (data_layout != DataLayout::kNHWC
            ? static_cast<int>(out_dims[1]) / groups
            : static_cast<int>(out_dims[out_dims.size() - 1]) / groups);
+<<<<<<< HEAD
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
   phi::funcs::Col2VolFunctor<Context, T> col2vol;
+=======
+  paddle::operators::math::
+      Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
+          col2im;
+  paddle::operators::math::Col2VolFunctor<Context, T> col2vol;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   funcs::ConcatFunctor<Context, T> concat_functor;
 
   // convolution transpose: gemm + col2im or col2vol (similar to conv-backward

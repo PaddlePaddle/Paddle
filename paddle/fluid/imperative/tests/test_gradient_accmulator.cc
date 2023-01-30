@@ -91,8 +91,13 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   }
 
   std::vector<int64_t> dims = {2, 5};
+<<<<<<< HEAD
   auto* src = var1.GetMutable<phi::DenseTensor>();
   auto* dst = var2.GetMutable<phi::DenseTensor>();
+=======
+  auto* src = var1.GetMutable<framework::LoDTensor>();
+  auto* dst = var2.GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   src->Resize(phi::make_ddim(dims));
   dst->Resize(phi::make_ddim(dims));
   auto* src_mutable = src->mutable_data<T>(place1);
@@ -132,7 +137,11 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
 #endif
   }
   imperative::TensorAdd<framework::Variable>(var1, &var2);
+<<<<<<< HEAD
   phi::DenseTensor rlt;
+=======
+  framework::LoDTensor rlt;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   platform::CPUPlace rlt_place;
   framework::TensorCopySync(*dst, rlt_place, &rlt);
 
@@ -161,10 +170,20 @@ TEST(test_add_functor, add_functor) {
                          static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(cpu_res, 0);
+<<<<<<< HEAD
   // double
   cpu_res = TensorddTest(
       cpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(cpu_res, 0);
+=======
+
+#ifndef PADDLE_WITH_XPU
+  // does not support double when compiled using xpu
+  cpu_res = TensorddTest(
+      cpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
+  EXPECT_EQ(cpu_res, 0);
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int gpu_res = 1;
@@ -214,9 +233,12 @@ TEST(test_add_functor, add_functor) {
                          static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
+<<<<<<< HEAD
   xpu_res = TensorddTest(
       xpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // different places
   xpu_res = TensorddTest(
       cpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
@@ -234,12 +256,15 @@ TEST(test_add_functor, add_functor) {
                          static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
+<<<<<<< HEAD
   xpu_res = TensorddTest(
       cpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorddTest(
       xpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 }
 
@@ -263,9 +288,15 @@ static void CopyVar(const framework::Variable& var,
                     framework::Variable* dst_ptr) {
   auto& dst = *dst_ptr;
   dst.Clear();
+<<<<<<< HEAD
   if (var.IsType<phi::DenseTensor>()) {
     const auto& src_tensor = var.Get<phi::DenseTensor>();
     auto* dst_tensor = dst.GetMutable<phi::DenseTensor>();
+=======
+  if (var.IsType<framework::LoDTensor>()) {
+    const auto& src_tensor = var.Get<framework::LoDTensor>();
+    auto* dst_tensor = dst.GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::TensorCopySync(src_tensor, src_tensor.place(), dst_tensor);
   } else {
     const auto& src_selected_rows = var.Get<phi::SelectedRows>();
@@ -284,6 +315,7 @@ static bool IsEqualVar(const framework::Variable& var1,
     return false;
   }
 
+<<<<<<< HEAD
   phi::DenseTensor t1, t2;
 
   if (var1.IsType<phi::DenseTensor>()) {
@@ -291,6 +323,15 @@ static bool IsEqualVar(const framework::Variable& var1,
         var1.Get<phi::DenseTensor>(), platform::CPUPlace(), &t1);
     framework::TensorCopySync(
         var2.Get<phi::DenseTensor>(), platform::CPUPlace(), &t2);
+=======
+  framework::Tensor t1, t2;
+
+  if (var1.IsType<framework::LoDTensor>()) {
+    framework::TensorCopySync(
+        var1.Get<framework::LoDTensor>(), platform::CPUPlace(), &t1);
+    framework::TensorCopySync(
+        var2.Get<framework::LoDTensor>(), platform::CPUPlace(), &t2);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     auto& s1 = var1.Get<phi::SelectedRows>();
     auto& s2 = var2.Get<phi::SelectedRows>();
@@ -334,7 +375,11 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
                                         const platform::Place& place,
                                         int low = -10,
                                         int high = 10) {
+<<<<<<< HEAD
   phi::DenseTensor cpu_tensor;
+=======
+  framework::Tensor cpu_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   cpu_tensor.Resize(dims);
   auto* ptr = cpu_tensor.mutable_data<T>(platform::CPUPlace());
   std::uniform_int_distribution<int> dist(low, high);
@@ -346,7 +391,11 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
 
   framework::Variable ret;
   framework::TensorCopySync(
+<<<<<<< HEAD
       cpu_tensor, place, ret.GetMutable<phi::DenseTensor>());
+=======
+      cpu_tensor, place, ret.GetMutable<framework::LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return ret;
 }
 
@@ -363,7 +412,11 @@ static framework::Variable RandomSelectedRows(framework::DDim dims,
   auto* sr = ret.GetMutable<phi::SelectedRows>();
   auto tensor_var = RandomTensor<T>(dims, place, low, high);
   sr->mutable_value()->ShareDataWith(
+<<<<<<< HEAD
       tensor_var.template Get<phi::DenseTensor>());
+=======
+      tensor_var.template Get<framework::LoDTensor>());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   sr->set_height(height);
   sr->mutable_rows()->resize(row_number);
   auto* row_data = sr->mutable_rows()->data();

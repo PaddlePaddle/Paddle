@@ -28,13 +28,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using DataLayout = framework::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename DeviceContext, typename T>
 class GroupNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+<<<<<<< HEAD
     const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
@@ -44,6 +51,18 @@ class GroupNormKernel : public framework::OpKernel<T> {
     auto* y = ctx.Output<phi::DenseTensor>("Y");
     auto* mean = ctx.Output<phi::DenseTensor>("Mean");
     auto* var = ctx.Output<phi::DenseTensor>("Variance");
+=======
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
+    const float epsilon = ctx.Attr<float>("epsilon");
+    auto* scale = ctx.Input<Tensor>("Scale");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* x = ctx.Input<Tensor>("X");
+
+    auto* y = ctx.Output<Tensor>("Y");
+    auto* mean = ctx.Output<Tensor>("Mean");
+    auto* var = ctx.Output<Tensor>("Variance");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const auto groups = ctx.Attr<int>("groups");
 
     const auto x_dims = x->dims();
@@ -215,6 +234,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+<<<<<<< HEAD
     const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* x = ctx.Input<phi::DenseTensor>("Y");
@@ -229,6 +249,22 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     auto* d_scale =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
     auto* d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+=======
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
+    const float epsilon = ctx.Attr<float>("epsilon");
+    auto* x = ctx.Input<Tensor>("Y");
+    auto* var = ctx.Input<Tensor>("Variance");
+    auto* scale = ctx.Input<Tensor>("Scale");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto groups = ctx.Attr<int>("groups");
+
+    // init output
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const auto& x_dims = x->dims();
     const int C =

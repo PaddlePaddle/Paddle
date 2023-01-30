@@ -13,17 +13,30 @@
 # limitations under the License.
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 from paddle.distributed import fleet
 
 
+<<<<<<< HEAD
 class TestNewGroupAPI:
     def __init__(self):
         paddle.distributed.init_parallel_env()
         topo = fleet.CommunicateTopology(
             ["data", "model", "sharding", "pipe"], [2, 1, 1, 1]
         )
+=======
+class TestNewGroupAPI(object):
+
+    def __init__(self):
+        paddle.distributed.init_parallel_env()
+        topo = fleet.CommunicateTopology(["data", "model", "sharding", "pipe"],
+                                         [2, 1, 1, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.hcg = fleet.HybridCommunicateGroup(topo)
 
         d1 = np.array([1, 2, 3])
@@ -50,6 +63,7 @@ class TestNewGroupAPI:
 
         tmp = np.array([0, 0, 0])
         result = paddle.to_tensor(tmp)
+<<<<<<< HEAD
         paddle.distributed.scatter(
             result,
             [self.tensor2, self.tensor1],
@@ -57,6 +71,12 @@ class TestNewGroupAPI:
             group=dp_gp,
             sync_op=True,
         )
+=======
+        paddle.distributed.scatter(result, [self.tensor2, self.tensor1],
+                                   src=dp_src_rank,
+                                   group=dp_gp,
+                                   sync_op=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if dp_rank == 0:
             assert np.array_equal(result, self.tensor2)
         elif dp_rank == 1:
@@ -67,6 +87,7 @@ class TestNewGroupAPI:
         assert np.array_equal(result, self.tensor1)
         print("test broadcast api ok")
 
+<<<<<<< HEAD
         paddle.distributed.reduce(
             result, dst=dp_src_rank, group=dp_gp, sync_op=True
         )
@@ -74,6 +95,15 @@ class TestNewGroupAPI:
             assert np.array_equal(
                 result, paddle.add(self.tensor1, self.tensor1)
             )
+=======
+        paddle.distributed.reduce(result,
+                                  dst=dp_src_rank,
+                                  group=dp_gp,
+                                  sync_op=True)
+        if dp_rank == 0:
+            assert np.array_equal(result, paddle.add(self.tensor1,
+                                                     self.tensor1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         elif dp_rank == 1:
             assert np.array_equal(result, self.tensor1)
         print("test reduce api ok")
@@ -81,8 +111,12 @@ class TestNewGroupAPI:
         paddle.distributed.all_reduce(result, sync_op=True)
         assert np.array_equal(
             result,
+<<<<<<< HEAD
             paddle.add(paddle.add(self.tensor1, self.tensor1), self.tensor1),
         )
+=======
+            paddle.add(paddle.add(self.tensor1, self.tensor1), self.tensor1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print("test all_reduce api ok")
 
         paddle.distributed.wait(result, dp_gp, use_calc_stream=True)
@@ -90,9 +124,16 @@ class TestNewGroupAPI:
         print("test wait api ok")
 
         result = []
+<<<<<<< HEAD
         paddle.distributed.all_gather(
             result, self.tensor1, group=dp_gp, sync_op=True
         )
+=======
+        paddle.distributed.all_gather(result,
+                                      self.tensor1,
+                                      group=dp_gp,
+                                      sync_op=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert np.array_equal(result[0], self.tensor1)
         assert np.array_equal(result[1], self.tensor1)
         print("test all_gather api ok")

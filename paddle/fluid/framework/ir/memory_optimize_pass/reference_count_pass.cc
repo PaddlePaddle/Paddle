@@ -132,7 +132,11 @@ class ShrinkDepsOpFunctor {
 /**
  * Shrink op dependencies according to no need buffer vars.
  *
+<<<<<<< HEAD
  * If some ops do not need phi::DenseTensor buffer of any input,
+=======
+ * If some ops do not need Tensor buffer of any input,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  * just remove the dependency of this op, i.e, decrease reference count.
  *
  * For example, input Y of elementwise_add_grad op is only used to infer shape

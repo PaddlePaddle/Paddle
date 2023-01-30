@@ -14,7 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/cudnn.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 namespace dynload {
@@ -46,10 +50,13 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DEFINE_WRAP);
 CUDNN_DNN_ROUTINE_EACH_R8(DEFINE_WRAP);
 #endif
 
+<<<<<<< HEAD
 #ifdef CUDNN_DNN_ROUTINE_EACH_FRONTEND
 CUDNN_DNN_ROUTINE_EACH_FRONTEND(DEFINE_WRAP);
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 bool HasCUDNN() {
   std::call_once(cudnn_dso_flag,
                  []() { cudnn_dso_handle = GetCUDNNDsoHandle(); });

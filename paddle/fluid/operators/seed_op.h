@@ -19,6 +19,10 @@
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 static int get_seed(const framework::ExecutionContext& context) {
   int user_seed = context.Attr<int>("seed");
@@ -48,7 +52,11 @@ template <typename DeviceContext, typename T>
 class CPUSeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* out = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     out_data[0] = get_seed(context);
   }

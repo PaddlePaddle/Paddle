@@ -82,11 +82,20 @@ void SGDDenseParamSparseGradKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
+<<<<<<< HEAD
     sgd, OneDNN, ONEDNN, phi::SGDDenseKernel, float, phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    OneDNN,
                    ONEDNN,
+=======
+    sgd, OneDNN, ALL_LAYOUT, phi::SGDDenseKernel, float, phi::dtype::bfloat16) {
+}
+
+PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
+                   OneDNN,
+                   ALL_LAYOUT,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    phi::SGDDenseParamSparseGradKernel,
                    float,
                    phi::dtype::bfloat16) {}

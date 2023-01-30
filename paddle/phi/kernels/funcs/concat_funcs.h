@@ -14,8 +14,13 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace phi {
 namespace funcs {
 

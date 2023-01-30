@@ -13,10 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
+=======
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -34,6 +39,10 @@ namespace paddle {
 namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace {  // NOLINT
 static std::string GetSkipEagerDeletionVarsDebugString(
@@ -46,6 +55,7 @@ static std::string GetSkipEagerDeletionVarsDebugString(
   }
   return str;
 }
+<<<<<<< HEAD
 
 static void TransferVariablePlace(const framework::Scope *scope,
                                   const std::string &var_name,
@@ -81,6 +91,8 @@ static void TransferVariablePlace(const framework::Scope *scope,
           << " place: " << new_t->place();
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace
 
 class WhileOp : public framework::OperatorBase {
@@ -98,7 +110,11 @@ class WhileOp : public framework::OperatorBase {
                             platform::errors::NotFound(
                                 "Input(Condition) of WhileOp is not found."));
 
+<<<<<<< HEAD
     auto &cond = scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>();
+=======
+    auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         cond.dims(),
         phi::make_ddim({1}),
@@ -114,12 +130,18 @@ class WhileOp : public framework::OperatorBase {
     // Executors (executors declared inside control ops)
     platform::DontClearMKLDNNCache(dev_place);
 #endif
+<<<<<<< HEAD
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
+=======
+    framework::Executor executor(dev_place);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *program = block->Program();
     bool is_test = Attr<bool>("is_test");
 
@@ -174,6 +196,7 @@ class WhileOp : public framework::OperatorBase {
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
+<<<<<<< HEAD
     // note(lvyongkang): The assign op in while loop may change the place of
     // variable. However, InterpreterCore fix the kernel of every ops during its
     // first run. A cpu tensor may become gpu tensor after first run. This will
@@ -221,6 +244,9 @@ class WhileOp : public framework::OperatorBase {
       }
     }
 
+=======
+    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (!is_test) {
       while (cond_data) {
         auto &current_scope = scope.NewScope();
@@ -232,18 +258,27 @@ class WhileOp : public framework::OperatorBase {
               no_copy_var_names.end()) {
             std::string input_var_rename = input_var_name + kSuffix;
             framework::Variable *input_var = scope.FindVar(input_var_name);
+<<<<<<< HEAD
             if (input_var->IsType<phi::DenseTensor>()) {
               rename_vars.push_back(input_var_rename);
               auto input_var_tensor = input_var->Get<phi::DenseTensor>();
               auto *rename_input_var_tensor =
                   current_scope.Var(input_var_rename)
                       ->GetMutable<phi::DenseTensor>();
+=======
+            if (input_var->IsType<framework::LoDTensor>()) {
+              rename_vars.push_back(input_var_rename);
+              auto input_var_tensor = input_var->Get<LoDTensor>();
+              auto *rename_input_var_tensor =
+                  current_scope.Var(input_var_rename)->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               framework::TensorCopy(
                   input_var_tensor, dev_place, rename_input_var_tensor);
               rename_input_var_tensor->set_lod(input_var_tensor.lod());
             }
           }
         }
+<<<<<<< HEAD
         if (FLAGS_control_flow_use_new_executor) {
           BuildScopeForControlFlowOp(*core_, *block, &current_scope);
           core_->reset_scope(&current_scope);
@@ -261,12 +296,17 @@ class WhileOp : public framework::OperatorBase {
           executor_->RunPreparedContext(
               ctx_.get(), &current_scope, false, true, true);
         }
+=======
+        executor.RunPreparedContext(
+            ctx.get(), &current_scope, false, true, true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         for (auto &var_rename : rename_vars) {
           std::string input_var_name =
               var_rename.substr(0, var_rename.size() - strlen(kSuffix));
           current_scope.Rename(var_rename, input_var_name);
         }
+<<<<<<< HEAD
         cond_data = GetCondData(
             scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
       }
@@ -286,6 +326,20 @@ class WhileOp : public framework::OperatorBase {
           if (var->IsType<phi::DenseTensor>()) {
             // Clear all lod information for all lod_tensors.
             auto *t = var->GetMutable<phi::DenseTensor>();
+=======
+        cond_data =
+            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
+      }
+    } else {
+      auto &current_scope = scope.NewScope();
+      executor.CreateVariables(*program, &current_scope, block->ID());
+      while (cond_data) {
+        for (auto &name : current_scope.LocalVarNames()) {
+          auto *var = current_scope.Var(name);
+          if (var->IsType<framework::LoDTensor>()) {
+            // Clear all lod information for all lod_tensors.
+            auto *t = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             framework::LoD empty_lod;
             t->set_lod(empty_lod);
           } else if (var->IsType<framework::LoDTensorArray>()) {
@@ -294,6 +348,7 @@ class WhileOp : public framework::OperatorBase {
             t->clear();
           }
         }
+<<<<<<< HEAD
 
         if (FLAGS_control_flow_use_new_executor) {
           core_->Run({}, false);
@@ -314,6 +369,16 @@ class WhileOp : public framework::OperatorBase {
   mutable std::shared_ptr<framework::Executor> executor_{nullptr};
   mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx_{nullptr};
   mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
+=======
+        executor.RunPreparedContext(
+            ctx.get(), &current_scope, false, false, false);
+        cond_data =
+            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
+      }
+      scope.DeleteScope(&current_scope);
+    }
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -365,6 +430,7 @@ class WhileGradOp : public framework::OperatorBase {
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
+<<<<<<< HEAD
 
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
@@ -372,6 +438,15 @@ class WhileGradOp : public framework::OperatorBase {
 
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+=======
+    framework::Executor executor(dev_place);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
+    auto *program = block->Program();
+
+    auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto *step_scopes =
         scope.FindVar(Input(kStepScopes))->GetMutable<StepScopeVar>();
@@ -391,6 +466,7 @@ class WhileGradOp : public framework::OperatorBase {
                           outside_og_names.size(),
                           inside_og_names.size()));
 
+<<<<<<< HEAD
     if (FLAGS_control_flow_use_new_executor) {
       LOG_FIRST_N(INFO, 1)
           << "[ControlFlow][WhileGradOp] New Executor is Running.";
@@ -414,6 +490,8 @@ class WhileGradOp : public framework::OperatorBase {
       }
     }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (auto cur_scope_iter = step_scopes->rbegin();
          cur_scope_iter != step_scopes->rend();
          ++cur_scope_iter) {
@@ -430,6 +508,7 @@ class WhileGradOp : public framework::OperatorBase {
           continue;
         }
 
+<<<<<<< HEAD
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto &og_outside = *scope.FindVar(outside_og_name);
           if (og_outside.IsType<phi::DenseTensor>() &&
@@ -464,6 +543,13 @@ class WhileGradOp : public framework::OperatorBase {
         if (og_outside.IsType<phi::DenseTensor>()) {
           auto &outside_tensor = og_outside.Get<phi::DenseTensor>();
           auto &inside_tensor = *og_inside.GetMutable<phi::DenseTensor>();
+=======
+        auto &og_outside = *scope.FindVar(outside_og_name);
+        auto &og_inside = *cur_scope.Var(inside_og_name);
+        if (og_outside.IsType<framework::LoDTensor>()) {
+          auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
+          auto &inside_tensor = *og_inside.GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
         } else if (og_outside.IsType<framework::LoDTensorArray>()) {
@@ -497,6 +583,7 @@ class WhileGradOp : public framework::OperatorBase {
           }
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
+<<<<<<< HEAD
               "Currently only support phi::DenseTensor and "
               "phi::DenseTensorArray in "
               "WhileGradOp."));
@@ -511,6 +598,14 @@ class WhileGradOp : public framework::OperatorBase {
         executor_->RunPreparedContext(
             ctx_.get(), *cur_scope_iter, false, true, true);
       }
+=======
+              "Currently only support LoDTensor and LoDTensorArray in "
+              "WhileGradOp."));
+        }
+      }
+      executor.RunPreparedContext(
+          ctx.get(), *cur_scope_iter, false, true, true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       // The Outputs(kXGRAD) contains the names of the gradient of parameters
       // and inputs.
@@ -565,10 +660,16 @@ class WhileGradOp : public framework::OperatorBase {
         //    continue;
         //  }
 
+<<<<<<< HEAD
         auto is_var_input_and_output =
             std::find(outside_og_names.begin(),
                       outside_og_names.end(),
                       pg_ig_names[param_id]) != outside_og_names.end();
+=======
+        auto var_iter = std::find(outside_og_names.begin(),
+                                  outside_og_names.end(),
+                                  pg_ig_names[param_id]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         // zero gradient variable in step 0
         if (cur_scope_iter == step_scopes->rbegin()) {
@@ -579,6 +680,7 @@ class WhileGradOp : public framework::OperatorBase {
                                          inside_grad_name));
           PADDLE_ENFORCE_EQ(
               var->IsType<framework::LoDTensorArray>() ||
+<<<<<<< HEAD
                   var->IsType<phi::DenseTensor>(),
               true,
               platform::errors::InvalidArgument(
@@ -589,6 +691,19 @@ class WhileGradOp : public framework::OperatorBase {
 
           if (!is_var_input_and_output && var->IsType<phi::DenseTensor>()) {
             auto &inside_tensor = var->Get<phi::DenseTensor>();
+=======
+                  var->IsType<LoDTensor>(),
+              true,
+              platform::errors::InvalidArgument(
+                  "Currently the type of var only can be LoDTensorArray, "
+                  "or LoDTensor, but the received var[%s] is %s.",
+                  inside_grad_name,
+                  framework::ToTypeName(var->Type())));
+
+          if ((var_iter == outside_og_names.end()) &&
+              var->IsType<LoDTensor>()) {
+            auto &inside_tensor = var->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             framework::AttributeMap attrs;
             attrs["dtype"] =
                 framework::TransToProtoVarType(inside_tensor.dtype());
@@ -602,11 +717,23 @@ class WhileGradOp : public framework::OperatorBase {
                                                 {{"Out", {var_name}}},
                                                 attrs);
             zero_op->Run(scope, dev_place);
+<<<<<<< HEAD
             scope.FindVar(var_name)->GetMutable<phi::DenseTensor>()->set_lod(
                 inside_tensor.lod());
           }
         }
         if (!is_var_input_and_output) {
+=======
+            scope.FindVar(var_name)
+                ->GetMutable<framework::LoDTensor>()
+                ->set_lod(inside_tensor.lod());
+          }
+        }
+        auto var_outside = scope.FindVar(pg_ig_names[param_id]);
+        if ((var_iter == outside_og_names.end()) ||
+            ((var_iter != outside_og_names.end()) &&
+             var_outside->IsType<framework::LoDTensorArray>())) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           auto new_inside_name = cur_scope.Rename(inside_grad_name);
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum",
@@ -615,8 +742,11 @@ class WhileGradOp : public framework::OperatorBase {
               framework::AttributeMap{{"use_mkldnn", {false}}});
           sum_op->Run(cur_scope, dev_place);
           cur_scope.Rename(new_inside_name, inside_grad_name);
+<<<<<<< HEAD
         } else {
           ShareVariable(cur_scope, scope, pg_ig_names[param_id]);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
       }
       dev_ctx.Wait();
@@ -624,6 +754,7 @@ class WhileGradOp : public framework::OperatorBase {
     }
     step_scopes->clear();
   }
+<<<<<<< HEAD
 
   void ShareVariable(const framework::Scope &source,
                      const framework::Scope &dest,
@@ -652,6 +783,8 @@ class WhileGradOp : public framework::OperatorBase {
   mutable std::shared_ptr<framework::Executor> executor_{nullptr};
   mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx_{nullptr};
   mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 template <typename T>
@@ -699,7 +832,10 @@ class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
       block_ins.insert(o);
     }
     std::unordered_set<std::string> output_grads;
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (const auto *op : grad_block->AllOps()) {
       for (auto &input_name : op->InputArgumentNames()) {
         // If the input of Op has been recorded or is generated by the forward
@@ -712,6 +848,10 @@ class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
              parent_block->FindVarRecursive(input_name) != nullptr)) {
           continue;
         }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output_grads.insert(input_name);
       }
       for (auto &output_name : op->OutputArgumentNames()) {

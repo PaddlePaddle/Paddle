@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import time
@@ -51,7 +55,11 @@ def DataTypeCast(date_type):
     return np_data_type
 
 
+<<<<<<< HEAD
 class TestCollectiveRunnerBase:
+=======
+class TestCollectiveRunnerBase(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def get_model(self, train_prog, startup_prog, col_type):
         raise NotImplementedError(
             "get model should be implemented by child class."
@@ -163,6 +171,10 @@ def runtime_main(test_class):
     model.run_trainer(args)
 
 
+<<<<<<< HEAD
+=======
+import paddle.compat as cpt
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import socket
 from contextlib import closing
 

@@ -23,7 +23,10 @@ PD_REGISTER_KERNEL(slice,
                    ALL_LAYOUT,
                    phi::SliceRawKernel,
                    bool,
+<<<<<<< HEAD
                    uint8_t,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    int,
                    int64_t,
                    float,
@@ -31,6 +34,7 @@ PD_REGISTER_KERNEL(slice,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    phi::dtype::bfloat16) {}
+<<<<<<< HEAD
 
 PD_REGISTER_KERNEL(slice_array,
                    CPU,
@@ -59,3 +63,5 @@ PD_REGISTER_KERNEL(slice_array_dense,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    phi::dtype::bfloat16) {}
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

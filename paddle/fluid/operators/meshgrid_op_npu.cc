@@ -22,8 +22,13 @@ template <typename T>
 class MeshgridNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto ins = context.MultiInput<phi::DenseTensor>("X");
     auto outs = context.MultiOutput<phi::DenseTensor>("Out");
+=======
+    auto ins = context.MultiInput<framework::Tensor>("X");
+    auto outs = context.MultiOutput<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         (ins.size() > 1) && (ins.size() < 7),
         true,
@@ -55,7 +60,11 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
       view_shape[i] = shape[i];
 
       framework::DDim out_dims_reshape = phi::make_ddim(view_shape);
+<<<<<<< HEAD
       phi::DenseTensor reshape_ins_tensor(ins[i]->dtype());
+=======
+      framework::Tensor reshape_ins_tensor(ins[i]->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       reshape_ins_tensor.ShareDataWith(*ins[i]);
       reshape_ins_tensor.Resize(out_dims_reshape);
 

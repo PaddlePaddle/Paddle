@@ -12,18 +12,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+
+#include "gtest/gtest.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 TEST(selected_rows_functor, cpu_add) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
+<<<<<<< HEAD
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
                        .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -52,7 +61,11 @@ TEST(selected_rows_functor, cpu_add) {
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(phi::make_ddim({7, 10}), cpu_place);
 
+<<<<<<< HEAD
   phi::funcs::SelectedRowsAdd<phi::CPUContext, float> add_functor;
+=======
+  paddle::operators::math::SelectedRowsAdd<phi::CPUContext, float> add_functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   add_functor(ctx, *selected_rows1, *selected_rows2, output.get());
 
   auto out_height = output->height();
@@ -83,6 +96,7 @@ TEST(selected_rows_functor, cpu_add) {
   EXPECT_EQ(out_data[5 * row_numel + 7], 2.0);
   EXPECT_EQ(out_data[6 * row_numel + 9], 2.0);
 
+<<<<<<< HEAD
   std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
@@ -91,6 +105,19 @@ TEST(selected_rows_functor, cpu_add) {
   tensor2->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
 
   phi::funcs::SelectedRowsAddTensor<phi::CPUContext, float> add_tensor_functor;
+=======
+  std::unique_ptr<paddle::framework::Tensor> tensor1{
+      new paddle::framework::Tensor()};
+  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
+  functor(ctx, tensor1.get(), 3.0);
+
+  std::unique_ptr<paddle::framework::Tensor> tensor2{
+      new paddle::framework::Tensor()};
+  tensor2->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
+
+  paddle::operators::math::SelectedRowsAddTensor<phi::CPUContext, float>
+      add_tensor_functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
 
   auto* tensor2_data = tensor2->data<float>();
@@ -113,9 +140,12 @@ TEST(selected_rows_functor, cpu_add) {
 TEST(selected_rows_functor, cpu_add_to) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
+<<<<<<< HEAD
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
                        .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -145,7 +175,12 @@ TEST(selected_rows_functor, cpu_add_to) {
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(phi::make_ddim({7, 10}), cpu_place);
 
+<<<<<<< HEAD
   phi::funcs::SelectedRowsAddTo<phi::CPUContext, float> add_to_functor;
+=======
+  paddle::operators::math::SelectedRowsAddTo<phi::CPUContext, float>
+      add_to_functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   add_to_functor(ctx, *selected_rows1, 0, output.get());
   add_to_functor(ctx, *selected_rows2, in1_value->numel(), output.get());
 
@@ -177,11 +212,20 @@ TEST(selected_rows_functor, cpu_add_to) {
   EXPECT_EQ(out_data[5 * row_numel + 7], 2.0);
   EXPECT_EQ(out_data[6 * row_numel + 9], 2.0);
 
+<<<<<<< HEAD
   std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
   phi::funcs::SelectedRowsAddToTensor<phi::CPUContext, float>
+=======
+  std::unique_ptr<paddle::framework::Tensor> tensor1{
+      new paddle::framework::Tensor()};
+  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
+  functor(ctx, tensor1.get(), 3.0);
+
+  paddle::operators::math::SelectedRowsAddToTensor<phi::CPUContext, float>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
 
@@ -205,9 +249,12 @@ TEST(selected_rows_functor, cpu_add_to) {
 TEST(selected_rows_functor, cpu_merge_average_float) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
+<<<<<<< HEAD
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
                        .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -221,7 +268,11 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
       cpu_place);
   functor(ctx, in_value, 1.0);
 
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAverage<phi::CPUContext, float>
+=======
+  paddle::operators::math::scatter::MergeAverage<phi::CPUContext, float>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       merge_average_functor;
   phi::SelectedRows output = merge_average_functor(ctx, *selected_rows);
 
@@ -243,9 +294,12 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
 TEST(selected_rows_functor, cpu_merge_add_float) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
+<<<<<<< HEAD
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
                        .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -261,7 +315,12 @@ TEST(selected_rows_functor, cpu_merge_add_float) {
 
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
 
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<phi::CPUContext, float> merge_add_functor;
+=======
+  paddle::operators::math::scatter::MergeAdd<phi::CPUContext, float>
+      merge_add_functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   merge_add_functor(ctx, *selected_rows, output.get());
 
   auto out_height = output->height();
@@ -282,9 +341,12 @@ TEST(selected_rows_functor, cpu_merge_add_float) {
 TEST(selected_rows_functor, cpu_merge_add_int) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
+<<<<<<< HEAD
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
                        .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<phi::CPUContext, int> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -300,7 +362,12 @@ TEST(selected_rows_functor, cpu_merge_add_int) {
 
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
 
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<phi::CPUContext, int> merge_add_functor;
+=======
+  paddle::operators::math::scatter::MergeAdd<phi::CPUContext, int>
+      merge_add_functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   merge_add_functor(ctx, *selected_rows, output.get());
 
   auto out_height = output->height();
@@ -321,9 +388,12 @@ TEST(selected_rows_functor, cpu_merge_add_int) {
 TEST(selected_rows_functor, cpu_merge_add_multi) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
+<<<<<<< HEAD
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
                        .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<phi::CPUContext, float> set_const;
 
   int64_t height = 10;
@@ -349,7 +419,12 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
 
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<phi::CPUContext, float> merge_add_functor;
+=======
+  paddle::operators::math::scatter::MergeAdd<phi::CPUContext, float>
+      merge_add_functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<const phi::SelectedRows*> inputs;
   inputs.push_back(selected_rows1.get());
@@ -373,9 +448,12 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
 TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
+<<<<<<< HEAD
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
                        .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<phi::CPUContext, float> set_const;
 
   int64_t height = 10;
@@ -401,7 +479,12 @@ TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
 
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<phi::CPUContext, float> merge_add_functor;
+=======
+  paddle::operators::math::scatter::MergeAdd<phi::CPUContext, float>
+      merge_add_functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<const phi::SelectedRows*> inputs;
   inputs.push_back(selected_rows1.get());
@@ -431,9 +514,12 @@ TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
 TEST(selected_rows_functor, cpu_sum_to) {
   paddle::platform::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
+<<<<<<< HEAD
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
                        .get());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -460,7 +546,12 @@ TEST(selected_rows_functor, cpu_sum_to) {
   auto* out_value = output->mutable_value();
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(phi::make_ddim({7, 10}), cpu_place);
+<<<<<<< HEAD
   phi::funcs::SelectedRowsSumTo<phi::CPUContext, float> sum_to_functor;
+=======
+  paddle::operators::math::SelectedRowsSumTo<phi::CPUContext, float>
+      sum_to_functor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   sum_to_functor(ctx,
                  std::vector<phi::SelectedRows*>(
                      {selected_rows1.get(), selected_rows2.get()}),
@@ -490,10 +581,18 @@ TEST(selected_rows_functor, cpu_sum_to) {
   EXPECT_EQ(out_data[4 * row_numel + 4], 2.0);
   EXPECT_EQ(out_data[5 * row_numel + 7], 2.0);
   EXPECT_EQ(out_data[6 * row_numel + 9], 2.0);
+<<<<<<< HEAD
   std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
   phi::funcs::SelectedRowsAddToTensor<phi::CPUContext, float>
+=======
+  std::unique_ptr<paddle::framework::Tensor> tensor1{
+      new paddle::framework::Tensor()};
+  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
+  functor(ctx, tensor1.get(), 3.0);
+  paddle::operators::math::SelectedRowsAddToTensor<phi::CPUContext, float>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
   auto* tensor1_data = tensor1->data<float>();

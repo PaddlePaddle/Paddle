@@ -55,7 +55,11 @@ class RandomRoutingOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     // the dtype of the gate_idx should be same as int64
     const auto topk_idx_dtype =
@@ -67,7 +71,11 @@ class RandomRoutingOp : public framework::OperatorWithKernel {
 
     const auto& topk_value_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "TopK_Value");
+<<<<<<< HEAD
     return phi::KernelKey(topk_value_type, ctx.GetPlace());
+=======
+    return framework::OpKernelType(topk_value_type, ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

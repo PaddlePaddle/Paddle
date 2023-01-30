@@ -22,7 +22,10 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
+<<<<<<< HEAD
 #include "paddle/utils/optional.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace py = pybind11;
 
@@ -33,7 +36,10 @@ using paddle::distributed::auto_parallel::Device;
 using paddle::distributed::auto_parallel::DeviceCapability;
 using paddle::distributed::auto_parallel::DeviceMesh;
 using paddle::distributed::auto_parallel::DistributedMapper;
+<<<<<<< HEAD
 using paddle::distributed::auto_parallel::kDefault;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using paddle::distributed::auto_parallel::Link;
 using paddle::distributed::auto_parallel::LinkCapability;
 using paddle::distributed::auto_parallel::Machine;
@@ -43,6 +49,7 @@ using paddle::distributed::auto_parallel::TensorDistAttr;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
 
+<<<<<<< HEAD
 static inline const ProcessMesh *get_tensor_process_mesh(
     const TensorDistAttr &self) {
   if (self.process_mesh().empty()) {
@@ -101,15 +108,30 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
 void BindAutoParallel(py::module *m) {
   py::class_<ProcessMesh>(*m, "ProcessMesh")
       .def(py::init<>())
+=======
+void BindAutoParallel(py::module *m) {
+  py::class_<ProcessMesh>(*m, "ProcessMesh")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def(py::init<const std::vector<int64_t> &,
                     const std::vector<int64_t> &,
                     const std::vector<std::string> &>(),
            py::arg("shape"),
            py::arg("process_ids"),
            py::arg("dim_names"))
+<<<<<<< HEAD
       .def_property_readonly("shape", &ProcessMesh::shape)
       .def_property_readonly("process_ids", &ProcessMesh::process_ids)
       .def_property_readonly("dim_names", &ProcessMesh::dim_names)
+=======
+      .def_property_readonly(
+          "shape", &ProcessMesh::shape, py::return_value_policy::reference)
+      .def_property_readonly("process_ids",
+                             &ProcessMesh::process_ids,
+                             py::return_value_policy::reference)
+      .def_property_readonly("dim_names",
+                             &ProcessMesh::dim_names,
+                             py::return_value_policy::reference)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def_property_readonly("size", &ProcessMesh::size)
       .def_property_readonly("ndim", &ProcessMesh::ndim)
       .def("dim_size",
@@ -122,12 +144,15 @@ void BindAutoParallel(py::module *m) {
       .def("contains", &ProcessMesh::contains)
       .def(py::self == py::self)
       .def(py::self != py::self)
+<<<<<<< HEAD
       .def("__copy__",
            [](const ProcessMesh &self) { return ProcessMesh(self); })
       .def(
           "__deepcopy__",
           [](const ProcessMesh &self, py::dict) { return ProcessMesh(self); },
           py::arg("memo"))
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def("__str__", &ProcessMesh::to_string);
 
   py::class_<DeviceCapability>(*m, "DeviceCapability")
@@ -174,8 +199,15 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<Machine>(*m, "Machine")
       .def_property_readonly("id", &Machine::id)
+<<<<<<< HEAD
       .def_property_readonly("devices", &Machine::devices)
       .def_property_readonly("links", &Machine::links)
+=======
+      .def_property_readonly(
+          "devices", &Machine::devices, py::return_value_policy::reference)
+      .def_property_readonly(
+          "links", &Machine::links, py::return_value_policy::reference)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def("device", &Machine::device)
       .def("link", &Machine::link)
       .def("contains", &Machine::contains)
@@ -188,6 +220,7 @@ void BindAutoParallel(py::module *m) {
                     const std::vector<std::string> &>(),
            py::arg("name"),
            py::arg("shape"),
+<<<<<<< HEAD
            py::arg("device_ids"),
            py::arg("dim_names"))
       .def_property_readonly("name", &DeviceMesh::name)
@@ -200,6 +233,27 @@ void BindAutoParallel(py::module *m) {
       .def_property_readonly("devices", &DeviceMesh::devices)
       .def_property_readonly("links", &DeviceMesh::links)
       .def_property_readonly("machines", &DeviceMesh::machines)
+=======
+           py::arg("process_ids"),
+           py::arg("dim_names"))
+      .def_property_readonly("name", &DeviceMesh::name)
+      .def_property_readonly("shape", &DeviceMesh::shape)
+      .def_property_readonly("device_ids",
+                             &DeviceMesh::device_ids,
+                             py::return_value_policy::reference)
+      .def_property_readonly("dim_names",
+                             &DeviceMesh::dim_names,
+                             py::return_value_policy::reference)
+      .def_property_readonly("device_type", &DeviceMesh::device_type)
+      .def_property_readonly("size", &DeviceMesh::size)
+      .def_property_readonly("ndim", &DeviceMesh::ndim)
+      .def_property_readonly(
+          "devices", &DeviceMesh::devices, py::return_value_policy::reference)
+      .def_property_readonly(
+          "links", &DeviceMesh::links, py::return_value_policy::reference)
+      .def_property_readonly(
+          "machines", &DeviceMesh::machines, py::return_value_policy::reference)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def("device", &DeviceMesh::device)
       .def("link", &DeviceMesh::link)
       .def("machine", &DeviceMesh::machine)
@@ -215,6 +269,7 @@ void BindAutoParallel(py::module *m) {
                &DeviceMesh::dim_size))
       .def(py::self == py::self)
       .def(py::self != py::self)
+<<<<<<< HEAD
       .def("__copy__",
            [](const TensorDistAttr &self) { return TensorDistAttr(self); })
       .def(
@@ -231,6 +286,16 @@ void BindAutoParallel(py::module *m) {
       .def(py::init<const TensorDistAttr &>())
       .def_property(
           "process_mesh", &get_tensor_process_mesh, &set_tensor_process_mesh)
+=======
+      .def("__str__", &DeviceMesh::to_string);
+
+  py::class_<TensorDistAttr>(*m, "TensorDistAttr")
+      .def(py::init<const VarDesc &>())
+      .def_property_readonly("tensor", &TensorDistAttr::tensor)
+      .def_property("process_mesh",
+                    &TensorDistAttr::process_mesh,
+                    &TensorDistAttr::set_process_mesh)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def_property("dims_mapping",
                     &TensorDistAttr::dims_mapping,
                     &TensorDistAttr::set_dims_mapping)
@@ -240,6 +305,7 @@ void BindAutoParallel(py::module *m) {
       .def_property("dynamic_dims",
                     &TensorDistAttr::dynamic_dims,
                     &TensorDistAttr::set_dynamic_dims)
+<<<<<<< HEAD
       .def_property("annotated",
                     &TensorDistAttr::annotated,
                     &TensorDistAttr::set_annotated)
@@ -276,12 +342,28 @@ void BindAutoParallel(py::module *m) {
       .def_property("process_mesh",
                     &get_operator_process_mesh,
                     &set_operator_process_mesh)
+=======
+      .def("is_annotated", &TensorDistAttr::is_annotated)
+      .def("annotate", &TensorDistAttr::annotate)
+      .def("verify", &TensorDistAttr::verify)
+      .def(py::self == py::self)
+      .def(py::self != py::self)
+      .def("__str__", &TensorDistAttr::to_string);
+
+  py::class_<OperatorDistAttr>(*m, "OperatorDistAttr")
+      .def(py::init<const OpDesc &>())
+      .def_property_readonly("op", &OperatorDistAttr::op)
+      .def_property("process_mesh",
+                    &OperatorDistAttr::process_mesh,
+                    &OperatorDistAttr::set_process_mesh)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def_property("impl_type",
                     &OperatorDistAttr::impl_type,
                     &OperatorDistAttr::set_impl_type)
       .def_property("impl_idx",
                     &OperatorDistAttr::impl_idx,
                     &OperatorDistAttr::set_impl_idx)
+<<<<<<< HEAD
       .def_property("is_recompute",
                     &OperatorDistAttr::is_recompute,
                     &OperatorDistAttr::set_is_recompute)
@@ -308,17 +390,33 @@ void BindAutoParallel(py::module *m) {
               OperatorDistAttr::*)()>(&OperatorDistAttr::output_dist_attrs),
           &OperatorDistAttr::set_output_dist_attrs)
       .def("get_input_dist_attr",
+=======
+      .def("input", &OperatorDistAttr::input)
+      .def("output", &OperatorDistAttr::output)
+      .def("input_dist_attrs",
+           &OperatorDistAttr::input_dist_attrs,
+           py::return_value_policy::reference)
+      .def("output_dist_attrs",
+           &OperatorDistAttr::output_dist_attrs,
+           py::return_value_policy::reference)
+      .def("input_dist_attr",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            static_cast<TensorDistAttr &(
                OperatorDistAttr::*)(const std::string &)>(
                &OperatorDistAttr::input_dist_attr),
            py::return_value_policy::reference)
+<<<<<<< HEAD
       .def("get_output_dist_attr",
+=======
+      .def("output_dist_attr",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
            static_cast<TensorDistAttr &(
                OperatorDistAttr::*)(const std::string &)>(
                &OperatorDistAttr::output_dist_attr),
            py::return_value_policy::reference)
       .def("set_input_dist_attr", &OperatorDistAttr::set_input_dist_attr)
       .def("set_output_dist_attr", &OperatorDistAttr::set_output_dist_attr)
+<<<<<<< HEAD
       .def("del_input_dist_attr",  // TODO(aoyulong): move into dist_attr.cc
            [](OperatorDistAttr &self, const std::string &name) {
              self.input_dist_attrs().erase(name);
@@ -368,6 +466,13 @@ void BindAutoParallel(py::module *m) {
             return OperatorDistAttr(self);
           },
           py::arg("memo"))
+=======
+      .def("is_annotated", &OperatorDistAttr::is_annotated)
+      .def("annotate", &OperatorDistAttr::annotate)
+      .def("verify", &OperatorDistAttr::verify)
+      .def(py::self == py::self)
+      .def(py::self != py::self)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       .def("__str__", &OperatorDistAttr::to_string);
 }
 

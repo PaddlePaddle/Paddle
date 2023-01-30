@@ -53,9 +53,12 @@ void ScaleKernel(const Context& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
+<<<<<<< HEAD
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     return;
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   phi::funcs::ElementwiseKernel<T>(
       dev_ctx,
       inputs,

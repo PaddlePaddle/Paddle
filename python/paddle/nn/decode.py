@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+=======
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 
 import collections
 import warnings
@@ -1084,3 +1089,9 @@ def dynamic_decode(
             return_length,
             **kwargs
         )
+=======
+from ..fluid.layers import BeamSearchDecoder  # noqa: F401
+from ..fluid.layers import dynamic_decode  # noqa: F401
+
+__all__ = []
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

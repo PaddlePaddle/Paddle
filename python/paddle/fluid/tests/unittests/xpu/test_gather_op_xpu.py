@@ -12,12 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
+=======
+from __future__ import print_function
+import unittest
+import sys
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 sys.path.append("..")
 
 import numpy as np
+<<<<<<< HEAD
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
@@ -26,6 +33,12 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+
+import paddle
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -38,10 +51,18 @@ def gather_numpy(x, index, axis):
 
 
 class XPUTestGather(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'gather'
 
     class TestXPUGatherOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "gather"
             self.place = paddle.XPUPlace(0)
@@ -51,7 +72,11 @@ class XPUTestGather(XPUOpTestWrapper):
             xnp = np.random.random(self.x_shape).astype(self.dtype)
             self.inputs = {
                 'X': xnp,
+<<<<<<< HEAD
                 'Index': np.array(self.index).astype(self.index_type),
+=======
+                'Index': np.array(self.index).astype(self.index_type)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
@@ -69,24 +94,44 @@ class XPUTestGather(XPUOpTestWrapper):
                 self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestCase1(TestXPUGatherOp):
+<<<<<<< HEAD
         def init_config(self):
             self.x_shape = 100
+=======
+
+        def init_config(self):
+            self.x_shape = (100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.index = [1, 3, 5]
             self.index_type = np.int32
 
     class TestCase2(TestXPUGatherOp):
+<<<<<<< HEAD
         def init_config(self):
             self.x_shape = 100
+=======
+
+        def init_config(self):
+            self.x_shape = (100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.index = [1, 3, 5]
             self.index_type = np.int64
 
     class TestCase3(TestXPUGatherOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.x_shape = (10, 20)
             self.index = [1, 3, 5]
             self.index_type = np.int32
 
     class TestCase4(TestXPUGatherOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.x_shape = (10, 20)
             self.attrs = {'overwrite': False}
@@ -94,6 +139,10 @@ class XPUTestGather(XPUOpTestWrapper):
             self.index_type = np.int32
 
     class TestCase5(TestXPUGatherOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.x_shape = (10, 20)
             self.attrs = {'overwrite': False}
@@ -101,6 +150,10 @@ class XPUTestGather(XPUOpTestWrapper):
             self.index_type = np.int32
 
     class TestCase6(TestXPUGatherOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.x_shape = (10, 20)
             self.attrs = {'overwrite': True}
@@ -108,6 +161,10 @@ class XPUTestGather(XPUOpTestWrapper):
             self.index_type = np.int32
 
     class TestCase7(TestXPUGatherOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_config(self):
             self.x_shape = (10, 20)
             self.attrs = {'overwrite': True}

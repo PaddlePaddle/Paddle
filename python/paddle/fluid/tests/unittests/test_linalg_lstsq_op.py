@@ -12,16 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
 class LinalgLstsqTestCase(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.devices = ["cpu"]
         self.init_config()
@@ -40,6 +51,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
 
     def generate_input(self):
         self._input_data_1 = np.random.random(self._input_shape_1).astype(
+<<<<<<< HEAD
             self.dtype
         )
         self._input_data_2 = np.random.random(self._input_shape_2).astype(
@@ -51,6 +63,17 @@ class LinalgLstsqTestCase(unittest.TestCase):
             out = np.linalg.lstsq(
                 self._input_data_1, self._input_data_2, rcond=self.rcond
             )
+=======
+            self.dtype)
+        self._input_data_2 = np.random.random(self._input_shape_2).astype(
+            self.dtype)
+
+    def generate_output(self):
+        if len(self._input_shape_1) == 2:
+            out = np.linalg.lstsq(self._input_data_1,
+                                  self._input_data_2,
+                                  rcond=self.rcond)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self._output_solution = out[0]
             self._output_residuals = out[1]
             self._output_rank = out[2]
@@ -61,11 +84,17 @@ class LinalgLstsqTestCase(unittest.TestCase):
             self._output_rank = []
             self._output_sg_values = []
             for i in range(self._input_shape_1[0]):
+<<<<<<< HEAD
                 out = np.linalg.lstsq(
                     self._input_data_1[i],
                     self._input_data_2[i],
                     rcond=self.rcond,
                 )
+=======
+                out = np.linalg.lstsq(self._input_data_1[i],
+                                      self._input_data_2[i],
+                                      rcond=self.rcond)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self._output_solution.append(out[0])
                 self._output_residuals.append(out[1])
                 self._output_rank.append(out[2])
@@ -73,6 +102,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
 
     def test_eager_dygraph(self):
         paddle.disable_static()
+<<<<<<< HEAD
         for dev in self.devices:
             paddle.set_device(dev)
             place = paddle.CPUPlace() if dev == "cpu" else paddle.CUDAPlace(0)
@@ -85,6 +115,44 @@ class LinalgLstsqTestCase(unittest.TestCase):
             results = paddle.linalg.lstsq(
                 x, y, rcond=self.rcond, driver=self.driver
             )
+=======
+        paddle.fluid.framework._disable_legacy_dygraph()
+        for dev in self.devices:
+            paddle.set_device(dev)
+            place = paddle.CPUPlace() if dev == "cpu" else paddle.CUDAPlace(0)
+            x = paddle.to_tensor(self._input_data_1,
+                                 place=place,
+                                 dtype=self.dtype)
+            y = paddle.to_tensor(self._input_data_2,
+                                 place=place,
+                                 dtype=self.dtype)
+            results = paddle.linalg.lstsq(x,
+                                          y,
+                                          rcond=self.rcond,
+                                          driver=self.driver)
+            self._result_solution = results[0].numpy()
+            self._result_residuals = results[1].numpy()
+            self._result_rank = results[2].numpy()
+            self._result_sg_values = results[3].numpy()
+            self.assert_np_close()
+
+    def test_legacy_dygraph(self):
+        paddle.disable_static()
+        paddle.fluid.framework._enable_legacy_dygraph()
+        for dev in self.devices:
+            paddle.set_device(dev)
+            place = paddle.CPUPlace() if dev == "cpu" else paddle.CUDAPlace(0)
+            x = paddle.to_tensor(self._input_data_1,
+                                 place=place,
+                                 dtype=self.dtype)
+            y = paddle.to_tensor(self._input_data_2,
+                                 place=place,
+                                 dtype=self.dtype)
+            results = paddle.linalg.lstsq(x,
+                                          y,
+                                          rcond=self.rcond,
+                                          driver=self.driver)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self._result_solution = results[0].numpy()
             self._result_residuals = results[1].numpy()
             self._result_rank = results[2].numpy()
@@ -97,6 +165,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
             paddle.set_device(dev)
             place = fluid.CPUPlace() if dev == "cpu" else fluid.CUDAPlace(0)
             with fluid.program_guard(fluid.Program(), fluid.Program()):
+<<<<<<< HEAD
                 x = paddle.fluid.data(
                     name="x",
                     shape=self._input_shape_1,
@@ -116,6 +185,25 @@ class LinalgLstsqTestCase(unittest.TestCase):
                     feed={"x": self._input_data_1, "y": self._input_data_2},
                     fetch_list=[results],
                 )
+=======
+                x = paddle.fluid.data(name="x",
+                                      shape=self._input_shape_1,
+                                      dtype=self._input_data_1.dtype)
+                y = paddle.fluid.data(name="y",
+                                      shape=self._input_shape_2,
+                                      dtype=self._input_data_2.dtype)
+                results = paddle.linalg.lstsq(x,
+                                              y,
+                                              rcond=self.rcond,
+                                              driver=self.driver)
+                exe = fluid.Executor(place)
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={
+                                      "x": self._input_data_1,
+                                      "y": self._input_data_2
+                                  },
+                                  fetch_list=[results])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 self._result_solution = fetches[0]
                 self._result_residuals = fetches[1]
                 self._result_rank = fetches[2]
@@ -124,6 +212,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
 
     def assert_np_close(self):
         if len(self._input_shape_1) == 2:
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 self._result_solution, self._output_solution, rtol=1e-3
             )
@@ -171,6 +260,46 @@ class LinalgLstsqTestCase(unittest.TestCase):
 
 
 class LinalgLstsqTestCase1(LinalgLstsqTestCase):
+=======
+            np.testing.assert_allclose(self._result_solution,
+                                       self._output_solution,
+                                       rtol=1e-3)
+            if self._input_shape_1[-2] > self._input_shape_1[
+                    -1] and self._output_rank == self._input_shape_1[-1]:
+                np.testing.assert_allclose(self._result_residuals,
+                                           self._output_residuals,
+                                           rtol=1e-5)
+            if self.driver in ("gelsy", "gelsd", "gelss"):
+                np.testing.assert_allclose(self._result_rank,
+                                           self._output_rank,
+                                           rtol=1e-5)
+            if self.driver in ("gelsd", "gelss"):
+                np.testing.assert_allclose(self._result_sg_values,
+                                           self._output_sg_values,
+                                           rtol=1e-5)
+        else:
+            for i in range(len(self._output_solution)):
+                np.testing.assert_allclose(self._result_solution[i],
+                                           self._output_solution[i],
+                                           rtol=1e-3)
+                if self._input_shape_1[-2] > self._input_shape_1[
+                        -1] and self._output_rank[i] == self._input_shape_1[-1]:
+                    np.testing.assert_allclose(self._result_residuals[i],
+                                               self._output_residuals[i],
+                                               rtol=1e-5)
+                if self.driver in ("gelsy", "gelsd", "gelss"):
+                    np.testing.assert_allclose(self._result_rank[i],
+                                               self._output_rank[i],
+                                               rtol=1e-5)
+                if self.driver in ("gelsd", "gelss"):
+                    np.testing.assert_allclose(self._result_sg_values[i],
+                                               self._output_sg_values[i],
+                                               rtol=1e-5)
+
+
+class LinalgLstsqTestCase1(LinalgLstsqTestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float32'
         self.rcond = 1e-15
@@ -180,6 +309,10 @@ class LinalgLstsqTestCase1(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCase2(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15
@@ -189,6 +322,10 @@ class LinalgLstsqTestCase2(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCase3(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15
@@ -198,6 +335,10 @@ class LinalgLstsqTestCase3(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCaseRcond(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-7
@@ -207,6 +348,10 @@ class LinalgLstsqTestCaseRcond(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCaseGelsFloat32(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float32'
         self.rcond = None
@@ -216,6 +361,10 @@ class LinalgLstsqTestCaseGelsFloat32(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCaseGelsFloat64(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float32'
         self.rcond = None
@@ -225,6 +374,10 @@ class LinalgLstsqTestCaseGelsFloat64(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCaseGelssFloat64(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = None
@@ -234,6 +387,10 @@ class LinalgLstsqTestCaseGelssFloat64(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCaseGelsyFloat32(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float32'
         self.rcond = 1e-15
@@ -243,6 +400,10 @@ class LinalgLstsqTestCaseGelsyFloat32(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCaseBatch1(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float32'
         self.rcond = 1e-15
@@ -252,6 +413,10 @@ class LinalgLstsqTestCaseBatch1(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCaseBatch2(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15
@@ -261,6 +426,10 @@ class LinalgLstsqTestCaseBatch2(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCaseLarge1(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15
@@ -270,6 +439,10 @@ class LinalgLstsqTestCaseLarge1(LinalgLstsqTestCase):
 
 
 class LinalgLstsqTestCaseLarge2(LinalgLstsqTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_config(self):
         self.dtype = 'float64'
         self.rcond = 1e-15

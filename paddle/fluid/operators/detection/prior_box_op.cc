@@ -14,10 +14,21 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/prior_box_op.h"
 #include <string>
+<<<<<<< HEAD
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/infermeta/binary.h"
 
+=======
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/binary.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+#include "paddle/fluid/framework/convert_utils.h"
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace operators {
 
@@ -26,11 +37,45 @@ class PriorBoxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_input_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input");
     return phi::KernelKey(input_input_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_input_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, input_input_type)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+      auto input_image_type = framework::TransToProtoVarType(
+          ctx.Input<framework::Tensor>("Image")->dtype());
+      int customized_type_value =
+          framework::OpKernelType::kDefaultCustomizedTypeValue;
+      if (input_image_type == framework::DataTypeTrait<float>::DataType()) {
+        customized_type_value = kPriorBoxFLOAT;
+      } else if (input_image_type ==
+                 framework::DataTypeTrait<double>::DataType()) {
+        customized_type_value = kPriorBoxDOUBLE;
+      }
+      return framework::OpKernelType(input_input_type,
+                                     ctx.GetPlace(),
+                                     layout_,
+                                     library_,
+                                     customized_type_value);
+    }
+#endif
+    return framework::OpKernelType(
+        input_input_type, ctx.GetPlace(), layout_, library_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -185,6 +230,7 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     PriorBoxInferShapeFunctor);
 
+<<<<<<< HEAD
 REGISTER_OP_KERNEL(prior_box,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
@@ -192,3 +238,46 @@ REGISTER_OP_KERNEL(prior_box,
                    ops::PriorBoxOpKernel<double>,
                    ops::PriorBoxOpKernel<uint8_t>,
                    ops::PriorBoxOpKernel<int8_t>);
+=======
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    FF,
+                                    ops::kPriorBoxFLOAT,
+                                    ops::PriorBoxOpKernel<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    DD,
+                                    ops::kPriorBoxDOUBLE,
+                                    ops::PriorBoxOpKernel<double, double>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    U8F,
+                                    ops::kPriorBoxFLOAT,
+                                    ops::PriorBoxOpKernel<uint8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    S8F,
+                                    ops::kPriorBoxFLOAT,
+                                    ops::PriorBoxOpKernel<int8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    U8D,
+                                    ops::kPriorBoxDOUBLE,
+                                    ops::PriorBoxOpKernel<uint8_t, double>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    S8D,
+                                    ops::kPriorBoxDOUBLE,
+                                    ops::PriorBoxOpKernel<int8_t, double>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

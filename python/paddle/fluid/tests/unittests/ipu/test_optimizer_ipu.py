@@ -12,16 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
+=======
+import numpy as np
+import unittest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -58,6 +67,7 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32'
                 )
@@ -79,6 +89,27 @@ class TestBase(IPUOpTest):
                     opt = paddle.optimizer.Lamb(
                         learning_rate=1e-1, lamb_weight_decay=weight_decay
                     )
+=======
+                image = paddle.static.data(name='image',
+                                           shape=[1, 3, 10, 10],
+                                           dtype='float32')
+                conv1 = paddle.static.nn.conv2d(image,
+                                                num_filters=3,
+                                                filter_size=3,
+                                                bias_attr=False)
+                loss = paddle.mean(conv1)
+
+                weight_decay = self.attrs['weight_decay']
+                opt = paddle.optimizer.SGD(learning_rate=1e-1,
+                                           weight_decay=weight_decay)
+                if self.attrs['optimizer'] == 'adam':
+                    opt = paddle.optimizer.Adam(learning_rate=1e-1,
+                                                weight_decay=weight_decay)
+                elif self.attrs['optimizer'] == 'lamb':
+
+                    opt = paddle.optimizer.Lamb(learning_rate=1e-1,
+                                                lamb_weight_decay=weight_decay)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 opt.minimize(loss)
 
             if run_ipu:
@@ -94,6 +125,7 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.set_options(
+<<<<<<< HEAD
                     {'loss_scaling': self.attrs["loss_scaling"]}
                 )
                 if "use_no_bias_optimizer" in self.attrs.keys():
@@ -111,6 +143,20 @@ class TestBase(IPUOpTest):
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy
                 ).compile(feed_list, fetch_list)
+=======
+                    {'loss_scaling': self.attrs["loss_scaling"]})
+                if "use_no_bias_optimizer" in self.attrs.keys():
+                    ipu_strategy.set_options({
+                        "use_no_bias_optimizer":
+                        self.attrs["use_no_bias_optimizer"]
+                    })
+                if "accl1_type" in self.attrs.keys():
+                    ipu_strategy.set_options(
+                        {"accl1_type": self.attrs["accl1_type"]})
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 program = main_prog
 
@@ -126,13 +172,24 @@ class TestBase(IPUOpTest):
         ipu_loss = self._test_optimizer(True).flatten()
         cpu_loss = self._test_optimizer(False).flatten()
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             ipu_loss, cpu_loss, rtol=1e-05, atol=self.atol
         )
+=======
+        np.testing.assert_allclose(ipu_loss,
+                                   cpu_loss,
+                                   rtol=1e-05,
+                                   atol=self.atol)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @unittest.skip('do not support L2 regularization')
 class TestSGD(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'sgd',
@@ -143,6 +200,10 @@ class TestSGD(TestBase):
 
 @unittest.skip('do not support L2 regularization')
 class TestAdamCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'adam',
@@ -152,6 +213,10 @@ class TestAdamCase1(TestBase):
 
 
 class TestAdamCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'adam',
@@ -162,6 +227,10 @@ class TestAdamCase2(TestBase):
 
 @unittest.skip('cpu do not support AdamNoBias')
 class TestAdamNoBias(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'adam',
@@ -173,6 +242,10 @@ class TestAdamNoBias(TestBase):
 
 @unittest.skip('cpu do not support FLOAT16')
 class TestAdamCase3(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'adam',
@@ -184,6 +257,10 @@ class TestAdamCase3(TestBase):
 
 @unittest.skip('seems cpu output wrong')
 class TestLambCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'lamb',
@@ -194,6 +271,10 @@ class TestLambCase1(TestBase):
 
 @unittest.skip('seems cpu output wrong')
 class TestLamb(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'lamb',
@@ -204,23 +285,39 @@ class TestLamb(TestBase):
 
 @unittest.skip('cpu do not support LambNoBias')
 class TestLambNoBias(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'lamb',
             "weight_decay": 0.1,
             "loss_scaling": 6.0,
+<<<<<<< HEAD
             "use_no_bias_optimizer": True,
+=======
+            "use_no_bias_optimizer": True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 @unittest.skip('cpu do not support FLOAT16')
 class TestLambCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'lamb',
             "weight_decay": 0.1,
             "loss_scaling": 6.0,
+<<<<<<< HEAD
             "accl1_type": "FLOAT16",
+=======
+            "accl1_type": "FLOAT16"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 

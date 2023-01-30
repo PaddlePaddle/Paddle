@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 import warnings
 
 from ..fluid import core
 from ..fluid.profiler import cuda_profiler  # noqa: F401
+<<<<<<< HEAD
 from ..fluid.profiler import profiler  # noqa: F401
 from ..fluid.profiler import reset_profiler, start_profiler, stop_profiler
 
@@ -33,6 +39,21 @@ __all__ = [  # noqa
 
 
 class ProfilerOptions:
+=======
+from ..fluid.profiler import start_profiler
+from ..fluid.profiler import profiler  # noqa: F401
+from ..fluid.profiler import stop_profiler
+from ..fluid.profiler import reset_profiler
+
+__all__ = [  #noqa
+    'Profiler', 'get_profiler', 'ProfilerOptions', 'cuda_profiler',
+    'start_profiler', 'profiler', 'stop_profiler', 'reset_profiler'
+]
+
+
+class ProfilerOptions(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, options=None):
         self.options = {
             'state': 'All',
@@ -42,7 +63,11 @@ class ProfilerOptions:
             'output_thread_detail': False,
             'profile_path': 'none',
             'timeline_path': 'none',
+<<<<<<< HEAD
             'op_summary_path': 'none',
+=======
+            'op_summary_path': 'none'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         if options is not None:
             for key in self.options.keys():
@@ -57,6 +82,7 @@ class ProfilerOptions:
     def __getitem__(self, name):
         if self.options.get(name, None) is None:
             raise ValueError(
+<<<<<<< HEAD
                 "ProfilerOptions does not have an option named %s." % name
             )
         else:
@@ -64,6 +90,12 @@ class ProfilerOptions:
                 isinstance(self.options[name], str)
                 and self.options[name] == 'none'
             ):
+=======
+                "ProfilerOptions does not have an option named %s." % name)
+        else:
+            if isinstance(self.options[name],
+                          str) and self.options[name] == 'none':
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 return None
             else:
                 return self.options[name]
@@ -72,7 +104,12 @@ class ProfilerOptions:
 _current_profiler = None
 
 
+<<<<<<< HEAD
 class Profiler:
+=======
+class Profiler(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, enabled=True, options=None):
         if options is not None:
             self.profiler_options = options
@@ -104,6 +141,7 @@ class Profiler:
             try:
                 start_profiler(
                     state=self.profiler_options['state'],
+<<<<<<< HEAD
                     tracer_option=self.profiler_options['tracer_level'],
                 )
             except Exception as e:
@@ -112,12 +150,20 @@ class Profiler:
                         e
                     )
                 )
+=======
+                    tracer_option=self.profiler_options['tracer_level'])
+            except Exception as e:
+                warnings.warn(
+                    "Profiler is not enabled becuase following exception:\n{}".
+                    format(e))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def stop(self):
         if self.enabled:
             try:
                 stop_profiler(
                     sorted_key=self.profiler_options['sorted_key'],
+<<<<<<< HEAD
                     profile_path=self.profiler_options['profile_path'],
                 )
             except Exception as e:
@@ -126,6 +172,13 @@ class Profiler:
                         e
                     )
                 )
+=======
+                    profile_path=self.profiler_options['profile_path'])
+            except Exception as e:
+                warnings.warn(
+                    "Profiler is not disabled becuase following exception:\n{}".
+                    format(e))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def reset(self):
         if self.enabled and core.is_profiler_enabled():

@@ -28,9 +28,15 @@ template <typename DeviceContext, typename T>
 class GatherOpNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *x = ctx.Input<phi::DenseTensor>("X");
     auto *index = ctx.Input<phi::DenseTensor>("Index");
     auto *out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto *x = ctx.Input<Tensor>("X");
+    auto *index = ctx.Input<Tensor>("Index");
+    auto *out = ctx.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     out->mutable_data<T>(ctx.GetPlace());
     const auto &runner = NpuOpRunner(
@@ -46,6 +52,7 @@ template <typename DeviceContext, typename T>
 class GatherGradOpNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto *index = ctx.Input<phi::DenseTensor>("Index");
     auto *x = ctx.Input<phi::DenseTensor>("X");
     auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -54,6 +61,16 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
 
     // step1: Unsqueeze index
     phi::DenseTensor tmp_tensor(index->type());
+=======
+    auto *index = ctx.Input<Tensor>("Index");
+    auto *x = ctx.Input<Tensor>("X");
+    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+
+    // step1: Unsqueeze index
+    framework::Tensor tmp_tensor(index->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);

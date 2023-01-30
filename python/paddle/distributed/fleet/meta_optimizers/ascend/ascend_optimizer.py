@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from collections import namedtuple
 
 import hccl.manage.api as hccl
@@ -21,13 +22,29 @@ from paddle.distributed import fleet
 from paddle.optimizer import Optimizer
 
 from . import ascend_parser
+=======
+import os
+import paddle.fluid.framework as framework
+from paddle.fluid.optimizer import Optimizer
+import paddle.fluid.core as core
+import numpy as np
+from . import ascend_parser
+from paddle.distributed import fleet
+import hccl.manage.api as hccl
+from collections import namedtuple
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 HcomGroupConfig = namedtuple('HcomGroupConfig', ['name', 'nranks', 'rank_ids'])
 
 __all__ = []
 
 
+<<<<<<< HEAD
 class AscendIRParser:
+=======
+class AscendIRParser(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, auto_dp=False, world_rank_size=1):
         self.graph_idx = 0
         self.hcom_endpoints = {}
@@ -41,12 +58,17 @@ class AscendIRParser:
         for id, var in enumerate(input_varlist):
             if var.is_data:  # input data
                 ge_input = core.GEOperatorFactory.create_operator(
+<<<<<<< HEAD
                     var.name, "Data"
                 ).set_attr_int32("index", id)
+=======
+                    var.name, "Data").set_attr_int32("index", id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ret_map[var.name] = ge_input
                 ge_in_operator.append(ge_input)
             else:  # param, learning ...
                 ge_input = core.GEOperatorFactory.create_operator(
+<<<<<<< HEAD
                     var.name, "Variable"
                 )
                 ge_input.update_output_desc(
@@ -57,17 +79,30 @@ class AscendIRParser:
                         core.GEDataType.DT_FLOAT,
                     ),
                 )
+=======
+                    var.name, "Variable")
+                ge_input.update_output_desc(
+                    "y",
+                    core.GETensorDesc(core.GEShape(var.shape),
+                                      core.GEFormat.FORMAT_ND,
+                                      core.GEDataType.DT_FLOAT))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 ret_map[var.name] = ge_input
         return ge_in_operator, ret_map
 
     def _endpoint_to_world_rank_id(self, endpoint):
         world_endpoints = fleet.worker_endpoints()
+<<<<<<< HEAD
         assert (
             endpoint in world_endpoints
         ), "endpoint (%s) not in worker_endpoints (%s) " % (
             endpoint,
             fleet.world_device_ids(),
         )
+=======
+        assert endpoint in world_endpoints, "endpoint (%s) not in worker_endpoints (%s) " % (
+            endpoint, fleet.world_device_ids())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return world_endpoints.index(endpoint)
 
     def parse_op(self, op):
@@ -83,6 +118,7 @@ class AscendIRParser:
             self.hcom_endpoints[nccl_id] = other_endpoints[:]
             self.hcom_endpoints[nccl_id].insert(rank, endpoint)
 
+<<<<<<< HEAD
             print(
                 "nccl_id (%s) registered endpoints %s"
                 % (nccl_id, self.hcom_endpoints[nccl_id])
@@ -93,6 +129,15 @@ class AscendIRParser:
             assert nranks == len(
                 self.hcom_endpoints[nccl_id]
             ), "nranks doesn't match endpoint count"
+=======
+            print("nccl_id (%s) registered endpoints %s" %
+                  (nccl_id, self.hcom_endpoints[nccl_id]))
+        elif op.type == 'c_comm_init':
+            nccl_id = op.input_arg_names[0]
+            nranks = op.attr("nranks")
+            assert nranks == len(self.hcom_endpoints[nccl_id]
+                                 ), "nranks doesn't match endpoint count"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             rank = op.attr("rank")
             ring_id = op.attr("ring_id")
 
@@ -102,6 +147,7 @@ class AscendIRParser:
                 for endpoint in self.hcom_endpoints[nccl_id]
             ]
             self.groups_to_create.append(
+<<<<<<< HEAD
                 HcomGroupConfig(
                     name=group_name, nranks=nranks, rank_ids=global_rank_ids
                 )
@@ -125,6 +171,26 @@ class AscendIRParser:
     def _parse_program(
         self, graph_name, program, input_varlist=[], fetch_list=[]
     ):
+=======
+                HcomGroupConfig(name=group_name,
+                                nranks=nranks,
+                                rank_ids=global_rank_ids))
+            print("append to create group: %s, with rank_ids: %s" %
+                  (group_name, global_rank_ids))
+        elif op.type in ascend_parser.registerd_op:
+            op_parser = self.parser_factory.create_parse(
+                ascend_parser.registerd_op[op.type])
+            op_parser.apply(op)
+        else:
+            assert False, "Op[%s] has not been registered, so we have to skip it" % (
+                op.type)
+
+    def _parse_program(self,
+                       graph_name,
+                       program,
+                       input_varlist=[],
+                       fetch_list=[]):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         begin_graph_idx = self.graph_idx
         ge_in_operator = []
         ge_out_operator = []
@@ -140,8 +206,12 @@ class AscendIRParser:
         ge_in_operator, self.var2geop = self._construct_input_map(input_varlist)
 
         self.parser_factory = ascend_parser.AscendParserFactory(
+<<<<<<< HEAD
             graph, self.var2geop
         )
+=======
+            graph, self.var2geop)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         for i, curop in list(enumerate(block.ops)):
             self.parse_op(curop)
 
@@ -170,6 +240,7 @@ class AscendIRParser:
 
         input_varlist = [var for var in input_varlist if var.is_data]
 
+<<<<<<< HEAD
         block.append_op(
             type="ascend_trigger",
             inputs={"FeedList": input_varlist},
@@ -200,6 +271,30 @@ class AscendIRParser:
                     rank_ids=[x for x in range(fleet.world_size())],
                 )
             )
+=======
+        block.append_op(type="ascend_trigger",
+                        inputs={"FeedList": input_varlist},
+                        outputs={"FetchList": fetch_list},
+                        attrs={'graph_idx': self.graph_idx})
+        self.graph_idx += 1
+        return graph
+
+    def parse_program(self, startup_program, main_program, input_varlist,
+                      fetch_list):
+        startup_graph = self._parse_program("startup", startup_program)
+        main_graph = self._parse_program("main", main_program, input_varlist,
+                                         fetch_list)
+        if self._auto_dp and self._world_rank_size > 1:
+            assert len(self.groups_to_create
+                       ) == 0, "can't parse program under auto_dp mode"
+
+            from paddle.distributed import fleet
+            self.groups_to_create.append(
+                HcomGroupConfig(name="hcom_group_0",
+                                nranks=fleet.world_size(),
+                                rank_ids=[x
+                                          for x in range(fleet.world_size())]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return startup_graph, main_graph
 
@@ -207,6 +302,10 @@ class AscendIRParser:
 # AscendOptimizer is a wrapper for basic optimizer now
 # We will make it part of fleet meta_optimizer in the future
 class AscendOptimizer(Optimizer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, optimizer, fetch_list=[]):
         self.inner_opt = optimizer
         self.fetch_list = fetch_list
@@ -236,6 +335,7 @@ class AscendOptimizer(Optimizer):
                 ret_list.append(var)
         return ret_list
 
+<<<<<<< HEAD
     def minimize(
         self,
         loss,
@@ -251,10 +351,25 @@ class AscendOptimizer(Optimizer):
             minimized = self.inner_opt.minimize(
                 loss, startup_program=startup_program
             )
+=======
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 auto_dp=False,
+                 rank_table_file=None,
+                 precision_mode="must_keep_origin_dtype"):
+        minimized = None
+        if self.inner_opt:
+            minimized = self.inner_opt.minimize(loss,
+                                                startup_program=startup_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.ascend_instance = core.AscendInstance()
 
         from paddle.distributed import fleet
+<<<<<<< HEAD
 
         if auto_dp and fleet.world_size() > 1:
             from paddle.fluid.transpiler import ascend_transpiler
@@ -264,6 +379,14 @@ class AscendOptimizer(Optimizer):
             )
             t.transpile()
             # print(loss.block.program)
+=======
+        if auto_dp and fleet.world_size() > 1:
+            from paddle.fluid.transpiler import ascend_transpiler
+            t = ascend_transpiler.AscendTranspiler(startup_program,
+                                                   loss.block.program)
+            t.transpile()
+            #print(loss.block.program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # Config about Graph Engine can be found in https://support.huaweicloud.com/
         config = {
@@ -284,13 +407,19 @@ class AscendOptimizer(Optimizer):
         self.ascend_instance.init_global_resources()
 
         main_block = loss.block
+<<<<<<< HEAD
         self.parser = AscendIRParser(
             auto_dp=auto_dp, world_rank_size=fleet.world_size()
         )
+=======
+        self.parser = AscendIRParser(auto_dp=auto_dp,
+                                     world_rank_size=fleet.world_size())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         input_varlist = self._get_input_varlist(main_block.program)
 
         startup_graph, main_graph = self.parser.parse_program(
+<<<<<<< HEAD
             startup_program, main_block.program, input_varlist, self.fetch_list
         )
 
@@ -299,6 +428,13 @@ class AscendOptimizer(Optimizer):
                 "create group (%s), nranks: %d, rank_ids: %s"
                 % (cfg.name, cfg.nranks, cfg.rank_ids)
             )
+=======
+            startup_program, main_block.program, input_varlist, self.fetch_list)
+
+        for cfg in self.parser.groups_to_create:
+            print("create group (%s), nranks: %d, rank_ids: %s" %
+                  (cfg.name, cfg.nranks, cfg.rank_ids))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             hccl.create_group(cfg.name, cfg.nranks, cfg.rank_ids)
 
         self.ascend_instance.add_ascend_subgraph(0, startup_graph)

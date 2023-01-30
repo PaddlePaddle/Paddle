@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -27,6 +32,10 @@ SEED = 2022
 
 
 class TestElementwiseSubOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -36,7 +45,11 @@ class TestElementwiseSubOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+=======
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': self.axis}
         self.outputs = {'Out': self.out}
@@ -63,6 +76,7 @@ class TestElementwiseSubOp(OpTest):
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             ['Y'],
@@ -85,34 +99,73 @@ class TestElementwiseSubOp(OpTest):
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
+=======
+        self.check_grad_with_place(self.place, ['Y'],
+                                   'Out',
+                                   max_relative_error=0.005,
+                                   no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.005,
+                                   no_grad_set=set('Y'))
+
+
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(10, 3, 4).astype(np.float32),
+<<<<<<< HEAD
             'Y': np.random.rand(1).astype(np.float32),
+=======
+            'Y': np.random.rand(1).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_Vector(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
+<<<<<<< HEAD
             'X': np.random.random((100,)).astype("float32"),
             'Y': np.random.random((100,)).astype("float32"),
+=======
+            'X': np.random.random((100, )).astype("float32"),
+            'Y': np.random.random((100, )).astype("float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_broadcast_0(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(100, 3, 2).astype(np.float32),
+<<<<<<< HEAD
             'Y': np.random.rand(100).astype(np.float32),
+=======
+            'Y': np.random.rand(100).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': 0}
         self.outputs = {
@@ -121,12 +174,20 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 100, 3).astype(np.float32),
+<<<<<<< HEAD
             'Y': np.random.rand(100).astype(np.float32),
+=======
+            'Y': np.random.rand(100).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': 1}
         self.outputs = {
@@ -135,12 +196,20 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_broadcast_2(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float32),
+<<<<<<< HEAD
             'Y': np.random.rand(100).astype(np.float32),
+=======
+            'Y': np.random.rand(100).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 1, 100)
@@ -148,12 +217,20 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 10, 12, 3).astype(np.float32),
+<<<<<<< HEAD
             'Y': np.random.rand(10, 12).astype(np.float32),
+=======
+            'Y': np.random.rand(10, 12).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': 1}
         self.outputs = {
@@ -162,45 +239,77 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_broadcast_4(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 5, 3, 12).astype(np.float32),
+<<<<<<< HEAD
             'Y': np.random.rand(2, 5, 1, 12).astype(np.float32),
+=======
+            'Y': np.random.rand(2, 5, 1, 12).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_commonuse_1(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float32),
+<<<<<<< HEAD
             'Y': np.random.rand(1, 1, 100).astype(np.float32),
+=======
+            'Y': np.random.rand(1, 1, 100).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_commonuse_2(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(10, 3, 1, 4).astype(np.float32),
+<<<<<<< HEAD
             'Y': np.random.rand(10, 1, 12, 1).astype(np.float32),
+=======
+            'Y': np.random.rand(10, 1, 12, 1).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseSubOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.rand(10, 12).astype(np.float32),
+<<<<<<< HEAD
             'Y': np.random.rand(2, 3, 10, 12).astype(np.float32),
+=======
+            'Y': np.random.rand(2, 3, 10, 12).astype(np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'axis': 2}
         self.outputs = {

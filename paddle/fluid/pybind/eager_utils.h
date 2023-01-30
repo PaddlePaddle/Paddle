@@ -20,7 +20,10 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/string_array.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/platform/place.h"
@@ -46,7 +49,11 @@ namespace py = ::pybind11;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
+<<<<<<< HEAD
 bool PyCheckTensor(PyObject* obj);
+=======
+bool IsEagerTensor(PyObject* obj);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
@@ -65,19 +72,32 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj, ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
+<<<<<<< HEAD
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                            ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos);
+=======
+framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
+std::vector<framework::LoDTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
+                                                               ssize_t arg_pos);
+std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
+<<<<<<< HEAD
 paddle::framework::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos);
 std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
                                                   ssize_t arg_pos);
+=======
+std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
+                                                      ssize_t arg_pos);
+std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
                                                      ssize_t arg_pos);
 
@@ -105,18 +125,27 @@ PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
 PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
+<<<<<<< HEAD
 PyObject* ToPyObject(
     const std::vector<std::vector<paddle::experimental::Tensor>>& value,
     bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
+=======
+PyObject* ToPyObject(const platform::Place& value);
+PyObject* ToPyObject(const framework::LoDTensor* value);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
+<<<<<<< HEAD
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
+=======
+PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class PyTensorHook : public egr::TensorHook {
  public:
@@ -151,6 +180,7 @@ class PyVoidHook : public egr::VoidHook {
   PyObject* py_func_;
 };
 
+<<<<<<< HEAD
 class PyObjectHolder : public egr::PyObjectHolderBase {
  public:
   PyObjectHolder() { ptr_ = nullptr; }
@@ -194,6 +224,8 @@ class UnPackHook : public egr::UnPackHookBase {
  private:
   PyObject* hook_;
 };
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename Tuple, size_t N>
 struct TupleTensorResult {
   static void Run(const Tuple& out, PyObject* result) {

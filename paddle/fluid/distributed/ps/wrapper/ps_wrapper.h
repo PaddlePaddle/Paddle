@@ -47,6 +47,10 @@ namespace distributed {
 
 class PSCore;
 
+<<<<<<< HEAD
+=======
+using framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using framework::Scope;
 using framework::Variable;
 using phi::SelectedRows;
@@ -70,6 +74,7 @@ class PSWrapper {
   PSWrapper() {}
   // init server
 
+<<<<<<< HEAD
   virtual int32_t Initialize(InitContext& context) = 0;  // NOLINT
 
   virtual void Stop() = 0;
@@ -77,6 +82,15 @@ class PSWrapper {
   virtual void Load(WrapperContext& context) = 0;  // NOLINT
 
   virtual void Save(WrapperContext& context) = 0;  // NOLINT
+=======
+  virtual int32_t Initialize(InitContext& context) = 0;
+
+  virtual void Stop() = 0;
+
+  virtual void Load(WrapperContext& context) = 0;
+
+  virtual void Save(WrapperContext& context) = 0;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // end namespace distributed

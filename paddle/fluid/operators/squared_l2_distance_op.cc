@@ -140,6 +140,7 @@ class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SquaredL2Distance operator
 
+<<<<<<< HEAD
 This operator will cacluate the squared L2 distance for the input and
 the target. Number of distance value will be equal to the first dimension
 of input. First dimension of the target could be equal to the input or to 1.
@@ -149,6 +150,17 @@ the user can decide whether to calculate the gradient of the input or
 the target or both.
 
 Both the input X and Y can carry the LoD (Level of Details) information.
+=======
+This operator will cacluate the squared L2 distance for the input and 
+the target. Number of distance value will be equal to the first dimension 
+of input. First dimension of the target could be equal to the input or to 1. 
+If the first dimension of target is 1, the operator will broadcast target's 
+first dimension to input's first dimension. During backward propagation, 
+the user can decide whether to calculate the gradient of the input or 
+the target or both.
+
+Both the input X and Y can carry the LoD (Level of Details) information. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 However, the output only shares the LoD information with input X.
     )DOC");
   }
@@ -200,9 +212,15 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         OperatorWithKernel::IndicateVarDataType(ctx, "sub_result"),
         ctx.GetPlace());
   }

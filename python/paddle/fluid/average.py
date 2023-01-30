@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 import warnings
 
@@ -21,6 +22,18 @@ import warnings
     All Averages are accomplished via Python totally.
     They do not change Paddle's Program, nor do anything to
     modify NN model's configuration. They are completely
+=======
+from __future__ import print_function
+
+import numpy as np
+import warnings
+"""
+    Class of all kinds of Average.
+
+    All Averages are accomplished via Python totally. 
+    They do not change Paddle's Program, nor do anything to
+    modify NN model's configuration. They are completely 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     wrappers of Python functions.
 """
 
@@ -28,17 +41,23 @@ __all__ = ["WeightedAverage"]
 
 
 def _is_number_(var):
+<<<<<<< HEAD
     return (
         isinstance(var, int)
         or isinstance(var, float)
         or (isinstance(var, np.ndarray) and var.shape == (1,))
     )
+=======
+    return isinstance(var, int) or isinstance(
+        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _is_number_or_matrix_(var):
     return _is_number_(var) or isinstance(var, np.ndarray)
 
 
+<<<<<<< HEAD
 class WeightedAverage:
     """
     Calculate weighted average.
@@ -46,6 +65,15 @@ class WeightedAverage:
     The average calculating is accomplished via Python totally.
     They do not change Paddle's Program, nor do anything to
     modify NN model's configuration. They are completely
+=======
+class WeightedAverage(object):
+    """
+    Calculate weighted average.
+
+    The average calculating is accomplished via Python totally. 
+    They do not change Paddle's Program, nor do anything to
+    modify NN model's configuration. They are completely 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     wrappers of Python functions.
 
     Examples:
@@ -63,10 +91,15 @@ class WeightedAverage:
 
     def __init__(self):
         warnings.warn(
+<<<<<<< HEAD
             "The %s is deprecated, please use fluid.metrics.Accuracy instead."
             % (self.__class__.__name__),
             Warning,
         )
+=======
+            "The %s is deprecated, please use fluid.metrics.Accuracy instead." %
+            (self.__class__.__name__), Warning)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.reset()
 
     def reset(self):
@@ -76,8 +109,12 @@ class WeightedAverage:
     def add(self, value, weight):
         if not _is_number_or_matrix_(value):
             raise ValueError(
+<<<<<<< HEAD
                 "The 'value' must be a number(int, float) or a numpy ndarray."
             )
+=======
+                "The 'value' must be a number(int, float) or a numpy ndarray.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if not _is_number_(weight):
             raise ValueError("The 'weight' must be a number(int, float).")
 
@@ -91,6 +128,10 @@ class WeightedAverage:
     def eval(self):
         if self.numerator is None or self.denominator is None:
             raise ValueError(
+<<<<<<< HEAD
                 "There is no data to be averaged in WeightedAverage."
             )
+=======
+                "There is no data to be averaged in WeightedAverage.")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return self.numerator / self.denominator

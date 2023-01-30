@@ -24,17 +24,31 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::OpKernelType;
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class BincountOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext &ctx) const {
     auto data_type =
         ctx.HasInput("Weights")
             ? OperatorWithKernel::IndicateVarDataType(ctx, "Weights")
             : OperatorWithKernel::IndicateVarDataType(ctx, "X");
+<<<<<<< HEAD
     return phi::KernelKey(data_type, ctx.device_context().GetPlace());
+=======
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

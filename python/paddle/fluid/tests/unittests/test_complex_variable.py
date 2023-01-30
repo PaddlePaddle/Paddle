@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -28,12 +29,32 @@ class TestComplexVariable(unittest.TestCase):
         a = np.array(
             [[1.0 + 1.0j, 2.0 + 1.0j], [3.0 + 1.0j, 4.0 + 1.0j]]
         ).astype(self._dtype)
+=======
+import numpy as np
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.fluid.core as core
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestComplexVariable(unittest.TestCase):
+
+    def compare(self):
+        a = np.array([[1.0 + 1.0j, 2.0 + 1.0j],
+                      [3.0 + 1.0j, 4.0 + 1.0j]]).astype(self._dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         b = np.array([[1.0 + 1.0j, 1.0 + 1.0j]]).astype(self._dtype)
 
         with dg.guard():
             x = dg.to_variable(a, "x")
             y = dg.to_variable(b)
+<<<<<<< HEAD
             out = paddle.add(x, y)
+=======
+            out = paddle.fluid.layers.elementwise_add(x, y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertIsNotNone("{}".format(out))
 
         np.testing.assert_allclose(out.numpy(), a + b, rtol=1e-05)
@@ -47,6 +68,7 @@ class TestComplexVariable(unittest.TestCase):
         self.compare()
 
     def test_convert_np_dtype_to_dtype(self):
+<<<<<<< HEAD
         self.assertEqual(
             convert_np_dtype_to_dtype_(np.complex64),
             core.VarDesc.VarType.COMPLEX64,
@@ -63,6 +85,24 @@ class TestComplexVariable(unittest.TestCase):
         self.assertEqual(
             convert_dtype(core.VarDesc.VarType.COMPLEX128), "complex128"
         )
+=======
+        self.assertEqual(convert_np_dtype_to_dtype_(np.complex64),
+                         core.VarDesc.VarType.COMPLEX64)
+        self.assertEqual(convert_np_dtype_to_dtype_(np.complex64),
+                         core.VarDesc.VarType.COMPLEX64)
+
+    def test_convert_dtype(self):
+        self.assertEqual(convert_dtype(core.VarDesc.VarType.COMPLEX64),
+                         "complex64")
+        self.assertEqual(convert_dtype(core.VarDesc.VarType.COMPLEX128),
+                         "complex128")
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_attrs()
+            self.test_convert_np_dtype_to_dtype()
+            self.test_convert_dtype()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

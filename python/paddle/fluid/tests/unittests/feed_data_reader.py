@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 from paddle.fluid.framework import Variable
 
 
 def cyclic_reader(reader):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __reader__():
         while True:
             for data in reader():
@@ -25,7 +33,12 @@ def cyclic_reader(reader):
     return __reader__
 
 
+<<<<<<< HEAD
 class FeedDataReader:
+=======
+class FeedDataReader(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, feed_list, reader):
         self._feed_list = []
         for var in feed_list:
@@ -41,13 +54,21 @@ class FeedDataReader:
         next_data = next(self._iter)
         feed_data = dict()
         assert len(self._feed_list) == len(next_data)
+<<<<<<< HEAD
         for key, value in zip(self._feed_list, next_data):
+=======
+        for key, value in six.moves.zip(self._feed_list, next_data):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             feed_data[key] = value
         return feed_data
 
     def _feed_parallel_executor(self, device_num):
         feed_data = []
+<<<<<<< HEAD
         for _ in range(device_num):
+=======
+        for _ in six.moves.range(device_num):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             feed_data.append(self._feed_executor())
 
         return feed_data
@@ -60,11 +81,16 @@ class FeedDataReader:
             if program._is_data_parallel:
                 use_executor = False
                 if program._places is None:
+<<<<<<< HEAD
                     device_num = (
                         len(fluid.cuda_places())
                         if use_cuda
                         else len(fluid.cpu_places())
                     )
+=======
+                    device_num = len(fluid.cuda_places()) if use_cuda else len(
+                        fluid.cpu_places())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 else:
                     device_num = len(program._places)
             else:

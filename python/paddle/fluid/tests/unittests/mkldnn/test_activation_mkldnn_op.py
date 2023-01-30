@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -38,6 +39,24 @@ from paddle.fluid.tests.unittests.test_gelu_op import gelu
 class TestMKLDNNReluDim2(TestRelu):
     def setUp(self):
         super().setUp()
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from scipy.special import expit, erf
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16, skip_check_grad_ci
+from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestHardSwish, TestRelu6, TestSigmoid
+from paddle.fluid.tests.unittests.test_gelu_op import gelu
+from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+
+
+class TestMKLDNNReluDim2(TestRelu):
+
+    def setUp(self):
+        super(TestMKLDNNReluDim2, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.attrs = {"use_mkldnn": True}
 
@@ -46,8 +65,14 @@ class TestMKLDNNReluDim2(TestRelu):
 
 
 class TestMKLDNNRelu6Dim2(TestRelu6):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNRelu6Dim2, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.attrs.update({"use_mkldnn": True})
 
     def init_dtype(self):
@@ -55,8 +80,14 @@ class TestMKLDNNRelu6Dim2(TestRelu6):
 
 
 class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNLeakyReluDim2, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.attrs = {"use_mkldnn": True}
 
@@ -65,6 +96,10 @@ class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
 
 
 class TestMKLDNNGeluDim2(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "gelu"
         self.dtype = np.float32
@@ -78,6 +113,10 @@ class TestMKLDNNGeluDim2(TestActivation):
 
 
 class TestMKLDNNGeluDim2Approx(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "gelu"
         self.dtype = np.float32
@@ -91,8 +130,14 @@ class TestMKLDNNGeluDim2Approx(TestActivation):
 
 
 class TestMKLDNNTanhDim2(TestTanh):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNTanhDim2, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.attrs = {"use_mkldnn": True}
 
@@ -101,8 +146,14 @@ class TestMKLDNNTanhDim2(TestTanh):
 
 
 class TestMKLDNNSqrtDim2(TestSqrt):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNSqrtDim2, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.attrs = {"use_mkldnn": True}
 
@@ -111,8 +162,14 @@ class TestMKLDNNSqrtDim2(TestSqrt):
 
 
 class TestMKLDNNAbsDim2(TestAbs):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNAbsDim2, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.attrs = {"use_mkldnn": True}
 
     def init_dtype(self):
@@ -120,8 +177,14 @@ class TestMKLDNNAbsDim2(TestAbs):
 
 
 class TestMKLDNNSwishDim2(TestSwish):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNSwishDim2, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.attrs["use_mkldnn"] = True
         self.check_eager = False
@@ -131,20 +194,38 @@ class TestMKLDNNSwishDim2(TestSwish):
 
 
 class TestMKLDNNHardSwishDim2(TestHardSwish):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNHardSwishDim2, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.attrs = {"use_mkldnn": True}
 
 
 class TestMKLDNNSigmoidDim2(TestSigmoid):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNSigmoidDim2, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.attrs = {"use_mkldnn": True}
 
 
 class TestMKLDNNReluDim4(TestRelu):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNReluDim4, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
         # The same reason with TestAbs
@@ -160,8 +241,14 @@ class TestMKLDNNReluDim4(TestRelu):
 
 
 class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNLeakyReluDim4, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
         # The same reason with TestAbs
@@ -177,6 +264,10 @@ class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
 
 
 class TestMKLDNNGeluDim4(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "gelu"
         self.dtype = np.float32
@@ -190,6 +281,10 @@ class TestMKLDNNGeluDim4(TestActivation):
 
 
 class TestMKLDNNGeluDim4Approx(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "gelu"
         self.dtype = np.float32
@@ -202,10 +297,17 @@ class TestMKLDNNGeluDim4Approx(TestActivation):
         self.attrs = {"use_mkldnn": True, "approximate": True}
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestMKLDNNGeluBf16Dim4(TestActivation):
+=======
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestMKLDNNGeluBf16Dim4(TestActivation):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "gelu"
         self.dtype = np.uint16
@@ -224,10 +326,17 @@ class TestMKLDNNGeluBf16Dim4(TestActivation):
         pass
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
+=======
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "gelu"
         self.dtype = np.uint16
@@ -247,8 +356,14 @@ class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
 
 
 class TestMKLDNNTanhDim4(TestTanh):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNTanhDim4, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
@@ -258,8 +373,14 @@ class TestMKLDNNTanhDim4(TestTanh):
 
 
 class TestMKLDNNSqrtDim4(TestSqrt):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNSqrtDim4, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
@@ -269,8 +390,14 @@ class TestMKLDNNSqrtDim4(TestSqrt):
 
 
 class TestMKLDNNAbsDim4(TestAbs):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNAbsDim4, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
         # The same reason with TestAbs
@@ -284,8 +411,14 @@ class TestMKLDNNAbsDim4(TestAbs):
 
 
 class TestMKLDNNSwishDim4(TestSwish):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNSwishDim4, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         beta = 2.3
@@ -305,6 +438,7 @@ def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
     if x_dtype == 'float16':
         x_dtype = 'float16'
         x = x.astype('float32')
+<<<<<<< HEAD
     return (
         x * np.minimum(np.maximum(x + offset, 0.0), threshold) / scale
     ).astype(x_dtype)
@@ -313,6 +447,16 @@ def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
 class TestMKLDNNHardSwishDim4(TestHardSwish):
     def setUp(self):
         super().setUp()
+=======
+    return (x * np.minimum(np.maximum(x + offset, 0.), threshold) /
+            scale).astype(x_dtype)
+
+
+class TestMKLDNNHardSwishDim4(TestHardSwish):
+
+    def setUp(self):
+        super(TestMKLDNNHardSwishDim4, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         threshold = 6.0
@@ -332,6 +476,10 @@ class TestMKLDNNHardSwishDim4(TestHardSwish):
 
 
 class TestMKLDNNMish(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "mish"
         self.dtype = np.float32
@@ -345,6 +493,10 @@ class TestMKLDNNMish(TestActivation):
 
 
 class TestMKLDNNRound(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "round"
 
@@ -357,8 +509,14 @@ class TestMKLDNNRound(TestActivation):
 
 
 class TestMKLDNNSigmoidDim4(TestSigmoid):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNSigmoidDim4, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
@@ -368,6 +526,10 @@ class TestMKLDNNSigmoidDim4(TestSigmoid):
 
 
 class TestMKLDNNEluDefaultAlpha(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "elu"
         self.set_alpha()
@@ -377,8 +539,13 @@ class TestMKLDNNEluDefaultAlpha(TestActivation):
         self.inputs = {'X': x}
         self.attrs = {'use_mkldnn': True, 'alpha': self.alpha}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.maximum(0, x)
             + np.minimum(0, self.alpha * (np.exp(x) - 1))
+=======
+            'Out':
+            np.maximum(0, x) + np.minimum(0, self.alpha * (np.exp(x) - 1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_alpha(self):
@@ -386,11 +553,19 @@ class TestMKLDNNEluDefaultAlpha(TestActivation):
 
 
 class TestMKLDNNEluCustomAlpha(TestMKLDNNEluDefaultAlpha):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_alpha(self):
         self.alpha = 2.5
 
 
 class TestMKLDNNExpOp(TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "exp"
         x = np.random.random((5, 5, 4)).astype("float32")
@@ -402,8 +577,14 @@ class TestMKLDNNExpOp(TestActivation):
 
 # Check if primitives already exist in backward
 class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         super().setUp()
+=======
+
+    def setUp(self):
+        super(TestMKLDNNAbsPrimitivesAlreadyExist, self).setUp()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np.random.seed(123)
         self.op_type = 'abs'
@@ -417,9 +598,15 @@ class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
         return out_grad * np.sign(x)
 
     def test_check(self):
+<<<<<<< HEAD
         check_if_mkldnn_primitives_exist_in_bwd(
             self, self.op_type, self.x, self.out, self.out_grad, self.x_grad
         )
+=======
+        check_if_mkldnn_primitives_exist_in_bwd(self, self.op_type, self.x,
+                                                self.out, self.out_grad,
+                                                self.x_grad)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -15,11 +15,17 @@
 Distribute CTR model for test fleet api
 """
 
+<<<<<<< HEAD
 import os
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import shutil
 import tempfile
 import time
 
+<<<<<<< HEAD
 import ctr_dataset_reader
 import numpy as np
 from dist_fleet_ctr import TestDistCTR2x2, fake_ctr_reader
@@ -27,6 +33,16 @@ from test_dist_fleet_base import runtime_main
 
 import paddle
 import paddle.fluid as fluid
+=======
+import paddle
+import paddle.fluid as fluid
+import os
+import numpy as np
+
+import ctr_dataset_reader
+from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
+from dist_fleet_ctr import TestDistCTR2x2, fake_ctr_reader
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -70,6 +86,7 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
             try:
                 pass_start = time.time()
                 while True:
+<<<<<<< HEAD
                     loss_val = exe.run(
                         program=fleet.main_program,
                         fetch_list=[self.avg_cost.name],
@@ -83,6 +100,17 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
                     message = "TRAIN ---> pass: {} loss: {}\n".format(
                         epoch_id, loss_val
                     )
+=======
+                    loss_val = exe.run(program=fleet.main_program,
+                                       fetch_list=[self.avg_cost.name])
+                    loss_val = np.mean(loss_val)
+                    reduce_output = fleet.util.all_reduce(np.array(loss_val),
+                                                          mode="sum")
+                    loss_all_trainer = fleet.util.all_gather(float(loss_val))
+                    loss_val = float(reduce_output) / len(loss_all_trainer)
+                    message = "TRAIN ---> pass: {} loss: {}\n".format(
+                        epoch_id, loss_val)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
@@ -90,9 +118,15 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
                 self.reader.reset()
 
         model_dir = tempfile.mkdtemp()
+<<<<<<< HEAD
         fleet.save_inference_model(
             exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost
         )
+=======
+        fleet.save_inference_model(exe, model_dir,
+                                   [feed.name for feed in self.feeds],
+                                   self.avg_cost)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if fleet.is_first_worker():
             self.check_model_right(model_dir)
         if fleet.is_first_worker():
@@ -100,11 +134,16 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
         shutil.rmtree(model_dir)
 
     def do_dataset_training(self, fleet):
+<<<<<<< HEAD
         (
             dnn_input_dim,
             lr_input_dim,
             train_file_path,
         ) = ctr_dataset_reader.prepare_data()
+=======
+        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
+        )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(device_id)
@@ -132,6 +171,7 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
         for epoch_id in range(1):
             pass_start = time.time()
             dataset.set_filelist(filelist)
+<<<<<<< HEAD
             exe.train_from_dataset(
                 program=fleet.main_program,
                 dataset=dataset,
@@ -140,16 +180,30 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
                 print_period=2,
                 debug=int(os.getenv("Debug", "0")),
             )
+=======
+            exe.train_from_dataset(program=fleet.main_program,
+                                   dataset=dataset,
+                                   fetch_list=[self.avg_cost],
+                                   fetch_info=["cost"],
+                                   print_period=2,
+                                   debug=int(os.getenv("Debug", "0")))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             pass_time = time.time() - pass_start
 
         if os.getenv("SAVE_MODEL") == "1":
             model_dir = tempfile.mkdtemp()
+<<<<<<< HEAD
             fleet.save_inference_model(
                 exe,
                 model_dir,
                 [feed.name for feed in self.feeds],
                 self.avg_cost,
             )
+=======
+            fleet.save_inference_model(exe, model_dir,
+                                       [feed.name for feed in self.feeds],
+                                       self.avg_cost)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if fleet.is_first_worker():
                 self.check_model_right(model_dir)
             if fleet.is_first_worker():

@@ -13,10 +13,17 @@
 // limitations under the License.
 
 #pragma once
+<<<<<<< HEAD
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/core/errors.h"
+=======
+
+#include "paddle/fluid/memory/memory.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/dynload/cusolver.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -55,6 +62,7 @@ static void CheckEighResult(const int batch, const int info) {
 }
 
 #ifdef PADDLE_WITH_CUDA
+<<<<<<< HEAD
 
 #if CUDA_VERSION >= 11031
 static bool use_cusolver_syevj_batched = true;
@@ -186,6 +194,8 @@ inline void syevjBatched<phi::dtype::complex<double>, double>(
 #endif
 
 #ifdef PADDLE_WITH_CUDA
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 static void CheckEighResult(const GPUContext &dev_ctx,
                             const int64_t batch_size,
                             int *info) {
@@ -363,6 +373,7 @@ struct MatrixEighFunctor<GPUContext, T> {
     DenseTensor input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
+<<<<<<< HEAD
     // Precision loss will occur in some cases while using
     // cusolverDnZheevjBatched to calculate in Paddle(cuda11.7) but it works
     // well in Paddle(cuda10.2)
@@ -390,6 +401,19 @@ struct MatrixEighFunctor<GPUContext, T> {
     } else if (use_cusolver_syevj) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cusolverDnCreateSyevjInfo(&syevj_params));
+=======
+    // Once input data type is float32, and the last dimension of
+    // input is located in range [32, 512], Syevj works better.
+    bool use_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
+                      values_stride >= 32 && values_stride <= 512);
+    auto handle = dev_ctx.cusolver_dn_handle();
+
+    syevjInfo_t syevj_params;
+    if (use_syevj) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cusolverDnCreateSyevjInfo(&syevj_params));
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
           dev_ctx.cusolver_dn_handle(),
           jobz,
@@ -419,6 +443,7 @@ struct MatrixEighFunctor<GPUContext, T> {
     for (auto i = 0; i < batch_size; ++i) {
       auto *input_data = input_vector + i * vector_stride;
       auto *value_data = out_value + i * values_stride;
+<<<<<<< HEAD
       if (use_cusolver_syevj_batched) {
         syevjBatched<T>(handle,
                         jobz,
@@ -434,6 +459,9 @@ struct MatrixEighFunctor<GPUContext, T> {
                         batch_size);
         break;
       } else if (use_cusolver_syevj) {
+=======
+      if (use_syevj) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         PADDLE_ENFORCE_GPU_SUCCESS(
             dynload::cusolverDnSsyevj(handle,
                                       jobz,
@@ -461,7 +489,11 @@ struct MatrixEighFunctor<GPUContext, T> {
     }
     CheckEighResult(dev_ctx, batch_size, info_ptr);
 
+<<<<<<< HEAD
     if (use_cusolver_syevj_batched || use_cusolver_syevj) {
+=======
+    if (use_syevj) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cusolverDnDestroySyevjInfo(syevj_params));
     }

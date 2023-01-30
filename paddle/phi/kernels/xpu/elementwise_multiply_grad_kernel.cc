@@ -34,6 +34,7 @@ void MultiplyGradKernel(const Context& dev_ctx,
                         DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   funcs::ElementwiseGradPreProcess(dout, dx);
+<<<<<<< HEAD
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -48,6 +49,17 @@ void MultiplyGradKernel(const Context& dev_ctx,
   };
 
   XPUElementwiseGrad<T, XPUType>(dev_ctx, x, y, dout, axis, dx, dy, f, true);
+=======
+  XPUElementwiseGrad<T, XPUType>(dev_ctx,
+                                 x,
+                                 y,
+                                 dout,
+                                 axis,
+                                 dx,
+                                 dy,
+                                 xpu::broadcast_mul_grad<XPUType>,
+                                 true);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

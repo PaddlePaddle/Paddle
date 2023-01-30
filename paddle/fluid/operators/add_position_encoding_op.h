@@ -23,11 +23,19 @@ template <typename DeviceContext, typename T>
 class AddPositionEncodingKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* X = context.Input<phi::DenseTensor>("X");
     auto& x_lod = X->lod();
     auto* src_ptr = X->data<T>();
 
     auto* Out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* X = context.Input<framework::LoDTensor>("X");
+    auto& x_lod = X->lod();
+    auto* src_ptr = X->data<T>();
+
+    auto* Out = context.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* dst_ptr = Out->mutable_data<T>(context.GetPlace());
 
     float alpha = context.Attr<float>("alpha");
@@ -103,10 +111,19 @@ template <typename DeviceContext, typename T>
 class AddPositionEncodingGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto dout = framework::EigenVector<T>::Flatten(*dOut);
 
     auto* dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* dOut =
+        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto dout = framework::EigenVector<T>::Flatten(*dOut);
+
+    auto* dX =
+        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dX->mutable_data<T>(context.GetPlace());
     auto dx = framework::EigenVector<T>::Flatten(*dX);
 

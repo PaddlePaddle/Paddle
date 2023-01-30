@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import json
 import os
 import re
@@ -62,10 +63,34 @@ def getFNDAFile(rootPath, test):
                             os.system('echo %s >> %s' % (fnda_str, fn_filename))
                     else:
                         os.system('echo %s >> %s' % (message, fn_filename))
+=======
+import os
+import json
+import time
+import sys
+import re
+
+
+def getFNDAFile(rootPath, test):
+    filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, test)
+    fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
+    os.system('touch %s' % fn_filename)
+    f = open(filename)
+    lines = f.readlines()
+    for line in lines:
+        line = line.replace('\n', '')
+        if line.startswith(('SF:')):
+            os.system('echo %s >> %s' % (line, fn_filename))
+        elif line.startswith(('FNDA:')):
+            hit = int(line.split('FNDA:')[1].split(',')[0])
+            if hit != 0:
+                os.system('echo %s >> %s' % (line, fn_filename))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     f.close()
 
 
 def analysisFNDAFile(rootPath, test):
+<<<<<<< HEAD
     related_ut_map_file = '%s/build/ut_map/%s/related_%s.txt' % (
         rootPath,
         test,
@@ -94,6 +119,16 @@ def analysisFNDAFile(rootPath, test):
     except FileNotFoundError:
         print("%s is not found." % fn_filename)
         return
+=======
+    related_ut_map_file = '%s/build/ut_map/%s/related_%s.txt' % (rootPath, test,
+                                                                 test)
+    notrelated_ut_map_file = '%s/build/ut_map/%s/notrelated_%s.txt' % (
+        rootPath, test, test)
+    os.system('touch %s' % related_ut_map_file)
+    os.system('touch %s' % notrelated_ut_map_file)
+    fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
+    f = open(fn_filename)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     data = f.read().split('SF:')
     related_file_list = []
     for message in data:
@@ -111,6 +146,7 @@ def analysisFNDAFile(rootPath, test):
                 fn = message_list[i]
                 matchObj = re.match(
                     r'(.*)Maker(.*)|(.*)Touch(.*)Regist(.*)|(.*)Touch(.*)JitKernel(.*)|(.*)converterC2Ev(.*)',
+<<<<<<< HEAD
                     fn,
                     re.I,
                 )
@@ -225,6 +261,39 @@ def getCovinfo(rootPath, test):
         getFNDAFile(rootPath, test)
         analysisFNDAFile(rootPath, test)
     os.system('rm -rf %s/coverage.info.tmp' % ut_map_path)
+=======
+                    fn, re.I)
+                if matchObj == None:
+                    OP_REGIST = False
+                    break
+            if OP_REGIST == False:
+                related_file_list.append(clazz_filename)
+                os.system('echo %s >> %s' %
+                          (clazz_filename, related_ut_map_file))
+            else:
+                os.system('echo %s >> %s' %
+                          (clazz_filename, notrelated_ut_map_file))
+        else:
+            if clazz_filename != '':
+                if clazz_filename not in related_file_list:  # xx.pb.cc in RELATED xx.pb.h not in RELATED
+                    os.system('echo %s >> %s' %
+                              (clazz_filename, notrelated_ut_map_file))
+    f.close()
+
+
+def getCovinfo(rootPath, test):
+    ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
+    os.system(
+        'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
+        % ut_map_path)
+    os.system(
+        "cd %s && lcov --extract coverage.info '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
+        % ut_map_path)
+    os.system('rm -rf %s/paddle' % ut_map_path)
+    os.system('rm -rf %s/coverage.info' % ut_map_path)
+    getFNDAFile(rootPath, test)
+    analysisFNDAFile(rootPath, test)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

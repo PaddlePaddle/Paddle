@@ -30,6 +30,7 @@ static void GetCumprodDimInfo(const DDim& dim,
           "rank of input x which is %d.But received dim=%d",
           -dim.size(),
           cumprod_dim));
+<<<<<<< HEAD
   if (dim.size() == 0) {
     PADDLE_ENFORCE_LE(
         cumprod_dim,
@@ -42,6 +43,8 @@ static void GetCumprodDimInfo(const DDim& dim,
     return;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_LT(cumprod_dim,
                     dim.size(),
                     phi::errors::InvalidArgument(

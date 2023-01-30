@@ -15,6 +15,7 @@ import sys
 
 sys.path.append("..")
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
@@ -26,17 +27,34 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from op_test import OpTest, skip_check_grad_ci
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 @skip_check_grad_ci(reason="XPU does not support grad op currently")
 class XPUTestElementwisePowOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'elementwise_pow'
         self.use_dynamic_create_class = False
 
     class TestElementwisePowOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "elementwise_pow"
             self.dtype = self.in_type
@@ -46,7 +64,11 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(1, 2, [20, 5]).astype(self.dtype),
+<<<<<<< HEAD
                 'Y': np.random.uniform(1, 2, [20, 5]).astype(self.dtype),
+=======
+                'Y': np.random.uniform(1, 2, [20, 5]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -56,22 +78,39 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
+<<<<<<< HEAD
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(1, 2, [10, 10]).astype(self.dtype),
                 'Y': np.random.uniform(0.1, 1, [10, 10]).astype(self.dtype),
+=======
+
+        def compute_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(1, 2, [10, 10]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [10, 10]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
+<<<<<<< HEAD
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(1, 2, [10, 10]).astype(self.dtype),
                 'Y': np.random.uniform(0.2, 2, [10, 10]).astype(self.dtype),
+=======
+
+        def compute_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(1, 2, [10, 10]).astype(self.dtype),
+                'Y': np.random.uniform(0.2, 2, [10, 10]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     @skip_check_grad_ci(
+<<<<<<< HEAD
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
     class TestElementwisePowOp_scalar(TestElementwisePowOp):
@@ -79,26 +118,52 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(self.dtype),
                 'Y': np.random.uniform(0.1, 1, [1]).astype(self.dtype),
+=======
+        reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    class TestElementwisePowOp_scalar(TestElementwisePowOp):
+
+        def compute_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [1]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOp_tensor(TestElementwisePowOp):
+<<<<<<< HEAD
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
                 'Y': np.random.uniform(1, 3, [100]).astype(self.dtype),
+=======
+
+        def compute_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
+                'Y': np.random.uniform(1, 3, [100]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
+<<<<<<< HEAD
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [2, 1, 100]).astype(self.dtype),
                 'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
+=======
+
+        def compute_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(0.1, 1, [2, 1, 100]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
+<<<<<<< HEAD
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [2, 100, 1]).astype(self.dtype),
@@ -148,15 +213,72 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
                 'Y': np.random.uniform(0.1, 1, [2, 10, 1, 5]).astype(
                     self.dtype
                 ),
+=======
+
+        def compute_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(0.1, 1, [2, 100, 1]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype)
+            }
+            self.attrs = {'axis': 1}
+            self.outputs = {
+                'Out': np.power(self.inputs['X'],
+                                self.inputs['Y'].reshape(100, 1))
+            }
+
+    class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
+
+        def compute_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(0.1, 1, [100, 3, 1]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype)
+            }
+            self.attrs = {'axis': 0}
+            self.outputs = {
+                'Out':
+                np.power(self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1))
+            }
+
+    class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
+
+        def compute_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(0.1, 1,
+                                       [2, 20, 5, 1]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [20, 5]).astype(self.dtype)
+            }
+            self.attrs = {'axis': 1}
+            self.outputs = {
+                'Out':
+                np.power(self.inputs['X'],
+                         self.inputs['Y'].reshape(1, 20, 5, 1))
+            }
+
+    class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
+
+        def compute_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(0.1, 1,
+                                       [2, 10, 3, 5]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [2, 10, 1, 5]).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOpInt(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "elementwise_pow"
             self.inputs = {
                 'X': np.asarray([1, 3, 6]),
+<<<<<<< HEAD
                 'Y': np.asarray([1, 1, 1]),
+=======
+                'Y': np.asarray([1, 1, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 

@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
 
 #include <queue>
+<<<<<<< HEAD
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -23,6 +24,8 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Whether to add dependency for communication Ops. It is just a temporary "
     "FLAGS especially for auto parallel to avoid the concurrency damage by the "
     "communication dependency added in standalone executor.");
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 // The difference between "sequential_run" and "serial_run":
 // "sequential_run" dispatches OPs one by one according to the sequence in the
@@ -38,28 +41,61 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
+<<<<<<< HEAD
 size_t CountDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
+=======
+size_t CountDownstreamMap(const std::map<int, std::set<int>>& downstream_map) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   size_t count = 0;
   for (auto pair : downstream_map) {
     count += pair.second.size();
   }
   return count;
 }
+<<<<<<< HEAD
 const std::string StringizeDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
+=======
+
+bool IsCommunicationOp(const std::string& op_name) {
+  const std::set<std::string> special_comm_op_set = {
+      "send",
+      "recv",
+      "send_v2",
+      "recv_v2",
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  return false;
+}
+
+const std::string StringizeDownstreamMap(
+    const std::map<int, std::set<int>>& downstream_map) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::ostringstream oss;
   for (auto pair : downstream_map) {
     oss << pair.first << " -> ";
     std::copy(pair.second.begin(),
               pair.second.end(),
+<<<<<<< HEAD
               std::ostream_iterator<size_t>(oss, " "));
+=======
+              std::ostream_iterator<int>(oss, " "));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     oss << std::endl;
   }
   return oss.str();
 }
 
+<<<<<<< HEAD
 const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
+=======
+const std::map<int, std::set<int>>& DependencyBuilder::Build(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const std::vector<Instruction>& instructions) {
   PADDLE_ENFORCE_EQ(
       is_build_,
@@ -73,6 +109,7 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   BuildOpHappensBefore();
   ShrinkDownstreamMap();
 
+<<<<<<< HEAD
   if (FLAGS_new_executor_sequential_run) {
     AddDependencyForSequentialRun();
   }
@@ -86,6 +123,17 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
 
+=======
+  AddDependencyForCoalesceTensorOp();
+  AddDependencyForCommunicationOp();
+  AddDependencyForRandomOp();
+  AddDependencyForReadOp();
+
+  if (FLAGS_new_executor_sequential_run) {
+    AddDependencyForSequentialRun();
+  }
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   is_build_ = true;
 
   VLOG(8) << "Finish build dependency";
@@ -96,6 +144,7 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   return op_downstream_map_;
 }
 
+<<<<<<< HEAD
 const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()
     const {
   PADDLE_ENFORCE_EQ(
@@ -108,6 +157,10 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()
 
 bool DependencyBuilder::OpHappensBefore(size_t prior_op_idx,
                                         size_t posterior_op_idx) const {
+=======
+bool DependencyBuilder::OpHappensBefore(int prior_op_idx,
+                                        int posterior_op_idx) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_GE(
       op_happens_before_.size(),
       0,
@@ -116,15 +169,25 @@ bool DependencyBuilder::OpHappensBefore(size_t prior_op_idx,
 }
 
 void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
+<<<<<<< HEAD
+=======
+  const std::string kCoalesceTensor = "coalesce_tensor";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_->at(op_idx).OpBase()->Type() == kCoalesceTensor) {
       VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
       auto fused_out = instructions_->at(op_idx).Outputs().at("FusedOutput")[0];
       auto outputs = instructions_->at(op_idx).Outputs().at("Output");
 
+<<<<<<< HEAD
       auto is_read = [](const Instruction& inst, size_t var_id) -> bool {
         for (auto pair : inst.Inputs()) {
           for (size_t item : pair.second) {
+=======
+      auto is_read = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Inputs()) {
+          for (auto item : pair.second) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if (item == var_id) {
               return true;
             }
@@ -133,9 +196,15 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
         return false;
       };
 
+<<<<<<< HEAD
       auto is_write = [](const Instruction& inst, size_t var_id) -> bool {
         for (auto pair : inst.Outputs()) {
           for (size_t item : pair.second) {
+=======
+      auto is_write = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Outputs()) {
+          for (auto item : pair.second) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if (item == var_id) {
               return true;
             }
@@ -145,7 +214,11 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       };
 
       // find first op that reads fused_out
+<<<<<<< HEAD
       auto first_read_fused_out_op = ULLONG_MAX;
+=======
+      auto first_read_fused_out_op = -1;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       for (auto j = op_idx + 1; j < op_num_; ++j) {
         if (is_read(instructions_->at(j), fused_out)) {
           first_read_fused_out_op = j;
@@ -153,7 +226,11 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
         }
       }
 
+<<<<<<< HEAD
       if (UNLIKELY(first_read_fused_out_op == ULLONG_MAX)) {
+=======
+      if (UNLIKELY(first_read_fused_out_op == -1)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         VLOG(4) << "No op read FusedOutput";
         continue;
       }
@@ -182,8 +259,14 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       // 'first_read_fused_out_op'
       size_t target = first_read_fused_out_op;
       for (size_t j = first_read_fused_out_op + 1; j < op_num_; ++j) {
+<<<<<<< HEAD
         if (j == target + 1 && IsCommunicationOp(instructions_->at(target)) &&
             IsCommunicationOp(instructions_->at(j))) {
+=======
+        if (j == target + 1 &&
+            IsCommunicationOp(instructions_->at(target).OpBase()->Type()) &&
+            IsCommunicationOp(instructions_->at(j).OpBase()->Type())) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           VLOG(4) << "Found consecutive communication ops, "
                   << instructions_->at(target).OpBase()->Type() << " -> "
                   << instructions_->at(j).OpBase()->Type();
@@ -202,10 +285,32 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
 }
 
 void DependencyBuilder::AddDependencyForCommunicationOp() {
+<<<<<<< HEAD
   size_t dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (IsCommunicationOp(instructions_->at(op_idx))) {
       if (dependence_op_idx != ULLONG_MAX) {
+=======
+  auto IsCommunicationOp = [](std::string op) -> bool {
+    const std::set<std::string> special_comm_op_set = {
+        "send",
+        "recv",
+        "send_v2",
+        "recv_v2",
+    };
+    const std::string communication_op_prefix = "c_";
+    if (op.find(communication_op_prefix) != std::string::npos ||
+        special_comm_op_set.count(op)) {
+      return true;
+    }
+    return false;
+  };
+
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    if (IsCommunicationOp(instructions_->at(op_idx).OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
       dependence_op_idx = op_idx;
@@ -222,12 +327,20 @@ void DependencyBuilder::AddDependencyForCommunicationOp() {
   // c_allreduce_sum(c)
   // c_sync_comm_stream(a)
   const std::string kSyncComm = "c_sync_comm_stream";
+<<<<<<< HEAD
   dependence_op_idx = ULLONG_MAX;
+=======
+  dependence_op_idx = -1;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_->at(op_idx).OpBase()->Type() == kSyncComm) {
       dependence_op_idx = op_idx;
     } else {
+<<<<<<< HEAD
       if (dependence_op_idx != ULLONG_MAX) {
+=======
+      if (dependence_op_idx != -1) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
     }
@@ -249,10 +362,17 @@ void DependencyBuilder::AddDependencyForRandomOp() {
                                                "dropout",
                                                "class_center_sample"};
 
+<<<<<<< HEAD
   size_t dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (random_op_set.count(instructions_->at(op_idx).OpBase()->Type())) {
       if (dependence_op_idx != ULLONG_MAX) {
+=======
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    if (random_op_set.count(instructions_->at(op_idx).OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
       dependence_op_idx = op_idx;
@@ -295,10 +415,17 @@ void DependencyBuilder::AddDependencyForReadOp() {
 }
 
 void DependencyBuilder::AddDependencyForSequentialRun() {
+<<<<<<< HEAD
   size_t dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (!IsCpuOp(instructions_->at(op_idx))) {
       if (dependence_op_idx != ULLONG_MAX) {
+=======
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    if (!IsCpuOp(instructions_->at(op_idx))) {
+      if (dependence_op_idx != -1) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
       dependence_op_idx = op_idx;
@@ -306,9 +433,15 @@ void DependencyBuilder::AddDependencyForSequentialRun() {
   }
 }
 
+<<<<<<< HEAD
 void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
                                         size_t posterior_op_idx) {
   std::set<size_t>& downstream_ops = op_downstream_map_[prior_op_idx];
+=======
+void DependencyBuilder::AddDownstreamOp(int prior_op_idx,
+                                        int posterior_op_idx) {
+  std::set<int>& downstream_ops = op_downstream_map_[prior_op_idx];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   if (op_happens_before_.size() != 0) {
     PADDLE_ENFORCE_EQ(
@@ -321,7 +454,11 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
             posterior_op_idx,
             prior_op_idx));
 
+<<<<<<< HEAD
     for (size_t op_idx : downstream_ops) {
+=======
+    for (int op_idx : downstream_ops) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (op_happens_before_[op_idx][posterior_op_idx]) {
         VLOG(7) << "Find dependencies " << prior_op_idx << "->" << op_idx
                 << "->" << posterior_op_idx << ", skip adding " << prior_op_idx
@@ -335,10 +472,13 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
 
   if (op_happens_before_.size() != 0) {
     for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+<<<<<<< HEAD
       if (op_happens_before_[op_idx][prior_op_idx]) {
         op_happens_before_[op_idx][posterior_op_idx] = true;
       }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (op_happens_before_[posterior_op_idx][op_idx]) {
         op_happens_before_[prior_op_idx][op_idx] = true;
       }
@@ -354,6 +494,7 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
 
 void DependencyBuilder::BuildDownstreamMap() {
   auto var2min_rw_op =
+<<<<<<< HEAD
       std::map<size_t, std::list<size_t>>();  // # map from variable id to read
                                               //  write op id.
   auto var2recent_write_op =
@@ -363,10 +504,21 @@ void DependencyBuilder::BuildDownstreamMap() {
                std::set<size_t>>();  //# map from op to the dependence list,
                                      // op must run after the dependence.
   std::set<size_t>
+=======
+      std::map<int, std::list<int>>();  // # map from variable id to read /
+                                        // write op id.
+  auto var2recent_write_op =
+      std::map<int, int>();  // # map from variable to recent write op.
+  auto op2dependences =
+      std::map<int, std::set<int>>();  //# map from op to the dependence list,
+                                       // op must run after the dependence.
+  std::set<int>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       remove_duplicate;  // remove the duplicate between inputs and outputs
 
   // reserve
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+<<<<<<< HEAD
     op2dependences[op_idx] = std::set<size_t>();
   }
 
@@ -379,6 +531,20 @@ void DependencyBuilder::BuildDownstreamMap() {
         // this function update the var2min_rw_op set .
         if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
           (*var2min_rw_op)[rw_var] = std::list<size_t>();
+=======
+    op2dependences[op_idx] = std::set<int>();
+  }
+
+  auto update_var_min_rw_op =
+      [](const std::map<int, std::set<int>>& op2dependences,
+         std::map<int, std::list<int>>* var2min_rw_op,
+         int cur_op,
+         int rw_var) {
+        // rw_var is inputs or outputs of cur_op
+        // this function update the var2min_rw_op set .
+        if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
+          (*var2min_rw_op)[rw_var] = std::list<int>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         for (auto dep_op : op2dependences.at(cur_op)) {
           var2min_rw_op->at(rw_var).remove(dep_op);
@@ -425,7 +591,11 @@ void DependencyBuilder::BuildDownstreamMap() {
          instructions_->at(op_idx).Outputs()) {  // for all write vars
       for (auto var : item.second) {
         var2recent_write_op[var] = op_idx;
+<<<<<<< HEAD
         var2min_rw_op[var] = {static_cast<size_t>(op_idx)};
+=======
+        var2min_rw_op[var] = {static_cast<int>(op_idx)};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         remove_duplicate.insert(var);
       }
     }
@@ -440,7 +610,11 @@ void DependencyBuilder::BuildDownstreamMap() {
       for (auto& p : m) {
         auto var = p.second;
         var2recent_write_op[var] = op_idx;
+<<<<<<< HEAD
         var2min_rw_op[var] = {static_cast<size_t>(op_idx)};
+=======
+        var2min_rw_op[var] = {static_cast<int>(op_idx)};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         remove_duplicate.insert(var);
       }
     }
@@ -461,11 +635,22 @@ void DependencyBuilder::BuildDownstreamMap() {
   // next instruction of op. The size of downstream != size of op2dependences
   // since there are some ops that have no downstream-op.
   for (auto& item : op2dependences) {
+<<<<<<< HEAD
     size_t op = item.first;
+=======
+    int op = item.first;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (auto dep_op : item.second) {
       AddDownstreamOp(dep_op, op);
     }
   }
+<<<<<<< HEAD
+=======
+
+  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  VLOG(6) << "downstream_map: " << std::endl
+          << StringizeDownstreamMap(op_downstream_map_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void DependencyBuilder::BuildOpHappensBefore() {
@@ -496,7 +681,11 @@ void DependencyBuilder::BuildOpHappensBefore() {
                                 next,
                                 op_idx));
           op_happens_before_[op_idx][next] = true;
+<<<<<<< HEAD
           VLOG(10) << "happens before: " << op_idx << " " << next;
+=======
+          VLOG(8) << "happens before: " << op_idx << " " << next;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           q.push(next);
         }
       }
@@ -524,7 +713,11 @@ void DependencyBuilder::ShrinkDownstreamMap() {
       continue;
     }
 
+<<<<<<< HEAD
     std::set<size_t> minumum_nexts;
+=======
+    std::set<int> minumum_nexts;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (size_t item : op_downstream_map_.at(i)) {
       bool not_after_any = true;
       // find the op that is not executed after any
@@ -543,9 +736,14 @@ void DependencyBuilder::ShrinkDownstreamMap() {
     }
     op_downstream_map_.at(i) = minumum_nexts;
   }
+<<<<<<< HEAD
   VLOG(8) << "Finish shrink downstream map";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
   VLOG(8) << "downstream_map: " << std::endl
+=======
+  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  VLOG(6) << "downstream_map: " << std::endl
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           << StringizeDownstreamMap(op_downstream_map_);
 }
 

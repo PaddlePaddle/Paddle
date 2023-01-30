@@ -12,17 +12,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
+=======
+from __future__ import print_function
+
+import numpy as np
+import argparse
+import os
+import sys
+import signal
+import time
+import socket
+from contextlib import closing
+from six import string_types
+import math
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.profiler as profiler
+import paddle.fluid.unique_name as nameGen
+from paddle.fluid import core
+import paddle.distributed.fleet as fleet
+from paddle.fluid.incubate.fleet.base import role_maker
+import unittest
+from multiprocessing import Process
+import paddle.fluid.layers as layers
+from functools import reduce
+from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.global_ring_id = 0
 
@@ -32,13 +63,20 @@ class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
             np.random.seed(2020)
             np_array = np.random.rand(1000, 16)
 
+<<<<<<< HEAD
             data = paddle.static.data(
                 name='tindata', shape=[10, 1000], dtype="float32"
             )
+=======
+            data = paddle.static.data(name='tindata',
+                                      shape=[10, 1000],
+                                      dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.distributed.broadcast(data, src=0)
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
                     initializer=paddle.fluid.initializer.NumpyArrayInitializer(
+<<<<<<< HEAD
                         np_array[:, 0:8]
                     ),
                 )
@@ -48,6 +86,13 @@ class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
                         np_array[:, 8:16]
                     ),
                 )
+=======
+                        np_array[:, 0:8]), )
+            else:
+                param_attr = paddle.fluid.ParamAttr(
+                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
+                        np_array[:, 8:16]), )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             linear_out = paddle.distributed.split(
                 data,

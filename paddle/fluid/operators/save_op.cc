@@ -30,22 +30,37 @@ class SaveOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 class SaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput("X",
              "(Tensor ) Input phi::DenseTensor and SelectedRows to be saved");
     AddComment(R"DOC(
 Save operator
 
 This operator will serialize and write phi::DenseTensor / SelectedRows variable to file on disk.
+=======
+    AddInput("X", "(Tensor ) Input LoDTensor and SelectedRows to be saved");
+    AddComment(R"DOC(
+Save operator
+
+This operator will serialize and write LoDTensor / SelectedRows variable to file on disk.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 )DOC");
     AddAttr<bool>("overwrite",
                   "(boolean, default true)"

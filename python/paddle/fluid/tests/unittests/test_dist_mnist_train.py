@@ -12,20 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import unittest
 
 from test_dist_base import TestDistBase
 
+=======
+from __future__ import print_function
+import unittest
+from test_dist_base import TestDistBase
+
+import os
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistMnist2x2(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_mnist.py",
             delta=1e-5,
@@ -35,11 +49,22 @@ class TestDistMnist2x2(TestDistBase):
 
 
 class TestDistMnist2x2WithMemopt(TestDistBase):
+=======
+        self.check_with_place("dist_mnist.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
+
+
+class TestDistMnist2x2WithMemopt(TestDistBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = True
         self._mem_opt = True
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_mnist.py",
             delta=1e-5,
@@ -49,25 +74,53 @@ class TestDistMnist2x2WithMemopt(TestDistBase):
 
 
 class TestDistMnistAsync(TestDistBase):
+=======
+        self.check_with_place("dist_mnist.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
+
+
+class TestDistMnistAsync(TestDistBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = False
         self._use_reduce = False
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_mnist.py", delta=200, check_error_log=True, log_name=flag_name
         )
 
 
 class TestDistMnistDcAsgd(TestDistBase):
+=======
+        self.check_with_place("dist_mnist.py",
+                              delta=200,
+                              check_error_log=True,
+                              log_name=flag_name)
+
+
+class TestDistMnistDcAsgd(TestDistBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         self._sync_mode = False
         self._dc_asgd = True
 
     def test_se_resnext(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_mnist.py", delta=200, check_error_log=True, log_name=flag_name
         )
+=======
+        self.check_with_place("dist_mnist.py",
+                              delta=200,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

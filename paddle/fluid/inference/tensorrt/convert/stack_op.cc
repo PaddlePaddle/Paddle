@@ -42,7 +42,10 @@ class StackOpConverter : public OpConverter {
     auto input = op_desc.Input("X");
     int input_num = input.size();
     std::vector<nvinfer1::ITensor*> inputs;
+<<<<<<< HEAD
     auto output_name = op_desc.Output("Y").front();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for (int i = 0; i < input_num; ++i) {
       inputs.push_back(engine_->GetITensor(input[i]));
@@ -77,15 +80,22 @@ class StackOpConverter : public OpConverter {
       auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *inputs[i]);
       reshape_layer->setInput(1, *after_shape_tensor);
       inputs[i] = reshape_layer->getOutput(0);
+<<<<<<< HEAD
       reshape_layer->setName(("stack: reshape: (Output( " + std::to_string(i) +
                               " )" + output_name + ")")
                                  .c_str());
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, Concatenation, inputs.data(), inputs.size());
     layer->setAxis(axis);
 
+<<<<<<< HEAD
+=======
+    auto output_name = op_desc.Output("Y").front();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     RreplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
   }
 };

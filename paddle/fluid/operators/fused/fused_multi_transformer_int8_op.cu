@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/attn_gemm_int8.h"
+<<<<<<< HEAD
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
+=======
+#include "paddle/fluid/operators/fused/fused_multi_transformer_op.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -25,9 +29,15 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     using U = LayerNormParamType<T>;
     auto &dev_ctx = ctx.cuda_device_context();
 
+<<<<<<< HEAD
     auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
     // 0. input
     auto *input_x = ctx.Input<phi::DenseTensor>("X");
+=======
+    auto *time_step = ctx.Input<Tensor>("TimeStep");
+    // 0. input
+    auto *input_x = ctx.Input<Tensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const auto input_x_dims = input_x->dims();
     int bsz = input_x_dims[0];
     int seq_len = input_x_dims[1];
@@ -48,21 +58,42 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
     // dequant output scales, tensor, size = [num_layers, n], n is gemm output
     // size
+<<<<<<< HEAD
     auto qkv_out_scales = ctx.MultiInput<phi::DenseTensor>("QKVOutScale");
     auto out_linear_out_scales =
         ctx.MultiInput<phi::DenseTensor>("OutLinearOutScale");
     auto ffn1_out_scales = ctx.MultiInput<phi::DenseTensor>("FFN1OutScale");
     auto ffn2_out_scales = ctx.MultiInput<phi::DenseTensor>("FFN2OutScale");
+=======
+    auto *qkv_out_scale = ctx.Input<Tensor>("QKVOutScale");
+    auto *out_linear_out_scale = ctx.Input<Tensor>("OutLinearOutScale");
+    auto *ffn1_out_scale = ctx.Input<Tensor>("FFN1OutScale");
+    auto *ffn2_out_scale = ctx.Input<Tensor>("FFN2OutScale");
+
+    int qkv_out_scale_n = qkv_out_scale->dims()[1];
+    int out_linear_out_scale_n = out_linear_out_scale->dims()[1];
+    int ffn1_out_scale_n = ffn1_out_scale->dims()[1];
+    int ffn2_out_scale_n = ffn2_out_scale->dims()[1];
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
     const float epsilon = ctx.Attr<float>("epsilon");
+<<<<<<< HEAD
     auto ln_scales = ctx.MultiInput<phi::DenseTensor>("LnScale");
     auto ln_biases = ctx.MultiInput<phi::DenseTensor>("LnBias");
 
     auto ln_compute =
         AttnLayerNorm<T, T, int8_t>(dev_ctx, epsilon, bsz_seq, dim_embed);
     phi::DenseTensor ln_mean, ln_var;
+=======
+    auto ln_scales = ctx.MultiInput<Tensor>("LnScale");
+    auto ln_biases = ctx.MultiInput<Tensor>("LnBias");
+
+    auto ln_compute =
+        AttnLayerNorm<T, T, int8_t>(dev_ctx, epsilon, bsz_seq, dim_embed);
+    Tensor ln_mean, ln_var;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ln_mean.Resize({{bsz_seq}});
     auto *ln_mean_data =
         dev_ctx.Alloc<U>(&ln_mean, ln_mean.numel() * sizeof(U));
@@ -72,8 +103,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     // 2. qkv
     // x: qkv's input [batch_size, seq_len, dim_embed]
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+<<<<<<< HEAD
     auto qkv_weights = ctx.MultiInput<phi::DenseTensor>("QKVW");
     auto qkv_biases = ctx.MultiInput<phi::DenseTensor>("QKVBias");
+=======
+    auto qkv_weights = ctx.MultiInput<Tensor>("QKVW");
+    auto qkv_biases = ctx.MultiInput<Tensor>("QKVBias");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const bool trans_qkvw = ctx.Attr<bool>("trans_qkvw");
     const auto qkv_w_dims = qkv_weights[0]->dims();
     int num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
@@ -86,7 +122,11 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
     AttnMatmulINT8<T> qkv_compute(
         dev_ctx, bsz_seq, output_size, input_size, compute_bias);
+<<<<<<< HEAD
     phi::DenseTensor qkv_out;
+=======
+    Tensor qkv_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
     auto *qkv_out_data =
         dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
@@ -96,10 +136,17 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         true, "upscale_in_train", 0.0, true, true, 0, nullptr);
     auto fmha_compute =
         FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
+<<<<<<< HEAD
     auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
     // auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
+=======
+    auto *src_mask = ctx.Input<Tensor>("SrcMask");
+    auto cache_kvs = ctx.MultiInput<Tensor>("CacheKV");
+    auto cache_kv_outs = ctx.MultiOutput<Tensor>("CacheKVOut");
+    // auto *time_step = ctx.Input<Tensor>("TimeStep");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto out_seq_len = seq_len;
     if (time_step) {
@@ -123,6 +170,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       out_seq_len += time_step_value;
     }
 
+<<<<<<< HEAD
     phi::DenseTensor transpose_out_2, qk_out;
     transpose_out_2.Resize({{3, bsz, num_head, seq_len, dim_head}});
     auto *transpose_out_2_data =
@@ -134,6 +182,18 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     phi::DenseTensor softmax_out;
     phi::DenseTensor attn_dropout_mask_out, attn_dropout_out;
     phi::DenseTensor qktv_out, fmha_out;
+=======
+    Tensor transpose_out_2, qk_out;
+    transpose_out_2.Resize({{3, bsz, num_head, seq_len, dim_head}});
+    auto *transpose_out_2_data =
+        dev_ctx.Alloc<T>(&transpose_out_2, transpose_out_2.numel() * sizeof(T));
+    qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
+    auto *qk_out_data = dev_ctx.Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
+
+    Tensor softmax_out;
+    Tensor attn_dropout_mask_out, attn_dropout_out;
+    Tensor qktv_out, fmha_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     softmax_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *softmax_out_data =
         dev_ctx.Alloc<T>(&softmax_out, softmax_out.numel() * sizeof(T));
@@ -153,8 +213,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         dev_ctx.Alloc<T>(&fmha_out, fmha_out.numel() * sizeof(T));
 
     // 4. out_linear
+<<<<<<< HEAD
     auto out_linear_weights = ctx.MultiInput<phi::DenseTensor>("OutLinearW");
     auto out_linear_biases = ctx.MultiInput<phi::DenseTensor>("OutLinearBias");
+=======
+    auto out_linear_weights = ctx.MultiInput<Tensor>("OutLinearW");
+    auto out_linear_biases = ctx.MultiInput<Tensor>("OutLinearBias");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
     AttnMatmulINT8<T> out_linear_compute(
@@ -168,9 +233,15 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     FusedDropoutLayerNormHelper<T, uint8_t>
         fused_dropout_layernorm_helper_for_post_layernorm(
             dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
+<<<<<<< HEAD
     auto ffn_ln_scales = ctx.MultiInput<phi::DenseTensor>("FFNLnScale");
     auto ffn_ln_biases = ctx.MultiInput<phi::DenseTensor>("FFNLnBias");
     phi::DenseTensor bias_dropout_residual_out, dropout_mask_out;
+=======
+    auto ffn_ln_scales = ctx.MultiInput<Tensor>("FFNLnScale");
+    auto ffn_ln_biases = ctx.MultiInput<Tensor>("FFNLnBias");
+    Tensor bias_dropout_residual_out, dropout_mask_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     T *bias_dropout_residual_out_data = nullptr;
     if (pre_layer_norm) {
       bias_dropout_residual_out.Resize({{bsz, seq_len, dim_embed}});
@@ -183,14 +254,23 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         &dropout_mask_out, dropout_mask_out.numel() * sizeof(uint8_t));
 
     // 6. ffn matmul1
+<<<<<<< HEAD
     auto ffn1_weights = ctx.MultiInput<phi::DenseTensor>("FFN1Weight");
     auto ffn1_biases = ctx.MultiInput<phi::DenseTensor>("FFN1Bias");
+=======
+    auto ffn1_weights = ctx.MultiInput<Tensor>("FFN1Weight");
+    auto ffn1_biases = ctx.MultiInput<Tensor>("FFN1Bias");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
     int dim_ffn = ffn1_weight_dim[0];
     AttnMatmulINT8<T> ffn1_linear_compute(
         dev_ctx, bsz_seq, dim_ffn, dim_embed, false);
+<<<<<<< HEAD
     phi::DenseTensor ffn1_out;
+=======
+    Tensor ffn1_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ffn1_out.Resize({{bsz_seq, dim_ffn}});
     auto *ffn1_out_data =
         dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
@@ -201,7 +281,11 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
     FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper_for_post_layernorm(
         dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
+<<<<<<< HEAD
     phi::DenseTensor ffn1_dropout_out, ffn1_dropout_mask;
+=======
+    Tensor ffn1_dropout_out, ffn1_dropout_mask;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ffn1_dropout_out.Resize({{bsz_seq, dim_ffn}});
     auto *ffn1_dropout_out_data = dev_ctx.Alloc<T>(
         &ffn1_dropout_out, ffn1_dropout_out.numel() * sizeof(T));
@@ -210,8 +294,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         &ffn1_dropout_mask, ffn1_dropout_mask.numel() * sizeof(uint8_t));
 
     // 8. ffn2 matmul
+<<<<<<< HEAD
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
+=======
+    auto ffn2_weights = ctx.MultiInput<Tensor>("FFN2Weight");
+    auto ffn2_biases = ctx.MultiInput<Tensor>("FFN2Bias");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AttnMatmulINT8<T> ffn2_linear_compute(
         dev_ctx, bsz_seq, dim_embed, dim_ffn, false);
 
@@ -228,11 +317,16 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
 
     // []. init workspace for cublasLt transform
+<<<<<<< HEAD
     phi::DenseTensor input_workspace, output_workspace, cublaslt_workspace;
+=======
+    Tensor input_workspace, output_workspace;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // for input and output transform data is CUBLASLT_ORDER_COL32 format,
     int m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
         n_max = std::max({output_size, dim_embed, dim_ffn});
 
+<<<<<<< HEAD
     input_workspace.Resize({{(m_max * k_max + 31) / 32 * 32}});
     dev_ctx.Alloc<int8_t>(&input_workspace,
                           input_workspace.numel() * sizeof(int8_t));
@@ -250,13 +344,33 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto *from_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     phi::DenseTensor *from_tensor = out;
     phi::DenseTensor tmp_out;
+=======
+    input_workspace.Resize(
+        {{32 * ((m_max + 32 - 1) / 32), (k_max + 31) / 32 * 32}});
+    dev_ctx.Alloc<int8_t>(&input_workspace,
+                          input_workspace.numel() * sizeof(int8_t));
+    output_workspace.Resize({{n_max * 4, (m_max + 31) / 32 * 32 * 4}});
+    dev_ctx.Alloc<int32_t>(&output_workspace,
+                           output_workspace.numel() * sizeof(int32_t));
+
+    // calc
+    auto *out = ctx.Output<Tensor>("Out");
+    auto *from_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
+    Tensor *from_tensor = out;
+    Tensor tmp_out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     tmp_out.Resize({{bsz, seq_len, dim_embed}});
     auto *tmp_out_data =
         dev_ctx.Alloc<T>(&tmp_out, tmp_out.numel() * sizeof(T));
 
     auto *x_data = input_x->data<T>();
+<<<<<<< HEAD
     phi::DenseTensor *buf0 = nullptr;
     phi::DenseTensor *buf1 = nullptr;
+=======
+    Tensor *buf0 = nullptr;
+    Tensor *buf1 = nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     // step0:  x   --> buf1
     // step1: buf1 --> buf0
@@ -293,10 +407,16 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 #endif
 
       // step2. qkv
+<<<<<<< HEAD
       const phi::DenseTensor *qkv_bias =
           qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
       // NOTE: in decoder stage, bias is fused in fmha
       const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
+=======
+      const Tensor *qkv_bias = qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
+      // NOTE: in decoder stage, bias is fused in fmha
+      const Tensor *bias = time_step ? nullptr : qkv_bias;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (!pre_layer_norm && i == 0) {
         qkv_compute.ComputeForward(qkv_weights[i],
                                    input_x,
@@ -306,7 +426,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    &output_workspace,
                                    &qkv_out,
                                    qkv_in_scale[i],
+<<<<<<< HEAD
                                    qkv_out_scales[i],
+=======
+                                   qkv_out_scale,
+                                   i * qkv_out_scale_n,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                    quant_round_type,
                                    quant_max_bound,
                                    quant_min_bound);
@@ -319,7 +444,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    &output_workspace,
                                    &qkv_out,
                                    qkv_in_scale[i],
+<<<<<<< HEAD
                                    qkv_out_scales[i],
+=======
+                                   qkv_out_scale,
+                                   i * qkv_out_scale_n,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                    quant_round_type,
                                    quant_max_bound,
                                    quant_min_bound);
@@ -331,16 +461,26 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           &qkv_out,
                                           &output_workspace,
                                           &qkv_out,
+<<<<<<< HEAD
                                           qkv_out_scales[i]);
+=======
+                                          qkv_out_scale,
+                                          i * qkv_out_scale_n);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
 #endif
 
       // step3. fmha
+<<<<<<< HEAD
       const phi::DenseTensor *cache_kv =
           cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
       phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
+=======
+      const Tensor *cache_kv = cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
+      Tensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
       if (time_step) {  // generation decoder stage
         // [2, batch_size, num_head, max_seq_len, head_size]
@@ -440,7 +580,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           &output_workspace,
                                           nullptr,
                                           out_linear_in_scale[i],
+<<<<<<< HEAD
                                           out_linear_out_scales[i],
+=======
+                                          out_linear_out_scale,
+                                          i * out_linear_out_scale_n,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                           quant_round_type,
                                           quant_max_bound,
                                           quant_min_bound);
@@ -471,7 +616,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             ln_mean_data,
             ln_var_data,
             out_linear_in_scale[i],
+<<<<<<< HEAD
             out_linear_out_scales[i]->data<float>(),
+=======
+            out_linear_out_scale->data<float>(),
+            i * out_linear_out_scale_n,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ffn1_in_scale[i],
             quant_round_type,
             quant_max_bound,
@@ -501,6 +651,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       // step6. ffn matmul1
 
       if (pre_layer_norm) {
+<<<<<<< HEAD
         ffn1_linear_compute.ComputeForwardINT8ToINT8(
             ffn1_weights[i],
             &input_workspace,
@@ -508,6 +659,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             &output_workspace,
             nullptr,
             cublaslt_workspace.data<int8_t>());
+=======
+        ffn1_linear_compute.ComputeForwardINT8ToINT8(ffn1_weights[i],
+                                                     &input_workspace,
+                                                     nullptr,
+                                                     &output_workspace,
+                                                     nullptr);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       } else {
         ffn1_linear_compute.ComputeForward(ffn1_weights[i],
                                            buf1,
@@ -517,7 +675,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            &output_workspace,
                                            nullptr,
                                            ffn1_in_scale[i],
+<<<<<<< HEAD
                                            ffn1_out_scales[i],
+=======
+                                           ffn1_out_scale,
+                                           i * ffn1_out_scale_n,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                            quant_round_type,
                                            quant_max_bound,
                                            quant_min_bound);
@@ -537,7 +700,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             input_workspace.data<int8_t>(),
             ffn1_dropout_mask_data,
             ffn1_in_scale[i],
+<<<<<<< HEAD
             ffn1_out_scales[i]->data<float>(),
+=======
+            ffn1_out_scale->data<float>(),
+            i * ffn1_out_scale_n,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ffn2_in_scale[i],
             quant_round_type,
             quant_max_bound,
@@ -557,6 +725,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
       // step8. ffn matmul2
       if (pre_layer_norm) {
+<<<<<<< HEAD
         ffn2_linear_compute.ComputeForwardINT8ToINT8(
             ffn2_weights[i],
             &input_workspace,
@@ -564,6 +733,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             &output_workspace,
             nullptr,
             cublaslt_workspace.data<int8_t>());
+=======
+        ffn2_linear_compute.ComputeForwardINT8ToINT8(ffn2_weights[i],
+                                                     &input_workspace,
+                                                     nullptr,
+                                                     &output_workspace,
+                                                     nullptr);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       } else {
         ffn2_linear_compute.ComputeForward(ffn2_weights[i],
                                            &ffn1_dropout_out,
@@ -573,7 +749,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            &output_workspace,
                                            nullptr,
                                            ffn2_in_scale[i],
+<<<<<<< HEAD
                                            ffn2_out_scales[i],
+=======
+                                           ffn2_out_scale,
+                                           i * ffn2_out_scale_n,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                            quant_round_type,
                                            quant_max_bound,
                                            quant_min_bound);
@@ -614,7 +795,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
               ln_mean_data,
               ln_var_data,
               ffn2_in_scale[i],
+<<<<<<< HEAD
               ffn2_out_scales[i]->data<float>(),
+=======
+              ffn2_out_scale->data<float>(),
+              i * ffn2_out_scale_n,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               qkv_in_scale[i + 1],
               quant_round_type,
               quant_max_bound,
@@ -628,7 +814,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
               buf1->data<T>(),
               dropout_mask_out_data,
               ffn2_in_scale[i],
+<<<<<<< HEAD
               ffn2_out_scales[i]->data<float>(),
+=======
+              ffn2_out_scale->data<float>(),
+              i * ffn2_out_scale_n,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               1.0);
         }
       } else {

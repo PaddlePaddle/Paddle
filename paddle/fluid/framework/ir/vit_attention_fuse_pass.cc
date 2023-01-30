@@ -56,6 +56,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+<<<<<<< HEAD
 bool HasScale(OpDesc* const op_ptr,
               std::string* name,
               std::string regexp = "Input_scale_") {
@@ -72,6 +73,8 @@ bool HasScale(OpDesc* const op_ptr,
   return false;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   const std::string pattern_name = "vit_attention_fuse";
@@ -101,13 +104,22 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     }
     // refactor W and Bias
     auto* w_tensor =
+<<<<<<< HEAD
         scope->FindVar(matmul0_in_y->Name())->GetMutable<phi::DenseTensor>();
+=======
+        scope->FindVar(matmul0_in_y->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto w_dims =
         phi::make_ddim({w_tensor->dims()[0], 3, w_tensor->dims()[1] / 3});
     w_tensor->Resize(w_dims);
 
+<<<<<<< HEAD
     auto* b_tensor = scope->FindVar(elementwise0_in_y->Name())
                          ->GetMutable<phi::DenseTensor>();
+=======
+    auto* b_tensor =
+        scope->FindVar(elementwise0_in_y->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto bias_dims = phi::make_ddim({3, b_tensor->dims()[0] / 3});
     b_tensor->Resize(bias_dims);
 
@@ -119,6 +131,7 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     float alpha = PADDLE_GET_CONST(float, scale1_op->Op()->GetAttr("scale"));
     desc.SetAttr("alpha", alpha);
 
+<<<<<<< HEAD
     // int8 for fc
     std::string scale_name;
     if (HasScale(matmul0_op->Op(), &scale_name)) {
@@ -129,6 +142,8 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
                    elementwise0_op->Op()->GetAttr(scale_name));
     }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // Create a new node for the fused op.
     auto vit_attention_node = graph->CreateOpNode(&desc);
 

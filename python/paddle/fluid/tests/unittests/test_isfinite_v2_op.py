@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+=======
+import paddle
+import paddle.fluid as fluid
+import unittest
+import numpy as np
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):
@@ -32,9 +40,15 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
         x = paddle.fluid.data(name='x', shape=x_np.shape, dtype=dtype)
         res = getattr(paddle.tensor, op_str)(x)
         exe.run(startup_program)
+<<<<<<< HEAD
         static_result = exe.run(
             main_program, feed={'x': x_np}, fetch_list=[res]
         )
+=======
+        static_result = exe.run(main_program,
+                                feed={'x': x_np},
+                                fetch_list=[res])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return static_result
 
 
@@ -50,6 +64,7 @@ def run_dygraph(x_np, op_str, use_gpu=True):
 
 def run_eager(x_np, op_str, use_gpu=True):
     with paddle.fluid.dygraph.guard():
+<<<<<<< HEAD
         place = paddle.CPUPlace()
         if use_gpu and fluid.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -62,13 +77,31 @@ def run_eager(x_np, op_str, use_gpu=True):
 def np_data_generator(
     low, high, np_shape, type, sv_list, op_str, *args, **kwargs
 ):
+=======
+        with _test_eager_guard():
+            place = paddle.CPUPlace()
+            if use_gpu and fluid.core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+
+            x = paddle.to_tensor(x_np)
+            dygraph_result = getattr(paddle.tensor, op_str)(x)
+            return dygraph_result
+
+
+def np_data_generator(low, high, np_shape, type, sv_list, op_str, *args,
+                      **kwargs):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     x_np = np.random.uniform(low, high, np_shape).astype(getattr(np, type))
     # x_np.shape[0] >= len(sv_list)
     if type in ['float16', 'float32', 'float64']:
         for i, v in enumerate(sv_list):
             x_np[i] = v
     ori_shape = x_np.shape
+<<<<<<< HEAD
     x_np = x_np.reshape((np.product(ori_shape),))
+=======
+    x_np = x_np.reshape((np.product(ori_shape), ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     np.random.shuffle(x_np)
     x_np = x_np.reshape(ori_shape)
     result_np = getattr(np, op_str)(x_np)
@@ -81,35 +114,55 @@ TEST_META_DATA = [
         'high': 1,
         'np_shape': [8, 17, 5, 6, 7],
         'type': 'float16',
+<<<<<<< HEAD
         'sv_list': [np.inf, np.nan],
+=======
+        'sv_list': [np.inf, np.nan]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     },
     {
         'low': 0.1,
         'high': 1,
         'np_shape': [11, 17],
         'type': 'float32',
+<<<<<<< HEAD
         'sv_list': [np.inf, np.nan],
+=======
+        'sv_list': [np.inf, np.nan]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     },
     {
         'low': 0.1,
         'high': 1,
         'np_shape': [2, 3, 4, 5],
         'type': 'float64',
+<<<<<<< HEAD
         'sv_list': [np.inf, np.nan],
+=======
+        'sv_list': [np.inf, np.nan]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     },
     {
         'low': 0,
         'high': 100,
         'np_shape': [11, 17, 10],
         'type': 'int32',
+<<<<<<< HEAD
         'sv_list': [np.inf, np.nan],
+=======
+        'sv_list': [np.inf, np.nan]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     },
     {
         'low': 0,
         'high': 999,
         'np_shape': [132],
         'type': 'int64',
+<<<<<<< HEAD
         'sv_list': [np.inf, np.nan],
+=======
+        'sv_list': [np.inf, np.nan]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     },
 ]
 
@@ -128,6 +181,10 @@ def test(test_case, op_str, use_gpu=False):
 
 
 class TestCPUNormal(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_inf(self):
         test(self, 'isinf')
 
@@ -139,6 +196,10 @@ class TestCPUNormal(unittest.TestCase):
 
 
 class TestCUDANormal(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_inf(self):
         test(self, 'isinf', True)
 
@@ -150,6 +211,10 @@ class TestCUDANormal(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_bad_input(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):

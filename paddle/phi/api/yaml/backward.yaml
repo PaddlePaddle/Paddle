@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 - backward_op : acos_grad
   forward : acos (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -86,6 +87,8 @@
     func : asinh_grad
   inplace : (out_grad -> x_grad)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - backward_op : atan2_grad
   forward : atan2 (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
@@ -96,6 +99,7 @@
   kernel :
     func : atan2_grad
 
+<<<<<<< HEAD
 - backward_op : atan_grad
   forward : atan (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -162,6 +166,8 @@
   backward : celu_double_grad
   inplace : (out_grad -> x_grad)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - backward_op : cholesky_grad
   forward : cholesky (Tensor x, bool upper) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, bool upper)
@@ -182,6 +188,7 @@
   kernel :
     func : cholesky_solve_grad
 
+<<<<<<< HEAD
 - backward_op : clip_double_grad
   forward : clip_grad (Tensor x, Tensor grad_out, Scalar min = 0., Scalar max = 0.) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_x_grad, Scalar min = 0., Scalar max = 0.)
@@ -279,6 +286,8 @@
     func : crop_grad
     data_type : x
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - backward_op : cross_grad
   forward : cross (Tensor x, Tensor y, int axis = 9) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis)
@@ -290,6 +299,7 @@
     func : cross_grad
     data_type : out_grad
 
+<<<<<<< HEAD
 - backward_op : det_grad
   forward : det (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad)
@@ -301,6 +311,8 @@
     func : determinant_grad
     data_type : out_grad
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - backward_op : diag_grad
   forward : diag (Tensor x, int offset, float padding_value) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset)
@@ -356,6 +368,7 @@
     func : dot_grad
     data_type : out_grad
 
+<<<<<<< HEAD
 - backward_op : eig_grad
   forward : eig (Tensor x) -> Tensor(out_w), Tensor(out_v)
   args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
@@ -400,6 +413,8 @@
   backward : elu_double_grad
   inplace : (out_grad -> x_grad)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - backward_op : erf_grad
   forward : erf (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -420,6 +435,7 @@
     param : [out]
   kernel :
     func : erfinv_grad
+<<<<<<< HEAD
 
 - backward_op : exp_grad
   forward : exp (Tensor x) -> Tensor(out)
@@ -444,6 +460,9 @@
     func : expm1_grad
   inplace : (out_grad -> x_grad)
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - backward_op : fft_c2c_grad
   forward: fft_c2c(Tensor x, int64_t[] axes, str normalization, bool forward) -> Tensor(out)
   args : (Tensor out_grad, int64_t[] axes, str normalization, bool forward)
@@ -476,6 +495,7 @@
     data_type: out_grad
   no_need_buffer: x
 
+<<<<<<< HEAD
 - backward_op : fill_diagonal_grad
   forward : fill_diagonal (Tensor x, float value=0, int offset=0, bool wrap=false) -> Tensor(out)
   args : (Tensor out_grad, float value, int offset, bool wrap)
@@ -495,12 +515,15 @@
     func : fill_diagonal_tensor_grad
   inplace : (out_grad -> x_grad)
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 - backward_op : flip_grad
   forward : flip (Tensor x, int[] axis) -> Tensor(out)
   args : (Tensor out_grad, int[] axis)
   output : Tensor(x_grad)
   invoke : flip(out_grad, axis)
 
+<<<<<<< HEAD
 - backward_op : floor_grad
   forward : floor(Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -620,11 +643,68 @@
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
+=======
+- backward_op : graph_send_uv_grad
+  forward : graph_send_uv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD") -> Tensor(out)
+  args: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out_grad, str message_op = "ADD")
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : graph_send_uv_grad
+    data_type : x
+
+- backward_op : lgamma_grad
+  forward : lgamma(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : lgamma_grad
+
+- backward_op : mv_grad
+  forward : mv (Tensor x, Tensor vec) -> Tensor(out)
+  args : (Tensor x, Tensor vec, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(vec_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, vec]
+  kernel :
+    func : mv_grad
+
+- backward_op : poisson_grad
+  forward : poisson (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : poisson_grad
+
+- backward_op : solve_grad
+  forward : solve (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : solve_grad
+
+- backward_op : trace_grad
+  forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int offset, int axis1, int axis2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
+<<<<<<< HEAD
     func : index_sample_grad
     data_type : out_grad
   no_need_buffer : x
@@ -1543,3 +1623,18 @@
   kernel :
     func : where_grad
   no_need_buffer : x, y
+=======
+    func : trace_grad
+    data_type : out_grad
+  no_need_buffer : x
+
+- backward_op : trunc_grad
+  forward : trunc (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : trunc_grad
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

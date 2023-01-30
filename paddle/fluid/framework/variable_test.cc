@@ -22,6 +22,7 @@ namespace framework {
 TEST(Variable, GetMutable) {
   std::unique_ptr<Variable> v(new Variable());
 
+<<<<<<< HEAD
   auto* t = v->GetMutable<String>();
   *t = "1234";
 
@@ -30,6 +31,16 @@ TEST(Variable, GetMutable) {
 
   try {
     v->GetMutable<phi::DenseTensor>();
+=======
+  auto* t = v->GetMutable<std::string>();
+  *t = "1234";
+
+  const auto& tt = v->Get<std::string>();
+  EXPECT_EQ("1234", tt);
+
+  try {
+    v->GetMutable<Tensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } catch (std::exception& e) {
     return;
   }

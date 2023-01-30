@@ -12,19 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from inference_pass_test import InferencePassTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
 
 
+<<<<<<< HEAD
 # normal starts && ends
 class SlicePluginTRTDynamicTest(InferencePassTest):
+=======
+#normal starts && ends
+class SlicePluginTRTDynamicTest(InferencePassTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [0, 1]
@@ -32,6 +46,7 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
 
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTDynamicTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
         )
         self.enable_trt = True
@@ -41,6 +56,13 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
             {'data': [8, 8, 8, 8]},
             False,
         )
+=======
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.enable_trt = True
+        self.dynamic_shape_params = SlicePluginTRTDynamicTest.DynamicShapeParam(
+            {'data': [1, 1, 1, 1]}, {'data': [8, 8, 8, 8]},
+            {'data': [8, 8, 8, 8]}, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.setUpSliceParams()
@@ -50,7 +72,14 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
+<<<<<<< HEAD
             slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
+=======
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("float32"),
@@ -69,6 +98,10 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
 
 
 class SlicePluginTRTDynamicBoundTest(SlicePluginTRTDynamicTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [0, 1]
@@ -76,6 +109,7 @@ class SlicePluginTRTDynamicBoundTest(SlicePluginTRTDynamicTest):
 
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTDynamicBoundTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
         )
         self.enable_trt = True
@@ -90,12 +124,24 @@ class SlicePluginTRTDynamicBoundTest(SlicePluginTRTDynamicTest):
 
 
 class SlicePluginTRTDynamicNegativeBoundTest(SlicePluginTRTDynamicTest):
+=======
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+        self.enable_trt = True
+        self.dynamic_shape_params = SlicePluginTRTDynamicBoundTest.DynamicShapeParam(
+            {'data': [1, 1, 1, 1]}, {'data': [8, 8, 8, 8]},
+            {'data': [8, 8, 8, 8]}, False)
+
+
+class SlicePluginTRTDynamicNegativeBoundTest(SlicePluginTRTDynamicTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [-5, 1]
         self.params_ends = [2, 1000]
 
     def setUpTensorRTParams(self):
+<<<<<<< HEAD
         self.trt_parameters = (
             SlicePluginTRTDynamicNegativeBoundTest.TensorRTParam(
                 1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
@@ -110,6 +156,14 @@ class SlicePluginTRTDynamicNegativeBoundTest(SlicePluginTRTDynamicTest):
                 False,
             )
         )
+=======
+        self.trt_parameters = SlicePluginTRTDynamicNegativeBoundTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+        self.enable_trt = True
+        self.dynamic_shape_params = SlicePluginTRTDynamicNegativeBoundTest.DynamicShapeParam(
+            {'data': [1, 1, 1, 1]}, {'data': [8, 8, 8, 8]},
+            {'data': [8, 8, 8, 8]}, False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

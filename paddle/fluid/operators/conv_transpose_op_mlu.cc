@@ -20,15 +20,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
+=======
+using Tensor = framework::Tensor;
+using DataLayout = framework::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 class Conv2DTransposeMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
     const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
     phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
+=======
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    Tensor* output = ctx.Output<Tensor>("Output");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     output->mutable_data<T>(ctx.GetPlace());
     std::vector<int> output_padding =
         ctx.Attr<std::vector<int>>("output_padding");
@@ -60,8 +71,13 @@ class Conv2DTransposeMLUKernel : public framework::OpKernel<T> {
     phi::UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
+<<<<<<< HEAD
     phi::DenseTensor input_tensor(input->type());
     phi::DenseTensor output_tensor(output->type());
+=======
+    Tensor input_tensor(input->type());
+    Tensor output_tensor(output->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     input_tensor.set_layout(DataLayout::kNHWC);
     output_tensor.set_layout(DataLayout::kNHWC);
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
@@ -83,7 +99,11 @@ class Conv2DTransposeMLUKernel : public framework::OpKernel<T> {
     }
 
     // transpose filter from MCHW to MHWC
+<<<<<<< HEAD
     phi::DenseTensor trans_filter(filter->type());
+=======
+    Tensor trans_filter(filter->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               filter,
@@ -130,6 +150,7 @@ template <typename T>
 class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
     const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
     const phi::DenseTensor* output_grad =
@@ -138,6 +159,14 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
     phi::DenseTensor* filter_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+=======
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    const Tensor* output_grad =
+        ctx.Input<Tensor>(framework::GradVarName("Output"));
+    Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if ((!input_grad) && (!filter_grad)) return;
 
@@ -147,13 +176,22 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
     const int groups = ctx.Attr<int>("groups");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
+<<<<<<< HEAD
     const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
+=======
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_format);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
     auto in_dims_size = in_dims.size();
 
+<<<<<<< HEAD
     const bool channel_last = (data_layout == phi::DataLayout::kNHWC);
+=======
+    const bool channel_last = (data_layout == framework::DataLayout::kNHWC);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     framework::DDim in_data_dims;
     if (channel_last) {
@@ -167,8 +205,13 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
     phi::UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
+<<<<<<< HEAD
     phi::DenseTensor input_tensor(input->type());
     phi::DenseTensor output_grad_tensor(output_grad->type());
+=======
+    Tensor input_tensor(input->type());
+    Tensor output_grad_tensor(output_grad->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     output_grad_tensor.set_layout(DataLayout::kNHWC);
 
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
@@ -190,7 +233,11 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
     }
 
     // transpose filter from MCHW to MHWC
+<<<<<<< HEAD
     phi::DenseTensor trans_filter(filter->type());
+=======
+    Tensor trans_filter(filter->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               filter,
@@ -216,7 +263,11 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
 
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
+<<<<<<< HEAD
       phi::DenseTensor filter_grad_tensor(filter_grad->type());
+=======
+      Tensor filter_grad_tensor(filter_grad->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       // filter_grad always MCHW
       // filter_grad_tensor always MHWC
       auto filter_grad_dims = filter_grad->dims();
@@ -252,7 +303,11 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
 
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
+<<<<<<< HEAD
       phi::DenseTensor input_grad_tensor(input_grad->type());
+=======
+      Tensor input_grad_tensor(input_grad->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       input_tensor.set_layout(DataLayout::kNHWC);
 
       if (channel_last) {

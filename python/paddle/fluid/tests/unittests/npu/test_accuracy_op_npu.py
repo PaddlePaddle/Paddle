@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -27,6 +32,10 @@ SEED = 2021
 
 
 class TestAccuracy(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -46,7 +55,11 @@ class TestAccuracy(OpTest):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
+<<<<<<< HEAD
             'Total': np.array([n]).astype("int32"),
+=======
+            'Total': np.array([n]).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_npu(self):
@@ -61,6 +74,10 @@ class TestAccuracy(OpTest):
 
 
 class TestAccuracy2(TestAccuracy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -80,11 +97,19 @@ class TestAccuracy2(TestAccuracy):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
+<<<<<<< HEAD
             'Total': np.array([n]).astype("int32"),
+=======
+            'Total': np.array([n]).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestAccuracyType(TestAccuracy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -104,11 +129,19 @@ class TestAccuracyType(TestAccuracy):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
+<<<<<<< HEAD
             'Total': np.array([n]).astype("int32"),
+=======
+            'Total': np.array([n]).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 
 class TestAccuracyType2(TestAccuracy):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -128,7 +161,11 @@ class TestAccuracyType2(TestAccuracy):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
+<<<<<<< HEAD
             'Total': np.array([n]).astype("int32"),
+=======
+            'Total': np.array([n]).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
 

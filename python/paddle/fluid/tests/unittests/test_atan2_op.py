@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,6 +20,18 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
+=======
+import numpy as np
+import unittest
+
+from op_test import OpTest
+import paddle
+import paddle.nn as nn
+import paddle.nn.functional as F
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import compiler, Program, program_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 np.random.seed(0)
@@ -31,6 +44,10 @@ def atan2_grad(x1, x2, dout):
 
 
 class TestAtan2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "atan2"
         self.python_api = paddle.atan2
@@ -54,11 +71,16 @@ class TestAtan2(OpTest):
 
 
 class TestAtan2_float(TestAtan2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_grad(self):
         if self.dtype not in [np.int32, np.int64]:
+<<<<<<< HEAD
             self.check_grad(
                 ['X1', 'X2'],
                 'Out',
@@ -72,21 +94,45 @@ class TestAtan2_float(TestAtan2):
 
 
 class TestAtan2_float16(TestAtan2_float):
+=======
+            self.check_grad(['X1', 'X2'],
+                            'Out',
+                            user_defined_grads=atan2_grad(
+                                self.inputs['X1'], self.inputs['X2'],
+                                1 / self.inputs['X1'].size),
+                            check_eager=True)
+
+
+class TestAtan2_float16(TestAtan2_float):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestAtan2_int32(TestAtan2_float):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestAtan2_int64(TestAtan2_float):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = np.int64
 
 
 class TestAtan2API(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_dtype(self):
         self.dtype = 'float64'
         self.shape = [11, 17]
@@ -117,6 +163,10 @@ class TestAtan2API(unittest.TestCase):
             run(place)
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def run(place):
             paddle.disable_static(place)
             X1 = paddle.to_tensor(self.x1)

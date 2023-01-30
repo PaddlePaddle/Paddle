@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle import _C_ops
 
 from ..fluid import framework
 from ..fluid.framework import in_dygraph_mode
 from .optimizer import Optimizer
+=======
+from .optimizer import Optimizer
+from ..fluid import core
+from ..fluid import framework
+from ..fluid.framework import Variable
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -81,6 +88,7 @@ class RMSProp(Optimizer):
           the gradient; if False, by the uncentered second moment. Setting this to
           True may help with training, but is slightly more expensive in terms of
           computation and memory. Defaults to False.
+<<<<<<< HEAD
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
           This parameter is required in dygraph mode. And you can specify different options for
           different parameter groups such as the learning rate, weight decay, etc,
@@ -93,12 +101,30 @@ class RMSProp(Optimizer):
           If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already,
           the regularization setting here in optimizer will be ignored for this parameter.
           Otherwise, the regularization setting here in optimizer will take effect.
+=======
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. 
+          This parameter is required in dygraph mode. And you can specify different options for 
+          different parameter groups such as the learning rate, weight decay, etc, 
+          then the parameters are list of dict. Note that the learning_rate in paramter groups 
+          represents the scale of base learning_rate. 
+          The default value is None in static mode, at this time all parameters will be updated.
+        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. 
+          It canbe a float value as coeff of L2 regularization or \
+          :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+          If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, 
+          the regularization setting here in optimizer will be ignored for this parameter. 
+          Otherwise, the regularization setting here in optimizer will take effect. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
           some derived class of ``GradientClipBase`` . There are three cliping strategies
           ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
           :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+<<<<<<< HEAD
         name (str, optional): This parameter is used by developers to print debugging information.
+=======
+        name (str, optional): This parameter is used by developers to print debugging information. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Examples:
@@ -134,7 +160,11 @@ class RMSProp(Optimizer):
                     'weight_decay': 0.001,
                     'learning_rate': 0.1
                 }],
+<<<<<<< HEAD
                 weight_decay=0.01)
+=======
+                weight_decay=0.01)                   
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             out.backward()
             rmsprop.step()
             rmsprop.clear_grad()
@@ -171,7 +201,11 @@ class RMSProp(Optimizer):
         if not 0.0 <= rho:
             raise ValueError("Invalid value of rho, expect rho >= 0.")
 
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(RMSProp, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,
@@ -219,6 +253,7 @@ class RMSProp(Optimizer):
         mean_grad_acc = self._get_accumulator(
             self._mean_grad_acc_str, param_and_grad[0]
         )
+<<<<<<< HEAD
 
         if in_dygraph_mode():
             _C_ops.rmsprop_(
@@ -261,6 +296,34 @@ class RMSProp(Optimizer):
             )
 
             return rmsprop_op
+=======
+        rmsprop_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": momentum_acc,
+                "MeanSquare": mean_square_acc,
+                "MeanGrad": mean_grad_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "MomentOut": momentum_acc,
+                "MeanSquareOut": mean_square_acc,
+                "MeanGradOut": mean_grad_acc,
+            },
+            attrs={
+                "epsilon": self._epsilon,
+                "decay": self._rho,
+                "momentum": self._momentum,
+                "centered": self._centered,
+            },
+            stop_gradient=True,
+        )
+
+        return rmsprop_op
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])

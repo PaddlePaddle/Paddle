@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import abc
 import unittest
 
@@ -23,12 +24,29 @@ from paddle.fluid.tests.unittests.op_test import (
     OpTestTool,
     convert_float_to_uint16,
 )
+=======
+from __future__ import print_function
+
+import six
+import abc
+import unittest
+import numpy as np
+from scipy.special import expit, erf
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid.tests.unittests.test_activation_op import TestActivation
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
+<<<<<<< HEAD
 class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
+=======
+@six.add_metaclass(abc.ABCMeta)
+class MKLDNNBF16ActivationOp(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @abc.abstractmethod
     def config(self):
         pass
@@ -66,6 +84,7 @@ class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
     def test_check_grad(self):
         self.calculate_grads()
         self.check_grad_with_place(
+<<<<<<< HEAD
             core.CPUPlace(),
             ["X"],
             "Out",
@@ -75,6 +94,16 @@ class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
 
 
 class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+=======
+            core.CPUPlace(), ["X"],
+            "Out",
+            user_defined_grads=[self.dx],
+            user_defined_grad_outputs=[convert_float_to_uint16(self.out)])
+
+
+class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "sigmoid"
 
@@ -86,6 +115,10 @@ class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNSqrtBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "sqrt"
 
@@ -100,6 +133,10 @@ class TestMKLDNNSqrtBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "gelu"
 
@@ -107,6 +144,7 @@ class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return gelu(x, False)
 
     def op_grad(self, dout, x):
+<<<<<<< HEAD
         return dout * (
             0.5
             + 0.5 * erf(x / np.sqrt(2))
@@ -115,11 +153,24 @@ class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNGeluErfDim2BF16Op(TestMKLDNNGeluErfBF16Op):
+=======
+        return (dout *
+                (0.5 + 0.5 * erf(x / np.sqrt(2)) +
+                 (x / np.sqrt(2 * np.pi) * np.exp(-0.5 * np.power(x, 2)))))
+
+
+class TestMKLDNNGeluErfDim2BF16Op(TestMKLDNNGeluErfBF16Op):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
 
 
 class TestMKLDNNGeluTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "gelu"
 
@@ -128,6 +179,7 @@ class TestMKLDNNGeluTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
     def op_grad(self, dout, x):
         grad_part = np.tanh(
+<<<<<<< HEAD
             np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))
         )
         return (
@@ -141,17 +193,31 @@ class TestMKLDNNGeluTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
                 * (1 - grad_part)
             )
         )
+=======
+            np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
+        return dout * 0.5 * (1 + grad_part) * (1 + np.sqrt(2 / np.pi) *
+                                               (x + 0.134145 * np.power(x, 3)) *
+                                               (1 - grad_part))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def set_attrs(self):
         self.attrs = {"use_mkldnn": True, "approximate": True}
 
 
 class TestMKLDNNGeluTanhDim2BF16Op(TestMKLDNNGeluTanhBF16Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_data(self):
         self.x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
 
 
 class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "relu"
 
@@ -163,6 +229,10 @@ class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "mish"
 
@@ -170,17 +240,26 @@ class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return x * np.tanh(np.log(1 + np.exp(x)))
 
     def op_grad(self, dout, x):
+<<<<<<< HEAD
         omega = (
             np.exp(3 * x)
             + 4 * np.exp(2 * x)
             + np.exp(x) * (4 * x + 6)
             + 4 * (x + 1)
         )
+=======
+        omega = np.exp(
+            3 * x) + 4 * np.exp(2 * x) + np.exp(x) * (4 * x + 6) + 4 * (x + 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         delta = np.exp(2 * x) + 2 * np.exp(x) + 2
         return dout * ((np.exp(x) * omega) / delta**2)
 
 
 class TestMKLDNNRelu6BF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "relu6"
 
@@ -192,6 +271,10 @@ class TestMKLDNNRelu6BF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "leaky_relu"
 
@@ -207,6 +290,10 @@ class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "swish"
 
@@ -225,6 +312,10 @@ class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNHardSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "hard_swish"
 
@@ -238,6 +329,10 @@ class TestMKLDNNHardSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "tanh"
 
@@ -245,10 +340,18 @@ class TestMKLDNNTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return np.tanh(x)
 
     def op_grad(self, dout, x):
+<<<<<<< HEAD
         return dout * (1 - np.tanh(x) ** 2)
 
 
 class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+=======
+        return dout * (1 - np.tanh(x)**2)
+
+
+class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "abs"
 
@@ -260,6 +363,10 @@ class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNEluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "elu"
 
@@ -275,6 +382,10 @@ class TestMKLDNNEluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNExpBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.op_type = "exp"
 

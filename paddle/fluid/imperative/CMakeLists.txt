@@ -5,7 +5,11 @@ cc_library(
 cc_library(
   var_helper
   SRCS var_helper.cc
+<<<<<<< HEAD
   DEPS tensor selected_rows extended_tensor)
+=======
+  DEPS tensor selected_rows)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if(WITH_XPU)
   cc_library(
     prepared_operator
@@ -23,8 +27,12 @@ if(WITH_XPU)
          scalar
          int_array
          var_helper
+<<<<<<< HEAD
          profiler
          place)
+=======
+         profiler)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 else()
   cc_library(
     prepared_operator
@@ -41,8 +49,12 @@ else()
          scalar
          int_array
          var_helper
+<<<<<<< HEAD
          profiler
          place)
+=======
+         profiler)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 cc_library(
   layer

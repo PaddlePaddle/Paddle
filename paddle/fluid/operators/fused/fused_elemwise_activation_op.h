@@ -49,12 +49,22 @@ template <typename DeviceContext,
           typename T,
           typename BinaryFunctor,
           typename UnaryFunctor>
+<<<<<<< HEAD
 static void RunBinaryCompoundFunctor(const framework::ExecutionContext &ctx,
                                      const BinaryFunctor &binary_functor,
                                      const UnaryFunctor &unary_functor,
                                      const phi::DenseTensor &in_x,
                                      const phi::DenseTensor &in_y,
                                      std::vector<phi::DenseTensor *> *outputs) {
+=======
+static void RunBinaryCompoundFunctor(
+    const framework::ExecutionContext &ctx,
+    const BinaryFunctor &binary_functor,
+    const UnaryFunctor &unary_functor,
+    const framework::Tensor &in_x,
+    const framework::Tensor &in_y,
+    std::vector<framework::Tensor *> *outputs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Z = Binary(X, Unary(Y))
   // intermediate_out = Unary(Y)
   // out = Binary(X, Unary(Y))
@@ -85,12 +95,22 @@ template <typename DeviceContext,
           typename T,
           typename UnaryFunctor,
           typename BinaryFunctor>
+<<<<<<< HEAD
 static void RunUnaryCompoundFunctors(const framework::ExecutionContext &ctx,
                                      const UnaryFunctor &unary_functor,
                                      const BinaryFunctor &binary_functor,
                                      const phi::DenseTensor &in_x,
                                      const phi::DenseTensor &in_y,
                                      std::vector<phi::DenseTensor *> *outputs) {
+=======
+static void RunUnaryCompoundFunctors(
+    const framework::ExecutionContext &ctx,
+    const UnaryFunctor &unary_functor,
+    const BinaryFunctor &binary_functor,
+    const framework::Tensor &in_x,
+    const framework::Tensor &in_y,
+    std::vector<framework::Tensor *> *outputs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Z = Unary(Binary(X, Y))
   // intermediate_out = Binary(X, Y)
   // out = Unary(Binary(X, Y))
@@ -130,6 +150,7 @@ static void RunBinaryCompoundGradFunctors(
     const BinaryGradFunctor &binary_grad_functor,
     const UnaryFunctor &unary_functor,
     const UnaryGradFunctor &unary_grad_functor,
+<<<<<<< HEAD
     const phi::DenseTensor *in_x,
     const phi::DenseTensor *in_y,
     const phi::DenseTensor *in_out,
@@ -138,6 +159,16 @@ static void RunBinaryCompoundGradFunctors(
     phi::DenseTensor *x_grad,
     phi::DenseTensor *y_grad,
     phi::DenseTensor *d_intermediate_out) {
+=======
+    const framework::Tensor *in_x,
+    const framework::Tensor *in_y,
+    const framework::Tensor *in_out,
+    const framework::Tensor *in_intermediate_out,
+    const framework::Tensor *in_out_grad,
+    framework::Tensor *x_grad,
+    framework::Tensor *y_grad,
+    framework::Tensor *d_intermediate_out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Z = Binary(X, Unary(Y))
   int axis = ctx.Attr<int>("axis");
 
@@ -216,6 +247,7 @@ static void RunUnaryCompoundGradFunctors(
     const UnaryGradFunctor &unary_grad_functor,
     const BinaryFunctor &binary_functor,
     const BinaryGradFunctor &binary_grad_functor,
+<<<<<<< HEAD
     const phi::DenseTensor *in_x,
     const phi::DenseTensor *in_y,
     const phi::DenseTensor *in_out,
@@ -224,6 +256,16 @@ static void RunUnaryCompoundGradFunctors(
     phi::DenseTensor *x_grad,
     phi::DenseTensor *y_grad,
     phi::DenseTensor *d_intermediate_out) {
+=======
+    const framework::Tensor *in_x,
+    const framework::Tensor *in_y,
+    const framework::Tensor *in_out,
+    const framework::Tensor *in_intermediate_out,
+    const framework::Tensor *in_out_grad,
+    framework::Tensor *x_grad,
+    framework::Tensor *y_grad,
+    framework::Tensor *d_intermediate_out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Z = Unary(Binary(X, Y))
   int axis = ctx.Attr<int>("axis");
 
@@ -296,9 +338,15 @@ static void RunUnaryCompoundGradFunctors(
 
 template <typename DeviceContext, typename T>
 static void RunFunctors(const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
                         const phi::DenseTensor &in_x,
                         const phi::DenseTensor &in_y,
                         std::vector<phi::DenseTensor *> *outputs) {
+=======
+                        const framework::Tensor &in_x,
+                        const framework::Tensor &in_y,
+                        std::vector<framework::Tensor *> *outputs) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto &functors = ctx.Attr<std::vector<std::string>>("functor_list");
 
   // TODO(zcd): The following code can be refined.
@@ -422,6 +470,7 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
 
 template <typename DeviceContext, typename T, bool InPlace>
 static void RunGradFunctors(const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
                             const phi::DenseTensor *in_x,
                             const phi::DenseTensor *in_y,
                             const phi::DenseTensor *in_out,
@@ -430,6 +479,16 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
                             phi::DenseTensor *x_grad,
                             phi::DenseTensor *y_grad,
                             phi::DenseTensor *d_intermediate_out) {
+=======
+                            const framework::Tensor *in_x,
+                            const framework::Tensor *in_y,
+                            const framework::Tensor *in_out,
+                            const framework::Tensor *in_intermediate_out,
+                            const framework::Tensor *in_out_grad,
+                            framework::Tensor *x_grad,
+                            framework::Tensor *y_grad,
+                            framework::Tensor *d_intermediate_out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto &functors = ctx.Attr<std::vector<std::string>>("functor_list");
   auto funcs_str = functors[0] + "," + functors[1];
 
@@ -620,11 +679,19 @@ template <typename DeviceContext, typename T>
 class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto &in_x = GET_DATA_SAFELY(ctx.Input<phi::DenseTensor>("X"),
                                  "Input",
                                  "X",
                                  "FusedElemwiseActivation");
     auto &in_y = GET_DATA_SAFELY(ctx.Input<phi::DenseTensor>("Y"),
+=======
+    auto &in_x = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("X"),
+                                 "Input",
+                                 "X",
+                                 "FusedElemwiseActivation");
+    auto &in_y = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("Y"),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                  "Input",
                                  "Y",
                                  "FusedElemwiseActivation");
@@ -633,9 +700,15 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::InvalidArgument(
                           "The output(Out) should not be empty"));
+<<<<<<< HEAD
     auto output = ctx.Output<phi::DenseTensor>("Out");
 
     std::vector<phi::DenseTensor *> outputs;
+=======
+    auto output = ctx.Output<framework::Tensor>("Out");
+
+    std::vector<framework::Tensor *> outputs;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     outputs.emplace_back(output);
 
     if (ctx.Attr<bool>("save_intermediate_out")) {
@@ -645,7 +718,11 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
                             "The save_intermediate_out is enable, so the "
                             "IntermediateOut should not be empty."));
 
+<<<<<<< HEAD
       auto intermediate_out = ctx.Output<phi::DenseTensor>("IntermediateOut");
+=======
+      auto intermediate_out = ctx.Output<framework::Tensor>("IntermediateOut");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       outputs.emplace_back(intermediate_out);
     } else {
       outputs.emplace_back(nullptr);
@@ -659,21 +736,36 @@ template <typename DeviceContext, typename T>
 class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto in_y = ctx.Input<phi::DenseTensor>("Y");
+=======
+    auto in_y = ctx.Input<framework::Tensor>("Y");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_NE(
         in_y,
         nullptr,
         platform::errors::InvalidArgument("Input(Y) should not be nullptr."));
+<<<<<<< HEAD
     phi::DenseTensor *in_out =
         const_cast<phi::DenseTensor *>(ctx.Input<phi::DenseTensor>("Out"));
 
     auto in_out_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    auto in_out = ctx.Input<framework::Tensor>("Out");
+    PADDLE_ENFORCE_NE(
+        in_out,
+        nullptr,
+        platform::errors::InvalidArgument("Input(Out) should not be nullptr."));
+    auto in_out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_NE(in_out_grad,
                       nullptr,
                       platform::errors::InvalidArgument(
                           "Input(Out@Grad) should not be nullptr."));
 
+<<<<<<< HEAD
     phi::DenseTensor *in_x =
         const_cast<phi::DenseTensor *>(ctx.Input<phi::DenseTensor>("X"));
     phi::DenseTensor *x_grad =
@@ -682,17 +774,36 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     phi::DenseTensor *d_intermediate_out =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("IntermediateOut"));
+=======
+    framework::Tensor *in_x =
+        const_cast<framework::Tensor *>(ctx.Input<framework::Tensor>("X"));
+    framework::Tensor *x_grad =
+        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    framework::Tensor *y_grad =
+        ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    framework::Tensor *d_intermediate_out = ctx.Output<framework::Tensor>(
+        framework::GradVarName("IntermediateOut"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto functor_list = ctx.Attr<std::vector<std::string>>("functor_list");
 
     // Get intermediate_out
+<<<<<<< HEAD
     phi::DenseTensor *in_intermediate_out = nullptr;
+=======
+    framework::Tensor *in_intermediate_out = nullptr;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (ctx.Attr<bool>("save_intermediate_out")) {
       // if save_intermediate_out is true, for Unary(Binary(x, y)) and
       // Binary(x, Unary(y)), the Binary(x, y) and Unary(y) not need to
       // recompute.
+<<<<<<< HEAD
       in_intermediate_out = const_cast<phi::DenseTensor *>(
           ctx.Input<phi::DenseTensor>("IntermediateOut"));
+=======
+      in_intermediate_out = const_cast<framework::Tensor *>(
+          ctx.Input<framework::Tensor>("IntermediateOut"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       PADDLE_ENFORCE_NE(in_intermediate_out,
                         nullptr,
                         platform::errors::InvalidArgument(
@@ -721,6 +832,7 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "Only when the compoundfunctor contains "
                             "elementwise_add_grad, the 'X' could be absent."));
+<<<<<<< HEAD
       in_x = const_cast<phi::DenseTensor *>(in_out_grad);
     }
 
@@ -739,6 +851,9 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
                             "Only when the compoundfunctor contains "
                             "elementwise_add_grad, the 'X' could be absent."));
       in_out = const_cast<phi::DenseTensor *>(in_out_grad);
+=======
+      in_x = const_cast<framework::Tensor *>(in_out_grad);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     bool has_in_place = HasInPlaceUnary(functor_list);

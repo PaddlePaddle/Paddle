@@ -109,8 +109,12 @@ class SelectedRowsImpl {
 
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
+<<<<<<< HEAD
                      size_t requested_size = 0,
                      bool fake_alloc = false);
+=======
+                     size_t requested_size = 0);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   /*
    * @brief Get the index of the key from id_to_index_ map. If the key not

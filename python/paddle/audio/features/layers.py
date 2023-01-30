@@ -12,13 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from functools import partial
+<<<<<<< HEAD
 from typing import Optional, Union
+=======
+from typing import Optional
+from typing import Union
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 import paddle.nn as nn
 from paddle import Tensor
 
+<<<<<<< HEAD
 from ..functional import compute_fbank_matrix, create_dct, power_to_db
+=======
+from ..functional import compute_fbank_matrix
+from ..functional import create_dct
+from ..functional import power_to_db
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from ..functional.window import get_window
 
 
@@ -58,6 +69,7 @@ class Spectrogram(nn.Layer):
             feats = feature_extractor(waveform)
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         n_fft: int = 512,
@@ -70,6 +82,18 @@ class Spectrogram(nn.Layer):
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
+=======
+    def __init__(self,
+                 n_fft: int = 512,
+                 hop_length: Optional[int] = 512,
+                 win_length: Optional[int] = None,
+                 window: str = 'hann',
+                 power: float = 1.0,
+                 center: bool = True,
+                 pad_mode: str = 'reflect',
+                 dtype: str = 'float32') -> None:
+        super(Spectrogram, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         assert power > 0, 'Power of spectrogram must be > 0.'
         self.power = power
@@ -77,6 +101,7 @@ class Spectrogram(nn.Layer):
         if win_length is None:
             win_length = n_fft
 
+<<<<<<< HEAD
         self.fft_window = get_window(
             window, win_length, fftbins=True, dtype=dtype
         )
@@ -89,6 +114,19 @@ class Spectrogram(nn.Layer):
             center=center,
             pad_mode=pad_mode,
         )
+=======
+        self.fft_window = get_window(window,
+                                     win_length,
+                                     fftbins=True,
+                                     dtype=dtype)
+        self._stft = partial(paddle.signal.stft,
+                             n_fft=n_fft,
+                             hop_length=hop_length,
+                             win_length=win_length,
+                             window=self.fft_window,
+                             center=center,
+                             pad_mode=pad_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.register_buffer('fft_window', self.fft_window)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -143,6 +181,7 @@ class MelSpectrogram(nn.Layer):
             feats = feature_extractor(waveform)
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         sr: int = 22050,
@@ -172,6 +211,33 @@ class MelSpectrogram(nn.Layer):
             pad_mode=pad_mode,
             dtype=dtype,
         )
+=======
+    def __init__(self,
+                 sr: int = 22050,
+                 n_fft: int = 2048,
+                 hop_length: Optional[int] = 512,
+                 win_length: Optional[int] = None,
+                 window: str = 'hann',
+                 power: float = 2.0,
+                 center: bool = True,
+                 pad_mode: str = 'reflect',
+                 n_mels: int = 64,
+                 f_min: float = 50.0,
+                 f_max: Optional[float] = None,
+                 htk: bool = False,
+                 norm: Union[str, float] = 'slaney',
+                 dtype: str = 'float32') -> None:
+        super(MelSpectrogram, self).__init__()
+
+        self._spectrogram = Spectrogram(n_fft=n_fft,
+                                        hop_length=hop_length,
+                                        win_length=win_length,
+                                        window=window,
+                                        power=power,
+                                        center=center,
+                                        pad_mode=pad_mode,
+                                        dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.n_mels = n_mels
         self.f_min = f_min
         self.f_max = f_max
@@ -179,6 +245,7 @@ class MelSpectrogram(nn.Layer):
         self.norm = norm
         if f_max is None:
             f_max = sr // 2
+<<<<<<< HEAD
         self.fbank_matrix = compute_fbank_matrix(
             sr=sr,
             n_fft=n_fft,
@@ -189,6 +256,16 @@ class MelSpectrogram(nn.Layer):
             norm=norm,
             dtype=dtype,
         )
+=======
+        self.fbank_matrix = compute_fbank_matrix(sr=sr,
+                                                 n_fft=n_fft,
+                                                 n_mels=n_mels,
+                                                 f_min=f_min,
+                                                 f_max=f_max,
+                                                 htk=htk,
+                                                 norm=norm,
+                                                 dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.register_buffer('fbank_matrix', self.fbank_matrix)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -246,6 +323,7 @@ class LogMelSpectrogram(nn.Layer):
             feats = feature_extractor(waveform)
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         sr: int = 22050,
@@ -284,6 +362,42 @@ class LogMelSpectrogram(nn.Layer):
             norm=norm,
             dtype=dtype,
         )
+=======
+    def __init__(self,
+                 sr: int = 22050,
+                 n_fft: int = 512,
+                 hop_length: Optional[int] = None,
+                 win_length: Optional[int] = None,
+                 window: str = 'hann',
+                 power: float = 2.0,
+                 center: bool = True,
+                 pad_mode: str = 'reflect',
+                 n_mels: int = 64,
+                 f_min: float = 50.0,
+                 f_max: Optional[float] = None,
+                 htk: bool = False,
+                 norm: Union[str, float] = 'slaney',
+                 ref_value: float = 1.0,
+                 amin: float = 1e-10,
+                 top_db: Optional[float] = None,
+                 dtype: str = 'float32') -> None:
+        super(LogMelSpectrogram, self).__init__()
+
+        self._melspectrogram = MelSpectrogram(sr=sr,
+                                              n_fft=n_fft,
+                                              hop_length=hop_length,
+                                              win_length=win_length,
+                                              window=window,
+                                              power=power,
+                                              center=center,
+                                              pad_mode=pad_mode,
+                                              n_mels=n_mels,
+                                              f_min=f_min,
+                                              f_max=f_max,
+                                              htk=htk,
+                                              norm=norm,
+                                              dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.ref_value = ref_value
         self.amin = amin
@@ -298,12 +412,19 @@ class LogMelSpectrogram(nn.Layer):
             Tensor: Log mel spectrograms with shape `(N, n_mels, num_frames)`.
         """
         mel_feature = self._melspectrogram(x)
+<<<<<<< HEAD
         log_mel_feature = power_to_db(
             mel_feature,
             ref_value=self.ref_value,
             amin=self.amin,
             top_db=self.top_db,
         )
+=======
+        log_mel_feature = power_to_db(mel_feature,
+                                      ref_value=self.ref_value,
+                                      amin=self.amin,
+                                      top_db=self.top_db)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return log_mel_feature
 
 
@@ -350,6 +471,7 @@ class MFCC(nn.Layer):
             feats = feature_extractor(waveform)
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         sr: int = 22050,
@@ -394,6 +516,47 @@ class MFCC(nn.Layer):
             top_db=top_db,
             dtype=dtype,
         )
+=======
+    def __init__(self,
+                 sr: int = 22050,
+                 n_mfcc: int = 40,
+                 n_fft: int = 512,
+                 hop_length: Optional[int] = None,
+                 win_length: Optional[int] = None,
+                 window: str = 'hann',
+                 power: float = 2.0,
+                 center: bool = True,
+                 pad_mode: str = 'reflect',
+                 n_mels: int = 64,
+                 f_min: float = 50.0,
+                 f_max: Optional[float] = None,
+                 htk: bool = False,
+                 norm: Union[str, float] = 'slaney',
+                 ref_value: float = 1.0,
+                 amin: float = 1e-10,
+                 top_db: Optional[float] = None,
+                 dtype: str = 'float32') -> None:
+        super(MFCC, self).__init__()
+        assert n_mfcc <= n_mels, 'n_mfcc cannot be larger than n_mels: %d vs %d' % (
+            n_mfcc, n_mels)
+        self._log_melspectrogram = LogMelSpectrogram(sr=sr,
+                                                     n_fft=n_fft,
+                                                     hop_length=hop_length,
+                                                     win_length=win_length,
+                                                     window=window,
+                                                     power=power,
+                                                     center=center,
+                                                     pad_mode=pad_mode,
+                                                     n_mels=n_mels,
+                                                     f_min=f_min,
+                                                     f_max=f_max,
+                                                     htk=htk,
+                                                     norm=norm,
+                                                     ref_value=ref_value,
+                                                     amin=amin,
+                                                     top_db=top_db,
+                                                     dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dct_matrix = create_dct(n_mfcc=n_mfcc, n_mels=n_mels, dtype=dtype)
         self.register_buffer('dct_matrix', self.dct_matrix)
 
@@ -406,9 +569,14 @@ class MFCC(nn.Layer):
             Tensor: Mel frequency cepstral coefficients with shape `(N, n_mfcc, num_frames)`.
         """
         log_mel_feature = self._log_melspectrogram(x)
+<<<<<<< HEAD
         mfcc = paddle.matmul(
             log_mel_feature.transpose((0, 2, 1)), self.dct_matrix
         ).transpose(
             (0, 2, 1)
         )  # (B, n_mels, L)
+=======
+        mfcc = paddle.matmul(log_mel_feature.transpose(
+            (0, 2, 1)), self.dct_matrix).transpose((0, 2, 1))  # (B, n_mels, L)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return mfcc

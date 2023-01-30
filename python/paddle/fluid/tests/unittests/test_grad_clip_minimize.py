@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,6 +23,26 @@ from paddle.nn import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 
 
 class TestGradClipByGlobalNorm(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import contextlib
+import unittest
+import numpy as np
+import six
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
+
+from paddle.fluid.dygraph.base import to_variable
+
+from paddle.fluid.clip import GradientClipByValue, GradientClipByNorm, GradientClipByGlobalNorm
+
+
+class TestGradClipByGlobalNorm(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_value(self):
         self.max_global_norm = 5.0
         self.init_scale = 1.0
@@ -33,6 +54,7 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
         self.para_and_grad = []
         for i in range(10):
             self.para_and_grad.append(
+<<<<<<< HEAD
                 (
                     np.random.uniform(
                         -self.init_scale, self.init_scale, self.shape
@@ -42,6 +64,12 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
                     ).astype('float32'),
                 )
             )
+=======
+                (np.random.uniform(-self.init_scale, self.init_scale,
+                                   self.shape).astype('float32'),
+                 np.random.uniform(-self.init_scale, self.init_scale,
+                                   self.shape).astype('float32')))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_numpy_global_norm_result(self):
         gloabl_norm = 0.0
@@ -63,7 +91,11 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
     def get_dygrap_global_norm_result(self):
         with fluid.dygraph.guard():
 
+<<<<<<< HEAD
             gloabl_norm_clip = ClipGradByGlobalNorm(self.max_global_norm)
+=======
+            gloabl_norm_clip = GradientClipByGlobalNorm(self.max_global_norm)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)
@@ -101,6 +133,10 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
 
 
 class TestGradClipByNorm(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_value(self):
         self.max_norm = 5.0
         self.init_scale = 1.0
@@ -112,6 +148,7 @@ class TestGradClipByNorm(unittest.TestCase):
         self.para_and_grad = []
         for i in range(10):
             self.para_and_grad.append(
+<<<<<<< HEAD
                 (
                     np.random.uniform(
                         -self.init_scale, self.init_scale, self.shape
@@ -121,6 +158,12 @@ class TestGradClipByNorm(unittest.TestCase):
                     ).astype('float32'),
                 )
             )
+=======
+                (np.random.uniform(-self.init_scale, self.init_scale,
+                                   self.shape).astype('float32'),
+                 np.random.uniform(-self.init_scale, self.init_scale,
+                                   self.shape).astype('float32')))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_numpy_norm_result(self):
 
@@ -138,7 +181,11 @@ class TestGradClipByNorm(unittest.TestCase):
     def get_dygrap_norm_result(self):
         with fluid.dygraph.guard():
 
+<<<<<<< HEAD
             norm_clip = ClipGradByNorm(self.max_norm)
+=======
+            norm_clip = GradientClipByNorm(self.max_norm)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)
@@ -176,6 +223,10 @@ class TestGradClipByNorm(unittest.TestCase):
 
 
 class TestGradClipByValue(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_value(self):
         self.max_value = 0.8
         self.min_value = -0.1
@@ -188,6 +239,7 @@ class TestGradClipByValue(unittest.TestCase):
         self.para_and_grad = []
         for i in range(10):
             self.para_and_grad.append(
+<<<<<<< HEAD
                 (
                     np.random.uniform(
                         -self.init_scale, self.init_scale, self.shape
@@ -197,6 +249,12 @@ class TestGradClipByValue(unittest.TestCase):
                     ).astype('float32'),
                 )
             )
+=======
+                (np.random.uniform(-self.init_scale, self.init_scale,
+                                   self.shape).astype('float32'),
+                 np.random.uniform(-self.init_scale, self.init_scale,
+                                   self.shape).astype('float32')))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def get_numpy_clip_result(self):
 
@@ -208,7 +266,12 @@ class TestGradClipByValue(unittest.TestCase):
 
     def get_dygrap_clip_result(self):
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             value_clip = ClipGradByValue(max=self.max_value, min=self.min_value)
+=======
+            value_clip = GradientClipByValue(max=self.max_value,
+                                             min=self.min_value)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)

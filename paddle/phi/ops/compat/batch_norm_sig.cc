@@ -33,11 +33,16 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (is_test && !use_global_stats && !trainable_statistics &&
       !fuse_with_relu) {
     return KernelSignature("batch_norm_infer",
+<<<<<<< HEAD
                            {"X", "Mean", "Variance", "Scale", "Bias"},
+=======
+                           {"X", "Scale", "Bias", "Mean", "Variance"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            {"momentum", "epsilon", "data_layout"},
                            {"Y", "MeanOut", "VarianceOut"});
   } else {
     return KernelSignature("batch_norm",
+<<<<<<< HEAD
                            {"X", "Mean", "Variance", "Scale", "Bias"},
                            {"is_test",
                             "momentum",
@@ -45,6 +50,16 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
                             "data_layout",
                             "use_global_stats",
                             "trainable_statistics"},
+=======
+                           {"X", "Scale", "Bias", "Mean", "Variance"},
+                           {"momentum",
+                            "epsilon",
+                            "data_layout",
+                            "is_test",
+                            "use_global_stats",
+                            "trainable_statistics",
+                            "fuse_with_relu"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            {"Y",
                             "MeanOut",
                             "VarianceOut",
@@ -73,7 +88,12 @@ KernelSignature BatchNormGradOpArgumentMapping(
                           "data_layout",
                           "is_test",
                           "use_global_stats",
+<<<<<<< HEAD
                           "trainable_statistics"},
+=======
+                          "trainable_statistics",
+                          "fuse_with_relu"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
 
@@ -95,7 +115,12 @@ KernelSignature BatchNormGradGradOpArgumentMapping(
                           "data_layout",
                           "is_test",
                           "use_global_stats",
+<<<<<<< HEAD
                           "trainable_statistics"},
+=======
+                          "trainable_statistics",
+                          "fuse_with_relu"},
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          {"DX", "DScale", "DDY"});
 }
 

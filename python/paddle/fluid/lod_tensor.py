@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from . import core
 from .data_feeder import DataToLoDTensorConverter
 import numpy as np
@@ -72,12 +77,19 @@ def create_lod_tensor(data, recursive_seq_lens, place):
     elif isinstance(data, list):
         # dtype and shape are not important here,
         # we only want to reuse code of DataToLoDTensorConverter
+<<<<<<< HEAD
         converter = DataToLoDTensorConverter(
             place=place,
             lod_level=len(recursive_seq_lens),
             shape=[],
             dtype=core.VarDesc.VarType.FP32,
         )
+=======
+        converter = DataToLoDTensorConverter(place=place,
+                                             lod_level=len(recursive_seq_lens),
+                                             shape=[],
+                                             dtype=core.VarDesc.VarType.FP32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         new_recursive_seq_lens = []
         for seq in data:
@@ -93,7 +105,11 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         # FIXME(zjl): the original logic of create_lod_tensor would append
         # 1 to the shape. Maybe it is not a right way? Currently, we only
         # follow the previous logic
+<<<<<<< HEAD
         arr = arr.reshape(arr.shape + (1,))
+=======
+        arr = arr.reshape(arr.shape + (1, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         tensor = core.LoDTensor()
         tensor.set(arr, place)
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
@@ -102,12 +118,17 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         tensor = core.LoDTensor()
         tensor.set(data, place)
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
+<<<<<<< HEAD
         assert (
             tensor.has_valid_recursive_sequence_lengths()
+=======
+        assert tensor.has_valid_recursive_sequence_lengths(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ), "the provided lod info is invalid"
         return tensor
     else:
         raise TypeError(
+<<<<<<< HEAD
             "data should be either a LoDTensor, a Numpy array or a list"
         )
 
@@ -117,6 +138,15 @@ def create_random_int_lodtensor(
 ):
     """
         :api_attr: Static Graph
+=======
+            "data should be either a LoDTensor, a Numpy array or a list")
+
+
+def create_random_int_lodtensor(recursive_seq_lens, base_shape, place, low,
+                                high):
+    """
+	:api_attr: Static Graph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Create a LoDTensor containing random integers.
 

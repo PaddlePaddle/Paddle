@@ -13,23 +13,39 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import unittest
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
 import paddle.static as static
+=======
+import paddle
+import paddle.static as static
+import unittest
+
+from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 
 paddle.enable_static()
 
 
 class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
+<<<<<<< HEAD
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ[
             "PADDLE_TRAINER_ENDPOINTS"
         ] = "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+=======
+
+    def setUp(self):
+        os.environ["PADDLE_TRAINER_ID"] = "3"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = \
+            "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # pre-assigned ring id
         self.mp_ring_id = 0
         self.sharding_ring_id = 1
@@ -66,6 +82,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         main_prog_op_types = [op.type for op in main_prog_ops]
 
         # global, sharding, pp_send, pp_recv
+<<<<<<< HEAD
         self.assertEqual(
             startup_prog_op_types,
             [
@@ -182,6 +199,42 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         created_ring_ids = [
             op.desc.attr("ring_id")
             for op in startup_prog_ops
+=======
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'elementwise_add', 'softmax', 'cross_entropy2', 'reduce_mean',
+            'fill_constant', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
+            'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
+            'sum', 'fill_constant', 'sum', 'fill_constant', 'sum',
+            'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
+            'sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_sync_comm_stream', 'momentum', 'momentum',
+            'momentum', 'momentum', 'momentum', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast'
+        ])
+
+        # should has ring id for pp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if op.type == "c_comm_init"
         ]
         self.assertIn(self.dp_ring_id, created_ring_ids)
@@ -190,20 +243,30 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of pp group
         pp_group_waiting_prots = None
         for op in startup_prog_ops:
+<<<<<<< HEAD
             if (
                 op.type == "c_gen_nccl_id"
                 and op.desc.output_arg_names()[0] == "comm_id_0"
             ):
+=======
+            if op.type == "c_gen_nccl_id" and \
+                    op.desc.output_arg_names()[0] == "comm_id_0":
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 pp_group_waiting_prots = op.desc.attr("other_endpoints")
         self.assertEqual(pp_group_waiting_prots, ['127.0.0.1:36003'])
 
         # check correctness of sharding group
         dp_group_waiting_ports = None
         for op in startup_prog_ops:
+<<<<<<< HEAD
             if (
                 op.type == "c_gen_nccl_id"
                 and op.desc.output_arg_names()[0] == "comm_id_3"
             ):
+=======
+            if op.type == "c_gen_nccl_id" \
+                    and op.desc.output_arg_names()[0] == "comm_id_3":
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
@@ -234,6 +297,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         main_prog_op_types = [op.type for op in main_prog_ops]
 
         # global, sharding, pp_send, pp_recv
+<<<<<<< HEAD
         self.assertEqual(
             startup_prog_op_types,
             [
@@ -337,6 +401,36 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'c_broadcast',
             ],
         )
+=======
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'elementwise_add', 'softmax', 'cross_entropy2', 'reduce_mean',
+            'fill_constant', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
+            'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
+            'sum', 'fill_constant', 'sum', 'fill_constant', 'sum',
+            'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
+            'sum', 'coalesce_tensor', 'c_reduce_sum', 'coalesce_tensor',
+            'c_reduce_sum', 'c_sync_comm_stream', 'momentum', 'momentum',
+            'momentum', 'momentum', 'momentum', 'coalesce_tensor',
+            'c_broadcast', 'coalesce_tensor', 'c_broadcast'
+        ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_opt_sharding_with_pp_amp_gclip(self):
         train_prog, startup_prog = static.Program(), static.Program()
@@ -354,11 +448,21 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         }
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
+<<<<<<< HEAD
         clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
         )
+=======
+        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -371,6 +475,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         main_prog_op_types = [op.type for op in main_prog_ops]
 
         # global, sharding, pp_send, pp_recv
+<<<<<<< HEAD
         self.assertEqual(
             startup_prog_op_types,
             [
@@ -534,6 +639,48 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'c_broadcast',
             ],
         )
+=======
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
+            'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
+            'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
+            'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'softmax',
+            'cast', 'cross_entropy2', 'reduce_mean', 'elementwise_mul',
+            'fill_constant', 'elementwise_mul_grad', 'reduce_mean_grad',
+            'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'c_sync_calc_stream',
+            'send_v2', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'coalesce_tensor', 'c_reduce_sum', 'coalesce_tensor',
+            'c_reduce_sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
+            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
+            'update_loss_scaling', 'squared_l2_norm', 'squared_l2_norm',
+            'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
+            'c_allreduce_sum', 'c_allreduce_sum', 'sqrt', 'fill_constant',
+            'elementwise_max', 'elementwise_div', 'elementwise_mul',
+            'elementwise_mul', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_mul', 'momentum', 'momentum', 'momentum', 'momentum',
+            'momentum', 'coalesce_tensor', 'c_broadcast', 'coalesce_tensor',
+            'c_broadcast'
+        ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_opt_sharding_with_pp_amp_gclip_fuse_gm(self):
         train_prog, startup_prog = static.Program(), static.Program()
@@ -552,11 +699,21 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
         strategy.fuse_grad_merge = True
+<<<<<<< HEAD
         clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
         )
+=======
+        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -569,6 +726,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         main_prog_op_types = [op.type for op in main_prog_ops]
 
         # global, sharding, pp_send, pp_recv
+<<<<<<< HEAD
         self.assertEqual(
             startup_prog_op_types,
             [
@@ -714,6 +872,45 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 'c_broadcast',
             ],
         )
+=======
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
+            'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
+            'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
+            'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'softmax',
+            'cast', 'cross_entropy2', 'reduce_mean', 'elementwise_mul',
+            'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
+            'coalesce_tensor', 'fill_constant', 'elementwise_mul_grad',
+            'reduce_mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'c_sync_calc_stream',
+            'send_v2', 'cast', 'sum', 'cast', 'sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
+            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
+            'update_loss_scaling', 'squared_l2_norm', 'squared_l2_norm',
+            'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
+            'c_allreduce_sum', 'c_allreduce_sum', 'sqrt', 'fill_constant',
+            'elementwise_max', 'elementwise_div', 'elementwise_mul',
+            'elementwise_mul', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_mul', 'momentum', 'momentum', 'momentum', 'momentum',
+            'momentum', 'coalesce_tensor', 'c_broadcast', 'coalesce_tensor',
+            'c_broadcast'
+        ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_opt_sharding_with_pp_amp_ckp_fuse_gm_optcast(self):
         train_prog, startup_prog = static.Program(), static.Program()
@@ -726,12 +923,17 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         }
         strategy.recompute = True
         strategy.recompute_configs = {
+<<<<<<< HEAD
             "checkpoints": [
                 "fc_0.tmp_2",
                 "fc_1.tmp_2",
                 "fc_2.tmp_2",
                 "fc_3.tmp_2",
             ]
+=======
+            "checkpoints":
+            ["fc_0.tmp_2", "fc_1.tmp_2", "fc_2.tmp_2", "fc_3.tmp_2"]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         strategy.sharding = True
@@ -761,6 +963,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         main_prog_op_types = [op.type for op in main_prog_ops]
 
         # global, sharding, pp_send, pp_recv
+<<<<<<< HEAD
         self.assertEqual(
             startup_prog_op_types,
             [
@@ -913,6 +1116,51 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         os.environ[
             "PADDLE_TRAINER_ENDPOINTS"
         ] = "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+=======
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_broadcast',
+            'cast', 'c_broadcast', 'cast', 'c_broadcast', 'cast', 'c_broadcast',
+            'cast', 'c_broadcast', 'cast', 'c_broadcast', 'cast', 'c_broadcast',
+            'cast', 'c_broadcast'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'cast', 'mul', 'elementwise_add', 'cast', 'tanh', 'cast',
+            'mul', 'elementwise_add', 'cast', 'tanh', 'cast', 'mul',
+            'elementwise_add', 'cast', 'tanh', 'cast', 'mul', 'cast',
+            'elementwise_add', 'cast', 'softmax', 'cast', 'cross_entropy2',
+            'reduce_mean', 'elementwise_mul', 'coalesce_tensor',
+            'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
+            'coalesce_tensor', 'coalesce_tensor', 'fill_constant',
+            'elementwise_mul_grad', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'cast', 'softmax_grad', 'cast', 'elementwise_add_grad', 'cast',
+            'mul_grad', 'cast', 'tanh_grad', 'cast', 'elementwise_add_grad',
+            'mul_grad', 'cast', 'tanh_grad', 'cast', 'elementwise_add_grad',
+            'mul_grad', 'cast', 'cast', 'mul', 'elementwise_add', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'c_sync_calc_stream', 'send_v2', 'cast', 'sum', 'sum', 'cast',
+            'sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'c_allreduce_max', 'cast', 'update_loss_scaling',
+            'momentum', 'cast', 'momentum', 'cast', 'momentum', 'cast',
+            'momentum', 'momentum', 'cast', 'coalesce_tensor', 'c_broadcast',
+            'c_broadcast', 'coalesce_tensor', 'c_broadcast'
+        ])
+
+
+class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
+
+    def setUp(self):
+        os.environ["PADDLE_TRAINER_ID"] = "3"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = \
+            "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # pre-assigned ring id
         self.mp_ring_id = 0
         self.sharding_ring_id = 1
@@ -940,11 +1188,21 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         }
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
+<<<<<<< HEAD
         clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
         )
+=======
+        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -961,14 +1219,20 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
             if is_loss_grad_op(op):
                 self.assertEqual(op.type, 'fill_constant')
                 self.assertTrue(op.has_attr('value'))
+<<<<<<< HEAD
                 scale = (
                     strategy.pipeline_configs['accumulate_steps']
                     * strategy.sharding_configs['dp_degree']
                 )
+=======
+                scale = strategy.pipeline_configs[
+                    'accumulate_steps'] * strategy.sharding_configs['dp_degree']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 loss_scale = 1.0 / scale
                 self.assertAlmostEqual(float(op.attr('value')), loss_scale)
 
         # global, sharding, pp_send, pp_recv
+<<<<<<< HEAD
         self.assertEqual(
             startup_prog_op_types,
             [
@@ -1029,6 +1293,28 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
 
     def test_opt_sharding_with_pp_amp_gclip_boundary_card1(self):
         """test optimizer sharding without parameter in card0"""
+=======
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id',
+            'c_comm_init', 'c_broadcast'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'cast', 'matmul', 'cast', 'reduce_mean',
+            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
+            'reduce_mean_grad', 'cast', 'matmul_grad', 'c_sync_calc_stream',
+            'send_v2', 'fill_constant', 'cast', 'sum', 'c_reduce_sum',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'c_allreduce_max', 'cast', 'update_loss_scaling',
+            'fill_constant', 'c_allreduce_sum', 'c_allreduce_sum', 'sqrt',
+            'fill_constant', 'elementwise_max', 'elementwise_div', 'c_broadcast'
+        ])
+
+    def test_opt_sharding_with_pp_amp_gclip_boundary_card1(self):
+        """ test optimizer sharding without parameter in card0 """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.environ["PADDLE_TRAINER_ID"] = "1"
         train_prog, startup_prog = static.Program(), static.Program()
         avg_cost, strategy = self.boundary_net(train_prog, startup_prog)
@@ -1044,11 +1330,21 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         }
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
+<<<<<<< HEAD
         clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
         )
+=======
+        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -1061,6 +1357,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         main_prog_op_types = [op.type for op in main_prog_ops]
 
         # global, sharding, pp_send, pp_recv
+<<<<<<< HEAD
         self.assertEqual(
             startup_prog_op_types,
             [
@@ -1122,6 +1419,26 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
                 'c_broadcast',
             ],
         )
+=======
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_broadcast'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'cast', 'matmul', 'cast', 'reduce_mean',
+            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
+            'reduce_mean_grad', 'cast', 'matmul_grad', 'c_sync_calc_stream',
+            'send_v2', 'fill_constant', 'cast', 'sum', 'c_reduce_sum',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'c_allreduce_max', 'cast', 'update_loss_scaling',
+            'squared_l2_norm', 'sum', 'c_allreduce_sum', 'c_allreduce_sum',
+            'sqrt', 'fill_constant', 'elementwise_max', 'elementwise_div',
+            'elementwise_mul', 'momentum', 'c_broadcast'
+        ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

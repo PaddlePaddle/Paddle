@@ -13,13 +13,20 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 from paddle.vision.datasets import Cifar10, Cifar100
 
 
 class TestCifar10Train(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         cifar = Cifar10(mode='train')
         self.assertTrue(len(cifar) == 50000)
@@ -37,6 +44,10 @@ class TestCifar10Train(unittest.TestCase):
 
 
 class TestCifar10Test(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         cifar = Cifar10(mode='test')
         self.assertTrue(len(cifar) == 10000)
@@ -71,6 +82,10 @@ class TestCifar10Test(unittest.TestCase):
 
 
 class TestCifar100Train(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         cifar = Cifar100(mode='train')
         self.assertTrue(len(cifar) == 50000)
@@ -88,6 +103,10 @@ class TestCifar100Train(unittest.TestCase):
 
 
 class TestCifar100Test(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_main(self):
         cifar = Cifar100(mode='test')
         self.assertTrue(len(cifar) == 10000)

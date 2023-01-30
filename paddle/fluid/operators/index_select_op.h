@@ -22,20 +22,35 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                       phi::DenseTensor* input,
                       const phi::DenseTensor& index,
                       phi::DenseTensor* output,
+=======
+                      LoDTensor* input,
+                      const LoDTensor& index,
+                      LoDTensor* output,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       int dim) {
   auto input_dim = input->dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
   auto index_size = index.dims()[0];
 
+<<<<<<< HEAD
   phi::DenseTensor index_cpu_copy;
+=======
+  LoDTensor index_cpu_copy;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (!platform::is_cpu_place(index.place())) {
     framework::TensorCopySync(index, platform::CPUPlace(), &index_cpu_copy);
   }
@@ -81,8 +96,13 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   input->Resize(phi::make_ddim({outer_nums, input_dim[dim], slice_size}));
   output->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
 
+<<<<<<< HEAD
   auto input_tensor = phi::EigenTensor<T, 3>::From(*input);
   auto output_tensor = phi::EigenTensor<T, 3>::From(*output);
+=======
+  auto input_tensor = framework::EigenTensor<T, 3>::From(*input);
+  auto output_tensor = framework::EigenTensor<T, 3>::From(*output);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
@@ -125,9 +145,15 @@ struct IndexSelectAdd<
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                           const phi::DenseTensor& out_grad,
                           const phi::DenseTensor& index,
                           phi::DenseTensor* x_grad,
+=======
+                          const LoDTensor& out_grad,
+                          const LoDTensor& index,
+                          LoDTensor* x_grad,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                           int dim) {
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();

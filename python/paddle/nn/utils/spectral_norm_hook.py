@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle
 
 from .. import functional as F
 from ..layer.common import Linear
 from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
+=======
+import math
+import numpy as np
+
+import paddle
+from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
+from ..layer.common import Linear
+from .. import functional as F
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -27,7 +37,11 @@ def normal_(x, mean=0.0, std=1.0):
     return x
 
 
+<<<<<<< HEAD
 class SpectralNorm:
+=======
+class SpectralNorm(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, name='weight', n_power_iterations=1, dim=0, eps=1e-12):
         self.name = name
         self.dim = dim

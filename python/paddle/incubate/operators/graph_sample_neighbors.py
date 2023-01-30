@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle.utils.deprecated as deprecated
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
+=======
+import paddle
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid import core
+from paddle import _C_ops, _legacy_C_ops
+import paddle.utils.deprecated as deprecated
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @deprecated(
@@ -41,6 +51,7 @@ def graph_sample_neighbors(
     Graph Sample Neighbors API.
 
     This API is mainly used in Graph Learning domain, and the main purpose is to
+<<<<<<< HEAD
     provide high performance of graph sampling method. For example, we get the
     CSC(Compressed Sparse Column) format of the input graph edges as `row` and
     `colptr`, so as to convert graph data into a suitable format for sampling.
@@ -48,6 +59,15 @@ def graph_sample_neighbors(
     means the number of neighbors and number of layers we want to sample.
 
     Besides, we support fisher-yates sampling in GPU version.
+=======
+    provide high performance of graph sampling method. For example, we get the 
+    CSC(Compressed Sparse Column) format of the input graph edges as `row` and 
+    `colptr`, so as to convert graph data into a suitable format for sampling.
+    `input_nodes` means the nodes we need to sample neighbors, and `sample_sizes` 
+    means the number of neighbors and number of layers we want to sample.
+
+    Besides, we support fisher-yates sampling in GPU version. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Args:
         row (Tensor): One of the components of the CSC format of the input graph, and
@@ -59,6 +79,7 @@ def graph_sample_neighbors(
         input_nodes (Tensor): The input nodes we need to sample neighbors for, and the
                               data type should be the same with `row`.
         eids (Tensor): The eid information of the input graph. If return_eids is True,
+<<<<<<< HEAD
                             then `eids` should not be None. The data type should be the
                             same with `row`. Default is None.
         perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `flag_perm_buffer`
@@ -69,13 +90,31 @@ def graph_sample_neighbors(
         return_eids (bool): Whether to return eid information of sample edges. Default is False.
         flag_perm_buffer (bool): Using the permutation for fisher-yates sampling in GPU. Default
                                  value is false, means not using it.
+=======
+                            then `eids` should not be None. The data type should be the 
+                            same with `row`. Default is None.
+        perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `flag_perm_buffer`
+                              is True, then `perm_buffer` should not be None. The data type should
+                              be the same with `row`. Default is None. 
+        sample_size (int): The number of neighbors we need to sample. Default value is 
+                           -1, which means returning all the neighbors of the input nodes.
+        return_eids (bool): Whether to return eid information of sample edges. Default is False.
+        flag_perm_buffer (bool): Using the permutation for fisher-yates sampling in GPU. Default 
+                                 value is false, means not using it. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
+<<<<<<< HEAD
         - out_neighbors (Tensor): The sample neighbors of the input nodes.
         - out_count (Tensor): The number of sampling neighbors of each input node, and the shape should be the same with `input_nodes`.
         - out_eids (Tensor): If `return_eids` is True, we will return the eid information of the sample edges.
+=======
+        - out_neighbors (Tensor), The sample neighbors of the input nodes.
+        - out_count (Tensor), The number of sampling neighbors of each input node, and the shape should be the same with `input_nodes`.
+        - out_eids (Tensor), If `return_eids` is True, we will return the eid information of the sample edges.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
         .. code-block:: python
@@ -99,13 +138,21 @@ def graph_sample_neighbors(
     if return_eids:
         if eids is None:
             raise ValueError(
+<<<<<<< HEAD
                 "`eids` should not be None if `return_eids` is True."
+=======
+                f"`eids` should not be None if `return_eids` is True."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
 
     if flag_perm_buffer:
         if perm_buffer is None:
             raise ValueError(
+<<<<<<< HEAD
                 "`perm_buffer` should not be None if `flag_perm_buffer`"
+=======
+                f"`perm_buffer` should not be None if `flag_perm_buffer`"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 "is True."
             )
 

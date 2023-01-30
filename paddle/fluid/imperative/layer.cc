@@ -97,8 +97,13 @@ static std::string DebugString(
     const framework::Variable& var = vars[i]->Var();
     if (!var.IsInitialized()) {
       ss << "NOT_INITED_VAR";
+<<<<<<< HEAD
     } else if (var.IsType<phi::DenseTensor>()) {
       auto& tensor = var.Get<phi::DenseTensor>();
+=======
+    } else if (var.IsType<framework::LoDTensor>()) {
+      auto& tensor = var.Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       ss << "LoDTensor<";
       if (tensor.IsInitialized()) {
         ss << framework::DataTypeToString(
@@ -236,7 +241,12 @@ void VarBase::ClearGradient(bool set_to_zero) {
     } else {
       platform::RecordEvent record_event(
           "ClearGradient", platform::TracerEventType::UserDefined, 2);
+<<<<<<< HEAD
       auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+      auto* grad_t =
+          grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       if (grad_t->IsInitialized()) {
         if (set_to_zero) {
           auto* dev_ctx =
@@ -282,20 +292,34 @@ bool VarBase::_IsGradientSetEmpty() {
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
   PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
       Var().IsInitialized() && (Var().IsType<phi::DenseTensor>() ||
+=======
+      Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                 Var().IsType<phi::SelectedRows>()),
       true,
       platform::errors::InvalidArgument(
           "Variable is not initialized or Variable's type is not "
           "LoDTensor or SelectedRows when getting numpy tensor"));
 
+<<<<<<< HEAD
   if (Var().IsType<phi::DenseTensor>()) {
     auto& src_tensor = Var().Get<phi::DenseTensor>();
+=======
+  if (Var().IsType<framework::LoDTensor>()) {
+    auto& src_tensor = Var().Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // TODO(Jiabin): change this after move unique_name generator to CXX
     auto new_var = std::make_shared<VarBase>(
         true, Name() + std::to_string(copied_counter_++));
 
+<<<<<<< HEAD
     auto* dst_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+    auto* dst_tensor =
+        new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     dst_tensor->set_lod(src_tensor.lod());
     new_var->SetPersistable(Persistable());
     new_var->SetDataType(DataType());
@@ -366,9 +390,15 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
   }
 
   platform::Place place = src.Place();
+<<<<<<< HEAD
   if (src.Var().IsType<phi::DenseTensor>()) {
     auto& src_tensor = src.Var().Get<phi::DenseTensor>();
     auto* dst_tensor = MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  if (src.Var().IsType<framework::LoDTensor>()) {
+    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+    auto* dst_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (dst_tensor && dst_tensor->IsInitialized()) {
       PADDLE_ENFORCE_EQ(dst_tensor->dims(),
                         src_tensor.dims(),
@@ -448,13 +478,22 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   }
   VLOG(4) << " VarBase copy gradient with " << src.Name();
   if (grad_var_) {
+<<<<<<< HEAD
     auto& src_tensor = src.Var().Get<phi::DenseTensor>();
+=======
+    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
                       true,
                       platform::errors::InvalidArgument(
                           "Tensor %s has not been initialized", src.Name()));
+<<<<<<< HEAD
     auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
     auto* var_ = MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+    auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     grad_t->ShareDataWith(src_tensor);
     grad_t->Resize(var_->dims());
   }
@@ -519,8 +558,13 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    */
   auto prepared_op =
       PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
+<<<<<<< HEAD
   auto tmp_ins_ptr = PrepareData<VarType>(
       *op_kernel, ins, prepared_op.kernel_key(), prepared_op.place());
+=======
+  auto tmp_ins_ptr =
+      PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (tmp_ins_ptr == nullptr) {
     prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {
@@ -583,13 +627,23 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       if (!each_var) continue;
 
       auto& var = each_var->Var();
+<<<<<<< HEAD
       PADDLE_ENFORCE_EQ(var.IsType<phi::DenseTensor>(),
+=======
+      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         true,
                         platform::errors::PermissionDenied(
                             "NoNeedBufferVars only support LoDTensor"));
       auto new_var = new VariableWrapper(each_var->Name());
+<<<<<<< HEAD
       auto* new_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();
       auto& old_tensor = var.Get<phi::DenseTensor>();
+=======
+      auto* new_tensor =
+          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto& old_tensor = var.Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       new_tensor->Resize(old_tensor.dims());
       new_tensor->set_lod(old_tensor.lod());
       new_tensor->set_type(old_tensor.dtype());

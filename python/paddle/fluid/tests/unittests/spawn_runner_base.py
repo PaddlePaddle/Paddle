@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -24,12 +25,32 @@ import paddle
 
 # NOTE: compatible TestParallelDyGraphRunnerBase args
 class SpawnAssistTestArgs:
+=======
+from __future__ import print_function, division
+
+import numpy as np
+import unittest
+
+import paddle
+
+# used by model.run_trainer in test_dist_base
+from test_dist_base import RUN_STEP
+from paddle.fluid.framework import _test_eager_guard
+
+
+# NOTE: compatible TestParallelDyGraphRunnerBase args
+class SpawnAssistTestArgs(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     update_method = "local"
     trainer_id = 0
     find_unused_parameters = False
 
 
 class TestDistSpawnRunner(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         # NOTE(chenweihang): keep consistent with
         # TestDistBase.check_with_place
@@ -41,21 +62,36 @@ class TestDistSpawnRunner(unittest.TestCase):
 
     def _run_parallel(self, model, args):
         args.update_method = "nccl2"
+<<<<<<< HEAD
         context = paddle.distributed.spawn(
             func=model.run_trainer_with_spawn,
             args=(args,),
             nprocs=self.nprocs,
             join=True,
         )
+=======
+        context = paddle.distributed.spawn(func=model.run_trainer_with_spawn,
+                                           args=(args, ),
+                                           nprocs=self.nprocs,
+                                           join=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         result_list = []
         for res_queue in context.return_queues:
             result_list.append(res_queue.get())
         return result_list
 
     def check_dist_result_with_spawn(self, test_class, delta=1e-3):
+<<<<<<< HEAD
         self.check_dist_result_with_spawn_func(
             test_class=test_class, delta=delta
         )
+=======
+        with _test_eager_guard():
+            self.check_dist_result_with_spawn_func(test_class=test_class,
+                                                   delta=delta)
+        self.check_dist_result_with_spawn_func(test_class=test_class,
+                                               delta=delta)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def check_dist_result_with_spawn_func(self, test_class, delta=1e-3):
         # 0. prepare model and args
@@ -82,8 +118,15 @@ class TestDistSpawnRunner(unittest.TestCase):
                 loss,
                 dist_loss,
                 delta=delta,
+<<<<<<< HEAD
                 msg="The results of single-card execution and multi-card execution are inconsistent."
                 "signal-card loss is:\n{}\nmulti-card average loss is:\n{}\n".format(
                     loss, dist_loss
                 ),
             )
+=======
+                msg=
+                "The results of single-card execution and multi-card execution are inconsistent."
+                "signal-card loss is:\n{}\nmulti-card average loss is:\n{}\n".
+                format(loss, dist_loss))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

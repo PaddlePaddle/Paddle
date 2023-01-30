@@ -30,7 +30,10 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
@@ -65,10 +68,15 @@ struct SegmentOffsetIter {
   int num_cols_;
 };
 
+<<<<<<< HEAD
 #define PADDLE_CUDA_NUM_THREADS 1024
 
 template <typename T>
 static __global__ void FillIndex(T *indices, T num_rows, T num_cols) {
+=======
+template <typename T>
+static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int col_id = threadIdx.x;
   int row_id = blockIdx.x;
 
@@ -81,6 +89,7 @@ static __global__ void FillIndex(T *indices, T num_rows, T num_cols) {
 
 // Sort by flag descending, True: descending. False: Ascending.
 // Default is false.
+<<<<<<< HEAD
 static __global__ void FillIndexAndSegmentKernel(int2 *data,
                                                  int numel,
                                                  int nsort) {
@@ -321,6 +330,25 @@ void ArgFullSort(const phi::GPUContext &ctx,
   size_t temp_storage_bytes = -1;
 
   auto ComputeBlockSize = [](IndexType col) {
+=======
+template <typename T, typename IndType>
+void ArgFullSort(const phi::GPUContext& ctx,
+                 const DenseTensor* input,
+                 DenseTensor* output,
+                 DenseTensor* indices,
+                 const IndType num_rows,
+                 const IndType num_cols,
+                 const bool descending) {
+  auto cu_stream = ctx.stream();
+  DenseTensor input_indices;
+  const std::vector<IndType> dims = {num_rows, num_cols};
+  auto dim = phi::make_ddim(dims);
+  input_indices.Resize(dim);
+  ctx.template Alloc<IndType>(&input_indices);
+  size_t temp_storage_bytes = -1;
+
+  auto ComputeBlockSize = [](IndType col) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (col > 512)
       return 1024;
     else if (col > 256 && col <= 512)
@@ -339,6 +367,7 @@ void ArgFullSort(const phi::GPUContext &ctx,
   int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   // Init a index array
   FillIndex<<<grid_size, block_size, 0, cu_stream>>>(
+<<<<<<< HEAD
       input_indices.data<IndexType>(), num_rows, num_cols);
 
   T *sorted_out_ptr;
@@ -346,19 +375,37 @@ void ArgFullSort(const phi::GPUContext &ctx,
   const T *inp = input->data<T>();
   T *out = ctx.template Alloc<T>(output);
   IndexType *ind = ctx.template Alloc<IndexType>(indices);
+=======
+      input_indices.data<IndType>(), num_rows, num_cols);
+
+  T* sorted_out_ptr;
+  IndType* sorted_indices_ptr;
+  const T* inp = input->data<T>();
+  T* out = ctx.template Alloc<T>(output);
+  IndType* ind = ctx.template Alloc<IndType>(indices);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   sorted_out_ptr = out;
   sorted_indices_ptr = ind;
 
   // create iter for counting input
+<<<<<<< HEAD
   cub::CountingInputIterator<IndexType> counting_iter(0);
   // segment_offset is used for move to next row
   cub::TransformInputIterator<IndexType,
                               SegmentOffsetIter,
                               cub::CountingInputIterator<IndexType>>
+=======
+  cub::CountingInputIterator<IndType> counting_iter(0);
+  // segment_offset is used for move to next row
+  cub::TransformInputIterator<IndType,
+                              SegmentOffsetIter,
+                              cub::CountingInputIterator<IndType>>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       segment_offsets_t(counting_iter, SegmentOffsetIter(num_cols));
 
   gpuError_t err;
   if (descending) {
+<<<<<<< HEAD
     CUB_WRAPPER(cub::DeviceSegmentedRadixSort::SortPairsDescending,
                 ctx,
                 inp,
@@ -410,6 +457,93 @@ void ArgsortKernel(const Context &dev_ctx,
     phi::funcs::set_constant(dev_ctx, indices, 0);
     return;
   }
+=======
+    err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
+        nullptr,
+        temp_storage_bytes,
+        inp,
+        sorted_out_ptr,
+        input_indices.data<IndType>(),
+        sorted_indices_ptr,
+        num_cols * num_rows,
+        num_rows,
+        segment_offsets_t,
+        segment_offsets_t + 1,
+        0,
+        sizeof(T) * 8,
+        cu_stream);
+  } else {
+    err =
+        cub::DeviceSegmentedRadixSort::SortPairs(nullptr,
+                                                 temp_storage_bytes,
+                                                 inp,
+                                                 sorted_out_ptr,
+                                                 input_indices.data<IndType>(),
+                                                 sorted_indices_ptr,
+                                                 num_cols * num_rows,
+                                                 num_rows,
+                                                 segment_offsets_t,
+                                                 segment_offsets_t + 1,
+                                                 0,
+                                                 sizeof(T) * 8,
+                                                 cu_stream);
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(err);
+
+  DenseTensor temp_storage;
+  int64_t temp_size = temp_storage_bytes;
+  temp_storage.Resize({temp_size});
+  ctx.template Alloc<uint8_t>(&temp_storage);
+
+  if (descending) {
+    err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
+        temp_storage.data<uint8_t>(),
+        temp_storage_bytes,
+        inp,
+        sorted_out_ptr,
+        input_indices.data<IndType>(),
+        sorted_indices_ptr,
+        num_cols * num_rows,
+        num_rows,
+        segment_offsets_t,
+        segment_offsets_t + 1,
+        0,
+        sizeof(T) * 8,
+        cu_stream);
+  } else {
+    err =
+        cub::DeviceSegmentedRadixSort::SortPairs(temp_storage.data<uint8_t>(),
+                                                 temp_storage_bytes,
+                                                 inp,
+                                                 sorted_out_ptr,
+                                                 input_indices.data<IndType>(),
+                                                 sorted_indices_ptr,
+                                                 num_cols * num_rows,
+                                                 num_rows,
+                                                 segment_offsets_t,
+                                                 segment_offsets_t + 1,
+                                                 0,
+                                                 sizeof(T) * 8,
+                                                 cu_stream);
+  }
+
+  PADDLE_ENFORCE_GPU_SUCCESS(err);
+}
+
+template <typename T, typename Context>
+void ArgsortKernel(const Context& dev_ctx,
+                   const DenseTensor& input,
+                   int axis,
+                   bool descending,
+                   DenseTensor* output,
+                   DenseTensor* indices) {
+  auto in_dims = input.dims();
+  axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+  const T* in_data = input.data<T>();
+  auto size = input.numel();
+  T* out_data = dev_ctx.template Alloc<T>(output);
+  int64_t* ids_data = dev_ctx.template Alloc<int64_t>(indices);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the ‘axis’ dimension.
@@ -431,6 +565,7 @@ void ArgsortKernel(const Context &dev_ctx,
     const int64_t input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
+<<<<<<< HEAD
     if (input_height <= 4) {
       ArgFullSortForTinyRows<T, int64_t>(dev_ctx,
                                          &input,
@@ -448,6 +583,15 @@ void ArgsortKernel(const Context &dev_ctx,
                               input_width,
                               descending);
     }
+=======
+    ArgFullSort<T, int64_t>(dev_ctx,
+                            &input,
+                            output,
+                            indices,
+                            input_height,
+                            input_width,
+                            descending);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     // if not full sort, do transpose first
     std::vector<int> trans;
@@ -466,7 +610,11 @@ void ArgsortKernel(const Context &dev_ctx,
 
     DenseTensor trans_inp;
     trans_inp.Resize(trans_dims);
+<<<<<<< HEAD
     T *trans_inp_data = dev_ctx.template Alloc<T>(&trans_inp);
+=======
+    T* trans_inp_data = dev_ctx.template Alloc<T>(&trans_inp);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // Do transpose
     TransposeKernel<T, Context>(dev_ctx, input, trans, &trans_inp);
 
@@ -484,6 +632,7 @@ void ArgsortKernel(const Context &dev_ctx,
     dev_ctx.template Alloc<int64_t>(&tmp_indices);
     dev_ctx.template Alloc<int64_t>(indices);
 
+<<<<<<< HEAD
     if (input_height <= 4) {
       ArgFullSortForTinyRows<T, int64_t>(dev_ctx,
                                          &trans_inp,
@@ -501,6 +650,15 @@ void ArgsortKernel(const Context &dev_ctx,
                               input_width,
                               descending);
     }
+=======
+    ArgFullSort<T, int64_t>(dev_ctx,
+                            &trans_inp,
+                            &tmp_out,
+                            &tmp_indices,
+                            input_height,
+                            input_width,
+                            descending);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     TransposeKernel<int64_t, Context>(dev_ctx, tmp_indices, trans, indices);
     // transpose back

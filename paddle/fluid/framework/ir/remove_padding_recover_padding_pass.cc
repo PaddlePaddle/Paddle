@@ -131,6 +131,7 @@ void Activation::operator()() {
   // Add links for activation op.
   activation_op->LinksFrom({activation_input}).LinksTo({activation_out});
 }
+<<<<<<< HEAD
 
 void FusedTokenPrune::operator()() {
   // Create nodes for fused_token_prune.
@@ -146,6 +147,8 @@ void FusedTokenPrune::operator()() {
   fused_token_prune_op->LinksFrom({fused_token_prune_input})
       .LinksTo({fused_token_prune_output});
 }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace patterns
 
 void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
@@ -224,7 +227,11 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     // create variable in scope
     scope->Var(remove_padding_out_name);
     auto* remove_padding_out_tensor =
+<<<<<<< HEAD
         scope->FindVar(remove_padding_out_name)->GetMutable<phi::DenseTensor>();
+=======
+        scope->FindVar(remove_padding_out_name)->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     remove_padding_out_tensor->mutable_data<float>(platform::CUDAPlace());
 
     // rename
@@ -294,8 +301,12 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     // create variable in scope
     scope->Var(recover_padding_input_name);
     auto* recover_padding_input_tensor =
+<<<<<<< HEAD
         scope->FindVar(recover_padding_input_name)
             ->GetMutable<phi::DenseTensor>();
+=======
+        scope->FindVar(recover_padding_input_name)->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     recover_padding_input_tensor->mutable_data<float>(platform::CUDAPlace());
 
     // rename
@@ -439,6 +450,12 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
                  "remove_padding pass.";
       return;
     }
+<<<<<<< HEAD
+=======
+    fc_op->Op()->RemoveAttr("in_num_col_dims");
+    fc_op->Op()->SetAttr("in_num_col_dims", 1);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     insert_remove_padding_op(fc_input, fc_op);
     insert_recover_padding_op(fc_op, fc_op->outputs[0]);
     found_subgraph_count++;
@@ -575,6 +592,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd6(graph, handler6);
 
+<<<<<<< HEAD
   GraphPatternDetector gpd7;
   patterns::FusedTokenPrune fused_token_prune(
       gpd7.mutable_pattern(), "remove_padding_recover_padding_pass");
@@ -617,6 +635,8 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd7(graph, handler7);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   AddStatis(found_subgraph_count);
 }
 

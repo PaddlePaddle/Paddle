@@ -12,12 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestFrameworkProto(unittest.TestCase):
+=======
+from __future__ import print_function
+
+import paddle.fluid.proto.framework_pb2 as framework_pb2
+import unittest
+
+
+class TestFrameworkProto(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_all(self):
         op_proto = framework_pb2.OpProto()
         ipt0 = op_proto.inputs.add()

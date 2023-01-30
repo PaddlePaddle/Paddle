@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import random
 import unittest
 
@@ -21,6 +22,17 @@ from get_gpt_model import FakeDataset, generate_model
 import paddle
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
+=======
+import unittest
+import sys
+import random
+import numpy as np
+import paddle
+
+from paddle.distributed.fleet import auto
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from get_gpt_model import generate_model, create_data_holder, FakeDataset
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -31,7 +43,10 @@ def apply_pass(use_sharding=False):
     strategy.reinit = True
     if use_sharding:
         sharding = strategy.sharding
+<<<<<<< HEAD
         sharding.enable = True
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         sharding.degree = 2
         sharding.stage = 2
     return strategy
@@ -63,6 +78,10 @@ def reset_prog():
 
 
 class TestGradientClipByGlobalNorm(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_size = 2
         self.batch_num = 1
@@ -95,10 +114,16 @@ class TestGradientClipByGlobalNorm(unittest.TestCase):
                 sharding_p,
                 rtol=1e-05,
                 atol=1e-08,
+<<<<<<< HEAD
                 err_msg='gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}'.format(
                     dp_p, sharding_p, dp_p - sharding_p
                 ),
             )
+=======
+                err_msg=
+                'gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}'
+                .format(dp_p, sharding_p, dp_p - sharding_p))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_grad_clip(self):
         # dp2 training
@@ -110,8 +135,12 @@ class TestGradientClipByGlobalNorm(unittest.TestCase):
         sharding_engine = self.get_engine(True)
         sharding_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         sharding_param_values = get_parameter_value(
+<<<<<<< HEAD
             sharding_engine.main_program
         )
+=======
+            sharding_engine.main_program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.check_result(dp_param_values, sharding_param_values)
 

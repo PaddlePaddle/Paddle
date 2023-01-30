@@ -23,7 +23,11 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
+<<<<<<< HEAD
 #include "paddle/fluid/pybind/eager_generator.h"
+=======
+#include "paddle/fluid/pybind/op_function_generator.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -51,6 +55,7 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
     "split", "rnn"};
 
 /* --- Black Ops list that's NO NEED to apply code generation --- */
+<<<<<<< HEAD
 static std::unordered_set<std::string> black_ops_list = {
     "run_program",
     "fused_gate_attention",
@@ -60,6 +65,15 @@ static std::unordered_set<std::string> black_ops_list = {
     "fused_bias_dropout_residual_layer_norm",
     "sparse_divide_scalar",
     "sparse_scale"};
+=======
+static std::unordered_set<std::string> black_ops_list = {"run_program",
+                                                         "fused_gate_attention",
+                                                         "fused_feedforward",
+                                                         "fused_attention",
+                                                         "fused_gemm_epilogue",
+                                                         "sparse_divide_scalar",
+                                                         "sparse_scale"};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -594,7 +608,11 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   }
 
   // Only handle matmul_v2 for now
+<<<<<<< HEAD
   VLOG(3) << "------ Analyzing Op ------: " << op_type;
+=======
+  VLOG(1) << "------ Analyzing Op ------: " << op_type;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   return true;
 }
@@ -830,7 +848,11 @@ static bool CollectGradInformationFromOpInfo(
           new paddle::imperative::VarBase("auto_" + in_name + "_" +
                                           std::to_string(i))));
       ins[in_name][i]->SetOverridedStopGradient(false);
+<<<<<<< HEAD
       ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+      ins[in_name][i]->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   } else {
     for (const proto::OpProto::Var& input : op_proto.inputs()) {
@@ -854,7 +876,11 @@ static bool CollectGradInformationFromOpInfo(
       ins[in_name] = {std::shared_ptr<paddle::imperative::VarBase>(
           new paddle::imperative::VarBase("auto_" + in_name))};
       ins[in_name][0]->SetOverridedStopGradient(false);
+<<<<<<< HEAD
       ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+      ins[in_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
   VLOG(6) << "Prepared Forward Ins Map, size = " << ins.size();
@@ -872,7 +898,11 @@ static bool CollectGradInformationFromOpInfo(
     outs[out_name] = {std::shared_ptr<paddle::imperative::VarBase>(
         new paddle::imperative::VarBase("auto_" + out_name))};
     outs[out_name][0]->SetOverridedStopGradient(false);
+<<<<<<< HEAD
     outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+    outs[out_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   VLOG(6) << "Prepared Forward Outs Map, size = " << outs.size();
 
@@ -3030,8 +3060,13 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
+<<<<<<< HEAD
       "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
 
+=======
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n"
+      "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n\n";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);

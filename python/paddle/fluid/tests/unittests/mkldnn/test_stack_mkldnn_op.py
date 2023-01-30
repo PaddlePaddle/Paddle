@@ -13,16 +13,28 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+=======
+import numpy as np
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, skip_check_grad_ci
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @OpTestTool.skip_if_not_cpu()
 class TestStack2DOneDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (2, 2)
@@ -46,8 +58,12 @@ class TestStack2DOneDNNOp(OpTest):
 
         for i in range(self.num_inputs):
             self.op_inputs.append(
+<<<<<<< HEAD
                 np.random.random(size=self.input_dim).astype(np.float32)
             )
+=======
+                np.random.random(size=self.input_dim).astype(np.float32))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         input_list = []
         input_names = self.getInputNames()
@@ -67,18 +83,34 @@ class TestStack2DOneDNNOp(OpTest):
 
 
 class TestStack1DOneDNNOp(TestStack2DOneDNNOp):
+<<<<<<< HEAD
     def initParameters(self):
         self.input_dim = 100
+=======
+
+    def initParameters(self):
+        self.input_dim = (100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.axis = 0
 
 
 class TestStack1DAxis1OneDNNOp(TestStack2DOneDNNOp):
+<<<<<<< HEAD
     def initParameters(self):
         self.input_dim = 100
+=======
+
+    def initParameters(self):
+        self.input_dim = (100)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.axis = 1
 
 
 class TestStack2DAxisLastOneDNNOp(TestStack2DOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.input_dim = (13, 24)
         self.num_inputs = 5
@@ -86,12 +118,20 @@ class TestStack2DAxisLastOneDNNOp(TestStack2DOneDNNOp):
 
 
 class TestStack3DAxisNegativeOneDNNOp(TestStack2DOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.input_dim = (10, 128, 128)
         self.axis = -2
 
 
 class TestStack3DOneDNNOp(TestStack2DOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.input_dim = (10, 128, 128)
         self.num_inputs = 3
@@ -99,6 +139,10 @@ class TestStack3DOneDNNOp(TestStack2DOneDNNOp):
 
 
 class TestStack4DOneDNNOp(TestStack2DOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.input_dim = (2, 2, 2, 2)
         self.num_inputs = 3
@@ -106,6 +150,10 @@ class TestStack4DOneDNNOp(TestStack2DOneDNNOp):
 
 
 class TestStack5DOneDNNOp(TestStack2DOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def initParameters(self):
         self.input_dim = (2, 3, 4, 5, 6)
         self.num_inputs = 6

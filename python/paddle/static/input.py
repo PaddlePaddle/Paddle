@@ -12,11 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle
 from paddle.fluid import Variable, core
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
 from paddle.fluid.layer_helper import LayerHelper
+=======
+import six
+
+import paddle
+from paddle.fluid import core, Variable
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.data_feeder import check_type
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.fluid.framework import static_only
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -24,6 +35,10 @@ __all__ = []
 @static_only
 def data(name, shape, dtype=None, lod_level=0):
     """
+<<<<<<< HEAD
+=======
+    **Data Layer**
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     This function creates a variable on the global block. The global variable
     can be accessed by all the following operators in the graph. The variable
@@ -35,14 +50,24 @@ def data(name, shape, dtype=None, lod_level=0):
        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
            for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
+<<<<<<< HEAD
            set None or -1 at a dimension to indicate the dimension can be of any
            size. For example, it is useful to set changeable batch size as None or -1.
+=======
+           set "None" or -1 at a dimension to indicate the dimension can be of any
+           size. For example, it is useful to set changeable batch size as "None" or -1.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
        dtype (np.dtype|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: None. When `dtype` is not set, the dtype will get
            from the global dtype by `paddle.get_default_dtype()`.
        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+<<<<<<< HEAD
            don't have to set this value. Default: 0.
+=======
+           don't have to set this value. For more details about when and how to
+           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         Variable: The global variable that gives access to the data.
@@ -85,11 +110,19 @@ def data(name, shape, dtype=None, lod_level=0):
 
     """
     helper = LayerHelper('data', **locals())
+<<<<<<< HEAD
     check_type(name, 'name', (bytes, str), 'data')
     check_type(shape, 'shape', (list, tuple), 'data')
 
     shape = list(shape)
     for i in range(len(shape)):
+=======
+    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(shape, 'shape', (list, tuple), 'data')
+
+    shape = list(shape)
+    for i in six.moves.range(len(shape)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if shape[i] is None:
             shape[i] = -1
 
@@ -117,7 +150,11 @@ def data(name, shape, dtype=None, lod_level=0):
         )
 
 
+<<<<<<< HEAD
 class InputSpec:
+=======
+class InputSpec(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     InputSpec describes the signature information of the model input, such as ``shape`` , ``dtype`` , ``name`` .
 
@@ -251,7 +288,11 @@ class InputSpec:
                     )
                 )
             batch_size = batch_size[1]
+<<<<<<< HEAD
         elif not isinstance(batch_size, int):
+=======
+        elif not isinstance(batch_size, six.integer_types):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             raise TypeError(
                 "type(batch_size) shall be `int`, but received {}.".format(
                     type(batch_size).__name__
@@ -307,7 +348,11 @@ class InputSpec:
 
         for i, ele in enumerate(shape):
             if ele is not None:
+<<<<<<< HEAD
                 if not isinstance(ele, int):
+=======
+                if not isinstance(ele, six.integer_types):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     raise ValueError(
                         "shape[{}] should be an `int`, but received `{}`:{}.".format(
                             i, type(ele).__name__, ele

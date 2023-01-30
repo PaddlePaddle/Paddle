@@ -28,8 +28,13 @@ template <typename T>
 class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto ins = ctx.MultiInput<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     auto odims = out->dims();

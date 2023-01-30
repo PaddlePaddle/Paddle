@@ -16,7 +16,10 @@ limitations under the License. */
 
 #include <NvInfer.h>
 
+<<<<<<< HEAD
 #include <cstdint>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -38,12 +41,17 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
 DECLARE_bool(trt_ibuilder_cache);
 
+=======
+#include "paddle/utils/any.h"
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -62,6 +70,7 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
     case FluidDT::VarType_Type_FP32:
       return TRT_DT::kFLOAT;
     case FluidDT::VarType_Type_INT32:
+<<<<<<< HEAD
     case FluidDT::VarType_Type_INT64:
       return TRT_DT::kINT32;
     case FluidDT::VarType_Type_FP16:
@@ -74,6 +83,16 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "unknown fluid datatype in TRT op converter"));
   }
+=======
+      return TRT_DT::kINT32;
+    case FluidDT::VarType_Type_FP16:
+      return TRT_DT::kHALF;
+    default:
+      return TRT_DT::kINT32;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "unknown fluid datatype in TRT op converter"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return TRT_DT::kINT32;
 }
 
@@ -180,7 +199,11 @@ class TRTInt8Calibrator;
 /*
  * TensorRT Engine.
  *
+<<<<<<< HEAD
  * There are two alternative ways to use it, one is to build from a paddle
+=======
+ * There are two alternative ways to use it, one is  to build from a paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  * protobuf model, another way is to manually construct the network.
  */
 class TensorRTEngine {
@@ -292,14 +315,18 @@ class TensorRTEngine {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+<<<<<<< HEAD
   // Set the itensor_map_[name] as the network's output, and set its name and
   // data type.
   void DeclareOutput(const std::string& name, nvinfer1::DataType dtype);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void ClearTensorMap() { itensor_map_.clear(); }
 
   void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
+<<<<<<< HEAD
   nvinfer1::ITensor* GetITensor(const std::string& name, bool scalar = false);
   nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name,
                                            bool scalar = false);
@@ -307,6 +334,37 @@ class TensorRTEngine {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context();
+=======
+  nvinfer1::ITensor* GetITensor(const std::string& name);
+  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name);
+  std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
+
+  nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
+  nvinfer1::IExecutionContext* context() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
+      PADDLE_ENFORCE_NOT_NULL(
+          infer_engine_,
+          platform::errors::InvalidArgument(
+              "You should build engine first and then set the context."));
+      // We may see trt warning: Profile 0 has been chosen by another
+      // IExecutionContext...
+      // It's ok. We will set it later.
+      infer_context_[predictor_id_per_thread].reset(
+          infer_engine_->createExecutionContext());
+      if (with_dynamic_shape_) {
+        // need new profile if it's not the first
+        if (cur_profile_num_ > 0) {
+          infer_context_[predictor_id_per_thread]->setOptimizationProfile(
+              cur_profile_num_);
+        }
+        profile_index_[predictor_id_per_thread] = cur_profile_num_;
+        ++cur_profile_num_;
+      }
+    }
+    return infer_context_[predictor_id_per_thread].get();
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   int GetProfileIndex() {
     if (max_profile_num_ > 1) {
@@ -331,7 +389,10 @@ class TensorRTEngine {
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
     infer_context_.erase(predictor_id_per_thread);
+<<<<<<< HEAD
     cur_profile_num_ = 0;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   nvinfer1::IHostMemory* Serialize() {
@@ -350,7 +411,51 @@ class TensorRTEngine {
     return ihost_memory_.get();
   }
 
+<<<<<<< HEAD
   void Deserialize(const std::string& engine_serialized_data);
+=======
+  void Deserialize(const std::string& engine_serialized_data) {
+    freshDeviceId();
+    infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+
+    if (use_dla_) {
+      if (precision_ != AnalysisConfig::Precision::kInt8 &&
+          precision_ != AnalysisConfig::Precision::kHalf) {
+        LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
+                        "set float32, so DLA is not used.";
+      } else if (runtime->getNbDLACores() == 0) {
+        LOG(WARNING)
+            << "TensorRT DLA is set by config, but your device does not have "
+               "DLA, so DLA is not used.";
+      } else {
+        if (dla_core_ < 0 || dla_core_ >= runtime->getNbDLACores()) {
+          dla_core_ = 0;
+          LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
+                       << runtime->getNbDLACores() << ", but got " << dla_core_
+                       << ", so use use 0 as default.";
+        }
+        runtime->setDLACore(dla_core_);
+        LOG(INFO) << "TensorRT DLA enabled in Deserialize(), DLACore "
+                  << dla_core_;
+      }
+    }
+
+    infer_engine_.reset(runtime->deserializeCudaEngine(
+        engine_serialized_data.c_str(), engine_serialized_data.size()));
+
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::Fatal(
+            "Building TRT cuda engine failed when deserializing engine info. "
+            "Please check:\n1. Your TRT serialization is generated and loaded "
+            "on the same GPU architecture;\n2. The Paddle Inference version of "
+            "generating serialization file and doing inference are "
+            "consistent."));
+
+    binding_num_ = infer_engine_->getNbBindings();
+    GetEngineInfo();
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
@@ -381,6 +486,7 @@ class TensorRTEngine {
 
   // Get fp16 trt weight. If src weight is not fp16, we will cast.
   Weight GetFp16TrtWeight(const std::string& name,
+<<<<<<< HEAD
                           const phi::DenseTensor& weight_tensor);
 
   // Get fp32 trt weight. If src weight is not fp32, we will cast.
@@ -390,6 +496,17 @@ class TensorRTEngine {
   // if the src weight type is fp16, then return fp16 trt weight, etc.
   Weight GetTrtWeight(const std::string& name,
                       const phi::DenseTensor& weight_tensor);
+=======
+                          const framework::Tensor& weight_tensor);
+
+  // Get fp32 trt weight. If src weight is not fp32, we will cast.
+  Weight GetFp32TrtWeight(const std::string& name,
+                          const framework::Tensor& weight_tensor);
+
+  // if the src weight type is fp16, then return fp16 trt weight, etc.
+  Weight GetTrtWeight(const std::string& name,
+                      const framework::Tensor& weight_tensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
     return quant_dynamic_range_[tensor];
@@ -404,13 +521,21 @@ class TensorRTEngine {
   // so we need to copy the weights from GPU to CPU in our op converter.
   // We use a map to store these weights for the weight memory is not released
   // in advance, which affecting the construction of TRT Op.
+<<<<<<< HEAD
   std::unordered_map<std::string /*name*/, std::unique_ptr<phi::DenseTensor>>
+=======
+  std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       weight_map;
 
   // When setting weight_map, a self-increasing suffix is needed for the names
   // so as to avoid repeatedly setting weights with the same name.
   void SetWeights(std::string w_name,
+<<<<<<< HEAD
                   std::unique_ptr<phi::DenseTensor> w_tensor) {
+=======
+                  std::unique_ptr<framework::Tensor> w_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
@@ -627,10 +752,13 @@ class TensorRTEngine {
   void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
   void SetScope(const framework::Scope& scope) { scope_ = &scope; }
 
+<<<<<<< HEAD
   void SetContextMemorySharing(bool context_memory_sharing) {
     context_memory_sharing_ = context_memory_sharing;
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -651,9 +779,12 @@ class TensorRTEngine {
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
 
+<<<<<<< HEAD
   // use for engine context memory sharing
   bool context_memory_sharing_{false};
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int device_id_;
   int max_profile_num_{1};
   int cur_profile_num_{0};
@@ -684,6 +815,19 @@ class TensorRTEngine {
   std::vector<std::unique_ptr<nvinfer1::IPluginV2IOExt>> owned_plugin_v2ioext_;
 
   // TensorRT related internal members
+<<<<<<< HEAD
+=======
+  template <typename T>
+  struct Destroyer {
+    void operator()(T* x) {
+      if (x) {
+        x->destroy();
+      }
+    }
+  };
+  template <typename T>
+  using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
@@ -724,6 +868,7 @@ class TensorRTEngine {
   engine__->network()->add##layer__(__VA_ARGS__)
 
 class TRTEngineManager {
+<<<<<<< HEAD
   using PredictorID = int;
   using AllocationPtr = phi::Allocator::AllocationPtr;
 
@@ -744,12 +889,20 @@ class TRTEngineManager {
 
   bool Has(const std::string& name) const {
     std::lock_guard<std::mutex> lock(mutex_);
+=======
+ public:
+  bool Empty() const { return engines_.size() == 0; }
+  bool Has(const std::string& name) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (engines_.count(name) == 0) return false;
     return engines_.at(name).get() != nullptr;
   }
 
   TensorRTEngine* Get(const std::string& name) const {
+<<<<<<< HEAD
     std::lock_guard<std::mutex> lock(mutex_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return engines_.at(name).get();
   }
 
@@ -783,12 +936,16 @@ class TRTEngineManager {
                                  disable_trt_plugin_fp16,
                                  model_precision,
                                  logger);
+<<<<<<< HEAD
     std::lock_guard<std::mutex> lock(mutex_);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     engines_[name].reset(p);
     return p;
   }
 
   void DeleteAll() {
+<<<<<<< HEAD
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto& item : engines_) {
       item.second.reset(nullptr);
@@ -798,6 +955,14 @@ class TRTEngineManager {
 
   void DeleteKey(const std::string& key) {
     std::lock_guard<std::mutex> lock(mutex_);
+=======
+    for (auto& item : engines_) {
+      item.second.reset(nullptr);
+    }
+  }
+
+  void DeleteKey(const std::string& key) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto iter = engines_.find(key);
     if (iter != engines_.end()) {
       iter->second.reset(nullptr);
@@ -805,6 +970,7 @@ class TRTEngineManager {
     }
   }
 
+<<<<<<< HEAD
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
     VLOG(3) << "TensorRT engine context memory size is "
             << mem_size / 1024.0 / 1024.0 << "MiB in predictor id "
@@ -860,6 +1026,10 @@ class TRTEngineManager {
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
   infer_ptr<nvinfer1::IBuilder> holder_;
+=======
+ private:
+  std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 }  // namespace tensorrt

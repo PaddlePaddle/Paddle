@@ -52,10 +52,13 @@ void GatherKernel(const Context& dev_ctx,
     phi::funcs::GPUGather<T, int64_t>(dev_ctx, x, index, out);
   } else if (index_type == phi::DataType::INT16) {
     phi::funcs::GPUGather<T, int16_t>(dev_ctx, x, index, out);
+<<<<<<< HEAD
   } else {
     PADDLE_THROW(
         phi::errors::InvalidArgument("The data type of Input(Index) of gather "
                                      "must be int16, int32 or int64 on GPU."));
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 

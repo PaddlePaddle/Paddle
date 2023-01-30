@@ -17,8 +17,13 @@
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
@@ -29,6 +34,7 @@ namespace phi {
 #define CUDA_MAX_NUM_BLOCKS_Z 0xFFFF
 
 inline void CopyBCastOff(const BroadCastInfo& bcast_info,
+<<<<<<< HEAD
                          thrust::device_vector<int64_t>* l_bcastoff,
                          thrust::device_vector<int64_t>* r_bcastoff) {
   l_bcastoff->resize(bcast_info.out_len);
@@ -39,15 +45,35 @@ inline void CopyBCastOff(const BroadCastInfo& bcast_info,
             sizeof(int64_t) * bcast_info.out_len,
             hipMemcpyHostToDevice);
   hipMemcpy(thrust::raw_pointer_cast(r_bcastoff->data()),
+=======
+                         thrust::device_vector<int64_t>& l_bcastoff,
+                         thrust::device_vector<int64_t>& r_bcastoff) {
+  l_bcastoff.resize(bcast_info.out_len);
+  r_bcastoff.resize(bcast_info.out_len);
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(thrust::raw_pointer_cast(l_bcastoff.data()),
+            bcast_info.l_offset.data(),
+            sizeof(int64_t) * bcast_info.out_len,
+            hipMemcpyHostToDevice);
+  hipMemcpy(thrust::raw_pointer_cast(r_bcastoff.data()),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             bcast_info.r_offset.data(),
             sizeof(int64_t) * bcast_info.out_len,
             hipMemcpyHostToDevice);
 #else
+<<<<<<< HEAD
   cudaMemcpy(thrust::raw_pointer_cast(l_bcastoff->data()),
              bcast_info.l_offset.data(),
              sizeof(int64_t) * bcast_info.out_len,
              cudaMemcpyHostToDevice);
   cudaMemcpy(thrust::raw_pointer_cast(r_bcastoff->data()),
+=======
+  cudaMemcpy(thrust::raw_pointer_cast(l_bcastoff.data()),
+             bcast_info.l_offset.data(),
+             sizeof(int64_t) * bcast_info.out_len,
+             cudaMemcpyHostToDevice);
+  cudaMemcpy(thrust::raw_pointer_cast(r_bcastoff.data()),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              bcast_info.r_offset.data(),
              sizeof(int64_t) * bcast_info.out_len,
              cudaMemcpyHostToDevice);
@@ -102,21 +128,33 @@ inline int FindNumBlocks(char axis, int nblocks, int max_num_blocks = -1) {
 template <typename T>
 struct GraphSendUERecvSumCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
+<<<<<<< HEAD
     phi::CudaAtomicAdd(output, val);
+=======
+    paddle::platform::CudaAtomicAdd(output, val);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 template <typename T>
 struct GraphSendUERecvMaxCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
+<<<<<<< HEAD
     phi::CudaAtomicMax(output, val);
+=======
+    paddle::platform::CudaAtomicMax(output, val);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 template <typename T>
 struct GraphSendUERecvMinCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
+<<<<<<< HEAD
     phi::CudaAtomicMin(output, val);
+=======
+    paddle::platform::CudaAtomicMin(output, val);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -192,7 +230,12 @@ __global__ void ManipulateMeanGradCUDAKernelForMulX(const T* out_grad_data,
       int64_t o_add = use_bcast ? l_bcastoff[tx] : tx;
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
       T val = out_grad_off[o_add] * e_off[e_add];
+<<<<<<< HEAD
       phi::CudaAtomicAdd(x_grad_off + tx, val / static_cast<T>(dst_count[src]));
+=======
+      paddle::platform::CudaAtomicAdd(x_grad_off + tx,
+                                      val / static_cast<T>(dst_count[src]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tx += stride_x;
     }
     ty += stride_y;
@@ -221,7 +264,11 @@ __global__ void ManipulateSumGradCUDAKernelForAddE(const T* out_grad_data,
     const T* out_grad_off = out_grad_data + dst * out_len;
     while (tx < out_len) {
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
+<<<<<<< HEAD
       phi::CudaAtomicAdd(e_grad_off + e_add, out_grad_off[tx]);
+=======
+      paddle::platform::CudaAtomicAdd(e_grad_off + e_add, out_grad_off[tx]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tx += stride_x;
     }
     ty += stride_y;
@@ -257,7 +304,12 @@ __global__ void ManipulateSumGradCUDAKernelForMulE(const T* x_data,
     while (tx < out_len) {
       int64_t x_add = use_bcast ? l_bcastoff[tx] : tx;
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
+<<<<<<< HEAD
       phi::CudaAtomicAdd(e_grad_off + e_add, out_grad_off[tx] * x_off[x_add]);
+=======
+      paddle::platform::CudaAtomicAdd(e_grad_off + e_add,
+                                      out_grad_off[tx] * x_off[x_add]);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tx += stride_x;
     }
     ty += stride_y;
@@ -287,8 +339,14 @@ __global__ void ManipulateMeanGradCUDAKernelForAddE(const T* out_grad_data,
     const T* out_grad_off = out_grad_data + dst * out_len;
     while (tx < out_len) {
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
+<<<<<<< HEAD
       phi::CudaAtomicAdd(e_grad_off + e_add,
                          out_grad_off[tx] / static_cast<T>(dst_count[dst]));
+=======
+      paddle::platform::CudaAtomicAdd(
+          e_grad_off + e_add,
+          out_grad_off[tx] / static_cast<T>(dst_count[dst]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tx += stride_x;
     }
     ty += stride_y;
@@ -325,7 +383,11 @@ __global__ void ManipulateMeanGradCUDAKernelForMulE(const T* x_data,
     while (tx < out_len) {
       int64_t x_add = use_bcast ? l_bcastoff[tx] : tx;
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
+<<<<<<< HEAD
       phi::CudaAtomicAdd(
+=======
+      paddle::platform::CudaAtomicAdd(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           e_grad_off + e_add,
           out_grad_off[tx] * x_off[x_add] / static_cast<T>(dst_count[dst]));
       tx += stride_x;
@@ -370,10 +432,19 @@ __global__ void ManipulateMinMaxGradCUDAKernelForAdd(const T* x_data,
       int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
       int64_t e_add = use_bcast ? ebcast_off[tx] : tx;
       T val = x_off[x_add] + e_off[e_add];
+<<<<<<< HEAD
       phi::CudaAtomicAdd(x_grad_off + x_add,
                          out_grad_off[tx] * static_cast<T>(val == out_off[tx]));
       phi::CudaAtomicAdd(e_grad_off + e_add,
                          out_grad_off[tx] * static_cast<T>(val == out_off[tx]));
+=======
+      paddle::platform::CudaAtomicAdd(
+          x_grad_off + x_add,
+          out_grad_off[tx] * static_cast<T>(val == out_off[tx]));
+      paddle::platform::CudaAtomicAdd(
+          e_grad_off + e_add,
+          out_grad_off[tx] * static_cast<T>(val == out_off[tx]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       tx += stride_x;
     }
     ty += stride_y;
@@ -416,10 +487,17 @@ __global__ void ManipulateMinMaxGradCUDAKernelForMul(const T* x_data,
       int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
       int64_t e_add = use_bcast ? ebcast_off[tx] : tx;
       T val = x_off[x_add] * e_off[e_add];
+<<<<<<< HEAD
       phi::CudaAtomicAdd(
           x_grad_off + x_add,
           out_grad_off[tx] * static_cast<T>(val == out_off[tx]) * e_off[e_add]);
       phi::CudaAtomicAdd(
+=======
+      paddle::platform::CudaAtomicAdd(
+          x_grad_off + x_add,
+          out_grad_off[tx] * static_cast<T>(val == out_off[tx]) * e_off[e_add]);
+      paddle::platform::CudaAtomicAdd(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           e_grad_off + e_add,
           out_grad_off[tx] * static_cast<T>(val == out_off[tx]) * x_off[x_add]);
       tx += stride_x;

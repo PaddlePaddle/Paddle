@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -22,6 +23,20 @@ import paddle.fluid as fluid
 
 
 class TestMultiplexOp(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestMultiplexOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "multiplex"
         rows = 4
@@ -34,7 +49,11 @@ class TestMultiplexOp(OpTest):
         ins4 = np.random.random((rows, 25)).astype("float64")
         self.inputs = {
             'Ids': index,
+<<<<<<< HEAD
             'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)],
+=======
+            'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         # multiplex output
         output = np.zeros_like(ins1)
@@ -60,6 +79,10 @@ class TestMultiplexOp(OpTest):
 
 
 class TestMultiplexOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x1 = fluid.data(name='x1', shape=[None, 2], dtype='int64')
@@ -85,15 +108,25 @@ class TestMultiplexOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_type)
 
             def test_type2():
+<<<<<<< HEAD
                 index2 = fluid.data(
                     name='index2', shape=[None, 1], dtype='int16'
                 )
+=======
+                index2 = fluid.data(name='index2',
+                                    shape=[None, 1],
+                                    dtype='int16')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 paddle.multiplex(inputs=[x1, x2], index=index2)
 
             self.assertRaises(TypeError, test_type2)
 
 
 class TestMultiplexODygrap(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_multiplex_dygraph(self):
         paddle.disable_static()
         img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
@@ -113,6 +146,7 @@ class TestMultiplexODygrap(unittest.TestCase):
             inputs[1].stop_gradient = False
             res = paddle.multiplex(inputs, index)
             res.backward()
+<<<<<<< HEAD
             inputs_eager = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
             index_eager = paddle.to_tensor(
                 np.array([[1], [0]]).astype(np.int32)
@@ -130,6 +164,23 @@ class TestMultiplexODygrap(unittest.TestCase):
                 (inputs[1].grad.numpy() == inputs_eager[1].grad.numpy()).all(),
                 True,
             )
+=======
+            with _test_eager_guard():
+                inputs_eager = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+                index_eager = paddle.to_tensor(
+                    np.array([[1], [0]]).astype(np.int32))
+                inputs_eager[0].stop_gradient = False
+                inputs_eager[1].stop_gradient = False
+                res_eager = paddle.multiplex(inputs_eager, index_eager)
+                res_eager.backward()
+                self.assertEqual((res.numpy() == res_eager.numpy()).all(), True)
+                self.assertEqual(
+                    (inputs[0].grad.numpy() == inputs_eager[0].grad.numpy()
+                     ).all(), True)
+                self.assertEqual(
+                    (inputs[1].grad.numpy() == inputs_eager[1].grad.numpy()
+                     ).all(), True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

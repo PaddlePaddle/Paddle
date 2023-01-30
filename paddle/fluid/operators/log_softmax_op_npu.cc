@@ -25,8 +25,13 @@ template <typename T>
 class LogSoftmaxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* X = ctx.Input<phi::DenseTensor>("X");
     auto* Out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* X = ctx.Input<framework::Tensor>("X");
+    auto* Out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int rank = X->dims().size();
     const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
     Out->mutable_data<T>(ctx.GetPlace());
@@ -44,9 +49,15 @@ template <typename T>
 class LogSoftmaxGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* Out = ctx.Input<phi::DenseTensor>("Out");
     auto* dOut = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* Out = ctx.Input<framework::Tensor>("Out");
+    auto* dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int rank = dOut->dims().size();
     const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
 

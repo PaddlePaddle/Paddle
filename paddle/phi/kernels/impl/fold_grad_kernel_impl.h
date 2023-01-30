@@ -16,8 +16,13 @@
 
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
+=======
+#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/phi/core/dense_tensor.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
@@ -57,7 +62,13 @@ void FoldGradKernel(const Context& ctx,
   DDim input_matrix_shape = make_ddim(
       {1, kernel_sizes[0], kernel_sizes[1], output_height, output_width});
 
+<<<<<<< HEAD
   phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
+=======
+  paddle::operators::math::
+      Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
+          im2col;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   for (int i = 0; i < batch_size; i++) {
     DenseTensor out_grad_batch = out_grad.Slice(i, i + 1).Resize(out_shape);

@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import difflib
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 try:
@@ -41,7 +45,11 @@ for i in origin:
         error = True
         diffs.append(i)
 '''
+<<<<<<< HEAD
 If you delete the unit test, such as commenting it out,
+=======
+If you delete the unit test, such as commenting it out, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 please ask for approval of one RD below for passing CI:
 
     - kolinwei(recommended) or zhouwei25

@@ -14,17 +14,32 @@
 
 import unittest
 
+<<<<<<< HEAD
+=======
+import os
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
+<<<<<<< HEAD
 from paddle import LazyGuard
 from paddle.distributed.auto_parallel.helper import ProgramHelper
 from paddle.distributed.fleet import auto
 from paddle.fluid.framework import _non_static_mode
 from paddle.io import Dataset
 from paddle.static import InputSpec
+=======
+from paddle.distributed.fleet import auto
+import paddle.distributed.fleet as fleet
+
+from paddle import LazyGuard
+from paddle.io import Dataset
+from paddle.static import InputSpec
+from paddle.fluid.framework import _non_static_mode
+from paddle.distributed.auto_parallel.helper import ProgramHelper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 batch_size = 4
 batch_num = 30
@@ -33,8 +48,14 @@ class_num = 10
 
 
 class MyDataset(Dataset):
+<<<<<<< HEAD
     def __init__(self, num_samples):
         super().__init__()
+=======
+
+    def __init__(self, num_samples):
+        super(MyDataset, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.num_samples = num_samples
 
     def __getitem__(self, index):
@@ -47,6 +68,7 @@ class MyDataset(Dataset):
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -67,6 +89,28 @@ class MLPLayer(nn.Layer):
         self.linear1 = nn.Linear(
             dim_feedforward, d_model, weight_attr, bias_attr=None
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
+
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=None)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear2 = nn.Linear(d_model, 1, weight_attr, bias_attr=None)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
@@ -83,6 +127,7 @@ class MLPLayer(nn.Layer):
 
 
 class TestWholeProgram(unittest.TestCase):
+<<<<<<< HEAD
     def test_apply_optimzier(self):
         paddle.disable_static()
         mlp = MLPLayer(
@@ -96,6 +141,19 @@ class TestWholeProgram(unittest.TestCase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.00001, parameters=mlp.parameters()
         )
+=======
+
+    def test_apply_optimzier(self):
+        paddle.disable_static()
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       dropout_ratio=0.1,
+                       initializer_range=0.02)
+        metrics = paddle.metric.Accuracy()
+        loss = paddle.nn.CrossEntropyLoss()
+        optimizer = paddle.optimizer.SGD(learning_rate=0.00001,
+                                         parameters=mlp.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
         labels = InputSpec([batch_size], 'int64', 'label')
 
@@ -114,8 +172,12 @@ class TestWholeProgram(unittest.TestCase):
         optimize_ops, _ = program_helper.apply_optimizer(optimizer)
         all_ops = program_helper.main_program.block(0).ops
         sgd_ops = [
+<<<<<<< HEAD
             op
             for op in program_helper.main_program.block(0).ops
+=======
+            op for op in program_helper.main_program.block(0).ops
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if op.type == 'sgd'
         ]
         self.assertEqual(len(all_ops), 37)
@@ -125,6 +187,7 @@ class TestWholeProgram(unittest.TestCase):
 
 
 class TestToStatic(unittest.TestCase):
+<<<<<<< HEAD
     def test_to_static(self):
 
         mlp = MLPLayer(
@@ -137,12 +200,25 @@ class TestToStatic(unittest.TestCase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.00001, parameters=mlp.parameters()
         )
+=======
+
+    def test_to_static(self):
+
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       dropout_ratio=0.1,
+                       initializer_range=0.02)
+        loss = paddle.nn.CrossEntropyLoss()
+        optimizer = paddle.optimizer.SGD(learning_rate=0.00001,
+                                         parameters=mlp.parameters())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         dataset = MyDataset(batch_num * batch_size)
 
         # inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
         # labels = InputSpec([batch_size], 'int64', 'label')
 
+<<<<<<< HEAD
         assert _non_static_mode()
         engine = auto.Engine(
             model=mlp,
@@ -167,6 +243,29 @@ class TestLazyInit(unittest.TestCase):
                 dropout_ratio=0.1,
                 initializer_range=0.02,
             )
+=======
+        assert _non_static_mode() == True
+        engine = auto.Engine(model=mlp,
+                             loss=loss,
+                             optimizer=optimizer,
+                             metrics=paddle.metric.Accuracy(),
+                             strategy=None)
+        engine.fit(dataset, batch_size=batch_size)
+        engine.evaluate(dataset, batch_size=batch_size)
+        engine.predict(dataset, batch_size=batch_size)
+        assert _non_static_mode() == False
+
+
+class TestLazyInit(unittest.TestCase):
+
+    def test_lazy_init(self):
+
+        with LazyGuard():
+            mlp = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             loss = paddle.nn.CrossEntropyLoss()
 
         metrics = paddle.metric.Accuracy()

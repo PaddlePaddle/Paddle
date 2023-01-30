@@ -14,9 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax.h"
+=======
+#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/softmax_kernel.h"
 
 namespace phi {
@@ -32,6 +37,7 @@ void SoftmaxKernel(const Context& dev_ctx,
 
   // allocate memory on device.
   dev_ctx.template Alloc<T>(out);
+<<<<<<< HEAD
   // For 0-Sized Tensor
   if (out->numel() == 0) {
     return;
@@ -41,13 +47,23 @@ void SoftmaxKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, out, 1.0);
     return;
   }
+=======
+  if (out->numel() == 0) {
+    return;
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   const int n = phi::funcs::SizeToAxis(calc_axis, x.dims());
   const int d = phi::funcs::SizeFromAxis(calc_axis, x.dims());
   DenseTensor X_2d, Out_2d;
   X_2d.ShareDataWith(x).Resize({n, d});
   Out_2d.ShareDataWith(*out).Resize({n, d});
+<<<<<<< HEAD
   phi::funcs::SoftmaxFunctor<Context, T>()(dev_ctx, axis_dim, &X_2d, &Out_2d);
+=======
+  paddle::operators::math::SoftmaxFunctor<Context, T, false>()(
+      dev_ctx, axis_dim, &X_2d, &Out_2d);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 }  // namespace phi

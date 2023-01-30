@@ -15,13 +15,21 @@
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 
 namespace phi {
 
+<<<<<<< HEAD
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T, typename Context>
 void DiagonalGradKernel(const Context& dev_ctx,
@@ -62,10 +70,13 @@ void DiagonalGradKernel(const Context& dev_ctx,
   int threads = PADDLE_CUDA_NUM_THREADS;
   int blocks = (numel + threads - 1) / threads;
 
+<<<<<<< HEAD
   int64_t dout_numel = out_grad.numel();
   phi::backends::gpu::GpuMemsetAsync(
       dx_data, 0, numel * sizeof(T), dev_ctx.stream());
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   switch (dx_dim_size) {
     case 2:
       funcs::DiagonalCuda<T, 2, 1><<<blocks, threads>>>(dout_data,
@@ -76,7 +87,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
                                                         dx_stride,
                                                         dout_stride,
                                                         numel,
+<<<<<<< HEAD
                                                         dout_numel,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                         true);
       break;
     case 3:
@@ -88,7 +102,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
                                                         dx_stride,
                                                         dout_stride,
                                                         numel,
+<<<<<<< HEAD
                                                         dout_numel,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                         true);
       break;
     case 4:
@@ -100,7 +117,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
                                                         dx_stride,
                                                         dout_stride,
                                                         numel,
+<<<<<<< HEAD
                                                         dout_numel,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                         true);
       break;
     case 5:
@@ -112,7 +132,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
                                                         dx_stride,
                                                         dout_stride,
                                                         numel,
+<<<<<<< HEAD
                                                         dout_numel,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                         true);
       break;
     case 6:
@@ -124,7 +147,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
                                                         dx_stride,
                                                         dout_stride,
                                                         numel,
+<<<<<<< HEAD
                                                         dout_numel,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                         true);
       break;
     case 7:
@@ -136,7 +162,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
                                                         dx_stride,
                                                         dout_stride,
                                                         numel,
+<<<<<<< HEAD
                                                         dout_numel,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                         true);
       break;
     case 8:
@@ -148,7 +177,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
                                                         dx_stride,
                                                         dout_stride,
                                                         numel,
+<<<<<<< HEAD
                                                         dout_numel,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                         true);
       break;
     case 9:
@@ -160,7 +192,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
                                                         dx_stride,
                                                         dout_stride,
                                                         numel,
+<<<<<<< HEAD
                                                         dout_numel,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                                         true);
       break;
     default:
@@ -178,9 +213,13 @@ PD_REGISTER_KERNEL(diagonal_grad,
                    float,
                    double,
                    int,
+<<<<<<< HEAD
                    int64_t,
                    bool,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+=======
+                   int64_t) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

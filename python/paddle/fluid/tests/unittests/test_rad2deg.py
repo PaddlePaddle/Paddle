@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -19,16 +20,35 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class TestRad2degAPI(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.x_dtype = 'float64'
         self.x_np = np.array(
             [3.142, -3.142, 6.283, -6.283, 1.570, -1.570]
         ).astype(np.float64)
+=======
+
+    def setUp(self):
+        self.x_dtype = 'float64'
+        self.x_np = np.array([3.142, -3.142, 6.283, -6.283, 1.570,
+                              -1.570]).astype(np.float64)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.x_shape = [6]
         self.out_np = np.rad2deg(self.x_np)
 
@@ -39,6 +59,7 @@ class TestRad2degAPI(unittest.TestCase):
             x = fluid.data(name='input', dtype=self.x_dtype, shape=self.x_shape)
             out = paddle.rad2deg(x)
 
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -50,6 +71,14 @@ class TestRad2degAPI(unittest.TestCase):
                 feed={'input': self.x_np},
                 fetch_list=[out],
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            res = exe.run(fluid.default_main_program(),
+                          feed={'input': self.x_np},
+                          fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertTrue((np.array(out[0]) == self.out_np).all())
 
     def test_dygraph(self):
@@ -62,6 +91,10 @@ class TestRad2degAPI(unittest.TestCase):
 
 
 class TestRad2degAPI2(TestRad2degAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.x_np = np.pi / 2
         self.x_shape = [1]

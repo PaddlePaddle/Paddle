@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -19,6 +20,15 @@ import paddle
 
 sys.path.append("..")
 import numpy as np
+=======
+import paddle
+import unittest
+import sys
+
+sys.path.append("..")
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from op_test_xpu import XPUOpTest
 
 paddle.enable_static()
@@ -26,7 +36,11 @@ paddle.enable_static()
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     if isinstance(axis, int):
+<<<<<<< HEAD
         axis = (axis,)
+=======
+        axis = (axis, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     elif isinstance(axis, list):
         axis = tuple(axis)
     if reduce_all:
@@ -36,6 +50,10 @@ def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
 
 
 class XPUTestLogsumexp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'logsumexp'
         self.shape = [2, 3, 4, 5]
@@ -54,7 +72,11 @@ class XPUTestLogsumexp(XPUOpTest):
         self.attrs = {
             'axis': self.axis,
             'keepdim': self.keepdim,
+<<<<<<< HEAD
             'reduce_all': self.reduce_all,
+=======
+            'reduce_all': self.reduce_all
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
     def set_attrs(self):
@@ -70,26 +92,46 @@ class XPUTestLogsumexp(XPUOpTest):
 
 
 class TestLogsumexp_shape(XPUTestLogsumexp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.shape = [4, 5, 6]
 
 
 class TestLogsumexp_axis(XPUTestLogsumexp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.axis = [0, -1]
 
 
 class TestLogsumexp_axis_all(XPUTestLogsumexp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
 
 
 class TestLogsumexp_keepdim(XPUTestLogsumexp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.keepdim = True
 
 
 class TestLogsumexp_reduce_all(XPUTestLogsumexp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_attrs(self):
         self.reduce_all = True
 

@@ -12,8 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+import os
+import unittest
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle import fluid
 
 
@@ -25,9 +31,14 @@ class TestIRGraph(unittest.TestCase):
     def test_nodes(self):
         graph = build_graph()
         self.assertTrue(
+<<<<<<< HEAD
             {node.name() for node in graph.nodes()}
             == {"x1", "x2", "out", "sum"}
         )
+=======
+            {node.name()
+             for node in graph.nodes()} == {"x1", "x2", "out", "sum"})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_has_set_get(self):
         graph = build_graph()
@@ -54,7 +65,11 @@ class TestIRGraph(unittest.TestCase):
         prog = fluid.core.ProgramDesc()
         block = prog.block(0)
         shape = [10, 20]
+<<<<<<< HEAD
         x1 = block.var(b'x1')
+=======
+        x1 = block.var(six.b("x1"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x1.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(shape)
         graph = fluid.core.Graph(prog)
@@ -87,9 +102,14 @@ class TestIRGraph(unittest.TestCase):
         graph = build_graph()
         nodes = graph.release_nodes()
         self.assertTrue(len(graph.nodes()) == 0)
+<<<<<<< HEAD
         self.assertTrue(
             {node.name() for node in nodes} == {"x1", "x2", "out", "sum"}
         )
+=======
+        self.assertTrue({node.name()
+                         for node in nodes} == {"x1", "x2", "out", "sum"})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_remove_node(self):
         graph = build_graph()
@@ -97,9 +117,14 @@ class TestIRGraph(unittest.TestCase):
         for node in nodes:
             if node.name() == "sum":
                 break
+<<<<<<< HEAD
         self.assertTrue(
             {node.name() for node in nodes} == {"x1", "x2", "out", "sum"}
         )
+=======
+        self.assertTrue({node.name()
+                         for node in nodes} == {"x1", "x2", "out", "sum"})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         nodes.remove(node)
         self.assertTrue({node.name() for node in nodes} == {"x1", "x2", "out"})
 
@@ -123,6 +148,7 @@ def build_graph():
     shape = [10, 20]
 
     # prepare input/output
+<<<<<<< HEAD
     x1 = block.var(b'x1')
     x1.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
     x1.set_shape(shape)
@@ -131,6 +157,16 @@ def build_graph():
     x2.set_shape(shape)
 
     out = block.var(b'out')
+=======
+    x1 = block.var(six.b("x1"))
+    x1.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
+    x1.set_shape(shape)
+    x2 = block.var(six.b("x2"))
+    x2.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
+    x2.set_shape(shape)
+
+    out = block.var(six.b("out"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
 
     sum_op_desc = block.append_op()

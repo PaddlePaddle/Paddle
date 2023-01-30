@@ -30,7 +30,10 @@ typedef struct PD_Predictor PD_Predictor;
 typedef struct PD_Config PD_Config;
 typedef struct PD_Tensor PD_Tensor;
 typedef struct PD_OneDimArrayCstr PD_OneDimArrayCstr;
+<<<<<<< HEAD
 typedef struct PD_IOInfos PD_IOInfos;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,6 +64,7 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_Predictor* PD_PredictorClone(
 PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr*
 PD_PredictorGetInputNames(__pd_keep PD_Predictor* pd_predictor);
 ///
+<<<<<<< HEAD
 /// \brief Get the input infos(name/shape/dtype)
 ///
 /// \param[in] pd_predictor predictor
@@ -69,6 +73,8 @@ PD_PredictorGetInputNames(__pd_keep PD_Predictor* pd_predictor);
 PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
     __pd_keep PD_Predictor* pd_predictor);
 ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 /// \brief Get the output names
 ///
 /// \param[in] pd_predictor predictor
@@ -76,6 +82,7 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
 ///
 PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr*
 PD_PredictorGetOutputNames(__pd_keep PD_Predictor* pd_predictor);
+<<<<<<< HEAD
 ///
 /// \brief Get the output infos(name/shape/dtype)
 ///
@@ -84,6 +91,9 @@ PD_PredictorGetOutputNames(__pd_keep PD_Predictor* pd_predictor);
 ///
 PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
     __pd_keep PD_Predictor* pd_predictor);
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ///
 /// \brief Get the input number
 ///

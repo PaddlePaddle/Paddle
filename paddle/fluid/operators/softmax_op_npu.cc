@@ -23,13 +23,21 @@ template <typename DeviceContext, typename T>
 class SoftmaxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
+=======
+    auto* in = ctx.Input<framework::LoDTensor>("X");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto axis = ctx.Attr<int>("axis");
     std::vector<int> axes;
     axes.push_back(axis);
     framework::NPUAttributeMap attr_input = {{"axes", axes}};
 
+<<<<<<< HEAD
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("SoftmaxV2", {*in}, {*out}, attr_input);
@@ -45,10 +53,17 @@ template <typename DeviceContext, typename T>
 class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out = ctx.Input<phi::DenseTensor>("Out");
     auto* dOut = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out = ctx.Input<framework::LoDTensor>("Out");
+    auto* dOut = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+
+    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto dims = dX->dims();
     const int rank = dims.size();

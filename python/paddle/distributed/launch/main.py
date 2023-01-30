@@ -18,7 +18,11 @@ from .context import Context
 def launch():
     """
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Usage:
         .. code-block:: bash
             :name: code-block-bash1
@@ -36,7 +40,11 @@ def launch():
 
 
     Base Parameters:
+<<<<<<< HEAD
         - ``--master``: The master/rendezvous server, support ``http://`` and ``etcd://``, default with ``http://``. e.g., ``--master=127.0.0.1:8080``. Default ``--master=None``.
+=======
+        - ``--master``: The master/rendezvous server, support http:// and etcd://, default with http://. e.g., ``--master=127.0.0.1:8080``. Default ``--master=None``.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         - ``--rank``: The rank of the node, can be auto assigned by master. Default ``--rank=-1``.
 
@@ -48,7 +56,11 @@ def launch():
 
         - ``--log_dir``: The path for each process's log. e.g., ``--log_dir=output_dir``. Default ``--log_dir=log``.
 
+<<<<<<< HEAD
         - ``--run_mode``: The run mode of job, can be:collective/ps/ps-heter/rpc. e.g., ``--run_mode=ps``. Default ``--run_mode=collective``.
+=======
+        - ``--run_mode``: The run mode of job, can be:collective/ps/ps-heter. e.g., ``--run_mode=ps``. Default ``--run_mode=collective``.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         - ``--job_id``: The job unique id, it affects the log files' name. e.g., ``--job_id=job1``. Default ``--job_id=default``.
 
@@ -77,7 +89,11 @@ def launch():
         - ``--heter_workers``: User defined heter workers ip1:port1;ip2:port2, e.g., ``--heter_workers="192.168.0.16:6172;192.168.0.17:6172"``
 
         - ``--heter_worker_num``: Number of heter_workers in each stage (It recommend to set when in the emulated distributed environment using single node)
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         - ``--heter_devices``: Type of heter_device in each stage
 
         - ``--gloo_port``: Gloo http Port. Default ``--gloo_port=6767``.
@@ -94,12 +110,20 @@ def launch():
     IPU Parameters:
         IPU distributed launch only requires and allowes three arguments ``--devices``, ``training_script`` and ``training_script_args``.
         The ``--devices`` is the number of IPU devices. e.g., ``--devices=4`` will launch the training program with four IPU devices.
+<<<<<<< HEAD
         The ``training_script`` is only allowed to set as ``ipu``.
+=======
+        The ``training_script`` is only allowed to set as ``ipu``. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         The ``training_script_args`` includes arguments required by IPU distributed launch and illustrated as below.
         ``Examples 10`` has provided a example of paddle.distributed.launch with IPUs.
 
         - ``--hosts``: The hosts for IPU distributd training. Each host is able to include multiple processes.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         - ``--nproc_per_host``: The number of processes launched per host. Each process is able to include multiple replicas.
 
         - ``--ipus_per_replica``: The number of IPUs requested per replica. Each replica is able to include multiple IPUs.
@@ -144,16 +168,28 @@ def launch():
     Examples 1 (collective, single node):
         .. code-block:: bash
             :name: code-block-example-bash1
+<<<<<<< HEAD
 
             # For training on single node using 4 gpus.
 
             python -m paddle.distributed.launch --devices=0,1,2,3 train.py --lr=0.01
 
+=======
+            
+            # For training on single node using 4 gpus.
+
+            python -m paddle.distributed.launch --devices=0,1,2,3 train.py --lr=0.01
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples 2 (collective, multi node):
         .. code-block:: bash
             :name: code-block-example-bash2
 
+<<<<<<< HEAD
             # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17
+=======
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             # On 192.168.0.16:
 
@@ -161,15 +197,25 @@ def launch():
 
             # On 192.168.0.17:
             python -m paddle.distributed.launch --devices=0,1,2,3 --master=192.168.0.16:8090 train.py --lr=0.01
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples 3 (ps, cpu, single node):
         .. code-block:: bash
             :name: code-block-example-bash3
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers.
+<<<<<<< HEAD
 
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
 
+=======
+            
+            python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples 4 (ps, cpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash4
@@ -194,10 +240,17 @@ def launch():
             :name: code-block-example-bash5
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, each worker use single gpu.
+<<<<<<< HEAD
 
             export CUDA_VISIBLE_DEVICES=0,1,2,3
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
 
+=======
+            
+            export CUDA_VISIBLE_DEVICES=0,1,2,3
+            python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples 6 (ps, gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash6
@@ -219,10 +272,17 @@ def launch():
             :name: code-block-example-bash7
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, two workers use gpu, two workers use cpu.
+<<<<<<< HEAD
 
             export CUDA_VISIBLE_DEVICES=0,1
             python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
 
+=======
+            
+            export CUDA_VISIBLE_DEVICES=0,1
+            python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples 8 (ps-heter, cpu + gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash8
@@ -246,7 +306,11 @@ def launch():
             # With the following command, the job will begin to run immediately if 4 nodes are ready,
             # or it will run after elastic_timeout if only 2 or 3 nodes ready
             python -m paddle.distributed.launch --master etcd://10.0.0.1:2379 --nnodes 2:4 train.py
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             # once the number of nodes changes between 2:4 during training, the strategy holds
 
     Examples 10 (ipu):
@@ -260,6 +324,7 @@ def launch():
             # Please Check the `IPU Parameters` for details
             python -m paddle.distributed.launch --devices 4 ipu --hosts=localhost --nproc_per_host=2 --ipus_per_replica=1 --ipu_partition=pod16 --vipu_server=127.0.0.1 train.py
 
+<<<<<<< HEAD
     Examples 11 (rpc, cpu, single node):
         .. code-block:: bash
             :name: code-block-example-bash11
@@ -281,6 +346,8 @@ def launch():
 
             python -m paddle.distributed.launch --master 192.168.0.16:8765 --nnodes 2 --nproc_per_node 2 --rank 1 --run_mode rpc train.py
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
 
     # initialize the context to run
@@ -290,7 +357,10 @@ def launch():
 
         # legacy mode
         from paddle.distributed.fleet import launch
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         launch.launch()
 
     else:

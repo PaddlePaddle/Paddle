@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import re
 import zipfile
 
@@ -19,6 +20,21 @@ import numpy as np
 
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
+=======
+from __future__ import print_function
+
+import numpy as np
+import zipfile
+import re
+import random
+import functools
+import six
+
+import paddle
+from paddle.io import Dataset
+import paddle.compat as cpt
+from paddle.dataset.common import _check_exists_and_download
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
@@ -28,7 +44,11 @@ URL = 'https://dataset.bj.bcebos.com/movielens%2Fml-1m.zip'
 MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
+<<<<<<< HEAD
 class MovieInfo:
+=======
+class MovieInfo(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Movie id, title and categories information are stored in MovieInfo.
     """
@@ -42,6 +62,7 @@ class MovieInfo:
         """
         Get information from a movie.
         """
+<<<<<<< HEAD
         return [
             [self.index],
             [categories_dict[c] for c in self.categories],
@@ -54,12 +75,24 @@ class MovieInfo:
             self.title,
             self.categories,
         )
+=======
+        return [[self.index], [categories_dict[c] for c in self.categories],
+                [movie_title_dict[w.lower()] for w in self.title.split()]]
+
+    def __str__(self):
+        return "<MovieInfo id(%d), title(%s), categories(%s)>" % (
+            self.index, self.title, self.categories)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __repr__(self):
         return self.__str__()
 
 
+<<<<<<< HEAD
 class UserInfo:
+=======
+class UserInfo(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     User id, gender, age, and job information are stored in UserInfo.
     """
@@ -74,6 +107,7 @@ class UserInfo:
         """
         Get information from a user.
         """
+<<<<<<< HEAD
         return [
             [self.index],
             [0 if self.is_male else 1],
@@ -88,6 +122,15 @@ class UserInfo:
             age_table[self.age],
             self.job_id,
         )
+=======
+        return [[self.index], [0 if self.is_male else 1], [self.age],
+                [self.job_id]]
+
+    def __str__(self):
+        return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
+            self.index, "M" if self.is_male else "F", age_table[self.age],
+            self.job_id)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __repr__(self):
         return str(self)
@@ -118,7 +161,11 @@ class Movielens(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
+<<<<<<< HEAD
                     super().__init__()
+=======
+                    super(SimpleNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 def forward(self, category, title, rating):
                     return paddle.sum(category), paddle.sum(title), paddle.sum(rating)
@@ -134,6 +181,7 @@ class Movielens(Dataset):
 
                 model = SimpleNet()
                 category, title, rating = model(category, title, rating)
+<<<<<<< HEAD
                 print(category.shape, title.shape, rating.shape)
 
     """
@@ -150,16 +198,36 @@ class Movielens(Dataset):
             'train',
             'test',
         ], "mode should be 'train', 'test', but got {}".format(mode)
+=======
+                print(category.numpy().shape, title.numpy().shape, rating.numpy().shape)
+
+    """
+
+    def __init__(self,
+                 data_file=None,
+                 mode='train',
+                 test_ratio=0.1,
+                 rand_seed=0,
+                 download=True):
+        assert mode.lower() in ['train', 'test'], \
+            "mode should be 'train', 'test', but got {}".format(mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.mode = mode.lower()
 
         self.data_file = data_file
         if self.data_file is None:
+<<<<<<< HEAD
             assert (
                 download
             ), "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
                 data_file, URL, MD5, 'sentiment', download
             )
+=======
+            assert download, "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(data_file, URL, MD5,
+                                                        'sentiment', download)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.test_ratio = test_ratio
         self.rand_seed = rand_seed
@@ -181,15 +249,23 @@ class Movielens(Dataset):
                 categories_set = set()
                 with package.open('ml-1m/movies.dat') as movie_file:
                     for i, line in enumerate(movie_file):
+<<<<<<< HEAD
                         line = line.decode(encoding='latin')
+=======
+                        line = cpt.to_text(line, encoding='latin')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         movie_id, title, categories = line.strip().split('::')
                         categories = categories.split('|')
                         for c in categories:
                             categories_set.add(c)
                         title = pattern.match(title).group(1)
                         self.movie_info[int(movie_id)] = MovieInfo(
+<<<<<<< HEAD
                             index=movie_id, categories=categories, title=title
                         )
+=======
+                            index=movie_id, categories=categories, title=title)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                         for w in title.split():
                             title_word_set.add(w.lower())
 
@@ -201,11 +277,20 @@ class Movielens(Dataset):
 
                 with package.open('ml-1m/users.dat') as user_file:
                     for line in user_file:
+<<<<<<< HEAD
                         line = line.decode(encoding='latin')
                         uid, gender, age, job, _ = line.strip().split("::")
                         self.user_info[int(uid)] = UserInfo(
                             index=uid, gender=gender, age=age, job_id=job
                         )
+=======
+                        line = cpt.to_text(line, encoding='latin')
+                        uid, gender, age, job, _ = line.strip().split("::")
+                        self.user_info[int(uid)] = UserInfo(index=uid,
+                                                            gender=gender,
+                                                            age=age,
+                                                            job_id=job)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _load_data(self):
         self.data = []
@@ -213,7 +298,11 @@ class Movielens(Dataset):
         with zipfile.ZipFile(self.data_file) as package:
             with package.open('ml-1m/ratings.dat') as rating:
                 for line in rating:
+<<<<<<< HEAD
                     line = line.decode(encoding='latin')
+=======
+                    line = cpt.to_text(line, encoding='latin')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     if (np.random.random() < self.test_ratio) == is_test:
                         uid, mov_id, rating, _ = line.strip().split("::")
                         uid = int(uid)
@@ -222,6 +311,7 @@ class Movielens(Dataset):
 
                         mov = self.movie_info[mov_id]
                         usr = self.user_info[uid]
+<<<<<<< HEAD
                         self.data.append(
                             usr.value()
                             + mov.value(
@@ -229,6 +319,11 @@ class Movielens(Dataset):
                             )
                             + [[rating]]
                         )
+=======
+                        self.data.append(usr.value() + \
+                                         mov.value(self.categories_dict, self.movie_title_dict) + \
+                                         [[rating]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __getitem__(self, idx):
         data = self.data[idx]

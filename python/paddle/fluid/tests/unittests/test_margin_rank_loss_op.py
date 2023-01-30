@@ -12,31 +12,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from op_test import OpTest
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle import fluid
 
 
 class TestMarginRankLossOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "margin_rank_loss"
         batch_size = 5
         margin = 0.5
         # labels_{i} = {-1, 1}
+<<<<<<< HEAD
         label = (
             2 * np.random.randint(0, 2, size=(batch_size, 1)).astype("float32")
             - 1
         )
+=======
+        label = 2 * np.random.randint(
+            0, 2, size=(batch_size, 1)).astype("float32") - 1
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x1 = np.random.random((batch_size, 1)).astype("float32")
         x2 = np.random.random((batch_size, 1)).astype("float32")
         # loss = max(0, -label * (x1 - x2) + margin)
         loss = -label * (x1 - x2) + margin
         loss = np.where(loss > 0, loss, 0)
+<<<<<<< HEAD
         act = np.where(loss > 0, 1.0, 0.0)
+=======
+        act = np.where(loss > 0, 1., 0.)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.attrs = {'margin': margin}
         self.inputs = {'Label': label, 'X1': x1, 'X2': x2}
@@ -56,10 +77,15 @@ class TestMarginRankLossOp(OpTest):
 
 
 class TestMarginRankLossLayer(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_size = 5
         self.margin = 0.5
         # labels_{i} = {-1, 1}
+<<<<<<< HEAD
         self.label = (
             2
             * np.random.randint(0, 2, size=(self.batch_size, 1)).astype(
@@ -67,6 +93,10 @@ class TestMarginRankLossLayer(unittest.TestCase):
             )
             - 1
         )
+=======
+        self.label = 2 * np.random.randint(
+            0, 2, size=(self.batch_size, 1)).astype("float32") - 1
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.x1 = np.random.random((self.batch_size, 1)).astype("float32")
         self.x2 = np.random.random((self.batch_size, 1)).astype("float32")
         # loss = max(0, -label * (x1 - x2) + margin)
@@ -90,6 +120,7 @@ class TestMarginRankLossLayer(unittest.TestCase):
                 label = fluid.data("label", (self.batch_size, 1), "float32")
                 x1 = fluid.data("x1", (self.batch_size, 1), "float32")
                 x2 = fluid.data("x2", (self.batch_size, 1), "float32")
+<<<<<<< HEAD
                 out = paddle.nn.functional.margin_ranking_loss(
                     x1, x2, label, self.margin, 'none'
                 )
@@ -101,6 +132,19 @@ class TestMarginRankLossLayer(unittest.TestCase):
             feed={"label": self.label, "x1": self.x1, "x2": self.x2},
             fetch_list=[out],
         )
+=======
+                out = fluid.layers.margin_rank_loss(label, x1, x2, self.margin)
+
+        exe = fluid.Executor(place)
+        exe.run(start)
+        out_np, = exe.run(main,
+                          feed={
+                              "label": self.label,
+                              "x1": self.x1,
+                              "x2": self.x2
+                          },
+                          fetch_list=[out])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         np.testing.assert_allclose(out_np, self.loss)
 
 

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 
 import paddle
 from paddle import framework
@@ -24,6 +25,22 @@ from paddle.framework import (
     sync_params_buffers,
 )
 
+=======
+import os
+import six
+import numpy as np
+
+from paddle import framework
+import paddle
+from paddle.fluid import core
+from paddle.fluid.dygraph.parallel import (
+    _split_tensors,
+    sync_params_buffers,
+    build_groups,
+)
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from collections import OrderedDict
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .log_util import logger
 
 __all__ = []
@@ -138,6 +155,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
 
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
+<<<<<<< HEAD
     dev = cur_device.split(":")[0]
     assert dev in [
         "xpu",
@@ -155,6 +173,17 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
             with framework.no_grad():
                 if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
+=======
+    for v in inputs:
+        if isinstance(v, (core.VarBase, core.eager.Tensor)):
+            with framework.no_grad():
+                if (
+                    "gpu" in cur_device
+                    and in_dygraph_mode()
+                    and not v.place.is_gpu_place()
+                ):
+                    v_gpu = v.cuda(int(cur_device.split(":")[1]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
@@ -164,8 +193,17 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     for k, v in kwargs.items():
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
+<<<<<<< HEAD
                 if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
+=======
+                if (
+                    "gpu" in cur_device
+                    and in_dygraph_mode()
+                    and not v.place.is_gpu_place()
+                ):
+                    v_gpu = v.cuda(int(cur_device.split(":")[1]))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
@@ -218,12 +256,48 @@ def sharding_reduce_gradients(parameter_list, hcg):
         sharding_nrank = hcg.get_sharding_parallel_group().nranks
         for param in parameter_list:
             if param.trainable and (param._grad_ivar() is not None):
+<<<<<<< HEAD
                 param.grad.scale_(1.0 / sharding_nrank)
                 paddle.distributed.all_reduce(
                     param.grad,
                     group=hcg.get_sharding_parallel_group(),
                     sync_op=True,
                 )
+=======
+                if in_dygraph_mode():
+                    param.grad.scale_(1.0 / sharding_nrank)
+                    paddle.distributed.all_reduce(
+                        param.grad,
+                        group=hcg.get_sharding_parallel_group(),
+                        sync_op=True,
+                    )
+
+                elif _in_legacy_dygraph():
+                    g_var = param._grad_ivar()
+                    # need use trace_op to allreduce
+                    # paddle.distributed.all_reduce(
+                    #     g_var, group=hcg.get_sharding_parallel_group(), use_calc_stream=True)
+                    paddle.fluid.framework._dygraph_tracer().trace_op(
+                        type="c_allreduce_sum",
+                        inputs={'X': g_var},
+                        outputs={'Out': g_var},
+                        attrs={
+                            'ring_id': hcg.get_sharding_parallel_group().id,
+                            'use_calc_stream': True,
+                        },
+                    )
+
+                    # grad / sharding_rank
+                    div_factor = paddle.to_tensor(
+                        sharding_nrank, dtype=g_var.dtype
+                    )
+                    paddle.fluid.framework._dygraph_tracer().trace_op(
+                        type="elementwise_div",
+                        inputs={'X': g_var, 'Y': div_factor},
+                        outputs={'Out': g_var},
+                        attrs={'axis': -1},
+                    )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def broadcast_sharding_parameters(model, hcg):

@@ -31,10 +31,17 @@ class UniqueWithCountsKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
+<<<<<<< HEAD
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* out = context.Output<phi::DenseTensor>("Out");
     auto* index = context.Output<phi::DenseTensor>("Index");
     auto* count = context.Output<phi::DenseTensor>("Count");
+=======
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
+    auto* index = context.Output<framework::Tensor>("Index");
+    auto* count = context.Output<framework::Tensor>("Count");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     framework::VisitDataType(data_type,
                              UniqueOpFunctor<T>(out, index, x, count));
   }

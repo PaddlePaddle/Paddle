@@ -13,15 +13,26 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from test_imperative_base import new_program_scope
 from test_imperative_resnet import ResNet
+=======
+import numpy as np
+import six
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
+<<<<<<< HEAD
+=======
+from test_imperative_base import new_program_scope
+from test_imperative_resnet import ResNet
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 batch_size = 8
 train_parameters = {
@@ -32,7 +43,11 @@ train_parameters = {
         "name": "piecewise_decay",
         "batch_size": batch_size,
         "epochs": [30, 60, 90],
+<<<<<<< HEAD
         "steps": [0.1, 0.01, 0.001, 0.0001],
+=======
+        "steps": [0.1, 0.01, 0.001, 0.0001]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     },
     "batch_size": batch_size,
     "lr": 0.1,
@@ -55,9 +70,14 @@ def optimizer_setting(params, parameter_list=None):
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
         if fluid._non_static_mode():
+<<<<<<< HEAD
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.01, parameter_list=parameter_list
             )
+=======
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01,
+                                            parameter_list=parameter_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             optimizer = fluid.optimizer.SGD(learning_rate=0.01)
         # TODO(minqiyang): Add learning rate scheduler support to dygraph mode
@@ -72,7 +92,12 @@ def optimizer_setting(params, parameter_list=None):
 
 
 class TestDygraphResnetSortGradient(unittest.TestCase):
+<<<<<<< HEAD
     def test_resnet_sort_gradient_float32(self):
+=======
+
+    def func_test_resnet_sort_gradient_float32(self):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -83,6 +108,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             paddle.framework.random._manual_program_seed(seed)
 
             resnet = ResNet()
+<<<<<<< HEAD
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=resnet.parameters()
             )
@@ -94,6 +120,16 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 paddle.dataset.flowers.train(use_xmap=False),
                 batch_size=batch_size,
             )
+=======
+            optimizer = optimizer_setting(train_parameters,
+                                          parameter_list=resnet.parameters())
+            np.random.seed(seed)
+            import random
+            random.seed = seed
+            train_reader = paddle.batch(
+                paddle.dataset.flowers.train(use_xmap=False),
+                batch_size=batch_size)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             dy_param_init_value = {}
             for param in resnet.parameters():
@@ -103,6 +139,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 if batch_id >= batch_num:
                     break
 
+<<<<<<< HEAD
                 dy_x_data = np.array(
                     [x[0].reshape(3, 224, 224) for x in data]
                 ).astype('float32')
@@ -111,15 +148,25 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     .astype('int64')
                     .reshape(batch_size, 1)
                 )
+=======
+                dy_x_data = np.array([x[0].reshape(3, 224, 224)
+                                      for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape(batch_size, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 img = to_variable(dy_x_data)
                 label = to_variable(y_data)
                 label.stop_gradient = True
 
                 out = resnet(img)
+<<<<<<< HEAD
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label, reduction='none', use_softmax=False
                 )
+=======
+                loss = fluid.layers.cross_entropy(input=out, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
@@ -135,11 +182,17 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 for param in resnet.parameters():
                     if param.trainable:
                         np_array = np.array(
+<<<<<<< HEAD
                             param._grad_ivar().value().get_tensor()
                         )
                         dy_grad_value[
                             param.name + core.grad_var_suffix()
                         ] = np_array
+=======
+                            param._grad_ivar().value().get_tensor())
+                        dy_grad_value[param.name +
+                                      core.grad_var_suffix()] = np_array
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 optimizer.minimize(avg_loss)
                 resnet.clear_gradients()
@@ -152,17 +205,23 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
+<<<<<<< HEAD
             exe = fluid.Executor(
                 fluid.CPUPlace()
                 if not core.is_compiled_with_cuda()
                 else fluid.CUDAPlace(0)
             )
+=======
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             resnet = ResNet()
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)
             import random
+<<<<<<< HEAD
 
             random.seed = seed
             train_reader = paddle.batch(
@@ -180,6 +239,19 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             loss = paddle.nn.functional.cross_entropy(
                 input=out, label=label, reduction='none', use_softmax=False
             )
+=======
+            random.seed = seed
+            train_reader = paddle.batch(
+                paddle.dataset.flowers.train(use_xmap=False),
+                batch_size=batch_size)
+
+            img = fluid.layers.data(name='pixel',
+                                    shape=[3, 224, 224],
+                                    dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            out = resnet(img)
+            loss = fluid.layers.cross_entropy(input=out, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 
@@ -191,6 +263,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 static_param_name_list.append(param.name)
             for param in resnet.parameters():
                 if param.trainable:
+<<<<<<< HEAD
                     static_grad_name_list.append(
                         param.name + core.grad_var_suffix()
                     )
@@ -199,6 +272,13 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 fluid.default_startup_program(),
                 fetch_list=static_param_name_list,
             )
+=======
+                    static_grad_name_list.append(param.name +
+                                                 core.grad_var_suffix())
+
+            out = exe.run(fluid.default_startup_program(),
+                          fetch_list=static_param_name_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             for i in range(len(static_param_name_list)):
                 static_param_init_value[static_param_name_list[i]] = out[i]
@@ -208,6 +288,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     break
 
                 static_x_data = np.array(
+<<<<<<< HEAD
                     [x[0].reshape(3, 224, 224) for x in data]
                 ).astype('float32')
                 y_data = (
@@ -215,21 +296,36 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     .astype('int64')
                     .reshape([batch_size, 1])
                 )
+=======
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape([batch_size, 1])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 fetch_list = [avg_loss.name]
                 fetch_list.extend(static_param_name_list)
                 fetch_list.extend(static_grad_name_list)
+<<<<<<< HEAD
                 out = exe.run(
                     fluid.default_main_program(),
                     feed={"pixel": static_x_data, "label": y_data},
                     fetch_list=fetch_list,
                 )
+=======
+                out = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "pixel": static_x_data,
+                                  "label": y_data
+                              },
+                              fetch_list=fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 static_param_value = {}
                 static_grad_value = {}
                 static_out = out[0]
                 param_start_pos = 1
                 grad_start_pos = len(static_param_name_list) + param_start_pos
+<<<<<<< HEAD
                 for i in range(
                     param_start_pos,
                     len(static_param_name_list) + param_start_pos,
@@ -243,30 +339,63 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     static_grad_value[
                         static_grad_name_list[i - grad_start_pos]
                     ] = out[i]
+=======
+                for i in range(param_start_pos,
+                               len(static_param_name_list) + param_start_pos):
+                    static_param_value[static_param_name_list[
+                        i - param_start_pos]] = out[i]
+                for i in range(grad_start_pos,
+                               len(static_grad_name_list) + grad_start_pos):
+                    static_grad_value[static_grad_name_list[
+                        i - grad_start_pos]] = out[i]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
 
+<<<<<<< HEAD
         for key, value in static_param_init_value.items():
             np.testing.assert_allclose(
                 value, dy_param_init_value[key], rtol=1e-05
             )
+=======
+        for key, value in six.iteritems(static_param_init_value):
+            np.testing.assert_allclose(value,
+                                       dy_param_init_value[key],
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_grad_value), len(static_grad_value))
+<<<<<<< HEAD
         for key, value in static_grad_value.items():
+=======
+        for key, value in six.iteritems(static_grad_value):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(value, dy_grad_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_param_value), len(static_param_value))
+<<<<<<< HEAD
         for key, value in static_param_value.items():
+=======
+        for key, value in six.iteritems(static_param_value):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             np.testing.assert_allclose(value, dy_param_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
+<<<<<<< HEAD
+=======
+    def test_resnet_sort_gradient_float32(self):
+        with _test_eager_guard():
+            self.func_test_resnet_sort_gradient_float32()
+        self.func_test_resnet_sort_gradient_float32()
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     unittest.main()

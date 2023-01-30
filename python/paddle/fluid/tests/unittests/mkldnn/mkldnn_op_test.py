@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy as np
 
 import paddle.fluid as fluid
@@ -27,6 +28,22 @@ def __assert_close(test_case, tensor, np_array, msg, atol=1e-4):
 def check_if_mkldnn_primitives_exist_in_bwd(
     test_case, op_type, x, out, out_grad, x_grad
 ):
+=======
+from __future__ import print_function
+
+import numpy as np
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+
+
+def __assert_close(test_case, tensor, np_array, msg, atol=1e-4):
+    test_case.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol),
+                         msg)
+
+
+def check_if_mkldnn_primitives_exist_in_bwd(test_case, op_type, x, out,
+                                            out_grad, x_grad):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     place = core.CPUPlace()
 
     var_dict = {'x': x, 'out': out, 'out@GRAD': out_grad, 'x@GRAD': x_grad}
@@ -37,6 +54,7 @@ def check_if_mkldnn_primitives_exist_in_bwd(
     with fluid.program_guard(program):
         block = program.global_block()
         for name in ground_truth:
+<<<<<<< HEAD
             block.create_var(
                 name=name, dtype=np.float32, shape=ground_truth[name].shape
             )
@@ -54,6 +72,22 @@ def check_if_mkldnn_primitives_exist_in_bwd(
         grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
             op.desc, set(), []
         )
+=======
+            block.create_var(name=name,
+                             dtype=np.float32,
+                             shape=ground_truth[name].shape)
+
+        op = block.append_op(type=op_type,
+                             inputs={
+                                 'X': block.var('x'),
+                             },
+                             outputs={'Out': block.var('out')},
+                             attrs={'use_mkldnn': True})
+
+        # Generate backward op_desc
+        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+            op.desc, set(), [])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         grad_op_desc = grad_op_desc_list[0]
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(grad_op_desc)
@@ -71,13 +105,20 @@ def check_if_mkldnn_primitives_exist_in_bwd(
         for i in range(2):
             out = exe.run(
                 program,
+<<<<<<< HEAD
                 feed={name: var_dict[name] for name in ['x', 'out@GRAD']},
                 fetch_list=['x@GRAD', 'out'],
             )
+=======
+                feed={name: var_dict[name]
+                      for name in ['x', 'out@GRAD']},
+                fetch_list=['x@GRAD', 'out'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         __assert_close(test_case, x_grad, out[0], 'x@GRAD')
 
 
+<<<<<<< HEAD
 def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
     test_case, var_dict, place, shape, data_layout
 ):
@@ -91,15 +132,30 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
         'y',
         'saved_mean',
         'saved_variance',
+=======
+def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(test_case, var_dict,
+                                                      place, shape,
+                                                      data_layout):
+
+    var_names = [
+        'x', 'scale', 'bias', 'mean', 'variance', 'y', 'saved_mean',
+        'saved_variance'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ]
     ground_truth = {name: var_dict[name] for name in var_names}
     program = fluid.Program()
     with fluid.program_guard(program):
         block = program.global_block()
         for name in ground_truth:
+<<<<<<< HEAD
             block.create_var(
                 name=name, dtype='float32', shape=ground_truth[name].shape
             )
+=======
+            block.create_var(name=name,
+                             dtype='float32',
+                             shape=ground_truth[name].shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         bn_op = block.append_op(
             type="batch_norm",
             inputs={
@@ -107,14 +163,22 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
                 "Scale": block.var('scale'),
                 "Bias": block.var('bias'),
                 "Mean": block.var('mean'),
+<<<<<<< HEAD
                 "Variance": block.var('variance'),
+=======
+                "Variance": block.var('variance')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             },
             outputs={
                 "Y": block.var('y'),
                 "MeanOut": block.var('mean'),  # share memory
                 "VarianceOut": block.var('variance'),  # share memory
                 "SavedMean": block.var('saved_mean'),
+<<<<<<< HEAD
                 "SavedVariance": block.var('saved_variance'),
+=======
+                "SavedVariance": block.var('saved_variance')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             },
             attrs={
                 "momentum": test_case.momentum,
@@ -123,6 +187,7 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
                 "data_layout": data_layout,
                 "use_mkldnn": test_case.use_mkldnn,
                 "fuse_with_relu": test_case.fuse_with_relu,
+<<<<<<< HEAD
                 "use_global_stats": test_case.use_global_stats,
             },
         )
@@ -134,6 +199,17 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
         grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
             bn_op.desc, test_case.no_grad_set, []
         )
+=======
+                "use_global_stats": test_case.use_global_stats
+            })
+        block.create_var(name='y@GRAD',
+                         dtype='float32',
+                         shape=var_dict['y'].shape)
+
+        # generate backward op_desc
+        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+            bn_op.desc, test_case.no_grad_set, [])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         grad_op_desc = grad_op_desc_list[0]
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(grad_op_desc)
@@ -153,6 +229,7 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
                 program,
                 feed={
                     name: var_dict[name]
+<<<<<<< HEAD
                     for name in [
                         'x',
                         'scale',
@@ -164,6 +241,12 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
                 },
                 fetch_list=test_case.fetch_list,
             )
+=======
+                    for name in
+                    ['x', 'scale', 'bias', 'mean', 'variance', 'y@GRAD']
+                },
+                fetch_list=test_case.fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             for id, name in enumerate(test_case.fetch_list):
                 __assert_close(test_case, var_dict[name], out[id], name)
 

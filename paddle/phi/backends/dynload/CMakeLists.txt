@@ -62,10 +62,13 @@ if(WITH_ROCM)
     phi_dynload_warpctc
     SRCS warpctc.cc
     DEPS phi_dynamic_loader warpctc)
+<<<<<<< HEAD
   cc_library(
     phi_dynload_warprnnt
     SRCS warprnnt.cc
     DEPS phi_dynamic_loader warprnnt)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 elseif(WITH_ASCEND_CL)
   cc_library(
     phi_dynload_warpctc
@@ -80,10 +83,13 @@ else()
     phi_dynload_warpctc
     SRCS warpctc.cc
     DEPS phi_dynamic_loader warpctc)
+<<<<<<< HEAD
   cc_library(
     phi_dynload_warprnnt
     SRCS warprnnt.cc
     DEPS phi_dynamic_loader warprnnt)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 if(WITH_MKLML)
   cc_library(
@@ -107,6 +113,7 @@ if(MKL_FOUND AND WITH_ONEMKL)
     DEPS phi_dynamic_loader)
   target_include_directories(phi_dynload_mklrt PRIVATE ${MKL_INCLUDE})
 endif()
+<<<<<<< HEAD
 
 if(WITH_CUDNN_FRONTEND)
   nv_test(
@@ -114,3 +121,5 @@ if(WITH_CUDNN_FRONTEND)
     SRCS cudnn_frontend_test.cc
     DEPS phi_dynload_cuda cudnn-frontend)
 endif()
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

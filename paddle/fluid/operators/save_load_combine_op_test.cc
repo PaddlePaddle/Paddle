@@ -20,10 +20,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(save_combine);
 PD_DECLARE_KERNEL(save_combine_tensor, CPU, ALL_LAYOUT);
+=======
+
+USE_CPU_ONLY_OP(save_combine);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 USE_CPU_ONLY_OP(load_combine);
 
 template <typename T, typename U>
@@ -35,7 +40,11 @@ T* CreateForSaveCombineOp(int x,
                           paddle::framework::Scope* scope,
                           paddle::framework::LoD* expect_lod) {
   auto var = scope->Var(var_name);
+<<<<<<< HEAD
   auto tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor->Resize({x, y});
   expect_lod->resize(1);
   for (size_t i = 0; i < lod_info.size(); i++) {
@@ -50,15 +59,26 @@ T* CreateForSaveCombineOp(int x,
   return expect;
 }
 
+<<<<<<< HEAD
 phi::DenseTensor* GeneratePlaceholderBeforeLoad(
     const std::string out_var_name, paddle::framework::Scope* scope) {
   auto load_var = scope->Var(out_var_name);
   auto target = load_var->GetMutable<phi::DenseTensor>();
+=======
+paddle::framework::LoDTensor* GeneratePlaceholderBeforeLoad(
+    const std::string out_var_name, paddle::framework::Scope* scope) {
+  auto load_var = scope->Var(out_var_name);
+  auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return target;
 }
 
 template <typename T>
+<<<<<<< HEAD
 T* GetValuesAfterLoadCombineOp(phi::DenseTensor* target,
+=======
+T* GetValuesAfterLoadCombineOp(paddle::framework::LoDTensor* target,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                const paddle::framework::Scope& scope,
                                paddle::framework::LoD* actual_lod) {
   T* actual = target->data<T>();
@@ -299,10 +319,17 @@ TEST(LoadCombineFP16Op, CPU) {
       attrs);
   load_combine_op->Run(scope, place);
 
+<<<<<<< HEAD
   auto* target1 = load_var1->GetMutable<phi::DenseTensor>();
   auto* target2 = load_var2->GetMutable<phi::DenseTensor>();
   auto* target3 = load_var3->GetMutable<phi::DenseTensor>();
   auto* target4 = load_var4->GetMutable<phi::DenseTensor>();
+=======
+  auto* target1 = load_var1->GetMutable<paddle::framework::LoDTensor>();
+  auto* target2 = load_var2->GetMutable<paddle::framework::LoDTensor>();
+  auto* target3 = load_var3->GetMutable<paddle::framework::LoDTensor>();
+  auto* target4 = load_var4->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   paddle::framework::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
   paddle::platform::float16* actual1 =
@@ -334,7 +361,11 @@ TEST(SaveLoadTestWithCombineOp, CPU) {
   paddle::platform::CPUPlace place;
 
   auto var = scope.Var("test_var");
+<<<<<<< HEAD
   auto tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor->Resize({3, 4000});
   paddle::framework::LoD expect_lod;
   expect_lod.resize(1);
@@ -356,7 +387,11 @@ TEST(SaveLoadTestWithCombineOp, CPU) {
   save_op->Run(scope, place);
 
   auto load_var = scope.Var("out_var");
+<<<<<<< HEAD
   auto target = load_var->GetMutable<phi::DenseTensor>();
+=======
+  auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load_combine", {}, {{"Out", {"out_var"}}}, attrs);
   load_op->Run(scope, place);

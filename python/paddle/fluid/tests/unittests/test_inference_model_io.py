@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import importlib
 import os
 import tempfile
@@ -33,11 +34,38 @@ from paddle.fluid.io import (
     save_inference_model,
     save_persistables,
 )
+=======
+from __future__ import print_function
+
+import unittest
+
+import os
+import six
+import tempfile
+import numpy as np
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+import warnings
+
+import paddle
+import paddle.fluid.executor as executor
+import paddle.fluid.layers as layers
+import paddle.fluid.optimizer as optimizer
+from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
+from paddle.fluid.transpiler import memory_optimize
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
+<<<<<<< HEAD
 class InferModel:
+=======
+class InferModel(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, list):
         self.program = list[0]
         self.feed_var_names = list[1]
@@ -45,6 +73,10 @@ class InferModel:
 
 
 class TestBook(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_fit_line_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model")
@@ -54,6 +86,7 @@ class TestBook(unittest.TestCase):
         program = Program()
 
         with program_guard(program, init_program):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -62,6 +95,14 @@ class TestBook(unittest.TestCase):
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -72,6 +113,7 @@ class TestBook(unittest.TestCase):
 
         exe.run(init_program, feed={}, fetch_list=[])
 
+<<<<<<< HEAD
         for i in range(100):
             tensor_x = np.array([[1, 1], [1, 2], [3, 4], [5, 2]]).astype(
                 "float32"
@@ -105,11 +147,42 @@ class TestBook(unittest.TestCase):
         )[0]
 
         importlib.reload(executor)  # reload to build a new scope
+=======
+        for i in six.moves.xrange(100):
+            tensor_x = np.array([[1, 1], [1, 2], [3, 4], [5,
+                                                          2]]).astype("float32")
+            tensor_y = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
+
+            exe.run(program,
+                    feed={
+                        'x': tensor_x,
+                        'y': tensor_y
+                    },
+                    fetch_list=[avg_cost])
+
+        # Separated model and unified model
+        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
+        save_inference_model(UNI_MODEL_DIR, ["x", "y"], [avg_cost], exe,
+                             program, 'model', 'params')
+        main_program = program.clone()._prune_with_input(
+            feeded_var_names=["x", "y"], targets=[avg_cost])
+        params_str = save_persistables(exe, None, main_program, None)
+
+        expected = exe.run(program,
+                           feed={
+                               'x': tensor_x,
+                               'y': tensor_y
+                           },
+                           fetch_list=[avg_cost])[0]
+
+        six.moves.reload_module(executor)  # reload to build a new scope
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         model_0 = InferModel(load_inference_model(MODEL_DIR, exe))
         with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
             model_str = f.read()
         model_1 = InferModel(
+<<<<<<< HEAD
             load_inference_model(None, exe, model_str, params_str)
         )
         model_2 = InferModel(load_inference_model_distributed(MODEL_DIR, exe))
@@ -126,6 +199,17 @@ class TestBook(unittest.TestCase):
                 },
                 fetch_list=model.fetch_vars,
             )
+=======
+            load_inference_model(None, exe, model_str, params_str))
+
+        for model in [model_0, model_1]:
+            outs = exe.run(model.program,
+                           feed={
+                               model.feed_var_names[0]: tensor_x,
+                               model.feed_var_names[1]: tensor_y
+                           },
+                           fetch_list=model.fetch_vars)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             actual = outs[0]
 
             self.assertEqual(model.feed_var_names, ["x", "y"])
@@ -135,6 +219,7 @@ class TestBook(unittest.TestCase):
 
         root_path.cleanup()
 
+<<<<<<< HEAD
         self.assertRaises(
             ValueError,
             fluid.io.load_inference_model,
@@ -154,6 +239,14 @@ class TestBook(unittest.TestCase):
 
 
 class TestSaveInferenceModel(unittest.TestCase):
+=======
+        self.assertRaises(ValueError, fluid.io.load_inference_model, None, exe,
+                          model_str, None)
+
+
+class TestSaveInferenceModel(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_save_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model2")
@@ -162,6 +255,7 @@ class TestSaveInferenceModel(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -170,6 +264,14 @@ class TestSaveInferenceModel(unittest.TestCase):
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
@@ -187,6 +289,7 @@ class TestSaveInferenceModel(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='int32')
             predict = paddle.static.nn.fc(x, size=2, activation='softmax')
@@ -197,6 +300,15 @@ class TestSaveInferenceModel(unittest.TestCase):
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=y, reduction='none', use_softmax=False
             )
+=======
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='int32')
+            predict = fluid.layers.fc(input=x, size=2, act='softmax')
+            acc = fluid.layers.accuracy(input=predict, label=y)
+            auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
+                                                                  label=y)
+            cost = fluid.layers.cross_entropy(input=predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(x=cost)
 
         place = core.CPUPlace()
@@ -204,9 +316,14 @@ class TestSaveInferenceModel(unittest.TestCase):
         exe.run(init_program, feed={}, fetch_list=[])
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
+<<<<<<< HEAD
             save_inference_model(
                 MODEL_DIR, ["x", "y"], [avg_cost], exe, program
             )
+=======
+            save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe,
+                                 program)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             root_path.cleanup()
             expected_warn = "please ensure that you have set the auc states to zeros before saving inference model"
             self.assertTrue(len(w) > 0)
@@ -214,6 +331,10 @@ class TestSaveInferenceModel(unittest.TestCase):
 
 
 class TestInstance(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_save_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model3")
@@ -222,6 +343,7 @@ class TestInstance(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -230,6 +352,14 @@ class TestInstance(unittest.TestCase):
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
@@ -239,6 +369,7 @@ class TestInstance(unittest.TestCase):
         # will print warning message
 
         cp_prog = CompiledProgram(program).with_data_parallel(
+<<<<<<< HEAD
             loss_name=avg_cost.name
         )
 
@@ -248,10 +379,21 @@ class TestInstance(unittest.TestCase):
             save_inference_model,
             [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog],
         )
+=======
+            loss_name=avg_cost.name)
+
+        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
+        self.assertRaises(TypeError, save_inference_model,
+                          [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         root_path.cleanup()
 
 
 class TestSaveInferenceModelNew(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_save_and_load_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model5")
@@ -260,6 +402,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -268,6 +411,14 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -279,6 +430,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+<<<<<<< HEAD
         for i in range(3):
             exe.run(
                 program,
@@ -345,10 +497,38 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             [avg_cost],
             exe,
         )
+=======
+        for i in six.moves.xrange(3):
+            exe.run(program,
+                    feed={
+                        'x': tensor_x,
+                        'y': tensor_y
+                    },
+                    fetch_list=[avg_cost])
+
+        self.assertRaises(ValueError, paddle.static.save_inference_model, None,
+                          ['x', 'y'], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR + "/", [x, y], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR, ['x', 'y'], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR, 'x', [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR, [x, y], ['avg_cost'], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR, [x, y], 'avg_cost', exe)
+
+        model_path = MODEL_DIR + "_isdir.pdmodel"
+        os.makedirs(model_path)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         os.rmdir(model_path)
 
         params_path = MODEL_DIR + "_isdir.pdmodel"
         os.makedirs(params_path)
+<<<<<<< HEAD
         self.assertRaises(
             ValueError,
             paddle.static.save_inference_model,
@@ -362,10 +542,19 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         paddle.static.io.save_inference_model(
             MODEL_DIR, [x, y], [avg_cost], exe
         )
+=======
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
+        os.rmdir(params_path)
+
+        paddle.static.io.save_inference_model(MODEL_DIR, [x, y], [avg_cost],
+                                              exe)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdmodel"))
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdiparams"))
 
+<<<<<<< HEAD
         expected = exe.run(
             program, feed={'x': tensor_x, 'y': tensor_y}, fetch_list=[avg_cost]
         )[0]
@@ -417,6 +606,50 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             },
             fetch_list=model.fetch_vars,
         )
+=======
+        expected = exe.run(program,
+                           feed={
+                               'x': tensor_x,
+                               'y': tensor_y
+                           },
+                           fetch_list=[avg_cost])[0]
+
+        six.moves.reload_module(executor)  # reload to build a new scope
+
+        self.assertRaises(ValueError, paddle.static.load_inference_model, None,
+                          exe)
+        self.assertRaises(ValueError, paddle.static.load_inference_model,
+                          MODEL_DIR + "/", exe)
+        self.assertRaises(ValueError, paddle.static.load_inference_model,
+                          [MODEL_DIR], exe)
+        self.assertRaises(ValueError,
+                          paddle.static.load_inference_model,
+                          MODEL_DIR,
+                          exe,
+                          pserver_endpoints=None)
+        self.assertRaises(ValueError,
+                          paddle.static.load_inference_model,
+                          MODEL_DIR,
+                          exe,
+                          unsupported_param=None)
+        self.assertRaises((TypeError, ValueError),
+                          paddle.static.load_inference_model,
+                          None,
+                          exe,
+                          model_filename="illegal",
+                          params_filename="illegal")
+
+        model = InferModel(paddle.static.io.load_inference_model(
+            MODEL_DIR, exe))
+        root_path.cleanup()
+
+        outs = exe.run(model.program,
+                       feed={
+                           model.feed_var_names[0]: tensor_x,
+                           model.feed_var_names[1]: tensor_y
+                       },
+                       fetch_list=model.fetch_vars)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         actual = outs[0]
 
         self.assertEqual(model.feed_var_names, ["x", "y"])
@@ -439,6 +672,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -447,6 +681,14 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -458,12 +700,22 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+<<<<<<< HEAD
         for i in range(3):
             exe.run(
                 program,
                 feed={'x': tensor_x, 'y': tensor_y},
                 fetch_list=[avg_cost],
             )
+=======
+        for i in six.moves.xrange(3):
+            exe.run(program,
+                    feed={
+                        'x': tensor_x,
+                        'y': tensor_y
+                    },
+                    fetch_list=[avg_cost])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # test if return type of serialize_program is bytes
         res1 = paddle.static.io.serialize_program([x, y], [avg_cost])
@@ -473,6 +725,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertTrue(isinstance(res2, bytes))
         # test if variables in program is empty
         res = paddle.static.io._serialize_persistables(Program(), None)
+<<<<<<< HEAD
         self.assertIsNone(res)
         self.assertRaises(
             TypeError,
@@ -481,6 +734,11 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             None,
             None,
         )
+=======
+        self.assertEqual(res, None)
+        self.assertRaises(TypeError, paddle.static.io.deserialize_persistables,
+                          None, None, None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_normalize_program(self):
         init_program = fluid.default_startup_program()
@@ -488,6 +746,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
+<<<<<<< HEAD
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -496,6 +755,14 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
+=======
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -507,17 +774,28 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+<<<<<<< HEAD
         for i in range(3):
             exe.run(
                 program,
                 feed={'x': tensor_x, 'y': tensor_y},
                 fetch_list=[avg_cost],
             )
+=======
+        for i in six.moves.xrange(3):
+            exe.run(program,
+                    feed={
+                        'x': tensor_x,
+                        'y': tensor_y
+                    },
+                    fetch_list=[avg_cost])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # test if return type of serialize_program is bytes
         res = paddle.static.normalize_program(program, [x, y], [avg_cost])
         self.assertTrue(isinstance(res, Program))
         # test program type
+<<<<<<< HEAD
         self.assertRaises(
             TypeError, paddle.static.normalize_program, None, [x, y], [avg_cost]
         )
@@ -548,6 +826,25 @@ class TestLoadInferenceModelError(unittest.TestCase):
             './test_not_exist_dir',
             exe,
         )
+=======
+        self.assertRaises(TypeError, paddle.static.normalize_program, None,
+                          [x, y], [avg_cost])
+        # test feed_vars type
+        self.assertRaises(TypeError, paddle.static.normalize_program, program,
+                          'x', [avg_cost])
+        # test fetch_vars type
+        self.assertRaises(TypeError, paddle.static.normalize_program, program,
+                          [x, y], 'avg_cost')
+
+
+class TestLoadInferenceModelError(unittest.TestCase):
+
+    def test_load_model_not_exist(self):
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        self.assertRaises(ValueError, load_inference_model,
+                          './test_not_exist_dir', exe)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

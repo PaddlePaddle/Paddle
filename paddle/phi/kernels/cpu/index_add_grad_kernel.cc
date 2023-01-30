@@ -67,6 +67,9 @@ PD_REGISTER_KERNEL(index_add_grad,
                    phi::IndexAddGradKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                    int,
                    int64_t) {}

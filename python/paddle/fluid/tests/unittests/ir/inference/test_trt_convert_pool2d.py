@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import copy
 import itertools
 import unittest
@@ -23,6 +24,17 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+import itertools
+import copy
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class TrtConvertPool2dTest(TrtLayerAutoScanTest):
@@ -32,7 +44,11 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         ksize = program_config.ops[0].attrs['ksize']
         pooling_type = program_config.ops[0].attrs['pooling_type']
         global_pooling = program_config.ops[0].attrs['global_pooling']
+<<<<<<< HEAD
         if not global_pooling:
+=======
+        if global_pooling == False:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if pooling_type == 'avg':
                 for index in range(len(ksize)):
                     if ksize[index] <= paddings[index]:
@@ -177,10 +193,17 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         def teller(program_config, predictor_config):
             if (
                 program_config.ops[0].attrs['pooling_type'] == 'avg'
+<<<<<<< HEAD
                 and not program_config.ops[0].attrs['global_pooling']
                 and program_config.ops[0].attrs['exclusive']
                 and not program_config.ops[0].attrs['adaptive']
                 and program_config.ops[0].attrs['ceil_mode']
+=======
+                and program_config.ops[0].attrs['global_pooling'] == False
+                and program_config.ops[0].attrs['exclusive'] == True
+                and program_config.ops[0].attrs['adaptive'] == False
+                and program_config.ops[0].attrs['ceil_mode'] == True
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ):
                 return True
             return False

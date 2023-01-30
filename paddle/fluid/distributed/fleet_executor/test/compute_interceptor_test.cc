@@ -25,16 +25,44 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
+<<<<<<< HEAD
+=======
+class StartInterceptor : public Interceptor {
+ public:
+  StartInterceptor(int64_t interceptor_id, TaskNode* node)
+      : Interceptor(interceptor_id, node) {
+    RegisterMsgHandle([this](const InterceptorMessage& msg) { NOP(msg); });
+  }
+
+  void NOP(const InterceptorMessage& msg) {
+    if (msg.message_type() == STOP) {
+      stop_ = true;
+      InterceptorMessage stop;
+      stop.set_message_type(STOP);
+      Send(1, stop);  // stop 1, compute
+      return;
+    }
+    std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
+              << std::endl;
+  }
+};
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 TEST(ComputeInterceptor, Compute) {
   std::string carrier_id = "0";
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+<<<<<<< HEAD
   carrier->Init(0, {{SOURCE_ID, 0}, {0, 0}, {1, 0}, {SINK_ID, 0}});
+=======
+  carrier->Init(0, {{0, 0}, {1, 0}, {2, 0}});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
+<<<<<<< HEAD
   TaskNode* source =
       new TaskNode(0, SOURCE_ID, 3);  // rank, task_id, max_run_times
   TaskNode* node_a = new TaskNode(0, 0, 0, 3);
@@ -61,6 +89,29 @@ TEST(ComputeInterceptor, Compute) {
   msg.set_message_type(START);
   msg.set_dst_id(SOURCE_ID);
   carrier->EnqueueInterceptorMessage(msg);
+=======
+  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
+  TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
+  TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
+
+  // a->b->c
+  node_a->AddDownstreamTask(1, 3);
+  node_b->AddUpstreamTask(0, 3);
+  node_b->AddDownstreamTask(2);
+  node_c->AddUpstreamTask(1);
+
+  Interceptor* a =
+      carrier->SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
+  carrier->SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
+  carrier->SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
+
+  InterceptorMessage msg;
+  msg.set_message_type(DATA_IS_READY);
+  // test run three times
+  a->Send(1, msg);
+  a->Send(1, msg);
+  a->Send(1, msg);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   carrier->Wait();
   carrier->Release();

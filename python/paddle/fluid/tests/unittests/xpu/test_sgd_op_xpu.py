@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -32,11 +33,37 @@ from paddle.fluid.op import Operator
 
 
 class XPUTestSgdOp(XPUOpTestWrapper):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+import os
+
+sys.path.append("..")
+from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.op import Operator
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+
+class XPUTestSgdOp(XPUOpTestWrapper):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'sgd'
         self.use_dynamic_create_class = False
 
     class TestSGDOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "sgd"
             self.dtype = self.in_type
@@ -56,6 +83,10 @@ class XPUTestSgdOp(XPUOpTestWrapper):
             self.check_output_with_place(paddle.XPUPlace(0))
 
     class TestSGDOpCase8X(TestSGDOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def conf(self):
             self.h = 10
             self.w = 64
@@ -67,6 +98,7 @@ for stype in support_types:
 
 
 class TestSGDOpWithLargeInput(unittest.TestCase):
+<<<<<<< HEAD
     def runTest(self):
         data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
         label = fluid.layers.fill_constant(
@@ -76,6 +108,18 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         out = paddle.nn.functional.normalize(x=emb, axis=-1)
 
         cost = paddle.nn.functional.square_error_cost(input=out, label=label)
+=======
+
+    def runTest(self):
+        data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
+        label = fluid.layers.fill_constant(shape=[1, 150],
+                                           value=0.5,
+                                           dtype='float32')
+        emb = fluid.embedding(input=data, size=(10000, 150), dtype='float32')
+        out = fluid.layers.l2_normalize(x=emb, axis=-1)
+
+        cost = fluid.layers.square_error_cost(input=out, label=label)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
@@ -86,6 +130,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         result = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])
 
 
+<<<<<<< HEAD
 class TestSparseSGDOp(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
@@ -157,6 +202,8 @@ class TestSparseSGDOpCase8X(TestSparseSGDOp):
         self.row_numel = 16
 
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

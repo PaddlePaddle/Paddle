@@ -13,9 +13,15 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import paddle
 from paddle.distributed.fleet import auto
+=======
+import paddle
+from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -25,15 +31,23 @@ def make_program_dp2():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
+<<<<<<< HEAD
         auto.shard_tensor(
             x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x", None, None]
         )
+=======
+        auto.shard_tensor(x, auto.ProcessMesh([0, 1], dim_names=["x"]),
+                          ["x", None, None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
         tmp_3 = x[:2, :2, :2]
+<<<<<<< HEAD
         tmp_3 = x[:4, :2, :2]
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return main_program, start_program
 
 
@@ -42,9 +56,14 @@ def make_program_serial():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
+<<<<<<< HEAD
         auto.shard_tensor(
             x, auto.ProcessMesh([0], dim_names=["x"]), [None, None, None]
         )
+=======
+        auto.shard_tensor(x, auto.ProcessMesh([0], dim_names=["x"]),
+                          [None, None, None])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
@@ -57,8 +76,13 @@ def make_program_serial():
 
 def parallelizer(program_func, rank):
     from paddle.distributed.auto_parallel.completion import Completer
+<<<<<<< HEAD
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
     from paddle.distributed.auto_parallel.partitioner import Partitioner
+=======
+    from paddle.distributed.auto_parallel.partitioner import Partitioner
+    from paddle.distributed.auto_parallel.dist_context import DistributedContext
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     main_program, start_program = program_func()
 
@@ -68,14 +92,23 @@ def parallelizer(program_func, rank):
 
     dist_context.block_state.parse_forward_blocks(main_program)
     partitioner = Partitioner(dist_context, rank)
+<<<<<<< HEAD
     dist_main_prog, _, _ = partitioner.partition(
         main_program, start_program, []
     )
+=======
+    dist_main_prog, _, _ = partitioner.partition(main_program, start_program,
+                                                 [])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return dist_main_prog, dist_context
 
 
 class TestDistSlice(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_dist_slice_dp2(self):
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)

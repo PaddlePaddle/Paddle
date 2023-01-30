@@ -19,6 +19,7 @@
 #            'sampling_id',
 #            'Uniform']
 
+<<<<<<< HEAD
 import warnings
 
 import numpy as np
@@ -31,6 +32,42 @@ from paddle.fluid.layers import tensor
 
 
 class Distribution:
+=======
+from __future__ import print_function
+
+import math
+import warnings
+
+import numpy as np
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid import core
+from paddle.fluid.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+    convert_dtype,
+)
+from paddle.fluid.framework import (
+    _non_static_mode,
+    in_dygraph_mode,
+    _in_legacy_dygraph,
+)
+from paddle.fluid.layers import (
+    control_flow,
+    elementwise_add,
+    elementwise_div,
+    elementwise_mul,
+    elementwise_sub,
+    nn,
+    ops,
+    tensor,
+)
+from paddle.tensor import arange, concat, gather_nd, multinomial
+
+
+class Distribution(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     The abstract base class for probability distributions. Functions are
     implemented in specific distributions.
@@ -57,7 +94,11 @@ class Distribution:
             else tuple(event_shape)
         )
 
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(Distribution, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def batch_shape(self):
@@ -199,7 +240,11 @@ class Distribution:
         dtype = tmp.dtype
         for arg in numpy_args:
             arg_broadcasted, _ = np.broadcast_arrays(arg, tmp)
+<<<<<<< HEAD
             arg_variable = paddle.tensor.create_tensor(dtype=dtype)
+=======
+            arg_variable = tensor.create_tensor(dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             tensor.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 
@@ -217,7 +262,11 @@ class Distribution:
         Returns:
             value (Tensor): Change value's dtype if value's dtype is different from param.
         """
+<<<<<<< HEAD
         if in_dygraph_mode():
+=======
+        if _non_static_mode():
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if value.dtype != param.dtype and convert_dtype(value.dtype) in [
                 'float32',
                 'float64',
@@ -225,7 +274,16 @@ class Distribution:
                 warnings.warn(
                     "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
                 )
+<<<<<<< HEAD
                 return _C_ops.cast(value, param.dtype)
+=======
+                if in_dygraph_mode():
+                    return _C_ops.cast(value, param.dtype)
+                if _in_legacy_dygraph():
+                    return _legacy_C_ops.cast(
+                        value, 'in_dtype', value.dtype, 'out_dtype', param.dtype
+                    )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return value
 
         check_variable_and_dtype(

@@ -16,10 +16,17 @@
 
 #include "paddle/phi/kernels/selected_rows/add_n_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 namespace sr {
@@ -73,7 +80,11 @@ void AddNKernel(const Context &dev_ctx,
     }
   }
   if (has_data) {
+<<<<<<< HEAD
     phi::funcs::scatter::MergeAdd<Context, T> merge_add;
+=======
+    paddle::operators::math::scatter::MergeAdd<Context, T> merge_add;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     merge_add(dev_ctx, inputs, out);
 
     out->SyncIndex();

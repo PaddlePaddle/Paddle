@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import shutil
 import unittest
 
 import paddle
+=======
+import unittest
+import os
+import shutil
+import numpy as np
+import paddle as paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 
 
 class TestLoadVarsShapeCheck(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.model_path = "./model_temp/"
 
@@ -30,10 +42,15 @@ class TestLoadVarsShapeCheck(unittest.TestCase):
         startup_program_1 = fluid.Program()
 
         with fluid.program_guard(program_1, startup_program_1):
+<<<<<<< HEAD
             input = paddle.static.data(
                 name="x", shape=[-1, 10], dtype='float32'
             )
             out = paddle.static.nn.fc(input, 20)
+=======
+            input = fluid.layers.data(name="x", shape=[-1, 10], dtype='float32')
+            out = fluid.layers.fc(input, 20)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         place = fluid.CPUPlace()
         exe = Executor(place)
         exe.run(startup_program_1)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -27,15 +28,40 @@ from xpu.get_test_cover_info import (
 
 import paddle
 
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+import paddle
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 paddle.enable_static()
 
 
 class XPUTestAccuracyOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'accuracy'
         self.use_dynamic_create_class = False
 
     class TestXPUAccuracyOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "accuracy"
             self.init_dtype()
@@ -51,11 +77,18 @@ class XPUTestAccuracyOp(XPUOpTestWrapper):
                         num_correct += 1
                         break
             self.outputs = {
+<<<<<<< HEAD
                 'Accuracy': np.array([num_correct / float(n)]).astype(
                     self.dtype
                 ),
                 'Correct': np.array([num_correct]).astype("int32"),
                 'Total': np.array([n]).astype("int32"),
+=======
+                'Accuracy':
+                np.array([num_correct / float(n)]).astype(self.dtype),
+                'Correct': np.array([num_correct]).astype("int32"),
+                'Total': np.array([n]).astype("int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.attrs = {'use_xpu': True}
 

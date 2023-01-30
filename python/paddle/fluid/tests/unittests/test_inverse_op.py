@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test import OpTest
@@ -23,6 +24,17 @@ import paddle.fluid.core as core
 
 
 class TestInverseOp(OpTest):
+=======
+import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle
+from op_test import OpTest
+
+
+class TestInverseOp(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -47,6 +59,10 @@ class TestInverseOp(OpTest):
 
 
 class TestInverseOpBatched(TestInverseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float64"
@@ -54,30 +70,56 @@ class TestInverseOpBatched(TestInverseOp):
 
 
 class TestInverseOpLarge(TestInverseOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float64"
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Input'], 'Output', max_relative_error=1e-6, check_eager=True
         )
 
 
 class TestInverseOpFP32(TestInverseOp):
+=======
+        self.check_grad(['Input'],
+                        'Output',
+                        max_relative_error=1e-6,
+                        check_eager=True)
+
+
+class TestInverseOpFP32(TestInverseOp):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Input'], 'Output', max_relative_error=1e-2, check_eager=True
         )
 
 
 class TestInverseOpBatchedFP32(TestInverseOpFP32):
+=======
+        self.check_grad(['Input'],
+                        'Output',
+                        max_relative_error=1e-2,
+                        check_eager=True)
+
+
+class TestInverseOpBatchedFP32(TestInverseOpFP32):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float32"
@@ -85,6 +127,10 @@ class TestInverseOpBatchedFP32(TestInverseOpFP32):
 
 
 class TestInverseOpLargeFP32(TestInverseOpFP32):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float32"
@@ -92,6 +138,10 @@ class TestInverseOpLargeFP32(TestInverseOpFP32):
 
 
 class TestInverseAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -106,6 +156,7 @@ class TestInverseAPI(unittest.TestCase):
             result_np = np.linalg.inv(input_np)
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             fetches = exe.run(
                 fluid.default_main_program(),
                 feed={"input": input_np},
@@ -114,6 +165,14 @@ class TestInverseAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 fetches[0], np.linalg.inv(input_np), rtol=1e-05
             )
+=======
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
+            np.testing.assert_allclose(fetches[0],
+                                       np.linalg.inv(input_np),
+                                       rtol=1e-05)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static(self):
         for place in self.places:
@@ -125,12 +184,22 @@ class TestInverseAPI(unittest.TestCase):
                 input_np = np.random.random([4, 4]).astype("float64")
                 input = fluid.dygraph.to_variable(input_np)
                 result = paddle.inverse(input)
+<<<<<<< HEAD
                 np.testing.assert_allclose(
                     result.numpy(), np.linalg.inv(input_np), rtol=1e-05
                 )
 
 
 class TestInverseAPIError(unittest.TestCase):
+=======
+                np.testing.assert_allclose(result.numpy(),
+                                           np.linalg.inv(input_np),
+                                           rtol=1e-05)
+
+
+class TestInverseAPIError(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
@@ -153,6 +222,10 @@ class TestInverseAPIError(unittest.TestCase):
 
 
 class TestInverseSingularAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -167,6 +240,7 @@ class TestInverseSingularAPI(unittest.TestCase):
 
             exe = fluid.Executor(place)
             try:
+<<<<<<< HEAD
                 fetches = exe.run(
                     fluid.default_main_program(),
                     feed={"input": input_np},
@@ -176,6 +250,17 @@ class TestInverseSingularAPI(unittest.TestCase):
                 print("The mat is singular")
             except ValueError as ex:
                 print("The mat is singular")
+=======
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={"input": input_np},
+                                  fetch_list=[result])
+            except RuntimeError as ex:
+                print("The mat is singular")
+                pass
+            except ValueError as ex:
+                print("The mat is singular")
+                pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_static(self):
         for place in self.places:
@@ -190,8 +275,15 @@ class TestInverseSingularAPI(unittest.TestCase):
                     result = paddle.inverse(input)
                 except RuntimeError as ex:
                     print("The mat is singular")
+<<<<<<< HEAD
                 except ValueError as ex:
                     print("The mat is singular")
+=======
+                    pass
+                except ValueError as ex:
+                    print("The mat is singular")
+                    pass
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

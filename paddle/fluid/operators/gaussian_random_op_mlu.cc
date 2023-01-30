@@ -20,16 +20,27 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 class MLUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
+<<<<<<< HEAD
     auto* tensor = context.Output<phi::DenseTensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
     phi::DenseTensor cpu_tensor(tensor->type());
+=======
+    auto* tensor = context.Output<framework::Tensor>("Out");
+    tensor->mutable_data<T>(context.GetPlace());
+
+    Tensor cpu_tensor(tensor->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cpu_tensor.Resize(tensor->dims());
     T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
     std::normal_distribution<T> dist(mean, std);

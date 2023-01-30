@@ -84,6 +84,7 @@ const popart::DataType PhiDType2PopartDType(const phi::DataType type) {
   }
 }
 
+<<<<<<< HEAD
 const phi::DataType PopefDtype2PhiDtype(const popef::DataType type) {
   switch (type) {
     case popef::DataType::U8:
@@ -110,6 +111,8 @@ const phi::DataType PopefDtype2PhiDtype(const popef::DataType type) {
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 const VarType::Type PopartDType2VarType(const popart::DataType type) {
   switch (type) {
     case popart::DataType::UINT8:
@@ -142,6 +145,7 @@ const VarType::Type PopartDType2VarType(const popart::DataType type) {
   }
 }
 
+<<<<<<< HEAD
 const VarType::Type PopefDType2VarType(const popef::DataType type) {
   switch (type) {
     case popef::DataType::U8:
@@ -168,6 +172,8 @@ const VarType::Type PopefDType2VarType(const popef::DataType type) {
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 const popart::DataType OnnxDType2PopartType(const ONNXDataType type) {
   switch (type) {
     case ONNXDataType::BOOL:
@@ -275,6 +281,7 @@ const int RequestIpus(const int num_ipus) {
   return std::pow(2, ceil(log2(num_ipus)));
 }
 
+<<<<<<< HEAD
 std::shared_ptr<popef::Model> PopartSessionToPopefModel(
     popart::Session* session) {
   VLOG(10) << "Converting popart session to popef model";
@@ -285,6 +292,8 @@ std::shared_ptr<popef::Model> PopartSessionToPopefModel(
   return popef::ModelBuilder(reader).createModel();
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle

@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from paddle.jit.dy2static.utils import GetterSetterHelper
+=======
+from __future__ import print_function
+import unittest
+import paddle
+from paddle.fluid.dygraph.dygraph_to_static.utils import GetterSetterHelper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 vars = [1, 2, 3, 4, 5]
 
@@ -29,10 +36,17 @@ def setter(values):
 
 
 class TestGetterSetterHelper(unittest.TestCase):
+<<<<<<< HEAD
     def test_1(self):
         helper = GetterSetterHelper(
             getter, setter, ['a', 'b', 'e'], ['d', 'f', 'e']
         )
+=======
+
+    def test_1(self):
+        helper = GetterSetterHelper(getter, setter, ['a', 'b', 'e'],
+                                    ['d', 'f', 'e'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         print(helper.union())
         expect_union = ['a', 'b', 'd', 'e', 'f']
         assert helper.union() == expect_union

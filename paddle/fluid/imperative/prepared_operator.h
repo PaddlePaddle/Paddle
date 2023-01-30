@@ -29,7 +29,10 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -39,7 +42,11 @@ DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace imperative {
 
+<<<<<<< HEAD
 const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var);
+=======
+const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename VarType>
 static void SetForwardDataTypeOfGradVar(const std::shared_ptr<VarType>& var);
@@ -76,8 +83,12 @@ template <typename VarType>
 std::shared_ptr<NameVarMap<VarType>> PrepareData(
     const framework::OperatorWithKernel& op,
     const NameVarMap<VarType>& ins,
+<<<<<<< HEAD
     const phi::KernelKey& expected_kernel_key,
     const phi::Place& place) {
+=======
+    const framework::OpKernelType& expected_kernel_key) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
   for (const auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
@@ -87,8 +98,12 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
       if (tensor && tensor->IsInitialized() && (tensor->memory_size() != 0)) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
+<<<<<<< HEAD
         if (!framework::NeedTransform(kernel_type_for_var,
                                       expected_kernel_key)) {
+=======
+        if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           continue;
         } else {
           VLOG(3) << "Transform Variable " << GetNameFromVar(template_var)
@@ -113,11 +128,19 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
                 cache_var->Var(), *tensor, tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
+<<<<<<< HEAD
             phi::DenseTensor out;
             framework::TransformData(
                 expected_kernel_key, kernel_type_for_var, *tensor, &out, place);
             if (framework::NeedTransformDataType(kernel_type_for_var,
                                                  expected_kernel_key)) {
+=======
+            framework::Tensor out;
+            TransformData(
+                expected_kernel_key, kernel_type_for_var, *tensor, &out);
+            if (NeedTransformDataType(kernel_type_for_var,
+                                      expected_kernel_key)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               // To avoid NameVarMap copy construction overhead in general
               // scenarios, if inplace transformed, return original input
               // directly
@@ -152,7 +175,11 @@ class PreparedOp {
  public:
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
+<<<<<<< HEAD
              const phi::KernelKey& kernel_key,
+=======
+             const framework::OpKernelType& kernel_type,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              const framework::OperatorWithKernel::OpKernelFunc& func,
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
@@ -160,7 +187,11 @@ class PreparedOp {
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
+<<<<<<< HEAD
              const phi::KernelKey& kernel_key,
+=======
+             const framework::OpKernelType& kernel_type,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
              phi::KernelSignature&& kernel_signature,
@@ -203,14 +234,22 @@ class PreparedOp {
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
+<<<<<<< HEAD
   const phi::KernelKey& kernel_key() const { return kernel_key_; }
 
   const phi::Place& place() const { return dev_ctx_->GetPlace(); }
+=======
+  const framework::OpKernelType& kernel_type() const { return kernel_type_; }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  private:
   const framework::OperatorBase& op_;
   const framework::RuntimeContext& ctx_;
+<<<<<<< HEAD
   phi::KernelKey kernel_key_;
+=======
+  framework::OpKernelType kernel_type_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
   // NOTE(chenweihang): Similar op members are used to adapt to
@@ -352,7 +391,11 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     auto iter = outs.find(output_names[i]);
     if (iter == outs.end()) {
+<<<<<<< HEAD
       kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
+=======
+      kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
                                     i);
       continue;
@@ -363,7 +406,11 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       if (outs_vector[offset] == nullptr) {
+<<<<<<< HEAD
         kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
+=======
+        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         continue;
       }
 
@@ -661,7 +708,11 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;
 
+<<<<<<< HEAD
         phi::DenseTensor tmp_tensor;
+=======
+        framework::Tensor tmp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
 
         SetTensorToVariable(var->Var(), tmp_tensor, var->MutableVar());

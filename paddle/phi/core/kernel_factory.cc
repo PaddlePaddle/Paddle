@@ -17,6 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+<<<<<<< HEAD
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
@@ -24,15 +25,25 @@
 #include "paddle/utils/string/string_helper.h"
 
 DECLARE_int32(low_precision_op_list);
+=======
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#endif
+#include "paddle/phi/core/compat/op_utils.h"
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 DECLARE_bool(enable_api_kernel_fallback);
 
 namespace phi {
 
 const static Kernel empty_kernel;  // NOLINT
 
+<<<<<<< HEAD
 std::string KernelSelectionErrorMessage(const std::string& kernel_name,
                                         const KernelKey& target_key);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
   uint32_t hash_value = 0;
   // |----31-20------|---19-12---|---11-8----|---7-0---|
@@ -107,6 +118,7 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
   return true;
 }
 
+<<<<<<< HEAD
 void KernelFactory::AddToLowPrecisionKernelList(
     const std::string& name,
     const paddle::experimental::DataType& kernel_key_type) {
@@ -141,11 +153,19 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
 
+=======
+KernelResult KernelFactory::SelectKernelOrThrowError(
+    const std::string& kernel_name,
+    const KernelKey& kernel_key,
+    bool use_gpudnn) const {
+  auto iter = kernels_.find(kernel_name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
+<<<<<<< HEAD
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),
                                    phi::DataLayout::ALL_LAYOUT,
                                    const_kernel_key.dtype());
@@ -161,11 +181,39 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   }
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
+=======
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (use_gpudnn && kernel_key.backend() == Backend::GPU) {
+    auto kernel_iter = iter->second.find(
+        {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
+    if (kernel_iter == iter->second.end() &&
+        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+      kernel_iter = iter->second.find(
+          {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
+    }
+    if (kernel_iter != iter->second.end()) {
+      return {kernel_iter->second, false};
+    }
+    LOG(WARNING) << "The cudnn kernel for [" << kernel_name
+                 << "] is not registered.";
+  }
+#endif
+
+  auto kernel_iter = iter->second.find(kernel_key);
+  // TODO(chenweihang): polish refind impl here
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+    phi::KernelKey any_layout_kernel_key(
+        kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+    kernel_iter = iter->second.find(any_layout_kernel_key);
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   PADDLE_ENFORCE_NE(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
       true,
       phi::errors::NotFound(
+<<<<<<< HEAD
           "The kernel with key %s of kernel `%s` is not registered. %s",
           kernel_key,
           kernel_name,
@@ -180,20 +228,43 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
   ) {
+=======
+          "The kernel with key %s of kernel `%s` is not registered.",
+          kernel_key,
+          kernel_name));
+
+  if (FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
     kernel_iter = iter->second.find(cpu_kernel_key);
+<<<<<<< HEAD
+=======
+    if (kernel_iter == iter->second.end() &&
+        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+      phi::KernelKey any_layout_kernel_key(
+          phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+      kernel_iter = iter->second.find(any_layout_kernel_key);
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     PADDLE_ENFORCE_NE(
         kernel_iter,
         iter->second.end(),
         phi::errors::NotFound(
+<<<<<<< HEAD
             "The kernel with key %s of kernel `%s` is not registered and "
             "fail to fallback to CPU one. %s",
             kernel_key,
             kernel_name,
             KernelSelectionErrorMessage(kernel_name, kernel_key)));
+=======
+            "The kernel with key %s of kernel `%s` is not registered and"
+            " fail to fallback to CPU one.",
+            kernel_key,
+            kernel_name));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
             << ", expected_kernel_key:" << kernel_key
@@ -206,6 +277,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernel_iter,
       iter->second.end(),
       phi::errors::NotFound(
+<<<<<<< HEAD
           "The kernel with key %s of kernel `%s` is not registered. %s "
           "The current value of FLAGS_enable_api_kernel_fallback(bool,"
           " default true) is false. If you want to fallback this kernel"
@@ -213,6 +285,14 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_key,
           kernel_name,
           KernelSelectionErrorMessage(kernel_name, kernel_key)));
+=======
+          "The kernel with key %s of kernel `%s` is not registered and"
+          " the current value of FLAGS_enable_api_kernel_fallback(bool,"
+          " default true) is false. If you want to fallback this kernel"
+          " to CPU one, please set the flag true before run again.",
+          kernel_key,
+          kernel_name));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   return {kernel_iter->second, false};
 }
@@ -351,6 +431,7 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   os << "{";
   bool need_comma_kernels = false;
   for (const auto& op_kernel_pair : kernel_factory.kernels()) {
+<<<<<<< HEAD
     if (need_comma_kernels) {
       os << ",";
       os << std::endl;
@@ -362,6 +443,13 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
         os << ",";
         os << std::endl;
       }
+=======
+    if (need_comma_kernels) os << ",";
+    os << "\"" << op_kernel_pair.first << "\":[";
+    bool need_comma_per_kernel = false;
+    for (const auto& kernel_pair : op_kernel_pair.second) {
+      if (need_comma_per_kernel) os << ",";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       os << "{\"" << kernel_pair.first << "\":" << kernel_pair.second << "}";
       need_comma_per_kernel = true;
     }
@@ -373,6 +461,7 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   return os;
 }
 
+<<<<<<< HEAD
 // return all kernel selection error message of specific kernel_name:
 // 1. If target_key not supports target backend, output "Selected wrong Backend
 // ..."
@@ -447,4 +536,6 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   return message;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

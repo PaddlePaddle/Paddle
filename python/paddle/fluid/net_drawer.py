@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import argparse
 import json
 import logging
@@ -30,19 +35,29 @@ except ImportError:
         'Cannot import graphviz, which is required for drawing a network. This '
         'can usually be installed in python with "pip install graphviz". Also, '
         'pydot requires graphviz to convert dot files to pdf: in ubuntu, this '
+<<<<<<< HEAD
         'can usually be installed with "sudo apt-get install graphviz".'
     )
     print(
         'net_drawer will not run correctly. Please install the correct '
         'dependencies.'
     )
+=======
+        'can usually be installed with "sudo apt-get install graphviz".')
+    print('net_drawer will not run correctly. Please install the correct '
+          'dependencies.')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     exit(0)
 
 OP_STYLE = {
     'shape': 'oval',
     'color': '#0F9D58',
     'style': 'filled',
+<<<<<<< HEAD
     'fontcolor': '#FFFFFF',
+=======
+    'fontcolor': '#FFFFFF'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 VAR_STYLE = {}
@@ -55,6 +70,10 @@ GRAPH_ID = 0
 
 
 def unique_id():
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def generator():
         GRAPH_ID += 1
         return GRAPH_ID
@@ -87,8 +106,12 @@ def parse_graph(program, graph, var_dict, **kwargs):
 
     temp_id = 0
     proto = framework_pb2.ProgramDesc.FromString(
+<<<<<<< HEAD
         program.desc.serialize_to_string()
     )
+=======
+        program.desc.serialize_to_string())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for block in proto.blocks:
         for op in block.ops:
             op.type = op.type + "_" + str(temp_id)
@@ -114,6 +137,7 @@ def draw_graph(startup_program, main_program, **kwargs):
 
     graph_id = unique_id()
     filename = kwargs.get("filename")
+<<<<<<< HEAD
     if filename is None:
         filename = str(graph_id) + ".gv"
     g = Graph(
@@ -124,11 +148,25 @@ def draw_graph(startup_program, main_program, **kwargs):
         edge_attr=VAR_STYLE,
         **kwargs
     )
+=======
+    if filename == None:
+        filename = str(graph_id) + ".gv"
+    g = Graph(name=str(graph_id),
+              filename=filename,
+              graph_attr=GRAPH_STYLE,
+              node_attr=OP_STYLE,
+              edge_attr=VAR_STYLE,
+              **kwargs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     var_dict = {}
     parse_graph(startup_program, g, var_dict)
     parse_graph(main_program, g, var_dict)
 
+<<<<<<< HEAD
     if filename is not None:
+=======
+    if filename != None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         g.save()
     return g

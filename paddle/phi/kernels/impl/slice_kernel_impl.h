@@ -14,6 +14,7 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include <glog/logging.h>
 
 #include "paddle/phi/core/tensor_utils.h"
@@ -21,6 +22,11 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/slice_kernel.h"
+=======
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -155,6 +161,7 @@ void SliceRawKernel(const Context& ctx,
   }
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void SliceArrayKernel(const Context& dev_ctx,
                       const TensorArray& input,
@@ -210,4 +217,6 @@ void SliceArrayDenseKernel(const Context& dev_ctx,
   phi::Copy<Context>(dev_ctx, input[start], dev_ctx.GetPlace(), false, out);
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

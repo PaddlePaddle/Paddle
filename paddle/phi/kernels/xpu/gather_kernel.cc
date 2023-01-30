@@ -41,10 +41,17 @@ void GatherKernel(const Context& dev_ctx,
             index_dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
         index_dims.size() == 1 || index_dims.size() == 0,
         true,
         phi::errors::InvalidArgument(
             "The index should be 0D, 1D, when it is not 2D, but we get %d",
+=======
+        index_dims.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The index should be 1D, when it is not 2D, but we get %d",
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             index_dims.size()));
   }
   std::vector<int> xshape(x.dims().size());
@@ -56,6 +63,7 @@ void GatherKernel(const Context& dev_ctx,
 
   int r = XPU_SUCCESS;
   if (index_type == DataType::INT32) {
+<<<<<<< HEAD
     r = xpu::gather<XPUType, int>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -64,6 +72,15 @@ void GatherKernel(const Context& dev_ctx,
         xshape,
         index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v);
+=======
+    r = xpu::gather<XPUType, int>(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType*>(x.data<T>()),
+                                  index.data<int>(),
+                                  reinterpret_cast<XPUType*>(out->data<T>()),
+                                  xshape,
+                                  index.dims()[0],
+                                  axis_v);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     r = xpu::gather<XPUType, int64_t>(
         dev_ctx.x_context(),
@@ -71,7 +88,11 @@ void GatherKernel(const Context& dev_ctx,
         index.data<int64_t>(),
         reinterpret_cast<XPUType*>(out->data<T>()),
         xshape,
+<<<<<<< HEAD
         index.dims().size() == 0 ? 1 : index.dims()[0],
+=======
+        index.dims()[0],
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         axis_v);
   }
   PADDLE_ENFORCE_EQ(

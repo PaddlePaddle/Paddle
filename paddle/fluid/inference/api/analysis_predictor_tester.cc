@@ -29,7 +29,11 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_info.h"
+=======
+#include "paddle/fluid/platform/cpu_info.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 DEFINE_string(dirname, "", "dirname to tests.");
 
@@ -106,8 +110,11 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
   ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
+<<<<<<< HEAD
   ASSERT_EQ(predictor->GetOutputTypes().size(), 1UL);
   ASSERT_EQ(predictor->GetOutputTensorShape().size(), 1UL);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
   PaddleTensor tensor;
@@ -329,7 +336,11 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.EnableUseGpu(100, 0);
   config.EnableMkldnnBfloat16();
 #ifdef PADDLE_WITH_MKLDNN
+<<<<<<< HEAD
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
+=======
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
   else
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);
@@ -345,6 +356,7 @@ TEST(AnalysisPredictor, bf16_pass_strategy) {
   passStrategy.EnableMkldnnBfloat16();
 }
 
+<<<<<<< HEAD
 TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
   std::vector<std::string> passes;
   PassStrategy passStrategy(passes);
@@ -384,6 +396,8 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
 }
 #endif
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #ifdef PADDLE_WITH_XPU
 TEST(AnalysisPredictor, set_xpu_device_id) {
   AnalysisConfig config;
@@ -432,8 +446,11 @@ TEST(Predictor, Run) {
 
   auto predictor = CreatePredictor(config);
   ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
+<<<<<<< HEAD
   ASSERT_EQ(predictor->GetOutputTypes().size(), 1UL);
   ASSERT_EQ(predictor->GetOutputTensorShape().size(), 1UL);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto w0 = predictor->GetInputHandle("firstw");
   auto w1 = predictor->GetInputHandle("secondw");
@@ -654,6 +671,7 @@ TEST(Predictor, Streams) {
 }
 #endif
 
+<<<<<<< HEAD
 TEST(AnalysisPredictor, OutputHookFunc) {
   auto hookfunc = [](const std::string& type,
                      const std::string& var_name,
@@ -701,4 +719,6 @@ TEST(AnalysisPredictor, OutputHookFunc) {
   }
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace paddle_infer

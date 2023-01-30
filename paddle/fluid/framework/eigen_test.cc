@@ -28,8 +28,13 @@ TEST(EigenDim, From) {
   ASSERT_EQ(3, ed[2]);
 }
 
+<<<<<<< HEAD
 TEST(Eigen, DenseTensor) {
   phi::DenseTensor t;
+=======
+TEST(Eigen, Tensor) {
+  Tensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* p =
       t.mutable_data<float>(phi::make_ddim({1, 2, 3}), platform::CPUPlace());
   for (int i = 0; i < 1 * 2 * 3; i++) {
@@ -52,7 +57,11 @@ TEST(Eigen, DenseTensor) {
 }
 
 TEST(Eigen, ScalarFrom) {
+<<<<<<< HEAD
   phi::DenseTensor t;
+=======
+  Tensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int* p = t.mutable_data<int>(phi::make_ddim({1}), platform::CPUPlace());
   *p = static_cast<int>(100);
 
@@ -63,7 +72,11 @@ TEST(Eigen, ScalarFrom) {
 }
 
 TEST(Eigen, VectorFrom) {
+<<<<<<< HEAD
   phi::DenseTensor t;
+=======
+  Tensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* p = t.mutable_data<float>(phi::make_ddim({6}), platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p[i] = static_cast<float>(i);
@@ -79,7 +92,11 @@ TEST(Eigen, VectorFrom) {
 }
 
 TEST(Eigen, VectorFlatten) {
+<<<<<<< HEAD
   phi::DenseTensor t;
+=======
+  Tensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* p =
       t.mutable_data<float>(phi::make_ddim({1, 2, 3}), platform::CPUPlace());
   for (int i = 0; i < 1 * 2 * 3; i++) {
@@ -96,7 +113,11 @@ TEST(Eigen, VectorFlatten) {
 }
 
 TEST(Eigen, Matrix) {
+<<<<<<< HEAD
   phi::DenseTensor t;
+=======
+  Tensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* p =
       t.mutable_data<float>(phi::make_ddim({2, 3}), platform::CPUPlace());
   for (int i = 0; i < 2 * 3; i++) {
@@ -116,7 +137,11 @@ TEST(Eigen, Matrix) {
 }
 
 TEST(Eigen, MatrixReshape) {
+<<<<<<< HEAD
   phi::DenseTensor t;
+=======
+  Tensor t;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* p = t.mutable_data<float>({2, 3, 6, 4}, platform::CPUPlace());
   for (int i = 0; i < 2 * 3 * 6 * 4; ++i) {
     p[i] = static_cast<float>(i);

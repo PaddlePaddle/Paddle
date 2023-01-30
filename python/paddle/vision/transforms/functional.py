@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import numbers
 
@@ -23,6 +24,23 @@ import paddle
 from ...fluid.framework import Variable
 from . import functional_cv2 as F_cv2
 from . import functional_pil as F_pil
+=======
+from __future__ import division
+
+import sys
+import math
+import numbers
+import warnings
+import collections
+
+import numpy as np
+from PIL import Image
+from numpy import sin, cos, tan
+import paddle
+
+from . import functional_pil as F_pil
+from . import functional_cv2 as F_cv2
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from . import functional_tensor as F_t
 
 __all__ = []
@@ -33,10 +51,14 @@ def _is_pil_image(img):
 
 
 def _is_tensor_image(img):
+<<<<<<< HEAD
     """
     Return True if img is a Tensor for dynamic mode or Variable for static graph mode.
     """
     return isinstance(img, (paddle.Tensor, Variable))
+=======
+    return isinstance(img, paddle.Tensor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def _is_numpy_image(img):
@@ -46,6 +68,7 @@ def _is_numpy_image(img):
 def to_tensor(pic, data_format='CHW'):
     """Converts a ``PIL.Image`` or ``numpy.ndarray`` to paddle.Tensor.
 
+<<<<<<< HEAD
     Converts a PIL.Image or numpy.ndarray (H x W x C) to a paddle.Tensor of shape (C x H x W).
 
     If input is a grayscale image (H x W), it will be converted to an image of shape (H x W x 1).
@@ -62,6 +85,13 @@ def to_tensor(pic, data_format='CHW'):
     Args:
         pic (PIL.Image|np.ndarray): Image to be converted to tensor.
         data_format (str, optional): Data format of output tensor, should be 'HWC' or
+=======
+    See ``ToTensor`` for more details.
+
+    Args:
+        pic (PIL.Image|np.ndarray): Image to be converted to tensor.
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -82,6 +112,7 @@ def to_tensor(pic, data_format='CHW'):
             print(tensor.shape)
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(pic) or _is_numpy_image(pic) or _is_tensor_image(pic)
     ):
@@ -90,6 +121,13 @@ def to_tensor(pic, data_format='CHW'):
                 type(pic)
             )
         )
+=======
+    if not (_is_pil_image(pic) or _is_numpy_image(pic)
+            or _is_tensor_image(pic)):
+        raise TypeError(
+            'pic should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(pic)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(pic):
         return F_pil.to_tensor(pic, data_format)
@@ -106,6 +144,7 @@ def resize(img, size, interpolation='bilinear'):
     Args:
         input (PIL.Image|np.ndarray): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
+<<<<<<< HEAD
         interpolation (int|str, optional): Interpolation method. when use pil backend,
             support method are as following:
             - "nearest": Image.NEAREST,
@@ -119,6 +158,21 @@ def resize(img, size, interpolation='bilinear'):
             - "bilinear": cv2.INTER_LINEAR,
             - "area": cv2.INTER_AREA,
             - "bicubic": cv2.INTER_CUBIC,
+=======
+        interpolation (int|str, optional): Interpolation method. when use pil backend, 
+            support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC, 
+            - "box": Image.BOX, 
+            - "lanczos": Image.LANCZOS, 
+            - "hamming": Image.HAMMING
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "area": cv2.INTER_AREA, 
+            - "bicubic": cv2.INTER_CUBIC, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "lanczos": cv2.INTER_LANCZOS4
 
     Returns:
@@ -143,6 +197,7 @@ def resize(img, size, interpolation='bilinear'):
             print(converted_img.size)
             # (150, 200)
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -151,6 +206,13 @@ def resize(img, size, interpolation='bilinear'):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.resize(img, size, interpolation)
@@ -173,7 +235,11 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
+<<<<<<< HEAD
             This value is only used when the padding_mode is constant. Default: 0.
+=======
+            This value is only used when the padding_mode is constant. Default: 0. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
 
             - constant: pads with a constant value, this value is specified with fill
@@ -210,6 +276,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             padded_img = F.pad(fake_img, padding=(2, 1))
             print(padded_img.size)
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -218,6 +285,13 @@ def pad(img, padding, fill=0, padding_mode='constant'):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.pad(img, padding, fill, padding_mode)
@@ -231,7 +305,11 @@ def crop(img, top, left, height, width):
     """Crops the given Image.
 
     Args:
+<<<<<<< HEAD
         img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left
+=======
+        img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             corner of the image.
         top (int): Vertical component of the top left corner of the crop box.
         left (int): Horizontal component of the top left corner of the crop box.
@@ -256,6 +334,7 @@ def crop(img, top, left, height, width):
             print(cropped_img.size)
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -264,6 +343,13 @@ def crop(img, top, left, height, width):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.crop(img, top, left, height, width)
@@ -276,6 +362,7 @@ def crop(img, top, left, height, width):
 def center_crop(img, output_size):
     """Crops the given Image and resize it to desired size.
 
+<<<<<<< HEAD
     Args:
         img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
         output_size (sequence or int): (height, width) of the crop box. If int,
@@ -285,6 +372,17 @@ def center_crop(img, output_size):
         PIL.Image or np.array: Cropped image.
 
     Examples:
+=======
+        Args:
+            img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
+            output_size (sequence or int): (height, width) of the crop box. If int,
+                it is used for both directions
+        
+        Returns:
+            PIL.Image or np.array: Cropped image.
+
+        Examples:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         .. code-block:: python
 
             import numpy as np
@@ -297,6 +395,7 @@ def center_crop(img, output_size):
 
             cropped_img = F.center_crop(fake_img, (150, 100))
             print(cropped_img.size)
+<<<<<<< HEAD
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -306,6 +405,14 @@ def center_crop(img, output_size):
                 type(img)
             )
         )
+=======
+        """
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.center_crop(img, output_size)
@@ -339,6 +446,7 @@ def hflip(img):
             print(flpped_img.size)
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -347,6 +455,13 @@ def hflip(img):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.hflip(img)
@@ -380,6 +495,7 @@ def vflip(img):
             print(flpped_img.size)
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -388,6 +504,13 @@ def vflip(img):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.vflip(img)
@@ -428,6 +551,7 @@ def adjust_brightness(img, brightness_factor):
 
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -436,6 +560,13 @@ def adjust_brightness(img, brightness_factor):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.adjust_brightness(img, brightness_factor)
@@ -471,6 +602,7 @@ def adjust_contrast(img, contrast_factor):
             converted_img = F.adjust_contrast(fake_img, 0.4)
             print(converted_img.size)
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -479,6 +611,13 @@ def adjust_contrast(img, contrast_factor):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.adjust_contrast(img, contrast_factor)
@@ -515,6 +654,7 @@ def adjust_saturation(img, saturation_factor):
             print(converted_img.size)
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -523,6 +663,13 @@ def adjust_saturation(img, saturation_factor):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.adjust_saturation(img, saturation_factor)
@@ -568,6 +715,7 @@ def adjust_hue(img, hue_factor):
             print(converted_img.size)
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -576,6 +724,13 @@ def adjust_hue(img, hue_factor):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.adjust_hue(img, hue_factor)
@@ -616,6 +771,7 @@ def _get_affine_matrix(center, angle, translate, scale, shear):
     return matrix
 
 
+<<<<<<< HEAD
 def affine(
     img,
     angle,
@@ -626,6 +782,16 @@ def affine(
     fill=0,
     center=None,
 ):
+=======
+def affine(img,
+           angle,
+           translate,
+           scale,
+           shear,
+           interpolation="nearest",
+           fill=0,
+           center=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Apply affine transformation on the image.
 
     Args:
@@ -634,6 +800,7 @@ def affine(
         translate (list[float]): Maximum absolute fraction for horizontal and vertical translations.
         scale (float): Scale factor for the image, scale should be positive.
         shear (list[float]): Shear angle values which are parallel to the x-axis and y-axis in clockwise order.
+<<<<<<< HEAD
         interpolation (str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST
             according the backend.
@@ -644,6 +811,18 @@ def affine(
             When use cv2 backend, support method are as following:
             - "nearest": cv2.INTER_NEAREST,
             - "bilinear": cv2.INTER_LINEAR,
+=======
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
+            according the backend. 
+            When use pil backend, support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+            When use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "bicubic": cv2.INTER_CUBIC
         fill (int|list|tuple, optional): Pixel fill value for the area outside the transformed
             image. If given a number, the value is used for all bands respectively.
@@ -666,6 +845,7 @@ def affine(
             print(affined_img.shape)
     """
 
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -674,6 +854,13 @@ def affine(
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if not isinstance(angle, (int, float)):
         raise TypeError("Argument angle should be int or float")
@@ -689,8 +876,12 @@ def affine(
 
     if not isinstance(shear, (numbers.Number, (list, tuple))):
         raise TypeError(
+<<<<<<< HEAD
             "Shear should be either a single value or a sequence of two values"
         )
+=======
+            "Shear should be either a single value or a sequence of two values")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if not isinstance(interpolation, str):
         raise TypeError("Argument interpolation should be a string")
@@ -712,8 +903,12 @@ def affine(
 
     if len(shear) != 2:
         raise ValueError(
+<<<<<<< HEAD
             f"Shear should be a sequence containing two values. Got {shear}"
         )
+=======
+            f"Shear should be a sequence containing two values. Got {shear}")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if center is not None and not isinstance(center, (list, tuple)):
         raise TypeError("Argument center should be a sequence")
@@ -736,9 +931,14 @@ def affine(
         # otherwise image rotated by 90 degrees is shifted vs output image of F_t.affine
         if center is None:
             center = (width * 0.5, height * 0.5)
+<<<<<<< HEAD
         return F_cv2.affine(
             img, angle, translate, scale, shear, interpolation, fill, center
         )
+=======
+        return F_cv2.affine(img, angle, translate, scale, shear, interpolation,
+                            fill, center)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_tensor_image(img):
         center_f = [0.0, 0.0]
@@ -753,15 +953,25 @@ def affine(
         return F_t.affine(img, matrix, interpolation, fill)
 
 
+<<<<<<< HEAD
 def rotate(
     img, angle, interpolation="nearest", expand=False, center=None, fill=0
 ):
+=======
+def rotate(img,
+           angle,
+           interpolation="nearest",
+           expand=False,
+           center=None,
+           fill=0):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Rotates the image by angle.
 
 
     Args:
         img (PIL.Image|np.array): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
+<<<<<<< HEAD
         interpolation (str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST
             according the backend. when use pil backend, support method are as following:
@@ -771,6 +981,17 @@ def rotate(
             when use cv2 backend, support method are as following:
             - "nearest": cv2.INTER_NEAREST,
             - "bilinear": cv2.INTER_LINEAR,
+=======
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
+            according the backend. when use pil backend, support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "bicubic": cv2.INTER_CUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
@@ -779,8 +1000,13 @@ def rotate(
         center (2-list|2-tuple, optional): Optional center of rotation.
             Origin is the upper left corner.
             Default is the center of the image.
+<<<<<<< HEAD
         fill (3-list|3-tuple or int, optional): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively. Default value is 0.
+=======
+        fill (3-list|3-tuple or int): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
     Returns:
@@ -801,6 +1027,7 @@ def rotate(
             print(rotated_img.size)
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -809,6 +1036,13 @@ def rotate(
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if isinstance(center, list):
         center = tuple(center)
@@ -841,6 +1075,7 @@ def _get_perspective_coeffs(startpoints, endpoints):
 
     for i, (p1, p2) in enumerate(zip(endpoints, startpoints)):
         a_matrix[2 * i, :] = [
+<<<<<<< HEAD
             p1[0],
             p1[1],
             1,
@@ -859,6 +1094,12 @@ def _get_perspective_coeffs(startpoints, endpoints):
             1,
             -p2[1] * p1[0],
             -p2[1] * p1[1],
+=======
+            p1[0], p1[1], 1, 0, 0, 0, -p2[0] * p1[0], -p2[0] * p1[1]
+        ]
+        a_matrix[2 * i + 1, :] = [
+            0, 0, 0, p1[0], p1[1], 1, -p2[1] * p1[0], -p2[1] * p1[1]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ]
 
     b_matrix = np.array(startpoints).reshape([8])
@@ -877,6 +1118,7 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
             ``[top-left, top-right, bottom-right, bottom-left]`` of the original image.
         endpoints (list of list of ints): List containing four lists of two integers corresponding to four corners
             ``[top-left, top-right, bottom-right, bottom-left]`` of the transformed image.
+<<<<<<< HEAD
         interpolation (str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST
             according the backend.
@@ -887,6 +1129,18 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
             When use cv2 backend, support method are as following:
             - "nearest": cv2.INTER_NEAREST,
             - "bilinear": cv2.INTER_LINEAR,
+=======
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
+            according the backend. 
+            When use pil backend, support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+            When use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "bicubic": cv2.INTER_CUBIC
         fill (int|list|tuple, optional): Pixel fill value for the area outside the transformed
             image. If given a number, the value is used for all bands respectively.
@@ -909,6 +1163,7 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
             print(perspectived_img.shape)
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -917,6 +1172,13 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         coeffs = _get_perspective_coeffs(startpoints, endpoints)
@@ -925,9 +1187,14 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
         coeffs = _get_perspective_coeffs(startpoints, endpoints)
         return F_t.perspective(img, coeffs, interpolation, fill)
     else:
+<<<<<<< HEAD
         return F_cv2.perspective(
             img, startpoints, endpoints, interpolation, fill
         )
+=======
+        return F_cv2.perspective(img, startpoints, endpoints, interpolation,
+                                 fill)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def to_grayscale(img, num_output_channels=1):
@@ -935,14 +1202,22 @@ def to_grayscale(img, num_output_channels=1):
 
     Args:
         img (PIL.Image|np.array): Image to be converted to grayscale.
+<<<<<<< HEAD
         num_output_channels (int, optional): The number of channels for the output
             image. Single channel. Default: 1.
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         PIL.Image or np.array: Grayscale version of the image.
             if num_output_channels = 1 : returned image is single channel
 
             if num_output_channels = 3 : returned image is 3 channel with r = g = b
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
         .. code-block:: python
 
@@ -958,6 +1233,7 @@ def to_grayscale(img, num_output_channels=1):
             print(gray_img.size)
 
     """
+<<<<<<< HEAD
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
     ):
@@ -966,6 +1242,13 @@ def to_grayscale(img, num_output_channels=1):
                 type(img)
             )
         )
+=======
+    if not (_is_pil_image(img) or _is_numpy_image(img)
+            or _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'
+            .format(type(img)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if _is_pil_image(img):
         return F_pil.to_grayscale(img, num_output_channels)
@@ -982,14 +1265,24 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
         img (PIL.Image|np.array|paddle.Tensor): input data to be normalized.
         mean (list|tuple): Sequence of means for each channel.
         std (list|tuple): Sequence of standard deviations for each channel.
+<<<<<<< HEAD
         data_format (str, optional): Data format of input img, should be 'HWC' or
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. If input is tensor,
+=======
+        data_format (str, optional): Data format of input img, should be 'HWC' or 
+            'CHW'. Default: 'CHW'.
+        to_rgb (bool, optional): Whether to convert to rgb. If input is tensor, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             this option will be igored. Default: False.
 
     Returns:
         np.ndarray or Tensor: Normalized mage. Data format is same as input img.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
         .. code-block:: python
 
@@ -1020,6 +1313,7 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
 
 def erase(img, i, j, h, w, v, inplace=False):
     """Erase the pixels of selected area in input image with given value.
+<<<<<<< HEAD
 
     Args:
         img (paddle.Tensor | np.array | PIL.Image): input Tensor image.
@@ -1068,6 +1362,56 @@ def erase(img, i, j, h, w, v, inplace=False):
             #
             #         [[-0.24998808,  0.        ,  0.        ,  0.42629015],
             #          [ 0.56948012, -0.96200180,  0.53355658,  3.20450878]]])
+=======
+    
+        Args:
+            img (paddle.Tensor | np.array | PIL.Image): input Tensor image. 
+                 For Tensor input, the shape should be (C, H, W). For np.array input, 
+                 the shape should be (H, W, C).
+            i (int): y coordinate of the top-left point of erased region.
+            j (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (paddle.Tensor | np.array): value used to replace the pixels in erased region. It 
+                should be np.array when img is np.array or PIL.Image.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            paddle.Tensor | np.array | PIL.Image: Erased image. The type is same with input image.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                
+                fake_img = paddle.randn((3, 2, 4)).astype(paddle.float32)
+                print(fake_img)
+
+                #Tensor(shape=[3, 2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                #       [[[ 0.02169025, -0.97859967, -1.39175487, -1.07478464],
+                #         [ 0.20654772,  1.74624777,  0.32268861, -0.13857445]],
+                #
+                #        [[-0.14993843,  1.10793507, -0.40056887, -1.94395220],
+                #         [ 0.41686651,  0.44551995, -0.09356714, -0.60898107]],
+                #
+                #        [[-0.24998808, -1.47699273, -0.88838995,  0.42629015],
+                #         [ 0.56948012, -0.96200180,  0.53355658,  3.20450878]]])
+
+                values = paddle.zeros((1,1,1), dtype=paddle.float32)
+                result = paddle.vision.transforms.erase(fake_img, 0, 1, 1, 2, values)
+                
+                print(result)
+
+                #Tensor(shape=[3, 2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                #       [[[ 0.02169025,  0.        ,  0.        , -1.07478464],
+                #         [ 0.20654772,  1.74624777,  0.32268861, -0.13857445]],
+                #
+                #         [[-0.14993843,  0.        ,  0.        , -1.94395220],
+                #           [ 0.41686651,  0.44551995, -0.09356714, -0.60898107]],
+                #
+                #         [[-0.24998808,  0.        ,  0.        ,  0.42629015],
+                #          [ 0.56948012, -0.96200180,  0.53355658,  3.20450878]]])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     """
     if _is_tensor_image(img):

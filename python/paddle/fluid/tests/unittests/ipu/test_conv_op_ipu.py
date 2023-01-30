@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -53,10 +60,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         x = paddle.static.nn.conv2d(x, **self.attrs)
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        x = paddle.fluid.layers.conv2d(x, **self.attrs)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.fetch_list = [x.name]
 
     def run_model(self, exec_mode):
@@ -71,30 +85,50 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['num_filters'] = 1
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['filter_size'] = [3, 3]
 
 
 class TestCase2_1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['filter_size'] = [3, 2]
 
 
 class TestCase3(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['stride'] = [2, 3]
 
 
 class TestCase4(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['dilation'] = [2, 2]
@@ -108,18 +142,30 @@ class TestCase5(TestBase):
 
 
 class TestCase6(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = 2
 
 
 class TestCase7(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = [2, 3]
 
 
 class TestCase8(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = [1, 2, 2, 3]
@@ -127,16 +173,28 @@ class TestCase8(TestBase):
 
 # depthwise_conv2d Op
 class TestCase9(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_feed(self):
         data = np.random.uniform(size=[1, 3, 10, 10])
         weight = np.random.uniform(size=[3, 1, 3, 3])
         self.feed_fp32 = {
             'in_0': data.astype(np.float32),
+<<<<<<< HEAD
             'in_1': weight.astype(np.float32),
         }
         self.feed_fp16 = {
             'in_0': data.astype(np.float16),
             'in_1': weight.astype(np.float16),
+=======
+            'in_1': weight.astype(np.float32)
+        }
+        self.feed_fp16 = {
+            'in_0': data.astype(np.float16),
+            'in_1': weight.astype(np.float16)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
@@ -147,12 +205,21 @@ class TestCase9(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         weight = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        weight = paddle.static.data(name=self.feed_list[1],
+                                    shape=self.feed_shape[1],
+                                    dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         x = paddle.nn.functional.conv2d(x, weight, **self.attrs)
         self.fetch_list = [x.name]
 

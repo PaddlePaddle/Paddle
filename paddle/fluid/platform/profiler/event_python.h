@@ -121,10 +121,13 @@ struct HostPythonNode {
   std::map<std::string, std::vector<std::string>> dtypes;
   // call stack
   std::string callstack;
+<<<<<<< HEAD
   // op attributes
   framework::AttributeMap attributes;
   // op id
   uint64_t op_id;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // children node
   std::vector<HostPythonNode*> children_node_ptrs;
   // runtime node

@@ -16,7 +16,14 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
+=======
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#endif
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -71,10 +78,18 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -112,7 +127,11 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
                  "allocated/freed each time the operator runs, larger "
                  "workspace size can increase performance but also requires "
                  "better hardware. This size should be chosen carefully.")
+<<<<<<< HEAD
         .SetDefault(phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB());
+=======
+        .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddComment(R"DOC(
 )DOC");
   }

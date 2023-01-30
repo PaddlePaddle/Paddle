@@ -95,11 +95,15 @@ nvinfer1::IHostMemory* CreateNetwork() {
   network->markOutput(*output);
   // Build the engine.
   builder->setMaxBatchSize(1);
+<<<<<<< HEAD
 #if IS_TRT_VERSION_GE(8300)
   config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, 1 << 10);
 #else
   config->setMaxWorkspaceSize(1 << 10);
 #endif
+=======
+  config->setMaxWorkspaceSize(1 << 10);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto engine = builder->buildEngineWithConfig(*network, *config);
   EXPECT_NE(engine, nullptr);
   // Serialize the engine to create a model, then close.

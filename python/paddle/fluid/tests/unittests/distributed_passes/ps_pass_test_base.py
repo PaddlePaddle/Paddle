@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import shlex
 import sys
 import unittest
@@ -24,6 +25,24 @@ from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import 
 
 
 class PsPassTestBase(unittest.TestCase):
+=======
+import random
+import sys
+import pickle
+import shlex
+import shutil
+import inspect
+import unittest
+import numpy as np
+from collections import OrderedDict
+from paddle.distributed.ps.utils.public import logger
+from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import prepare_python_path_and_return_module, remove_path_if_exists
+import paddle.distributed.fleet as fleet
+
+
+class PsPassTestBase(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.config = {}
         self.config['ps_mode_config'] = ""
@@ -51,6 +70,7 @@ class PsPassTestBase(unittest.TestCase):
             cmd = [
                 sys.executable,
                 "-u",
+<<<<<<< HEAD
                 "-m",
                 "launch",
                 "--log_dir",
@@ -59,10 +79,17 @@ class PsPassTestBase(unittest.TestCase):
                 self.config['worker_num'],
                 "--server_num",
                 self.config['server_num'],
+=======
+            ] + [
+                "-m", "launch", "--log_dir", self.config['log_dir'],
+                "--worker_num", self.config['worker_num'], "--server_num",
+                self.config['server_num']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
             if ps_mode == 'heter-ps':
                 os.environ['FLAGS_START_PORT'] = '12004'
                 cmd += [
+<<<<<<< HEAD
                     '--heter_worker_num',
                     self.config['heter_worker_num'],
                     '--heter_devices',
@@ -87,6 +114,21 @@ class PsPassTestBase(unittest.TestCase):
                 self.config['applied_pass_name'],
                 "--debug_the_one_ps",
                 self.config['debug_the_one_ps'],
+=======
+                    '--heter_worker_num', self.config['heter_worker_num'],
+                    '--heter_devices', self.config['heter_devices']
+                ]
+
+            cmd += [
+                "../ps/ps_dnn_trainer.py", "-m", self.config['ps_mode_config'],
+                "--run_minimize", self.config['run_minimize'],
+                "--run_single_pass", self.config['run_single_pass'],
+                "--run_the_one_ps", self.config['run_the_one_ps'],
+                "--debug_new_pass", self.config['debug_new_pass'],
+                "--debug_new_minimize", self.config['debug_new_minimize'],
+                "--applied_pass_name", self.config['applied_pass_name'],
+                "--debug_the_one_ps", self.config['debug_the_one_ps']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
         elif ps_mode == "gpu-ps":
             os.environ['FLAGS_LAUNCH_BARRIER'] = '0'
@@ -104,6 +146,7 @@ class PsPassTestBase(unittest.TestCase):
             os.environ['PADDLE_TRAINER_ID'] = '0'
 
             cmd = [
+<<<<<<< HEAD
                 sys.executable,
                 "-u",
                 "../ps/ps_dnn_trainer.py",
@@ -123,6 +166,17 @@ class PsPassTestBase(unittest.TestCase):
                 self.config['applied_pass_name'],
                 "--debug_the_one_ps",
                 self.config['debug_the_one_ps'],
+=======
+                sys.executable, "-u", "../ps/ps_dnn_trainer.py", "-m",
+                self.config['ps_mode_config'], "--run_minimize",
+                self.config['run_minimize'], "--run_single_pass",
+                self.config['run_single_pass'], "--run_the_one_ps",
+                self.config['run_the_one_ps'], "--debug_new_pass",
+                self.config['debug_new_pass'], "--debug_new_minimize",
+                self.config['debug_new_minimize'], "--applied_pass_name",
+                self.config['applied_pass_name'], "--debug_the_one_ps",
+                self.config['debug_the_one_ps']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
 
         cmd = [shlex.quote(c) for c in cmd]

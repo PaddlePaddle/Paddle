@@ -89,7 +89,11 @@ std::vector<std::string> Layer::FunctionNames() const {
 
 PD_SPECIALZE_ATTRIBUTE_TYPE(int)
 PD_SPECIALZE_ATTRIBUTE_TYPE(float)
+<<<<<<< HEAD
 PD_SPECIALZE_ATTRIBUTE_TYPE(framework::String)
+=======
+PD_SPECIALZE_ATTRIBUTE_TYPE(std::string)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<int>)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<float>)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<std::string>)

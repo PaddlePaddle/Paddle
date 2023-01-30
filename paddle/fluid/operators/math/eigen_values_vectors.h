@@ -55,9 +55,15 @@ static void CheckEighResult(const int batch, const int info) {
 template <typename DeviceContext, typename T>
 struct MatrixEighFunctor {
   void operator()(const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor &input,
                   phi::DenseTensor *eigen_values,
                   phi::DenseTensor *eigen_vectors,
+=======
+                  const Tensor &input,
+                  Tensor *eigen_values,
+                  Tensor *eigen_vectors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   bool is_lower,
                   bool has_vectors);
 };
@@ -69,9 +75,15 @@ template <typename T>
 struct MatrixEighFunctor<phi::CPUContext, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor &input,
                   phi::DenseTensor *eigen_values,
                   phi::DenseTensor *eigen_vectors,
+=======
+                  const Tensor &input,
+                  Tensor *eigen_values,
+                  Tensor *eigen_vectors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   bool is_lower,
                   bool has_vectors) {
     using ValueType = phi::dtype::Real<T>;
@@ -80,7 +92,11 @@ struct MatrixEighFunctor<phi::CPUContext, T> {
     auto dito =
         math::DeviceIndependenceTensorOperations<phi::CPUContext, T>(ctx);
 
+<<<<<<< HEAD
     phi::DenseTensor input_trans;
+=======
+    Tensor input_trans;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // lapack is a column-major storge, transpose make the input to
     // have a continuous memory layout
     input_trans = dito.Transpose(input);
@@ -124,7 +140,11 @@ struct MatrixEighFunctor<phi::CPUContext, T> {
     lwork = std::max<int>(1, static_cast<int>(lwork_opt));
     liwork = std::max<int>(1, iwork_opt);
 
+<<<<<<< HEAD
     phi::DenseTensor rwork_tensor;
+=======
+    Tensor rwork_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ValueType *rwork_data = nullptr;
 
     // complex type
@@ -134,7 +154,11 @@ struct MatrixEighFunctor<phi::CPUContext, T> {
       rwork_data = rwork_tensor.mutable_data<ValueType>(
           phi::make_ddim({lrwork}), ctx.GetPlace());
     }
+<<<<<<< HEAD
     phi::DenseTensor iwork_tensor, work_tensor;
+=======
+    Tensor iwork_tensor, work_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *iwork_data = iwork_tensor.mutable_data<int>(phi::make_ddim({liwork}),
                                                       ctx.GetPlace());
     auto *work_data =
@@ -179,9 +203,15 @@ template <typename T>
 struct MatrixEighFunctor<phi::GPUContext, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor &input,
                   phi::DenseTensor *eigen_values,
                   phi::DenseTensor *eigen_vectors,
+=======
+                  const Tensor &input,
+                  Tensor *eigen_values,
+                  Tensor *eigen_vectors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   bool is_lower,
                   bool has_vectors) {
     using ValueType = phi::dtype::Real<T>;
@@ -190,7 +220,11 @@ struct MatrixEighFunctor<phi::GPUContext, T> {
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto dito =
         math::DeviceIndependenceTensorOperations<phi::GPUContext, T>(ctx);
+<<<<<<< HEAD
     phi::DenseTensor input_trans;
+=======
+    Tensor input_trans;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     input_trans = dito.Transpose(input);
     auto *input_vector = input_trans.data<T>();
     auto &dims = input.dims();

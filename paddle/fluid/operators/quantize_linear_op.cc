@@ -25,6 +25,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+<<<<<<< HEAD
 struct DequantizeFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &dev_ctx,
                   const phi::DenseTensor *in,
@@ -48,6 +49,15 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
                   T max_range,
                   const int quant_axis,
                   phi::DenseTensor *out) {
+=======
+struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &dev_ctx,
+                  const framework::Tensor *in,
+                  const framework::Tensor *scale,
+                  T max_range,
+                  const int quant_axis,
+                  framework::Tensor *out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // Dequant op is before quantized op
     // Dequantize the weight of quantized op
     auto in_dims = in->dims();
@@ -56,8 +66,13 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
     if (quant_axis == 0) {
       for (int64_t i = 0; i < channel; i++) {
         T s = scale_factor[i];
+<<<<<<< HEAD
         phi::DenseTensor one_channel_in = in->Slice(i, i + 1);
         phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
+=======
+        framework::Tensor one_channel_in = in->Slice(i, i + 1);
+        framework::Tensor one_channel_out = out->Slice(i, i + 1);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
         auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
         auto &dev = *dev_ctx.eigen_device();
@@ -71,7 +86,11 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
       int64_t step_i = in->numel() / out_iter;
       int64_t step_j = in->numel() / (out_iter * channel);
       auto *in_data = in->data<T>();
+<<<<<<< HEAD
       auto *out_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
+=======
+      auto *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       for (int64_t i = 0; i < out_iter; i++) {
         for (int64_t j = 0; j < channel; j++) {
           auto *cur_in = in_data + i * step_i + j * step_j;
@@ -88,11 +107,14 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   }
 };
 
+<<<<<<< HEAD
 template struct DequantizeFunctor<phi::CPUContext, phi::dtype::float16>;
 template struct DequantizeFunctor<phi::CPUContext, float>;
 template struct DequantizeFunctor<phi::CPUContext, double>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext,
                                            phi::dtype::float16>;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, float>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, double>;
 
@@ -124,10 +146,17 @@ class QuantizeLinearOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -200,12 +229,15 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(true);
+<<<<<<< HEAD
     AddAttr<bool>(
         "only_observer",
         "(bool, default false) Whether to only observer or not. If "
         "only_observer=false, it will calculate fake quant or dequant output. "
         "If only_observer=true, it will only calibrate scale information.")
         .SetDefault(false);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddComment(R"DOC(
 The scale of QuantizeLinear operator is a vector.
 In detail, each channel of the input X has a scale value.
@@ -241,6 +273,12 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(dequantize_linear,
+<<<<<<< HEAD
                        ops::DeQuantizeLinearKernel<CPU, float>,
                        ops::DeQuantizeLinearKernel<CPU, int8_t>,
                        ops::DeQuantizeLinearKernel<CPU, double>);
+=======
+                       ops::DeQuantizeLinearKernel<CPU, float, float>,
+                       ops::DeQuantizeLinearKernel<CPU, int8_t, float>,
+                       ops::DeQuantizeLinearKernel<CPU, double, double>);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

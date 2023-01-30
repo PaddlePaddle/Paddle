@@ -22,21 +22,39 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/mixed_vector.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/tensor.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 // Split phi::DenseTensor and copy to each place specified in places.
 std::vector<phi::DenseTensor> SplitLoDTensor(
     const phi::DenseTensor& src, const std::vector<platform::Place> places);
 
 void MergeLoDTensor(phi::DenseTensor* target,
                     const std::vector<const phi::DenseTensor*>& lod_tensors,
+=======
+using LoDTensor = phi::DenseTensor;
+
+// Split Tensor and copy to each place specified in places.
+std::vector<LoDTensor> SplitLoDTensor(
+    const LoDTensor& src, const std::vector<platform::Place> places);
+
+void MergeLoDTensor(LoDTensor* target,
+                    const std::vector<const LoDTensor*>& lod_tensors,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     platform::Place dst_place);
 
 /*
@@ -103,11 +121,16 @@ bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
 
 /*
  * Expand the `source` to fit the LoD of `lod`. For example, a `source`
+<<<<<<< HEAD
  * phi::DenseTensor is
+=======
+ * LoDTensor is
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  *  - LoD: [0, 2]
  *  - tensor: [a0, a1]
  * a `lod` is
  *  - LoD: [0 3 5]
+<<<<<<< HEAD
  * returns a new phi::DenseTensor
  *  - [a0 a0 a0 a1 a1]
  */
@@ -116,12 +139,26 @@ phi::DenseTensor LodExpand(const phi::DenseTensor& source,
                            const LoD& lod,
                            size_t level,
                            const platform::Place& place) {
+=======
+ * returns a new LoDTensor
+ *  - [a0 a0 a0 a1 a1]
+ */
+template <typename T>
+LoDTensor LodExpand(const LoDTensor& source,
+                    const LoD& lod,
+                    size_t level,
+                    const platform::Place& place) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   LoD abs_lod = ToAbsOffset(lod);
   const auto& lod_level = lod[level];
   size_t num_instances = source.dims()[0];
 
   // new tensor
+<<<<<<< HEAD
   phi::DenseTensor tensor;
+=======
+  LoDTensor tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor.set_lod(lod);
   auto dims = source.dims();
   dims[0] = lod_level.back();
@@ -132,8 +169,12 @@ phi::DenseTensor LodExpand(const phi::DenseTensor& source,
       num_instances,
       lod_level.size() - 1,
       platform::errors::InvalidArgument(
+<<<<<<< HEAD
           "The input phi::DenseTensor instance number should be equal to the "
           "LoD "
+=======
+          "The input LoDTensor instance number should be equal to the LoD "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           "level size minus 1."
           "The input instance number is %zu, LoD level size is %zu.",
           num_instances,
@@ -166,11 +207,16 @@ std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
     const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
 /*
+<<<<<<< HEAD
  * Serialize/Desiralize phi::DenseTensor to std::ostream
+=======
+ * Serialize/Desiralize LoDTensor to std::ostream
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  * You can pass ofstream or ostringstream to serilize to file
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
 void SerializeToStream(std::ostream& os,
+<<<<<<< HEAD
                        const phi::DenseTensor& tensor,
                        const platform::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
@@ -178,15 +224,30 @@ void DeserializeFromStream(std::istream& is,
                            const platform::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
                            phi::DenseTensor* tensor,
+=======
+                       const LoDTensor& tensor,
+                       const platform::DeviceContext& dev_ctx);
+void DeserializeFromStream(std::istream& is,
+                           LoDTensor* tensor,
+                           const platform::DeviceContext& dev_ctx);
+void DeserializeFromStream(std::istream& is,
+                           LoDTensor* tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                            const platform::DeviceContext& dev_ctx,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);
 
 LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
 
+<<<<<<< HEAD
 void SerializeToStream(std::ostream& os, const phi::DenseTensor& tensor);
 
 void DeserializeFromStream(std::istream& os, phi::DenseTensor* tensor);
+=======
+void SerializeToStream(std::ostream& os, const LoDTensor& tensor);
+
+void DeserializeFromStream(std::istream& os, LoDTensor* tensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace framework
 }  // namespace paddle

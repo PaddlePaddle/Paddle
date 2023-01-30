@@ -18,13 +18,24 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class CEmbeddingOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* table_t = ctx.Input<phi::DenseTensor>("W");
     auto* ids_t = ctx.Input<phi::DenseTensor>("Ids");
     auto* output_t = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* table_t = ctx.Input<LoDTensor>("W");
+    auto* ids_t = ctx.Input<LoDTensor>("Ids");
+    auto* output_t = ctx.Output<LoDTensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const int64_t start_index = ctx.Attr<int64_t>("start_index");
     const T* table_data = table_t->data<T>();
     T* output_data = output_t->mutable_data<T>(ctx.GetPlace());

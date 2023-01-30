@@ -102,7 +102,11 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   """
   Computes sampled output training logits and labels suitable for implementing
+<<<<<<< HEAD
   sampled softmax.
+=======
+  sampled softmax.        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   """
 
 )DOC");
@@ -177,10 +181,19 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Logits");
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Logits");
+    framework::OpKernelType kt =
+        framework::OpKernelType(data_type, ctx.device_context());
+    return kt;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -232,11 +245,21 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("SampledLogits"));
     return phi::KernelKey(data_type, ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("SampledLogits"));
+    framework::OpKernelType kt =
+        framework::OpKernelType(data_type, ctx.device_context());
+    return kt;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

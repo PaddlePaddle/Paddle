@@ -12,32 +12,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 
 import paddle
+=======
+import os, shutil
+import unittest
+import numpy as np
+import paddle.fluid as fluid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.fluid import Program, program_guard
 
 
 class TestCreateGlobalVarError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             def test_shape():
+<<<<<<< HEAD
                 paddle.static.create_global_var(1, 2.0, np.float32)
+=======
+                fluid.layers.create_global_var(1, 2.0, np.float32)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_shape)
 
             def test_shape_item():
+<<<<<<< HEAD
                 paddle.static.create_global_var([1.0, 2.0, 3.0], 2.0, 'float32')
+=======
+                fluid.layers.create_global_var([1.0, 2.0, 3.0], 2.0, 'float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_shape_item)
 
             # Since create_global_var support all dtype in convert_dtype().
             # Hence, assertRaises ValueError not TypeError.
             def test_dtype():
+<<<<<<< HEAD
                 paddle.static.create_global_var([1, 2, 3], 2.0, np.complex128)
+=======
+                fluid.layers.create_global_var([1, 2, 3], 2.0, np.complex128)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_dtype)
 

@@ -54,8 +54,13 @@ class InstanceNormOpConverter : public OpConverter {
         bias_var,
         platform::errors::InvalidArgument(
             "Input [Bias] of instance_norm op converter should not be null"));
+<<<<<<< HEAD
     auto* scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
     auto* bias_tensor = bias_var->GetMutable<phi::DenseTensor>();
+=======
+    auto* scale_tensor = scale_var->GetMutable<framework::LoDTensor>();
+    auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     PADDLE_ENFORCE_EQ(
         scale_tensor->numel(),
         bias_tensor->numel(),
@@ -74,6 +79,7 @@ class InstanceNormOpConverter : public OpConverter {
       bias_v.push_back(bias_d[i]);
     }
 
+<<<<<<< HEAD
     nvinfer1::IPluginV2* plugin = nullptr;
     if (engine_->with_dynamic_shape()) {
       plugin = new plugin::InstanceNormPluginDynamic(eps, scale_v, bias_v);
@@ -84,6 +90,12 @@ class InstanceNormOpConverter : public OpConverter {
     std::vector<nvinfer1::ITensor*> instance_norm_inputs{input};
     auto* layer = engine_->network()->addPluginV2(
         instance_norm_inputs.data(), instance_norm_inputs.size(), *plugin);
+=======
+    plugin::InstanceNormPlugin* plugin =
+        new plugin::InstanceNormPlugin(eps, scale_v, bias_v);
+    plugin->getPluginType();
+    auto* layer = engine_->AddPlugin(&input, 1, plugin);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto output_name = op_desc.Output("Y")[0];
     RreplenishLayerAndOutput(layer, "instance_norm", {output_name}, test_mode);

@@ -24,7 +24,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using LoDTensor = phi::DenseTensor;
+=======
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using LoD = framework::LoD;
 
 template <typename DeviceContext, typename T>
@@ -36,7 +40,11 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
     auto* out_t = ctx.Output<LoDTensor>("Out");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
+<<<<<<< HEAD
     phi::DenseTensor seq_len_cpu =
+=======
+    framework::Tensor seq_len_cpu =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ctx.AllocateTmpTensor<T, DeviceContext>(len_t->dims(), dev_ctx);
     if (platform::is_gpu_place(ctx.GetPlace()) ||
         platform::is_xpu_place(ctx.GetPlace())) {

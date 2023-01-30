@@ -23,6 +23,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 void Pad2DConstNCHW(const T* in_data,
                     const int num,
@@ -389,7 +394,11 @@ void Pad2DGradEdgeNHWC(T* d_in_data,
 
 static inline void GetPaddings(int* paddings,
                                const framework::ExecutionContext& context) {
+<<<<<<< HEAD
   auto* paddings_t = context.Input<phi::DenseTensor>("Paddings");
+=======
+  auto* paddings_t = context.Input<Tensor>("Paddings");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (paddings_t) {
     auto paddings_data = paddings_t->data<int>();
     paddings[0] = paddings_data[0];
@@ -412,11 +421,19 @@ class Pad2dCPUKernel : public framework::OpKernel<T> {
     auto data_format = context.Attr<std::string>("data_format");
     T value = static_cast<T>(context.Attr<float>("pad_value"));
 
+<<<<<<< HEAD
     auto* x = context.Input<phi::DenseTensor>("X");
     auto in_dims = x->dims();
     const T* in_data = x->data<T>();
 
     auto* out = context.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = context.Input<Tensor>("X");
+    auto in_dims = x->dims();
+    const T* in_data = x->data<T>();
+
+    auto* out = context.Output<Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (data_format == "NCHW") {
       out->Resize({in_dims[0],
                    in_dims[1],
@@ -528,9 +545,14 @@ class Pad2dGradCPUKernel : public framework::OpKernel<T> {
     GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
+<<<<<<< HEAD
     auto* d_out =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* d_in = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_in = context.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto d_in_dims = d_in->dims();
     auto d_out_dims = d_out->dims();
     const T* d_out_data = d_out->data<T>();
@@ -696,13 +718,18 @@ class Pad2dOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
+=======
+  framework::OpKernelType GetExpectedKernelType(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
     // only constant mode and non-blocked layouts are supported for oneDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
         ctx.Attr<std::string>("mode") == "constant" &&
+<<<<<<< HEAD
         ctx.Input<phi::DenseTensor>("X")
                 ->mem_desc()
                 .data.format_desc.blocking.inner_nblks == 0) {
@@ -731,6 +758,38 @@ class Pad2dOp : public framework::OperatorWithKernel {
 #endif
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+=======
+        ctx.Input<Tensor>("X")
+                ->mem_desc()
+                .data.format_desc.blocking.inner_nblks == 0) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_format");
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_,
+          tensor.place(),
+          framework::StringToDataLayout(data_format));
+    }
+#endif
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -772,7 +831,11 @@ class Pad2dOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("NCHW");
     AddComment(R"DOC(
 Pad2d Operator.
+<<<<<<< HEAD
 Pad 2-d images according to 'paddings' and 'mode'.
+=======
+Pad 2-d images according to 'paddings' and 'mode'. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 If mode is 'reflect', paddings[0] and paddings[1] must be no greater
 than height-1. And the width dimension has the same condition.
 
@@ -831,11 +894,19 @@ class Pad2dOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

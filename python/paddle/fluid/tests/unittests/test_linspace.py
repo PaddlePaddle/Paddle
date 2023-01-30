@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -23,6 +24,22 @@ from paddle.fluid import Program, core, program_guard
 
 
 class TestLinspaceOpCommonCase(OpTest):
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
+
+
+class TestLinspaceOpCommonCase(OpTest):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "linspace"
         self.python_api = paddle.linspace
@@ -30,7 +47,11 @@ class TestLinspaceOpCommonCase(OpTest):
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
             'Stop': np.array([10]).astype(dtype),
+<<<<<<< HEAD
             'Num': np.array([11]).astype('int32'),
+=======
+            'Num': np.array([11]).astype('int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
@@ -41,6 +62,10 @@ class TestLinspaceOpCommonCase(OpTest):
 
 
 class TestLinspaceOpReverseCase(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "linspace"
         self.python_api = paddle.linspace
@@ -48,7 +73,11 @@ class TestLinspaceOpReverseCase(OpTest):
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
             'Stop': np.array([0]).astype(dtype),
+<<<<<<< HEAD
             'Num': np.array([11]).astype('int32'),
+=======
+            'Num': np.array([11]).astype('int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
@@ -59,6 +88,10 @@ class TestLinspaceOpReverseCase(OpTest):
 
 
 class TestLinspaceOpNumOneCase(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "linspace"
         self.python_api = paddle.linspace
@@ -66,7 +99,11 @@ class TestLinspaceOpNumOneCase(OpTest):
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
             'Stop': np.array([0]).astype(dtype),
+<<<<<<< HEAD
             'Num': np.array([1]).astype('int32'),
+=======
+            'Num': np.array([1]).astype('int32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
@@ -77,6 +114,10 @@ class TestLinspaceOpNumOneCase(OpTest):
 
 
 class TestLinspaceAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_variable_input1(self):
         start = paddle.full(shape=[1], fill_value=0, dtype='float32')
         stop = paddle.full(shape=[1], fill_value=10, dtype='float32')
@@ -102,16 +143,29 @@ class TestLinspaceAPI(unittest.TestCase):
         out_2 = paddle.linspace(0, 10, 5, dtype=np.float32)
         out_3 = paddle.linspace(0, 10, 5, dtype=core.VarDesc.VarType.FP32)
         exe = fluid.Executor(place=fluid.CPUPlace())
+<<<<<<< HEAD
         res_1, res_2, res_3 = exe.run(
             fluid.default_main_program(), fetch_list=[out_1, out_2, out_3]
         )
+=======
+        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
+                                      fetch_list=[out_1, out_2, out_3])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert np.array_equal(res_1, res_2)
 
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
             out = paddle.linspace(
                 0, 10, 5, dtype='float32', name='linspace_res'
             )
+=======
+            out = paddle.linspace(0,
+                                  10,
+                                  5,
+                                  dtype='float32',
+                                  name='linspace_res')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             assert 'linspace_res' in out.name
 
     def test_imperative(self):
@@ -127,51 +181,94 @@ class TestLinspaceAPI(unittest.TestCase):
         self.assertEqual((out2.numpy() == np_out2).all(), True)
         self.assertEqual((out3.numpy() == np_out3).all(), True)
 
+<<<<<<< HEAD
 
 class TestLinspaceOpError(unittest.TestCase):
+=======
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_variable_input2()
+            self.test_imperative()
+
+
+class TestLinspaceOpError(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             def test_dtype():
+<<<<<<< HEAD
                 paddle.linspace(0, 10, 1, dtype="int8")
+=======
+                fluid.layers.linspace(0, 10, 1, dtype="int8")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_dtype)
 
             def test_dtype1():
+<<<<<<< HEAD
                 paddle.linspace(0, 10, 1.33, dtype="int32")
+=======
+                fluid.layers.linspace(0, 10, 1.33, dtype="int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_dtype1)
 
             def test_start_type():
+<<<<<<< HEAD
                 paddle.linspace([0], 10, 1, dtype="float32")
+=======
+                fluid.layers.linspace([0], 10, 1, dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_start_type)
 
             def test_end_type():
+<<<<<<< HEAD
                 paddle.linspace(0, [10], 1, dtype="float32")
+=======
+                fluid.layers.linspace(0, [10], 1, dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_end_type)
 
             def test_step_dtype():
+<<<<<<< HEAD
                 paddle.linspace(0, 10, [0], dtype="float32")
+=======
+                fluid.layers.linspace(0, 10, [0], dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_step_dtype)
 
             def test_start_dtype():
                 start = fluid.data(shape=[1], dtype="float64", name="start")
+<<<<<<< HEAD
                 paddle.linspace(start, 10, 1, dtype="float32")
+=======
+                fluid.layers.linspace(start, 10, 1, dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(ValueError, test_start_dtype)
 
             def test_end_dtype():
                 end = fluid.data(shape=[1], dtype="float64", name="end")
+<<<<<<< HEAD
                 paddle.linspace(0, end, 1, dtype="float32")
+=======
+                fluid.layers.linspace(0, end, 1, dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(ValueError, test_end_dtype)
 
             def test_num_dtype():
                 num = fluid.data(shape=[1], dtype="int32", name="step")
+<<<<<<< HEAD
                 paddle.linspace(0, 10, num, dtype="float32")
+=======
+                fluid.layers.linspace(0, 10, num, dtype="float32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_step_dtype)
 

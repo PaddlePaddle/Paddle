@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import unittest
 import sys
@@ -26,6 +31,10 @@ paddle.enable_static()
 
 
 class TestFillAnyLikeNPUOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -51,40 +60,68 @@ class TestFillAnyLikeNPUOp(OpTest):
 
 
 class TestFillAnyLikeNPUOpInt32(TestFillAnyLikeNPUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.dtype = np.int32
         self.value = -1
 
 
 class TestFillAnyLikeNPUOpInt64(TestFillAnyLikeNPUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.dtype = np.int64
         self.value = -1
 
 
 class TestFillAnyLikeNPUOpFloat32(TestFillAnyLikeNPUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.dtype = np.float32
         self.value = 0.09
 
 
 class TestFillAnyLikeNPUOpFloat16(TestFillAnyLikeNPUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.dtype = np.float16
         self.value = 0.05
 
 
 class TestFillAnyLikeNPUOpValue1(TestFillAnyLikeNPUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.value = 1.0
 
 
 class TestFillAnyLikeNPUOpValue2(TestFillAnyLikeNPUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.value = 1e-9
 
 
 class TestFillAnyLikeNPUOpShape(TestFillAnyLikeNPUOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init(self):
         self.shape = [12, 10]
 

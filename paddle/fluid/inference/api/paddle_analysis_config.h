@@ -161,7 +161,11 @@ struct PD_INFER_DECL AnalysisConfig {
   explicit AnalysisConfig(const std::string& prog_file,
                           const std::string& params_file);
   ///
+<<<<<<< HEAD
   /// \brief Precision of inference.
+=======
+  /// \brief Precision of inference in TensorRT.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ///
   enum class Precision {
     kFloat32 = 0,  ///< fp32
@@ -278,15 +282,22 @@ struct PD_INFER_DECL AnalysisConfig {
   ///       file will be used and autotune will not be performed again.
   /// \param precision Calculation accuracy of multi_encoder
   /// \param adaptive_seqlen Is the input of multi_encoder variable length
+<<<<<<< HEAD
   /// \param enable_multi_stream Whether to enable the multi stream of xpu.
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ///
   void EnableXpu(int l3_workspace_size = 0xfffc00,
                  bool locked = false,
                  bool autotune = true,
                  const std::string& autotune_file = "",
                  const std::string& precision = "int16",
+<<<<<<< HEAD
                  bool adaptive_seqlen = false,
                  bool enable_multi_stream = false);
+=======
+                 bool adaptive_seqlen = false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ///
   /// \brief configs of IPU
@@ -301,8 +312,12 @@ struct PD_INFER_DECL AnalysisConfig {
     ipu_available_memory_proportion,
     ipu_enable_half_partial,
     ipu_custom_ops_info,
+<<<<<<< HEAD
     ipu_custom_patterns,
     ipu_enable_model_runtime_executor,
+=======
+    ipu_custom_patterns
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   };
 
   ///
@@ -328,14 +343,21 @@ struct PD_INFER_DECL AnalysisConfig {
   /// matmul/conv.
   /// \param ipu_enable_half_partial enable fp16 partial for matmul, only work
   /// with fp16.
+<<<<<<< HEAD
   /// \param ipu_enable_model_runtime_executor whether to use model_runtime
   /// executor.
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ///
   void SetIpuConfig(bool ipu_enable_fp16 = false,
                     int ipu_replica_num = 1,
                     float ipu_available_memory_proportion = 1.0,
+<<<<<<< HEAD
                     bool ipu_enable_half_partial = false,
                     bool ipu_enable_model_runtime_executor = false);
+=======
+                    bool ipu_enable_half_partial = false);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ///
   /// \brief Set IPU custom ops and patterns.
@@ -375,7 +397,11 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param device_id device_id the custom device to use (default is 0).
   ///
+<<<<<<< HEAD
   void EnableCustomDevice(const std::string& device_type, int device_id = 0);
+=======
+  void EnableCustomDevice(const std::string& device_type, int device_id);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ///
   /// \brief Turn on ONNXRuntime.
   ///
@@ -395,12 +421,15 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
+<<<<<<< HEAD
   /// \brief When running the fp16 model on Nvidia GPU, you can also try running
   /// your model on cutlass.
   ///
   void Exp_EnableUseCutlass();
   ///
   ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief A boolean state telling whether the XPU is turned on.
   ///
   /// \return bool Whether the XPU is turned on.
@@ -429,12 +458,15 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_onnxruntime() const { return use_onnxruntime_; }
   ///
+<<<<<<< HEAD
   /// \brief A boolean state telling whether the Lite OpenCL is turned on.
   ///
   /// \return bool Whether the Lite OpenCL is turned on.
   ///
   bool use_opencl() const { return use_opencl_; }
   ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief A boolean state telling whether the ONNXRuntime Optimization is
   /// turned on.
   ///
@@ -586,6 +618,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
   ///
+<<<<<<< HEAD
   /// \brief Turn on the TensorRT memory optimization.
   ///
   /// \param engine_memory_sharing Whether to enable TensorRT memory
@@ -607,6 +640,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool trt_engine_memory_sharing() const;
   ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief  Get the TensorRT engine precision.
   ///
   /// \return Precision Get the TensorRT engine precision.
@@ -648,13 +683,21 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief A boolean state telling whether to use tuned tensorrt dynamic
   /// shape.
   ///
+<<<<<<< HEAD
   bool tuned_tensorrt_dynamic_shape() const;
+=======
+  bool tuned_tensorrt_dynamic_shape();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ///
   /// \brief A boolean state telling whether to allow building trt engine at
   /// runtime.
   ///
+<<<<<<< HEAD
   bool trt_allow_build_at_runtime() const;
+=======
+  bool trt_allow_build_at_runtime();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ///
   /// \brief Set execution stream. If not set a stream will be created
@@ -687,14 +730,22 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return the shape info path.
   ///
+<<<<<<< HEAD
   const std::string& shape_range_info_path() const;
+=======
+  const std::string& shape_range_info_path();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ///
   /// \brief A boolean state telling whether to collect shape info.
   ///
   /// \return bool Whether to collect shape info.
   ///
+<<<<<<< HEAD
   bool shape_range_info_collected() const;
+=======
+  bool shape_range_info_collected();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   ///
   /// \brief Prevent ops running in Paddle-TRT
@@ -759,11 +810,14 @@ struct PD_INFER_DECL AnalysisConfig {
       const std::vector<std::string>& ops_filter = {});
 
   ///
+<<<<<<< HEAD
   /// \brief Turn on the usage of Lite sub-graph engine with opencl.
   ///
   void EnableOpenCL();
 
   ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief A boolean state indicating whether the Lite sub-graph engine is
   /// used.
   ///
@@ -840,6 +894,21 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnQuantizer();
 
   ///
+<<<<<<< HEAD
+=======
+  /// \brief Set the calibration ranges file path of quantize model.
+  ///
+  ///
+  void SetCalibrationFilePath(const std::string& calibration_file_path = "");
+
+  ///
+  /// \brief Return the calibration ranges file path of quantize model.
+  ///
+  ///
+  std::string CalibrationFilePath() { return calibration_file_path_; }
+
+  ///
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief Turn on MKLDNN int8.
   ///
   /// \param op_list The operator type list.
@@ -860,6 +929,7 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnBfloat16();
 
   ///
+<<<<<<< HEAD
   /// \brief Turn off MKLDNN fc passes.
   ///
   void DisableMkldnnFcPasses();
@@ -872,6 +942,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
 
   ///
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
   ///
   /// \return bool Whether to use the MKLDNN Bfloat16.
@@ -1022,6 +1094,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
 
+<<<<<<< HEAD
   ///
   /// \brief Enable use cinn compiler optimization.
   ///
@@ -1035,6 +1108,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_compiler_enabled() const;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  protected:
   // Update the config.
   void Update();
@@ -1046,6 +1121,10 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
+<<<<<<< HEAD
+=======
+  mutable std::string calibration_file_path_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // Mixed precision related.
   Precision mixed_precision_mode_{Precision::kFloat32};
@@ -1053,7 +1132,10 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // GPU related.
   bool use_gpu_{false};
+<<<<<<< HEAD
   bool use_cutlass_{false};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
   bool enable_gpu_mixed_{false};
@@ -1132,8 +1214,11 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
+<<<<<<< HEAD
   bool trt_engine_memory_sharing_{false};
   int trt_engine_memory_sharing_identifier_{0};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
@@ -1163,9 +1248,12 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision lite_precision_mode_;
   bool lite_zero_copy_;
 
+<<<<<<< HEAD
   // CINN compiler related.
   bool use_cinn_compiler_{false};
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // XPU related.
   bool use_xpu_{false};
   int xpu_device_id_{0};
@@ -1175,10 +1263,13 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_autotune_file_;
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
+<<<<<<< HEAD
   bool xpu_enable_multi_stream_;
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // NNAdapter related
   LiteNNAdapterConfig nnadapter_config_;
@@ -1195,7 +1286,10 @@ struct PD_INFER_DECL AnalysisConfig {
       "concat",
       "conv2d",
       "depthwise_conv2d",
+<<<<<<< HEAD
       "fused_conv2d",
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       "elementwise_add",
       "elementwise_mul",
       "fc",
@@ -1209,10 +1303,14 @@ struct PD_INFER_DECL AnalysisConfig {
       "fusion_gru",
       "fusion_lstm",
       "multi_gru",
+<<<<<<< HEAD
       "slice",
       "split"};
 
   bool disable_mkldnn_fc_passes_{false};
+=======
+      "slice"};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // ipu related.
   bool use_ipu_{false};
@@ -1225,7 +1323,10 @@ struct PD_INFER_DECL AnalysisConfig {
   int ipu_replica_num_{1};
   float ipu_available_memory_proportion_{1.0};
   bool ipu_enable_half_partial_{false};
+<<<<<<< HEAD
   bool ipu_enable_model_runtime_executor_{false};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   std::vector<std::vector<std::string>> ipu_custom_ops_info_;
   std::vector<std::vector<std::string>> ipu_custom_patterns_;
@@ -1240,8 +1341,11 @@ struct PD_INFER_DECL AnalysisConfig {
       {"ipu_available_memory_proportion",
        ipu_config_code::ipu_available_memory_proportion},
       {"ipu_enable_half_partial", ipu_config_code::ipu_enable_half_partial},
+<<<<<<< HEAD
       {"ipu_enable_model_runtime_executor",
        ipu_config_code::ipu_enable_model_runtime_executor},
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       {"ipu_custom_ops_info", ipu_config_code::ipu_custom_ops_info},
       {"ipu_custom_patterns", ipu_config_code::ipu_custom_patterns}};
 

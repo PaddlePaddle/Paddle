@@ -99,8 +99,11 @@ class FusedGradMergeAllReduceOpHandle : public FusedAllReduceOpHandle {
 
   std::string Name() const override;
 
+<<<<<<< HEAD
   std::string GradMergeCondName() { return grad_merge_cond_name_; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  protected:
   void RunImpl() override;
 

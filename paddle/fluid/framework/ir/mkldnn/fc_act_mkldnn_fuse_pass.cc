@@ -14,9 +14,15 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_act_mkldnn_fuse_pass.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
+=======
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/string/pretty_log.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -25,7 +31,11 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
+<<<<<<< HEAD
   auto act_types = GetSupportedActivations();
+=======
+  auto act_types = paddle::platform::GetSupportedActivations();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   for (auto act_type : act_types) FuseFCAct(graph, act_type);
 }
@@ -33,7 +43,11 @@ void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
 void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
                                     const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
+<<<<<<< HEAD
       graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+=======
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   FusePassBase::Init("fc_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -50,8 +64,40 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
     GET_IR_NODE_FROM_SUBGRAPH(act, activation, fc_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act_out, activation_out, fc_act_pattern);
 
+<<<<<<< HEAD
     SetActivationAttrs(fc->Op(), act->Op(), act_type);
     fc->Op()->SetOutput("Out", {act_out->Name()});
+=======
+    auto *fc_op = fc->Op();
+    auto *act_op = act->Op();
+
+    if (fc_op->HasAttr("use_mkldnn")) {
+      PADDLE_ENFORCE(
+          PADDLE_GET_CONST(bool, fc_op->GetAttr("use_mkldnn")),
+          platform::errors::PreconditionNotMet(
+              "The FC+Act fusion may happen only when oneDNN library "
+              "is used."));
+    }
+
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    for (const auto &attr : attr_map) {
+      if (act_op->HasAttr(attr.first)) {
+        fc_op->SetAttr(attr.second, act_op->GetAttr(attr.first));
+      }
+    }
+
+    if (act_type == "gelu" && act_op->HasAttr("approximate")) {
+      std::string gelu_act_type =
+          PADDLE_GET_CONST(bool, act_op->GetAttr("approximate")) ? "gelu_tanh"
+                                                                 : "gelu_erf";
+      fc_op->SetAttr("fuse_activation", gelu_act_type);
+    } else {
+      fc_op->SetAttr("fuse_activation", act_type);
+    }
+
+    fc_op->SetAttr("use_mkldnn", true);
+    fc_op->SetOutput("Out", {act_out->Name()});
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     IR_OP_VAR_LINK(fc, act_out);
     GraphSafeRemoveNodes(g, {act, fc_out});

@@ -29,7 +29,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using DataLayout = phi::DataLayout;
+=======
+using Tensor = framework::Tensor;
+using DataLayout = framework::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using ExecutionContext = framework::ExecutionContext;
 using DeviceContextPool = platform::DeviceContextPool;
 using MLUDeviceContext = platform::MLUDeviceContext;
@@ -86,9 +91,15 @@ inline cnnlInterpBackwardMode_t GetMLUCnnlInterpBackwardMode(
       "Not support interp mode of MLU Device: %s", interp_mode));
 }
 
+<<<<<<< HEAD
 inline const void* GetBasePtr(const phi::DenseTensor* t) { return t->data(); }
 
 inline void* GetBasePtr(phi::DenseTensor* t) { return t->data(); }
+=======
+inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
+
+inline void* GetBasePtr(Tensor* t) { return t->data(); }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 inline cnnlDataType_t ToCnnlDataType(
     const paddle::experimental::DataType& dtype) {
@@ -308,6 +319,7 @@ class MLUCnnlTensorDesc {
                     const cnnlDataType_t tensor_dtype,
                     int position);
 
+<<<<<<< HEAD
   MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                     const cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype);
@@ -315,11 +327,24 @@ class MLUCnnlTensorDesc {
   explicit MLUCnnlTensorDesc(const phi::DenseTensor& tensor);
 
   MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
+=======
+  MLUCnnlTensorDesc(const Tensor& tensor,
+                    const cnnlTensorLayout_t layout,
+                    const cnnlDataType_t tensor_dtype);
+
+  explicit MLUCnnlTensorDesc(const Tensor& tensor);
+
+  MLUCnnlTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype,
                     int position);
 
+<<<<<<< HEAD
   MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
+=======
+  MLUCnnlTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype,
                     int position,
@@ -376,6 +401,7 @@ class MLUOpTensorDesc {
                   const mluOpDataType_t tensor_dtype,
                   int position);
 
+<<<<<<< HEAD
   MLUOpTensorDesc(const phi::DenseTensor& tensor,
                   const mluOpTensorLayout_t layout,
                   const mluOpDataType_t tensor_dtype);
@@ -383,11 +409,24 @@ class MLUOpTensorDesc {
   explicit MLUOpTensorDesc(const phi::DenseTensor& tensor);
 
   MLUOpTensorDesc(const phi::DenseTensor& tensor,
+=======
+  MLUOpTensorDesc(const Tensor& tensor,
+                  const mluOpTensorLayout_t layout,
+                  const mluOpDataType_t tensor_dtype);
+
+  explicit MLUOpTensorDesc(const Tensor& tensor);
+
+  MLUOpTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   mluOpTensorLayout_t layout,
                   const mluOpDataType_t tensor_dtype,
                   int position);
 
+<<<<<<< HEAD
   MLUOpTensorDesc(const phi::DenseTensor& tensor,
+=======
+  MLUOpTensorDesc(const Tensor& tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                   mluOpTensorLayout_t layout,
                   const mluOpDataType_t tensor_dtype,
                   int position,
@@ -457,11 +496,19 @@ class MLUCnnlRandomGeneratorDesc {
  public:
   MLUCnnlRandomGeneratorDesc(const ExecutionContext& ctx, const int seed);
   const cnnlRandGenerator_t get() const;
+<<<<<<< HEAD
   phi::DenseTensor& get_state();
   ~MLUCnnlRandomGeneratorDesc();
 
  private:
   phi::DenseTensor mlu_state;
+=======
+  Tensor& get_state();
+  ~MLUCnnlRandomGeneratorDesc();
+
+ private:
+  Tensor mlu_state;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   cnnlRandGenerator_t mlu_generator = nullptr;
 };
 
@@ -2397,8 +2444,13 @@ inline void SetMLUTransposePerm(const framework::DDim& dims,
 template <typename T>
 inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
                                    const std::vector<int> perm,
+<<<<<<< HEAD
                                    const phi::DenseTensor* transformed_input,
                                    phi::DenseTensor* transformed_output,
+=======
+                                   const Tensor* transformed_input,
+                                   Tensor* transformed_output,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                    bool need_reshape_or_alloc) {
   const int dim_size = perm.size();
   if (need_reshape_or_alloc) {
@@ -2427,7 +2479,11 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
 template <typename T>
 inline void FillMLUTensorWithHostValue(const ExecutionContext& ctx,
                                        T value,
+<<<<<<< HEAD
                                        phi::DenseTensor* out) {
+=======
+                                       Tensor* out) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   MLUCnnlTensorDesc out_desc(*out);
   MLUCnnl::Fill(
       ctx, CNNL_POINTER_MODE_HOST, &value, out_desc.get(), GetBasePtr(out));

@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle.distributed.fleet.recompute import (
     recompute_sequential,
     recompute_hybrid,
 )
+=======
+from paddle.distributed.fleet.recompute import recompute_sequential, recompute_hybrid
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = ["recompute_sequential", "recompute_hybrid"]

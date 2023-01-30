@@ -1,4 +1,5 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+<<<<<<< HEAD
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -6,6 +7,15 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+=======
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,7 +24,10 @@
 
 # example 1: save layer
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
@@ -34,7 +47,11 @@ class RandomDataset(paddle.io.Dataset):
 
     def __getitem__(self, idx):
         image = np.random.random([IMAGE_SIZE]).astype('float32')
+<<<<<<< HEAD
         label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
+=======
+        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return image, label
 
     def __len__(self):
@@ -43,7 +60,11 @@ class RandomDataset(paddle.io.Dataset):
 
 class LinearNet(nn.Layer):
     def __init__(self):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(LinearNet, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
     @paddle.jit.to_static
@@ -71,8 +92,12 @@ adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 # create data loader
 dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
 loader = paddle.io.DataLoader(
+<<<<<<< HEAD
     dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2
 )
+=======
+    dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # train
 train(layer, loader, loss_fn, adam)

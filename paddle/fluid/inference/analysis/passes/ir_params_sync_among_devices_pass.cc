@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 
+<<<<<<< HEAD
 #include <cstdlib>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include <string>
 #include <unordered_set>
 
@@ -27,11 +30,14 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 
+<<<<<<< HEAD
 DEFINE_bool(
     custom_model_save_cpu,
     false,
     "Keep old mode for developers, the model is saved on cpu not device.");
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -63,11 +69,20 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
         var,
         platform::errors::PreconditionNotMet("The var should not be nullptr"));
 
+<<<<<<< HEAD
     if (var->IsType<phi::DenseTensor>()) {
       auto *t = var->GetMutable<phi::DenseTensor>();
 
       platform::CPUPlace cpu_place;
       phi::DenseTensor temp_tensor;
+=======
+    if (var->IsType<framework::LoDTensor>() ||
+        var->IsType<framework::Tensor>()) {
+      auto *t = var->GetMutable<framework::LoDTensor>();
+
+      platform::CPUPlace cpu_place;
+      framework::LoDTensor temp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       temp_tensor.Resize(t->dims());
       temp_tensor.mutable_data<float>(cpu_place);
 
@@ -77,9 +92,15 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
     }
   }
 }
+<<<<<<< HEAD
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+=======
+
+#else
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   // The parameters are on the cpu, therefore, synchronization is not necessary.
   if (!argument->use_gpu()) return;
@@ -139,13 +160,23 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       PADDLE_ENFORCE_NOT_NULL(var,
                               platform::errors::PreconditionNotMet(
                                   "The var should not be nullptr"));
+<<<<<<< HEAD
       if (var->IsType<phi::DenseTensor>()) {
         auto *t = var->GetMutable<phi::DenseTensor>();
+=======
+      if (var->IsType<framework::LoDTensor>() ||
+          var->IsType<framework::Tensor>()) {
+        auto *t = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         auto var_data_type = var_node->Var()->GetDataType();
         VLOG(5) << "var_name is " << var_name << ", data type is "
                 << var_data_type;
         platform::CPUPlace cpu_place;
+<<<<<<< HEAD
         phi::DenseTensor temp_tensor;
+=======
+        framework::LoDTensor temp_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         temp_tensor.Resize(t->dims());
         paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
         t->clear();
@@ -154,6 +185,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
     }
   }
 }
+<<<<<<< HEAD
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -210,6 +242,9 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
     }
   }
 }
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
@@ -217,6 +252,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       argument->scope_valid(),
       true,
       platform::errors::PreconditionNotMet("The scope field should be valid"));
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_ASCEND_CL
   if (argument->use_npu_valid()) {
     CopyParamsToNpu(argument);
@@ -233,6 +269,16 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   }
 #endif
   paddle::memory::Release(platform::CPUPlace());
+=======
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (!argument->use_npu_valid()) return;
+  CopyParamsToNpu(argument);
+#else
+  if (!argument->use_gpu_valid()) return;
+  CopyParamsToGpu(argument);
+#endif
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 std::string IrParamsSyncAmongDevicesPass::repr() const {

@@ -11,7 +11,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/box_decoder_and_assign_op.h"
 #include "paddle/fluid/memory/memcpy.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
@@ -99,6 +103,7 @@ template <typename DeviceContext, typename T>
 class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* prior_box = context.Input<phi::DenseTensor>("PriorBox");
     auto* prior_box_var = context.Input<phi::DenseTensor>("PriorBoxVar");
     auto* target_box = context.Input<phi::DenseTensor>("TargetBox");
@@ -106,6 +111,15 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
     auto* output_box = context.Output<phi::DenseTensor>("DecodeBox");
     auto* output_assign_box =
         context.Output<phi::DenseTensor>("OutputAssignBox");
+=======
+    auto* prior_box = context.Input<framework::LoDTensor>("PriorBox");
+    auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
+    auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
+    auto* box_score = context.Input<framework::LoDTensor>("BoxScore");
+    auto* output_box = context.Output<framework::Tensor>("DecodeBox");
+    auto* output_assign_box =
+        context.Output<framework::Tensor>("OutputAssignBox");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto roi_num = target_box->dims()[0];
     auto class_num = box_score->dims()[1];

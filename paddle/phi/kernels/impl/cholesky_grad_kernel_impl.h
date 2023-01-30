@@ -14,9 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/cholesky_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+=======
+#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/cholesky_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -280,7 +286,11 @@ void CholeskyGradKernel(const Context& dev_ctx,
   blas.MatMul(l, trans_desc, l_grad, no_trans_desc, T(1), &middle, T(0));
 
   /*! phi.tril_().diagonal(0, -2, -1).mul_(0.5) */
+<<<<<<< HEAD
   phi::funcs::ForRange<Context> for_range(dev_ctx, tensor_size);
+=======
+  paddle::platform::ForRange<Context> for_range(dev_ctx, tensor_size);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   MatrixBandPartScaleEndFunctor<T> matrix_band_part_scale_end_functor(
       m,
       m,

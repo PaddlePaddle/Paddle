@@ -12,16 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import paddle
 
 from .utils import _value_and_gradient
+=======
+from .utils import _value_and_gradient
+import paddle
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
     r"""Cubic interpolation between (x1, f1, g1) and (x2, f2, g2).
         Use two points and their gradient to determine a cubic function and get the minimun point
         between them in the cubic curve.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Reference:
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
         pp59: formula 3.59
@@ -32,9 +41,14 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
     Returns:
         min_pos: the minimun point between the specified points in the cubic curve.
     """
+<<<<<<< HEAD
     xmin, xmax = paddle.static.nn.cond(
         x1 <= x2, lambda: (x1, x2), lambda: (x2, x1)
     )
+=======
+    xmin, xmax = paddle.static.nn.cond(x1 <= x2, lambda: (x1, x2), lambda:
+                                       (x2, x1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     d1 = g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
     d2_square = d1**2 - g1 * g2
 
@@ -53,6 +67,7 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
         return paddle.minimum(paddle.maximum(min_pos, xmin), xmax)
 
     def false_func1():
+<<<<<<< HEAD
         return (xmin + xmax) / 2.0
 
     min_pos = paddle.static.nn.cond(d2_square >= 0.0, true_func1, false_func1)
@@ -77,6 +92,30 @@ def strong_wolfe(
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
         pp60: Algorithm 3.5 (Line Search Algorithm).
 
+=======
+        return (xmin + xmax) / 2.
+
+    min_pos = paddle.static.nn.cond(d2_square >= 0., true_func1, false_func1)
+    return min_pos
+
+
+def strong_wolfe(f,
+                 xk,
+                 pk,
+                 max_iters=20,
+                 tolerance_change=1e-8,
+                 initial_step_length=1.0,
+                 c1=1e-4,
+                 c2=0.9,
+                 alpha_max=10,
+                 dtype='float32'):
+    r"""Implements of line search algorithm that satisfies the strong Wolfe conditions using double zoom.
+    
+    Reference:
+        Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
+        pp60: Algorithm 3.5 (Line Search Algorithm).
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Args:
         f: the objective function to minimize. ``f`` accepts a multivariate input and returns a scalar.
         xk (Tensor): the starting point of the iterates.
@@ -84,14 +123,22 @@ def strong_wolfe(
         max_iters (Scalar): the maximum number of iterations.
         tolerance_grad (Scalar): terminates if the gradient norm is smaller than
             this. Currently gradient norm uses inf norm.
+<<<<<<< HEAD
         tolerance_change (Scalar): terminates if the change of function value/position/parameter between
+=======
+        tolerance_change (Scalar): terminates if the change of function value/position/parameter between 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             two iterations is smaller than this value.
         initial_step_length (Scalar): step length used in first iteration.
         c1 (Scalar): parameter for sufficient decrease condition.
         c2 (Scalar): parameter for curvature condition.
         alpha_max (float): max step length.
         dtype ('float32' | 'float64'): the datatype to be used.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Returns:
         num_func_calls (float): number of objective function called in line search process.
         a_star(Tensor): optimal step length, or 0. if the line search algorithm did not converge.
@@ -100,18 +147,28 @@ def strong_wolfe(
 
     Following summarizes the essentials of the strong Wolfe line search algorithm.
     Some notations used in the description:
+<<<<<<< HEAD
 
         - `f` denotes the objective function.
         - `phi` is a function of step size alpha, restricting `f` on a line.
 
             phi = f(xk + a * pk),
             where xk is the position of k'th iterate, pk is the line search direction(decent direction),
+=======
+    
+        - `f` denotes the objective function.
+        - `phi` is a function of step size alpha, restricting `f` on a line.
+        
+            phi = f(xk + a * pk),
+            where xk is the position of k'th iterate, pk is the line search direction(decent direction), 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             and a is the step size.
         - a : substitute of alpha
         - a1 is a of last iteration, which is alpha_(i-1).
         - a2 is a of current iteration, which is alpha_i.
         - a_lo is a in left position when calls zoom, which is alpha_low.
         - a_hi is a in right position when calls zoom, which is alpha_high.
+<<<<<<< HEAD
 
     Line Search Algorithm:
         repeat
@@ -120,6 +177,16 @@ def strong_wolfe(
                 a_star= zoom(a1, a2) and stop;
 
             2. If |phi'(a2)| <= -c_2 * phi'(0),
+=======
+    
+    Line Search Algorithm:
+        repeat
+            Compute phi(a2) and derphi(a2).
+            1. If phi(a2) > phi(0) + c_1 * a2 * phi'(0) or [phi(a2) >= phi(a1) and i > 1], 
+                a_star= zoom(a1, a2) and stop;
+
+            2. If |phi'(a2)| <= -c_2 * phi'(0), 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 a_star= a2 and stop;
 
             3. If phi'(a2) >= 0,
@@ -129,8 +196,13 @@ def strong_wolfe(
             a2 = min(2 * a2, a2)
             i = i + 1
         end(repeat)
+<<<<<<< HEAD
 
     zoom(a_lo, a_hi) Algorithm:
+=======
+    
+    zoom(a_lo, a_hi) Algorithm: 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         repeat
             aj = cubic_interpolation(a_lo, a_hi)
             Compute phi(aj) and derphi(aj).
@@ -147,14 +219,20 @@ def strong_wolfe(
 
     def phi_and_derphi(a):
         r"""Compute function value and derivative of phi at a.
+<<<<<<< HEAD
         phi = f(xk + a * pk)
         phi'(a) = f'(xk + a * pk) * pk
+=======
+            phi = f(xk + a * pk)
+            phi'(a) = f'(xk + a * pk) * pk
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """
         phi_value, f_grad = _value_and_gradient(f, xk + a * pk)
         phi_grad = paddle.dot(f_grad, pk)
         # return f_grad to be used in bfgs/l-bfgs to compute yk to avoid computint repeatly.
         return phi_value, f_grad, phi_grad
 
+<<<<<<< HEAD
     def zoom(
         a_lo,
         phi_lo,
@@ -166,11 +244,16 @@ def strong_wolfe(
         phi_0,
         derphi_0,
     ):
+=======
+    def zoom(a_lo, phi_lo, derphi_lo, derf_lo, a_hi, phi_hi, derphi_hi, phi_0,
+             derphi_0):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # find the exact a from the bracket [a_lo, a_hi]
         max_zoom_iters = max_iters
         j = paddle.full(shape=[1], fill_value=0, dtype='int64')
         done_zoom = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
+<<<<<<< HEAD
         def cond_zoom(
             j,
             done_zoom,
@@ -182,10 +265,15 @@ def strong_wolfe(
             phi_hi,
             derphi_hi,
         ):
+=======
+        def cond_zoom(j, done_zoom, a_lo, phi_lo, derphi_lo, derf_lo, a_hi,
+                      phi_hi, derphi_hi):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             pred = paddle.abs(a_hi - a_lo) < tolerance_change
             paddle.assign(done_zoom | pred, done_zoom)
             return (j < max_zoom_iters) & ~done_zoom
 
+<<<<<<< HEAD
         def body_zoom(
             j,
             done_zoom,
@@ -208,6 +296,17 @@ def strong_wolfe(
             aj = paddle.static.nn.cond(
                 pred, lambda: 0.5 * (a_lo + a_hi), lambda: aj
             )
+=======
+        def body_zoom(j, done_zoom, a_lo, phi_lo, derphi_lo, derf_lo, a_hi,
+                      phi_hi, derphi_hi):
+            aj = cubic_interpolation_(a_lo, phi_lo, derphi_lo, a_hi, phi_hi,
+                                      derphi_hi)  # 21
+            min_change = 0.1 * paddle.abs(a_hi - a_lo)
+            pred = paddle.minimum(paddle.abs(aj - a_lo),
+                                  paddle.abs(aj - a_hi)) < min_change
+            aj = paddle.static.nn.cond(pred, lambda: 0.5 * (a_lo + a_hi),
+                                       lambda: aj)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             phi_j, derf_j, derphi_j = phi_and_derphi(aj)
 
@@ -218,7 +317,11 @@ def strong_wolfe(
                 paddle.assign(derphi_j, derphi_hi)
 
             def false_fn(a_lo, done_zoom):
+<<<<<<< HEAD
                 pred3 = paddle.abs(derphi_j) <= -c2 * derphi_0
+=======
+                pred3 = (paddle.abs(derphi_j) <= -c2 * derphi_0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 paddle.assign(pred3, done_zoom)
 
                 def true_fn():
@@ -235,6 +338,7 @@ def strong_wolfe(
                 paddle.assign(derf_j, derf_lo)
 
             pred2 = (phi_j > phi_0 + c1 * aj * derphi_0) | (phi_j >= phi_lo)
+<<<<<<< HEAD
             paddle.static.nn.cond(
                 pred2, true_fn, lambda: false_fn(a_lo, done_zoom)
             )
@@ -266,12 +370,32 @@ def strong_wolfe(
                 derphi_hi,
             ],
         )
+=======
+            paddle.static.nn.cond(pred2, true_fn,
+                                  lambda: false_fn(a_lo, done_zoom))
+            j = paddle.static.nn.cond(done_zoom, lambda: j, lambda: j + 1)
+            return [
+                j, done_zoom, a_lo, phi_lo, derphi_lo, derf_lo, a_hi, phi_hi,
+                derphi_hi
+            ]
+
+        paddle.static.nn.while_loop(cond=cond_zoom,
+                                    body=body_zoom,
+                                    loop_vars=[
+                                        j, done_zoom, a_lo, phi_lo, derphi_lo,
+                                        derf_lo, a_hi, phi_hi, derphi_hi
+                                    ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         # j is the number of object function called in zoom.
         return j
 
     alpha_max = paddle.full(shape=[1], fill_value=alpha_max, dtype=dtype)
 
+<<<<<<< HEAD
     a1 = paddle.full(shape=[1], fill_value=0.0, dtype=dtype)
+=======
+    a1 = paddle.full(shape=[1], fill_value=0., dtype=dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     a2 = paddle.full(shape=[1], fill_value=initial_step_length, dtype=dtype)
 
     phi_1, derf_1, derphi_1 = phi_and_derphi(a1)
@@ -297,6 +421,7 @@ def strong_wolfe(
         paddle.assign(done | paddle.any(paddle.isinf(phi_2)), done)
 
         def true_fn1():
+<<<<<<< HEAD
             j = zoom(
                 a1,
                 phi_1,
@@ -308,14 +433,23 @@ def strong_wolfe(
                 phi_0,
                 derphi_0,
             )
+=======
+            j = zoom(a1, phi_1, derphi_1, derf_1, a2, phi_2, derphi_2, phi_0,
+                     derphi_0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.assign(a1, a_star)
             paddle.assign(phi_1, phi_star)
             paddle.assign(derf_1, derf_star)
             paddle.assign(ls_func_calls + j, ls_func_calls)
 
+<<<<<<< HEAD
         pred1 = ~done & (
             (phi_2 > phi_0 + c1 * a2 * derphi_0) | ((phi_2 >= phi_0) & (i > 1))
         )
+=======
+        pred1 = ~done & ((phi_2 > phi_0 + c1 * a2 * derphi_0) |
+                         ((phi_2 >= phi_0) & (i > 1)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle.assign(done | pred1, done)
         paddle.static.nn.cond(pred1, true_fn1, None)
 
@@ -329,6 +463,7 @@ def strong_wolfe(
         paddle.static.nn.cond(pred2, true_fn2, None)
 
         def true_fn3():
+<<<<<<< HEAD
             j = zoom(
                 a2,
                 phi_2,
@@ -340,6 +475,10 @@ def strong_wolfe(
                 phi_0,
                 derphi_0,
             )
+=======
+            j = zoom(a2, phi_2, derphi_2, derf_2, a1, phi_1, derphi_1, phi_0,
+                     derphi_0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             paddle.assign(a2, a_star)
             paddle.assign(phi_2, phi_star)
             paddle.assign(derf_2, derf_star)
@@ -362,7 +501,11 @@ def strong_wolfe(
     paddle.static.nn.while_loop(
         cond=cond,
         body=body,
+<<<<<<< HEAD
         loop_vars=[i, ls_func_calls, a1, a2, phi_1, derf_1, done],
     )
+=======
+        loop_vars=[i, ls_func_calls, a1, a2, phi_1, derf_1, done])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return a_star, phi_star, derf_star, ls_func_calls

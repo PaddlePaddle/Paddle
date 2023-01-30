@@ -27,8 +27,12 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
       paddle::platform::is_npu_place(place) ||
+<<<<<<< HEAD
       paddle::platform::is_npu_pinned_place(place) ||
       paddle::platform::is_custom_place(place)) {
+=======
+      paddle::platform::is_npu_pinned_place(place)) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     // CudaPinndePlace is added for varbase created by dataloader
     if ((data_type == paddle::experimental::DataType::FLOAT32 ||
          data_type == paddle::experimental::DataType::FLOAT16 ||
@@ -69,7 +73,11 @@ inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
     bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
+<<<<<<< HEAD
           << phi::DataTypeToString(dst_dtype) << ").";
+=======
+          << paddle::framework::DataType2String(dst_dtype) << ").";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<paddle::experimental::Tensor> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
@@ -89,7 +97,11 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << egr::EagerUtils::TensorStr(input) << " to dst_dtype("
+<<<<<<< HEAD
           << phi::DataTypeToString(dst_dtype) << ").";
+=======
+          << paddle::framework::DataType2String(dst_dtype) << ").";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;

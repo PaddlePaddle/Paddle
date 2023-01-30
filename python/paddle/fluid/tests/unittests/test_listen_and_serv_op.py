@@ -12,31 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 
 from dist_test_utils import remove_ps_flag, silentremove
+=======
+from __future__ import print_function
+
+from dist_test_utils import *
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 silentremove("test_handle_signal_in_serv_op.flag")
 silentremove("test_list_and_serv_run_empty_optimize_block.flag")
 
+<<<<<<< HEAD
 import time
 import unittest
 from multiprocessing import Process
 
 import paddle
 import paddle.fluid as fluid
+=======
+import paddle
+import paddle.fluid as fluid
+import signal
+import subprocess
+import time
+import unittest
+from multiprocessing import Process
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     remove_ps_flag(os.getpid())
+<<<<<<< HEAD
     x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
     y_predict = paddle.static.nn.fc(x, size=1, activation=None)
     y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
     # loss function
     cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+=======
+    x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+    y_predict = fluid.layers.fc(input=x, size=1, act=None)
+    y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+
+    # loss function
+    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     avg_cost = paddle.mean(cost)
 
     # optimizer
@@ -52,18 +78,26 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     config = fluid.DistributeTranspilerConfig()
     config.sync_mode = sync_mode
     t = fluid.DistributeTranspiler(config=config)
+<<<<<<< HEAD
     t.transpile(
         trainer_id,
         pservers=pserver_endpoints,
         trainers=trainers,
         sync_mode=sync_mode,
     )
+=======
+    t.transpile(trainer_id,
+                pservers=pserver_endpoints,
+                trainers=trainers,
+                sync_mode=sync_mode)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     pserver_prog = t.get_pserver_program(current_endpoint)
     pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
     exe.run(pserver_startup)
     exe.run(pserver_prog)
 
 
+<<<<<<< HEAD
 def run_pserver_with_empty_block(
     use_cuda, sync_mode, ip, port, trainers, trainer_id
 ):
@@ -74,6 +108,17 @@ def run_pserver_with_empty_block(
 
     # loss function
     cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+=======
+def run_pserver_with_empty_block(use_cuda, sync_mode, ip, port, trainers,
+                                 trainer_id):
+    remove_ps_flag(os.getpid())
+    x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+    y_predict = fluid.layers.fc(input=x, size=1, act=None, bias_attr=False)
+    y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+
+    # loss function
+    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     avg_cost = paddle.mean(cost)
 
     # optimizer
@@ -92,6 +137,7 @@ def run_pserver_with_empty_block(
     config.slice_var_up = False
 
     t = fluid.DistributeTranspiler(config=config)
+<<<<<<< HEAD
     t.transpile(
         trainer_id,
         pservers=pserver_endpoints,
@@ -103,6 +149,17 @@ def run_pserver_with_empty_block(
     # pserver2 have no parameter
     assert len(pserver_prog.blocks) == 2
     assert len(pserver_prog.blocks[1].ops) == 0
+=======
+    t.transpile(trainer_id,
+                pservers=pserver_endpoints,
+                trainers=trainers,
+                sync_mode=sync_mode)
+    pserver_prog = t.get_pserver_program(ps2)
+
+    # pserver2 have no parameter
+    assert (len(pserver_prog.blocks) == 2)
+    assert (len(pserver_prog.blocks[1].ops) == 0)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     pserver_startup = t.get_startup_program(ps2, pserver_prog)
     exe.run(pserver_startup)
@@ -115,6 +172,10 @@ def gen_complete_file_flag(flag_file):
 
 
 class TestListenAndServOp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.ps_timeout = 200
         self.ip = "127.0.0.1"
@@ -123,6 +184,7 @@ class TestListenAndServOp(unittest.TestCase):
         self.trainer_id = 0
 
     def _start_pserver(self, use_cuda, sync_mode, pserver_func):
+<<<<<<< HEAD
         p = Process(
             target=pserver_func,
             args=(
@@ -134,6 +196,11 @@ class TestListenAndServOp(unittest.TestCase):
                 self.trainer_id,
             ),
         )
+=======
+        p = Process(target=pserver_func,
+                    args=(use_cuda, sync_mode, self.ip, self.port,
+                          self.trainers, self.trainer_id))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         p.daemon = True
         p.start()
         return p

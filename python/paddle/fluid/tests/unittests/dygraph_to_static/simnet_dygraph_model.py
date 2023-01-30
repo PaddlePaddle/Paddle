@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from functools import reduce
 
 import paddle
@@ -23,6 +24,18 @@ from paddle.static import Variable
 
 
 class EmbeddingLayer:
+=======
+import paddle.fluid as fluid
+import paddle.fluid.param_attr as attr
+
+from functools import reduce
+from paddle.fluid.dygraph import declarative, to_variable
+from paddle.fluid.dygraph import Embedding, Layer, Linear
+from paddle.static import Variable
+
+
+class EmbeddingLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Embedding Layer class
     """
@@ -42,6 +55,7 @@ class EmbeddingLayer:
         """
         # TODO(huihuangzheng): The original code set the is_sparse=True, but it
         # causes crush in dy2stat. Set it to True after fixing it.
+<<<<<<< HEAD
         emb = paddle.nn.Embedding(
             self.dict_size,
             self.emb_dim,
@@ -51,11 +65,23 @@ class EmbeddingLayer:
                 name=self.name, initializer=fluid.initializer.Xavier()
             ),
         )
+=======
+        emb = Embedding(size=[self.dict_size, self.emb_dim],
+                        is_sparse=True,
+                        padding_idx=self.padding_idx,
+                        param_attr=attr.ParamAttr(
+                            name=self.name,
+                            initializer=fluid.initializer.Xavier()))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return emb
 
 
+<<<<<<< HEAD
 class FCLayer:
+=======
+class FCLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Fully Connect Layer class
     """
@@ -72,6 +98,7 @@ class FCLayer:
         """
         operation
         """
+<<<<<<< HEAD
         fc = FC(
             size=self.fc_dim,
             param_attr=attr.ParamAttr(name="%s.w" % self.name),
@@ -82,6 +109,16 @@ class FCLayer:
 
 
 class ConcatLayer:
+=======
+        fc = FC(size=self.fc_dim,
+                param_attr=attr.ParamAttr(name="%s.w" % self.name),
+                bias_attr=attr.ParamAttr(name="%s.b" % self.name),
+                act=self.act)
+        return fc
+
+
+class ConcatLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Connection Layer class
     """
@@ -100,7 +137,11 @@ class ConcatLayer:
         return concat
 
 
+<<<<<<< HEAD
 class ReduceMeanLayer:
+=======
+class ReduceMeanLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Reduce Mean Layer class
     """
@@ -115,11 +156,19 @@ class ReduceMeanLayer:
         """
         operation
         """
+<<<<<<< HEAD
         mean = paddle.mean(input)
         return mean
 
 
 class CosSimLayer:
+=======
+        mean = fluid.layers.reduce_mean(input)
+        return mean
+
+
+class CosSimLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Cos Similarly Calculate Layer
     """
@@ -134,11 +183,19 @@ class CosSimLayer:
         """
         operation
         """
+<<<<<<< HEAD
         sim = paddle.nn.functional.cosine_similarity(x, y)
         return sim
 
 
 class ElementwiseMaxLayer:
+=======
+        sim = fluid.layers.cos_sim(x, y)
+        return sim
+
+
+class ElementwiseMaxLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Elementwise Max Layer class
     """
@@ -153,11 +210,19 @@ class ElementwiseMaxLayer:
         """
         operation
         """
+<<<<<<< HEAD
         max = paddle.maximum(x, y)
         return max
 
 
 class ElementwiseAddLayer:
+=======
+        max = fluid.layers.elementwise_max(x, y)
+        return max
+
+
+class ElementwiseAddLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Elementwise Add Layer class
     """
@@ -172,11 +237,19 @@ class ElementwiseAddLayer:
         """
         operation
         """
+<<<<<<< HEAD
         add = paddle.add(x, y)
         return add
 
 
 class ElementwiseSubLayer:
+=======
+        add = fluid.layers.elementwise_add(x, y)
+        return add
+
+
+class ElementwiseSubLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Elementwise Add Layer class
     """
@@ -191,11 +264,19 @@ class ElementwiseSubLayer:
         """
         operation
         """
+<<<<<<< HEAD
         sub = paddle.subtract(x, y)
         return sub
 
 
 class ConstantLayer:
+=======
+        sub = fluid.layers.elementwise_sub(x, y)
+        return sub
+
+
+class ConstantLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Generate A Constant Layer class
     """
@@ -211,13 +292,21 @@ class ConstantLayer:
         operation
         """
         shape = list(shape)
+<<<<<<< HEAD
         input_shape = paddle.shape(input)
+=======
+        input_shape = fluid.layers.shape(input)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         shape[0] = input_shape[0]
         constant = fluid.layers.fill_constant(shape, dtype, value)
         return constant
 
 
+<<<<<<< HEAD
 class SoftsignLayer:
+=======
+class SoftsignLayer(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Softsign Layer class
     """
@@ -232,7 +321,11 @@ class SoftsignLayer:
         """
         operation
         """
+<<<<<<< HEAD
         softsign = paddle.nn.functional.softsign(input)
+=======
+        softsign = fluid.layers.softsign(input)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return softsign
 
 
@@ -275,7 +368,11 @@ class FC(Layer):
             out.data = [[[0.182996 -0.474117]]]
             out.shape = (1, 1, 2)
     Parameters:
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         size(int): The number of output units in this layer.
         num_flatten_dims (int, optional): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multi-dimension tensor will first be flattened
@@ -299,7 +396,11 @@ class FC(Layer):
         **bias** (Parameter or None): the learnable bias of this layer.
     Returns:
         None
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     Examples:
         .. code-block:: python
           from paddle.fluid.dygraph.base import to_variable
@@ -313,6 +414,7 @@ class FC(Layer):
               conv = fc(data)
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         size,
@@ -324,6 +426,17 @@ class FC(Layer):
         dtype="float32",
     ):
         super().__init__(dtype)
+=======
+    def __init__(self,
+                 size,
+                 num_flatten_dims=1,
+                 param_attr=None,
+                 bias_attr=None,
+                 act=None,
+                 is_test=False,
+                 dtype="float32"):
+        super(FC, self).__init__(dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self._size = size
         self._num_flatten_dims = num_flatten_dims
@@ -336,6 +449,7 @@ class FC(Layer):
     def _build_once(self, input):
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(
+<<<<<<< HEAD
             input, self._param_attr
         ):
             input_shape = inp.shape
@@ -344,10 +458,19 @@ class FC(Layer):
                 reduce(
                     lambda a, b: a * b, input_shape[self._num_flatten_dims :], 1
                 )
+=======
+                input, self._param_attr):
+            input_shape = inp.shape
+
+            param_shape = [
+                reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
+                       1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ] + [self._size]
             self.__w.append(
                 self.add_parameter(
                     '_w%d' % i,
+<<<<<<< HEAD
                     self.create_parameter(
                         attr=param,
                         shape=param_shape,
@@ -362,6 +485,19 @@ class FC(Layer):
         self._b = self.create_parameter(
             attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True
         )
+=======
+                    self.create_parameter(attr=param,
+                                          shape=param_shape,
+                                          dtype=self._dtype,
+                                          is_bias=False)))
+            i += 1
+
+        size = list([self._size])
+        self._b = self.create_parameter(attr=self._bias_attr,
+                                        shape=size,
+                                        dtype=self._dtype,
+                                        is_bias=True)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # TODO(songyouwei): We should remove _w property
     @property
@@ -397,6 +533,7 @@ class FC(Layer):
         mul_results = list()
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(
+<<<<<<< HEAD
             input, self._param_attr
         ):
             tmp = self._helper.create_variable_for_type_inference(self._dtype)
@@ -409,6 +546,20 @@ class FC(Layer):
                     "y_num_col_dims": 1,
                 },
             )
+=======
+                input, self._param_attr):
+            tmp = self._helper.create_variable_for_type_inference(self._dtype)
+            self._helper.append_op(type="mul",
+                                   inputs={
+                                       "X": inp,
+                                       "Y": self.__w[i]
+                                   },
+                                   outputs={"Out": tmp},
+                                   attrs={
+                                       "x_num_col_dims": self._num_flatten_dims,
+                                       "y_num_col_dims": 1
+                                   })
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             i += 1
             mul_results.append(tmp)
 
@@ -416,6 +567,7 @@ class FC(Layer):
             pre_bias = mul_results[0]
         else:
             pre_bias = self._helper.create_variable_for_type_inference(
+<<<<<<< HEAD
                 self._dtype
             )
             self._helper.append_op(
@@ -435,13 +587,35 @@ class FC(Layer):
                 outputs={'Out': [pre_activation]},
                 attrs={'axis': self._num_flatten_dims},
             )
+=======
+                self._dtype)
+            self._helper.append_op(type="sum",
+                                   inputs={"X": mul_results},
+                                   outputs={"Out": pre_bias},
+                                   attrs={"use_mkldnn": False})
+
+        if self._b is not None:
+            pre_activation = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(type='elementwise_add',
+                                   inputs={
+                                       'X': [pre_bias],
+                                       'Y': [self._b]
+                                   },
+                                   outputs={'Out': [pre_activation]},
+                                   attrs={'axis': self._num_flatten_dims})
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             pre_activation = pre_bias
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(pre_activation, act=self._act)
 
 
+<<<<<<< HEAD
 class HingeLoss:
+=======
+class HingeLoss(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Hing Loss Calculate class
     """
@@ -466,10 +640,14 @@ class HingeLoss:
                 constant.ops(neg, neg.shape, "float32", 0.0),
                 elementwise_add.ops(
                     elementwise_sub.ops(neg, pos),
+<<<<<<< HEAD
                     constant.ops(neg, neg.shape, "float32", self.margin),
                 ),
             )
         )
+=======
+                    constant.ops(neg, neg.shape, "float32", self.margin))))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return loss
 
 
@@ -482,12 +660,17 @@ class BOW(Layer):
         """
         initialize
         """
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(BOW, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.dict_size = conf_dict["dict_size"]
         self.task_mode = conf_dict["task_mode"]
         self.emb_dim = conf_dict["net"]["emb_dim"]
         self.bow_dim = conf_dict["net"]["bow_dim"]
         self.seq_len = conf_dict["seq_len"]
+<<<<<<< HEAD
         self.emb_layer = EmbeddingLayer(
             self.dict_size, self.emb_dim, "emb"
         ).ops()
@@ -496,6 +679,15 @@ class BOW(Layer):
         self.softmax_layer = FCLayer(2, "softmax", "cos_sim").ops()
 
     @to_static
+=======
+        self.emb_layer = EmbeddingLayer(self.dict_size, self.emb_dim,
+                                        "emb").ops()
+        self.bow_layer = Linear(self.bow_dim, self.bow_dim)
+        self.bow_layer_po = FCLayer(self.bow_dim, None, "fc").ops()
+        self.softmax_layer = FCLayer(2, "softmax", "cos_sim").ops()
+
+    @declarative
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def forward(self, left, right):
         """
         Forward network
@@ -504,6 +696,7 @@ class BOW(Layer):
         # embedding layer
         left_emb = self.emb_layer(left)
         right_emb = self.emb_layer(right)
+<<<<<<< HEAD
         left_emb = paddle.reshape(
             left_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
@@ -513,6 +706,15 @@ class BOW(Layer):
 
         bow_left = paddle.sum(left_emb, axis=1)
         bow_right = paddle.sum(right_emb, axis=1)
+=======
+        left_emb = fluid.layers.reshape(left_emb,
+                                        shape=[-1, self.seq_len, self.bow_dim])
+        right_emb = fluid.layers.reshape(right_emb,
+                                         shape=[-1, self.seq_len, self.bow_dim])
+
+        bow_left = fluid.layers.reduce_sum(left_emb, dim=1)
+        bow_right = fluid.layers.reduce_sum(right_emb, dim=1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         softsign_layer = SoftsignLayer()
         left_soft = softsign_layer.ops(bow_left)
         right_soft = softsign_layer.ops(bow_right)

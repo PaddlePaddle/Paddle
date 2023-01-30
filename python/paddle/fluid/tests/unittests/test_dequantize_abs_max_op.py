@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import unittest
 
 import numpy as np
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import math
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from op_test import OpTest
 
 
@@ -31,6 +39,10 @@ def dequantize_max_abs(x, scale, max_range):
 
 
 class TestDequantizeMaxAbsOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.num_bits = 8
         self.max_range = math.pow(2, self.num_bits - 1) - 1
@@ -45,7 +57,11 @@ class TestDequantizeMaxAbsOp(OpTest):
 
         self.inputs = {
             'X': np.array(yq).astype(self.data_type),
+<<<<<<< HEAD
             'Scale': np.array(scale).astype('float32'),
+=======
+            'Scale': np.array(scale).astype('float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {'max_range': self.max_range}
         self.outputs = {'Out': ydq}
@@ -55,6 +71,10 @@ class TestDequantizeMaxAbsOp(OpTest):
 
 
 class TestDequantizeMaxAbsOp5Bits(TestDequantizeMaxAbsOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.num_bits = 5
         self.max_range = math.pow(2, self.num_bits - 1) - 1
@@ -62,6 +82,10 @@ class TestDequantizeMaxAbsOp5Bits(TestDequantizeMaxAbsOp):
 
 
 class TestDequantizeMaxAbsOpInt16(TestDequantizeMaxAbsOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_args(self):
         self.num_bits = 16
         self.max_range = math.pow(2, self.num_bits - 1) - 1

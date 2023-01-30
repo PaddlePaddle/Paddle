@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -24,10 +25,21 @@ from paddle.fluid.tests.unittests.op_test import (
     convert_float_to_uint16,
 )
 from paddle.fluid.tests.unittests.test_log_softmax import ref_log_softmax
+=======
+import numpy as np
+import paddle
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.test_log_softmax import ref_log_softmax
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestLogSoftmaxOneDNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_dtype()
@@ -58,39 +70,69 @@ class TestLogSoftmaxOneDNNOp(OpTest):
 
 
 class TestLogSoftmax1DOneDNNOp(TestLogSoftmaxOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [100]
 
 
 class TestLogSoftmax3DOneDNNOp(TestLogSoftmaxOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [12, 10, 3]
 
 
 class TestLogSoftmax5DOneDNNOp(TestLogSoftmaxOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [2, 3, 4, 5, 6]
 
 
 class TestLogSoftmaxPositiveAxisOneDNNOp(TestLogSoftmaxOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_axis(self):
         self.axis = 2
 
 
 # BF16 TESTS
 class TestLogSoftmax1DBF16OneDNNOp(TestLogSoftmax1DOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.uint16
 
 
+<<<<<<< HEAD
 class TestLogSoftmaxPositiveAxisBF16OneDNNOp(
     TestLogSoftmaxPositiveAxisOneDNNOp
 ):
+=======
+class TestLogSoftmaxPositiveAxisBF16OneDNNOp(TestLogSoftmaxPositiveAxisOneDNNOp
+                                             ):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_dtype(self):
         self.dtype = np.uint16
 
 
 class TestLogSoftmax5DBF16OneDNNOp(TestLogSoftmax5DOneDNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_shape(self):
         self.shape = [2, 3, 4, 5, 6]
 

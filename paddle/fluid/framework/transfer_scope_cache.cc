@@ -34,6 +34,7 @@ global_transfer_scope_key() {
   return *x;
 }
 
+<<<<<<< HEAD
 Scope* TryCreateTransferScope(const phi::KernelKey& type0,
                               const phi::KernelKey& type1,
                               const Scope* scope) {
@@ -41,6 +42,14 @@ Scope* TryCreateTransferScope(const phi::KernelKey& type0,
   size_t infer_cache_key =
       CombineHash(static_cast<size_t>(phi::KernelKey::Hash()(type0)),
                   static_cast<size_t>(phi::KernelKey::Hash()(type1)));
+=======
+Scope* TryCreateTransferScope(OpKernelType type0,
+                              OpKernelType type1,
+                              const Scope* scope) {
+  Scope* new_scope{nullptr};
+  size_t infer_cache_key =
+      CombineHash(OpKernelType::Hash()(type0), OpKernelType::Hash()(type1));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   infer_cache_key =
       CombineHash(infer_cache_key, std::hash<const Scope*>()(scope));
 

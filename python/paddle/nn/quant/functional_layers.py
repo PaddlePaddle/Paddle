@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from ...tensor import linalg, manipulation, math
+=======
+from ...tensor import math, manipulation
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .. import Layer
 
 __all__ = []
 
 
 class FloatFunctionalLayer(Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
 
@@ -26,60 +31,108 @@ class FloatFunctionalLayer(Layer):
 class add(FloatFunctionalLayer):
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(FloatFunctionalLayer, self).__init__()
+
+
+class add(FloatFunctionalLayer):
+
+    def __init__(self):
+        super(add, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x, y, name=None):
         return math.add(x, y, name)
 
 
 class subtract(FloatFunctionalLayer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(subtract, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x, y, name=None):
         return math.subtract(x, y, name)
 
 
 class multiply(FloatFunctionalLayer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(multiply, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x, y, name=None):
         return math.multiply(x, y, name)
 
 
 class divide(FloatFunctionalLayer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(divide, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x, y, name=None):
         return math.divide(x, y, name)
 
 
 class reshape(FloatFunctionalLayer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(reshape, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x, shape, name=None):
         return manipulation.reshape(x, shape, name)
 
 
 class transpose(FloatFunctionalLayer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(transpose, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x, perm, name=None):
         return manipulation.transpose(x, perm, name)
 
 
 class concat(FloatFunctionalLayer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(concat, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x, axis=0, name=None):
         return manipulation.concat(x, axis, name)
 
 
 class flatten(FloatFunctionalLayer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
 
@@ -93,3 +146,11 @@ class matmul(FloatFunctionalLayer):
 
     def forward(self, x, y, transpose_x=False, transpose_y=False, name=None):
         return linalg.matmul(x, y, transpose_x, transpose_y, name)
+=======
+
+    def __init__(self):
+        super(flatten, self).__init__()
+
+    def forward(self, x, start_axis=0, stop_axis=-1, name=None):
+        return manipulation.flatten(x, start_axis, stop_axis, name)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

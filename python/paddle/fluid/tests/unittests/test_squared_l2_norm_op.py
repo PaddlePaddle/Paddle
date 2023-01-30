@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
 from numpy import linalg as LA
 from op_test import OpTest
 
+=======
+from __future__ import print_function
+
+import numpy as np
+import unittest
+from numpy import linalg as LA
+from op_test import OpTest
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.framework import in_dygraph_mode
@@ -31,7 +40,12 @@ def test_squared_l2_norm(x):
 
 
 class TestL2LossOp(OpTest):
+<<<<<<< HEAD
     """Test squared_l2_norm"""
+=======
+    """Test squared_l2_norm
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         self.python_api = test_squared_l2_norm
@@ -47,6 +61,7 @@ class TestL2LossOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'],
             'Out',
@@ -56,6 +71,16 @@ class TestL2LossOp(OpTest):
 
 
 class TestL2LossDeterministic(unittest.TestCase):
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=self.max_relative_error,
+                        check_eager=True)
+
+
+class TestL2LossDeterministic(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def check_place(self, place):
         with paddle.fluid.dygraph.guard(place):
             x_np = np.random.rand(5, 11, 13).astype('float32')

@@ -13,14 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax.h"
+=======
+#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
 using LoDTensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T>
 class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
@@ -61,7 +71,11 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
           phi::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
+<<<<<<< HEAD
       phi::funcs::SoftmaxCUDNNFunctor<T, phi::GPUContext>()(
+=======
+      math::SoftmaxCUDNNFunctor<T, phi::GPUContext>()(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           ctx.template device_context<phi::GPUContext>(), &x_i, &out_i);
     }
   }
@@ -95,7 +109,11 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
+<<<<<<< HEAD
       phi::funcs::SoftmaxGradCUDNNFunctor<T, phi::GPUContext>()(
+=======
+      math::SoftmaxGradCUDNNFunctor<T, phi::GPUContext>()(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           ctx.template device_context<phi::GPUContext>(),
           &out_i,
           &out_grad_i,

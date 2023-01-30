@@ -12,8 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
+=======
+from __future__ import print_function
+import unittest
+import numpy as np
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 from paddle.distributed import fleet
 
@@ -21,6 +27,7 @@ paddle.enable_static()
 
 
 class TestCollectiveSplitAssert(unittest.TestCase):
+<<<<<<< HEAD
     def network(self):
         fleet.init()
         data = paddle.static.data(
@@ -29,6 +36,17 @@ class TestCollectiveSplitAssert(unittest.TestCase):
         emb_out = paddle.distributed.split(
             data, (7, 8), operation="embedding", num_partitions=2
         )
+=======
+
+    def network(self):
+        fleet.init()
+        data = paddle.static.data(name='tindata',
+                                  shape=[10, 1000],
+                                  dtype="float32")
+        emb_out = paddle.distributed.split(data, (7, 8),
+                                           operation="embedding",
+                                           num_partitions=2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_assert(self):
         with self.assertRaises(AssertionError):

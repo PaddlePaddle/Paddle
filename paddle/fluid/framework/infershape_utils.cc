@@ -31,8 +31,11 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/tensor_utils.h"
 
+<<<<<<< HEAD
 #include "glog/logging.h"
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace paddle {
 namespace framework {
 
@@ -117,6 +120,7 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_type == proto::VarType::SPARSE_COO;
   }
 
+<<<<<<< HEAD
   bool IsSparseCooTensorOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
     return std::all_of(var_types.begin(),
@@ -126,6 +130,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
                        });
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool IsSparseCsrTensorInput(const std::string& name) const override {
     auto var_type = ctx_.GetInputVarType(name);
     return var_type == proto::VarType::SPARSE_CSR;
@@ -168,7 +174,11 @@ int64_t CompatMetaTensor::numel() const {
   ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
+<<<<<<< HEAD
     return var->Get<phi::DenseTensor>().numel();
+=======
+    return var->Get<Tensor>().numel();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
     return var->ElementSize();
@@ -227,9 +237,14 @@ DDim CompatMetaTensor::dims() const {
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
 
+<<<<<<< HEAD
     return phi::make_ddim(var->GetShape());
     // return var->GetShape().empty() ? phi::make_ddim({0UL}) :
     // phi::make_ddim(var->GetShape());
+=======
+    return var->GetShape().empty() ? phi::make_ddim({0UL})
+                                   : phi::make_ddim(var->GetShape());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -287,7 +302,10 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
   ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
+<<<<<<< HEAD
     if (var == nullptr) return;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
@@ -313,9 +331,13 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
+<<<<<<< HEAD
     if (var) {
       var->SetShape(vectorize(dims));
     }
+=======
+    var->SetShape(vectorize(dims));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -323,7 +345,10 @@ void CompatMetaTensor::set_dtype(phi::DataType dtype) {
   ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
+<<<<<<< HEAD
     if (var == nullptr) return;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
@@ -342,9 +367,13 @@ void CompatMetaTensor::set_dtype(phi::DataType dtype) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
+<<<<<<< HEAD
     if (var) {
       var->SetDataType(paddle::framework::TransToProtoVarType(dtype));
     }
+=======
+    var->SetDataType(paddle::framework::TransToProtoVarType(dtype));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -352,7 +381,10 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
   ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
+<<<<<<< HEAD
     if (var == nullptr) return;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
@@ -381,18 +413,26 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(meta_tensor);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
+<<<<<<< HEAD
     if (var == nullptr) return;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (var->IsType<phi::DenseTensor>() && meta_tensor.is_dense()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->lod =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();
     } else {
       // NOTE(chenweihang): do nothing
+<<<<<<< HEAD
       // only phi::DenseTensor need to share lod
+=======
+      // only LoDTensor need to share lod
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
     if (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array()) {
+<<<<<<< HEAD
       VLOG(3) << "input metatensor is not phi::DenseTensor or LoDTensorArray.";
       return;
     }
@@ -400,6 +440,13 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
       var->SetLoDLevel(static_cast<const CompatMetaTensor&>(meta_tensor)
                            .GetCompileTimeLoD());
     }
+=======
+      VLOG(3) << "input metatensor is not LoDTensor or LoDTensorArray.";
+      return;
+    }
+    var->SetLoDLevel(
+        static_cast<const CompatMetaTensor&>(meta_tensor).GetCompileTimeLoD());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 }
 
@@ -409,15 +456,21 @@ void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
   set_dims(meta_tensor.dims());
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
+<<<<<<< HEAD
     if (var == nullptr) return;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (var->IsType<phi::SelectedRows>()) {
       auto* selected_rows = var->GetMutable<phi::SelectedRows>();
       auto& input_selected_rows =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetSelectedRows();
       selected_rows->set_rows(input_selected_rows.rows());
       selected_rows->set_height(input_selected_rows.height());
+<<<<<<< HEAD
       phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value())
           ->dims = input_selected_rows.value().dims();
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }
@@ -426,7 +479,11 @@ void CompatMetaTensor::share_meta(const MetaTensor& meta_tensor) {
   share_dims(meta_tensor);
   set_dtype(meta_tensor.dtype());
   set_layout(meta_tensor.layout());
+<<<<<<< HEAD
   // special case: share lod of phi::DenseTensor
+=======
+  // special case: share lod of LoDTensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   share_lod(meta_tensor);
 }
 
@@ -506,6 +563,7 @@ std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
     size_t start, size_t end) {
   std::vector<phi::MetaTensor*> result;
   result.reserve(end - start);
+<<<<<<< HEAD
   bool has_meta_tensor = false;
 
   for (size_t i = start; i < end; ++i) {
@@ -518,6 +576,11 @@ std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
 
   if (!has_meta_tensor) {
     result.clear();
+=======
+  for (size_t i = start; i < end; ++i) {
+    auto& out = compat_outputs_.at(i);
+    result.emplace_back(out.initialized() ? &out : nullptr);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   return result;
 }

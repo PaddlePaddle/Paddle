@@ -26,16 +26,28 @@ limitations under the License. */
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
+=======
+#include "paddle/fluid/operators/conv_miopen_helper.h"
+#include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
+#else
+#include "paddle/fluid/operators/conv_cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #endif
 
 namespace phi {
 
+<<<<<<< HEAD
 using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+=======
+using GPUDNNDataLayout = paddle::platform::DataLayout;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template <typename T, typename Context>
 void ConvTransposeRawGPUDNNKernel(const Context& ctx,
@@ -194,6 +206,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 #endif
   // ------------------- cudnn conv algorithm ---------------------
   auto handle = ctx.cudnn_handle();
+<<<<<<< HEAD
   auto layout_tensor = phi::backends::gpu::GetCudnnTensorFormat(layout);
   bool deterministic = FLAGS_cudnn_deterministic;
 
@@ -209,6 +222,23 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                 dtype,
                 groups,
                 data_layout};
+=======
+  auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
+  bool deterministic = FLAGS_cudnn_deterministic;
+
+  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  // ------------------- cudnn descriptors ---------------------
+  paddle::operators::ConvArgs args{&transformed_out,
+                                   &filter,
+                                   &transformed_x,
+                                   strides,
+                                   padding_common,
+                                   dilations_,
+                                   dtype,
+                                   groups,
+                                   data_layout};
+  args.handle = handle;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   args.idesc.set(transformed_out, iwo_groups);
   args.wdesc.set(filter, layout_tensor, iwo_groups);
   args.odesc.set(transformed_x, iwo_groups);
@@ -220,14 +250,26 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                  c_groups);
 
 #ifdef PADDLE_WITH_HIP
+<<<<<<< HEAD
   SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
   using search = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
+=======
+  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
+  using search =
+      paddle::operators::SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
   bwd_result.algo =
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
 #else
+<<<<<<< HEAD
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search = SearchAlgorithm<ConvKind::kBackwardData>;
+=======
+  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
+  using search =
+      paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
   workspace_size =
       std::max(workspace_size, search::GetWorkspaceSize(args, bwd_result.algo));
@@ -237,11 +279,19 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   int x_offset = transformed_x.numel() / transformed_x.dims()[0] / groups;
   int out_offset = transformed_out.numel() / transformed_out.dims()[0] / groups;
   int filter_offset = filter.numel() / groups;
+<<<<<<< HEAD
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = ctx.cudnn_workspace_handle();
 #ifdef PADDLE_WITH_HIP
   for (int g = 0; g < groups; g++) {
+=======
+  paddle::operators::ScalingParamType<T> alpha = 1.0f;
+  paddle::operators::ScalingParamType<T> beta = 0.0f;
+  auto workspace_handle = ctx.cudnn_workspace_handle();
+  for (int g = 0; g < groups; g++) {
+#ifdef PADDLE_WITH_HIP
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto cudnn_func = [&](void* cudnn_workspace) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardData(
           handle,
@@ -258,6 +308,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
           cudnn_workspace,
           workspace_size));
     };
+<<<<<<< HEAD
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
 #else   // PADDLE_WITH_HIP
@@ -276,6 +327,28 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                                                 false);
 #endif  // PADDLE_WITH_HIP
 
+=======
+#else   // PADDLE_WITH_HIP
+    auto cudnn_func = [&](void* cudnn_workspace) {
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardData(
+          handle,
+          &alpha,
+          args.wdesc.desc(),
+          filter_data + filter_offset * g,
+          args.odesc.desc(),
+          x_data + x_offset * g,
+          args.cdesc.desc(),
+          bwd_result.algo,
+          cudnn_workspace,
+          workspace_size,
+          &beta,
+          args.idesc.desc(),
+          transformed_out_data + out_offset * g));
+    };
+#endif  // PADDLE_WITH_HIP
+    workspace_handle.RunFunc(cudnn_func, workspace_size);
+  }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   if (!is_sys_pad && strides.size() == 2U) {
     funcs::Slice<Context, T, 4>(ctx, &transformed_out, out, starts, ends, axes);
   } else if (!is_sys_pad && strides.size() == 3U) {

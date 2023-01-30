@@ -12,15 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import math
 import numbers
 from collections.abc import Iterable, Sequence
 
 import numpy as np
+=======
+from __future__ import division
+
+import sys
+import math
+import numbers
+import warnings
+import collections
+
+import numpy as np
+from numpy import sin, cos, tan
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 import paddle
 from paddle.utils import try_import
 
+<<<<<<< HEAD
+=======
+if sys.version_info < (3, 3):
+    Sequence = collections.Sequence
+    Iterable = collections.Iterable
+else:
+    Sequence = collections.abc.Sequence
+    Iterable = collections.abc.Iterable
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 __all__ = []
 
 
@@ -31,7 +54,11 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (np.ndarray): Image to be converted to tensor.
+<<<<<<< HEAD
         data_format (str, optional): Data format of output tensor, should be 'HWC' or
+=======
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -41,8 +68,12 @@ def to_tensor(pic, data_format='CHW'):
 
     if data_format not in ['CHW', 'HWC']:
         raise ValueError(
+<<<<<<< HEAD
             'data_format should be CHW or HWC. Got {}'.format(data_format)
         )
+=======
+            'data_format should be CHW or HWC. Got {}'.format(data_format))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if pic.ndim == 2:
         pic = pic[:, :, None]
@@ -53,7 +84,11 @@ def to_tensor(pic, data_format='CHW'):
         img = paddle.to_tensor(pic)
 
     if paddle.fluid.data_feeder.convert_dtype(img.dtype) == 'uint8':
+<<<<<<< HEAD
         return paddle.cast(img, np.float32) / 255.0
+=======
+        return paddle.cast(img, np.float32) / 255.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         return img
 
@@ -65,12 +100,21 @@ def resize(img, size, interpolation='bilinear'):
     Args:
         input (np.ndarray): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
+<<<<<<< HEAD
         interpolation (int|str, optional): Interpolation method. when use cv2 backend,
             support method are as following:
             - "nearest": cv2.INTER_NEAREST,
             - "bilinear": cv2.INTER_LINEAR,
             - "area": cv2.INTER_AREA,
             - "bicubic": cv2.INTER_CUBIC,
+=======
+        interpolation (int|str, optional): Interpolation method. when use cv2 backend, 
+            support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "area": cv2.INTER_AREA, 
+            - "bicubic": cv2.INTER_CUBIC, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "lanczos": cv2.INTER_LANCZOS4
 
     Returns:
@@ -83,12 +127,20 @@ def resize(img, size, interpolation='bilinear'):
         'bilinear': cv2.INTER_LINEAR,
         'area': cv2.INTER_AREA,
         'bicubic': cv2.INTER_CUBIC,
+<<<<<<< HEAD
         'lanczos': cv2.INTER_LANCZOS4,
     }
 
     if not (
         isinstance(size, int) or (isinstance(size, Iterable) and len(size) == 2)
     ):
+=======
+        'lanczos': cv2.INTER_LANCZOS4
+    }
+
+    if not (isinstance(size, int) or
+            (isinstance(size, Iterable) and len(size) == 2)):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         raise TypeError('Got inappropriate size arg: {}'.format(size))
 
     h, w = img.shape[:2]
@@ -102,14 +154,19 @@ def resize(img, size, interpolation='bilinear'):
             output = cv2.resize(
                 img,
                 dsize=(ow, oh),
+<<<<<<< HEAD
                 interpolation=_cv2_interp_from_str[interpolation],
             )
+=======
+                interpolation=_cv2_interp_from_str[interpolation])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             oh = size
             ow = int(size * w / h)
             output = cv2.resize(
                 img,
                 dsize=(ow, oh),
+<<<<<<< HEAD
                 interpolation=_cv2_interp_from_str[interpolation],
             )
     else:
@@ -118,6 +175,13 @@ def resize(img, size, interpolation='bilinear'):
             dsize=(size[1], size[0]),
             interpolation=_cv2_interp_from_str[interpolation],
         )
+=======
+                interpolation=_cv2_interp_from_str[interpolation])
+    else:
+        output = cv2.resize(img,
+                            dsize=(size[1], size[0]),
+                            interpolation=_cv2_interp_from_str[interpolation])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if len(img.shape) == 3 and img.shape[2] == 1:
         return output[:, :, np.newaxis]
     else:
@@ -137,7 +201,11 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
+<<<<<<< HEAD
             This value is only used when the padding_mode is constant. Default: 0.
+=======
+            This value is only used when the padding_mode is constant. Default: 0. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
 
             - constant: pads with a constant value, this value is specified with fill
@@ -163,7 +231,11 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         'constant': cv2.BORDER_CONSTANT,
         'edge': cv2.BORDER_REPLICATE,
         'reflect': cv2.BORDER_REFLECT_101,
+<<<<<<< HEAD
         'symmetric': cv2.BORDER_REFLECT,
+=======
+        'symmetric': cv2.BORDER_REFLECT
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     if not isinstance(padding, (numbers.Number, list, tuple)):
@@ -175,6 +247,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
 
     if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
         raise ValueError(
+<<<<<<< HEAD
             "Padding must be an int or a 2, or 4 element tuple, not a "
             + "{} element tuple".format(len(padding))
         )
@@ -185,6 +258,13 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         'reflect',
         'symmetric',
     ], 'Padding mode should be either constant, edge, reflect or symmetric'
+=======
+            "Padding must be an int or a 2, or 4 element tuple, not a " +
+            "{} element tuple".format(len(padding)))
+
+    assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric'], \
+        'Padding mode should be either constant, edge, reflect or symmetric'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if isinstance(padding, list):
         padding = tuple(padding)
@@ -200,6 +280,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         pad_bottom = padding[3]
 
     if len(img.shape) == 3 and img.shape[2] == 1:
+<<<<<<< HEAD
         return cv2.copyMakeBorder(
             img,
             top=pad_top,
@@ -219,13 +300,34 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             borderType=_cv2_pad_from_str[padding_mode],
             value=fill,
         )
+=======
+        return cv2.copyMakeBorder(img,
+                                  top=pad_top,
+                                  bottom=pad_bottom,
+                                  left=pad_left,
+                                  right=pad_right,
+                                  borderType=_cv2_pad_from_str[padding_mode],
+                                  value=fill)[:, :, np.newaxis]
+    else:
+        return cv2.copyMakeBorder(img,
+                                  top=pad_top,
+                                  bottom=pad_bottom,
+                                  left=pad_left,
+                                  right=pad_right,
+                                  borderType=_cv2_pad_from_str[padding_mode],
+                                  value=fill)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def crop(img, top, left, height, width):
     """Crops the given image.
 
     Args:
+<<<<<<< HEAD
         img (np.array): Image to be cropped. (0,0) denotes the top left
+=======
+        img (np.array): Image to be cropped. (0,0) denotes the top left 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             corner of the image.
         top (int): Vertical component of the top left corner of the crop box.
         left (int): Horizontal component of the top left corner of the crop box.
@@ -237,12 +339,17 @@ def crop(img, top, left, height, width):
 
     """
 
+<<<<<<< HEAD
     return img[top : top + height, left : left + width, :]
+=======
+    return img[top:top + height, left:left + width, :]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def center_crop(img, output_size):
     """Crops the given image and resize it to desired size.
 
+<<<<<<< HEAD
     Args:
         img (np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
         output_size (sequence or int): (height, width) of the crop box. If int,
@@ -253,14 +360,31 @@ def center_crop(img, output_size):
         np.array: Cropped image.
 
     """
+=======
+        Args:
+            img (np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
+            output_size (sequence or int): (height, width) of the crop box. If int,
+                it is used for both directions
+            backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'. 
+        
+        Returns:
+            np.array: Cropped image.
+
+        """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if isinstance(output_size, numbers.Number):
         output_size = (int(output_size), int(output_size))
 
     h, w = img.shape[0:2]
     th, tw = output_size
+<<<<<<< HEAD
     i = int(round((h - th) / 2.0))
     j = int(round((w - tw) / 2.0))
+=======
+    i = int(round((h - th) / 2.))
+    j = int(round((w - tw) / 2.))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return crop(img, i, j, th, tw)
 
 
@@ -312,11 +436,16 @@ def adjust_brightness(img, brightness_factor):
     """
     cv2 = try_import('cv2')
 
+<<<<<<< HEAD
     table = (
         np.array([i * brightness_factor for i in range(0, 256)])
         .clip(0, 255)
         .astype('uint8')
     )
+=======
+    table = np.array([i * brightness_factor
+                      for i in range(0, 256)]).clip(0, 255).astype('uint8')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if len(img.shape) == 3 and img.shape[2] == 1:
         return cv2.LUT(img, table)[:, :, np.newaxis]
@@ -339,11 +468,16 @@ def adjust_contrast(img, contrast_factor):
     """
     cv2 = try_import('cv2')
 
+<<<<<<< HEAD
     table = (
         np.array([(i - 74) * contrast_factor + 74 for i in range(0, 256)])
         .clip(0, 255)
         .astype('uint8')
     )
+=======
+    table = np.array([(i - 74) * contrast_factor + 74
+                      for i in range(0, 256)]).clip(0, 255).astype('uint8')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if len(img.shape) == 3 and img.shape[2] == 1:
         return cv2.LUT(img, table)[:, :, np.newaxis]
     else:
@@ -367,9 +501,14 @@ def adjust_saturation(img, saturation_factor):
 
     dtype = img.dtype
     img = img.astype(np.float32)
+<<<<<<< HEAD
     alpha = np.random.uniform(
         max(0, 1 - saturation_factor), 1 + saturation_factor
     )
+=======
+    alpha = np.random.uniform(max(0, 1 - saturation_factor),
+                              1 + saturation_factor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray_img = gray_img[..., np.newaxis]
     img = img * alpha + gray_img * (1 - alpha)
@@ -402,8 +541,12 @@ def adjust_hue(img, hue_factor):
 
     if not (-0.5 <= hue_factor <= 0.5):
         raise ValueError(
+<<<<<<< HEAD
             'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor)
         )
+=======
+            'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     dtype = img.dtype
     img = img.astype(np.uint8)
@@ -419,6 +562,7 @@ def adjust_hue(img, hue_factor):
     return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype)
 
 
+<<<<<<< HEAD
 def affine(
     img,
     angle,
@@ -429,6 +573,16 @@ def affine(
     fill=0,
     center=None,
 ):
+=======
+def affine(img,
+           angle,
+           translate,
+           scale,
+           shear,
+           interpolation='nearest',
+           fill=0,
+           center=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Affine the image by matrix.
 
     Args:
@@ -438,11 +592,19 @@ def affine(
         shear (sequence or float): shear angle value in degrees between -180 to 180, clockwise direction.
             If a sequence is specified, the first value corresponds to a shear parallel to the x axis, while
             the second value corresponds to a shear parallel to the y axis.
+<<<<<<< HEAD
         interpolation (int|str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to cv2.INTER_NEAREST.
             when use cv2 backend, support method are as following:
             - "nearest": cv2.INTER_NEAREST,
             - "bilinear": cv2.INTER_LINEAR,
+=======
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to cv2.INTER_NEAREST.
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "bicubic": cv2.INTER_CUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
             If int, it is used for all channels respectively.
@@ -459,7 +621,11 @@ def affine(
         'bilinear': cv2.INTER_LINEAR,
         'area': cv2.INTER_AREA,
         'bicubic': cv2.INTER_CUBIC,
+<<<<<<< HEAD
         'lanczos': cv2.INTER_LANCZOS4,
+=======
+        'lanczos': cv2.INTER_LANCZOS4
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     h, w = img.shape[0:2]
@@ -486,6 +652,7 @@ def affine(
     M[1, 2] = ty
 
     if len(img.shape) == 3 and img.shape[2] == 1:
+<<<<<<< HEAD
         return cv2.warpAffine(
             img,
             M,
@@ -506,16 +673,45 @@ def affine(
 def rotate(
     img, angle, interpolation='nearest', expand=False, center=None, fill=0
 ):
+=======
+        return cv2.warpAffine(img,
+                              M,
+                              dsize=(w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpAffine(img,
+                              M,
+                              dsize=(w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)
+
+
+def rotate(img,
+           angle,
+           interpolation='nearest',
+           expand=False,
+           center=None,
+           fill=0):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """Rotates the image by angle.
 
     Args:
         img (np.array): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
+<<<<<<< HEAD
         interpolation (int|str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to cv2.INTER_NEAREST.
             when use cv2 backend, support method are as following:
             - "nearest": cv2.INTER_NEAREST,
             - "bilinear": cv2.INTER_LINEAR,
+=======
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to cv2.INTER_NEAREST.
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "bicubic": cv2.INTER_CUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
@@ -537,7 +733,11 @@ def rotate(
         'bilinear': cv2.INTER_LINEAR,
         'area': cv2.INTER_AREA,
         'bicubic': cv2.INTER_CUBIC,
+<<<<<<< HEAD
         'lanczos': cv2.INTER_LANCZOS4,
+=======
+        'lanczos': cv2.INTER_LANCZOS4
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     h, w = img.shape[0:2]
@@ -567,10 +767,15 @@ def rotate(
 
         post_trans = (0, 0)
         expand_matrix[2], expand_matrix[5] = transform(
+<<<<<<< HEAD
             -center[0] - post_trans[0],
             -center[1] - post_trans[1],
             expand_matrix,
         )
+=======
+            -center[0] - post_trans[0], -center[1] - post_trans[1],
+            expand_matrix)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         expand_matrix[2] += center[0]
         expand_matrix[5] += center[1]
 
@@ -587,6 +792,7 @@ def rotate(
         w, h = int(nw), int(nh)
 
     if len(img.shape) == 3 and img.shape[2] == 1:
+<<<<<<< HEAD
         return cv2.warpAffine(
             img,
             M,
@@ -602,6 +808,17 @@ def rotate(
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill,
         )
+=======
+        return cv2.warpAffine(img,
+                              M, (w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpAffine(img,
+                              M, (w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
@@ -611,11 +828,19 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
         img (np.array): Image to be perspectived.
         startpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the original image,
         endpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the transformed image.
+<<<<<<< HEAD
         interpolation (int|str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to cv2.INTER_NEAREST.
             when use cv2 backend, support method are as following:
             - "nearest": cv2.INTER_NEAREST,
             - "bilinear": cv2.INTER_LINEAR,
+=======
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to cv2.INTER_NEAREST.
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             - "bicubic": cv2.INTER_CUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively.
@@ -630,7 +855,11 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
         'bilinear': cv2.INTER_LINEAR,
         'area': cv2.INTER_AREA,
         'bicubic': cv2.INTER_CUBIC,
+<<<<<<< HEAD
         'lanczos': cv2.INTER_LANCZOS4,
+=======
+        'lanczos': cv2.INTER_LANCZOS4
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     h, w = img.shape[0:2]
 
@@ -639,6 +868,7 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
     matrix = cv2.getPerspectiveTransform(startpoints, endpoints)
 
     if len(img.shape) == 3 and img.shape[2] == 1:
+<<<<<<< HEAD
         return cv2.warpPerspective(
             img,
             matrix,
@@ -654,6 +884,19 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill,
         )
+=======
+        return cv2.warpPerspective(img,
+                                   matrix,
+                                   dsize=(w, h),
+                                   flags=_cv2_interp_from_str[interpolation],
+                                   borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpPerspective(img,
+                                   matrix,
+                                   dsize=(w, h),
+                                   flags=_cv2_interp_from_str[interpolation],
+                                   borderValue=fill)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def to_grayscale(img, num_output_channels=1):
@@ -676,8 +919,12 @@ def to_grayscale(img, num_output_channels=1):
     elif num_output_channels == 3:
         # much faster than doing cvtColor to go back to gray
         img = np.broadcast_to(
+<<<<<<< HEAD
             cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)[:, :, np.newaxis], img.shape
         )
+=======
+            cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)[:, :, np.newaxis], img.shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     else:
         raise ValueError('num_output_channels should be either 1 or 3')
 
@@ -691,7 +938,11 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
         img (np.array): input data to be normalized.
         mean (list|tuple): Sequence of means for each channel.
         std (list|tuple): Sequence of standard deviations for each channel.
+<<<<<<< HEAD
         data_format (str, optional): Data format of img, should be 'HWC' or
+=======
+        data_format (str, optional): Data format of img, should be 'HWC' or 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
 
@@ -717,6 +968,7 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
 def erase(img, i, j, h, w, v, inplace=False):
     """Erase the pixels of selected area in input image array with given value.
 
+<<<<<<< HEAD
     Args:
          img (np.array): input image array, which shape is (H, W, C).
          i (int): y coordinate of the top-left point of erased region.
@@ -729,9 +981,27 @@ def erase(img, i, j, h, w, v, inplace=False):
      Returns:
          np.array: Erased image.
 
+=======
+       Args:
+            img (np.array): input image array, which shape is (H, W, C).
+            i (int): y coordinate of the top-left point of erased region.
+            j (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (np.array): value used to replace the pixels in erased region.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            np.array: Erased image.
+        
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     if not inplace:
         img = img.copy()
 
+<<<<<<< HEAD
     img[i : i + h, j : j + w, ...] = v
+=======
+    img[i:i + h, j:j + w, ...] = v
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return img

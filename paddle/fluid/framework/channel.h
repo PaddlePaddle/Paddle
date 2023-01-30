@@ -30,7 +30,11 @@
 #include <utility>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/expect.h"
+=======
+#include "paddle/fluid/framework/expect.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace paddle {
 namespace framework {
@@ -353,7 +357,11 @@ class ChannelReader {
     }
     if (cursor_ >= buffer_.size()) {
       cursor_ = 0;
+<<<<<<< HEAD
       if (channel_->Read(buffer_) == 0) {
+=======
+      if (channel_->read(buffer_) == 0) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         failed_ = true;
         return *this;
       }

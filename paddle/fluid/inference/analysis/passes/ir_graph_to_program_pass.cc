@@ -23,8 +23,11 @@ namespace inference {
 namespace analysis {
 
 void IrGraphToProgramPass::RunImpl(Argument *argument) {
+<<<<<<< HEAD
   auto cache_pass =
       framework::ir::PassRegistry::Instance().Get("runtime_context_cache_pass");
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto pass =
       framework::ir::PassRegistry::Instance().Get("graph_to_program_pass");
 
@@ -33,12 +36,21 @@ void IrGraphToProgramPass::RunImpl(Argument *argument) {
               new int(argument->memory_optim_sort_kind()));
   }
 
+<<<<<<< HEAD
+=======
+  std::unique_ptr<framework::ir::Graph> graph(argument->main_graph_ptr());
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Direct using ProgramDesc desc(argument->main_program()) may cause
   // incomplete copies of information.
   framework::ProgramDesc desc;
   desc.CopyFrom(*argument->main_program().Proto());
   pass->SetNotOwned("program", &desc);
+<<<<<<< HEAD
   pass->Apply(cache_pass->Apply(argument->main_graph_ptr()));
+=======
+  pass->Apply(graph.release());  // the argument still own the graph.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   argument->SetIrAnalyzedProgram(
       new framework::proto::ProgramDesc(*desc.Proto()));

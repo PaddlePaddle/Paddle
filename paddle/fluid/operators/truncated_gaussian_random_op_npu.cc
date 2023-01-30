@@ -22,40 +22,69 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename DeviceContext, typename T>
 class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // TODO(zhiqiu): support dynamic shape and call ParameterizedTruncatedNormal
     std::vector<int> shape = ctx.Attr<std::vector<int>>("shape");
+<<<<<<< HEAD
     phi::DenseTensor shape_tensor(experimental::DataType::INT32);
+=======
+    Tensor shape_tensor(experimental::DataType::INT32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     shape_tensor.mutable_data<int32_t>({static_cast<int>(shape.size())},
                                        ctx.GetPlace());
     paddle::framework::TensorFromVector(
         shape, ctx.device_context(), &shape_tensor);
     float mean = ctx.Attr<float>("mean");
+<<<<<<< HEAD
     phi::DenseTensor mean_tensor(experimental::DataType::FLOAT32);
+=======
+    Tensor mean_tensor(experimental::DataType::FLOAT32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     mean_tensor.mutable_data<float>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<float>(&mean_tensor, mean);
 
     float std = ctx.Attr<float>("std");
+<<<<<<< HEAD
     phi::DenseTensor std_tensor(experimental::DataType::FLOAT32);
+=======
+    Tensor std_tensor(experimental::DataType::FLOAT32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     std_tensor.mutable_data<float>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<float>(&std_tensor, std);
 
     int32_t seed_var = ctx.Attr<int32_t>("seed");
 
+<<<<<<< HEAD
     phi::DenseTensor min_tensor(experimental::DataType::FLOAT32);
+=======
+    Tensor min_tensor(experimental::DataType::FLOAT32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     min_tensor.mutable_data<float>({1}, ctx.GetPlace());
     float min_value = mean - std * 2.0;
     FillNpuTensorWithConstant<float>(&min_tensor, min_value);
 
+<<<<<<< HEAD
     phi::DenseTensor max_tensor(experimental::DataType::FLOAT32);
+=======
+    Tensor max_tensor(experimental::DataType::FLOAT32);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     max_tensor.mutable_data<float>({1}, ctx.GetPlace());
     float max_value = mean + std * 2.0;
     FillNpuTensorWithConstant<float>(&max_tensor, max_value);
 
+<<<<<<< HEAD
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out->mutable_data<T>(ctx.GetPlace());
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -78,10 +107,17 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
+<<<<<<< HEAD
     auto* tensor = context.Output<phi::DenseTensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
     phi::DenseTensor cpu_tensor(tensor->dtype());
+=======
+    auto* tensor = context.Output<framework::Tensor>("Out");
+    tensor->mutable_data<T>(context.GetPlace());
+
+    Tensor cpu_tensor(tensor->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cpu_tensor.Resize(tensor->dims());
     T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
     std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),

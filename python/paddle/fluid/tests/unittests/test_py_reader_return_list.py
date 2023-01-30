@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -21,23 +22,45 @@ import paddle.fluid as fluid
 
 
 class TestPyReader(unittest.TestCase):
+=======
+import paddle
+import paddle.fluid as fluid
+import unittest
+import numpy as np
+
+
+class TestPyReader(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.batch_size = 32
         self.epoch_num = 2
         self.sample_num = 10
 
     def test_returnlist(self):
+<<<<<<< HEAD
         def reader_creator_random_image(height, width):
             def reader():
                 for i in range(self.sample_num):
                     yield np.random.uniform(
                         low=0, high=255, size=[height, width]
                     ),
+=======
+
+        def reader_creator_random_image(height, width):
+
+            def reader():
+                for i in range(self.sample_num):
+                    yield np.random.uniform(low=0,
+                                            high=255,
+                                            size=[height, width]),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             return reader
 
         for return_list in [True, False]:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
+<<<<<<< HEAD
                 image = paddle.static.data(
                     name='image', shape=[-1, 784, 784], dtype='float32'
                 )
@@ -55,6 +78,21 @@ class TestPyReader(unittest.TestCase):
                     ),
                     fluid.core.CPUPlace(),
                 )
+=======
+                image = fluid.layers.data(name='image',
+                                          shape=[784, 784],
+                                          dtype='float32')
+                reader = fluid.io.PyReader(feed_list=[image],
+                                           capacity=4,
+                                           iterable=True,
+                                           return_list=return_list)
+
+                user_defined_reader = reader_creator_random_image(784, 784)
+                reader.decorate_sample_list_generator(
+                    paddle.batch(user_defined_reader,
+                                 batch_size=self.batch_size),
+                    fluid.core.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # definition of network is omitted
                 executor = fluid.Executor(fluid.core.CPUPlace())
                 executor.run(fluid.default_main_program())
@@ -72,8 +110,12 @@ class TestPyReader(unittest.TestCase):
                 batch_py_reader.decorate_sample_generator(
                     user_defined_reader,
                     batch_size=self.batch_size,
+<<<<<<< HEAD
                     places=fluid.core.CPUPlace(),
                 )
+=======
+                    places=fluid.core.CPUPlace())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 for epoch in range(self.epoch_num):
                     for _, data in enumerate(batch_py_reader()):

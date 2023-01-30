@@ -48,7 +48,11 @@ namespace distributed = paddle::distributed;
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
+<<<<<<< HEAD
   x_var->GetMutable<phi::DenseTensor>();
+=======
+  x_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
@@ -56,7 +60,11 @@ void InitTensorsOnClient(framework::Scope* scope,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 
+<<<<<<< HEAD
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
+=======
+  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i)
@@ -206,7 +214,11 @@ void RunBrpcPushDense() {
       std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
   framework::Variable* var = client_scope.FindVar("x");
+<<<<<<< HEAD
   phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   float* w = tensor->data<float>();
   paddle::distributed::Region reg(w, tensor->numel());
   regions.emplace_back(std::move(reg));

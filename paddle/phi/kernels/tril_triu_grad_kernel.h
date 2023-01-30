@@ -25,6 +25,7 @@ void TrilTriuGradKernel(const Context& ctx,
                         bool lower,
                         DenseTensor* x_grad);
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void TrilGradKernel(const Context& ctx,
                     const DenseTensor& out_grad,
@@ -37,4 +38,6 @@ void TriuGradKernel(const Context& ctx,
                     int diagonal,
                     DenseTensor* x_grad);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }  // namespace phi

@@ -68,7 +68,11 @@ function download() {
   if [[ -e "${model_name}.tgz" ]]; then
     echo "${model_name}.tgz has been downloaded."
   else
+<<<<<<< HEAD
       if [ "$WIN_DETECT" != "" ]; then
+=======
+      if [ $WIN_DETECT != "" ]; then
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         wget -q -Y off ${url_prefix}/${model_name}.tgz
         tar xzf *.tgz
       else
@@ -135,7 +139,11 @@ function compile_test() {
     mkdir -p ${build_dir}
     cd ${build_dir}
     TEST_NAME=$1
+<<<<<<< HEAD
     if [ "$WIN_DETECT" != "" ]; then
+=======
+    if [ $WIN_DETECT != "" ]; then
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
              -DWITH_MKL=$TURN_ON_MKL \
              -DDEMO_NAME=${TEST_NAME} \
@@ -161,7 +169,11 @@ function compile_test() {
                  -DWITH_GTEST=ON \
                  -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
         make -j$(nproc)
+<<<<<<< HEAD
     fi
+=======
+    fi;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     cd -
 }
 
@@ -208,7 +220,11 @@ if [ $? -ne 0 ]; then
     EXIT_CODE=8
 fi
 
+<<<<<<< HEAD
 if [ "$WIN_DETECT" != "" ]; then
+=======
+if [ $WIN_DETECT != "" ]; then
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     #TODO(OliverLPH): enable test_ernie_text_cls on windows after fix compile issue
     echo "  skip test_ernie_text_cls  "
 else
@@ -222,7 +238,11 @@ else
         echo "${RED} test_ernie_text_cls runs failed ${NC}" >> ${exe_dir}/test_summary.txt
         EXIT_CODE=8
     fi
+<<<<<<< HEAD
 fi
+=======
+fi;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 printf "${YELLOW} start test_yolov3 ${NC} \n";
 compile_test "test_yolov3"

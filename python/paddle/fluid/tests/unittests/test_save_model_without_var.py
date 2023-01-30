@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 import warnings
 
@@ -22,6 +23,24 @@ import paddle.fluid as fluid
 class TestSaveModelWithoutVar(unittest.TestCase):
     def test_no_var_save(self):
         data = paddle.static.data(name='data', shape=[-1, 1], dtype='float32')
+=======
+import numpy as np
+import warnings
+import unittest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.layers.device import get_places
+from paddle.fluid.executor import as_numpy
+
+
+class TestSaveModelWithoutVar(unittest.TestCase):
+
+    def test_no_var_save(self):
+        data = fluid.layers.data(name='data',
+                                 shape=[-1, 1],
+                                 dtype='float32',
+                                 append_batch_size=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         data_plus = data + 1
 
         if fluid.core.is_compiled_with_cuda():
@@ -35,6 +54,7 @@ class TestSaveModelWithoutVar(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
+<<<<<<< HEAD
             fluid.io.save_inference_model(
                 dirname='test',
                 feeded_var_names=['data'],
@@ -43,6 +63,14 @@ class TestSaveModelWithoutVar(unittest.TestCase):
                 model_filename='model',
                 params_filename='params',
             )
+=======
+            fluid.io.save_inference_model(dirname='test',
+                                          feeded_var_names=['data'],
+                                          target_vars=[data_plus],
+                                          executor=exe,
+                                          model_filename='model',
+                                          params_filename='params')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             expected_warn = "no variable in your model, please ensure there are any variables in your model to save"
             self.assertTrue(len(w) > 0)
             self.assertTrue(expected_warn == str(w[-1].message))

@@ -63,7 +63,12 @@ class NativePaddlePredictor : public PaddlePredictor {
   bool GetFetch(std::vector<PaddleTensor> *output_data,
                 framework::Scope *scope);
   template <typename T>
+<<<<<<< HEAD
   void GetFetchOne(const phi::DenseTensor &fetchs, PaddleTensor *output_data);
+=======
+  void GetFetchOne(const framework::LoDTensor &fetchs,
+                   PaddleTensor *output_data);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   void PrepareFeedFetch();
 
   NativeConfig config_;
@@ -77,7 +82,11 @@ class NativePaddlePredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> fetchs_;
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> feed_tensors_;
+=======
+  std::vector<framework::LoDTensor> feed_tensors_;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Do not use unique_ptr, use parent scope to delete
   framework::Scope *sub_scope_{nullptr};
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;

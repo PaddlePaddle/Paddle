@@ -50,4 +50,8 @@ void SoftmaxGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
+<<<<<<< HEAD
     softmax_grad, OneDNN, ONEDNN, phi::SoftmaxGradKernel, float) {}
+=======
+    softmax_grad, OneDNN, ALL_LAYOUT, phi::SoftmaxGradKernel, float) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

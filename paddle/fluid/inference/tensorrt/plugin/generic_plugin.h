@@ -44,7 +44,11 @@ namespace plugin {
 void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                                phi::KernelContext* kernel_context,
                                const phi::KernelSignature& signature,
+<<<<<<< HEAD
                                const phi::Kernel* phi_kernel);
+=======
+                               const phi::Kernel& phi_kernel);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class GenericPlugin : public DynamicPluginTensorRT {
  public:
@@ -57,6 +61,7 @@ class GenericPlugin : public DynamicPluginTensorRT {
   GenericPlugin() {}
 
   GenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
+<<<<<<< HEAD
                 const InputOutPutVarInfo& in_out_info,
                 bool with_fp16_ = false);
 
@@ -64,6 +69,13 @@ class GenericPlugin : public DynamicPluginTensorRT {
                 const std::vector<int>& inputs_data_type,
                 const std::vector<int>& outputs_data_type,
                 bool with_fp16_ = false);
+=======
+                const InputOutPutVarInfo& in_out_info);
+
+  GenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
+                const std::vector<int>& inputs_data_type,
+                const std::vector<int>& outputs_data_type);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
@@ -88,7 +100,11 @@ class GenericPlugin : public DynamicPluginTensorRT {
 
   size_t getSerializationSize() const TRT_NOEXCEPT {
     return op_meta_data_.size() + SerializedSize(inputs_data_type_) +
+<<<<<<< HEAD
            SerializedSize(outputs_data_type_) + SerializedSize(with_fp16_);
+=======
+           SerializedSize(outputs_data_type_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT;
@@ -124,6 +140,7 @@ class GenericPlugin : public DynamicPluginTensorRT {
                                        const nvinfer1::DataType* input_types,
                                        int nb_inputs) const TRT_NOEXCEPT;
 
+<<<<<<< HEAD
   bool isFp16Supported() {
     auto half_dtype = nvinfer1::DataType::kHALF;
     return with_fp16_ &&
@@ -131,17 +148,25 @@ class GenericPlugin : public DynamicPluginTensorRT {
            phi_kernels_[half_dtype]->IsValid();
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   std::string op_meta_data_;
   framework::proto::OpDesc proto_op_desc_;
   framework::OpDesc op_desc_;
 
  private:
+<<<<<<< HEAD
   std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::Kernel>>
       phi_kernels_;
   std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::KernelContext>>
       phi_kernel_contexts_;
 
+=======
+  const phi::Kernel* phi_kernel_{nullptr};
+
+  phi::KernelContext* phi_kernel_context_{nullptr};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<phi::DenseTensor>* dense_tensor_inputs_{nullptr};
   std::vector<phi::DenseTensor>* dense_tensor_outputs_{nullptr};
 

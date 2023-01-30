@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 from test_parallel_executor_seresnext_with_reduce_cpu import (
@@ -25,6 +26,18 @@ class TestResnetWithReduceGPU(TestResnetWithReduceBase):
         self._compare_reduce_and_allreduce(
             use_device=DeviceType.CUDA, delta2=1e-2
         )
+=======
+from __future__ import print_function
+import unittest
+from test_parallel_executor_seresnext_with_reduce_cpu import TestResnetWithReduceBase, DeviceType
+
+
+class TestResnetWithReduceGPU(TestResnetWithReduceBase):
+
+    def test_seresnext_with_reduce(self):
+        self._compare_reduce_and_allreduce(use_device=DeviceType.CUDA,
+                                           delta2=1e-2)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

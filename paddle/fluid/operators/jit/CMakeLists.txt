@@ -9,7 +9,11 @@ file(APPEND ${jit_file} "\#include \"paddle/fluid/operators/jit/helper.h\"\n")
 file(APPEND ${jit_file}
      "\#include \"paddle/fluid/operators/jit/registry.h\"\n\n")
 
+<<<<<<< HEAD
 set(JIT_KERNEL_DEPS device_context cblas gflags enforce place xxhash)
+=======
+set(JIT_KERNEL_DEPS cpu_info cblas gflags enforce place xxhash)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 file(
   GLOB jit_kernel_cc_srcs

@@ -47,12 +47,20 @@ static std::map<size_t, std::unordered_set<std::string>> VarsGroupByScopeIdx(
   return result;
 }
 
+<<<<<<< HEAD
 // Check whether the variable is phi::DenseTensor based on static VarDesc info
+=======
+// Check whether the variable is LoDTensor based on static VarDesc info
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 static bool IsLoDTensor(VarDesc *var) {
   return var->Proto()->type().type() == proto::VarType::LOD_TENSOR;
 }
 
+<<<<<<< HEAD
 // Get memory size of phi::DenseTensor
+=======
+// Get memory size of LoDTensor
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 static int64_t GetMemorySize(
     const std::unordered_map<std::string, std::vector<details::VarHandle *>>
         &vars,
@@ -64,7 +72,11 @@ static int64_t GetMemorySize(
   PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc),
                     true,
                     platform::errors::InvalidArgument(
+<<<<<<< HEAD
                         "Var(%s) must be phi::DenseTensor.", var_name));
+=======
+                        "Var(%s) must be LoDTensor.", var_name));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto dims = var_desc->GetShape();
   return SizeOfType(var_desc->GetDataType()) *
          std::accumulate(dims.begin(),
@@ -73,10 +85,17 @@ static int64_t GetMemorySize(
                          std::multiplies<int64_t>());
 }
 
+<<<<<<< HEAD
 // Split all variables in the graph into phi::DenseTensor and
 // Non-phi::DenseTensor (e.g. SelectedRows, LoDTensorArray) Since partial GC is
 // based on static analysis of memory size of each variable So we should skip
 // SelectedRows and LoDTensorArray here
+=======
+// Split all variables in the graph into LoDTensor and Non-LoDTensor (e.g.
+// SelectedRows, LoDTensorArray)
+// Since partial GC is based on static analysis of memory size of each variable
+// So we should skip SelectedRows and LoDTensorArray here
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 static void SplitIntoLoDTensorAndNonLoDTensorVars(
     const OpToVarNameSetMap &m,
     const details::GraphVars &vars,
@@ -128,7 +147,11 @@ static OpToVarNameSetMap ShrinkGCVars(
   if (fraction_of_memory_size <= 0.0) return {};
 
   /**
+<<<<<<< HEAD
    * Step 1: Split all variables into phi::DenseTensor and Non-phi::DenseTensor.
+=======
+   * Step 1: Split all variables into LoDTensor and Non-LoDTensor.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    * We can only calculate memory size of LoDTensors
    */
   OpToVarNameSetMap lod_tensors, other_vars;

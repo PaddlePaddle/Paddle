@@ -111,11 +111,16 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           tensor->emplace(token, it->second);
         }
       } else {
+<<<<<<< HEAD
         auto *tensor = out_vars[i]->GetMutable<phi::DenseTensor>();
+=======
+        auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         // Get data from fin to tensor
         paddle::framework::DeserializeFromStream(*buffer, tensor, dev_ctx);
 
+<<<<<<< HEAD
         auto in_dtype = tensor->dtype();
         auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
 
@@ -126,6 +131,17 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           auto out_kernel_type =
               phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
           phi::DenseTensor fp16_tensor;
+=======
+        auto in_dtype = framework::TransToProtoVarType(tensor->dtype());
+        auto out_dtype =
+            load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+
+        if (in_dtype != out_dtype) {
+          // convert to float16 tensor
+          auto in_kernel_type = framework::OpKernelType(in_dtype, place);
+          auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+          framework::LoDTensor fp16_tensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           // copy LoD info to the new tensor
           fp16_tensor.set_lod(tensor->lod());
           framework::TransDataType(
@@ -133,7 +149,11 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 
           // reset output tensor
           out_vars[i]->Clear();
+<<<<<<< HEAD
           tensor = out_vars[i]->GetMutable<phi::DenseTensor>();
+=======
+          tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           tensor->set_lod(fp16_tensor.lod());
           tensor->ShareDataWith(fp16_tensor);
         }

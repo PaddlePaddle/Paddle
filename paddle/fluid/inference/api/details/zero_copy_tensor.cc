@@ -16,7 +16,10 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/string_array.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -56,7 +59,11 @@ void Tensor::Reshape(const std::vector<int> &shape) {
       var,
       paddle::platform::errors::PreconditionNotMet(
           "No tensor called [%s] in the runtime scope", name_));
+<<<<<<< HEAD
   auto *tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor->Resize(phi::make_ddim(shape));
 }
 
@@ -77,8 +84,12 @@ void Tensor::ReshapeStrings(const size_t &shape) {
       var,
       paddle::platform::errors::PreconditionNotMet(
           "No tensor called [%s] in the runtime scope", name_));
+<<<<<<< HEAD
   paddle::framework::Strings *tensor =
       var->GetMutable<paddle::framework::Strings>();
+=======
+  paddle_infer::Strings *tensor = var->GetMutable<paddle_infer::Strings>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   tensor->resize(shape);
 }
 
@@ -95,7 +106,11 @@ T *Tensor::mutable_data(PlaceType place) {
     return ORTGetMutableData<T>();
   }
 #endif
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_GT(
       tensor->numel(),
       0,
@@ -139,7 +154,11 @@ T *Tensor::mutable_data(PlaceType place) {
 
 template <typename T>
 T *Tensor::data(PlaceType *place, int *size) const {
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto *res = tensor->data<T>();
 
   if (paddle::platform::is_cpu_place(tensor->place())) {
@@ -164,7 +183,11 @@ DataType Tensor::type() const {
     return dtype_;
   }
 #endif
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto type = paddle::framework::TransToProtoVarType(tensor->dtype());
   if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
@@ -178,8 +201,11 @@ DataType Tensor::type() const {
     return DataType::UINT8;
   } else if (type == paddle::framework::proto::VarType::INT8) {
     return DataType::INT8;
+<<<<<<< HEAD
   } else if (type == paddle::framework::proto::VarType::BOOL) {
     return DataType::BOOL;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
   return DataType::FLOAT32;
 }
@@ -188,7 +214,11 @@ PlaceType Tensor::place() const { return place_; }
 
 template <typename T>
 void Tensor::CopyFromCpu(const T *data) {
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_GE(tensor->numel(),
                     0,
                     paddle::platform::errors::PreconditionNotMet(
@@ -263,9 +293,13 @@ void Tensor::CopyFromCpu(const T *data) {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     paddle::platform::CustomPlace custom_place(
+<<<<<<< HEAD
         phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
             device_type_id),
         device_);
+=======
+        phi::GetGlobalDeviceType(device_type_id), device_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto *t_data = tensor->mutable_data<T>(custom_place);
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));
@@ -286,11 +320,14 @@ template <typename T>
 struct DataTypeInfo;
 
 template <>
+<<<<<<< HEAD
 struct DataTypeInfo<bool> {
   paddle::experimental::DataType TYPE = paddle::experimental::DataType::BOOL;
 };
 
 template <>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 struct DataTypeInfo<float> {
   paddle::experimental::DataType TYPE = paddle::experimental::DataType::FLOAT32;
 };
@@ -320,12 +357,20 @@ struct DataTypeInfo<int32_t> {
   paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT32;
 };
 
+<<<<<<< HEAD
 phi::DataLayout LayoutConvert(DataLayout layout) {
+=======
+paddle::experimental::DataLayout LayoutConvert(DataLayout layout) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_EQ(
       layout,
       DataLayout::kNCHW,
       paddle::platform::errors::InvalidArgument("Only NCHW is supported now."));
+<<<<<<< HEAD
   return phi::DataLayout::NCHW;
+=======
+  return paddle::experimental::DataLayout::NCHW;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 template <typename T>
@@ -333,7 +378,11 @@ void Tensor::ShareExternalData(const T *data,
                                const std::vector<int> &shape,
                                PlaceType place,
                                DataLayout layout) {
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor)
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   size_t size =
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()) *
       sizeof(T);
@@ -358,7 +407,11 @@ void Tensor::ShareExternalData(const T *data,
 }
 
 void Tensor::CopyStringsFromCpu(const paddle_infer::Strings *data) {
+<<<<<<< HEAD
   EAGER_GET_TENSOR(paddle::framework::Strings);
+=======
+  EAGER_GET_TENSOR(paddle_infer::Strings);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_GE(tensor->size(),
                     0,
                     paddle::platform::errors::PreconditionNotMet(
@@ -373,12 +426,20 @@ void Tensor::CopyToCpuImpl(T *data,
                            void *exec_stream,
                            CallbackFunc cb,
                            void *cb_params) const {
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto ele_num = tensor->numel();
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
+<<<<<<< HEAD
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto mem_allocation =
       std::make_shared<paddle::memory::allocation::Allocation>(
           static_cast<void *>(data),
@@ -388,10 +449,18 @@ void Tensor::CopyToCpuImpl(T *data,
 
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
+<<<<<<< HEAD
     if (tensor->layout() == phi::DataLayout::ONEDNN)
       phi::funcs::TransDataLayoutFromOneDNN(
           tensor->layout(),
           phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
+=======
+    if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
+      paddle::framework::innerTransDataLayoutFromMKLDNN(
+          tensor->layout(),
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .get_cur_paddle_data_layout(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           *tensor,
           &out,
           paddle::platform::CPUPlace(),
@@ -524,7 +593,10 @@ template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<float16>(const float16 *data);
+<<<<<<< HEAD
 template PD_INFER_DECL void Tensor::CopyFromCpu<bool>(const bool *data);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template PD_INFER_DECL void Tensor::ShareExternalData<float>(
     const float *data,
@@ -556,11 +628,14 @@ template PD_INFER_DECL void Tensor::ShareExternalData<float16>(
     const std::vector<int> &shape,
     PlaceType place,
     DataLayout layout);
+<<<<<<< HEAD
 template PD_INFER_DECL void Tensor::ShareExternalData<bool>(
     const bool *data,
     const std::vector<int> &shape,
     PlaceType place,
     DataLayout layout);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data) const;
@@ -568,7 +643,10 @@ template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int8_t>(int8_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<float16>(float16 *data) const;
+<<<<<<< HEAD
 template PD_INFER_DECL void Tensor::CopyToCpu<bool>(bool *data) const;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template PD_INFER_DECL void Tensor::CopyToCpuImpl<float>(float *data,
                                                          void *exec_stream,
@@ -584,10 +662,13 @@ template PD_INFER_DECL void Tensor::CopyToCpuImpl<int8_t>(
     int8_t *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
 template PD_INFER_DECL void Tensor::CopyToCpuImpl<float16>(
     float16 *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
+<<<<<<< HEAD
 template PD_INFER_DECL void Tensor::CopyToCpuImpl<bool>(bool *data,
                                                         void *exec_stream,
                                                         CallbackFunc cb,
                                                         void *cb_params) const;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float>(
     float *data, void *exec_stream) const;
@@ -601,8 +682,11 @@ template PD_INFER_DECL void Tensor::CopyToCpuAsync<int8_t>(
     int8_t *data, void *exec_stream) const;
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float16>(
     float16 *data, void *exec_stream) const;
+<<<<<<< HEAD
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<bool>(
     bool *data, void *exec_stream) const;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float>(
     float *data, CallbackFunc cb, void *cb_params) const;
@@ -616,9 +700,12 @@ template PD_INFER_DECL void Tensor::CopyToCpuAsync<int8_t>(
     int8_t *data, CallbackFunc cb, void *cb_params) const;
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float16>(
     float16 *data, CallbackFunc cb, void *cb_params) const;
+<<<<<<< HEAD
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<bool>(bool *data,
                                                          CallbackFunc cb,
                                                          void *cb_params) const;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
                                                   int *size) const;
@@ -632,8 +719,11 @@ template PD_INFER_DECL int8_t *Tensor::data<int8_t>(PlaceType *place,
                                                     int *size) const;
 template PD_INFER_DECL float16 *Tensor::data<float16>(PlaceType *place,
                                                       int *size) const;
+<<<<<<< HEAD
 template PD_INFER_DECL bool *Tensor::data<bool>(PlaceType *place,
                                                 int *size) const;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template PD_INFER_DECL float *Tensor::mutable_data<float>(PlaceType place);
 template PD_INFER_DECL int64_t *Tensor::mutable_data<int64_t>(PlaceType place);
@@ -641,7 +731,10 @@ template PD_INFER_DECL int32_t *Tensor::mutable_data<int32_t>(PlaceType place);
 template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
 template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
 template PD_INFER_DECL float16 *Tensor::mutable_data<float16>(PlaceType place);
+<<<<<<< HEAD
 template PD_INFER_DECL bool *Tensor::mutable_data<bool>(PlaceType place);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 Tensor::Tensor(void *scope, const void *device_contexts)
     : scope_{scope}, device_contexs_(device_contexts) {}
@@ -685,11 +778,16 @@ std::vector<int> Tensor::shape() const {
     return shape;
   }
 #endif
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_NOT_NULL(
       tensor_,
       paddle::platform::errors::PreconditionNotMet(
           "Not found tensor called %s in the scope", name_));
+<<<<<<< HEAD
 // oneDNN may does layout transform internally, so need to reorder before
 // return
 #ifdef PADDLE_WITH_MKLDNN
@@ -699,6 +797,18 @@ std::vector<int> Tensor::shape() const {
     // Set default as NCHW in case not specified
     out_layout = out_layout == phi::DataLayout::kAnyLayout
                      ? phi::DataLayout::kNCHW
+=======
+// mkldnn may does layout transform internally, so need to reorder before
+// return
+#ifdef PADDLE_WITH_MKLDNN
+  if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN) {
+    paddle::framework::DataLayout out_layout =
+        paddle::platform::MKLDNNDeviceContext::tls()
+            .get_cur_paddle_data_layout();
+    // Set default as NCHW in case not specified
+    out_layout = out_layout == paddle::framework::DataLayout::kAnyLayout
+                     ? paddle::framework::DataLayout::kNCHW
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                      : out_layout;
     // In these data layouts, channel dimension is either on 2nd position: nChw
     // or
@@ -706,8 +816,13 @@ std::vector<int> Tensor::shape() const {
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
     if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
+<<<<<<< HEAD
     if (out_layout == phi::DataLayout::kNHWC ||
         out_layout == phi::DataLayout::kNDHWC) {
+=======
+    if (out_layout == paddle::framework::DataLayout::kNHWC ||
+        out_layout == paddle::framework::DataLayout::kNDHWC) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       auto dims = phi::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;
@@ -720,7 +835,11 @@ std::vector<int> Tensor::shape() const {
 }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   paddle::framework::LoD lod;
   for (auto &level : x) {
     lod.emplace_back(level);
@@ -729,7 +848,11 @@ void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
 }
 
 std::vector<std::vector<size_t>> Tensor::lod() const {
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::vector<std::vector<size_t>> res;
   for (auto &level : tensor->lod()) {
     res.emplace_back(level);
@@ -809,11 +932,19 @@ void InternalUtils::CopyFromCpuWithIoStream(paddle_infer::Tensor *t,
         var,
         paddle::platform::errors::PreconditionNotMet(
             "No tensor called [%s] in the runtime scope", t->name_));
+<<<<<<< HEAD
     auto *tensor = var->GetMutable<phi::DenseTensor>();
     t->tensor_ = tensor;
   }
 
   auto *tensor = static_cast<phi::DenseTensor *>(t->tensor_);
+=======
+    auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+    t->tensor_ = tensor;
+  }
+
+  auto *tensor = static_cast<paddle::framework::LoDTensor *>(t->tensor_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PADDLE_ENFORCE_GE(tensor->numel(),
                     0,
                     paddle::platform::errors::PreconditionNotMet(
@@ -862,16 +993,28 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
         var,
         paddle::platform::errors::PreconditionNotMet(
             "No tensor called [%s] in the runtime scope", t->name_));
+<<<<<<< HEAD
     auto *tensor = var->GetMutable<phi::DenseTensor>();
     t->tensor_ = tensor;
   }
 
   auto *tensor = static_cast<phi::DenseTensor *>(t->tensor_);
+=======
+    auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+    t->tensor_ = tensor;
+  }
+
+  auto *tensor = static_cast<paddle::framework::LoDTensor *>(t->tensor_);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto ele_num = tensor->numel();
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
+<<<<<<< HEAD
   phi::DenseTensor out;
+=======
+  paddle::framework::Tensor out;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto mem_allocation =
       std::make_shared<paddle::memory::allocation::Allocation>(
           static_cast<void *>(data),
@@ -881,10 +1024,18 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
 
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
+<<<<<<< HEAD
     if (tensor->layout() == phi::DataLayout::ONEDNN)
       phi::funcs::TransDataLayoutFromOneDNN(
           tensor->layout(),
           phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
+=======
+    if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
+      paddle::framework::innerTransDataLayoutFromMKLDNN(
+          tensor->layout(),
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .get_cur_paddle_data_layout(),
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           *tensor,
           &out,
           paddle::platform::CPUPlace(),
@@ -925,8 +1076,11 @@ template void InternalUtils::CopyFromCpuWithIoStream<int8_t>(
     paddle_infer::Tensor *t, const int8_t *data, cudaStream_t stream);
 template void InternalUtils::CopyFromCpuWithIoStream<float16>(
     paddle_infer::Tensor *t, const float16 *data, cudaStream_t stream);
+<<<<<<< HEAD
 template void InternalUtils::CopyFromCpuWithIoStream<bool>(
     paddle_infer::Tensor *t, const bool *data, cudaStream_t stream);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 template void InternalUtils::CopyToCpuWithIoStream<float>(
     paddle_infer::Tensor *t, float *data, cudaStream_t stream);
@@ -940,8 +1094,11 @@ template void InternalUtils::CopyToCpuWithIoStream<int8_t>(
     paddle_infer::Tensor *t, int8_t *data, cudaStream_t stream);
 template void InternalUtils::CopyToCpuWithIoStream<float16>(
     paddle_infer::Tensor *t, float16 *data, cudaStream_t stream);
+<<<<<<< HEAD
 template void InternalUtils::CopyToCpuWithIoStream<bool>(
     paddle_infer::Tensor *t, bool *data, cudaStream_t stream);
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace experimental
 

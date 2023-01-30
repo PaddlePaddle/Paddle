@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
 
 import numpy as np
 
+=======
+import unittest
+
+import os
+import numpy as np
+import tempfile
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -25,6 +33,10 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 @unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -57,6 +69,10 @@ class TestBase(IPUOpTest):
         }
 
     def _test_optimizer(self, run_ipu=True):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def exclude_fn(param):
             return param.name.endswith('.w_0')
 
@@ -69,6 +85,7 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32'
                 )
@@ -79,13 +96,29 @@ class TestBase(IPUOpTest):
                 conv1 = paddle.static.nn.conv2d(
                     add1, num_filters=3, filter_size=3, bias_attr=False
                 )
+=======
+                image = paddle.static.data(name='image',
+                                           shape=[1, 3, 10, 10],
+                                           dtype='float32')
+                bias = paddle.fluid.layers.create_parameter(
+                    shape=[1, 3, 10, 10], is_bias=True, dtype='float32')
+                add1 = image + bias
+                conv1 = paddle.static.nn.conv2d(add1,
+                                                num_filters=3,
+                                                filter_size=3,
+                                                bias_attr=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 loss = paddle.mean(conv1)
                 opt = paddle.optimizer.Lamb(
                     learning_rate=1e-3,
                     lamb_weight_decay=self.attrs['weight_decay'],
+<<<<<<< HEAD
                     exclude_from_weight_decay_fn=exclude_fn,
                 )
+=======
+                    exclude_from_weight_decay_fn=exclude_fn)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 opt.minimize(loss)
 
             if run_ipu:
@@ -102,11 +135,18 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.set_options(
+<<<<<<< HEAD
                     {'loss_scaling': self.attrs["loss_scaling"]}
                 )
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy
                 ).compile(feed_list, fetch_list)
+=======
+                    {'loss_scaling': self.attrs["loss_scaling"]})
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             else:
                 program = main_prog
 
@@ -122,9 +162,16 @@ class TestBase(IPUOpTest):
         ipu_loss = self._test_optimizer(True).flatten()
         cpu_loss = self._test_optimizer(False).flatten()
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             ipu_loss, cpu_loss, rtol=1e-05, atol=self.atol
         )
+=======
+        np.testing.assert_allclose(ipu_loss,
+                                   cpu_loss,
+                                   rtol=1e-05,
+                                   atol=self.atol)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == "__main__":

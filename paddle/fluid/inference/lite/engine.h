@@ -50,7 +50,10 @@ struct EngineConfig {
   std::string autotune_file = "";
   std::string precision = "int16";
   bool adaptive_seqlen = false;
+<<<<<<< HEAD
   bool enable_multi_stream = false;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   // for x86 or arm
   int cpu_math_library_num_threads{1};
@@ -66,12 +69,15 @@ struct EngineConfig {
   std::string nnadapter_subgraph_partition_config_path;
   std::vector<std::string> nnadapter_model_cache_token;
   std::vector<std::vector<char>> nnadapter_model_cache_buffer;
+<<<<<<< HEAD
 
   bool use_opencl{};
   std::string opencl_bin_path = "./";
   std::string opencl_bin_name = "lite_opencl_kernel.bin";
   paddle::lite_api::CLTuneMode opencl_tune_mode{};
   paddle::lite_api::CLPrecisionType opencl_precision_type{};
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 class EngineManager {

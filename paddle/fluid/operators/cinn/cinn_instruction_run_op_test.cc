@@ -39,6 +39,7 @@ namespace paddle::operators {
 
 using framework::paddle2cinn::CinnCompiler;
 
+<<<<<<< HEAD
 class TestCinnInstructionRunOp : public ::testing::Test {
  public:
   const char* test_op_out_name = "test_op_out";
@@ -63,10 +64,58 @@ class TestCinnInstructionRunOp : public ::testing::Test {
         {{"Out", {test_op_out_name}}},
         {{"cached_index", 0}, {"instruction_index", 0}});
     elementwise_add_op =
+=======
+TEST(CinnInstructionOpTest, TestWithElementwiseAdd) {
+  paddle::framework::InitDevices();
+  platform::SetNumThreads(1);
+  // cache test graph into CinnCompiler
+  const std::string& test_op_out_name = "cinn_instruction_run_op_out";
+  const std::string& add_op_out_name = "add_op_out";
+  auto compilation_key = CinnCompiler::GetInstance()->AddGraph(
+      CreateOnlyElementwiseAddGraph("x", "y", test_op_out_name));
+
+  // create necessary ops
+  auto cinn_instruction_run_op = paddle::framework::OpRegistry::CreateOp(
+      "cinn_instruction_run",
+      {{"X", {"x", "y"}}},
+      {{"Out", {test_op_out_name}}},
+      {{"cached_index", 0}, {"instruction_index", 0}});
+
+  auto cinn_launch_op = paddle::framework::OpRegistry::CreateOp(
+      "cinn_launch",
+      {{"X", {"x", "y"}}},
+      {{"Out", {test_op_out_name}}},
+      {{"compilation_key", compilation_key}});
+
+  // check case: a compiled object not cached before cinn_launch_op run,
+  // so a cinn_instruction_run_op will throw an error
+  framework::Scope scope;
+  platform::CPUPlace place;
+  InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
+  scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
+  ASSERT_THROW(cinn_instruction_run_op->Run(scope, place),
+               paddle::platform::EnforceNotMet);
+  // run cinn_launch_op firstly to launch the compilation
+  // of the above graph and cache two compiled results
+  // of both type float and int
+  cinn_launch_op->Run(scope, place);
+  scope.EraseVars({"x", "y", test_op_out_name});
+  scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
+  InitVariablesWithRandomValue<int>({"x", "y"}, {30, 40}, place, &scope);
+  cinn_launch_op->Run(scope, place);
+
+  // Run ops and check the computation results
+  auto run_and_check_fn = [&](const platform::Place& place) {
+    framework::Scope scope;
+    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
+    scope.Var(add_op_out_name)->GetMutable<LoDTensor>();
+    auto elementwise_add_op =
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         paddle::framework::OpRegistry::CreateOp("elementwise_add",
                                                 {{"X", {"x"}}, {"Y", {"y"}}},
                                                 {{"Out", {add_op_out_name}}},
                                                 {{}});
+<<<<<<< HEAD
   }
 
   void Compile(const platform::Place& place) {
@@ -122,5 +171,45 @@ TEST_F(TestCinnInstructionRunOp, GPU) {
   RunAndCheck(place, &scope2);
 }
 #endif
+=======
+
+    // 1. check on type float
+    InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
+    cinn_instruction_run_op->SetAttr("cached_index", 0);
+    cinn_instruction_run_op->Run(scope, place);
+    elementwise_add_op->Run(scope, place);
+    CompareOpResult<float>(scope.GetVar(test_op_out_name),
+                           scope.GetVar(add_op_out_name));
+
+    // 2. check on type int to indicate cinn_instruction_run op
+    // can mutable data according compiled result
+    scope.EraseVars({"x", "y", test_op_out_name, add_op_out_name});
+    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
+    scope.Var(add_op_out_name)->GetMutable<LoDTensor>();
+
+    InitVariablesWithRandomValue<int>({"x", "y"}, {30, 40}, place, &scope);
+    cinn_instruction_run_op->SetAttr("cached_index", 1);
+    cinn_instruction_run_op->Run(scope, place);
+    // need reconstruct elementwise_add_op to choose a new kernel with type int
+    elementwise_add_op =
+        paddle::framework::OpRegistry::CreateOp("elementwise_add",
+                                                {{"X", {"x"}}, {"Y", {"y"}}},
+                                                {{"Out", {add_op_out_name}}},
+                                                {{}});
+    elementwise_add_op->Run(scope, place);
+    CompareOpResult<int>(scope.GetVar(test_op_out_name),
+                         scope.GetVar(add_op_out_name));
+  };
+
+  // CPU
+  run_and_check_fn(platform::CPUPlace());
+  run_and_check_fn(platform::CPUPlace());
+#ifdef PADDLE_WITH_CUDA
+  // GPU
+  run_and_check_fn(platform::CUDAPlace());
+  run_and_check_fn(platform::CUDAPlace());
+#endif
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace paddle::operators

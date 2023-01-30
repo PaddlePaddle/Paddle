@@ -76,7 +76,11 @@ class L1Decay(fluid.regularizer.L1Decay):
     """
 
     def __init__(self, coeff=0.0):
+<<<<<<< HEAD
         super().__init__(coeff)
+=======
+        super(L1Decay, self).__init__(coeff)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class L2Decay(fluid.regularizer.L2Decay):
@@ -137,4 +141,8 @@ class L2Decay(fluid.regularizer.L2Decay):
     """
 
     def __init__(self, coeff=0.0):
+<<<<<<< HEAD
         super().__init__(coeff)
+=======
+        super(L2Decay, self).__init__(coeff)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

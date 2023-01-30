@@ -23,7 +23,10 @@ endif()
 # use to get_property location of static lib
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
+<<<<<<< HEAD
 cmake_policy(SET CMP0079 NEW)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -48,7 +51,10 @@ find_package(CUDA QUIET)
 find_package(MKL CONFIG QUIET)
 option(WITH_ONEMKL "Compile PaddlePaddle with oneMKL" OFF)
 option(WITH_GPU "Compile PaddlePaddle with NVIDIA GPU" ${CUDA_FOUND})
+<<<<<<< HEAD
 option(WITH_MPI "Compile PaddlePaddle with MPI" OFF)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
@@ -269,7 +275,10 @@ option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
 option(WITH_HETERPS "Compile with heterps" OFF})
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
+<<<<<<< HEAD
 option(WITH_INFERENCE_NVTX "Paddle inference with nvtx for profiler" OFF)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 option(PY_VERSION "Compile PaddlePaddle with python3 support" ${PY_VERSION})
 option(WITH_DGC "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(
@@ -304,11 +313,14 @@ option(WITH_RECORD_BUILDTIME
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
+<<<<<<< HEAD
 option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -331,7 +343,11 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
+<<<<<<< HEAD
   set(PY_VERSION 3.7)
+=======
+  set(PY_VERSION 3.6)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
@@ -392,6 +408,7 @@ if(NOT WITH_GPU AND WITH_NCCL)
       CACHE STRING "Disable NCCL when compiling without GPU" FORCE)
 endif()
 
+<<<<<<< HEAD
 if(NOT WITH_GPU AND WITH_CUDNN_DSO)
   message(
     WARNING
@@ -402,6 +419,8 @@ if(NOT WITH_GPU AND WITH_CUDNN_DSO)
       CACHE STRING "Disable cuDNN libraries when compiling without GPU" FORCE)
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # force WITH_XPU on when WITH_XPU_KP
 if(WITH_XPU_KP AND NOT WITH_XPU)
   message(
@@ -527,6 +546,7 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
+<<<<<<< HEAD
 if(WITH_RPC)
   if(NOT LINUX)
     message(
@@ -579,6 +599,8 @@ if(WITH_MPI)
   include(mpi)
 endif()
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 include(third_party
 )# download, build, install third_party, Contains about 20+ dependencies
 

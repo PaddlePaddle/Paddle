@@ -135,22 +135,38 @@ class LSTMOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
 class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+<<<<<<< HEAD
     AddInput(
         "Input",
         "(phi::DenseTensor) the first input is a phi::DenseTensor, which "
         "support variable-time length input sequence. The underlying tensor in "
         "this phi::DenseTensor is a matrix with shape (T X 4D), where T is the "
         "total time steps in this mini-batch, D is the hidden size.");
+=======
+    AddInput("Input",
+             "(LoDTensor) the first input is a LodTensor, which support "
+             "variable-time length input sequence. The underlying tensor in "
+             "this LoDTensor is a matrix with shape (T X 4D), where T is the "
+             "total time steps in this mini-batch, D is the hidden size.");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     AddInput("H0",
              "(Tensor, optional) the initial hidden state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
@@ -176,6 +192,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              " - The shape is (1 x 7D). "
              " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
     AddOutput("Hidden",
+<<<<<<< HEAD
               "(phi::DenseTensor) the hidden state of LSTM operator. "
               "The shape is (T x D), and lod is the same with the `Input`.");
     AddOutput("Cell",
@@ -196,6 +213,25 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("BatchCellPreAct",
               "(phi::DenseTensor) This phi::DenseTensor is obtained in the "
               "forward and used "
+=======
+              "(LoDTensor) the hidden state of LSTM operator. "
+              "The shape is (T x D), and lod is the same with the `Input`.");
+    AddOutput("Cell",
+              "(LoDTensor) the cell state of LSTM operator. "
+              "The shape is (T x D), and lod is the same with the `Input`.");
+    AddOutput("BatchGate",
+              "(LoDTensor) This LoDTensor contains input gate, forget gate "
+              "and output gate after the nonlinear computation. This "
+              "LoDTensor has the same shape as the reorganized input, which "
+              "is also be called batch input. The LoD size is 2. The first "
+              "LoD is the batch offsets and the second LoD contains the "
+              "indexes, which denote the position of reorganized sequence "
+              "in the raw input.")
+        .AsIntermediate()
+        .AsExtra();
+    AddOutput("BatchCellPreAct",
+              "(LoDTensor) This LoDTensor is obtained in the forward and used "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "in the backward.")
         .AsIntermediate()
         .AsExtra();
@@ -303,10 +339,18 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
                           ctx.device_context().GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 

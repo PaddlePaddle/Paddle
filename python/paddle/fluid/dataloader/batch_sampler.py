@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+from __future__ import division
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 import math
 
@@ -37,6 +43,7 @@ class BatchSampler(Sampler):
 
 
     Args:
+<<<<<<< HEAD
         dataset(Dataset, optional): this should be an instance of a subclass of :ref:`api_paddle_io_Dataset` or
                 :ref:`api_paddle_io_IterableDataset` or other python object which implemented
                 :code:`__len__` for BatchSampler to get indices as the
@@ -51,29 +58,62 @@ class BatchSampler(Sampler):
         batch_size(int, optional): sample indice number in a mini-batch indices. default 1, each mini-batch includes 1 sample.
         drop_last(bool, optional): whether drop the last incomplete (less than 1 mini-batch) batch dataset. Default False, keep it.
     see :ref:`api_paddle_io_DataLoader`
+=======
+        dataset(Dataset): this could be a :code:`paddle.io.Dataset` 
+                implement or other python object which implemented
+                :code:`__len__` for BatchSampler to get indices as the
+                range of :attr:`dataset` length. Default None.
+        sampler (Sampler): this could be a :code:`paddle.io.Dataset`
+                instance which implemented :code:`__iter__` to yield
+                sample indices. :attr:`sampler` and :attr:`dataset`
+                can not be set in the same time.  If :attr:`sampler`
+                is set, :attr:`shuffle` should not be set. Default None.
+        shuffle(bool): whether to shuffle indices order before genrating
+                batch indices. Default False.
+        batch_size(int): sample indice number in a mini-batch indices.
+        drop_last(bool): whether drop the last incomplete batch dataset size
+            is not divisible by the batch size. Default False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         BatchSampler: an iterable object for indices iterating
 
     Examples:
+<<<<<<< HEAD
 
         .. code-block:: python
 
+=======
+        
+        .. code-block:: python
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             from paddle.io import RandomSampler, BatchSampler, Dataset
 
             # init with dataset
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
+<<<<<<< HEAD
 
                 def __len__(self):
                     return self.num_samples
 
+=======
+                
+                def __len__(self):
+                    return self.num_samples
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             bs = BatchSampler(dataset=RandomDataset(100),
                               shuffle=False,
                               batch_size=16,
@@ -92,6 +132,7 @@ class BatchSampler(Sampler):
                 print(batch_indices)
 
 
+<<<<<<< HEAD
 
     """
 
@@ -124,11 +165,38 @@ class BatchSampler(Sampler):
             ), "shuffle should be a boolean value, but got {}".format(
                 type(shuffle)
             )
+=======
+    see `paddle.io.DataLoader`
+
+    """
+
+    def __init__(self,
+                 dataset=None,
+                 sampler=None,
+                 shuffle=False,
+                 batch_size=1,
+                 drop_last=False):
+        if dataset is None:
+            assert sampler is not None, \
+                "either dataset or sampler should be set"
+            assert isinstance(sampler, Sampler), \
+                "sampler should be a paddle.io.Sampler, but got {}".format(type(sampler))
+            assert not shuffle, "shuffle should be False when sampler is set"
+            self.sampler = sampler
+        else:
+            assert not isinstance(dataset, IterableDataset), \
+                "dataset should not be a paddle.io.IterableDataset"
+            assert sampler is None, \
+                "should not set both dataset and sampler"
+            assert isinstance(shuffle, bool), \
+                "shuffle should be a boolean value, but got {}".format(type(shuffle))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if shuffle:
                 self.sampler = RandomSampler(dataset)
             else:
                 self.sampler = SequenceSampler(dataset)
 
+<<<<<<< HEAD
         assert (
             isinstance(batch_size, int) and batch_size > 0
         ), "batch_size should be a positive integer, but got {}".format(
@@ -140,6 +208,13 @@ class BatchSampler(Sampler):
         ), "drop_last should be a boolean value, but got {}".format(
             type(drop_last)
         )
+=======
+        assert isinstance(batch_size, int) and batch_size > 0, \
+            "batch_size should be a positive integer, but got {}".format(batch_size)
+        self.batch_size = batch_size
+        assert isinstance(drop_last, bool), \
+            "drop_last should be a boolean value, but got {}".format(type(drop_last))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.drop_last = drop_last
 
     def __iter__(self):
@@ -158,7 +233,12 @@ class BatchSampler(Sampler):
         return num_samples // self.batch_size
 
 
+<<<<<<< HEAD
 class _InfiniteIterableSampler:
+=======
+class _InfiniteIterableSampler(object):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, dataset, batch_size=1):
         assert isinstance(
             dataset, IterableDataset
@@ -174,12 +254,18 @@ class _InfiniteIterableSampler:
 class DistributedBatchSampler(BatchSampler):
     """Sampler that restricts data loading to a subset of the dataset.
 
+<<<<<<< HEAD
     In such case, each process can pass a DistributedBatchSampler instance
     as a DataLoader sampler, and load a subset of the original dataset that
+=======
+    In such case, each process can pass a DistributedBatchSampler instance 
+    as a DataLoader sampler, and load a subset of the original dataset that 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     is exclusive to it.
 
     .. note::
         Dataset is assumed to be of constant size.
+<<<<<<< HEAD
 
     Args:
         dataset(Dataset): this could be an instance of subclass of :ref:`api_paddle_io_Dataset`
@@ -200,6 +286,26 @@ class DistributedBatchSampler(BatchSampler):
 
     Returns:
         DistributedBatchSampler, return an iterable object for indices iterating.
+=======
+        
+    Args:
+        dataset(paddle.io.Dataset): this could be a `paddle.io.Dataset` implement
+                     or other python object which implemented
+                     `__len__` for BatchSampler to get sample
+                     number of data source.
+        batch_size(int): sample indice number in a mini-batch indices.
+        num_replicas(int, optional): porcess number in distributed training.
+            If :attr:`num_replicas` is None, :attr:`num_replicas` will be
+            retrieved from :code:`paddle.distributed.ParallenEnv`.
+            Default None.
+        rank(int, optional): the rank of the current process among :attr:`num_replicas`
+            processes. If :attr:`rank` is None, :attr:`rank` is retrieved from
+            :code:`paddle.distributed.ParallenEnv`. Default None.
+        shuffle(bool): whther to shuffle indices order before genrating
+            batch indices. Default False.
+        drop_last(bool): whether drop the last incomplete batch dataset size
+            is not divisible by the batch size. Default False
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
         .. code-block:: python
@@ -212,15 +318,26 @@ class DistributedBatchSampler(BatchSampler):
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
+<<<<<<< HEAD
 
                 def __len__(self):
                     return self.num_samples
 
+=======
+                
+                def __len__(self):
+                    return self.num_samples
+  
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             dataset = RandomDataset(100)
             sampler = DistributedBatchSampler(dataset, batch_size=64)
 
@@ -229,6 +346,7 @@ class DistributedBatchSampler(BatchSampler):
                 break
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         dataset,
@@ -249,21 +367,50 @@ class DistributedBatchSampler(BatchSampler):
         assert isinstance(
             drop_last, bool
         ), "drop_last should be a boolean number"
+=======
+    def __init__(self,
+                 dataset,
+                 batch_size,
+                 num_replicas=None,
+                 rank=None,
+                 shuffle=False,
+                 drop_last=False):
+        self.dataset = dataset
+
+        assert isinstance(batch_size, int) and batch_size > 0, \
+                "batch_size should be a positive integer"
+        self.batch_size = batch_size
+        assert isinstance(shuffle, bool), \
+                "shuffle should be a boolean value"
+        self.shuffle = shuffle
+        assert isinstance(drop_last, bool), \
+                "drop_last should be a boolean number"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         from paddle.fluid.dygraph.parallel import ParallelEnv
 
         if num_replicas is not None:
+<<<<<<< HEAD
             assert (
                 isinstance(num_replicas, int) and num_replicas > 0
             ), "num_replicas should be a positive integer"
+=======
+            assert isinstance(num_replicas, int) and num_replicas > 0, \
+                    "num_replicas should be a positive integer"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.nranks = num_replicas
         else:
             self.nranks = ParallelEnv().nranks
 
         if rank is not None:
+<<<<<<< HEAD
             assert (
                 isinstance(rank, int) and rank >= 0
             ), "rank should be a non-negative integer"
+=======
+            assert isinstance(rank, int) and rank >= 0, \
+                    "rank should be a non-negative integer"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self.local_rank = rank
         else:
             self.local_rank = ParallelEnv().local_rank
@@ -276,7 +423,11 @@ class DistributedBatchSampler(BatchSampler):
     def __iter__(self):
         num_samples = len(self.dataset)
         indices = np.arange(num_samples).tolist()
+<<<<<<< HEAD
         indices += indices[: (self.total_size - len(indices))]
+=======
+        indices += indices[:(self.total_size - len(indices))]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         assert len(indices) == self.total_size
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)
@@ -289,6 +440,7 @@ class DistributedBatchSampler(BatchSampler):
             assert last_batch_size % self.nranks == 0
             last_local_batch_size = last_batch_size // self.nranks
 
+<<<<<<< HEAD
             for i in range(
                 self.local_rank * self.batch_size,
                 len(indices) - last_batch_size,
@@ -304,6 +456,18 @@ class DistributedBatchSampler(BatchSampler):
                     * last_local_batch_size
                 ]
             )
+=======
+            for i in range(self.local_rank * self.batch_size,
+                           len(indices) - last_batch_size,
+                           self.batch_size * self.nranks):
+                subsampled_indices.extend(indices[i:i + self.batch_size])
+
+            indices = indices[len(indices) - last_batch_size:]
+            subsampled_indices.extend(
+                indices[self.local_rank *
+                        last_local_batch_size:(self.local_rank + 1) *
+                        last_local_batch_size])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             return subsampled_indices
 
         if self.nranks > 1:
@@ -339,20 +503,33 @@ class DistributedBatchSampler(BatchSampler):
 
         Examples:
             .. code-block:: python
+<<<<<<< HEAD
 
                 import numpy as np
 
                 from paddle.io import Dataset, DistributedBatchSampler
 
+=======
+    
+                import numpy as np
+    
+                from paddle.io import Dataset, DistributedBatchSampler
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 # init with dataset
                 class RandomDataset(Dataset):
                     def __init__(self, num_samples):
                         self.num_samples = num_samples
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     def __getitem__(self, idx):
                         image = np.random.random([784]).astype('float32')
                         label = np.random.randint(0, 9, (1, )).astype('int64')
                         return image, label
+<<<<<<< HEAD
 
                     def __len__(self):
                         return self.num_samples
@@ -360,6 +537,15 @@ class DistributedBatchSampler(BatchSampler):
                 dataset = RandomDataset(100)
                 sampler = DistributedBatchSampler(dataset, batch_size=64)
 
+=======
+                    
+                    def __len__(self):
+                        return self.num_samples
+      
+                dataset = RandomDataset(100)
+                sampler = DistributedBatchSampler(dataset, batch_size=64)
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 for epoch in range(10):
                     sampler.set_epoch(epoch)
         """

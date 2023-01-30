@@ -18,7 +18,10 @@ limitations under the License. */
 #include <map>
 #include <mutex>
 #include <string>
+<<<<<<< HEAD
 #include <vector>
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #include "paddle/phi/core/utils/type_info.h"
 

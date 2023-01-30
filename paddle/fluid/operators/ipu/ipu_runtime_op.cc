@@ -35,8 +35,13 @@ class IpuRuntimeOp : public framework::OperatorBase {
     auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     framework::RuntimeContext runtime_ctx(inputs_, outputs_, scope);
     framework::ExecutionContext ctx(*this, scope, *dev_ctx, runtime_ctx);
+<<<<<<< HEAD
     auto inputs = ctx.MultiInput<phi::DenseTensor>("FeedList");
     auto outputs = ctx.MultiOutput<phi::DenseTensor>("FetchList");
+=======
+    auto inputs = ctx.MultiInput<framework::Tensor>("FeedList");
+    auto outputs = ctx.MultiOutput<framework::Tensor>("FetchList");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto output_names = ctx.OutputNames("FetchList");
     VLOG(4) << "IpuRuntime Kernel, begin to run graph";
     ipu_backend->Run(inputs, outputs, ctx);
@@ -46,7 +51,11 @@ class IpuRuntimeOp : public framework::OperatorBase {
     for (size_t i = 0; i < outputs.size(); ++i) {
       auto* out = outputs[i];
       if (out->dims().size() == 0) {
+<<<<<<< HEAD
         auto sizeof_dtype = phi::SizeOf(out->dtype());
+=======
+        auto sizeof_dtype = framework::DataTypeSize(out->dtype());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         int64_t dim = out->memory_size() / sizeof_dtype;
         out->Resize({dim});
         VLOG(10) << "set ipu_runtime_op output: " << output_names[i]

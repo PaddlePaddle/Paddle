@@ -11,8 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 
 import numpy as np
+=======
+from __future__ import absolute_import, division, print_function
+
+import numpy as np
+import random
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 SEED = 2020
 
@@ -35,7 +42,11 @@ def get_bert_config():
         "pooler_size_per_head": 8,
         "pooler_type": "first_token_transform",
         "type_vocab_size": 2,
+<<<<<<< HEAD
         "vocab_size": 21128,
+=======
+        "vocab_size": 21128
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     return bert_config
 
@@ -87,9 +98,14 @@ def mask(batch_tokens, total_token_num, vocab_size, CLS=1, SEP=2, MASK=3):
 
         # ensure at least mask one word in a sentence
         while not mask_flag:
+<<<<<<< HEAD
             token_index = int(
                 self_random.randint(1, high=len(sent) - 1, size=1)
             )
+=======
+            token_index = int(self_random.randint(1, high=len(sent) - 1,
+                                                  size=1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if sent[token_index] != SEP and sent[token_index] != CLS:
                 mask_label.append(sent[token_index])
                 sent[token_index] = MASK
@@ -100,6 +116,7 @@ def mask(batch_tokens, total_token_num, vocab_size, CLS=1, SEP=2, MASK=3):
     return batch_tokens, mask_label, mask_pos
 
 
+<<<<<<< HEAD
 def pad_batch_data(
     insts,
     pad_idx=0,
@@ -108,6 +125,14 @@ def pad_batch_data(
     return_max_len=False,
     return_num_token=False,
 ):
+=======
+def pad_batch_data(insts,
+                   pad_idx=0,
+                   return_pos=False,
+                   return_input_mask=False,
+                   return_max_len=False,
+                   return_num_token=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     Pad the instances to the max sequence length in batch, and generate the
     corresponding position data and input mask.
@@ -117,27 +142,44 @@ def pad_batch_data(
     # Any token included in dict can be used to pad, since the paddings' loss
     # will be masked out by weights and make no effect on parameter gradients.
 
+<<<<<<< HEAD
     inst_data = np.array(
         [list(inst) + list([pad_idx] * (max_len - len(inst))) for inst in insts]
     )
+=======
+    inst_data = np.array([
+        list(inst) + list([pad_idx] * (max_len - len(inst))) for inst in insts
+    ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return_list += [inst_data.astype("int64").reshape([-1, max_len])]
 
     # position data
     if return_pos:
+<<<<<<< HEAD
         inst_pos = np.array(
             [
                 list(range(0, len(inst))) + [pad_idx] * (max_len - len(inst))
                 for inst in insts
             ]
         )
+=======
+        inst_pos = np.array([
+            list(range(0, len(inst))) + [pad_idx] * (max_len - len(inst))
+            for inst in insts
+        ])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return_list += [inst_pos.astype("int64").reshape([-1, max_len])]
 
     if return_input_mask:
         # This is used to avoid attention on paddings.
         input_mask_data = np.array(
+<<<<<<< HEAD
             [[1] * len(inst) + [0] * (max_len - len(inst)) for inst in insts]
         )
+=======
+            [[1] * len(inst) + [0] * (max_len - len(inst)) for inst in insts])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         input_mask_data = np.expand_dims(input_mask_data, axis=-1)
         return_list += [input_mask_data.astype("float32")]
 
@@ -153,6 +195,7 @@ def pad_batch_data(
     return return_list if len(return_list) > 1 else return_list[0]
 
 
+<<<<<<< HEAD
 def prepare_batch_data(
     insts,
     total_token_num,
@@ -165,6 +208,18 @@ def prepare_batch_data(
     return_max_len=True,
     return_num_token=False,
 ):
+=======
+def prepare_batch_data(insts,
+                       total_token_num,
+                       voc_size=0,
+                       pad_id=None,
+                       cls_id=None,
+                       sep_id=None,
+                       mask_id=None,
+                       return_input_mask=True,
+                       return_max_len=True,
+                       return_num_token=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     1. generate Tensor of data
     2. generate Tensor of position
@@ -183,6 +238,7 @@ def prepare_batch_data(
 
     # First step: do mask without padding
     if mask_id >= 0:
+<<<<<<< HEAD
         out, mask_label, mask_pos = mask(
             batch_src_ids,
             total_token_num,
@@ -215,6 +271,32 @@ def prepare_batch_data(
             self_input_mask,
             mask_label,
             mask_pos,
+=======
+        out, mask_label, mask_pos = mask(batch_src_ids,
+                                         total_token_num,
+                                         vocab_size=voc_size,
+                                         CLS=cls_id,
+                                         SEP=sep_id,
+                                         MASK=mask_id)
+    else:
+        out = batch_src_ids
+    # Second step: padding
+    src_id, self_input_mask = pad_batch_data(out,
+                                             pad_idx=pad_id,
+                                             return_input_mask=True)
+    pos_id = pad_batch_data(batch_pos_ids,
+                            pad_idx=pad_id,
+                            return_pos=False,
+                            return_input_mask=False)
+    sent_id = pad_batch_data(batch_sent_ids,
+                             pad_idx=pad_id,
+                             return_pos=False,
+                             return_input_mask=False)
+
+    if mask_id >= 0:
+        return_list = [
+            src_id, pos_id, sent_id, self_input_mask, mask_label, mask_pos
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ] + labels_list
     else:
         return_list = [src_id, pos_id, sent_id, self_input_mask] + labels_list
@@ -223,6 +305,7 @@ def prepare_batch_data(
     return res
 
 
+<<<<<<< HEAD
 class DataReader:
     def __init__(
         self,
@@ -235,6 +318,19 @@ class DataReader:
         is_test=False,
         generate_neg_sample=False,
     ):
+=======
+class DataReader(object):
+
+    def __init__(self,
+                 batch_size=4096,
+                 in_tokens=True,
+                 max_seq_len=512,
+                 shuffle_files=False,
+                 epoch=100,
+                 voc_size=0,
+                 is_test=False,
+                 generate_neg_sample=False):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         self.batch_size = batch_size
         self.in_tokens = in_tokens
@@ -254,10 +350,15 @@ class DataReader:
         self.is_test = is_test
         self.generate_neg_sample = generate_neg_sample
         if self.in_tokens:
+<<<<<<< HEAD
             assert self.batch_size >= self.max_seq_len, (
                 "The number of "
                 "tokens in batch should not be smaller than max seq length."
             )
+=======
+            assert self.batch_size >= self.max_seq_len, "The number of " \
+                                                        "tokens in batch should not be smaller than max seq length."
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self.is_test:
             self.epoch = 1
@@ -272,6 +373,7 @@ class DataReader:
             sent0_len = self_random.randint(50, 100)
             sent1_len = self_random.randint(50, 100)
 
+<<<<<<< HEAD
             token_ids = (
                 [1]
                 + [self_random.randint(0, 10000) for i in range(sent0_len - 1)]
@@ -282,12 +384,27 @@ class DataReader:
             sent_ids = [0 for i in range(sent0_len)] + [
                 1 for i in range(sent1_len)
             ]
+=======
+            token_ids = [1] \
+                        + [self_random.randint(0, 10000) for i in range(sent0_len-1)] \
+                        + [self_random.randint(0, 10000) for i in range(sent1_len-1)] \
+                        + [2]
+
+            sent_ids = [0 for i in range(sent0_len)
+                        ] + [1 for i in range(sent1_len)]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             pos_ids = [i for i in range(sent0_len + sent1_len)]
             label = 1
             yield token_ids, sent_ids, pos_ids, label
 
     def data_generator(self):
+<<<<<<< HEAD
         def wrapper():
+=======
+
+        def wrapper():
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             def reader():
                 for epoch in range(self.epoch):
                     self.current_epoch = epoch + 1
@@ -311,16 +428,23 @@ class DataReader:
                         total_token_num += len(token_ids)
                     else:
                         yield batch, total_token_num
+<<<<<<< HEAD
                         batch, total_token_num, max_len = (
                             [parsed_line],
                             len(token_ids),
                             len(token_ids),
                         )
+=======
+                        batch, total_token_num, max_len = [
+                            parsed_line
+                        ], len(token_ids), len(token_ids)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
                 if len(batch) > 0:
                     yield batch, total_token_num
 
             for batch_data, total_token_num in batch_reader(
+<<<<<<< HEAD
                 reader, self.batch_size, self.in_tokens
             ):
                 yield prepare_batch_data(
@@ -335,11 +459,28 @@ class DataReader:
                     return_max_len=False,
                     return_num_token=False,
                 )
+=======
+                    reader, self.batch_size, self.in_tokens):
+                yield prepare_batch_data(batch_data,
+                                         total_token_num,
+                                         voc_size=self.voc_size,
+                                         pad_id=self.pad_id,
+                                         cls_id=self.cls_id,
+                                         sep_id=self.sep_id,
+                                         mask_id=self.mask_id,
+                                         return_input_mask=True,
+                                         return_max_len=False,
+                                         return_num_token=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return wrapper
 
 
+<<<<<<< HEAD
 class ModelHyperParams:
+=======
+class ModelHyperParams(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     generate_neg_sample = False
     epoch = 100
     max_seq_len = 512
@@ -349,6 +490,7 @@ class ModelHyperParams:
 
 def get_feed_data_reader(bert_config):
     args = ModelHyperParams()
+<<<<<<< HEAD
     data_reader = DataReader(
         batch_size=args.batch_size,
         in_tokens=args.in_tokens,
@@ -357,5 +499,13 @@ def get_feed_data_reader(bert_config):
         max_seq_len=args.max_seq_len,
         generate_neg_sample=args.generate_neg_sample,
     )
+=======
+    data_reader = DataReader(batch_size=args.batch_size,
+                             in_tokens=args.in_tokens,
+                             voc_size=bert_config['vocab_size'],
+                             epoch=args.epoch,
+                             max_seq_len=args.max_seq_len,
+                             generate_neg_sample=args.generate_neg_sample)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     return data_reader

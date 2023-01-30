@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import warnings
 
 import paddle
@@ -19,6 +20,14 @@ from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.framework import no_grad
 from paddle.nn.layer.norm import _BatchNormBase
+=======
+import paddle
+import warnings
+from paddle.nn.layer.norm import _BatchNormBase
+from paddle.framework import no_grad
+from paddle import _C_ops, in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 class BatchNorm(paddle.nn.BatchNorm1D):
@@ -62,11 +71,19 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+<<<<<<< HEAD
             will create ParamAttr as weight_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
+=======
+            will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
+            If it is set to None or one attribute of ParamAttr, batch_norm
+            will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Default "NCL".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
@@ -78,7 +95,11 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 
     Returns:
         None.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Examples:
         .. code-block:: python
@@ -107,7 +128,11 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         use_global_stats=None,
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(BatchNorm, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             num_features,
             momentum=momentum,
             epsilon=epsilon,
@@ -130,7 +155,11 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 "When training, we now always track global mean and variance."
             )
 
+<<<<<<< HEAD
         if self._use_global_stats is None:
+=======
+        if self._use_global_stats == None:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             self._use_global_stats = not self.training
             trainable_statistics = False
         else:
@@ -139,6 +168,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         data_format = 'NCHW' if self._data_format[1] == 'C' else 'NHWC'
 
         if in_dynamic_mode():
+<<<<<<< HEAD
             batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm_(
                 input,
                 self._mean,
@@ -151,6 +181,21 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 data_format,
                 self._use_global_stats,
                 trainable_statistics,
+=======
+            batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm(
+                input,
+                self.weight,
+                self.bias,
+                self._mean,
+                self._variance,
+                self._momentum,
+                self._epsilon,
+                data_format,
+                not self.training,
+                self._use_global_stats,
+                trainable_statistics,
+                False,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             )
             return batch_norm_out
         else:
@@ -197,6 +242,10 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 "saved_variance": saved_variance,
                 "reserve_space": reserve_space,
             }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             helper.append_op(
                 type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
             )
@@ -206,8 +255,13 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 class SyncBatchNorm(paddle.nn.SyncBatchNorm):
     r"""
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
+<<<<<<< HEAD
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can
     be used as a normalizer function for other operations, such as conv2d and fully connected
+=======
+    It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
+    be used as a normalizer function for other operations, such as conv2d and fully connected 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     operations.
     The data is normalized by the mean and variance of the channel based on whole mini-batch
     , which including data in all gpus.
@@ -215,7 +269,11 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
+<<<<<<< HEAD
     When model in training mode, the :math:`\\mu_{\\beta}`
+=======
+    When model in training mode, the :math:`\\mu_{\\beta}` 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
     Calculated as follows:
 
@@ -230,7 +288,11 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
     - :math:`m` : the size of the whole mini-batch data
 
     When model in evaluation mode, the :math:`\\mu_{\\beta}`
+<<<<<<< HEAD
     and :math:`\sigma_{\beta}^{2}` are global statistics (moving_mean and moving_variance,
+=======
+    and :math:`\sigma_{\beta}^{2}` are global statistics (moving_mean and moving_variance, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     which usually got from the pre-trained model). Global statistics calculated as follows:
 
     .. math::
@@ -238,7 +300,11 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global \ variance \\
 
     The formula of normalization is as follows:
+<<<<<<< HEAD
 
+=======
+ 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     ..  math::
 
         \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
@@ -247,12 +313,21 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
     - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
     - :math:`\gamma` : trainable scale parameter vector
+<<<<<<< HEAD
     - :math:`\beta` : trainable shift parameter vector
 
     Note:
         If you want to use container to pack your model and has ``SyncBatchNorm`` in the
         evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of
         ``list`` to pack the model.
+=======
+    - :math:`\beta` : trainable shift parameter vector 
+
+    Note:
+        If you want to use container to pack your model and has ``SyncBatchNorm`` in the 
+        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of 
+        ``list`` to pack the model. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -261,12 +336,20 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of this layer. If it is set to None or one attribute of ParamAttr, this layerr
              will create ParamAttr as param_attr. If the Initializer of the param_attr
+<<<<<<< HEAD
              is not set, the parameter is initialized with Xavier. If it is set to False,
+=======
+             is not set, the parameter is initialized with Xavier. If it is set to False, 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              this layer will not have trainable scale parameter. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of this layer.
              If it is set to None or one attribute of ParamAttr, this layer
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+<<<<<<< HEAD
              is not set, the bias is initialized zero. If it is set to False, this layer will not
+=======
+             is not set, the bias is initialized zero. If it is set to False, this layer will not 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              have trainable bias parameter. Default: None.
         data_format(str, optional): Specify the input data format, may be "NCHW". Default "NCHW".
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
@@ -310,7 +393,11 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         data_format='NCHW',
         name=None,
     ):
+<<<<<<< HEAD
         super().__init__(
+=======
+        super(SyncBatchNorm, self).__init__(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             num_features,
             momentum,
             epsilon,
@@ -324,6 +411,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         self._check_data_format()
         sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm_(
             x,
+<<<<<<< HEAD
             self._mean,
             self._variance,
             self.weight,
@@ -332,6 +420,17 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
             self._momentum,
             self._epsilon,
             self._data_format,
+=======
+            self.weight,
+            self.bias,
+            self._mean,
+            self._variance,
+            self._momentum,
+            self._epsilon,
+            self._data_format,
+            not self.training,
+            False,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             False,
             False,
         )
@@ -362,6 +461,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
             if (
+<<<<<<< HEAD
                 layer._weight_attr is not None
                 and not isinstance(layer._weight_attr, bool)
                 and layer._weight_attr.name is not None
@@ -371,6 +471,17 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
                 layer._bias_attr is not None
                 and not isinstance(layer._bias_attr, bool)
                 and layer._bias_attr.name is not None
+=======
+                layer._weight_attr != None
+                and not isinstance(layer._weight_attr, bool)
+                and layer._weight_attr.name != None
+            ):
+                layer._weight_attr.name = layer._weight_attr.name + '_sync'
+            if (
+                layer._bias_attr != None
+                and not isinstance(layer._bias_attr, bool)
+                and layer._bias_attr.name != None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ):
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
@@ -397,10 +508,14 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
                     layer._name,
                 )
 
+<<<<<<< HEAD
             if (
                 layer._weight_attr is not False
                 and layer._bias_attr is not False
             ):
+=======
+            if layer._weight_attr != False and layer._bias_attr != False:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 with no_grad():
                     layer_output.weight = layer.weight
                     layer_output.bias = layer.bias

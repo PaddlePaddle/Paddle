@@ -28,6 +28,10 @@ void LayerNormGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
                          float epsilon,
                          int begin_norm_axis,
+<<<<<<< HEAD
+=======
+                         bool is_test,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad);

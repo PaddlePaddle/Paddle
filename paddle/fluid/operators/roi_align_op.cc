@@ -20,15 +20,29 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 class ROIAlignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -50,10 +64,18 @@ class ROIAlignGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "ROIs"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "ROIs"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -68,9 +90,15 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
+<<<<<<< HEAD
              "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D phi::DenseTensor of shape (num_rois, 4)"
+=======
+             "(LoDTensor), "
+             "ROIs (Regions of Interest) to pool over. "
+             "should be a 2-D LoDTensor of shape (num_rois, 4)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -111,17 +139,28 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
 **RoIAlign Operator**
 
 Region of interest align (also known as RoI align) is to perform
+<<<<<<< HEAD
 bilinear interpolation on inputs of nonuniform sizes to obtain
+=======
+bilinear interpolation on inputs of nonuniform sizes to obtain 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 fixed-size feature maps (e.g. 7*7)
 
 Dividing each region proposal into equal-sized sections with
 the pooled_width and pooled_height. Location remains the origin
 result.
 
+<<<<<<< HEAD
 In each ROI bin, the value of the four regularly sampled locations
 are computed directly through bilinear interpolation. The output is
 the mean of four locations.
 Thus avoid the misaligned problem.
+=======
+In each ROI bin, the value of the four regularly sampled locations 
+are computed directly through bilinear interpolation. The output is
+the mean of four locations.
+Thus avoid the misaligned problem.   
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     )DOC");
   }
 };

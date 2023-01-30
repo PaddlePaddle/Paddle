@@ -15,6 +15,7 @@
 TestCases for Dataset consistency insepection of use_var_list and data_generator.
 """
 
+<<<<<<< HEAD
 import math
 import os
 import tempfile
@@ -25,10 +26,28 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.data_generator as dg
 
 # paddle.enable_static()
+=======
+from __future__ import print_function
+import paddle
+import paddle.fluid as fluid
+import paddle.compat as cpt
+import paddle.fluid.core as core
+import numpy as np
+import random
+import math
+import os
+import shutil
+import tempfile
+import unittest
+import paddle.fluid.incubate.data_generator as dg
+
+#paddle.enable_static()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 # fluid.disable_dygraph()
 fluid.disable_dygraph()
 url_schema_len = 5
 query_schema = [
+<<<<<<< HEAD
     'Q_query_basic',
     'Q_query_phrase',
     'Q_quq',
@@ -48,33 +67,62 @@ query_schema = [
     'Q_context_site3',
     'Q_context_site4',
     'Q_context_site5',
+=======
+    'Q_query_basic', 'Q_query_phrase', 'Q_quq', 'Q_timelevel',
+    'Q_context_title_basic1', 'Q_context_title_basic2',
+    'Q_context_title_basic3', 'Q_context_title_basic4',
+    'Q_context_title_basic5', 'Q_context_title_phrase1',
+    'Q_context_title_phrase2', 'Q_context_title_phrase3',
+    'Q_context_title_phrase4', 'Q_context_title_phrase5', 'Q_context_site1',
+    'Q_context_site2', 'Q_context_site3', 'Q_context_site4', 'Q_context_site5'
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]
 
 
 class CTRDataset(dg.MultiSlotDataGenerator):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, mode):
         self.test = mode
 
     def generate_sample(self, line):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def reader():
             ins = line.strip().split(';')
             label_pos_num = int(ins[1].split(' ')[0])
             label_neg_num = int(ins[1].split(' ')[1])
 
+<<<<<<< HEAD
             # query fea parse
+=======
+            #query fea parse
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             bias = 2
             query_len = 0
             sparse_query_feature = []
             for index in range(len(query_schema)):
                 pos = index + bias
                 sparse_query_feature.append(
+<<<<<<< HEAD
                     [int(x) for x in ins[pos].split(' ')]
                 )
+=======
+                    [int(x) for x in ins[pos].split(' ')])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 if index == 0:
                     query_len = len(ins[pos].split(' '))
                     query_len = 1.0 / (1 + pow(2.7182818, 3 - 1.0 * query_len))
 
+<<<<<<< HEAD
             # positive url fea parse
+=======
+            #positive url fea parse
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             bias = 2 + len(query_schema)
             pos_url_feas = []
             pos_click_feas = []
@@ -85,12 +133,18 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                 for index in range(url_schema_len - 1):
                     pos = bias + k * (url_schema_len) + index
                     pos_url_fea.append([int(x) for x in ins[pos].split(' ')])
+<<<<<<< HEAD
                 # click info
                 if ins[pos + 1] == '':
+=======
+                #click info
+                if (ins[pos + 1] == ''):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     continue
                 item = ins[pos + 1].split(' ')
                 if len(item) != 17:
                     continue
+<<<<<<< HEAD
                 stat_fea = [
                     [max(float(item[i]), 0.0)]
                     for i in range(len(item))
@@ -103,6 +157,10 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         or i == 16
                     )
                 ]
+=======
+                stat_fea = [[max(float(item[i]), 0.0)] for i in range(len(item)) \
+                            if not (i == 5 or i == 9 or i == 13 or i == 14 or i ==15 or i ==16)]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 pos_url_feas.append(pos_url_fea)
                 pos_click_feas.append(stat_fea)
 
@@ -112,7 +170,11 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                 pos_context_fea = [[query_serach], [query_len]]
                 pos_context_feas.append(pos_context_fea)
 
+<<<<<<< HEAD
             # negative url fea parse
+=======
+            #negative url fea parse
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             bias = 2 + len(query_schema) + label_pos_num * (url_schema_len)
             neg_url_feas = []
             neg_click_feas = []
@@ -123,6 +185,7 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                 for index in range(url_schema_len - 1):
                     pos = bias + k * (url_schema_len) + index
                     neg_url_fea.append([int(x) for x in ins[pos].split(' ')])
+<<<<<<< HEAD
                 if ins[pos + 1] == '':
                     continue
                 item = ins[pos + 1].split(' ')
@@ -142,6 +205,17 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         or i == 16
                     )
                 ]
+=======
+                if (ins[pos + 1] == ''):
+                    continue
+                item = ins[pos + 1].split(' ')
+                #zdf_tmp
+                if len(item) != 17:
+                    continue
+                    #print ins[pos + 1]
+                stat_fea = [[max(float(item[i]), 0.0)] for i in range(len(item)) \
+                            if not (i == 5 or i == 9 or i == 13 or i == 14 or i == 15 or i == 16)]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 neg_click_feas.append(stat_fea)
                 neg_url_feas.append(neg_url_fea)
 
@@ -151,7 +225,11 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                 neg_context_fea = [[query_serach], [query_len]]
                 neg_context_feas.append(neg_context_fea)
 
+<<<<<<< HEAD
             # make train data
+=======
+            #make train data
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             if self.test == 1:
                 for p in range(len(pos_url_feas)):
                     # feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2]
@@ -161,6 +239,7 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                     pos_url_fea = pos_url_feas[p]
                     pos_click_fea = pos_click_feas[p]
                     pos_context_fea = pos_context_feas[p]
+<<<<<<< HEAD
                     yield zip(
                         feature_name,
                         [[1]]
@@ -172,6 +251,11 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         + pos_click_fea
                         + pos_context_fea,
                     )
+=======
+                    yield zip(feature_name, [[1]] + sparse_query_feature +
+                              pos_url_fea + pos_click_fea + pos_context_fea +
+                              pos_url_fea + pos_click_fea + pos_context_fea)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 for n in range(len(neg_url_feas)):
                     feature_name = ["click"]
                     for i in range(1, 54):
@@ -179,6 +263,7 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                     neg_url_fea = neg_url_feas[n]
                     neg_click_fea = neg_click_feas[n]
                     neg_context_fea = neg_context_feas[n]
+<<<<<<< HEAD
                     yield zip(
                         feature_name,
                         [[0]]
@@ -199,6 +284,20 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                     # print("#######")
                     # print(feature_name)
                     # print("#######")
+=======
+                    yield zip(feature_name, [[0]] + sparse_query_feature +
+                              neg_url_fea + neg_click_fea + neg_context_fea +
+                              neg_url_fea + neg_click_fea + neg_context_fea)
+            elif self.test == 0:
+                for p in range(len(pos_url_feas)):
+                    #feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2] + url_schema[4:] + click_info_schema[11:] + context_schema[2:]
+                    feature_name = ["click"]
+                    for i in range(1, 54):
+                        feature_name.append(str(i))
+                    #print("#######")
+                    #print(feature_name)
+                    #print("#######")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     pos_url_fea = pos_url_feas[p]
                     pos_click_fea = pos_click_feas[p]
                     pos_context_fea = pos_context_feas[p]
@@ -208,6 +307,7 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         neg_url_fea = neg_url_feas[n]
                         neg_click_fea = neg_click_feas[n]
                         neg_context_fea = neg_context_feas[n]
+<<<<<<< HEAD
                         # print("q:", query_feas)
                         # print("pos:", pos_url_fea)
                         # print("neg:", neg_url_fea)
@@ -234,6 +334,23 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                     # print("#######")
                     # print(feature_name)
                     # print("#######")
+=======
+                        #print("q:", query_feas)
+                        #print("pos:", pos_url_fea)
+                        #print("neg:", neg_url_fea)
+                        # yield zip(feature_name[:3], sparse_query_feature[:3])
+                        yield list(zip(feature_name, [[1]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
+            elif self.test == 2:
+                for p in range(len(pos_url_feas)):
+                    #feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2] + url_schema[4:] + click_info_schema[11:] + context_schema[2:]
+                    feature_name = ["click"]
+                    for i in range(1, 54):
+                        feature_name.append(str(i))
+                    #print("#######")
+                    #print(feature_name)
+                    #print("#######")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     pos_url_fea = pos_url_feas[p]
                     pos_click_fea = pos_click_feas[p]
                     pos_context_fea = pos_context_feas[p]
@@ -243,6 +360,7 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         neg_url_fea = neg_url_feas[n]
                         neg_click_fea = neg_click_feas[n]
                         neg_context_fea = neg_context_feas[n]
+<<<<<<< HEAD
                         # print("q:", query_feas)
                         # print("pos:", pos_url_fea)
                         # print("neg:", neg_url_fea)
@@ -269,6 +387,23 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                     # print("#######")
                     # print(feature_name)
                     # print("#######")
+=======
+                        #print("q:", query_feas)
+                        #print("pos:", pos_url_fea)
+                        #print("neg:", neg_url_fea)
+                        # yield zip(feature_name[:3], sparse_query_feature[:3])
+                        yield list(zip(feature_name, [[1], [2]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
+            elif self.test == 3:
+                for p in range(len(pos_url_feas)):
+                    #feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2] + url_schema[4:] + click_info_schema[11:] + context_schema[2:]
+                    feature_name = ["click"]
+                    for i in range(1, 54):
+                        feature_name.append(str(i))
+                    #print("#######")
+                    #print(feature_name)
+                    #print("#######")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     pos_url_fea = pos_url_feas[p]
                     pos_click_fea = pos_click_feas[p]
                     pos_context_fea = pos_context_feas[p]
@@ -278,6 +413,7 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         neg_url_fea = neg_url_feas[n]
                         neg_click_fea = neg_click_feas[n]
                         neg_context_fea = neg_context_feas[n]
+<<<<<<< HEAD
                         # print("q:", query_feas)
                         # print("pos:", pos_url_fea)
                         # print("neg:", neg_url_fea)
@@ -304,6 +440,23 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                     # print("#######")
                     # print(feature_name)
                     # print("#######")
+=======
+                        #print("q:", query_feas)
+                        #print("pos:", pos_url_fea)
+                        #print("neg:", neg_url_fea)
+                        # yield zip(feature_name[:3], sparse_query_feature[:3])
+                        yield list(zip(feature_name, [[1], [2.0]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
+            elif self.test == 4:
+                for p in range(len(pos_url_feas)):
+                    #feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2] + url_schema[4:] + click_info_schema[11:] + context_schema[2:]
+                    feature_name = ["click"]
+                    for i in range(1, 54):
+                        feature_name.append(str(i))
+                    #print("#######")
+                    #print(feature_name)
+                    #print("#######")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     pos_url_fea = pos_url_feas[p]
                     pos_click_fea = pos_click_feas[p]
                     pos_context_fea = pos_context_feas[p]
@@ -313,6 +466,7 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         neg_url_fea = neg_url_feas[n]
                         neg_click_fea = neg_click_feas[n]
                         neg_context_fea = neg_context_feas[n]
+<<<<<<< HEAD
                         # print("q:", query_feas)
                         # print("pos:", pos_url_fea)
                         # print("neg:", neg_url_fea)
@@ -339,6 +493,23 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                     # print("#######")
                     # print(feature_name)
                     # print("#######")
+=======
+                        #print("q:", query_feas)
+                        #print("pos:", pos_url_fea)
+                        #print("neg:", neg_url_fea)
+                        # yield zip(feature_name[:3], sparse_query_feature[:3])
+                        yield list(zip(feature_name, [[], [2.0]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
+            elif self.test == 5:
+                for p in range(len(pos_url_feas)):
+                    #feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2] + url_schema[4:] + click_info_schema[11:] + context_schema[2:]
+                    feature_name = ["click"]
+                    for i in range(1, 54):
+                        feature_name.append(str(i))
+                    #print("#######")
+                    #print(feature_name)
+                    #print("#######")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     pos_url_fea = pos_url_feas[p]
                     pos_click_fea = pos_click_feas[p]
                     pos_context_fea = pos_context_feas[p]
@@ -348,6 +519,7 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         neg_url_fea = neg_url_feas[n]
                         neg_click_fea = neg_click_feas[n]
                         neg_context_fea = neg_context_feas[n]
+<<<<<<< HEAD
                         # print("q:", query_feas)
                         # print("pos:", pos_url_fea)
                         # print("neg:", neg_url_fea)
@@ -364,12 +536,24 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                                 + neg_context_fea,
                             )
                         )
+=======
+                        #print("q:", query_feas)
+                        #print("pos:", pos_url_fea)
+                        #print("neg:", neg_url_fea)
+                        # yield zip(feature_name[:3], sparse_query_feature[:3])
+                        yield list(zip(feature_name, sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return reader
 
 
 class TestDataset(unittest.TestCase):
+<<<<<<< HEAD
     """TestCases for Dataset."""
+=======
+    """  TestCases for Dataset. """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def setUp(self):
         pass
@@ -394,18 +578,27 @@ class TestDataset(unittest.TestCase):
             f.write(data)
 
         slot_data = []
+<<<<<<< HEAD
         label = paddle.static.data(
             name="click",
             shape=[-1, 1],
             dtype="int64",
             lod_level=0,
         )
+=======
+        label = fluid.layers.data(name="click",
+                                  shape=[-1, 1],
+                                  dtype="int64",
+                                  lod_level=0,
+                                  append_batch_size=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         slot_data.append(label)
 
         # sprase_query_feat_names
         len_sparse_query = 19
         for feat_name in range(1, len_sparse_query + 1):
             slot_data.append(
+<<<<<<< HEAD
                 paddle.static.data(
                     name=str(feat_name),
                     shape=[-1, 1],
@@ -413,10 +606,17 @@ class TestDataset(unittest.TestCase):
                     lod_level=1,
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # sparse_url_feat_names
         for feat_name in range(len_sparse_query + 1, len_sparse_query + 5):
             slot_data.append(
+<<<<<<< HEAD
                 paddle.static.data(
                     name=str(feat_name),
                     shape=[-1, 1],
@@ -424,26 +624,45 @@ class TestDataset(unittest.TestCase):
                     lod_level=1,
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # dense_feat_names
         for feat_name in range(len_sparse_query + 5, len_sparse_query + 16):
             slot_data.append(
+<<<<<<< HEAD
                 paddle.static.data(
                     name=str(feat_name), shape=[-1, 1], dtype='float32'
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # context_feat_namess
         for feat_name in range(len_sparse_query + 16, len_sparse_query + 18):
             slot_data.append(
+<<<<<<< HEAD
                 paddle.static.data(
                     name=str(feat_name), shape=[-1, 1], dtype='float32'
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # neg sparse_url_feat_names
         for feat_name in range(len_sparse_query + 18, len_sparse_query + 22):
             slot_data.append(
+<<<<<<< HEAD
                 paddle.static.data(
                     name=str(feat_name),
                     shape=[-1, 1],
@@ -451,31 +670,55 @@ class TestDataset(unittest.TestCase):
                     lod_level=1,
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # neg dense_feat_names
         for feat_name in range(len_sparse_query + 22, len_sparse_query + 33):
             slot_data.append(
+<<<<<<< HEAD
                 paddle.static.data(
                     name=str(feat_name), shape=[-1, 1], dtype='float32'
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # neg context_feat_namess
         for feat_name in range(len_sparse_query + 33, len_sparse_query + 35):
             slot_data.append(
+<<<<<<< HEAD
                 paddle.static.data(
                     name=str(feat_name), shape=[-1, 1], dtype='float32'
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         dataset = paddle.distributed.InMemoryDataset()
 
         print("========================================")
         generator_class = CTRDataset(mode=0)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             print("case 1: check passed!")
         except Exception as e:
             print("warning: catch expected error")
@@ -486,9 +729,15 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=2)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         except Exception as e:
             print("warning: case 2 catch expected error")
             print(e)
@@ -498,9 +747,15 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=3)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         except Exception as e:
             print("warning: case 3 catch expected error")
             print(e)
@@ -510,9 +765,15 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=4)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         except Exception as e:
             print("warning: case 4 catch expected error")
             print(e)
@@ -522,9 +783,15 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=5)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         except Exception as e:
             print("warning: case 5 catch expected error")
             print(e)

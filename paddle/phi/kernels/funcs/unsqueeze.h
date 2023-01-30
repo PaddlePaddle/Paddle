@@ -36,6 +36,7 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
     }
   } else {
     for (size_t i = 0; i < num_squeeze_dims; ++i) {
+<<<<<<< HEAD
       if (in_dims.size() == 0) {
         PADDLE_ENFORCE_GE(
             squeeze_dims[i],
@@ -54,6 +55,8 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
         continue;
       }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       int current = squeeze_dims[i] < 0 ? squeeze_dims[i] + in_dims.size()
                                         : squeeze_dims[i];
 

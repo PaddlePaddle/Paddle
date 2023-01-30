@@ -31,10 +31,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_subgraph_detector.h"
+=======
+#include "paddle/fluid/framework/ir/subgraph_detector.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -50,6 +57,7 @@ using framework::ir::Graph;
 using framework::ir::Node;
 
 using GraphNodeVec = std::vector<Node*>;
+<<<<<<< HEAD
 using GraphNodeMap = std::unordered_map<Node*, Node*>;
 
 std::string GetDebugInfo(const std::unordered_set<std::string>& var_names) {
@@ -127,16 +135,55 @@ std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
 
   for (auto* op : cluster) {
     if (deny_param_cond_.count(op->Name())) {
+=======
+using GraphNodeSet = std::unordered_set<Node*>;
+using GraphNodeMap = std::unordered_map<Node*, Node*>;
+
+namespace {
+// The delim(`;`) that is used to split the FLAGS_allow_cinn_ops
+// & FLAGS_deny_cinn_ops.
+constexpr char kDelim[] = ";";
+
+const std::unordered_map<std::string, std::unordered_set<std::string>>
+    kDenyParamMap = {{"batch_norm", {"ReserveSpace"}},
+                     {"batch_norm_grad", {"ReserveSpace"}}};
+
+const std::unordered_set<std::string> kDefaultDenyOps = {"feed", "fetch"};
+
+std::unordered_set<std::string> GetDenyVarNames(const GraphNodeSet& cluster) {
+  std::unordered_set<std::string> deny_var_set;
+
+  auto get_debug_info = [](const std::unordered_set<std::string>& var_names) {
+    std::string debug_info = "[";
+    for (auto& var : var_names) {
+      debug_info.append(var);
+      debug_info.append(", ");
+    }
+    debug_info.append("]");
+    return debug_info;
+  };
+
+  for (auto* op : cluster) {
+    if (kDenyParamMap.count(op->Name())) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       const auto* desc = op->Op();
       PADDLE_ENFORCE_NE(desc,
                         nullptr,
                         platform::errors::PreconditionNotMet(
                             "The Op %s's OpDesc should not be NULL, which has "
+<<<<<<< HEAD
                             "a parameter in deny_param_cond_.",
                             op->Name().c_str()));
 
       auto deny_param_names = deny_param_cond_.at(op->Name());
       VLOG(4) << "We found deny param " << GetDebugInfo(deny_param_names)
+=======
+                            "a parameter in kDenyParamMap.",
+                            op->Name().c_str()));
+
+      auto deny_param_names = kDenyParamMap.at(op->Name());
+      VLOG(4) << "We found deny param " << get_debug_info(deny_param_names)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               << " in op [" << op->Name() << "].";
 
       for (const auto& param_name : deny_param_names) {
@@ -144,6 +191,11 @@ std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
           const auto& arg_names = desc->Input(param_name);
           for (const auto& arg_name : arg_names) {
             deny_var_set.insert(arg_name);
+<<<<<<< HEAD
+=======
+            VLOG(4) << "deny param [" << param_name << "]'s argument name"
+                    << " is [" << arg_name << "].";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           }
         }
 
@@ -151,17 +203,27 @@ std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
           const auto& arg_names = desc->Output(param_name);
           for (const auto& arg_name : arg_names) {
             deny_var_set.insert(arg_name);
+<<<<<<< HEAD
+=======
+            VLOG(4) << "deny param [" << param_name << "]'s argument name"
+                    << " is [" << arg_name << "].";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           }
         }
       }
     }
   }
 
+<<<<<<< HEAD
   VLOG(4) << "All deny var names are " << GetDebugInfo(deny_var_set);
+=======
+  VLOG(4) << "All deny var names are " << get_debug_info(deny_var_set);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   return deny_var_set;
 }
 
+<<<<<<< HEAD
 std::unordered_set<std::string> OpTransInfo::GetInplaceVarNames(
     const GraphNodeSet& cluster_inputs, const GraphNodeSet& cluster_outputs) {
   std::unordered_set<std::string> all_inputs, all_outputs;
@@ -188,6 +250,8 @@ namespace {
 // & FLAGS_deny_cinn_ops.
 constexpr char kDelim[] = ";";
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 std::unordered_set<std::string> StringSplit(const std::string& str,
                                             const std::string& delim) {
   std::regex reg(delim);
@@ -476,6 +540,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   // initialize empty map for kMemOptVarInfoFromMainGraph attribute,
   // it will be filled on the share_mem_opt_info_to_subgraph pass
   subgraph->GetOrInit<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
+<<<<<<< HEAD
 
   auto inplace_var_names = std::make_unique<std::unordered_set<std::string>>(
       OpTransInfo::GetInplaceVarNames(cluster_inputs, cluster_outputs));
@@ -484,6 +549,8 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   subgraph->Set<std::unordered_set<std::string>>(kInplaceVarNames,
                                                  inplace_var_names.release());
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   return subgraph;
 }
 
@@ -500,9 +567,13 @@ void AnalyseClusterVariables(
     const std::unordered_set<std::string>& deny_var_set,
     GraphNodeSet* cluster_inputs,
     GraphNodeSet* cluster_outputs,
+<<<<<<< HEAD
     GraphNodeSet* cluster_internals,
     bool is_inference_stage,
     const std::unordered_set<std::string>& skip_gc_var_names) {
+=======
+    GraphNodeSet* cluster_internals) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // collecting all input and output of op
   for (auto* op_node : cluster) {
     const auto& op_name = op_node->Name();
@@ -527,11 +598,17 @@ void AnalyseClusterVariables(
 
       // the internal node is must an output node of sub-graph,
       // but not any input node of out-graph.
+<<<<<<< HEAD
       // And should not in skip gc var
       bool is_only_used_internal = !skip_gc_var_names.count(var_node->Name());
       for (size_t i = 0; i < var_node->outputs.size() && is_only_used_internal;
            ++i) {
         is_only_used_internal &= (cluster.count(var_node->outputs[i]) > 0);
+=======
+      bool is_only_used_internal = true;
+      for (auto* next_op_node : var_node->outputs) {
+        is_only_used_internal &= (cluster.count(next_op_node) > 0);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       }
       if (is_only_used_internal) {
         cluster_internals->insert(var_node);
@@ -543,6 +620,7 @@ void AnalyseClusterVariables(
   for (auto* var_node : *cluster_internals) {
     cluster_outputs->erase(var_node);
   }
+<<<<<<< HEAD
 
   if (is_inference_stage) {
     // If part of the output of the Op is not used by other operators, change it
@@ -555,6 +633,8 @@ void AnalyseClusterVariables(
       }
     }
   }
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 void AddLinkToCinnOp(const GraphNodeSet& cluster_inputs,
@@ -575,6 +655,10 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                       const GraphNodeSet& cluster_inputs,
                       const GraphNodeSet& cluster_outputs,
                       int64_t compilation_key,
+<<<<<<< HEAD
+=======
+                      const std::unordered_set<std::string>& deny_var_set,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                       Graph* graph) {
   // Add the cinn launch op
   framework::OpDesc cinn_op_desc;
@@ -595,7 +679,10 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
   cinn_op_desc.SetAttr(operators::kCompilationKey, compilation_key);
   cinn_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                        ExtractOpRole(cluster));
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   cinn_op_desc.Flush();
   auto* cinn_op_node = graph->CreateOpNode(&cinn_op_desc);
   // Add new links from or to the cinn launch op node
@@ -620,6 +707,7 @@ void RemoveSubGraphFromGraph(const GraphNodeSet& cluster,
 // kCinnLaunchOp, and inputs ares cluster_inputs and outputs are
 // cluster_outputs.
 // Meanwhile, move all links of cluster to the cinn op.
+<<<<<<< HEAD
 void ReplaceSubGraphWithCinnOpNode(const GraphNodeSet& cluster,
                                    const GraphNodeSet& cluster_inputs,
                                    const GraphNodeSet& cluster_outputs,
@@ -629,14 +717,44 @@ void ReplaceSubGraphWithCinnOpNode(const GraphNodeSet& cluster,
   // Add the cinn op node whose name is "kCinnLaunchOp" into graph
   AddCinnOpToGraph(
       cluster, cluster_inputs, cluster_outputs, compilation_key, graph);
+=======
+void ReplaceSubGraphWithCinnOpNode(
+    const GraphNodeSet& cluster,
+    const GraphNodeSet& cluster_inputs,
+    const GraphNodeSet& cluster_outputs,
+    const GraphNodeSet& cluster_internals,
+    int64_t compilation_key,
+    const std::unordered_set<std::string>& deny_var_set,
+    Graph* graph) {
+  // Add the cinn op node whose name is "kCinnLaunchOp" into graph
+  AddCinnOpToGraph(cluster,
+                   cluster_inputs,
+                   cluster_outputs,
+                   compilation_key,
+                   deny_var_set,
+                   graph);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Remove the cinn subgraph from graph
   RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
 
+<<<<<<< HEAD
+=======
+static bool IsInplaceOp(const OpDesc& op_desc) {
+  auto inputs = op_desc.InputArgumentNames();
+  std::unordered_set<std::string> input_set(inputs.begin(), inputs.end());
+  for (auto& name : op_desc.OutputArgumentNames()) {
+    if (input_set.count(name) > 0) return true;
+  }
+  return false;
+}
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 // Search all subgraphs which all op node supported by CINN,
 // Here we using SubgraphDetector to detecte the subgraph that
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
+<<<<<<< HEAD
 void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
@@ -659,15 +777,33 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
     // true only when it is in allow_ops
     if (!allow_ops.empty()) {
       return is_support && allow_ops.count(node_name);
+=======
+void SearchAllSubgraphs(Graph* graph) {
+  auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
+  auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
+  auto teller = [&allow_ops, &deny_ops](const Node* node) {
+    const auto& node_name = node->Name();
+    bool registered = ::cinn::frontend::OpMapperRegistry::Global()->Find(
+                          node_name) != nullptr;
+    // if the op type is registered in CINN and allow_ops is not empty, return
+    // true only when it is in allow_ops
+    if (!allow_ops.empty()) {
+      return registered && allow_ops.count(node_name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
     // if the op type is registered in CINN and deny_ops is not empty, return
     // true only when it is not in deny_ops
     if (!deny_ops.empty()) {
+<<<<<<< HEAD
       return is_support && !deny_ops.count(node_name);
+=======
+      return registered && !deny_ops.count(node_name);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
 
     // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
     // return true only when it is registered in CINN
+<<<<<<< HEAD
     return is_support;
   };
   VLOG(4) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
@@ -675,6 +811,15 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
   std::vector<GraphNodeVec> clusters = CinnSubgraphDetector(graph, teller)();
   LOG(INFO) << "--- [build_cinn_pass] detected " << clusters.size()
             << " cinn supported subgraphs";
+=======
+    return registered && !kDefaultDenyOps.count(node_name) &&
+           (node->IsOp() && !IsInplaceOp(*node->Op()));
+  };
+  VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
+  VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
+  std::vector<GraphNodeVec> clusters =
+      framework::ir::SubgraphDetector(graph, teller)();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto cluster_debug_info = [](const GraphNodeSet& cluster) {
     std::string res = "(";
@@ -686,6 +831,7 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
     return res;
   };
 
+<<<<<<< HEAD
   std::unordered_set<std::string> all_skip_gc_vars;
   if (graph->Has(kSkipGcVarNames)) {
     all_skip_gc_vars =
@@ -698,19 +844,30 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
   VLOG_IF(4, !deny_var_set.empty())
       << "All deny var names are: " << GetDebugInfo(deny_var_set);
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* cinn_compiler = CinnCompiler::GetInstance();
   for (const auto& node_vec : clusters) {
     // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
 
+<<<<<<< HEAD
+=======
+    auto deny_var_set = GetDenyVarNames(cluster_set);
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     GraphNodeSet cluster_inputs, cluster_outputs, cluster_internals;
     AnalyseClusterVariables(cluster_set,
                             deny_var_set,
                             &cluster_inputs,
                             &cluster_outputs,
+<<<<<<< HEAD
                             &cluster_internals,
                             is_inference_stage,
                             all_skip_gc_vars);
+=======
+                            &cluster_internals);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     VLOG(4) << "Cluster Ops: " << cluster_debug_info(cluster_set);
     VLOG(4) << "Cluster input vars: " << cluster_debug_info(cluster_inputs);
@@ -718,6 +875,7 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
     VLOG(4) << "Cluster internal vars: "
             << cluster_debug_info(cluster_internals);
 
+<<<<<<< HEAD
     // Create a new subgraph with the cluster and save it into the CinnCompiler
     auto subgraph = CreateNewSubGraph(
         cluster_set, cluster_internals, cluster_inputs, cluster_outputs);
@@ -728,6 +886,12 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
       sub_skip_gc_vars = all_skip_gc_vars;
     }
     auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
+=======
+    // Create a new subgraph according to the found cluster and
+    // save it in CinnCompiler
+    auto compilation_key = cinn_compiler->AddGraph(CreateNewSubGraph(
+        cluster_set, cluster_internals, cluster_inputs, cluster_outputs));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(4) << "Compilation Key:\n"
             << cinn_compiler->ReadableKey(compilation_key);
 
@@ -737,11 +901,16 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
                                   cluster_outputs,
                                   cluster_internals,
                                   compilation_key,
+<<<<<<< HEAD
+=======
+                                  deny_var_set,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                   graph);
   }
 }
 }  // namespace
 
+<<<<<<< HEAD
 void BuildCinnPass::ApplyImpl(Graph* graph) const {
   bool is_inference_stage{false};
   if (Has("is_inference_stage")) {
@@ -749,6 +918,9 @@ void BuildCinnPass::ApplyImpl(Graph* graph) const {
   }
   SearchAllSubgraphs(graph, is_inference_stage);
 }
+=======
+void BuildCinnPass::ApplyImpl(Graph* graph) const { SearchAllSubgraphs(graph); }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 }  // namespace paddle2cinn
 }  // namespace framework

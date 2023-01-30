@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import paddle
@@ -20,6 +21,17 @@ from paddle.fluid import core
 
 
 class TestMemoryAllocated(unittest.TestCase):
+=======
+import paddle
+import unittest
+import numpy as np
+from paddle.fluid import core
+from paddle.device.cuda import device_count, memory_allocated
+
+
+class TestMemoryAllocated(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_memory_allocated(self, device=None):
         if core.is_compiled_with_cuda():
             tensor = paddle.zeros(shape=[256])
@@ -40,11 +52,15 @@ class TestMemoryAllocated(unittest.TestCase):
         if core.is_compiled_with_cuda():
             wrong_device = [
                 core.CPUPlace(),
+<<<<<<< HEAD
                 device_count() + 1,
                 -2,
                 0.5,
                 "gpu1",
                 "npu",
+=======
+                device_count() + 1, -2, 0.5, "gpu1", "npu"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
             for device in wrong_device:
                 with self.assertRaises(BaseException):

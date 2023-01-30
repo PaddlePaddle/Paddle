@@ -14,15 +14,24 @@
 
 #include "paddle/phi/kernels/bincount_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
+<<<<<<< HEAD
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -36,11 +45,20 @@ __global__ void KernelBincount(const InputT* input,
                                OutT* output) {
   if (!has_weights) {
     for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
+<<<<<<< HEAD
       phi::CudaAtomicAdd(&output[input[i]], 1L);
     }
   } else {
     for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
       phi::CudaAtomicAdd(&output[input[i]], static_cast<OutT>(weights[i]));
+=======
+      paddle::platform::CudaAtomicAdd(&output[input[i]], 1L);
+    }
+  } else {
+    for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
+      paddle::platform::CudaAtomicAdd(&output[input[i]],
+                                      static_cast<OutT>(weights[i]));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     }
   }
 }

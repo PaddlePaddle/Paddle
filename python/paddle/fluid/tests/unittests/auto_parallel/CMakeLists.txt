@@ -72,6 +72,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_parallel_tuner_predict MODULES
                   test_parallel_tuner_predict ENVS ${dist_ENVS})
   set_tests_properties(test_parallel_tuner_predict PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
   py_test_modules(test_selective_recompute MODULES test_selective_recompute)
   set_tests_properties(test_selective_recompute PROPERTIES TIMEOUT 50)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization ENVS
@@ -81,6 +82,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 240)
   py_test_modules(test_fused_linear_pass MODULES test_fused_linear_pass)
   set_tests_properties(test_fused_linear_pass PROPERTIES TIMEOUT 20)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
@@ -112,17 +115,25 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
   py_test_modules(test_dist_attr_v2 MODULES test_dist_attr_v2)
+<<<<<<< HEAD
   py_test_modules(test_serialization MODULES test_serialization)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   py_test_modules(test_lr_grad_clip MODULES test_lr_grad_clip)
   py_test_modules(test_dist_matmul MODULES test_dist_matmul)
   py_test_modules(test_process_mesh MODULES test_process_mesh)
   py_test_modules(test_interface MODULES test_interface)
   py_test_modules(test_strategy MODULES test_strategy)
+<<<<<<< HEAD
+=======
+  py_test_modules(test_pass_quantization MODULES test_pass_quantization)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   py_test_modules(test_dist_shape MODULES test_dist_shape)
   py_test_modules(test_dist_assign MODULES test_dist_assign)
   py_test_modules(test_conditional_block_reshard MODULES
                   test_conditional_block_reshard)
   py_test_modules(test_engine_api_error MODULES test_engine_api_error)
+<<<<<<< HEAD
   py_test_modules(test_fp16_assign MODULES test_fp16_assign)
   py_test_modules(test_group_operators MODULES test_group_operators)
   py_test_modules(test_pattern MODULES test_pattern)
@@ -132,4 +143,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_convert_to_process_meshes)
   py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()

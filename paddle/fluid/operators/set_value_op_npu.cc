@@ -25,6 +25,7 @@ template <typename T>
 class SetValueNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("Input");
     auto* value_tensor = ctx.Input<phi::DenseTensor>("ValueTensor");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
@@ -34,6 +35,15 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     auto steps_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StepsTensorList");
+=======
+    auto* in = ctx.Input<Tensor>("Input");
+    auto* value_tensor = ctx.Input<Tensor>("ValueTensor");
+    auto* out = ctx.Output<Tensor>("Out");
+
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    auto steps_tensor_list = ctx.MultiInput<Tensor>("StepsTensorList");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto axes = ctx.Attr<std::vector<int64_t>>("axes");
     auto starts = ctx.Attr<std::vector<int64_t>>("starts");
@@ -132,7 +142,11 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "OP(set_value) error index indices and value update not match "));
 
+<<<<<<< HEAD
     phi::DenseTensor value_t(in->type());
+=======
+    Tensor value_t(in->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (value_tensor != nullptr) {
       value_t.ShareDataWith(*value_tensor);
     } else {
@@ -148,7 +162,11 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
 
+<<<<<<< HEAD
     phi::DenseTensor value_temp(in->type());
+=======
+    Tensor value_temp(in->type());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if (slice_dims_for_assign == value_t.dims()) {
       value_temp.ShareDataWith(value_t);
     } else {
@@ -165,7 +183,11 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     int64_t input_numel = phi::product(in_dims);
     int64_t index_numel = index_indices.size();
 
+<<<<<<< HEAD
     phi::DenseTensor in_temp, out_temp, val_temp;
+=======
+    Tensor in_temp, out_temp, val_temp;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     in_temp.ShareDataWith(*in);
     out_temp.ShareDataWith(*out);
     val_temp.ShareDataWith(value_temp);

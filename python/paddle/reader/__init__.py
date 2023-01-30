@@ -38,7 +38,11 @@ items. It can be any function with no parameter that creates a iterable
 Element produced from the iterable should be a **single** entry of data,
 **not** a mini batch. That entry of data could be a single item, or a tuple of
 items.
+<<<<<<< HEAD
 Item should be of supported type (e.g., numpy array or list/tuple of float
+=======
+Item should be of supported type (e.g., numpy array or list/tuple of float 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 or int).
 
 An example implementation for single item data reader creator:

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -30,8 +35,12 @@ def convert_uint16_to_float(in_list):
         in_list = np.asarray(in_list)
         out = np.vectorize(
             lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+<<<<<<< HEAD
             otypes=[np.float32],
         )(in_list.flat)
+=======
+            otypes=[np.float32])(in_list.flat)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return np.reshape(out, in_list.shape)
     else:
         return in_list
@@ -40,10 +49,17 @@ def convert_uint16_to_float(in_list):
 cutf = convert_uint16_to_float
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestModelCastBF16(unittest.TestCase):
+=======
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestModelCastBF16(unittest.TestCase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     @classmethod
     def setUpClass(cls):
         cls.seed = 111
@@ -68,6 +84,7 @@ class TestModelCastBF16(unittest.TestCase):
             with fluid.program_guard(prog, startup_prog):
                 yield
 
+<<<<<<< HEAD
     def get_static_graph_result(
         self, feed, fetch_list, amp_fun, with_lod=False, startup_prog=None
     ):
@@ -77,15 +94,33 @@ class TestModelCastBF16(unittest.TestCase):
             if startup_prog is None
             else startup_prog
         )
+=======
+    def get_static_graph_result(self,
+                                feed,
+                                fetch_list,
+                                amp_fun,
+                                with_lod=False,
+                                startup_prog=None):
+        exe = fluid.Executor(core.CPUPlace())
+        exe.run(fluid.default_startup_program(
+        ) if startup_prog is None else startup_prog)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         prog = fluid.default_main_program()
         if amp_fun is not None:
             if startup_prog is not None:
                 amp_fun(prog, startup_prog)
             else:
                 amp_fun(prog)
+<<<<<<< HEAD
         return exe.run(
             prog, feed=feed, fetch_list=fetch_list, return_numpy=(not with_lod)
         )
+=======
+        return exe.run(prog,
+                       feed=feed,
+                       fetch_list=fetch_list,
+                       return_numpy=(not with_lod))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _graph_common(self, _amp_fun, startup_prog=None):
         size = 3
@@ -96,6 +131,7 @@ class TestModelCastBF16(unittest.TestCase):
         nn_bf16 = amp.bf16.convert_float_to_uint16(nn)
 
         with self.static_graph():
+<<<<<<< HEAD
             t_bf16 = paddle.static.data(
                 name='t_bf16', shape=[-1, size, size], dtype='int32'
             )
@@ -132,6 +168,32 @@ class TestModelCastBF16(unittest.TestCase):
                 static_ret,
                 ret_fp32bf16,
             ) = self.get_static_graph_result(
+=======
+            t_bf16 = layers.data(name='t_bf16',
+                                 shape=[size, size],
+                                 dtype=np.uint16)
+            tt_bf16 = layers.data(name='tt_bf16',
+                                  shape=[size, size],
+                                  dtype=np.uint16)
+            t = layers.data(name='t', shape=[size, size], dtype='float32')
+            tt = layers.data(name='tt', shape=[size, size], dtype='float32')
+
+            ret = layers.elementwise_add(t, tt)
+            ret = layers.elementwise_mul(ret, t)
+            ret = layers.reshape(ret, [0, 0])
+
+            with amp.bf16.bf16_guard():
+                ret_bf16 = layers.elementwise_add(t_bf16, tt_bf16)
+                ret_bf16 = layers.elementwise_mul(ret_bf16, t_bf16)
+                ret_bf16 = layers.reshape(ret_bf16, [0, 0])
+
+            with amp.bf16.bf16_guard():
+                ret_fp32bf16 = layers.elementwise_add(t, tt)
+                ret_fp32bf16 = layers.elementwise_mul(ret_fp32bf16, t)
+                ret_fp32bf16 = layers.reshape(ret_fp32bf16, [0, 0])
+
+            static_ret_bf16, static_ret, ret_fp32bf16 = self.get_static_graph_result(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 feed={
                     't': n,
                     'tt': nn,
@@ -140,6 +202,7 @@ class TestModelCastBF16(unittest.TestCase):
                 },
                 fetch_list=[ret_bf16, ret, ret_fp32bf16],
                 amp_fun=_amp_fun,
+<<<<<<< HEAD
                 startup_prog=startup_prog,
             )
 
@@ -187,6 +250,43 @@ class TestModelCastBF16(unittest.TestCase):
                 ),
             )
         )
+=======
+                startup_prog=startup_prog)
+
+        np.testing.assert_allclose(cutf(static_ret_bf16),
+                                   cutf(static_ret),
+                                   rtol=0.01)
+        np.testing.assert_allclose(cutf(static_ret_bf16),
+                                   cutf(ret_fp32bf16),
+                                   rtol=0.01)
+
+        with self.static_graph():
+            t = layers.data(name='t', shape=[size, size], dtype='float32')
+            tt = layers.data(name='tt', shape=[size, size], dtype='float32')
+
+            with amp.bf16.bf16_guard():
+                ret = layers.elementwise_add(t, tt)
+                ret = layers.reshape(ret, [0, 0], act='elu')
+                ret = layers.elementwise_mul(ret, t)
+            ret = layers.elementwise_add(ret, tt)
+
+            static_ret_bf16 = \
+                self.get_static_graph_result(
+                    feed={'t': n, 'tt': nn},
+                    fetch_list=[ret],
+                    amp_fun=_amp_fun,
+                    startup_prog=startup_prog
+                )
+        self.assertTrue(static_ret_bf16,
+                        np.ones([size, size], dtype='float32') * -1.1)
+
+    def test_graph_rewrite(self):
+        self._graph_common(lambda prog: amp.bf16.rewrite_program_bf16(
+            prog,
+            amp.bf16.AutoMixedPrecisionListsBF16(
+                custom_bf16_list={'elementwise_add'},
+                custom_fp32_varnames={'elementwise_add_0.tmp_0'})))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_graph_cast(self):
         self._graph_common(
@@ -195,12 +295,18 @@ class TestModelCastBF16(unittest.TestCase):
                 startup_prog,
                 amp.bf16.AutoMixedPrecisionListsBF16(
                     custom_bf16_list={'elementwise_add'},
+<<<<<<< HEAD
                     custom_fp32_list={'elementwise_mul'},
                 ),
                 use_bf16_guard=True,
             ),
             startup_prog=fluid.default_startup_program(),
         )
+=======
+                    custom_fp32_list={'elementwise_mul'}),
+                use_bf16_guard=True),
+            startup_prog=fluid.default_startup_program())
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

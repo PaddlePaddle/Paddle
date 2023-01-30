@@ -88,6 +88,7 @@ void FusionSeqConvEltAddReluOp::InferShape(
   ctx->ShareLoD("X", "Out");
 }
 
+<<<<<<< HEAD
 phi::KernelKey FusionSeqConvEltAddReluOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
@@ -120,6 +121,37 @@ void FusionSeqConvEltAddReluOpMaker::Make() {
       "total time steps in this mini-batch, N is the output feature size.");
   AddOutput("ColMat",
             "(phi::DenseTensor) (T, K), where T is where T is the "
+=======
+framework::OpKernelType FusionSeqConvEltAddReluOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
+}
+
+void FusionSeqConvEltAddReluOpMaker::Make() {
+  AddInput("X",
+           "(LoDTensor) the input is a LodTensor, which support "
+           "variable-time length input sequence. The underlying tensor in "
+           "this LoDTensor is a matrix with shape (T X M), where T is the "
+           "total time steps in this mini-batch, M is the dim size of x.");
+  // PaddingData only support false yet, should be ensured at pass.
+  AddInput("Filter",
+           "(Tensor) same as the input(Filter) of sequence conv op is an "
+           "learnable parameter."
+           "This is a tensor with shape (K, N), where K is the "
+           "context_length * dim size of x, N is the output feature size.");
+  AddInput("Bias",
+           "(Tensor) the learnable weights. shape (1, N), where N is the "
+           "output feature size");
+  AddOutput(
+      "Out",
+      "(LoDTensor) the output(Out) is a LodTensor, which support "
+      "variable-time length output sequence. The underlying tensor in "
+      "this LoDTensor is a matrix with shape (T, N), where, T is the "
+      "total time steps in this mini-batch, N is the output feature size.");
+  AddOutput("ColMat",
+            "(Tensor) (T, K), where T is where T is the "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "total time steps in this mini-batch, K is height of Filter")
       .AsIntermediate();
   AddAttr<int>("contextLength",
@@ -153,11 +185,19 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = phi::CPUContext;
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* w = ctx.Input<phi::DenseTensor>("Filter");
     auto* b = ctx.Input<phi::DenseTensor>("Bias");
     auto* y = ctx.Output<phi::DenseTensor>("Out");
     auto* col = ctx.Output<phi::DenseTensor>("ColMat");
+=======
+    auto* x = ctx.Input<LoDTensor>("X");
+    auto* w = ctx.Input<Tensor>("Filter");
+    auto* b = ctx.Input<Tensor>("Bias");
+    auto* y = ctx.Output<LoDTensor>("Out");
+    auto* col = ctx.Output<Tensor>("ColMat");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto x_lod = x->lod();
     auto x_dims = x->dims();

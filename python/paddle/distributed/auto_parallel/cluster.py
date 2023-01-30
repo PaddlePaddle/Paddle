@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import json
 import os
 from enum import IntEnum, unique
 
+=======
+import os
+import json
+from enum import IntEnum
+from enum import unique
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 
 
@@ -128,6 +135,7 @@ class Device:
     def __str__(self):
         str = ""
         str += "global_id: {}, local_id: {}, machine_id: {}, type: {}, model: {}, dp_flops: {}, sp_flops: {}, memory: {}".format(
+<<<<<<< HEAD
             self.global_id,
             self.local_id,
             self.machine.id,
@@ -137,6 +145,10 @@ class Device:
             self.sp_gflops,
             self.memory,
         )
+=======
+            self.global_id, self.local_id, self.machine.id, self.type.name,
+            self.model, self.dp_gflops, self.sp_gflops, self.memory)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return str
 
     def __repr__(self):
@@ -209,12 +221,17 @@ class Link:
     def __str__(self):
         str = ""
         str += "source_global_id: {}, target_global_id: {}, type: {}, bandwidth: {}, latency: {}".format(
+<<<<<<< HEAD
             self.source.global_id,
             self.target.global_id,
             self.type,
             self.bandwidth,
             self.latency,
         )
+=======
+            self.source.global_id, self.target.global_id, self.type,
+            self.bandwidth, self.latency)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         return str
 
     def __repr__(self):
@@ -222,6 +239,10 @@ class Link:
 
 
 class Machine:
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, id):
         self._id = id
         self._hostname = None
@@ -302,6 +323,10 @@ class Machine:
 
 
 class AlphaLatency:
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, alpha_latency):
         assert isinstance(alpha_latency, dict)
         self._base = alpha_latency.get("base", None)
@@ -313,6 +338,7 @@ class AlphaLatency:
                 self._switch = float(self._switch)
             except:
                 raise TypeError("The switch latency must be float")
+<<<<<<< HEAD
         self._base_ring = (
             self._base.get("ring", None) if self._base is not None else None
         )
@@ -322,6 +348,14 @@ class AlphaLatency:
         self._base_inter = (
             self._base.get("inter", None) if self._base is not None else None
         )
+=======
+        self._base_ring = self._base.get(
+            "ring", None) if self._base is not None else None
+        self._base_tree = self._base.get(
+            "tree", None) if self._base is not None else None
+        self._base_inter = self._base.get(
+            "inter", None) if self._base is not None else None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         if self._base_ring is not None:
             try:
                 self._base_ring = float(self._base_ring)
@@ -428,6 +462,7 @@ class Cluster:
         # which have the same number accelerators.
         self._num_devices_per_machine = None
 
+<<<<<<< HEAD
     def gen_default_config_cluster(
         self,
         gpu_model="V100",
@@ -443,6 +478,21 @@ class Cluster:
         cpu_dp_gflops=75,
         cpu_sp_gflops=150,
     ):
+=======
+    def gen_default_config_cluster(self,
+                                   gpu_model="V100",
+                                   cpu_model="6271C",
+                                   node_count=1,
+                                   device_count=1,
+                                   gpu_memory=32,
+                                   cpu_memory=503,
+                                   inter_bandwidth=24,
+                                   intra_bandwidth=235,
+                                   gpu_dp_gflops=7800,
+                                   gpu_sp_gflops=15700,
+                                   cpu_dp_gflops=75,
+                                   cpu_sp_gflops=150):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         """Generate cluster by default config."""
         gpu_models = ["V100", "A100", "H100", "A2", "A10", "A16", "A30", "A40"]
         xpu_models = ["XPU"]
@@ -616,6 +666,7 @@ class Cluster:
             prev_machine = self._machines[machine.id - 1]
             offset = prev_machine._non_accelerator_cumulative_count
             for global_id in machine.devices:
+<<<<<<< HEAD
                 if (
                     machine.devices[global_id].type
                     not in Device.NON_ACCELERATOR_TYPE
@@ -634,13 +685,32 @@ class Cluster:
                     machine.devices[global_id].type
                     not in Device.NON_ACCELERATOR_TYPE
                 ):
+=======
+                if machine.devices[
+                        global_id].type not in Device.NON_ACCELERATOR_TYPE:
+                    rank_id = global_id - offset
+                    self._rank_to_device_id[rank_id] = global_id
+                    self._device_id_to_rank[global_id] = rank_id
+            machine._non_accelerator_cumulative_count = len(
+                machine.devices) - len(
+                    machine.accelerators
+                ) + prev_machine._non_accelerator_cumulative_count
+        else:
+            for global_id in machine.devices:
+                if machine.devices[
+                        global_id].type not in Device.NON_ACCELERATOR_TYPE:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                     rank_id = global_id
                     self._rank_to_device_id[rank_id] = global_id
                     self._device_id_to_rank[global_id] = rank_id
                     machine.accelerators[global_id] = machine.devices[global_id]
             machine._non_accelerator_cumulative_count = len(
+<<<<<<< HEAD
                 machine.devices
             ) - len(machine.accelerators)
+=======
+                machine.devices) - len(machine.accelerators)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def alpha_latency(self):
@@ -716,8 +786,12 @@ class Cluster:
 
         if "alpha_latency" in cluster_info:
             self._alpha_latency = AlphaLatency(
+<<<<<<< HEAD
                 cluster_info.get("alpha_latency")
             )
+=======
+                cluster_info.get("alpha_latency"))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         else:
             self._alpha_latecy = None
 
@@ -753,7 +827,11 @@ class Cluster:
         else:
             bandwidth = link.bandwidth
 
+<<<<<<< HEAD
         if bandwidth == 0.0:
+=======
+        if bandwidth == 0.:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             beta = 0
         else:
             beta = 1 / (bandwidth * (convert_base**3 / 10**6))
@@ -834,6 +912,7 @@ def get_default_cluster():
         global_device_count = int(global_device_count)
         assert global_device_count % local_device_count == 0
         node_count = int(global_device_count) // local_device_count
+<<<<<<< HEAD
     print(
         "Node Count: ",
         node_count,
@@ -846,4 +925,15 @@ def get_default_cluster():
     cluster.gen_default_config_cluster(
         node_count=node_count, device_count=local_device_count
     )
+=======
+    print("Node Count: ",
+          node_count,
+          "Local Device Size: ",
+          local_device_count,
+          "World size: ",
+          paddle.distributed.get_world_size(),
+          flush=True)
+    cluster.gen_default_config_cluster(node_count=node_count,
+                                       device_count=local_device_count)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     return cluster

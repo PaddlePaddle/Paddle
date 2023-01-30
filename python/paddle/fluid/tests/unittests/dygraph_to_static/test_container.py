@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import tempfile
 import unittest
 
@@ -24,11 +25,27 @@ import paddle
 class BufferLayers(paddle.nn.Layer):
     def __init__(self, out_channel):
         super().__init__()
+=======
+import paddle
+import unittest
+import numpy as np
+import tempfile
+
+
+class BufferLayers(paddle.nn.Layer):
+
+    def __init__(self, out_channel):
+        super(BufferLayers, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.out_channel = out_channel
 
     def forward(self, x):
         mean = paddle.mean(x)
+<<<<<<< HEAD
         if mean < 0.0:
+=======
+        if mean < 0.:
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             x = x * self._mask()
 
         out = x - mean
@@ -39,6 +56,7 @@ class BufferLayers(paddle.nn.Layer):
 
 
 class SequentialNet(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self, sub_layer, in_channel, out_channel):
         super().__init__()
         self.layer = paddle.nn.Sequential(
@@ -46,6 +64,15 @@ class SequentialNet(paddle.nn.Layer):
             ('l2', paddle.nn.Linear(in_channel, out_channel)),
             ('l3', sub_layer(out_channel)),
         )
+=======
+
+    def __init__(self, sub_layer, in_channel, out_channel):
+        super(SequentialNet, self).__init__()
+        self.layer = paddle.nn.Sequential(
+            ('l1', paddle.nn.Linear(in_channel, in_channel)),
+            ('l2', paddle.nn.Linear(in_channel, out_channel)),
+            ('l3', sub_layer(out_channel)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def forward(self, x):
         out = self.layer(x)
@@ -53,6 +80,10 @@ class SequentialNet(paddle.nn.Layer):
 
 
 class NestSequentialNet(paddle.nn.Layer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         super().__init__()
         group1 = paddle.nn.Sequential(
@@ -70,6 +101,10 @@ class NestSequentialNet(paddle.nn.Layer):
 
 
 class TestSequential(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         paddle.set_device('cpu')
         self.seed = 2021
@@ -99,8 +134,12 @@ class TestSequential(unittest.TestCase):
                 load_out,
                 out,
                 rtol=1e-05,
+<<<<<<< HEAD
                 err_msg='load_out is {}\\st_out is {}'.format(load_out, out),
             )
+=======
+                err_msg='load_out is {}\\st_out is {}'.format(load_out, out))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         return out
 
@@ -113,9 +152,13 @@ class TestSequential(unittest.TestCase):
             st_out,
             rtol=1e-05,
             err_msg='dygraph_res is {}\nstatic_res is {}'.format(
+<<<<<<< HEAD
                 dy_out, st_out
             ),
         )
+=======
+                dy_out, st_out))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _test_load(self, net, x):
         paddle.jit.save(net, self.model_path)
@@ -125,11 +168,19 @@ class TestSequential(unittest.TestCase):
 
 
 class TestNestSequential(TestSequential):
+<<<<<<< HEAD
     def _init_config(self):
         self.net = NestSequentialNet()
         self.model_path = os.path.join(
             self.temp_dir.name, 'nested_sequential_net'
         )
+=======
+
+    def _init_config(self):
+        self.net = NestSequentialNet()
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       'nested_sequential_net')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

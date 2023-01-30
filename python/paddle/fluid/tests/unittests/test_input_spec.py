@@ -13,13 +13,19 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import tempfile
 import unittest
 
+=======
+import unittest
+import tempfile
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+<<<<<<< HEAD
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
 from paddle.static import InputSpec
@@ -32,6 +38,20 @@ class TestInputSpec(unittest.TestCase):
             tensor_spec.dtype, convert_np_dtype_to_dtype_('float32')
         )
         self.assertIsNone(tensor_spec.name)
+=======
+from paddle.static import InputSpec
+from paddle.fluid.framework import core, convert_np_dtype_to_dtype_
+from paddle.fluid.dygraph.dygraph_to_static.utils import _compatible_non_tensor_spec
+
+
+class TestInputSpec(unittest.TestCase):
+
+    def test_default(self):
+        tensor_spec = InputSpec([3, 4])
+        self.assertEqual(tensor_spec.dtype,
+                         convert_np_dtype_to_dtype_('float32'))
+        self.assertEqual(tensor_spec.name, None)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_from_tensor(self):
         x_bool = fluid.layers.fill_constant(shape=[1], dtype='bool', value=True)
@@ -46,6 +66,7 @@ class TestInputSpec(unittest.TestCase):
     def test_from_numpy(self):
         x_numpy = np.ones([10, 12])
         x_np_spec = InputSpec.from_numpy(x_numpy)
+<<<<<<< HEAD
         self.assertEqual(
             x_np_spec.dtype, convert_np_dtype_to_dtype_(x_numpy.dtype)
         )
@@ -57,6 +78,17 @@ class TestInputSpec(unittest.TestCase):
         self.assertEqual(
             x_np_spec2.dtype, convert_np_dtype_to_dtype_(x_numpy2.dtype)
         )
+=======
+        self.assertEqual(x_np_spec.dtype,
+                         convert_np_dtype_to_dtype_(x_numpy.dtype))
+        self.assertEqual(x_np_spec.shape, x_numpy.shape)
+        self.assertEqual(x_np_spec.name, None)
+
+        x_numpy2 = np.array([1, 2, 3, 4]).astype('int64')
+        x_np_spec2 = InputSpec.from_numpy(x_numpy2, name='x_np_int64')
+        self.assertEqual(x_np_spec2.dtype,
+                         convert_np_dtype_to_dtype_(x_numpy2.dtype))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.assertEqual(x_np_spec2.shape, x_numpy2.shape)
         self.assertEqual(x_np_spec2.name, 'x_np_int64')
 
@@ -87,7 +119,11 @@ class TestInputSpec(unittest.TestCase):
 
         # unbatch
         unbatch_spec = batch_tensor_spec.unbatch()
+<<<<<<< HEAD
         self.assertEqual(unbatch_spec.shape, (10,))
+=======
+        self.assertEqual(unbatch_spec.shape, (10, ))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         # 1. `unbatch` requires len(shape) > 1
         with self.assertRaises(ValueError):
@@ -119,8 +155,14 @@ class TestInputSpec(unittest.TestCase):
 
 
 class NetWithNonTensorSpec(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self, in_num, out_num):
         super().__init__()
+=======
+
+    def __init__(self, in_num, out_num):
+        super(NetWithNonTensorSpec, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
         self.bn_1 = paddle.nn.BatchNorm1D(out_num)
 
@@ -159,6 +201,10 @@ class NetWithNonTensorSpec(paddle.nn.Layer):
 
 
 class TestNetWithNonTensorSpec(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -244,8 +290,14 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
 
 
 class NetWithNonTensorSpecPrune(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self, in_num, out_num):
         super().__init__()
+=======
+
+    def __init__(self, in_num, out_num):
+        super(NetWithNonTensorSpecPrune, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
         self.bn_1 = paddle.nn.BatchNorm1D(out_num)
 
@@ -263,6 +315,10 @@ class NetWithNonTensorSpecPrune(paddle.nn.Layer):
 
 
 class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -310,6 +366,10 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
 
 
 class UnHashableObject:
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self, val):
         self.val = val
 
@@ -318,6 +378,10 @@ class UnHashableObject:
 
 
 class TestCompatibleNonTensorSpec(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_case(self):
         self.assertTrue(_compatible_non_tensor_spec([1, 2, 3], [1, 2, 3]))
         self.assertFalse(_compatible_non_tensor_spec([1, 2, 3], [1, 2]))
@@ -325,10 +389,15 @@ class TestCompatibleNonTensorSpec(unittest.TestCase):
 
         # not supported unhashable object.
         self.assertTrue(
+<<<<<<< HEAD
             _compatible_non_tensor_spec(
                 UnHashableObject(1), UnHashableObject(1)
             )
         )
+=======
+            _compatible_non_tensor_spec(UnHashableObject(1),
+                                        UnHashableObject(1)))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

@@ -13,16 +13,27 @@
 # limitations under the License.
 
 import paddle
+<<<<<<< HEAD
 from paddle import _C_ops
 from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
+=======
+from ...fluid.data_feeder import check_variable_and_dtype, check_type
+from ...fluid.layer_helper import LayerHelper
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 __all__ = []
 
 
+<<<<<<< HEAD
 def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
+=======
+def pairwise_distance(x, y, p=2., epsilon=1e-6, keepdim=False, name=None):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     r"""
 
     It computes the pairwise distance between two vectors. The
@@ -63,15 +74,25 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
             x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
             y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
             distance = paddle.nn.functional.pairwise_distance(x, y)
+<<<<<<< HEAD
             print(distance)
     #       Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=True,
     #              [4.99999860, 4.99999860])
 
     """
+=======
+            print(distance.numpy()) # [5. 5.]
+
+    """
+    check_type(p, 'porder', (float, int), 'PairwiseDistance')
+    check_type(epsilon, 'epsilon', (float), 'PairwiseDistance')
+    check_type(keepdim, 'keepdim', (bool), 'PairwiseDistance')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if in_dygraph_mode():
         sub = _C_ops.subtract(x, y)
         # p_norm op has not uesd epsilon, so change it to the following.
         if epsilon != 0.0:
+<<<<<<< HEAD
             epsilon = paddle.fluid.dygraph.base.to_variable(
                 [epsilon], dtype=sub.dtype
             )
@@ -109,3 +130,42 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
         )
 
         return out
+=======
+            epsilon = paddle.fluid.dygraph.base.to_variable([epsilon],
+                                                            dtype=sub.dtype)
+            sub = _C_ops.add(sub, epsilon)
+        return _C_ops.p_norm(sub, p, -1, 0., keepdim, False)
+
+    if _in_legacy_dygraph():
+        sub = _legacy_C_ops.elementwise_sub(x, y)
+        if epsilon != 0.0:
+            epsilon = paddle.fluid.dygraph.base.to_variable([epsilon],
+                                                            dtype=sub.dtype)
+            sub = _legacy_C_ops.elementwise_add(sub, epsilon)
+        return _legacy_C_ops.p_norm(sub, 'axis', -1, 'porder', p, 'keepdim',
+                                    keepdim, 'epsilon', 0.)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'PairwiseDistance')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'PairwiseDistance')
+    sub = paddle.subtract(x, y)
+    if epsilon != 0.0:
+        epsilon_var = sub.block.create_var(dtype=sub.dtype)
+        epsilon_var = paddle.full(shape=[1],
+                                  fill_value=epsilon,
+                                  dtype=sub.dtype)
+        sub = paddle.add(sub, epsilon_var)
+    helper = LayerHelper("PairwiseDistance", name=name)
+    attrs = {
+        'axis': -1,
+        'porder': p,
+        'keepdim': keepdim,
+        'epsilon': 0.,
+    }
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='p_norm',
+                     inputs={'X': sub},
+                     outputs={'Out': out},
+                     attrs=attrs)
+
+    return out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81

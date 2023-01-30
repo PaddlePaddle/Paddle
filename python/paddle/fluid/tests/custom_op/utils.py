@@ -14,12 +14,18 @@
 
 import os
 import sys
+<<<<<<< HEAD
 from site import getsitepackages
 
+=======
+import six
+from distutils.sysconfig import get_python_lib
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
 
 IS_MAC = sys.platform.startswith('darwin')
 
+<<<<<<< HEAD
 # Note(Aurelius84): We use `add_test` in Cmake to config how to run unittest in CI.
 # `PYTHONPATH` will be set as `build/python/paddle` that will make no way to find
 # paddle include directory. Because the following path is generated after installing
@@ -32,6 +38,17 @@ for site_packages_path in getsitepackages():
     paddle_includes.append(
         os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
     )
+=======
+site_packages_path = get_python_lib()
+# Note(Aurelius84): We use `add_test` in Cmake to config how to run unittest in CI.
+# `PYTHONPATH` will be set as `build/python/paddle` that will make no way to find
+# paddle include directory. Because the following path is generated after insalling
+# PaddlePaddle whl. So here we specific `include_dirs` to avoid errors in CI.
+paddle_includes = [
+    os.path.join(site_packages_path, 'paddle', 'include'),
+    os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
+]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 # Test for extra compile args
 extra_cc_args = ['-w', '-g'] if not IS_WINDOWS else ['/w']

@@ -121,12 +121,20 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline bool VarIsTensor(const Variable& var) {
+<<<<<<< HEAD
   return var.IsType<phi::DenseTensor>() || var.IsType<phi::SelectedRows>();
 }
 
 const phi::DenseTensor* GetLoDTensorOrSelectedRowsValueFromVar(
     const Variable& var);
 phi::DenseTensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
+=======
+  return var.IsType<LoDTensor>() || var.IsType<phi::SelectedRows>();
+}
+
+const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
+Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 class ExecutionContext;
 class OperatorBase;
@@ -168,7 +176,11 @@ class OperatorBase {
   virtual void Stop() {}
 
   /// if scope is not null, also show dimensions of arguments
+<<<<<<< HEAD
   virtual std::string DebugStringEx(const Scope* scope) const;
+=======
+  virtual std::string DebugStringEx(const ScopeBase* scope) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }
@@ -251,10 +263,13 @@ class OperatorBase {
     return place;
   }
 
+<<<<<<< HEAD
   uint64_t Id() const { return id_; }
 
   void SetId(uint64_t id) { id_ = id; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -277,9 +292,12 @@ class OperatorBase {
   // OpInfo
   const OpInfo* info_;
 
+<<<<<<< HEAD
   // OpDesc Id
   uint64_t id_ = UINT64_MAX;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
 
@@ -330,6 +348,7 @@ class ExecutionContext {
   virtual const Attribute& GetAttr(const std::string& name) const {
     auto iter = op_.Attrs().find(name);
     if (iter == op_.Attrs().end()) {
+<<<<<<< HEAD
       iter = op_.RuntimeAttrs().find(name);
       PADDLE_ENFORCE_NE(
           iter,
@@ -340,6 +359,12 @@ class ExecutionContext {
                                      op_.Type()));
     }
     return iter->second;
+=======
+      return op_.RuntimeAttrs().at(name);
+    } else {
+      return iter->second;
+    }
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 
   virtual bool HasInput(const std::string& name) const;
@@ -463,8 +488,13 @@ class ExecutionContext {
 #endif
 
   template <typename T, typename DevContext>
+<<<<<<< HEAD
   phi::DenseTensor AllocateTmpTensor(const framework::DDim& dim,
                                      const DevContext& dev_ctx) const {
+=======
+  Tensor AllocateTmpTensor(const framework::DDim& dim,
+                           const DevContext& dev_ctx) const {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     phi::DenseTensor tmp;
     tmp.Resize(dim);
     dev_ctx.template Alloc<T>(&tmp);
@@ -550,6 +580,7 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     return var->IsType<phi::SparseCooTensor>();
   }
 
+<<<<<<< HEAD
   bool IsSparseCooTensorOutput(const std::string& name) const override {
     auto vars = ctx_.MultiOutputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
@@ -557,6 +588,8 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     });
   }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   bool IsSparseCsrTensorInput(const std::string& name) const override {
     const auto* var = ctx_.InputVar(name);
     return var->IsType<phi::SparseCsrTensor>();
@@ -583,11 +616,19 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
 };
 
 template <>
+<<<<<<< HEAD
 const std::vector<const phi::DenseTensor*>
 ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const;
 
 template <>
 std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<phi::DenseTensor>(
+=======
+const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
+    const std::string& name) const;
+
+template <>
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     const std::string& name) const;
 
 class OpKernelBase {
@@ -619,9 +660,14 @@ class OperatorWithKernel : public OperatorBase {
   OperatorWithKernel(const std::string& type,
                      const VariableNameMap& inputs,
                      const VariableNameMap& outputs,
+<<<<<<< HEAD
                      const AttributeMap& attrs);
 
   virtual ~OperatorWithKernel();
+=======
+                     const AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -645,6 +691,7 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportXPU() const override;
 
+<<<<<<< HEAD
   bool SupportsMKLDNN(phi::DataType data_type) const;
 
   bool SupportsCUDNN(phi::DataType data_type) const;
@@ -654,16 +701,24 @@ class OperatorWithKernel : public OperatorBase {
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        phi::DataType data_type) const;
+=======
+  bool SupportsMKLDNN(proto::VarType::Type data_type) const;
+
+  bool SupportsKernelType(const OpKernelType& kernel_type) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
+<<<<<<< HEAD
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                       phi::DataType data_type) const;
 
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                       proto::VarType::Type data_type) const;
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   virtual void InferShape(InferShapeContext* ctx) const;
 
   void RuntimeInferShape(const Scope& scope,
@@ -678,6 +733,7 @@ class OperatorWithKernel : public OperatorBase {
       const std::string& name1,
       const std::string& name2) const;
 
+<<<<<<< HEAD
   virtual phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const;
 
@@ -687,6 +743,16 @@ class OperatorWithKernel : public OperatorBase {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const;
+=======
+  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+
+  // change this to public so that in dygraph mode we can call it to check if we
+  // need transform data
+  virtual OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const OpKernelType& expected_kernel_type) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   platform::Place GetExecutionPlace(
       const platform::Place& platform) const override {
@@ -694,6 +760,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   /* member functions for adapting to phi lib */
+<<<<<<< HEAD
   /** In the phi::DenseTensor calculation library, the new Kernel adopts a
    * clearer and more streamlined design. The arguments of the Kernel and the
    * input and output arguments registered in the original OpMaker do not match
@@ -701,6 +768,14 @@ class OperatorWithKernel : public OperatorBase {
    * kernel. When selecting Kernel during Op execution, select the arguments of
    * the original Op according to the GetExpectedPhiKernelArgs returned
    * arguments.
+=======
+  /** In the Tensor calculation library, the new Kernel adopts a clearer and
+   * more streamlined design. The arguments of the Kernel and the input and
+   * output arguments registered in the original OpMaker do not match in some
+   * cases, so we use map to record the arguments required by the kernel.
+   * When selecting Kernel during Op execution, select the arguments of the
+   * original Op according to the GetExpectedPhiKernelArgs returned arguments.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
    */
   phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
@@ -731,10 +806,13 @@ class OperatorWithKernel : public OperatorBase {
     kernel_type_.reset(kernel_type);
   }
 
+<<<<<<< HEAD
   bool DnnFallback() const { return dnn_fallback_; }
 
   void SetDnnFallback(bool dnn_fallback) const { dnn_fallback_ = dnn_fallback; }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope,
@@ -748,6 +826,7 @@ class OperatorWithKernel : public OperatorBase {
    * transfered_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
+<<<<<<< HEAD
                      const phi::KernelKey& expected_kernel_key,
                      std::vector<std::string>* transfered_inplace_vars,
                      RuntimeContext* ctx,
@@ -756,6 +835,11 @@ class OperatorWithKernel : public OperatorBase {
   void CheckWhetherPreparePhiData(const VariableNameMap& innames,
                                   const VariableNameMap& outnames,
                                   const Scope& scope) const;
+=======
+                     const OpKernelType& expected_kernel_key,
+                     std::vector<std::string>* transfered_inplace_vars,
+                     RuntimeContext* ctx) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
@@ -778,8 +862,13 @@ class OperatorWithKernel : public OperatorBase {
                                const std::string& name,
                                proto::VarType::Type* data_type) const;
   // used for IndicateOrPromoteVarDataTypes
+<<<<<<< HEAD
   phi::DenseTensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                              const std::string& name) const;
+=======
+  Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
+                                   const std::string& name) const;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
@@ -792,10 +881,13 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
+<<<<<<< HEAD
   // NOTE(jiahongyu): Whether fallback to plain kernel after calling
   // GetExpectedKernelType, use this bool flag to solve mkldnn and cudnn hard
   // code
   mutable bool dnn_fallback_ = false;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // NOTE(chenweihang): Similar op members are used to adapt to
   // new phi kernel, if there is a better design in the future,
   // we may polish the implementation here
@@ -805,9 +897,14 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::Kernel> phi_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
+<<<<<<< HEAD
  private:
   struct CacheImpl;
   mutable std::unique_ptr<CacheImpl> impl_;
+=======
+  struct CacheImpl;
+  mutable CacheImpl* impl_{nullptr};
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

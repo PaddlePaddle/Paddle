@@ -21,8 +21,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
+<<<<<<< HEAD
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+=======
+#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/common/bfloat16.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 namespace phi {
 
 template <typename T, typename Context>
@@ -40,10 +45,14 @@ void ScaleKernel(const Context& dev_ctx,
   // TODO(chenweihang): now the eigen function here need the dtype of scale,
   // eigen_x, bias should be same, so here need cast for two scalar arg,
   // maybe we declare that the type of scale and bias is T?
+<<<<<<< HEAD
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     return;
   }
   phi::funcs::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
+=======
+  paddle::operators::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       dev,
       eigen_out,
       eigen_x,

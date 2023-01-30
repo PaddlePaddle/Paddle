@@ -28,7 +28,11 @@ class SelectedRowsTester : public ::testing::Test {
     int64_t row_numel = 100;
     selected_rows_.reset(new phi::SelectedRows(rows, height));
 
+<<<<<<< HEAD
     phi::DenseTensor* value = selected_rows_->mutable_value();
+=======
+    Tensor* value = selected_rows_->mutable_value();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto* data = value->mutable_data<float>(
         phi::make_ddim({static_cast<int64_t>(rows.size()), row_numel}), place_);
     for (int64_t i = 0; i < value->numel(); ++i) {
@@ -98,7 +102,11 @@ TEST(SelectedRows, SparseTable) {
   ASSERT_TRUE(table.HasKey(6));
   ASSERT_EQ(table.rows().size(), 3UL);
 
+<<<<<<< HEAD
   phi::DenseTensor ids;
+=======
+  framework::Tensor ids;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   ids.Resize(phi::make_ddim({4}));
   auto* ids_data = ids.mutable_data<int64_t>(cpu);
   ids_data[0] = static_cast<int64_t>(6);
@@ -106,7 +114,11 @@ TEST(SelectedRows, SparseTable) {
   ids_data[2] = static_cast<int64_t>(8);
   ids_data[3] = static_cast<int64_t>(10);
 
+<<<<<<< HEAD
   phi::DenseTensor get_value;
+=======
+  framework::Tensor get_value;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto* value_data =
       get_value.mutable_data<float>(phi::make_ddim({4, embedding_width}), cpu);
   table.Get(ids, &get_value);

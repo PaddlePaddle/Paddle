@@ -246,10 +246,17 @@ class TypedAttrChecker {
                         true,
                         platform::errors::InvalidArgument(
                             "Found Attribute('%s') with type(Variable), but it "
+<<<<<<< HEAD
                             "doesn't support phi::DenseTensor type.",
                             attr_name_));
 
       VLOG(3) << "Found Attribute " << attr_name_ << " with type(Variable).";
+=======
+                            "doesn't support Tensor type.",
+                            attr_name_));
+
+      VLOG(1) << "Found Attribute " << attr_name_ << " with type(Variable).";
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       var_info_checker_(it->second);
       return;
     }

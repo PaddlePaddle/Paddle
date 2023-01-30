@@ -24,10 +24,17 @@ class AccuracyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Out"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -44,7 +51,11 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Total", "The samples count of current batch");
 
     AddComment(R"DOC(
+<<<<<<< HEAD
 Accuracy Operator.
+=======
+Accuracy Operator. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 It will print accuracy rate for classification.
 The accuracy is calculated as follows:
@@ -52,7 +63,11 @@ The accuracy is calculated as follows:
 $$accuracy = \frac{NumOfCorrectPredicts}{NumOfAllSamples}$$
 
 Both the input Out and Label can carry the LoD (Level of Details)
+<<<<<<< HEAD
 information, or not. But the output only shares the LoD information
+=======
+information, or not. But the output only shares the LoD information 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 with the input Out(Inference).
 
 )DOC");

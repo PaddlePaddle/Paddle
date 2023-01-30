@@ -14,7 +14,10 @@ limitations under the License. */
 
 #include <ctime>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/barrier.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
@@ -26,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
+<<<<<<< HEAD
 DECLARE_bool(enable_exit_when_partial_worker);
 
 namespace paddle {
@@ -34,6 +38,11 @@ namespace framework {
 std::atomic<bool> HogwildWorker::quit_flag_(false);
 Barrier g_barrier;
 
+=======
+namespace paddle {
+namespace framework {
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 void HogwildWorker::Initialize(const TrainerDesc &desc) {
   fetch_config_ = desc.fetch_config();
   param_ = desc.hogwild_param();
@@ -80,6 +89,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       InitializeVariable(ptr, var->GetType());
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&
           thread_id_ != 0) {
+<<<<<<< HEAD
         int tensor_dim = root_scope_->FindVar(var->Name())
                              ->GetMutable<phi::DenseTensor>()
                              ->numel();
@@ -88,6 +98,15 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
         phi::DenseTensor *thread_tensor = ptr1->GetMutable<phi::DenseTensor>();
         phi::DenseTensor *root_tensor =
             root_scope_->FindVar(var->Name())->GetMutable<phi::DenseTensor>();
+=======
+        int tensor_dim =
+            root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>()->numel();
+        auto *ptr1 = thread_scope_->Var(var->Name());
+        InitializeVariable(ptr1, var->GetType());
+        LoDTensor *thread_tensor = ptr1->GetMutable<LoDTensor>();
+        LoDTensor *root_tensor =
+            root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #define MemsetCallback(cpp_type, proto_type)                                  \
   do {                                                                        \
     if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) { \
@@ -104,8 +123,13 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 }
 
 template <typename T>
+<<<<<<< HEAD
 void HogwildWorker::SetZero(phi::DenseTensor *tensor,
                             phi::DenseTensor *root_tensor,
+=======
+void HogwildWorker::SetZero(LoDTensor *tensor,
+                            LoDTensor *root_tensor,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             int tensor_dim) {
   T *ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
   memset(ptr, 0, sizeof(T) * tensor_dim);
@@ -147,6 +171,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   double read_time = 0.0;
   int cur_batch;
   int batch_cnt = 0;
+<<<<<<< HEAD
   if (thread_id_ == 0) {
     quit_flag_.store(false);
   }
@@ -171,6 +196,11 @@ void HogwildWorker::TrainFilesWithProfiler() {
     if (cur_batch <= 0) {
       break;
     }
+=======
+  timeline.Start();
+  uint64_t total_inst = 0;
+  while ((cur_batch = device_reader_->Next()) > 0) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     VLOG(3) << "read a batch in thread " << thread_id_;
     timeline.Pause();
     read_time += timeline.ElapsedSec();
@@ -264,6 +294,7 @@ void HogwildWorker::TrainFiles() {
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
+<<<<<<< HEAD
   if (thread_id_ == 0) {
     quit_flag_.store(false);
     // quit_flag_2 = false;
@@ -292,6 +323,10 @@ void HogwildWorker::TrainFiles() {
     if (cur_batch <= 0) {
       break;
     }
+=======
+
+  while ((cur_batch = device_reader_->Next()) > 0) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for (auto &op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -321,7 +356,11 @@ void HogwildWorker::TrainFiles() {
 #endif
   }
   timeline.Pause();
+<<<<<<< HEAD
   VLOG(1) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+=======
+  VLOG(0) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
           << " seconds, batch_num: " << total_batch_num;
 
   if (need_dump_field_ || need_dump_param_) {

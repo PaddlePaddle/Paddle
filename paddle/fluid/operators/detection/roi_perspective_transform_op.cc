@@ -22,6 +22,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 bool GT_E(T a, T b) {
   return (a > b) || fabs(a - b) < 1e-4;
@@ -246,12 +252,21 @@ template <typename T>
 class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* mask = ctx.Output<phi::DenseTensor>("Mask");
     auto* out_transform_matrix =
         ctx.Output<phi::DenseTensor>("TransformMatrix");
+=======
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* mask = ctx.Output<framework::Tensor>("Mask");
+    auto* out_transform_matrix =
+        ctx.Output<framework::Tensor>("TransformMatrix");
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
@@ -265,7 +280,11 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     const T* input_data = in->data<T>();
     int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
 
+<<<<<<< HEAD
     phi::DenseTensor roi2image;
+=======
+    framework::Tensor roi2image;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();
@@ -394,10 +413,18 @@ template <typename T>
 class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
@@ -414,7 +441,11 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     const T* out_grad_data = out_grad->data<T>();
     const T* rois_data = rois->data<T>();
 
+<<<<<<< HEAD
     phi::DenseTensor roi2image;
+=======
+    framework::Tensor roi2image;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();
@@ -501,7 +532,11 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
         rois_dims.size(),
         2,
         platform::errors::InvalidArgument(
+<<<<<<< HEAD
             "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
+=======
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received "
             "rois dims is %d",
             rois_dims.size()));
@@ -509,7 +544,11 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
         rois_dims[1],
         8,
         platform::errors::InvalidArgument(
+<<<<<<< HEAD
             "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
+=======
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received %d",
             rois_dims[1]));
 
@@ -559,10 +598,18 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -584,10 +631,18 @@ class ROIPerspectiveTransformGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
+<<<<<<< HEAD
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
+=======
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   }
 };
 
@@ -596,16 +651,26 @@ class ROIPerspectiveTransformOpMaker
  public:
   void Make() override {
     AddInput("X",
+<<<<<<< HEAD
              "(phi::DenseTensor), "
+=======
+             "(Tensor), "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "the input of ROIPerspectiveTransformOp. "
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is the number of input channels, "
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
+<<<<<<< HEAD
              "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to be transformed. "
              "should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
+=======
+             "(LoDTensor), "
+             "ROIs (Regions of Interest) to be transformed. "
+             "should be a 2-D LoDTensor of shape (num_rois, 8)"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
              "given as [[x1, y1, x2, y2, x3, y3, x4, y4], ...]."
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the top right coordinates, and"
@@ -613,28 +678,48 @@ class ROIPerspectiveTransformOpMaker
              "(x4, y4) is the bottom left coordinates.");
     AddOutput(
         "Out",
+<<<<<<< HEAD
         "(phi::DenseTensor), "
         "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
         "(num_rois, channels, transformed_h, transformed_w).");
     AddOutput("Mask",
               "(phi::DenseTensor), "
+=======
+        "(Tensor), "
+        "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
+        "(num_rois, channels, transformed_h, transformed_w).");
+    AddOutput("Mask",
+              "(Tensor), "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "The output mask of ROIPerspectiveTransformOp is a 4-D tensor "
               "with shape "
               "(num_rois, 1, transformed_h, transformed_w).");
     AddOutput("TransformMatrix",
+<<<<<<< HEAD
               "(phi::DenseTensor), "
+=======
+              "(Tensor), "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "The output transform matrix of ROIPerspectiveTransformOp is a "
               "1-D tensor with shape "
               "(num_rois, 9).");
     AddOutput("Out2InIdx",
+<<<<<<< HEAD
               "(phi::DenseTensor), "
+=======
+              "(Tensor), "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "An intermediate tensor used to map indexes of input feature map "
               "and indexes of output feature map."
               "The shape of the tensor is [out_size, 4] and out_size is the "
               "number of elements in output feature map.")
         .AsIntermediate();
     AddOutput("Out2InWeights",
+<<<<<<< HEAD
               "(phi::DenseTensor), "
+=======
+              "(Tensor), "
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
               "An intermediate tensor used to record the weights of bilinear "
               "interpolatein for each element in output. The shape of the "
               "tensor is [out_size, 4] and out_size is the number of elements "

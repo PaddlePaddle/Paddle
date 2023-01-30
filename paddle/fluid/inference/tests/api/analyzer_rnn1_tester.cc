@@ -257,6 +257,11 @@ TEST(Analyzer_rnn1, fuse_statis) {
   EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
   EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
   EXPECT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
+<<<<<<< HEAD
+=======
+  EXPECT_EQ(num_ops,
+            13);  // After graph optimization, only 13 operators exists.
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 }
 
 // Compare result of NativeConfig and AnalysisConfig

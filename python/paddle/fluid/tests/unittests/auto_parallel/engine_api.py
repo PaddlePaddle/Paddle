@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import tempfile
 
@@ -24,6 +25,33 @@ import paddle.static as static
 import paddle.utils as utils
 from paddle.distributed.fleet import auto
 from paddle.io import Dataset
+=======
+import unittest
+import time
+import tempfile
+import copy
+import os
+import numpy as np
+import subprocess
+import paddle
+import paddle.static as static
+import paddle.utils as utils
+import paddle.nn as nn
+import paddle.fluid as fluid
+import paddle.static as static
+import paddle.nn.functional as F
+import paddle.utils as utils
+from paddle.fluid import layers
+from paddle.io import Dataset, IterableDataset, DataLoader
+
+from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.interface import (
+    get_collection,
+    CollectionNames,
+)
+from paddle.optimizer.lr import CosineAnnealingDecay
+from paddle.fluid.dataloader.collate import default_collate_fn
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
@@ -47,7 +75,11 @@ my_feed_vars = []
 
 class MyDataset(Dataset):
     def __init__(self, num_samples):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MyDataset, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self.num_samples = num_samples
 
     def __getitem__(self, index):
@@ -84,7 +116,11 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
+<<<<<<< HEAD
         super().__init__()
+=======
+        super(MLPLayer, self).__init__()
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(

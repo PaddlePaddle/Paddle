@@ -16,8 +16,13 @@
 #include <set>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/generator.h"
+=======
+#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -83,6 +88,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
     seed = rnd();
   }
   std::uniform_int_distribution<T> dist(0, num_classes - 1);
+<<<<<<< HEAD
   std::shared_ptr<std::mt19937_64> engine;
   if (seed) {
     engine = std::make_shared<std::mt19937_64>();
@@ -90,6 +96,9 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   } else {
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
+=======
+  auto engine = paddle::framework::GetCPURandomEngine(seed);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   // sample negative class center randomly
   while (unique_label.size() < static_cast<size_t>(num_samples)) {
     T neg = dist(*engine);

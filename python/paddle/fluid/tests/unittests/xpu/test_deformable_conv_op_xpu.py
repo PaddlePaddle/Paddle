@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import sys
 
 sys.path.append("..")
 import unittest
+<<<<<<< HEAD
 
 import numpy as np
 from op_test_xpu import OpTest, XPUOpTest
@@ -27,6 +32,16 @@ from xpu.get_test_cover_info import (
 
 import paddle
 import paddle.fluid.core as core
+=======
+import numpy as np
+
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from op_test_xpu import OpTest, XPUOpTest
+import paddle
+from paddle.fluid import Program, program_guard
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 def dmc_bilinear(data_im, height, width, h, w):
@@ -68,11 +83,16 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
     assert f_c * group == in_c
     assert np.mod(out_c, group) == 0
 
+<<<<<<< HEAD
     stride, pad, dilation = (
         conv_param['stride'],
         conv_param['pad'],
         conv_param['dilation'],
     )
+=======
+    stride, pad, dilation = conv_param['stride'], conv_param['pad'],\
+        conv_param['dilation']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     out_h = 1 + (in_h + 2 * pad[0] - (dilation[0] * (f_h - 1) + 1)) // stride[0]
     out_w = 1 + (in_w + 2 * pad[1] - (dilation[1] * (f_w - 1) + 1)) // stride[1]
     assert out_h == in_h
@@ -85,6 +105,7 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
                 for w in range(out_w):
                     for kh in range(f_h):
                         for kw in range(f_w):
+<<<<<<< HEAD
                             offset_h_table = offset[n, ::2, h, w].reshape(
                                 f_h, f_w
                             )
@@ -120,12 +141,38 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
                             col_buffer[
                                 n, c * f_h * f_w + kh * f_w + kw, h * in_w + w
                             ] = val_out
+=======
+                            offset_h_table = \
+                                    offset[n, ::2, h, w].reshape(f_h, f_w)
+                            offset_w_table = \
+                                    offset[n, 1::2, h, w].reshape(f_h, f_w)
+                            mask_table = \
+                                mask[n, :, h, w].reshape(f_h, f_w)
+                            offset_h = offset_h_table[kh, kw]
+                            offset_w = offset_w_table[kh, kw]
+                            val = 0
+                            im_h = h * stride[0] + kh * dilation[0] \
+                                + offset_h - pad[0]
+                            im_w = w * stride[0] + kw * dilation[0] \
+                                + offset_w - pad[1]
+                            if im_h > -1 and im_w > -1 and \
+                                im_h < in_h and im_w < in_h:
+                                val = dmc_bilinear(input[n, c], in_h, in_w,
+                                                   im_h, im_w)
+                            val_out = val * mask_table[kh, kw]
+                            col_buffer[n, c * f_h * f_w + kh * f_w + kw,
+                                       h * in_w + w] = val_out
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     out = np.zeros((in_n, group, int(out_c // group), out_h * out_w))
     weight = filter.reshape(group, int(out_c // group), f_c * f_h * f_w)
     col_buffer = col_buffer.reshape(
+<<<<<<< HEAD
         (in_n, group, int(in_c // group * f_h * f_w), in_h * in_w)
     )
+=======
+        (in_n, group, int(in_c // group * f_h * f_w), in_h * in_w))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     for n in range(in_n):
         for g in range(group):
             out[n, g] = np.matmul(weight[g], col_buffer[n, g])
@@ -134,11 +181,19 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
 
 
 class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'deformable_conv'
         self.use_dynamic_create_class = False
 
     class TestModulatedDeformableConvOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             self.op_type = "deformable_conv"
             self.dtype = self.in_type
@@ -150,23 +205,36 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
             conv_param = {
                 'stride': self.stride,
                 'pad': self.pad,
+<<<<<<< HEAD
                 'dilation': self.dilations,
+=======
+                'dilation': self.dilations
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
             input = np.random.random(self.input_size).astype(self.dtype)
             offset = 10 * np.random.random(self.offset_size).astype(self.dtype)
             mask = 10 * np.random.random(self.mask_size).astype(self.dtype)
             filter = np.random.random(self.filter_size).astype(self.dtype)
+<<<<<<< HEAD
             output = dconv_im2col_gemm(
                 input, offset, mask, filter, self.groups, conv_param
             )
+=======
+            output = dconv_im2col_gemm(input, offset, mask, filter, self.groups,
+                                       conv_param)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             output = output.astype(self.dtype)
 
             self.inputs = {
                 'Input': OpTest.np_dtype_to_fluid_dtype(input),
                 'Offset': OpTest.np_dtype_to_fluid_dtype(offset),
                 'Mask': OpTest.np_dtype_to_fluid_dtype(mask),
+<<<<<<< HEAD
                 'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+=======
+                'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
             self.attrs = {
                 'strides': self.stride,
@@ -187,11 +255,17 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 self.check_grad_with_place(
+<<<<<<< HEAD
                     self.place,
                     {'Input', 'Offset', 'Mask', 'Filter'},
                     'Output',
                     max_relative_error=0.06,
                 )
+=======
+                    self.place, {'Input', 'Offset', 'Mask', 'Filter'},
+                    'Output',
+                    max_relative_error=0.06)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def init_test_case(self):
             self.pad = [1, 1]
@@ -203,6 +277,7 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
             self.filter_size = [8, f_c, 3, 3]
             self.im2col_step = 1
             self.deformable_groups = 1
+<<<<<<< HEAD
             offset_c = (
                 2
                 * self.deformable_groups
@@ -225,6 +300,19 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
                 mask_c,
                 self.input_size[2],
                 self.input_size[3],
+=======
+            offset_c = 2 * self.deformable_groups * self.filter_size[
+                2] * self.filter_size[3]
+            mask_c = self.deformable_groups * self.filter_size[
+                2] * self.filter_size[3]
+            self.offset_size = [
+                self.input_size[0], offset_c, self.input_size[2],
+                self.input_size[3]
+            ]
+            self.mask_size = [
+                self.input_size[0], mask_c, self.input_size[2],
+                self.input_size[3]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
 
         def init_dilation(self):
@@ -234,6 +322,10 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
             self.groups = 1
 
     class TestWithDilation(TestModulatedDeformableConvOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.pad = [2, 2]
             self.stride = [1, 1]
@@ -243,6 +335,7 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
             self.filter_size = [6, f_c, 3, 3]
             self.im2col_step = 1
             self.deformable_groups = 1
+<<<<<<< HEAD
             offset_c = (
                 2
                 * self.deformable_groups
@@ -265,12 +358,29 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
                 mask_c,
                 self.input_size[2],
                 self.input_size[3],
+=======
+            offset_c = 2 * self.deformable_groups * self.filter_size[
+                2] * self.filter_size[3]
+            mask_c = self.deformable_groups * self.filter_size[
+                2] * self.filter_size[3]
+            self.offset_size = [
+                self.input_size[0], offset_c, self.input_size[2],
+                self.input_size[3]
+            ]
+            self.mask_size = [
+                self.input_size[0], mask_c, self.input_size[2],
+                self.input_size[3]
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             ]
 
         def init_dilation(self):
             self.dilations = [2, 2]
 
     class TestWith3x3(TestModulatedDeformableConvOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_test_case(self):
             self.pad = [1, 1]
             self.stride = [1, 1]
@@ -280,6 +390,7 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
             self.filter_size = [6, f_c, 3, 3]
             self.im2col_step = 1
             self.deformable_groups = 1
+<<<<<<< HEAD
             offset_c = (
                 2
                 * self.deformable_groups
@@ -304,6 +415,61 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
                 self.input_size[3],
             ]
 
+=======
+            offset_c = 2 * self.deformable_groups * self.filter_size[
+                2] * self.filter_size[3]
+            mask_c = self.deformable_groups * self.filter_size[
+                2] * self.filter_size[3]
+            self.offset_size = [
+                self.input_size[0], offset_c, self.input_size[2],
+                self.input_size[3]
+            ]
+            self.mask_size = [
+                self.input_size[0], mask_c, self.input_size[2],
+                self.input_size[3]
+            ]
+
+    class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
+
+        def test_error(self):
+
+            def test_invalid_input():
+                paddle.enable_static()
+                input = [1, 3, 32, 32]
+                offset = fluid.data(name='offset',
+                                    shape=[None, 3, 32, 32],
+                                    dtype='float32')
+                mask = fluid.data(name='mask',
+                                  shape=[None, 3, 32, 32],
+                                  dtype='float32')
+                loss = fluid.layers.deformable_conv(input,
+                                                    offset,
+                                                    mask,
+                                                    num_filters=4,
+                                                    filter_size=1)
+
+            self.assertRaises(TypeError, test_invalid_input)
+
+            def test_invalid_offset():
+                paddle.enable_static()
+                input = fluid.data(name='input',
+                                   shape=[None, 3, 32, 32],
+                                   dtype='int32')
+                offset = fluid.data(name='offset',
+                                    shape=[None, 3, 32, 32],
+                                    dtype='float32')
+                mask = fluid.data(name='mask',
+                                  shape=[None, 3, 32, 32],
+                                  dtype='float32')
+                loss = fluid.layers.deformable_conv(input,
+                                                    offset,
+                                                    mask,
+                                                    num_filters=4,
+                                                    filter_size=1)
+
+            self.assertRaises(TypeError, test_invalid_offset)
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 support_types = get_xpu_op_support_types('deformable_conv')
 for stype in support_types:

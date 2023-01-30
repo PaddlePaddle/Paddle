@@ -16,9 +16,15 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 namespace phi {
 
@@ -36,6 +42,10 @@ using ConstEigenVectorArrayMap =
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context& ctx,
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& bias,
@@ -51,13 +61,22 @@ void BatchNormGradRawKernel(const Context& ctx,
                             bool is_test,
                             bool use_global_stats,
                             bool trainable_statistics,
+<<<<<<< HEAD
+=======
+                            bool fuse_with_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                             bool is_inplace,
                             DenseTensor* x_grad,
                             DenseTensor* scale_grad,
                             DenseTensor* bias_grad) {
   const auto* d_y = &y_grad;
 
+<<<<<<< HEAD
   DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+=======
+  DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto* d_x = x_grad;
   auto* d_scale = scale_grad;
@@ -308,6 +327,10 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
+<<<<<<< HEAD
+=======
+                         bool fuse_with_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
@@ -327,6 +350,10 @@ void BatchNormGradKernel(const Context& dev_ctx,
                                      is_test,
                                      use_global_stats,
                                      trainable_statistics,
+<<<<<<< HEAD
+=======
+                                     fuse_with_relu,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                                      false,
                                      x_grad,
                                      scale_grad,
@@ -334,6 +361,7 @@ void BatchNormGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void BatchNormDoubleGradKernel(
     const Context& ctx,
     const DenseTensor& x,
@@ -355,6 +383,29 @@ void BatchNormDoubleGradKernel(
     DenseTensor* x_grad,
     DenseTensor* scale_grad,
     DenseTensor* y_grad_grad) {
+=======
+void BatchNormDoubleGradKernel(const Context& ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& scale,
+                               const paddle::optional<DenseTensor>& mean,
+                               const paddle::optional<DenseTensor>& variance,
+                               const DenseTensor& saved_mean,
+                               const DenseTensor& saved_variance,
+                               const DenseTensor& y_grad,
+                               const DenseTensor& x_grad_grad,
+                               const DenseTensor& scale_grad_grad,
+                               const DenseTensor& bias_grad_grad,
+                               float momentum,
+                               float epsilon,
+                               const std::string& data_layout_str,
+                               bool is_test,
+                               bool use_global_stats,
+                               bool trainable_statistics,
+                               bool fuse_with_relu,
+                               DenseTensor* x_grad,
+                               DenseTensor* scale_grad,
+                               DenseTensor* y_grad_grad) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   const auto* X = &x;
   const auto* Scale = &scale;
   const auto* dY = &y_grad;
@@ -368,11 +419,20 @@ void BatchNormDoubleGradKernel(
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
+<<<<<<< HEAD
   const auto data_layout = phi::StringToDataLayout(data_layout_str);
 
   const auto* ddX = x_grad_grad.get_ptr();
   const auto* ddScale = scale_grad_grad.get_ptr();
   const auto* ddBias = bias_grad_grad.get_ptr();
+=======
+  const auto data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+
+  const auto* ddX = &x_grad_grad;
+  const auto* ddScale = &scale_grad_grad;
+  const auto* ddBias = &bias_grad_grad;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   auto* dX = x_grad;
   auto* dScale = scale_grad;

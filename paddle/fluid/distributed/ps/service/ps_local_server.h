@@ -31,7 +31,11 @@ class PsLocalServer : public PSServer {
   virtual int32_t Stop() { return 0; }
   virtual int32_t Configure(
       const PSParameter &config,
+<<<<<<< HEAD
       PSEnvironment &env,  // NOLINT
+=======
+      PSEnvironment &env,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
       size_t server_rank,
       const std::vector<framework::ProgramDesc> &server_sub_program = {}) {
     return 0;

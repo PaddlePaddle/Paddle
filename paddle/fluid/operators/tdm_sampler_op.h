@@ -29,19 +29,36 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
+=======
+using Tensor = framework::Tensor;
+using Sampler = math::Sampler;
+using DDim = framework::DDim;
+using LoD = framework::LoD;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 
 template <typename T, typename TreeT = int, typename OutT = int>
 void TDMSamplerInner(const framework::ExecutionContext &context,
+<<<<<<< HEAD
                      const phi::DenseTensor &input_tensor,
                      const phi::DenseTensor &travel_lod_tensor,
                      const phi::DenseTensor &layer_lod_tensor,
                      phi::DenseTensor *out_tensor,
                      phi::DenseTensor *label_tensor,
                      phi::DenseTensor *mask_tensor) {
+=======
+                     const LoDTensor &input_tensor,
+                     const LoDTensor &travel_lod_tensor,
+                     const LoDTensor &layer_lod_tensor,
+                     LoDTensor *out_tensor,
+                     LoDTensor *label_tensor,
+                     LoDTensor *mask_tensor) {
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   auto neg_samples_num_vec =
       context.Attr<std::vector<int>>("neg_samples_num_list");
   auto layer_offset_lod = context.Attr<std::vector<int>>("layer_offset_lod");
@@ -260,9 +277,15 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *layer_var = context.InputVar("Layer");
 
     // get all tensor
+<<<<<<< HEAD
     auto &input_tensor = input_var->Get<phi::DenseTensor>();
     auto &travel_lod_tensor = travel_var->Get<phi::DenseTensor>();
     auto &layer_lod_tensor = layer_var->Get<phi::DenseTensor>();
+=======
+    auto &input_tensor = input_var->Get<framework::LoDTensor>();
+    auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
+    auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     const auto &input_type =
         framework::TransToProtoVarType(input_tensor.dtype());
@@ -321,9 +344,15 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *out_var = context.OutputVar("Out");
     auto *label_var = context.OutputVar("Labels");
     auto *mask_var = context.OutputVar("Mask");
+<<<<<<< HEAD
     auto *out_tensor = out_var->GetMutable<phi::DenseTensor>();
     auto *label_tensor = label_var->GetMutable<phi::DenseTensor>();
     auto *mask_tensor = mask_var->GetMutable<phi::DenseTensor>();
+=======
+    auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
+    auto *label_tensor = label_var->GetMutable<framework::LoDTensor>();
+    auto *mask_tensor = mask_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     auto output_type = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));

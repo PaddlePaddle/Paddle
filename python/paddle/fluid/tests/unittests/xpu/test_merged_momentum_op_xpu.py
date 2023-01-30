@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import sys
 import unittest
 
@@ -25,16 +26,41 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import sys
+
+sys.path.append("..")
+
+import paddle
+import paddle.fluid.core as core
+
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from test_merged_momentum_op_xpu_base import TestMergedMomentumBase
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 paddle.enable_static()
 
 
 class XPUTestMergedMomentumOP(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def __init__(self):
         self.op_name = 'merged_momentum'
         self.use_dynamic_create_class = False
 
     class TestMergedMomentumOp(TestMergedMomentumBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def setUp(self):
             super().setUp()
             self.set_case()
@@ -48,18 +74,34 @@ class XPUTestMergedMomentumOP(XPUOpTestWrapper):
             self.check_with_place(self.place, self.in_type)
 
     class TestMergedMomentum1(TestMergedMomentumOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 8]]
 
     class TestMergedMomentum2(TestMergedMomentumOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_case(self):
             self.shapes = [[3, 4], [2, 7]]
 
     class TestMergedMomentum3(TestMergedMomentumOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_case(self):
             self.shapes = [[3, 4]]
 
     class TestMergedMomentum4(TestMergedMomentumOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 7], [9, 9], [10, 12]]
 

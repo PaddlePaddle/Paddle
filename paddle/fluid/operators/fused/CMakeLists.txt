@@ -38,8 +38,11 @@ if(WITH_XPU)
   op_library(resnet_basic_block_op)
   op_library(resnet_unit_op)
   op_library(fused_gemm_epilogue_op)
+<<<<<<< HEAD
   op_library(fused_attention_op)
   op_library(fused_feedforward_op)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -69,7 +72,11 @@ if(WITH_GPU OR WITH_ROCM)
   op_library(skip_layernorm_op)
   op_library(yolo_box_head_op)
   op_library(yolo_box_post_op)
+<<<<<<< HEAD
   op_library(fused_embedding_eltwise_layernorm_op DEPS bert_encoder_functor)
+=======
+  op_library(fused_embedding_eltwise_layernorm_op)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   op_library(fused_gate_attention_op)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)

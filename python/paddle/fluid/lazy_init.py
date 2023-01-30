@@ -17,9 +17,15 @@ from . import framework
 __all__ = ["LazyGuard"]
 
 
+<<<<<<< HEAD
 class LazyInitHelper:
     """
     A Helper Context to trigger switching mode between dygraph and static graph mode,
+=======
+class LazyInitHelper(object):
+    """
+    A Helper Context to trigger switching mode between dygraph and static mode,
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     and holds the startup program resource.
     """
 
@@ -36,8 +42,12 @@ class LazyInitHelper:
         """
         if self._state:
             return
+<<<<<<< HEAD
         assert (
             framework._non_static_mode()
+=======
+        assert framework._non_static_mode(
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         ), "LazyInit.enable() is only available in dygraph mode."
         self._state = True
 
@@ -54,6 +64,7 @@ class LazyInitHelper:
     def __enter__(self):
         """
         Switch into lazy mode and set _dygraph_tracer_ with None to convert
+<<<<<<< HEAD
         dygraph mode into static graph mode.
         """
         self.enable()
@@ -61,6 +72,14 @@ class LazyInitHelper:
             return
         self._tracer = framework.global_var._dygraph_tracer_
         framework.global_var._dygraph_tracer_ = None
+=======
+        dygraph mode into static mode.
+        """
+        self.enable()
+        if self._in_guard: return
+        self._tracer = framework._dygraph_tracer_
+        framework._dygraph_tracer_ = None
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._in_guard = True
 
     def __exit__(self, *args, **kwargs):
@@ -68,10 +87,16 @@ class LazyInitHelper:
         Exit from lazy mode and recover _dygraph_tracer_.
         """
         self.disable()
+<<<<<<< HEAD
         if not self._in_guard:
             return
         assert self._tracer is not None
         framework.global_var._dygraph_tracer_ = self._tracer
+=======
+        if not self._in_guard: return
+        assert self._tracer is not None
+        framework._dygraph_tracer_ = self._tracer
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         self._tracer = None
         self._in_guard = False
 
@@ -88,7 +113,11 @@ def lazy_init_helper():
     return _lazy_init_helper
 
 
+<<<<<<< HEAD
 class LazyGuard:
+=======
+class LazyGuard(object):
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     """
     LazyGuard is a wrapper interface for nn.Layer, it forwards the construct
     process of user defined Layer. Meanwhile, it provides necessary API to
@@ -100,12 +129,20 @@ class LazyGuard:
         Construct instance from class_obj by Lazy Initializing parameters.
 
         Examples:
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             .. code-block:: python
 
                 from paddle import LazyGuard
                 from paddle.nn import Linear
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
                 with LazyGuard():
                     fc = LazyInit(Linear)(10, 10)
 

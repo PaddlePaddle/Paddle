@@ -14,7 +14,10 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/common/bfloat16.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -23,6 +26,7 @@
 namespace phi {
 
 #if defined(__NVCC__)
+<<<<<<< HEAD
 
 template <typename T>
 struct AbsGradCUDAFunctor {
@@ -87,6 +91,8 @@ struct AbsGradCUDAFunctor<phi::dtype::complex<double>> {
   }
 };
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T>
 void AbsGradKernelImpl(const GPUContext& dev_ctx,
                        const DenseTensor& x,
@@ -95,10 +101,16 @@ void AbsGradKernelImpl(const GPUContext& dev_ctx,
   std::vector<const DenseTensor*> ins = {&x, &dout};
   std::vector<DenseTensor*> outs = {dx};
   dev_ctx.Alloc<T>(dx);
+<<<<<<< HEAD
   AbsGradCUDAFunctor<T> abs_grad_cuda_functor;
   phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, abs_grad_cuda_functor);
 }
 
+=======
+  phi::funcs::AbsGradCUDAFunctor<T> abs_grad_cuda_functor;
+  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, abs_grad_cuda_functor);
+}
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 template <typename T, typename Context>
 void AbsGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,

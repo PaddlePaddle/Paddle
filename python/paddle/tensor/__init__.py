@@ -19,8 +19,11 @@ from .attribute import shape  # noqa: F401
 from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
 from .attribute import is_floating_point  # noqa: F401
+<<<<<<< HEAD
 from .creation import create_parameter  # noqa: F401
 from .creation import create_tensor  # noqa: F401
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
@@ -108,7 +111,10 @@ from .manipulation import scatter_nd  # noqa: F401
 from .manipulation import shard_index  # noqa: F401
 from .manipulation import slice  # noqa: F401
 from .manipulation import split  # noqa: F401
+<<<<<<< HEAD
 from .manipulation import vsplit  # noqa: F401
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .manipulation import squeeze  # noqa: F401
 from .manipulation import squeeze_  # noqa: F401
 from .manipulation import stack  # noqa: F401
@@ -171,7 +177,10 @@ from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
+<<<<<<< HEAD
 from .math import nan_to_num  # noqa: F401
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 from .math import nansum  # noqa: F401
 from .math import nanmean  # noqa: F401
 from .math import count_nonzero  # noqa: F401
@@ -242,7 +251,10 @@ from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
+<<<<<<< HEAD
 from .math import frexp  # noqa: F401
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -291,8 +303,11 @@ from .einsum import einsum  # noqa: F401
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [  # noqa
+<<<<<<< HEAD
     'create_parameter',
     'create_tensor',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'matmul',
     'dot',
     'cov',
@@ -355,7 +370,10 @@ tensor_method_func = [  # noqa
     'square',
     'stanh',
     'sum',
+<<<<<<< HEAD
     'nan_to_num',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -436,7 +454,10 @@ tensor_method_func = [  # noqa
     'shard_index',
     'slice',
     'split',
+<<<<<<< HEAD
     'vsplit',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     'chunk',
     'tensordot',
     'squeeze',
@@ -524,7 +545,10 @@ tensor_method_func = [  # noqa
     'take',
     'bucketize',
     'sgn',
+<<<<<<< HEAD
     'frexp',
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 ]
 
 # this list used in math_op_patch.py for magic_method bind

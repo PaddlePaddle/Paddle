@@ -1,6 +1,10 @@
 if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
   set(PLUGIN_URL https://github.com/PaddlePaddle/PaddleCustomDevice.git)
+<<<<<<< HEAD
   set(PLUGIN_TAG develop)
+=======
+  set(PLUGIN_TAG 0698428ddba21e6baecb690579f37c48896f7d56)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
   file(
     GLOB TEST_OPS
@@ -28,5 +32,8 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
   set_tests_properties(test_custom_cpu_profiler_plugin PROPERTIES TIMEOUT 120)
   set_tests_properties(test_fleet_launch_custom_device PROPERTIES TIMEOUT 120)
   set_tests_properties(test_custom_cpu_to_static PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
   set_tests_properties(test_custom_op_setup PROPERTIES TIMEOUT 120)
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 endif()

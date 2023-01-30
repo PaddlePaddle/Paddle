@@ -16,15 +16,25 @@ import paddle
 
 
 class Exponential(paddle.distribution.ExponentialFamily):
+<<<<<<< HEAD
     """mock exponential distribution, which support computing entropy and
     kl use bregman divergence
     """
 
+=======
+    """mock exponential distribution, which support computing entropy and 
+       kl use bregman divergence
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     _mean_carrier_measure = 0
 
     def __init__(self, rate):
         self._rate = rate
+<<<<<<< HEAD
         super().__init__(batch_shape=rate.shape)
+=======
+        super(Exponential, self).__init__(batch_shape=rate.shape)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     @property
     def rate(self):
@@ -35,14 +45,23 @@ class Exponential(paddle.distribution.ExponentialFamily):
 
     @property
     def _natural_parameters(self):
+<<<<<<< HEAD
         return (-self._rate,)
+=======
+        return (-self._rate, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _log_normalizer(self, x):
         return -paddle.log(-x)
 
 
 class DummyExpFamily(paddle.distribution.ExponentialFamily):
+<<<<<<< HEAD
     """dummy class extend from exponential family"""
+=======
+    """dummy class extend from exponential family
+    """
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def __init__(self, *args):
         pass
@@ -52,7 +71,11 @@ class DummyExpFamily(paddle.distribution.ExponentialFamily):
 
     @property
     def _natural_parameters(self):
+<<<<<<< HEAD
         return (1.0,)
+=======
+        return (1.0, )
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def _log_normalizer(self, x):
         return -paddle.log(-x)

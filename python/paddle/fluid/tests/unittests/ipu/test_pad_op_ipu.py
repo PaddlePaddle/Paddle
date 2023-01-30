@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -40,9 +47,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         pad = paddle.nn.functional.pad(x, **self.attrs)
         self.fetch_list = [pad.name]
 
@@ -59,14 +72,24 @@ class TestBase(IPUOpTest):
 
 @unittest.skip("Do not support `pad` as a tensor")
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {}
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         const_attrs = {
             'name': 'y',
             'shape': [4],
@@ -79,6 +102,10 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"pad": [2, 5], "data_format": "NCL"}
 
@@ -91,6 +118,10 @@ class TestCase2(TestBase):
 
 
 class TestCase3(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"pad": [2, 5, 2, 3, 6, 3], "data_format": "NCDHW"}
 
@@ -103,36 +134,62 @@ class TestCase3(TestBase):
 
 
 class TestCase4(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"pad": [2, 2, 1, 1], "mode": "reflect"}
 
 
 @unittest.skip("replicate mode is not supported")
 class TestCase5(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"pad": [1, 2, 3, 4], "mode": "replicate"}
 
 
 @unittest.skip("circular mode is not supported")
 class TestCase6(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"pad": [1, 2, 3, 4], "mode": "circular"}
 
 
 @unittest.skip("Only support NCL, NCHW, NCDHW")
 class TestCase7(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"pad": [1, 2], "data_format": "NLC"}
 
 
 @unittest.skip("Only support NCL, NCHW, NCDHW")
+<<<<<<< HEAD
 class TestCase8(TestBase):
+=======
+class TestCase7(TestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"pad": [1, 2, 3, 4], "data_format": "NHWC"}
 
 
 @unittest.skip("Only support NCL, NCHW, NCDHW")
+<<<<<<< HEAD
 class TestCase9(TestBase):
+=======
+class TestCase7(TestBase):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def set_op_attrs(self):
         self.attrs = {"pad": [1, 2, 3, 4, 1, 3], "data_format": "NDHWC"}
 

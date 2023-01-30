@@ -81,6 +81,7 @@ inline PaddleDType ConvertToPaddleDType(
   }
 }
 
+<<<<<<< HEAD
 inline bool IsFloatVar(framework::proto::VarType::Type t) {
   if (t == framework::proto::VarType::FP16 ||
       t == framework::proto::VarType::FP32 ||
@@ -90,6 +91,8 @@ inline bool IsFloatVar(framework::proto::VarType::Type t) {
   return false;
 }
 
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 using paddle::framework::DataTypeToString;
 
 // Timer for timer

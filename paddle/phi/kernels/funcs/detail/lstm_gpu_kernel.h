@@ -15,8 +15,13 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/device_context.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
 
@@ -202,12 +207,24 @@ __global__ void KeLstmBackward(Op op,
   if (is_batch) {
     if (value.prev_state_value) {
       if (grad.check_ig_grad)
+<<<<<<< HEAD
         phi::CudaAtomicAdd(grad.check_ig_grad + frame_idx, r_checkIGrad);
       if (grad.check_fg_grad)
         phi::CudaAtomicAdd(grad.check_fg_grad + frame_idx, r_checkFGrad);
     }
     if (grad.check_og_grad)
       phi::CudaAtomicAdd(grad.check_og_grad + frame_idx, r_checkOGrad);
+=======
+        paddle::platform::CudaAtomicAdd(grad.check_ig_grad + frame_idx,
+                                        r_checkIGrad);
+      if (grad.check_fg_grad)
+        paddle::platform::CudaAtomicAdd(grad.check_fg_grad + frame_idx,
+                                        r_checkFGrad);
+    }
+    if (grad.check_og_grad)
+      paddle::platform::CudaAtomicAdd(grad.check_og_grad + frame_idx,
+                                      r_checkOGrad);
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   } else {
     if (value.prev_state_value) {
       if (grad.check_ig_grad) grad.check_ig_grad[frame_idx] += r_checkIGrad;

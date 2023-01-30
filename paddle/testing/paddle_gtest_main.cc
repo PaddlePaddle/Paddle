@@ -17,8 +17,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/flags.h"
+=======
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/fluid/platform/init.h"
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_bool(enable_gpu_memory_usage_log);
@@ -43,7 +48,11 @@ int main(int argc, char** argv) {
   }
 #endif
 
+<<<<<<< HEAD
   const auto& flag_map = phi::GetExportedFlagInfoMap();
+=======
+  const auto& flag_map = paddle::platform::GetExportedFlagInfoMap();
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   for (const auto& pair : flag_map) {
     const std::string& name = pair.second.name;
     // NOTE(zhiqiu): some names may not linked in some tests, so add to

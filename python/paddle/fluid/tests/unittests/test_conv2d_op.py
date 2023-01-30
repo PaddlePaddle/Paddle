@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
@@ -49,6 +50,40 @@ def conv2d_forward_naive(
         )
 
     channel_last = data_format == "NHWC"
+=======
+from __future__ import print_function
+
+import unittest
+import numpy as np
+import paddle
+
+import paddle
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid.tests.unittests.op_test import (OpTest,
+                                                  convert_float_to_uint16,
+                                                  get_numeric_gradient)
+from paddle.fluid.tests.unittests.testsuite import create_op
+from paddle.fluid import Program, program_guard
+
+
+def conv2d_forward_naive(input,
+                         filter,
+                         group,
+                         conv_param,
+                         padding_algorithm='EXPLICIT',
+                         data_format='NCHW'):
+    if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
+        raise ValueError("Unknown Attr(padding_algorithm): '%s'. "
+                         "It can only be 'SAME' or 'VALID'." %
+                         str(padding_algorithm))
+
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError("Unknown Attr(data_format): '%s' ."
+                         "It can only be 'NCHW' or 'NHWC'." % str(data_format))
+
+    channel_last = (data_format == "NHWC")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     if channel_last:
         input = np.transpose(input, [0, 3, 1, 2])
 
@@ -61,15 +96,21 @@ def conv2d_forward_naive(
     sub_out_c = out_c // group
     sub_f_n = f_n // group
 
+<<<<<<< HEAD
     stride, pad, dilation = (
         conv_param['stride'],
         conv_param['pad'],
         conv_param['dilation'],
     )
+=======
+    stride, pad, dilation = conv_param['stride'], conv_param['pad'], conv_param[
+        'dilation']
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     # update pad and dilation
     def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
         padding = []
+<<<<<<< HEAD
         for input_size, filter_size, stride_size in zip(
             input_shape, pool_size, pool_stride
         ):
@@ -77,6 +118,13 @@ def conv2d_forward_naive(
             pad_sum = np.max(
                 ((out_size - 1) * stride_size + filter_size - input_size, 0)
             )
+=======
+        for input_size, filter_size, stride_size in zip(input_shape, pool_size,
+                                                        pool_stride):
+            out_size = int((input_size + stride_size - 1) / stride_size)
+            pad_sum = np.max(
+                ((out_size - 1) * stride_size + filter_size - input_size, 0))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             pad_0 = int(pad_sum / 2)
             pad_1 = int(pad_sum - pad_0)
             padding.append(pad_0)
@@ -96,6 +144,7 @@ def conv2d_forward_naive(
     if len(pad) == 4:
         pad_h_0, pad_h_1 = pad[0], pad[1]
         pad_w_0, pad_w_1 = pad[2], pad[3]
+<<<<<<< HEAD
     out_h = (
         1
         + (in_h + pad_h_0 + pad_h_1 - (dilation[0] * (f_h - 1) + 1))
@@ -122,10 +171,30 @@ def conv2d_forward_naive(
     filter_dilation[
         :, :, 0 : d_bolck_h : dilation[0], 0 : d_bolck_w : dilation[1]
     ] = filter
+=======
+    out_h = 1 + (in_h + pad_h_0 + pad_h_1 - (dilation[0] *
+                                             (f_h - 1) + 1)) // stride[0]
+    out_w = 1 + (in_w + pad_w_0 + pad_w_1 - (dilation[1] *
+                                             (f_w - 1) + 1)) // stride[1]
+    out = np.zeros((out_n, out_c, out_h, out_w))
+
+    d_bolck_h = (dilation[0] * (f_h - 1) + 1)
+    d_bolck_w = (dilation[1] * (f_w - 1) + 1)
+
+    input_pad = np.pad(input,
+                       ((0, 0), (0, 0), (pad_h_0, pad_h_1), (pad_w_0, pad_w_1)),
+                       mode='constant',
+                       constant_values=0)
+
+    filter_dilation = np.zeros((f_n, f_c, d_bolck_h, d_bolck_w))
+    filter_dilation[:, :, 0:d_bolck_h:dilation[0],
+                    0:d_bolck_w:dilation[1]] = filter
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     for i in range(out_h):
         for j in range(out_w):
             for g in range(group):
+<<<<<<< HEAD
                 input_pad_masked = input_pad[
                     :,
                     g * f_c : (g + 1) * f_c,
@@ -142,6 +211,20 @@ def conv2d_forward_naive(
                     out[:, g * sub_out_c + k, i, j] = np.sum(
                         input_pad_masked * f_sub[k, :, :, :], axis=(1, 2, 3)
                     )
+=======
+                input_pad_masked = \
+                    input_pad[:, g * f_c:(g + 1) * f_c,
+                    i * stride[0]:i * stride[0] + d_bolck_h,
+                    j * stride[1]:j * stride[1] + d_bolck_w]
+
+                f_sub = filter_dilation[g * sub_f_n:(g + 1) * sub_f_n, :, :, :]
+                # sub_f_n == sub_out_c
+                for k in range(sub_out_c):
+                    # Multiplication of Corresponding Elements, then sum all
+                    out[:, g * sub_out_c + k, i, j] = \
+                        np.sum(input_pad_masked * f_sub[k, :, :, :],
+                               axis=(1, 2, 3))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     if channel_last:
         out = np.transpose(out, [0, 2, 3, 1])
@@ -150,6 +233,7 @@ def conv2d_forward_naive(
 
 
 def create_test_cudnn_class(parent):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
@@ -159,6 +243,17 @@ def create_test_cudnn_class(parent):
             self.dtype = (
                 np.float32 if core.is_compiled_with_rocm() else np.float64
             )
+=======
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCUDNNCase(parent):
+
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNN")
     TestCUDNNCase.__name__ = cls_name
@@ -166,10 +261,18 @@ def create_test_cudnn_class(parent):
 
 
 def create_test_cudnn_fp16_class(parent, grad_check=True):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
     class TestConv2DCUDNNFp16(parent):
+=======
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestConv2DCUDNNFp16(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_kernel_type(self):
             self.use_cudnn = True
             self.dtype = np.float16
@@ -183,16 +286,28 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
         def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place, ['Input'], 'Output', no_grad_set=set(['Filter'])
                 )
+=======
+                self.check_grad_with_place(place, ['Input'],
+                                           'Output',
+                                           no_grad_set=set(['Filter']))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place, ['Filter'], 'Output', no_grad_set=set(['Input'])
                 )
+=======
+                self.check_grad_with_place(place, ['Filter'],
+                                           'Output',
+                                           no_grad_set=set(['Input']))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16")
     TestConv2DCUDNNFp16.__name__ = cls_name
@@ -200,6 +315,7 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
 
 
 def create_test_cudnn_bf16_class(parent):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -215,6 +331,22 @@ def create_test_cudnn_bf16_class(parent):
             return get_numeric_gradient(
                 place, scope, op, self.inputs_fp32, check_name, ['Output']
             )
+=======
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16")
+    class TestConv2DCUDNNBF16(parent):
+
+        def get_numeric_grad(self, place, check_name):
+            scope = core.Scope()
+            self._check_grad_helper()
+            op = create_op(scope, self.op_type, self.inputs, self.outputs,
+                           self.attrs)
+            return get_numeric_gradient(place, scope, op, self.inputs_fp32,
+                                        check_name, ['Output'])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def init_kernel_type(self):
             self.use_cudnn = True
@@ -228,6 +360,7 @@ def create_test_cudnn_bf16_class(parent):
         def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)
             numeric_grads = self.get_numeric_grad(place, 'Input')
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place,
                 ['Input'],
@@ -235,10 +368,17 @@ def create_test_cudnn_bf16_class(parent):
                 no_grad_set=set(['Filter']),
                 user_defined_grads=[numeric_grads],
             )
+=======
+            self.check_grad_with_place(place, ['Input'],
+                                       'Output',
+                                       no_grad_set=set(['Filter']),
+                                       user_defined_grads=[numeric_grads])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             numeric_grads = self.get_numeric_grad(place, 'Filter')
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place,
                 ['Filter'],
@@ -246,6 +386,12 @@ def create_test_cudnn_bf16_class(parent):
                 no_grad_set=set(['Input']),
                 user_defined_grads=[numeric_grads],
             )
+=======
+            self.check_grad_with_place(place, ['Filter'],
+                                       'Output',
+                                       no_grad_set=set(['Input']),
+                                       user_defined_grads=[numeric_grads])
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNBF16")
     TestConv2DCUDNNBF16.__name__ = cls_name
@@ -253,7 +399,13 @@ def create_test_cudnn_bf16_class(parent):
 
 
 def create_test_channel_last_class(parent):
+<<<<<<< HEAD
     class TestChannelLastCase(parent):
+=======
+
+    class TestChannelLastCase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_data_format(self):
             self.data_format = "NHWC"
 
@@ -267,6 +419,7 @@ def create_test_channel_last_class(parent):
 
 
 def create_test_cudnn_channel_last_class(parent):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
@@ -276,6 +429,17 @@ def create_test_cudnn_channel_last_class(parent):
             self.dtype = (
                 np.float32 if core.is_compiled_with_rocm() else np.float64
             )
+=======
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCudnnChannelLastCase(parent):
+
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def init_data_format(self):
             self.data_format = "NHWC"
@@ -290,10 +454,18 @@ def create_test_cudnn_channel_last_class(parent):
 
 
 def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
     class TestCudnnChannelLastFp16(parent):
+=======
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCudnnChannelLastFp16(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_kernel_type(self):
             self.use_cudnn = True
             self.dtype = np.float16
@@ -307,16 +479,28 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
         def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place, ['Input'], 'Output', no_grad_set=set(['Filter'])
                 )
+=======
+                self.check_grad_with_place(place, ['Input'],
+                                           'Output',
+                                           no_grad_set=set(['Filter']))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place, ['Filter'], 'Output', no_grad_set=set(['Input'])
                 )
+=======
+                self.check_grad_with_place(place, ['Filter'],
+                                           'Output',
+                                           no_grad_set=set(['Input']))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def init_data_format(self):
             self.data_format = "NHWC"
@@ -331,7 +515,13 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
 
 
 def create_test_padding_SAME_class(parent):
+<<<<<<< HEAD
     class TestPaddingSMAECase(parent):
+=======
+
+    class TestPaddingSMAECase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_paddings(self):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
@@ -342,7 +532,13 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
+<<<<<<< HEAD
     class TestPaddingVALIDCase(parent):
+=======
+
+    class TestPaddingVALIDCase(parent):
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         def init_paddings(self):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
@@ -353,6 +549,7 @@ def create_test_padding_VALID_class(parent):
 
 
 def create_test_cudnn_padding_SAME_class(parent):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
@@ -362,6 +559,17 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.dtype = (
                 np.float32 if core.is_compiled_with_rocm() else np.float64
             )
+=======
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCUDNNPaddingSMAECase(parent):
+
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def init_paddings(self):
             self.pad = [1, 1]
@@ -373,6 +581,7 @@ def create_test_cudnn_padding_SAME_class(parent):
 
 
 def create_test_cudnn_padding_VALID_class(parent):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
@@ -382,6 +591,17 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.dtype = (
                 np.float32 if core.is_compiled_with_rocm() else np.float64
             )
+=======
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCUDNNPaddingVALIDCase(parent):
+
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         def init_paddings(self):
             self.pad = [1, 1]
@@ -393,6 +613,10 @@ def create_test_cudnn_padding_VALID_class(parent):
 
 
 class TestConv2DOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
@@ -410,11 +634,16 @@ class TestConv2DOp(OpTest):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
+<<<<<<< HEAD
             'dilation': self.dilations,
+=======
+            'dilation': self.dilations
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         if self.is_bfloat16_op():
             input = np.random.random(self.input_size).astype(np.float32)
+<<<<<<< HEAD
             filter = np.random.uniform(-1, 1, self.filter_size).astype(
                 np.float32
             )
@@ -423,6 +652,14 @@ class TestConv2DOp(OpTest):
             filter = np.random.uniform(-1, 1, self.filter_size).astype(
                 self.dtype
             )
+=======
+            filter = np.random.uniform(-1, 1,
+                                       self.filter_size).astype(np.float32)
+        else:
+            input = np.random.random(self.input_size).astype(self.dtype)
+            filter = np.random.uniform(-1, 1,
+                                       self.filter_size).astype(self.dtype)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if not self.has_cuda():
             self.fuse_relu_before_depthwise_conv = False
@@ -434,25 +671,42 @@ class TestConv2DOp(OpTest):
         else:
             input2 = input
 
+<<<<<<< HEAD
         output, _, _, _, _ = conv2d_forward_naive(
             input2, filter, self.groups, conv2d_param
         )
+=======
+        output, _, _, _, _ = conv2d_forward_naive(input2, filter, self.groups,
+                                                  conv2d_param)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
         if self.is_bfloat16_op():
             output = output.astype(np.float32)
             self.inputs = {
                 'Input': convert_float_to_uint16(input),
+<<<<<<< HEAD
                 'Filter': convert_float_to_uint16(filter),
             }
             self.inputs_fp32 = {
                 'Input': OpTest.np_dtype_to_fluid_dtype(input),
                 'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+=======
+                'Filter': convert_float_to_uint16(filter)
+            }
+            self.inputs_fp32 = {
+                'Input': OpTest.np_dtype_to_fluid_dtype(input),
+                'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
         else:
             output = output.astype(self.dtype)
             self.inputs = {
                 'Input': OpTest.np_dtype_to_fluid_dtype(input),
+<<<<<<< HEAD
                 'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+=======
+                'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
             }
 
         self.attrs = {
@@ -463,19 +717,31 @@ class TestConv2DOp(OpTest):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
             'data_format': self.data_format,
+<<<<<<< HEAD
             'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
             'exhaustive_search': self.exhaustive_search,
+=======
+            'fuse_relu_before_depthwise_conv':
+            self.fuse_relu_before_depthwise_conv,
+            'exhaustive_search': self.exhaustive_search
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Output': output}
 
     def has_cuda(self):
+<<<<<<< HEAD
         return core.is_compiled_with_cuda() and (
             self.use_cudnn or self.use_cuda
         )
+=======
+        return core.is_compiled_with_cuda() and (self.use_cudnn
+                                                 or self.use_cuda)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
+<<<<<<< HEAD
         self.check_output_with_place(
             place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
         )
@@ -525,6 +791,45 @@ class TestConv2DOp(OpTest):
             no_grad_set=set(['Input']),
             check_dygraph=(not self.use_mkldnn),
         )
+=======
+        self.check_output_with_place(place,
+                                     atol=1e-5,
+                                     check_dygraph=(self.use_mkldnn == False))
+
+    def test_check_grad(self):
+        if self.dtype == np.float16 or (hasattr(self, "no_need_check_grad")
+                                        and self.no_need_check_grad == True):
+            return
+        place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad_with_place(place, {'Input', 'Filter'},
+                                   'Output',
+                                   max_relative_error=0.02,
+                                   check_dygraph=(self.use_mkldnn == False))
+
+    def test_check_grad_no_filter(self):
+        if self.dtype == np.float16 or (hasattr(self, "no_need_check_grad")
+                                        and self.no_need_check_grad == True):
+            return
+        place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad_with_place(place, ['Input'],
+                                   'Output',
+                                   max_relative_error=0.02,
+                                   no_grad_set=set(['Filter']),
+                                   check_dygraph=(self.use_mkldnn == False))
+
+    def test_check_grad_no_input(self):
+        if self.dtype == np.float16 or (hasattr(self, "no_need_check_grad")
+                                        and self.no_need_check_grad == True):
+            return
+        place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad_with_place(place, ['Filter'],
+                                   'Output',
+                                   no_grad_set=set(['Input']),
+                                   check_dygraph=(self.use_mkldnn == False))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -548,6 +853,10 @@ class TestConv2DOp(OpTest):
 
 
 class TestWithPad(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -558,6 +867,10 @@ class TestWithPad(TestConv2DOp):
 
 
 class TestWithStride(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -568,6 +881,10 @@ class TestWithStride(TestConv2DOp):
 
 
 class TestWithGroup(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -579,6 +896,10 @@ class TestWithGroup(TestConv2DOp):
 
 
 class TestWith1x1(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -592,6 +913,10 @@ class TestWith1x1(TestConv2DOp):
 
 
 class TestWithDepthWise3x3(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -608,6 +933,10 @@ class TestWithDepthWise3x3(TestConv2DOp):
 
 
 class TestWithDepthWise5x5(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -621,6 +950,10 @@ class TestWithDepthWise5x5(TestConv2DOp):
 
 
 class TestWithDepthWise7x7(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -634,6 +967,10 @@ class TestWithDepthWise7x7(TestConv2DOp):
 
 
 class TestWithDilation(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -650,6 +987,10 @@ class TestWithDilation(TestConv2DOp):
 
 
 class TestWithInput1x1Filter1x1(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -671,7 +1012,11 @@ create_test_cudnn_class(TestWithGroup)
 create_test_cudnn_class(TestWith1x1)
 create_test_cudnn_class(TestWithInput1x1Filter1x1)
 
+<<<<<<< HEAD
 # ----------------Conv2DCUDNN fp16----------------
+=======
+#----------------Conv2DCUDNN fp16----------------
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 create_test_cudnn_fp16_class(TestConv2DOp, grad_check=False)
 create_test_cudnn_fp16_class(TestWithPad, grad_check=False)
@@ -680,7 +1025,11 @@ create_test_cudnn_fp16_class(TestWithGroup, grad_check=False)
 create_test_cudnn_fp16_class(TestWith1x1, grad_check=False)
 create_test_cudnn_fp16_class(TestWithInput1x1Filter1x1, grad_check=False)
 
+<<<<<<< HEAD
 # ----------------Conv2DCUDNN bf16----------------
+=======
+#----------------Conv2DCUDNN bf16----------------
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 create_test_cudnn_bf16_class(TestConv2DOp)
 create_test_cudnn_bf16_class(TestWithPad)
@@ -691,6 +1040,10 @@ create_test_cudnn_bf16_class(TestWithInput1x1Filter1x1)
 
 
 class TestCUDNNExhaustiveSearch(TestConv2DOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_kernel_type(self):
         self.use_cudnn = True
         self.exhaustive_search = True
@@ -698,25 +1051,42 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
 
 
 class TestConv2DOpError(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             def test_Variable():
                 # the input of conv2d must be Variable.
+<<<<<<< HEAD
                 x1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
                 paddle.static.nn.conv2d(x1, 1, 1)
+=======
+                x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                             [[1, 1, 1, 1]], fluid.CPUPlace())
+                fluid.layers.conv2d(x1, 1, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
                 # the input dtype of conv2d must be float16 or float32 or float64
                 # float16 only can be set on GPU place
+<<<<<<< HEAD
                 x2 = paddle.static.data(
                     name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                 )
                 paddle.static.nn.conv2d(x2, 1, 1)
+=======
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[3, 4, 5, 6],
+                                       dtype="int32")
+                fluid.layers.conv2d(x2, 1, 1)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
             self.assertRaises(TypeError, test_dtype)
 
@@ -731,6 +1101,10 @@ class TestConv2DOpError(unittest.TestCase):
 
 
 class TestConv2DOp_v2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
@@ -750,7 +1124,11 @@ class TestConv2DOp_v2(OpTest):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
+<<<<<<< HEAD
             'dilation': self.dilations,
+=======
+            'dilation': self.dilations
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
@@ -764,6 +1142,7 @@ class TestConv2DOp_v2(OpTest):
         else:
             input2 = input
         filter = np.random.uniform(-1, 1, self.filter_size).astype(self.dtype)
+<<<<<<< HEAD
         output, _, _, _, _ = conv2d_forward_naive(
             input2,
             filter,
@@ -772,11 +1151,21 @@ class TestConv2DOp_v2(OpTest):
             self.padding_algorithm,
             self.data_format,
         )
+=======
+        output, _, _, _, _ = conv2d_forward_naive(input2, filter, self.groups,
+                                                  conv2d_param,
+                                                  self.padding_algorithm,
+                                                  self.data_format)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         output = output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
+<<<<<<< HEAD
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+=======
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.attrs = {
             'strides': self.stride,
@@ -787,28 +1176,46 @@ class TestConv2DOp_v2(OpTest):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
             'data_format': self.data_format,
+<<<<<<< HEAD
             'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
             'exhaustive_search': self.exhaustive_search,
+=======
+            'fuse_relu_before_depthwise_conv':
+            self.fuse_relu_before_depthwise_conv,
+            'exhaustive_search': self.exhaustive_search
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
         }
         self.outputs = {'Output': output}
 
     def has_cuda(self):
+<<<<<<< HEAD
         return core.is_compiled_with_cuda() and (
             self.use_cudnn or self.use_cuda
         )
+=======
+        return core.is_compiled_with_cuda() and (self.use_cudnn
+                                                 or self.use_cuda)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+<<<<<<< HEAD
         self.check_output_with_place(
             place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
         )
+=======
+        self.check_output_with_place(place,
+                                     atol=1e-5,
+                                     check_dygraph=(self.use_mkldnn == False))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+<<<<<<< HEAD
         self.check_grad_with_place(
             place,
             {'Input', 'Filter'},
@@ -816,12 +1223,19 @@ class TestConv2DOp_v2(OpTest):
             max_relative_error=0.02,
             check_dygraph=(not self.use_mkldnn),
         )
+=======
+        self.check_grad_with_place(place, {'Input', 'Filter'},
+                                   'Output',
+                                   max_relative_error=0.02,
+                                   check_dygraph=(self.use_mkldnn == False))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad_no_filter(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+<<<<<<< HEAD
         self.check_grad_with_place(
             place,
             ['Input'],
@@ -830,12 +1244,20 @@ class TestConv2DOp_v2(OpTest):
             no_grad_set=set(['Filter']),
             check_dygraph=(not self.use_mkldnn),
         )
+=======
+        self.check_grad_with_place(place, ['Input'],
+                                   'Output',
+                                   max_relative_error=0.02,
+                                   no_grad_set=set(['Filter']),
+                                   check_dygraph=(self.use_mkldnn == False))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def test_check_grad_no_input(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+<<<<<<< HEAD
         self.check_grad_with_place(
             place,
             ['Filter'],
@@ -843,6 +1265,12 @@ class TestConv2DOp_v2(OpTest):
             no_grad_set=set(['Input']),
             check_dygraph=(not self.use_mkldnn),
         )
+=======
+        self.check_grad_with_place(place, ['Filter'],
+                                   'Output',
+                                   no_grad_set=set(['Input']),
+                                   check_dygraph=(self.use_mkldnn == False))
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -873,12 +1301,20 @@ class TestConv2DOp_v2(OpTest):
 
 
 class TestConv2DOp_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
 class TestWithPad_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -892,6 +1328,10 @@ class TestWithPad_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithStride_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
@@ -905,6 +1345,10 @@ class TestWithStride_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithGroup_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 2]
@@ -916,6 +1360,10 @@ class TestWithGroup_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWith1x1_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -932,6 +1380,10 @@ class TestWith1x1_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithDepthWise3x3_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [3, 4, 10, 10]  # NCHW
@@ -951,6 +1403,10 @@ class TestWithDepthWise3x3_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithDepthWise5x5_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 4, 10, 10]  # NCHW
@@ -967,6 +1423,10 @@ class TestWithDepthWise5x5_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithDepthWise7x7_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 8, 10, 10]  # NCHW
@@ -983,6 +1443,10 @@ class TestWithDepthWise7x7_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithDilation_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 10, 10]  # NCHW
@@ -1002,6 +1466,10 @@ class TestWithDilation_AsyPadding(TestConv2DOp_v2):
 
 
 class TestWithInput1x1Filter1x1_AsyPadding(TestConv2DOp_v2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [40, 3, 1, 1]  # NCHW
@@ -1024,7 +1492,11 @@ create_test_cudnn_class(TestWithGroup_AsyPadding)
 create_test_cudnn_class(TestWith1x1_AsyPadding)
 create_test_cudnn_class(TestWithInput1x1Filter1x1_AsyPadding)
 
+<<<<<<< HEAD
 # ---------- test SAME VALID -----------
+=======
+#---------- test SAME VALID -----------
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 create_test_padding_SAME_class(TestConv2DOp_AsyPadding)
 create_test_padding_SAME_class(TestWithPad_AsyPadding)
 create_test_padding_SAME_class(TestWithStride_AsyPadding)
@@ -1062,6 +1534,7 @@ create_test_cudnn_channel_last_class(TestWithStride_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithGroup_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithDilation_AsyPadding)
 
+<<<<<<< HEAD
 create_test_cudnn_channel_last_fp16_class(
     TestConv2DOp_AsyPadding, grad_check=False
 )
@@ -1077,6 +1550,18 @@ create_test_cudnn_channel_last_fp16_class(
 create_test_cudnn_channel_last_fp16_class(
     TestWithDilation_AsyPadding, grad_check=False
 )
+=======
+create_test_cudnn_channel_last_fp16_class(TestConv2DOp_AsyPadding,
+                                          grad_check=False)
+create_test_cudnn_channel_last_fp16_class(TestWithPad_AsyPadding,
+                                          grad_check=False)
+create_test_cudnn_channel_last_fp16_class(TestWithStride_AsyPadding,
+                                          grad_check=False)
+create_test_cudnn_channel_last_fp16_class(TestWithGroup_AsyPadding,
+                                          grad_check=False)
+create_test_cudnn_channel_last_fp16_class(TestWithDilation_AsyPadding,
+                                          grad_check=False)
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 if __name__ == '__main__':
     paddle.enable_static()

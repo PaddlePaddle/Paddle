@@ -12,7 +12,10 @@ limitations under the License. */
 
 #include <Python.h>
 
+<<<<<<< HEAD
 #include "paddle/fluid/eager/hooks.h"
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/pybind11.h"
@@ -29,8 +32,11 @@ typedef struct {
 
 typedef struct {
   PyObject_HEAD PyObject* container;
+<<<<<<< HEAD
   bool container_be_packed;
   std::shared_ptr<egr::UnPackHookBase> unpack_hook;
+=======
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
   PyObject* non_differentiable;
   PyObject* not_inplace_tensors;
   bool materialize_grads;

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 import unittest
 import numpy as np
 import paddle
@@ -22,10 +26,15 @@ paddle.enable_static()
 
 
 class TestCollectiveAllreduceAPI(TestDistBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
     def _setup_config(self):
         pass
 
     def test_allreduce_cncl_fp16(self):
+<<<<<<< HEAD
         self.check_with_place(
             "collective_allreduce_api.py", "allreduce", "float16"
         )
@@ -39,6 +48,18 @@ class TestCollectiveAllreduceAPI(TestDistBase):
         self.check_with_place(
             "collective_allreduce_api.py", "allreduce", "int32"
         )
+=======
+        self.check_with_place("collective_allreduce_api.py", "allreduce",
+                              "float16")
+
+    def test_allreduce_cncl_fp32(self):
+        self.check_with_place("collective_allreduce_api.py", "allreduce",
+                              "float32")
+
+    def test_allreduce_cncl_int32(self):
+        self.check_with_place("collective_allreduce_api.py", "allreduce",
+                              "int32")
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
 
 if __name__ == '__main__':

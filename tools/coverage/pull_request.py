@@ -45,7 +45,11 @@ def get_pull(pull_id):
 def get_files(args):
     """
     Args:
+<<<<<<< HEAD
         args (argparse.ArgumentParser().parse_args()): Arguments.
+=======
+        args (argparse.ArgumentParser().parse_args()): Arguments. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         None.
@@ -60,7 +64,11 @@ def get_files(args):
 def diff(args):
     """
     Args:
+<<<<<<< HEAD
         args (argparse.ArgumentParser().parse_args()): Arguments.
+=======
+        args (argparse.ArgumentParser().parse_args()): Arguments. 
+>>>>>>> 0699afb112355f7e0a08b05030bb7fe613554d81
 
     Returns:
         None.
