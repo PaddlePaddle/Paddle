@@ -30,7 +30,6 @@ def l2_norm(x, axis, epsilon):
 
 
 def norm_wrapper(x, axis=1, epsilon=1e-12, is_test=False):
-
     return paddle.nn.functional.normalize(x, axis=axis, epsilon=epsilon)
 
 
