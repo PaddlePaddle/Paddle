@@ -16,7 +16,7 @@ import unittest
 
 from paddle.fluid import core
 
-core.set_prim_enabled(True)
+core._set_prim_backward_enabled(True)
 
 import autograd
 import autograd.numpy
@@ -60,7 +60,11 @@ class TestTanhGradComp(unittest.TestCase):
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
         net = PrimeNet()
+<<<<<<< HEAD:python/paddle/fluid/tests/unittests/prim/prim/vjp/static/test_comp_tanh_grad.py
         core.set_prim_enabled(use_prim)
+=======
+        core._set_prim_backward_enabled(use_prim)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444:python/paddle/fluid/tests/unittests/prim/prim/vjp/static/test_comp_tanh_grad.py
         net = apply_to_static(net, use_cinn)
         out = net(self.x)
         res = paddle.autograd.grad(out, [self.x])
@@ -109,7 +113,7 @@ class TestTanhGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core.set_prim_enabled(False)
+        core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

@@ -16,7 +16,11 @@ import unittest
 
 from paddle.fluid import core
 
+<<<<<<< HEAD
 core.set_prim_enabled(True)
+=======
+core._set_prim_backward_enabled(True)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
 
 import autograd
 import autograd.numpy
@@ -60,7 +64,11 @@ class TestSqrtGradComp(unittest.TestCase):
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
         net = PrimeNet()
+<<<<<<< HEAD
         core.set_prim_enabled(use_prim)
+=======
+        core._set_prim_backward_enabled(use_prim)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
         net = apply_to_static(net, use_cinn)
         out = net(self.x)
         res = paddle.autograd.grad(out, [self.x])
@@ -109,7 +117,11 @@ class TestSqrtGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
+<<<<<<< HEAD
         core.set_prim_enabled(False)
+=======
+        core._set_prim_backward_enabled(False)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
 
 
 if __name__ == '__main__':

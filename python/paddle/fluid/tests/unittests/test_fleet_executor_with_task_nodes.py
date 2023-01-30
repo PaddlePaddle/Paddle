@@ -59,7 +59,6 @@ class TestFleetExecutor(unittest.TestCase):
             rank=0,
             node_type="Compute",
             max_run_times=1,
-            max_slot_times=1,
             lazy_initialize=True,
         )
         empty_program._pipeline_opt = {

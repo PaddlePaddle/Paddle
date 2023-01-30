@@ -32,14 +32,22 @@ from paddle.fluid import core
 class TestExpGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+<<<<<<< HEAD
         core.set_prim_enabled(True)
+=======
+        core._set_prim_backward_enabled(True)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
         cls.primal = cls.primal.astype(cls.dtype)
         if cls.cotangent is not None:
             cls.cotangent = cls.cotangent.astype(cls.dtype)
 
     @classmethod
     def tearDownClass(cls):
+<<<<<<< HEAD
         core.set_prim_enabled(False)
+=======
+        core._set_prim_backward_enabled(False)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
 
     def test_exp_grad_comp(self):
         def actual(primal, cotangent):

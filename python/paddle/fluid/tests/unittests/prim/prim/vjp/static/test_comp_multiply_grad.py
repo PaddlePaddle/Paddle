@@ -108,10 +108,17 @@ class TestMultiplyGradComp(unittest.TestCase):
 
     def test_comp(self):
 
+<<<<<<< HEAD
         core.set_prim_enabled(True)
         actual = self.vjp()
 
         core.set_prim_enabled(False)
+=======
+        core._set_prim_backward_enabled(True)
+        actual = self.vjp()
+
+        core._set_prim_backward_enabled(False)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
         desired = self.vjp()
 
         self.assertEqual(len(actual), len(desired))

@@ -82,7 +82,11 @@ class TestDivGradComp(unittest.TestCase):
         self.x.stop_gradient = False
         self.y.stop_gradient = False
         net = PrimeNet()
+<<<<<<< HEAD
         core.set_prim_enabled(use_prim)
+=======
+        core._set_prim_backward_enabled(use_prim)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
         net = apply_to_static(net, use_cinn)
         out = net(self.x, self.y)
         res = paddle.autograd.grad(out, [self.x, self.y])
@@ -105,7 +109,11 @@ class TestDivGradComp(unittest.TestCase):
 
     def test_tanh_grad_comp(self):
         def actual(primal0, primal1):
+<<<<<<< HEAD
             core.set_prim_enabled(True)
+=======
+            core._set_prim_backward_enabled(True)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal0', primal0.shape, primal0.dtype)
@@ -127,7 +135,11 @@ class TestDivGradComp(unittest.TestCase):
             return out[0], out[1]
 
         def desired(primal0, primal1):
+<<<<<<< HEAD
             core.set_prim_enabled(False)
+=======
+            core._set_prim_backward_enabled(False)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data(
@@ -168,7 +180,11 @@ class TestDivGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
+<<<<<<< HEAD
         core.set_prim_enabled(False)
+=======
+        core._set_prim_backward_enabled(False)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
 
 
 if __name__ == '__main__':

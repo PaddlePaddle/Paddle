@@ -21,7 +21,11 @@ from paddle.fluid import core
 
 
 def actual(primal, cotangent, axis, keep_dim):
+<<<<<<< HEAD
     core.set_prim_enabled(False)
+=======
+    core._set_prim_backward_enabled(False)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
     x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
     v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
     y = paddle.sum(x, axis=axis, keepdim=keep_dim)
@@ -30,7 +34,11 @@ def actual(primal, cotangent, axis, keep_dim):
 
 
 def desired(primal, cotangent, axis, keep_dim):
+<<<<<<< HEAD
     core.set_prim_enabled(True)
+=======
+    core._set_prim_backward_enabled(True)
+>>>>>>> 382e9a065ad395bcd377699beea200008edc1444
     x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
     v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
     y = paddle.sum(x, axis=axis, keepdim=keep_dim)
