@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
@@ -22,6 +21,18 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
+
+class MultiTensorAdamOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto param_dtype =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Params");
+    return phi::KernelKey(param_dtype, ctx.GetPlace());
+  }
+};
 
 class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -131,6 +142,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(multi_tensor_adam,
                             PD_INFER_META(phi::MultiTensorAdamInferMeta));
 REGISTER_OPERATOR(
     multi_tensor_adam,
+    ops::MultiTensorAdamOp,
     ops::MultiTensorAdamOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,

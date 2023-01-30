@@ -977,6 +977,33 @@ struct LinearAct : public PatternBase {
   PATTERN_DECL_NODE(act_out);
 };
 
+struct AdamWAct : public PatternBase {
+  AdamWAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "adamw_act") {}
+
+  void operator()(PDNode* x, bool use_master_param, bool use_skip_update);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(adamw);
+  // declare variable node's name
+  PATTERN_DECL_NODE(beta1_tensor);
+  PATTERN_DECL_NODE(beta2_pow);
+  PATTERN_DECL_NODE(beta2_tensor);
+  PATTERN_DECL_NODE(epsilon_tensor);
+  PATTERN_DECL_NODE(grad);
+  PATTERN_DECL_NODE(learning_rate);
+  PATTERN_DECL_NODE(master_prarm);
+  PATTERN_DECL_NODE(moment1);
+  PATTERN_DECL_NODE(moment2);
+  PATTERN_DECL_NODE(param);
+  PATTERN_DECL_NODE(skip_update);
+  PATTERN_DECL_NODE(beta1_pow_out);
+  PATTERN_DECL_NODE(beta2_pow_out);
+  PATTERN_DECL_NODE(moment1_out);
+  PATTERN_DECL_NODE(moment2_out);
+  PATTERN_DECL_NODE(param_out);
+};
+
 // The following patterns are used to fuse linear_grad and act_grad (ReLu or
 // GeLU)
 // formula: the backward of F.linear( act(x) )
