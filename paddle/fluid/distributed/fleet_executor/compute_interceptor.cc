@@ -125,6 +125,7 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
 
     InterceptorMessage ready_msg;
     ready_msg.set_message_type(DATA_IS_READY);
+    ready_msg.set_scope_idx(cur_scope_id_);
     VLOG(3) << "ComputeInterceptor " << interceptor_id_
             << " Send data_is_ready msg to " << down_id
             << " in scope: " << cur_scope_id_;
@@ -152,6 +153,7 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 
     InterceptorMessage reply_msg;
     reply_msg.set_message_type(DATA_IS_USELESS);
+    reply_msg.set_scope_idx(cur_scope_id_);
     Send(up_id, reply_msg);
   }
 }
