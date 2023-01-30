@@ -17,17 +17,15 @@ import paddle
 __all__ = ['clip_grad_norm_']
 
 
-@paddle.no_grad()
 def clip_grad_norm_(
     parameters: paddle.Tensor,
     max_norm: float,
     norm_type: float = 2.0,
-    error_if_nonfinite: bool = False,
-) -> paddle.Tensor:
-    r"""Clips gradient norm of an iterable of parameters.
+    error_if_nonfinite: bool = False):
+    r"""Clips gradient norm of the iteratable parameters.
 
-    The norm is computed over all gradients together, as if they were
-    concatenated into a single vector. Gradients are modified in-place.
+    Norms are calculated together on all gradients, just as they are 
+    connected into one vector. The gradient will be modified in place.
 
     This API can only run in dynamic graph mode, not static graph mode.
 
@@ -39,7 +37,7 @@ def clip_grad_norm_(
             infinity norm.
         error_if_nonfinite (bool): if True, an error is thrown if the total
             norm of the gradients from :attr:`parameters` is ``nan``,
-            ``inf``, or ``-inf``. Default: False (will switch to True in the future)
+            ``inf``, or ``-inf``.
 
     Returns:
         Total norm of the parameter gradients (viewed as a single vector).
@@ -54,7 +52,7 @@ def clip_grad_norm_(
             loss = paddle.mean(out)
             loss.backward()
 
-            clip_grad_norm_(linear.parameters(), max_norm)
+            paddle.nn.utils.clip_grad_norm_(linear.parameters(), max_norm)
 
             sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
             sdg.step()
@@ -100,9 +98,9 @@ def clip_grad_norm_(
     # Note: multiplying by the clamped coef is redundant when the coef is clamped to 1, but doing so
     # avoids a `if clip_coef < 1:` conditional.
     clip_coef_clamped = paddle.clip(clip_coef, max=1.0)
-
-    for _, p in enumerate(parameters):
-        g = p.grad
-        if g is not None:
-            p.grad = paddle.multiply(x=g, y=clip_coef_clamped)
+    with paddle.no_grad():
+        for _, p in enumerate(parameters):
+            g = p.grad
+            if g is not None:
+                p.grad = paddle.multiply(x=g, y=clip_coef_clamped)
     return total_norm
