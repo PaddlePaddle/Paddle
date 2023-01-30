@@ -40,7 +40,7 @@
 namespace phi {
 
 namespace {
-  
+
 inline int getSMVersion() {
   const int device = phi::backends::gpu::GetCurrentDeviceId();
   const phi::gpuDeviceProp prop =
