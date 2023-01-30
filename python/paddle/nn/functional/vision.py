@@ -516,9 +516,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
         )
 
     if in_dygraph_mode():
-        return _legacy_C_ops.channel_shuffle(
-            x, "groups", groups, "data_format", data_format
-        )
+        return _C_ops.channel_shuffle(x, groups, data_format)
 
     helper = LayerHelper("channel_shuffle", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'channel_shuffle')

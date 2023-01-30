@@ -22,7 +22,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -551,17 +550,15 @@ class TestSliceAPI(unittest.TestCase):
         input = np.random.random([3, 4, 5, 6]).astype("float64")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
         minus_3 = fluid.layers.fill_constant([1], "int64", -3)
-        starts = fluid.layers.data(
-            name='starts', shape=[1, 3], append_batch_size=False
+        starts = paddle.static.data(
+            name='starts', shape=[1, 3], dtype="float32"
         )
-        ends = fluid.layers.data(
-            name='ends', shape=[3], append_batch_size=False
-        )
-
-        x = fluid.layers.data(
+        starts.desc.set_need_check_feed(False)
+        ends = paddle.static.data(name='ends', shape=[3], dtype="float32")
+        ends.desc.set_need_check_feed(False)
+        x = paddle.static.data(
             name="x",
             shape=[3, 4, 5, 6],
-            append_batch_size=False,
             dtype="float64",
         )
 
@@ -885,7 +882,7 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [4, 5, 6], False, dtype)
+        data = paddle.static.data('data', [4, 5, 6], dtype)
         data.persistable = True
         out = paddle.slice(
             data, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
@@ -895,7 +892,6 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.slice_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -921,7 +917,7 @@ class TestSliceTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [4, 5, 6], False, dtype)
+        data = paddle.static.data('data', [4, 5, 6], dtype)
         data.persistable = True
         out = paddle.slice(
             data, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
@@ -931,7 +927,6 @@ class TestSliceTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.slice_wrapper, [data], out, x_init=[data_arr], place=place
         )

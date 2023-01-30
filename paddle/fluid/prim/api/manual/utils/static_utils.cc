@@ -47,5 +47,29 @@ Tensor empty_like<DescTensor>(const Tensor& x,
       paddle::experimental::IntArray(x.shape()), x.dtype(), paddle::Place());
 }
 
+template <>
+void set_output<DescTensor>(const paddle::experimental::Tensor& x_tmp,
+                            paddle::experimental::Tensor* x) {
+  x->set_impl(x_tmp.impl());
+}
+
+template <>
+void by_pass<DescTensor>(const paddle::experimental::Tensor& x,
+                         paddle::experimental::Tensor* out) {
+  Tensor new_out =
+      empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("assign");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out->impl())->Name()});
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  set_output<DescTensor>(new_out, out);
+}
+
 }  // namespace prim
 }  // namespace paddle

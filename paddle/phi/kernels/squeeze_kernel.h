@@ -17,20 +17,31 @@
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
+
+template <typename T, typename Context>
+void SqueezeInferKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const IntArray& axes,
+                        DenseTensor* out);
 
 template <typename T, typename Context>
 void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& axes,
-                   DenseTensor* out);
+                   DenseTensor* out,
+                   DenseTensor* xshape);
 
 template <typename T, typename Context>
-void SqueezeWithXShapeKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const IntArray& axes,
-                             DenseTensor* out,
-                             DenseTensor* xshape);
+void Squeeze(const Context& dev_ctx,
+             const DenseTensor& x,
+             const IntArray& axes,
+             DenseTensor* out) {
+  MetaTensor meta_out(out);
+  SqueezeInferMeta(x, axes, &meta_out);
+  SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
+}
 
 }  // namespace phi
