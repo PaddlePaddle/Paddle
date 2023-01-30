@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 from paddle import static
 from paddle.fluid import dygraph
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -106,10 +105,6 @@ class TestViewAsComplexAPI(unittest.TestCase):
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-
 
 class TestViewAsRealAPI(unittest.TestCase):
     def setUp(self):
@@ -132,10 +127,6 @@ class TestViewAsRealAPI(unittest.TestCase):
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
 
 
 if __name__ == "__main__":

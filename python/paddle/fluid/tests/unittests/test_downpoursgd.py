@@ -52,12 +52,12 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
-            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = paddle.static.nn.fc(x=x_emb, size=1)
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -116,12 +116,12 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
-            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = paddle.static.nn.fc(x=x_emb, size=1)
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -178,12 +178,12 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
-            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = paddle.static.nn.fc(x=x_emb, size=1)
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -218,6 +218,7 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
+            opt_info["user_define_dump_filename"] = "./dump_filename/dump.txt"
             worker = DownpourWorker(None)
             worker.get_desc().CopyFrom(ps_param.trainer_param[0])
             opt_info["program_id_to_worker"] = {program_id: worker}

@@ -44,45 +44,8 @@ def convolution_net(
         act="tanh",
         pool_type="sqrt",
     )
-    prediction = fluid.layers.fc(
-        input=[conv_3, conv_4], size=class_dim, act="softmax"
-    )
-    cost = paddle.nn.functional.cross_entropy(
-        input=prediction, label=label, reduction='none', use_softmax=False
-    )
-    avg_cost = paddle.mean(cost)
-    accuracy = paddle.static.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy, prediction
-
-
-def stacked_lstm_net(
-    data, label, input_dim, class_dim=2, emb_dim=128, hid_dim=512, stacked_num=3
-):
-    assert stacked_num % 2 == 1
-
-    emb = fluid.layers.embedding(
-        input=data, size=[input_dim, emb_dim], is_sparse=True
-    )
-    # add bias attr
-
-    # TODO(qijun) linear act
-    fc1 = fluid.layers.fc(input=emb, size=hid_dim)
-    lstm1, cell1 = fluid.layers.dynamic_lstm(input=fc1, size=hid_dim)
-
-    inputs = [fc1, lstm1]
-
-    for i in range(2, stacked_num + 1):
-        fc = fluid.layers.fc(input=inputs, size=hid_dim)
-        lstm, cell = fluid.layers.dynamic_lstm(
-            input=fc, size=hid_dim, is_reverse=(i % 2) == 0
-        )
-        inputs = [fc, lstm]
-
-    fc_last = fluid.layers.sequence_pool(input=inputs[0], pool_type='max')
-    lstm_last = fluid.layers.sequence_pool(input=inputs[1], pool_type='max')
-
-    prediction = fluid.layers.fc(
-        input=[fc_last, lstm_last], size=class_dim, act='softmax'
+    prediction = paddle.static.nn.fc(
+        x=[conv_3, conv_4], size=class_dim, activation="softmax"
     )
     cost = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
@@ -105,10 +68,10 @@ def train(
     dict_dim = len(word_dict)
     class_dim = 2
 
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1
+    data = paddle.static.data(
+        name="words", shape=[-1, 1], dtype="int64", lod_level=1
     )
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
     if not parallel:
         cost, acc_out, prediction = net_method(
@@ -278,25 +241,6 @@ class TestUnderstandSentiment(unittest.TestCase):
                 parallel=True,
             )
 
-    @unittest.skip(reason="make CI faster")
-    def test_stacked_lstm_cpu(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=False,
-                save_dirname="understand_sentiment_stacked_lstm.inference.model",
-            )
-
-    def test_stacked_lstm_cpu_parallel(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=False,
-                parallel=True,
-            )
-
     def test_conv_gpu(self):
         with self.new_program_scope():
             main(
@@ -311,25 +255,6 @@ class TestUnderstandSentiment(unittest.TestCase):
             main(
                 self.word_dict,
                 net_method=convolution_net,
-                use_cuda=True,
-                parallel=True,
-            )
-
-    @unittest.skip(reason="make CI faster")
-    def test_stacked_lstm_gpu(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=True,
-                save_dirname="understand_sentiment_stacked_lstm.inference.model",
-            )
-
-    def test_stacked_lstm_gpu_parallel(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
                 use_cuda=True,
                 parallel=True,
             )

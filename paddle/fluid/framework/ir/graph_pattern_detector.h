@@ -1044,7 +1044,7 @@ struct Conv : public PatternBase {
   Conv(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "convolution") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& conv_type);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);
@@ -1544,7 +1544,9 @@ struct ConvAffineChannel : public PatternBase {
   ConvAffineChannel(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_affine_channel") {}
 
-  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+  PDNode* operator()(PDNode* conv_input,
+                     const std::string& conv_type,
+                     bool with_eltwise_add);
 
   // declare operator node's name
   PATTERN_DECL_NODE(conv);

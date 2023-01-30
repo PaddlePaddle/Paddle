@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import BatchNorm, Linear
 
 
@@ -513,12 +512,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
@@ -539,15 +537,19 @@ class TestDygraphOCRAttention(unittest.TestCase):
 
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 
-            images = fluid.layers.data(
-                name='pixel', shape=Config.DATA_SHAPE, dtype='float32'
+            images = paddle.static.data(
+                name='pixel', shape=[-1] + Config.DATA_SHAPE, dtype='float32'
             )
-            static_label_in = fluid.layers.data(
-                name='label_in', shape=[1], dtype='int64', lod_level=0
+            images.desc.set_need_check_feed(False)
+            static_label_in = paddle.static.data(
+                name='label_in', shape=[-1, 1], dtype='int64', lod_level=0
             )
-            static_label_out = fluid.layers.data(
-                name='label_out', shape=[1], dtype='int64', lod_level=0
+            static_label_in.desc.set_need_check_feed(False)
+            static_label_out = paddle.static.data(
+                name='label_out', shape=[-1, 1], dtype='int64', lod_level=0
             )
+            static_label_out.desc.set_need_check_feed(False)
+
             static_label_out.stop_gradient = True
             static_label_out.trainable = False
 

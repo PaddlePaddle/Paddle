@@ -181,7 +181,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         layer = plugin_layer;
         auto output_name = op_desc.Output("Out")[0];
         RreplenishLayerAndOutput(layer,
-                                 "ManyEmbLayerNormPluginDynamic_V1",
+                                 "ManyEmbLayerNormVarlenPluginDynamicV1",
                                  {output_name,
                                   std::string("qkv_plugin_mask"),
                                   std::string("max_seqlen_tensor")},

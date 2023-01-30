@@ -138,13 +138,12 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Hidden");
 }
 
-framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
+phi::KernelKey MultiGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-      ctx.GetPlace(),
-      phi::DataLayout::ONEDNN,
-      framework::LibraryType::kMKLDNN);
+  return phi::KernelKey(phi::Backend::ONEDNN,
+                        phi::DataLayout::ONEDNN,
+                        phi::TransToPhiDataType(
+                            OperatorWithKernel::IndicateVarDataType(ctx, "X")));
 }
 
 void MultiGRUOpMaker::Make() {

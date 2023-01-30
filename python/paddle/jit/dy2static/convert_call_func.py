@@ -21,10 +21,10 @@ import logging
 import pdb
 import re
 import types
+from typing import Any, List
 
 import numpy
 
-from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.layers import Layer
 from paddle.jit.dy2static.logging_utils import TranslatorLogger
 from paddle.jit.dy2static.utils import is_paddle_func, unwrap
@@ -39,10 +39,6 @@ from .convert_operators import (
 
 __all__ = []
 
-
-# The api(s) should be considered as plain function and convert
-# them into static layer code.
-PADDLE_NEED_CONVERT_APIS = [Sequential]
 
 translator_logger = TranslatorLogger()
 
@@ -105,6 +101,16 @@ def builtin_modules():
 BUILTIN_LIKELY_MODULES = builtin_modules()
 
 
+def add_ignore_module(modules: List[Any]):
+    """
+    Adds modules that ignore transcription
+    """
+    global BUILTIN_LIKELY_MODULES
+    for module in modules:
+        if module not in BUILTIN_LIKELY_MODULES:
+            BUILTIN_LIKELY_MODULES.append(module)
+
+
 def is_unsupported(func):
     """
     Checks whether the func is supported by dygraph to static graph.
@@ -125,6 +131,11 @@ def is_unsupported(func):
                 return True
 
     # NOTE: should be placed before `is_paddle_func`
+    # The api(s) should be considered as plain function and convert
+    # them into static layer code.
+    from paddle.nn import Sequential
+
+    PADDLE_NEED_CONVERT_APIS = [Sequential]
     if type(func) in PADDLE_NEED_CONVERT_APIS:
         return False
 
@@ -241,12 +252,12 @@ def convert_call(func):
         if func.__name__ == '<lambda>':
             return func
         try:
-            # Note(Aurelius84): Because `@declarative` returns a class instance instead of
+            # Note(Aurelius84): Because `@to_static` returns a class instance instead of
             # a function. This will modify the value referring to itself in `__globals__`.
 
             # For example:
             #
-            #      @declarative
+            #      @to_static
             #      def foo(x):
             #          return x
             #

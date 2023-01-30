@@ -131,12 +131,13 @@ class MultiheadMatMulOpConverter : public OpConverter {
           step_dims.d[3] = 1;
           auto* shape_tensor = Shape(bias_qk_tensor);
 
-          // (b,n,m,m) -> (b,1,m,1)
+          // (b,*,*,m) -> (b,1,1,m)
           std::vector<nvinfer1::ITensor*> size_vec_tensor;
           size_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, 0));
           size_vec_tensor.push_back(Add1DConstantLayer(1));
-          size_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, 2));
           size_vec_tensor.push_back(Add1DConstantLayer(1));
+          size_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, 3));
+
           auto* size_tensor = Concat(size_vec_tensor);
           auto* slice_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                                    Slice,
@@ -163,7 +164,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               TRT_ENGINE_ADD_LAYER(engine_, Identity, *not_layer->getOutput(0));
           cast_layer_1->setOutputType(0, nvinfer1::DataType::kINT32);
 
-          // Calculate the number of 1 : (b,1,m,1) -> (b)
+          // Calculate the number of 1 : (b,1,1,m) -> (b)
           uint32_t reduce_dim_0 = 0;
           reduce_dim_0 |= 1 << 1;  // 00000000000000000000000000000010
           reduce_dim_0 |= 1 << 2;  // 00000000000000000000000000000110
@@ -257,7 +258,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
               max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
-          layer = plugin_layer;
+          RreplenishLayerAndOutput(
+              plugin_layer, "multihead_matmul", {output_name}, test_mode);
         } else {
           int head_size = hidden_out / head_number;
           // [3, head_number, head_size, hidden_in] -> [head_number, 3,
@@ -381,7 +383,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
-
+          plugin_layer->setName(
+              ("CustomQKVToContextPluginDynamic: " + output_name).c_str());
           // recover no_varlen output
           if (!flag_varseqlen) {
             std::vector<nvinfer1::ITensor*> output_transformer;
@@ -394,7 +397,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 engine_->AddDynamicPlugin(output_transformer.data(),
                                           output_transformer.size(),
                                           plugin);
-            layer = transformer_output_layer;
+            engine_->SetITensor(output_name,
+                                transformer_output_layer->getOutput(0));
+          } else {
+            engine_->SetITensor(output_name, plugin_layer->getOutput(0));
           }
         }
       } else {
@@ -776,6 +782,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
               new plugin::QkvToContextPluginDynamic(
                   hidden_in, head_number, head_size, scale, with_fp16);
           layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
+          RreplenishLayerAndOutput(
+              layer, "multihead_matmul", {output_name}, test_mode);
         }
       }
     } else {
@@ -785,8 +793,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(
-        layer, "multihead_matmul", {output_name}, test_mode);
   }
 };
 

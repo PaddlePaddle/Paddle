@@ -112,42 +112,6 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
   }
 }
 
-static std::unordered_map<std::string, std::string> GetAttributeMap(
-    std::string act_type) {
-  std::unordered_map<std::string, std::string> attr_map;
-  if (act_type == "swish") {
-    attr_map.emplace("beta", "fuse_alpha");
-  } else if (act_type == "relu6") {
-    attr_map.emplace("threshold", "fuse_alpha");
-  } else if (act_type == "hard_sigmoid") {
-    attr_map.emplace("slope", "fuse_alpha");
-    attr_map.emplace("offset", "fuse_beta");
-  } else if (act_type == "clip") {
-    attr_map.emplace("min", "fuse_alpha");
-    attr_map.emplace("max", "fuse_beta");
-  } else {
-    attr_map.emplace("alpha", "fuse_alpha");
-    attr_map.emplace("beta", "fuse_beta");
-  }
-  return attr_map;
-}
-
-static std::vector<std::string> GetSupportedActivations() {
-  return std::vector<std::string>{"abs",
-                                  "clip",
-                                  "gelu",
-                                  "hard_sigmoid",
-                                  "hard_swish",
-                                  "leaky_relu",
-                                  "mish",
-                                  "relu",
-                                  "relu6",
-                                  "sigmoid",
-                                  "sqrt",
-                                  "swish",
-                                  "tanh"};
-}
-
 template <typename T,
           typename TForward,
           typename TBackward = onednn_dummy_primitive,
@@ -1756,22 +1720,22 @@ static std::vector<int64_t> TransposeAxis(const std::vector<int64_t>& x,
   auto axis_set = std::set<int>(axis.begin(), axis.end());
   PADDLE_ENFORCE_EQ(axis_set.size(),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "In an axis array, elements must be unique."));
 
-  PADDLE_ENFORCE_EQ(in_rank,
-                    axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input dimension's size "
-                        "should be equal to the axis's size. "
-                        "But received dimension is %d, "
-                        "axis's size is %d",
-                        in_rank,
-                        axis_size));
+  PADDLE_ENFORCE_EQ(
+      in_rank,
+      axis_size,
+      phi::errors::InvalidArgument("The input dimension's size "
+                                   "should be equal to the axis's size. "
+                                   "But received dimension is %d, "
+                                   "axis's size is %d",
+                                   in_rank,
+                                   axis_size));
 
   PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis values must be ranging from 0 to (dims - 1)."));
 
   std::vector<int64_t> new_x(x.size());

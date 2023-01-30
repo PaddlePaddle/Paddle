@@ -76,109 +76,86 @@ class TestAddMMOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.addmm, input, x1, x2)
 
             # The input dtype of mul_op must be float32 or float64.
-            input = fluid.layers.data(
+            input = paddle.static.data(
                 name='input',
                 shape=[4, 4],
                 dtype="int32",
-                append_batch_size=False,
             )
-            x3 = fluid.layers.data(
-                name='x3', shape=[4, 4], dtype="int32", append_batch_size=False
-            )
-            x4 = fluid.layers.data(
-                name='x4', shape=[4, 4], dtype="int32", append_batch_size=False
-            )
+            x3 = paddle.static.data(name='x3', shape=[4, 4], dtype="int32")
+            x4 = paddle.static.data(name='x4', shape=[4, 4], dtype="int32")
             self.assertRaises(TypeError, paddle.addmm, input, x3, x4)
             # x and y dimension mismatch
-            x5 = fluid.layers.data(
+            x5 = paddle.static.data(
                 name='x5',
                 shape=[4, 5],
                 dtype="float32",
-                append_batch_size=False,
             )
-            x6 = fluid.layers.data(
+            x6 = paddle.static.data(
                 name='x6',
                 shape=[4, 4],
                 dtype="float32",
-                append_batch_size=False,
             )
             self.assertRaises(ValueError, paddle.addmm, input, x5, x6)
             # input and x are not broadcastable
-            x7 = fluid.layers.data(
+            x7 = paddle.static.data(
                 name='x7',
                 shape=[4, 4],
                 dtype="float32",
-                append_batch_size=False,
             )
-            x8 = fluid.layers.data(
+            x8 = paddle.static.data(
                 name='x8',
                 shape=[4, 4],
                 dtype="float32",
-                append_batch_size=False,
             )
-            input1 = fluid.layers.data(
+            input1 = paddle.static.data(
                 name='input1',
                 shape=[2, 4],
                 dtype="float32",
-                append_batch_size=False,
             )
             self.assertRaises(ValueError, paddle.addmm, input1, x7, x8)
             # input and x are not broadcastable
-            x9 = fluid.layers.data(
+            x9 = paddle.static.data(
                 name='x9',
                 shape=[4, 4],
                 dtype="float32",
-                append_batch_size=False,
             )
-            x10 = fluid.layers.data(
+            x10 = paddle.static.data(
                 name='x10',
                 shape=[4, 4],
                 dtype="float32",
-                append_batch_size=False,
             )
-            input2 = fluid.layers.data(
+            input2 = paddle.static.data(
                 name='input2',
                 shape=[1, 2],
                 dtype="float32",
-                append_batch_size=False,
             )
             self.assertRaises(ValueError, paddle.addmm, input2, x9, x10)
-            x11 = fluid.layers.data(
+            x11 = paddle.static.data(
                 name='x11',
                 shape=[4, 4],
                 dtype="float32",
-                append_batch_size=False,
             )
-            x12 = fluid.layers.data(
-                name='x12',
-                shape=[4, 4],
-                dtype="float32",
-                append_batch_size=False,
-            )
-            input3 = fluid.layers.data(
+            x12 = paddle.static.data(name='x12', shape=[4, 4], dtype="float32")
+            input3 = paddle.static.data(
                 name='input3',
                 shape=[4, 2],
                 dtype="float32",
-                append_batch_size=False,
             )
             self.assertRaises(ValueError, paddle.addmm, input3, x11, x12)
-            x13 = fluid.layers.data(
+            x13 = paddle.static.data(
                 name='x13',
                 shape=[4, 4],
                 dtype="float32",
-                append_batch_size=False,
             )
-            x14 = fluid.layers.data(
+            x14 = paddle.static.data(
                 name='x14',
                 shape=[4, 4],
                 dtype="float32",
-                append_batch_size=False,
             )
-            input4 = fluid.layers.data(
+            input4 = paddle.static.data(
                 name='input4',
                 shape=[3, 1],
                 dtype="float32",
-                append_batch_size=False,
             )
             self.assertRaises(ValueError, paddle.addmm, input4, x13, x14)
 
