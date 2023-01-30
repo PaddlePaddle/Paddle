@@ -129,6 +129,13 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
 
 }  // namespace patterns
 
+void setIntermediateOut(OpDesc *desc,
+                        const std::string &out_name,
+                        const std::string &scope_name) {
+  std::string new_name = scope_name + "/at." + out_name + ".new";
+  desc->SetOutput(out_name, {new_name});
+}
+
 void addIntermediateOut(Node *op_node,
                         const std::string &out_name,
                         const std::string &scope_name,
@@ -243,6 +250,7 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     new_desc.SetOutput("BiasDropoutResidualOut", {elementwise1_out->Name()});
     new_desc.SetOutput("LnMean", {layer_norm_mean->Name()});
     new_desc.SetOutput("LnVariance", {layer_norm_variance->Name()});
+    setIntermediateOut(&new_desc, "DropoutMaskOut", "preln_residual_bias_fuse");
     // attrs
     new_desc.SetAttr("ln_epsilon", layer_norm->Op()->GetAttr("epsilon"));
     new_desc.SetAttr("dropout_rate", 0.0f);
