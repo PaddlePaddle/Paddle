@@ -97,7 +97,7 @@ struct MatmulCacheKey {
   bool trans_y_;
   int best_algo_;
   phi::DataType dtype_;
-}
+};
 
 struct ConvCacheKey {
   ConvCacheKey() {}

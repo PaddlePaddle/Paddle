@@ -17,12 +17,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime_api.h>
 #include "cuda.h"  // NOLINT
+#include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
-
-#if CUDA_VERSION >= 11060
-#include "paddle/phi/kernels/autotune/cache_cublas_Lt.h"
-#endif
 
 namespace phi {
 
@@ -85,18 +82,19 @@ struct MatmulDescCreator {
                      const int K,
                      const bool trans_x,
                      const bool trans_y,
-                     const int batch_size,
-                     const int64_t stride_x,
-                     const int64_t stride_y,
-                     const int64_t stride_out) {
+                     bool is_batch = false,
+                     int batch_size = 0,
+                     int64_t stride_x = 0,
+                     int64_t stride_y = 0,
+                     int64_t stride_out = 0) {
     // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; just need to set the transforms for A and B
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulDescCreate(op_desc, compute_type, scale_type));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
-        *op_desc, CUBLASLT_MATMUL_DESC_TRANSB, &transx, sizeof(transx)));
+        *op_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_x, sizeof(trans_x)));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
-        *op_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transy, sizeof(transy)));
+        *op_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_y, sizeof(trans_y)));
 
     // Create matrix descriptors
     if (trans_x) {
@@ -117,37 +115,39 @@ struct MatmulDescCreator {
         dynload::cublasLtMatrixLayoutCreate(out_desc, mat_type, N, M, N));
 
     // Config batch size and stride.
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-        *x_desc,
-        CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
-        &batch_size,
-        sizeof(batch_size)));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-        *y_desc,
-        CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
-        &batch_size,
-        sizeof(batch_size)));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-        *out_desc,
-        CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
-        &batch_size,
-        sizeof(batch_size)));
+    if (is_batch) {
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
+          *x_desc,
+          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
+          &batch_size,
+          sizeof(batch_size)));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
+          *y_desc,
+          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
+          &batch_size,
+          sizeof(batch_size)));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
+          *out_desc,
+          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
+          &batch_size,
+          sizeof(batch_size)));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-        *x_desc,
-        CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
-        &stride_x,
-        sizeof(stride_x)));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-        *y_desc,
-        CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
-        &stride_y,
-        sizeof(stride_y)));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-        *out_desc,
-        CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
-        &stride_out,
-        sizeof(stride_out)));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
+          *x_desc,
+          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+          &stride_x,
+          sizeof(stride_x)));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
+          *y_desc,
+          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+          &stride_y,
+          sizeof(stride_y)));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
+          *out_desc,
+          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+          &stride_out,
+          sizeof(stride_out)));
+    }
   }
 
   static phi::Allocator::AllocationPtr GetWorkspace(const phi::GPUContext& ctx,
@@ -191,13 +191,9 @@ struct MatmulWithCublasLt {
                   const int K,
                   const bool trans_x,
                   const bool trans_y,
-                  const int batch_size,
-                  const int64_t stride_x,
-                  const int64_t stride_y,
-                  const int64_t stride_out,
                   phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
     // init data structure
-    cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
+    // cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
     cublasLtMatmulDesc_t op_desc = NULL;
     cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
     cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -206,6 +202,113 @@ struct MatmulWithCublasLt {
     cudaDataType_t mat_type = CUDA_R_32F;
     cudaDataType_t scale_type = CUDA_R_32F;
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+
+    float alpha32 = 1.0f, beta32 = 0.0f;
+    double alpha64{1.0}, beta64{0.0};
+    void* alpha = std::is_same<T, double>::value ? &alpha64 : &alpha32;
+    void* beta = std::is_same<T, double>::value ? &beta64 : &beta32;
+
+    MatmulCalculationClassifier<T>()(&mat_type, &scale_type, &compute_type);
+    MatmulDescCreator::Create(&op_desc,
+                              &x_desc,
+                              &y_desc,
+                              &out_desc,
+                              compute_type,
+                              mat_type,
+                              scale_type,
+                              M,
+                              N,
+                              K,
+                              trans_x,
+                              trans_y);
+    RunImpl(ctx,
+            key,
+            op_desc,
+            x_desc,
+            y_desc,
+            out_desc,
+            x_data,
+            y_data,
+            out_data,
+            alpha,
+            beta);
+    MatmulDescCreator::Release(&op_desc, &x_desc, &y_desc, &out_desc);
+
+    // size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    // phi::Allocator::AllocationPtr workspace =
+    //     MatmulDescCreator::GetWorkspace(ctx, workspace_size);
+
+    // cublasLtMatmulAlgo_t* best_algo = nullptr;
+    // if (matmul_key != nullptr) {
+    //   auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+    //   size_t sub_key = matmul_key->GetSubKey(
+    //       key, static_cast<int64_t>(phi::MatmulImplType::kImplWithCublasLt));
+    //   if (cache.FindSubKey(sub_key)) {
+    //     best_algo = cache.SubGetKey(sub_key);
+    //   } else if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
+    //     best_algo = SearchBestAlgo(lt_handle,
+    //                                op_desc,
+    //                                y_desc,
+    //                                x_desc,
+    //                                out_desc,
+    //                                alpha,
+    //                                beta,
+    //                                y_data,
+    //                                x_data,
+    //                                out_data,
+    //                                ctx.stream(),
+    //                                workspace->ptr(),
+    //                                workspace_size);
+    //     cache.SetSubKey(sub_key, *best_algo);
+    //   }
+    // }
+    // PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt_handle,
+    //                                                    op_desc,
+    //                                                    alpha,
+    //                                                    y_data,
+    //                                                    y_desc,
+    //                                                    x_data,
+    //                                                    x_desc,
+    //                                                    beta,
+    //                                                    out_data,
+    //                                                    out_desc,
+    //                                                    out_data,
+    //                                                    out_desc,
+    //                                                    best_algo,
+    //                                                    workspace->ptr(),
+    //                                                    workspace_size,
+    //                                                    ctx.stream()));
+  }
+
+  static void RunWithBatch(const phi::GPUContext& ctx,
+                           const size_t key,
+                           const T* x_data,
+                           const T* y_data,
+                           const int M,
+                           const int N,
+                           const int K,
+                           T* out_data,
+                           bool trans_x,
+                           bool trans_y,
+                           int batch_size,
+                           int64_t stride_x,
+                           int64_t stride_y,
+                           int64_t stride_out) {
+    // cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
+    cublasLtMatmulDesc_t op_desc = NULL;
+    cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
+    cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+    cudaDataType_t mat_type = CUDA_R_32F;
+    cudaDataType_t scale_type = CUDA_R_32F;
+    cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+
+    float alpha32 = 1.0f, beta32 = 0.0f;
+    double alpha64{1.0}, beta64{0.0};
+    void* alpha = std::is_same<T, double>::value ? &alpha64 : &alpha32;
+    void* beta = std::is_same<T, double>::value ? &beta64 : &beta32;
+
     MatmulCalculationClassifier<T>()(&mat_type, &scale_type, &compute_type);
     MatmulDescCreator::Create(&op_desc,
                               &x_desc,
@@ -219,20 +322,89 @@ struct MatmulWithCublasLt {
                               K,
                               trans_x,
                               trans_y,
+                              true,
                               batch_size,
                               stride_x,
                               stride_y,
                               stride_out);
+    RunImpl(ctx,
+            key,
+            op_desc,
+            x_desc,
+            y_desc,
+            out_desc,
+            x_data,
+            y_data,
+            out_data,
+            alpha,
+            beta);
+    MatmulDescCreator::Release(&op_desc, &x_desc, &y_desc, &out_desc);
 
-    float alpha32 = 1.0f, beta32 = 0.0f;
-    double alpha64 = static_cast<double>(1);
-    double beta64 = static_cast<double>(0);
-    void* alpha = std::is_same<T, double>::value ? &alpha64 : &alpha32;
-    void* beta = std::is_same<T, double>::value ? &beta64 : &beta32;
+    // size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    // phi::Allocator::AllocationPtr workspace =
+    //     MatmulDescCreator::GetWorkspace(ctx, workspace_size);
+    // cublasLtMatmulAlgo_t* best_algo = nullptr;
+    // if (matmul_key != nullptr) {
+    //   auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+    //   size_t sub_key = matmul_key->GetSubKey(
+    //       key, static_cast<int64_t>(phi::MatmulImplType::kImplWithCublasLt));
+    //   if (cache.FindSubKey(sub_key)) {
+    //     best_algo = cache.SubGetKey(sub_key);
+    //   } else if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
+    //     best_algo = SearchBestAlgo(lt_handle,
+    //                                op_desc,
+    //                                y_desc,
+    //                                x_desc,
+    //                                out_desc,
+    //                                alpha,
+    //                                beta,
+    //                                y_data,
+    //                                x_data,
+    //                                out_data,
+    //                                ctx.stream(),
+    //                                workspace->ptr(),
+    //                                workspace_size);
+    //     cache.SetSubKey(sub_key, *best_algo);
+    //   }
+    // }
+
+    // PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt_handle,
+    //                                                    op_desc,
+    //                                                    alpha,
+    //                                                    y_data,
+    //                                                    y_desc,
+    //                                                    x_data,
+    //                                                    x_desc,
+    //                                                    beta,
+    //                                                    out_data,
+    //                                                    out_desc,
+    //                                                    out_data,
+    //                                                    out_desc,
+    //                                                    best_algo,
+    //                                                    workspace->ptr(),
+    //                                                    workspace_size,
+    //                                                    ctx.stream()));
+    // MatmulDescCreator::Release(&op_desc, &x_desc, &y_desc, &out_desc);
+  }
+
+ private:
+  static RunImpl(const phi::GPUContext& ctx,
+                 const size_t key,
+                 const cublasLtMatmulDesc_t& op_desc,
+                 const cublasLtMatrixLayout_t& x_desc,
+                 const cublasLtMatrixLayout_t& y_desc,
+                 const cublasLtMatrixLayout_t& out_desc,
+                 const T* x_data,
+                 const T* y_data,
+                 T* out_data,
+                 void* alpha,
+                 void* beta) {
+    cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
+    cublasLtMatmulAlgo_t* best_algo = nullptr;
+
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace =
         MatmulDescCreator::GetWorkspace(ctx, workspace_size);
-    cublasLtMatmulAlgo_t* best_algo = nullptr;
 
     if (matmul_key != nullptr) {
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
@@ -257,6 +429,7 @@ struct MatmulWithCublasLt {
         cache.SetSubKey(sub_key, *best_algo);
       }
     }
+
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt_handle,
                                                        op_desc,
                                                        alpha,
@@ -273,10 +446,8 @@ struct MatmulWithCublasLt {
                                                        workspace->ptr(),
                                                        workspace_size,
                                                        ctx.stream()));
-    MatmulDescCreator::Release(&op_desc, &x_desc, &y_desc, &out_desc);
   }
 
- private:
   static cublasLtMatmulAlgo_t SearchBestAlgo(const phi::GPUContext& ctx,
                                              cublasLtMatmulDesc_t op_desc,
                                              cublasLtMatrixLayout_t y_desc,

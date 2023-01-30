@@ -18,8 +18,8 @@ limitations under the License. */
 #include <cuda_runtime_api.h>
 #include "cuda.h"  // NOLINT
 
-#if CUDA_VERSION >= 11060
-#include "paddle/phi/kernels/autotune/cache_cublas_Lt.h"
+// #if CUDA_VERSION >= 11060
+// #include "paddle/phi/kernels/autotune/cache_cublas_Lt.h"
 
 namespace phi {
 
@@ -118,7 +118,7 @@ namespace phi {
 
 //     // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
 //     // details about defaults; This OP we just need to set the transforms for
-//     A
+
 //     // and B
 //     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescCreate(
 //         &operation_desc, compute_type, scale_type));
@@ -251,7 +251,7 @@ namespace phi {
 
 //     // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
 //     // details about defaults; This OP we just need to set the transforms for
-//     A
+
 //     // and B
 //     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescCreate(
 //         &operation_desc, compute_type, scale_type));
