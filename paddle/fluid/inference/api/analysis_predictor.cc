@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <memory>
 #include <set>
@@ -1384,13 +1385,7 @@ template <>
 std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     const AnalysisConfig &config) {
-  // TODO(NHZlX): Should add the link to the doc of
-  // paddle_infer::CreatePredictor<paddle_infer::Config>
-  if (config.glog_info_disabled()) {
-    FLAGS_logtostderr = 1;
-    FLAGS_minloglevel = 2;  // GLOG_ERROR
-  }
-  VLOG(3) << "create AnalysisConfig";
+  VLOG(3) << "create AnalysisPredictor";
   PADDLE_ENFORCE_EQ(
       config.is_valid(),
       true,
@@ -1403,83 +1398,116 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   std::call_once(custom_operators_registered,
                  []() { inference::RegisterAllCustomOperator(); });
 
-  if (config.use_gpu()) {
-    static std::once_flag gflags_initialized;
-    static bool process_level_allocator_enabled;
-
-    std::call_once(gflags_initialized, [&]() {
-      std::vector<std::string> gflags;
-      PADDLE_ENFORCE_GE(
-          config.memory_pool_init_size_mb(),
-          0.f,
-          platform::errors::InvalidArgument(
-              "The size of memory pool should be greater than 0."));
-      PADDLE_ENFORCE_GE(
-          config.gpu_device_id(),
-          0,
-          platform::errors::InvalidArgument(
-              "Invalid device id (%d). The device id should be greater than 0.",
-              config.gpu_device_id()));
-      gflags.push_back("dummy");
-
-      float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
-      if (fraction_of_gpu_memory > 0.95f) {
-        LOG(ERROR)
-            << "Allocate too much memory for the GPU memory pool, assigned "
-            << config.memory_pool_init_size_mb() << " MB";
-        LOG(ERROR) << "Try to shink the value by setting "
-                      "AnalysisConfig::EnableGpu(...)";
-      }
-
-      if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-        std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                           std::to_string(fraction_of_gpu_memory);
-        VLOG(3) << "set flag: " << flag;
-        gflags.push_back(flag);
-      }
-
-      // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
-      // allocator when multi-stream is enabled.
-      if (config.thread_local_stream_enabled()) {
-        gflags.push_back("--allocator_strategy=thread_local");
-        process_level_allocator_enabled = false;
-      } else {
-        process_level_allocator_enabled = true;
-      }
-
-      // support set flags from enviorment.
-      const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
-      std::ostringstream os;
-      os << "--tryfromenv=";
-      for (auto &pair : env_map) {
-        os << pair.second.name << ",";
-      }
-      auto tryfromenv_str = os.str();
-      gflags.push_back(os.str().substr(0, tryfromenv_str.size() - 1));
-
-      if (framework::InitGflags(gflags)) {
-        VLOG(3) << "The following gpu analysis configurations only take effect "
-                   "for the first predictor: ";
-        for (size_t i = 1; i < gflags.size(); ++i) {
-          VLOG(3) << gflags[i];
-        }
-      } else {
-        LOG(WARNING) << "The one-time configuration of analysis predictor "
-                        "failed, which may be due to native predictor called "
-                        "first and its configurations taken effect.";
-      }
-    });
-
-    if (config.thread_local_stream_enabled() &&
-        process_level_allocator_enabled) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "When binding threads and streams, the use of "
-          "process-level allocators will result in undefined result "
-          "errors due to memory asynchronous operations."
-          "The thread and stream binding configuration of all "
-          "predictors should be the same in a single process."));
+  auto SetGflags = [](const AnalysisConfig &config) {
+    // TODO(NHZlX): Should add the link to the doc of
+    // paddle_infer::CreatePredictor<paddle_infer::Config>
+    if (config.glog_info_disabled()) {
+      FLAGS_logtostderr = 1;
+      FLAGS_minloglevel = 2;  // GLOG_ERROR
     }
-  }
+
+    if (config.use_gpu()) {
+      static std::once_flag gflags_initialized;
+      static bool process_level_allocator_enabled;
+
+      std::call_once(gflags_initialized, [&]() {
+        std::vector<std::string> gflags;
+        PADDLE_ENFORCE_GE(
+            config.memory_pool_init_size_mb(),
+            0.f,
+            platform::errors::InvalidArgument(
+                "The size of memory pool should be greater than 0."));
+        PADDLE_ENFORCE_GE(config.gpu_device_id(),
+                          0,
+                          platform::errors::InvalidArgument(
+                              "Invalid device id (%d). The device id should be "
+                              "greater than 0.",
+                              config.gpu_device_id()));
+        // gflags.push_back("dummy");
+
+        float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
+        if (fraction_of_gpu_memory > 0.95f) {
+          LOG(ERROR)
+              << "Allocate too much memory for the GPU memory pool, assigned "
+              << config.memory_pool_init_size_mb() << " MB";
+          LOG(ERROR) << "Try to shink the value by setting "
+                        "AnalysisConfig::EnableUseGpu(...)";
+        }
+
+        if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
+          std::string flag = "--fraction_of_gpu_memory_to_use=" +
+                             std::to_string(fraction_of_gpu_memory);
+          VLOG(3) << "set flag: " << flag;
+          gflags.push_back(flag);
+        }
+
+        // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
+        // allocator when multi-stream is enabled.
+        if (config.thread_local_stream_enabled()) {
+          std::string flag = "--allocator_strategy=thread_local";
+          VLOG(3) << "set flag: " << flag;
+          gflags.push_back(flag);
+          process_level_allocator_enabled = false;
+        } else {
+          process_level_allocator_enabled = true;
+        }
+
+        // for inference, the following default values are better.
+        if (std::getenv("FLAGS_cudnn_exhaustive_search") == nullptr) {
+          std::string flag = "--cudnn_exhaustive_search=1";
+          VLOG(3) << "set flag: " << flag;
+          gflags.push_back(flag);
+        }
+        if (std::getenv("FLAGS_conv_workspace_size_limit") == nullptr) {
+          std::string flag = "--conv_workspace_size_limit=32";
+          VLOG(3) << "set flag: " << flag;
+          gflags.push_back(flag);
+        }
+        if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
+          std::string flag = "--initial_cpu_memory_in_mb=0";
+          VLOG(3) << "set flag: " << flag;
+          gflags.push_back(flag);
+        }
+
+        // support set flags from environment.
+        const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
+        std::ostringstream os;
+        for (auto &pair : env_map) {
+          os << pair.second.name << ",";
+        }
+        std::string tryfromenv_str = os.str();
+        if (!tryfromenv_str.empty()) {
+          tryfromenv_str.pop_back();
+          tryfromenv_str = "--tryfromenv=" + tryfromenv_str;
+          gflags.push_back(tryfromenv_str);
+        }
+
+        if (framework::InitGflags(gflags)) {
+          VLOG(3)
+              << "The following gpu analysis configurations only take effect "
+                 "for the first predictor: ";
+          for (const auto &flag : gflags) {
+            VLOG(3) << flag;
+          }
+        } else {
+          LOG(WARNING) << "The one-time configuration of analysis predictor "
+                          "failed, which may be due to native predictor called "
+                          "first and its configurations taken effect.";
+        }
+      });
+
+      if (config.thread_local_stream_enabled() &&
+          process_level_allocator_enabled) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "When binding threads and streams, the use of "
+            "process-level allocators will result in undefined result "
+            "errors due to memory asynchronous operations."
+            "The thread and stream binding configuration of all "
+            "predictors should be the same in a single process."));
+      }
+    }
+  };
+  SetGflags(config);
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
   // Each config can only be used for one predictor.
