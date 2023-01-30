@@ -20,7 +20,6 @@ from unittests.test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.dygraph import base
 from paddle.fluid.framework import Program, program_guard
@@ -154,10 +153,12 @@ class TestMulticlassNMS2(unittest.TestCase):
     def test_multiclass_nms2(self):
         program = Program()
         with program_guard(program):
-            bboxes = layers.data(
+            bboxes = paddle.static.data(
                 name='bboxes', shape=[-1, 10, 4], dtype='float32'
             )
-            scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
+            scores = paddle.static.data(
+                name='scores', shape=[-1, 10], dtype='float32'
+            )
             output = fluid.contrib.multiclass_nms2(
                 bboxes, scores, 0.3, 400, 200, 0.7
             )
