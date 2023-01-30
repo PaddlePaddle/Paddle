@@ -24,12 +24,6 @@ from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
-def reduce_with_dtype_wrapper(
-    x, dim=1, keep_dim=False, reduce_all=False, in_dtype=None, out_dtype=None
-):
-    return paddle.tensor.sum(x, dim, out_dtype, bool(keep_dim))
-
-
 class TestSumOp(OpTest):
     def setUp(self):
         self.python_api = paddle.sum
