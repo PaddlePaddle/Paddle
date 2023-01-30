@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from eager_op_test import OpTest
 
 paddle.enable_static()
 
@@ -32,6 +32,7 @@ class TestMatrixPowerOp(OpTest):
 
     def setUp(self):
         self.op_type = "matrix_power"
+        self.python_api = paddle.tensor.matrix_power
         self.config()
 
         np.random.seed(123)

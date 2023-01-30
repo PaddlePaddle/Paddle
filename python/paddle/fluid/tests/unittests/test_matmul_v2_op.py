@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from testsuite import create_op
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.testsuite import create_op
+from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -102,15 +102,15 @@ class TestMatMulV2Op(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ['X', 'Y'], 'Out', max_relative_error=1e-2, check_eager=False
+                ['X', 'Y'], 'Out', max_relative_error=1e-2, check_dygraph=False
             )
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
 
 
 class TestMatMulOp2(TestMatMulV2Op):
@@ -345,7 +345,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
-                        place, atol=atol, check_eager=False
+                        place, atol=atol, check_dygraph=False
                     )
 
         def test_check_grad(self):
@@ -356,7 +356,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     ['X', 'Y'],
                     'Out',
                     max_relative_error=max_relative_error,
-                    check_eager=False,
+                    check_dygraph=False,
                 )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
@@ -593,7 +593,7 @@ class TestComplexMatMulOp(OpTest):
         self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -601,7 +601,7 @@ class TestComplexMatMulOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
+            check_dygraph=False,
         )
 
     def test_check_grad_ingore_x(self):
@@ -611,7 +611,7 @@ class TestComplexMatMulOp(OpTest):
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
+            check_dygraph=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -621,7 +621,7 @@ class TestComplexMatMulOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
+            check_dygraph=False,
         )
 
 
@@ -661,7 +661,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -669,7 +669,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
+            check_dygraph=False,
         )
 
     def test_check_grad_ingore_x(self):
@@ -679,7 +679,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
+            check_dygraph=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -689,7 +689,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False,
+            check_dygraph=False,
         )
 
 
