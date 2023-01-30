@@ -64,9 +64,9 @@ class WarpIteratorFromSmem {
   static Operand const kOperand = Operand_;
 
   /// Basic check
-  static_assert(kOperand == Operand::kA || kOperand == Operand::kB,
-                "WarpIteratorFromSmem may only be instantiated for A or B "
-                "operands to warp-level Mma.");
+  static_assert(
+      kOperand == Operand::kA || kOperand == Operand::kB,
+      "WarpIteratorFromSmem may only be instantiated for A or B operands to warp-level Mma.");
 
   /// Element type
   using Element = Element_;
@@ -102,13 +102,13 @@ class WarpIteratorFromSmem {
       (sizeof_bits<Element>::value >= 32 ? 1
                                          : 32 / sizeof_bits<Element>::value);
 
-  using InstructionCount =
-      MatrixShape<Shape::kRow / InstructionShape::kRow,
-                  Shape::kColumn / InstructionShape::kColumn>;
+  using InstructionCount = MatrixShape<
+      Shape::kRow / InstructionShape::kRow,
+      Shape::kColumn / InstructionShape::kColumn>;
 
   static int const kIterations = (kOperand == Operand::kA)
-                                     ? InstructionCount::kColumn
-                                     : InstructionCount::kRow;
+      ? InstructionCount::kColumn
+      : InstructionCount::kRow;
 
  public:
   //
@@ -116,11 +116,11 @@ class WarpIteratorFromSmem {
   //
 
   /// Fragment object holding a thread's part of a tile
-  using Fragment =
-      Array<Element,
-            (kOperand == Operand::kA)
-                ? (Shape::kRow* InstructionShape::kColumn / kThreads)
-                : (Shape::kColumn* InstructionShape::kRow / kThreads)>;
+  using Fragment = Array<
+      Element,
+      (kOperand == Operand::kA)
+          ? (Shape::kRow* InstructionShape::kColumn / kThreads)
+          : (Shape::kColumn* InstructionShape::kRow / kThreads)>;
 
   /// Memory access type
   // using AccessType = AlignedArray<Element, kElementsPerAccess>;
@@ -165,9 +165,9 @@ class WarpIteratorFromSmem {
           CUTLASS_PRAGMA_UNROLL
           for (int access_m_idx = 0; access_m_idx < kTilesPerInstruction;
                ++access_m_idx) {
-            int access_idx =
-                access_m_idx + kTilesPerInstruction *
-                                   (inner_idx + kAccessesInner * inst_m_idx);
+            int access_idx = access_m_idx +
+                kTilesPerInstruction *
+                    (inner_idx + kAccessesInner * inst_m_idx);
 
             MatrixCoord offset(
                 access_m_idx * 8 + inst_m_idx * InstructionShape::kRow,
@@ -192,8 +192,8 @@ class WarpIteratorFromSmem {
         for (int inner_idx = 0; inner_idx < kAccessesInner; ++inner_idx) {
           int access_idx = inner_idx + kAccessesInner * inst_n_idx;
 
-          MatrixCoord offset(inner_idx * 4 * kElementsPerAccess,
-                             inst_n_idx * 8);
+          MatrixCoord offset(
+              inner_idx * 4 * kElementsPerAccess, inst_n_idx * 8);
 
           if (access_idx == ldsm_vec_num) {
             if (kTranspose) {
@@ -212,8 +212,8 @@ class WarpIteratorFromSmem {
   /// tiles
   CUTLASS_HOST_DEVICE
   WarpIteratorFromSmem& add_tile_offset(TensorCoord const& tile_offset) {
-    TensorCoord coord_offset(tile_offset.row() * Shape::kRow,
-                             tile_offset.column() * Shape::kColumn);
+    TensorCoord coord_offset(
+        tile_offset.row() * Shape::kRow, tile_offset.column() * Shape::kColumn);
     if (kTranspose) {
       coord_offset = TensorCoord{coord_offset.column(), coord_offset.row()};
     }
@@ -241,7 +241,8 @@ class WarpIteratorFromSmem {
   WarpIteratorFromSmem& operator++() {
     iterations_++;
 
-    if (iterations_ >= kIterations) advance();
+    if (iterations_ >= kIterations)
+      advance();
 
     return *this;
   }
@@ -262,14 +263,14 @@ class WarpIteratorFromSmem {
     if (kTranspose) {
       offset = MatrixCoord(offset.column(), offset.row());
     }
-    cutlass::arch::ldsm<LoadLayout, 4>(access_ptr[0],
-                                       ref_.data() + ref_.offset(offset));
+    cutlass::arch::ldsm<LoadLayout, 4>(
+        access_ptr[0], ref_.data() + ref_.offset(offset));
   }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
-}  // namespace warp
-}  // namespace gemm
-}  // namespace cutlass
+} // namespace warp
+} // namespace gemm
+} // namespace cutlass
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,12 +1,12 @@
 /***************************************************************************************************
- * Copyright (c) 2017 - 2022 NVIDIA CORPORATION & AFFILIATES. All rights
- *reserved. SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 2017 - 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * 1. Redistributions of source code must retain the above copyright notice,
- *this list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  * this list of conditions and the following disclaimer in the documentation
@@ -18,27 +18,25 @@
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *POSSIBILITY OF SUCH DAMAGE.
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  **************************************************************************************************/
 
 /*! \file
-    \brief
-      Default kernel-level GEMM definitions combine threadblock-scoped matrix
-   multiply-add with the appropriate threadblock-scoped epilogue.
-
-      Note, CUTLASS epilogues universally target row-major outputs. Column-major
-   outputs are accommodated by exchanging A and B operands and assuming
-   transposed layouts. Partial specializations here choose
-   'device::GemmTransposed' to implement this functionality.
+    \brief 
+      Default kernel-level GEMM definitions combine threadblock-scoped matrix multiply-add with
+      the appropriate threadblock-scoped epilogue.
+  
+      Note, CUTLASS epilogues universally target row-major outputs. Column-major outputs are
+      accommodated by exchanging A and B operands and assuming transposed layouts. Partial
+      specializations here choose 'device::GemmTransposed' to implement this functionality.
 
 */
 
@@ -50,11 +48,11 @@
 #include "cutlass/layout/matrix.h"
 #include "cutlass/numeric_types.h"
 
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/attention_scaling_coefs_updater.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/find_default_mma.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/fmha_grouped.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/gemm_kernel_utils.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/mma_from_smem.h"
+#include "fmha_grouped.h"
+#include "gemm_kernel_utils.h"
+#include "find_default_mma.h"
+#include "attention_scaling_coefs_updater.h"
+#include "mma_from_smem.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -74,7 +72,8 @@ template <
     int kQueriesPerBlock,
     int kKeysPerBlock,
     bool kSingleValueIteration,
-    GroupScheduleMode GroupScheduleMode_ = GroupScheduleMode::kDeviceOnly>
+    GroupScheduleMode GroupScheduleMode_ = GroupScheduleMode::kDeviceOnly
+    >
 struct DefaultFMHAGrouped {
   using scalar_t = scalar_t_;
   using accum_t = float;
@@ -88,8 +87,7 @@ struct DefaultFMHAGrouped {
   using ArchTag = ArchTag_;
   static bool const kIsAligned = isAligned_;
   static int const kWarpSize = 32;
-  static int const kNumWarpsPerBlock =
-      kQueriesPerBlock * kKeysPerBlock / (kWarpSize * kWarpSize);
+  static int const kNumWarpsPerBlock = kQueriesPerBlock * kKeysPerBlock / (kWarpSize * kWarpSize);
 
   struct MM0 {
     /*
@@ -119,15 +117,15 @@ struct DefaultFMHAGrouped {
             ElementA,
             ElementB,
             ElementC,
-            ElementAccumulator>;
+            ElementAccumulator
+            >;
 
     static int const kAlignmentA =
         kIsAligned ? DefaultConfig::kAlignmentA : GemmType::kMinimumAlignment;
     static int const kAlignmentB =
         kIsAligned ? DefaultConfig::kAlignmentB : GemmType::kMinimumAlignment;
 
-    using ThreadblockShape = cutlass::gemm::
-        GemmShape<kQueriesPerBlock, kKeysPerBlock, GemmType::ThreadK>;
+    using ThreadblockShape = cutlass::gemm::GemmShape<kQueriesPerBlock, kKeysPerBlock, GemmType::ThreadK>;
     using WarpShape = cutlass::gemm::GemmShape<32, 32, GemmType::WarpK>;
     using InstructionShape = typename GemmType::InstructionShape;
 
@@ -149,7 +147,8 @@ struct DefaultFMHAGrouped {
         WarpShape,
         InstructionShape,
         kStages,
-        Operator>::DefaultMma;
+        Operator
+        >::DefaultMma;
 
     using MmaCore = typename DefaultMma::MmaCore;
     using IteratorA = typename DefaultMma::IteratorA;
@@ -198,7 +197,8 @@ struct DefaultFMHAGrouped {
             ElementA,
             ElementB,
             ElementC,
-            ElementAccumulator>;
+            ElementAccumulator
+            >;
 
     static int const kAlignmentA = DefaultConfig::kAlignmentA;
     static int const kAlignmentB =
@@ -213,28 +213,29 @@ struct DefaultFMHAGrouped {
     static int const kStages = DefaultConfig::kStages;
     using Operator = typename GemmType::Operator;
 
-    using ThreadblockSwizzle = void;  // Swizzling is unused
+    using ThreadblockSwizzle = void; // Swizzling is unused
     static bool const kSplitKSerial = false;
 
-    using DefaultGemm = cutlass::gemm::kernel::DefaultGemm<ElementA,
-                                                           LayoutA,
-                                                           kAlignmentA,
-                                                           ElementB,
-                                                           LayoutB,
-                                                           kAlignmentB,
-                                                           ElementC,
-                                                           LayoutC,
-                                                           ElementAccumulator,
-                                                           OpClass,
-                                                           ArchTag,
-                                                           ThreadblockShape,
-                                                           WarpShape,
-                                                           InstructionShape,
-                                                           EpilogueOutputOp,
-                                                           ThreadblockSwizzle,
-                                                           kStages,
-                                                           kSplitKSerial,
-                                                           Operator>;
+    using DefaultGemm = cutlass::gemm::kernel::DefaultGemm<
+        ElementA,
+        LayoutA,
+        kAlignmentA,
+        ElementB,
+        LayoutB,
+        kAlignmentB,
+        ElementC,
+        LayoutC,
+        ElementAccumulator,
+        OpClass,
+        ArchTag,
+        ThreadblockShape,
+        WarpShape,
+        InstructionShape,
+        EpilogueOutputOp,
+        ThreadblockSwizzle,
+        kStages,
+        kSplitKSerial,
+        Operator>;
 
     using DefaultMmaFromSmem =
         typename cutlass::gemm::threadblock::DefaultMmaFromSharedMemory<
@@ -261,15 +262,17 @@ struct DefaultFMHAGrouped {
     };
   };
 
-  /// Define the kernel in terms of the default kernel
-  using FMHAKernel = kernel::FMHAGrouped<MM0,
-                                         MM1,
-                                         scalar_t,
-                                         accum_t,
-                                         output_t,
-                                         output_accum_t,
-                                         kSingleValueIteration,
-                                         GroupScheduleMode_>;
+/// Define the kernel in terms of the default kernel
+  using FMHAKernel = kernel::FMHAGrouped<
+    MM0,
+    MM1,
+    scalar_t,
+    accum_t,
+    output_t,
+    output_accum_t,
+    kSingleValueIteration,
+    GroupScheduleMode_
+  >;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,5 @@
 /***************************************************************************************************
- * Copyright (c) 2017 - 2022 NVIDIA CORPORATION & AFFILIATES. All rights
+ * Copyright (c) 2017 - 2023 NVIDIA CORPORATION & AFFILIATES. All rights
  *reserved. SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -83,9 +83,10 @@ class CustomMmaBase {
   using WarpGemm = typename Policy::Operator::Shape;
 
   /// Shape describing the number of warps filling the CTA
-  using WarpCount = GemmShape<Shape::kM / WarpGemm::kM,
-                              Shape::kN / WarpGemm::kN,
-                              Shape::kK / WarpGemm::kK>;
+  using WarpCount = GemmShape<
+      Shape::kM / WarpGemm::kM,
+      Shape::kN / WarpGemm::kN,
+      Shape::kK / WarpGemm::kK>;
 
   /// Number of warp-level GEMM oeprations
   static int const kWarpGemmIterations =
@@ -111,24 +112,29 @@ class CustomMmaBase {
 
     /// Returns a TensorRef to the operand
     CUTLASS_HOST_DEVICE
-    TensorRef ref() { return TensorRef{buffer.data(), Layout()}; }
+    TensorRef ref() {
+      return TensorRef{buffer.data(), Layout()};
+    }
   };
 
   /// Shape of the A matrix operand in shared memory
-  using ShapeA =
-      MatrixShape<Shape::kM + Policy::SmemPaddingA::kRow,
-                  Shape::kK * kStages + Policy::SmemPaddingA::kColumn>;
+  using ShapeA = MatrixShape<
+      Shape::kM + Policy::SmemPaddingA::kRow,
+      Shape::kK * kStages + Policy::SmemPaddingA::kColumn>;
 
   /// Shape of the B matrix operand in shared memory
-  using ShapeB = MatrixShape<Shape::kK * kStages + Policy::SmemPaddingB::kRow,
-                             Shape::kN + Policy::SmemPaddingB::kColumn>;
+  using ShapeB = MatrixShape<
+      Shape::kK * kStages + Policy::SmemPaddingB::kRow,
+      Shape::kN + Policy::SmemPaddingB::kColumn>;
 
-  using SharedStorageA = OperandSharedStorage<typename Operator::ElementA,
-                                              ShapeA,
-                                              typename Operator::LayoutA>;
-  using SharedStorageB = OperandSharedStorage<typename Operator::ElementB,
-                                              ShapeB,
-                                              typename Operator::LayoutB>;
+  using SharedStorageA = OperandSharedStorage<
+      typename Operator::ElementA,
+      ShapeA,
+      typename Operator::LayoutA>;
+  using SharedStorageB = OperandSharedStorage<
+      typename Operator::ElementB,
+      ShapeB,
+      typename Operator::LayoutB>;
   using TensorRefA = typename SharedStorageA::TensorRef;
   using TensorRefB = typename SharedStorageB::TensorRef;
 
@@ -170,8 +176,8 @@ class CustomMmaBase {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-}  // namespace threadblock
-}  // namespace gemm
-}  // namespace cutlass
+} // namespace threadblock
+} // namespace gemm
+} // namespace cutlass
 
 /////////////////////////////////////////////////////////////////////////////////////////////////

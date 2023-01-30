@@ -1,12 +1,12 @@
 /***************************************************************************************************
- * Copyright (c) 2017 - 2022 NVIDIA CORPORATION & AFFILIATES. All rights
- *reserved. SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 2017 - 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * 1. Redistributions of source code must retain the above copyright notice,
- *this list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  * this list of conditions and the following disclaimer in the documentation
@@ -18,15 +18,14 @@
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *POSSIBILITY OF SUCH DAMAGE.
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  **************************************************************************************************/
 
@@ -92,13 +91,13 @@
 #define CHECK_NOSPARSE_LASTCONTIGUOUS_CUDA(TENSOR)                        \
   XFORMERS_CHECK(TENSOR.is_cuda(), #TENSOR " must be a CUDA tensor");     \
   XFORMERS_CHECK(!TENSOR.is_sparse(), #TENSOR " must be a dense tensor"); \
-  XFORMERS_CHECK(TENSOR.stride(-1) == 1,                                  \
-                 #TENSOR ": last dimension must be contiguous");
+  XFORMERS_CHECK(                                                         \
+      TENSOR.stride(-1) == 1, #TENSOR ": last dimension must be contiguous");
 
 #ifdef TORCH_CHECK
-#define CHECK_ALIGNED_PTR(PTR, ALIGNMENT)        \
-  XFORMERS_CHECK(uint64_t(PTR) % ALIGNMENT == 0, \
-                 #PTR " is not correctly aligned")
+#define CHECK_ALIGNED_PTR(PTR, ALIGNMENT) \
+  XFORMERS_CHECK(                         \
+      uint64_t(PTR) % ALIGNMENT == 0, #PTR " is not correctly aligned")
 #define XFORMERS_CHECK TORCH_CHECK
 #elif defined(__CUDACC_RTC__)
 #define CHECK_ALIGNED_PTR(PTR, ALIGNMENT)  \
@@ -123,11 +122,11 @@
   }
 #endif
 
-#define ASSIGN_CHECK_OVERFLOW(A, B)                             \
-  {                                                             \
-    A = B;                                                      \
-    XFORMERS_CHECK(B < std::numeric_limits<decltype(A)>::max(), \
-                   #B " overflows");                            \
+#define ASSIGN_CHECK_OVERFLOW(A, B)                                    \
+  {                                                                    \
+    A = B;                                                             \
+    XFORMERS_CHECK(                                                    \
+        B < std::numeric_limits<decltype(A)>::max(), #B " overflows"); \
   }
 
 namespace gemm_kernel_utils {
@@ -160,10 +159,11 @@ struct DefaultGemmType {
 
 // Specialization for tensorcores with f32
 template <typename ArchTag>
-struct DefaultGemmType<ArchTag,
-                       float,
-                       typename cutlass::platform::enable_if<
-                           ArchTag::kMinComputeCapability >= 80>::type> {
+struct DefaultGemmType<
+    ArchTag,
+    float,
+    typename cutlass::platform::enable_if<
+        ArchTag::kMinComputeCapability >= 80>::type> {
   static constexpr int ThreadK = 32;
   static constexpr int WarpK = 32;
   static constexpr int kMinimumAlignment = 4;
@@ -174,11 +174,12 @@ struct DefaultGemmType<ArchTag,
 
 // Specialization for tensorcores with f16/bf16 - Sm75+
 template <typename ArchTag, typename scalar_t>
-struct DefaultGemmType<ArchTag,
-                       scalar_t,
-                       typename cutlass::platform::enable_if<
-                           ArchTag::kMinComputeCapability >= 75 &&
-                           cutlass::sizeof_bits<scalar_t>::value == 16>::type> {
+struct DefaultGemmType<
+    ArchTag,
+    scalar_t,
+    typename cutlass::platform::enable_if<
+        ArchTag::kMinComputeCapability >= 75 &&
+        cutlass::sizeof_bits<scalar_t>::value == 16>::type> {
   static constexpr int ThreadK = 32;
   static constexpr int WarpK = 32;
   static constexpr int kMinimumAlignment = 4;
@@ -244,4 +245,4 @@ CUTLASS_DEVICE T* warp_uniform(T* ptr) {
   p.asInt[1] = warp_uniform(p.asInt[1]);
   return p.ptr;
 }
-}  // namespace gemm_kernel_utils
+} // namespace gemm_kernel_utils
