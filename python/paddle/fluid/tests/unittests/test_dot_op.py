@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from eager_op_test import OpTest
 from paddle.fluid import Program, program_guard
 
 
