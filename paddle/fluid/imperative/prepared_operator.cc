@@ -273,16 +273,16 @@ PreparedOp PrepareImpl(
     kernel_signature = (*arg_map_fn)(
         framework::ExecutionArgumentMappingContext(dygraph_exe_ctx));
   } else {
-    if (phi::KernelFactory::Instance().HasStructPhiKernel(op.Type())) {
-      has_phi_kernel = true;
-      kernel_signature = phi::KernelSignature(op.Type().c_str());
-    } else {
+    if (phi::KernelFactory::Instance().AllAreFuncKernel(op.Type())) {
       default_kernel_signature =
           default_phi_kernel_sig_map.GetNullable(op.Type());
       if (default_kernel_signature) {
         has_phi_kernel = true;
         kernel_signature = *default_kernel_signature;
       }
+    } else {
+      has_phi_kernel = true;
+      kernel_signature = phi::KernelSignature(op.Type().c_str());
     }
   }
 
@@ -685,7 +685,8 @@ static void PreparedOpRunPtImpl(
                                        1,
                                        platform::EventRole::kInnerOp);
 
-    if (phi_kernel.IsFuncKernel()) {
+    if (phi_kernel.GetKernelRegisteredType() ==
+        phi::KernelRegisteredType::FUNCTION) {
       PreparePhiData<VarType>(phi_kernel, kernel_signature, ins);
       phi::KernelContext phi_kernel_context;
       BuildDygraphPhiKernelContext<VarType>(kernel_signature,

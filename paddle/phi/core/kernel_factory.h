@@ -238,13 +238,20 @@ class KernelArgsDef {
       {}};
 };
 
+enum class KernelRegisteredType { FUNCTION, STRUCTURE };
+
 class Kernel {
  public:
   // for map element construct
   Kernel() = default;
 
-  explicit Kernel(KernelFn fn, void* variadic_fn, bool is_func_kernel = true)
-      : fn_(fn), variadic_fn_(variadic_fn), is_func_kernel_(is_func_kernel) {}
+  explicit Kernel(KernelFn fn,
+                  void* variadic_fn,
+                  KernelRegisteredType kernel_registered_type =
+                      KernelRegisteredType::FUNCTION)
+      : fn_(fn),
+        variadic_fn_(variadic_fn),
+        kernel_registered_type_(kernel_registered_type) {}
 
   void operator()(KernelContext* ctx) const { fn_(ctx); }
 
@@ -272,13 +279,15 @@ class Kernel {
 
   bool IsValid() const { return fn_ != nullptr; }
 
-  bool IsFuncKernel() const { return is_func_kernel_; }
+  KernelRegisteredType GetKernelRegisteredType() const {
+    return kernel_registered_type_;
+  }
 
  private:
   KernelFn fn_{nullptr};
   void* variadic_fn_ = nullptr;
   KernelArgsDef args_def_;
-  bool is_func_kernel_ = true;  // This flag is used to judge kernel type
+  KernelRegisteredType kernel_registered_type_ = KernelRegisteredType::FUNCTION;
 };
 
 using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
@@ -307,7 +316,7 @@ class KernelFactory {
 
   bool HasCompatiblePhiKernel(const std::string& op_type) const;
 
-  bool HasStructPhiKernel(const std::string& op_type) const;
+  bool AllAreFuncKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
                                         const KernelKey& kernel_key) const;

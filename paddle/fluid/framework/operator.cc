@@ -1689,7 +1689,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
-      if (!phi::KernelFactory::Instance().HasStructPhiKernel(type_)) {
+      if (phi::KernelFactory::Instance().AllAreFuncKernel(type_)) {
         kernel_signature_.reset(new phi::KernelSignature(
             std::move(GetExpectedPhiKernelArgs(exe_ctx))));
       } else {
@@ -1941,7 +1941,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::TracerEventType::OperatorInner,
                                        1,
                                        platform::EventRole::kInnerOp);
-    if (run_phi_kernel_ && phi_kernel_->IsFuncKernel()) {
+    if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
+                               phi::KernelRegisteredType::FUNCTION) {
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
@@ -1979,7 +1980,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, &phi_kernel_context);
         (*phi_kernel_)(&phi_kernel_context);
       }
-    } else if (run_phi_kernel_ && !phi_kernel_->IsFuncKernel()) {
+    } else if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
+                                      phi::KernelRegisteredType::STRUCTURE) {
       ExecutionContext execution_context(
           *this, exec_scope, *dev_ctx, *runtime_ctx);
       (*phi_kernel_)(&execution_context);
@@ -2154,7 +2156,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
   std::string phi_kernel_name;
-  if (!phi::KernelFactory::Instance().HasStructPhiKernel(type_)) {
+  if (phi::KernelFactory::Instance().AllAreFuncKernel(type_)) {
     kernel_signature_.reset(
         new phi::KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
   } else {
@@ -2626,7 +2628,8 @@ Scope* OperatorWithKernel::PrepareData(
     }
   };
 
-  if (run_phi_kernel_ && phi_kernel_->IsFuncKernel()) {
+  if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
+                             phi::KernelRegisteredType::FUNCTION) {
     const auto& input_names = kernel_signature_->input_names;
     const auto& input_defs = phi_kernel_->args_def().input_defs();
     PADDLE_ENFORCE_EQ(input_names.size(),

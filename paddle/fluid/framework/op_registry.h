@@ -485,13 +485,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
   USE_OP_KERNEL(op_type)
 // clang-format on
 
-}  // namespace framework
-}  // namespace paddle
-
-namespace phi {
 template <typename StructureKernel>
 struct StructKernelImpl {
-  static void Compute(KernelContext* ctx) {
+  static void Compute(phi::KernelContext* ctx) {
     auto exe_ctx = static_cast<paddle::framework::ExecutionContext*>(ctx);
     StructureKernel().Compute(*exe_ctx);
   }
@@ -519,4 +515,5 @@ struct StructKernelImpl {
                       PHI_STRUCTURE_VARIADIC_KERNEL,          \
                       __VA_ARGS__)
 
-}  // namespace phi
+}  // namespace framework
+}  // namespace paddle
