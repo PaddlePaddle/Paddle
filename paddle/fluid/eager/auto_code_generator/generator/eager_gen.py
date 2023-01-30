@@ -1839,9 +1839,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             False if self.composite_func_info == {} else True
         )
 
-        if is_composite_grad_api:
+        if is_composite_grad_api and next_grad_node_creation_str != '':
             next_grad_node_creation_str = f"""
- if (!paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
+ if (!paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {{
     {next_grad_node_creation_str}
  }}
   """
@@ -1982,6 +1982,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         backward_inplace_map = self.backward_inplace_map
         indent = GetIndent(1)
+        need_gen_trace_backard_for_inplace = False
 
         # Construct grad_api function args
         # Order: TensorWrappers, GradTensors, Attributes
@@ -2211,6 +2212,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }} else {{
     {inplace_str}
   }}"""
+                        need_gen_trace_backard_for_inplace = True
                     else:
                         inplace_for_grad_outs_str += inplace_str
 
@@ -2259,7 +2261,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # TODO(Ruting):using composite only when we don't have backward kernel in the future.
         elif is_composite_grad_api:
             grad_function_call_str = f"""
-  if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {{
+  if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {{
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
   VLOG(4) << "Composite api {composite_grad_api_name} is called ";
   }}else{{
@@ -2282,7 +2284,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if (
             len(next_grad_node_creation_str) > 0
             or is_invoke_forward_api
-            or inplace_for_grad_outs_str != ''
+            or need_gen_trace_backard_for_inplace
         ):
             compute_require_next_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
 

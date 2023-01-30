@@ -69,7 +69,6 @@ void by_pass<DescTensor>(const paddle::experimental::Tensor& x,
   op->InferVarType(block);
   op->InferShape(*block);
   set_output<DescTensor>(new_out, out);
-  // out->set_impl(new_out.impl());
 }
 
 }  // namespace prim

@@ -618,7 +618,8 @@ if(WITH_PYTHON)
     fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
-    ps_py_proto_init)
+    ps_py_proto_init
+    pslib_py_proto)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto

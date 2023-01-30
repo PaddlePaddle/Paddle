@@ -21,7 +21,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid import Program, core, program_guard
 
 
@@ -194,9 +193,9 @@ class TestExpandV2Error(unittest.TestCase):
             )
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
             self.assertRaises(TypeError, paddle.tensor.expand, x2, shape)
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+            x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.expand, x3, shape)
 
@@ -205,15 +204,12 @@ class TestExpandV2Error(unittest.TestCase):
 class TestExpandV2API(unittest.TestCase):
     def test_api(self):
         input = np.random.random([12, 14]).astype("float32")
-        x = fluid.layers.data(
-            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
-        )
+        x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
         positive_2 = fluid.layers.fill_constant([1], "int32", 12)
-        expand_shape = fluid.layers.data(
+        expand_shape = paddle.static.data(
             name="expand_shape",
             shape=[2],
-            append_batch_size=False,
             dtype="int32",
         )
 
@@ -273,7 +269,7 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3], False, dtype)
+        data = paddle.static.data('data', [2, 3], dtype)
         data.persistable = True
         out = paddle.expand(data, [2, 3])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -304,7 +300,7 @@ class TestExpandTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3], False, dtype)
+        data = paddle.static.data('data', [2, 3], dtype)
         data.persistable = True
         out = paddle.expand(data, [2, 3])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)

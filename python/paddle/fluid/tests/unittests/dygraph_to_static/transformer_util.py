@@ -296,12 +296,11 @@ class InputField:
         self.feed_list = []
         for slot in input_slots:
             self.feed_list.append(
-                fluid.layers.data(
+                paddle.static.data(
                     name=slot['name'],
                     shape=slot['shape'],
                     dtype=slot['dtype'],
                     lod_level=slot.get('lod_level', 0),
-                    append_batch_size=False,
                 )
             )
 
