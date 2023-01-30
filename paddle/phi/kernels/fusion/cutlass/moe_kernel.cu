@@ -35,10 +35,11 @@
 #include "paddle/phi/kernels/fusion/cutlass/default_moe_fc_traits.h"
 #include "paddle/phi/kernels/fusion/cutlass/linear_combination_ft_gelu.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe_cutlass_kernel.h"
-#pragma GCC diagnostic pop
+// #pragma GCC diagnostic pop
 namespace phi {
 
 namespace {
+  
 inline int getSMVersion() {
   const int device = phi::backends::gpu::GetCurrentDeviceId();
   const phi::gpuDeviceProp prop =
