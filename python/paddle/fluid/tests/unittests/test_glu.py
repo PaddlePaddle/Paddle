@@ -71,6 +71,16 @@ class TestGLUV2(unittest.TestCase):
         if fluid.is_compiled_with_cuda():
             self.check_identity(fluid.CUDAPlace(0))
 
+class TestGlu(unittest.TestCase):
+    def glu_axis_size(self):
+        paddle.enable_static()
+        x = paddle.static.data(name='x', shape=[1, 2, 3], dtype='float32')
+        paddle.nn.functional.glu(x, axis=256)
+
+    def test_errors(self):
+        self.assertRaises(
+            ValueError, self.glu_axis_size
+        )
 
 if __name__ == '__main__':
     unittest.main()

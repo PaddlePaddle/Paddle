@@ -1922,7 +1922,6 @@ def split(x, num_or_sections, axis=0, name=None):
             dim = dim.numpy()
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
-        assert dim < len(input.shape), "axis must < (rank(x)"
         dim = (len(input.shape) + dim) if dim < 0 else dim
 
         if isinstance(num_or_sections, (list, tuple)):
@@ -2002,7 +2001,6 @@ def split(x, num_or_sections, axis=0, name=None):
             inputs['AxisTensor'] = dim
         else:
             assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
-            assert dim < len(input.shape), "axis must < (rank(x)"
             dim = (len(input_shape) + dim) if dim < 0 else dim
             attrs['axis'] = dim
 

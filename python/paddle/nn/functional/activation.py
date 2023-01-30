@@ -1623,6 +1623,7 @@ def glu(x, axis=-1, name=None):
     check_variable_and_dtype(
         x, 'input', ['float16', 'float32', 'float64'], "glu"
     )
+    assert axis < len(x.shape), "axis must < rank(x)"
     a, b = chunk(x, 2, axis=axis, name=name)
     gate = sigmoid(b, name=name)
     out = paddle.multiply(a, gate, name=name)
