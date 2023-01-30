@@ -137,9 +137,9 @@ class TestResnet(unittest.TestCase):
 
     def test_resnet_composite(self):
         if fluid.is_compiled_with_cuda():
-            core.set_prim_enabled(True)
+            core._set_prim_backward_enabled(True)
             static_loss = self.train(to_static=True)
-            core.set_prim_enabled(False)
+            core._set_prim_backward_enabled(False)
             dygraph_loss = self.train(to_static=False)
             # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
             np.testing.assert_allclose(
