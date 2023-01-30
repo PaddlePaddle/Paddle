@@ -14,8 +14,6 @@
 
 # TODO: define functions to manipulate a tensor
 
-from collections import Counter
-
 import numpy as np
 
 import paddle
@@ -545,6 +543,10 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+    if not (-x.ndim <= axis < x.ndim):
+        raise ValueError(
+            '`axis` must be in the range [-{0}, {0})'.format(x.ndim)
+        )
     if in_dygraph_mode():
         if num is None:
             num = x.shape[axis]
@@ -4335,11 +4337,9 @@ def moveaxis(x, source, destination, name=None):
         dst
     ), "'source' must have the same number with 'destination'"
 
-    count = Counter(src).most_common(1)
-    if count[0][1] > 1:
+    if len(src) != len(set(src)):
         raise ValueError("Each elemment of 'source' must be unique!")
-    count = Counter(dst).most_common(1)
-    if count[0][1] > 1:
+    if len(dst) != len(set(dst)):
         raise ValueError("Each elemment of 'destination' must be unique!")
 
     ndim = len(x.shape)

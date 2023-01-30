@@ -38,7 +38,7 @@ from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.fleet import auto
-from paddle.fluid import core, layers
+from paddle.fluid import core
 from paddle.fluid.initializer import NumpyArrayInitializer
 
 if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
@@ -588,7 +588,9 @@ class TestAutoParallelMapper(unittest.TestCase):
         root_id = 0
         nranks = 2
         with fluid.program_guard(train_program, startup_program):
-            input = layers.data(name="input", shape=[10, 10], dtype='float32')
+            input = paddle.static.data(
+                name="input", shape=[-1, 10, 10], dtype='float32'
+            )
             output = train_program.current_block().create_var(
                 name="outofbroadcast",
                 dtype='float32',

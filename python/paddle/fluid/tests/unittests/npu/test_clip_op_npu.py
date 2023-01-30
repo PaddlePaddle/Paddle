@@ -122,7 +122,7 @@ class TestClipOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
+                x2 = paddle.static.data(name='x2', shape=[-1, 1], dtype='int32')
                 paddle.clip(x=x2, min=-1.0, max=1.0)
 
             self.assertRaises(TypeError, test_dtype)
