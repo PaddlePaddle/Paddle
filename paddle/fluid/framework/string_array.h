@@ -130,7 +130,8 @@ class PhiVector : public phi::ExtendedTensor,
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
   static const char* name() {
-    return (std::string("PhiVector_") + std::string(typeid(T).name())).c_str();
+    name_ = std::string("PhiVector_") + std::string(typeid(T).name());
+    return name_.c_str();
   }
 
   size_t size() const { return data_.size(); }
@@ -161,7 +162,11 @@ class PhiVector : public phi::ExtendedTensor,
 
  private:
   std::vector<T> data_;
+  static std::string name_;
 };
+
+template <typename T>
+std::string PhiVector<T>::name_ = "";  // NOLINT
 
 using String = std::string;
 using Strings = PhiVector<std::string>;
