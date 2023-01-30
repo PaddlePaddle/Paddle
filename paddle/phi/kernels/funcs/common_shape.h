@@ -69,6 +69,16 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
   }
 
   for (int i = 0; i < max_dim; i++) {
+    PADDLE_ENFORCE_EQ(x_dims_array[i] >= -1 && y_dims_array[i] >= -1,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Broadcast dimension should be greater than or equal "
+                          "to -1, but received x_dims_array[%d] is %d, "
+                          "y_dims_array[%d] is %d.",
+                          i,
+                          x_dims_array[i],
+                          i,
+                          y_dims_array[i]));
     PADDLE_ENFORCE_EQ(
         x_dims_array[i] == y_dims_array[i] || abs(x_dims_array[i]) == 1 ||
             abs(y_dims_array[i]) == 1,
