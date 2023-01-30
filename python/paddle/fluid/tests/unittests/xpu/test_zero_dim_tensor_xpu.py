@@ -21,7 +21,6 @@ import paddle.nn.functional as F
 
 paddle.set_device('xpu')
 
-
 unary_api_list = [
     paddle.nn.functional.elu,
     paddle.nn.functional.gelu,
@@ -149,6 +148,7 @@ class TestReduceAPI(unittest.TestCase):
             x.stop_gradient = False
             out = api(x, None)
             out.retain_grads()
+
             out.backward()
 
             self.assertEqual(x.shape, [])
