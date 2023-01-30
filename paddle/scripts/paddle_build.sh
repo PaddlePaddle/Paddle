@@ -1957,7 +1957,7 @@ function precise_card_test() {
     echo "****************************************************************"
 
     tmpfile=$tmp_dir/$testcases".log"
-    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile
+    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" -E "($disable_ut_quickly)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile
     set +m
 }
 
@@ -2038,6 +2038,10 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
+
+    #get disabled tests,not run these disabled ut
+    get_quickly_disable_ut||disable_ut_quickly='disable_ut'
+
     # run all unittest to get the coverage information of .c and .h files
     precise_card_test_single "^simple_precision_test$" 1
     wait;

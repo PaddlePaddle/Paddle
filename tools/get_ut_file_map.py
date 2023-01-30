@@ -147,6 +147,8 @@ def notsuccessfuc(rootPath):
     count = 0
     # ut failed!!
     for ut in files:
+        if ut == 'simple_precise_test':
+            continue
         coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
         if os.path.exists(coverage_info):
             pass
