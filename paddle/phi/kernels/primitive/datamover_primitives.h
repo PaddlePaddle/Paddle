@@ -626,6 +626,56 @@ __device__ __forceinline__ void WriteData(T* dst,
 }
 
 /**
+ * @brief Atomic add 2D data from registers to global memory. When IsBoundary = true
+ * and (T == half && Nx % 2 == 0), the data will be vectorized to improve the
+ * data loading efficiency
+ *
+ * @template paraments
+ * T: The type of data.
+ * NX: The number of data continuously writed by each thread.
+ * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * IsBoundary: Indicates whether to perform block access storage out-of-bounds
+ * judgment. When the number of data processed by the block is less than
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: The data pointer of the current block.
+ * src: The register pointer, the size is NX * NY.
+ * size: The current block needs to load size elements continuously.
+ */
+
+template <typename T, int NX, int NY, bool IsBoundary = false>
+__device__ __forceinline__ void WriteDataAtomicAdd(T* dst,
+                                          T* __restrict__ src,
+                                          int num) {
+  if (IsBoundary) {
+    int thread_offset = threadIdx.x * NX;
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if ((thread_offset + idx) < num) {
+        dst[thread_offset + idx] = src[idx];
+      }
+    }
+  } else {
+    // Vector type
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
+
+    int thread_offset = threadIdx.x * kVectorsPerThread;
+    using VecType = details::VectorType<T, kVectorSize>;
+    VecType* vec_dst = reinterpret_cast<VecType*>(dst);
+    VecType vec_temp[kVectorsPerThread];
+#pragma unroll
+    for (int idx = 0; idx < kVectorsPerThread; ++idx) {
+      vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
+      vec_dst[thread_offset + idx] = vec_temp[idx];
+    }
+  }
+}
+
+/**
  * @brief Write 2D data from register to global memory according to Tx type, and
  * store it as Ty type.
  *
