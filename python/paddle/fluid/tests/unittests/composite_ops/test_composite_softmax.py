@@ -19,6 +19,7 @@ from utils import TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
+from paddle.fluid import core
 
 
 def generate_data(shape, dtype="float32"):
@@ -72,6 +73,7 @@ class TestCompositeSoftmax(unittest.TestCase):
 
     def cal_composite(self, inputs):
         paddle.enable_static()
+        core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -95,6 +97,7 @@ class TestCompositeSoftmax(unittest.TestCase):
         exe.run(startup_program)
         res = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
         paddle.disable_static()
+        core._set_prim_forward_enabled(False)
         return res
 
     def compare_forward(self):
