@@ -377,6 +377,7 @@ class TestTransform(TestTransformBase):
         if not isinstance(dy_outs, (tuple, list)):
             dy_outs = (dy_outs,)
 
+        self.dygraph_func.eval()
         st_outs = self.get_static_output()
         if not isinstance(st_outs, (tuple, list)):
             st_outs = (st_outs,)

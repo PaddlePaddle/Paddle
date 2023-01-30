@@ -427,7 +427,41 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     else:
         no_buffer_args = None
 
-    # TODO(chenfeiyu): data_transform
+    # add data_transform tag for every input.
+    # the format is {data_transform : {skip_transform : [x, z], support_trans_dtype : y}}
+    for input in inputs:
+        input["data_transform"] = {}
+    if "data_transform" in op_entry:
+        skip_trans_args = []
+        support_trans_args = []
+        data_trans = op_entry["data_transform"]
+        if "skip_transform" in data_trans:
+            skip_trans_args = parse_plain_list(data_trans["skip_transform"])
+            for name in skip_trans_args:
+                assert (
+                    name in input_names
+                ), f"{op_name} has an skip_transform input: '{name}' which is not an input."
+            data_trans["skip_transform"] = skip_trans_args
+        if "support_trans_dtype" in data_trans:
+            support_trans_args = parse_plain_list(
+                data_trans["support_trans_dtype"]
+            )
+            for name in support_trans_args:
+                assert (
+                    name in input_names
+                ), f"{op_name} has an support_trans_dtype input: '{name}' which is not an input."
+            data_trans["support_trans_dtype"] = support_trans_args
+        for input in inputs:
+            if input["name"] in skip_trans_args:
+                input["data_transform"]["skip_trans_args"] = True
+            else:
+                input["data_transform"]["skip_trans_args"] = False
+            if input["name"] in support_trans_args:
+                input["data_transform"]["support_trans_dtype"] = True
+            else:
+                input["data_transform"]["support_trans_dtype"] = False
+    else:
+        data_trans = None
 
     op = {
         "name": op_name,
@@ -435,6 +469,7 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         "attrs": attrs,
         "outputs": outputs,
         "no_need_buffer": no_buffer_args,
+        "data_transform": data_trans,
     }
 
     # invokes another op ?

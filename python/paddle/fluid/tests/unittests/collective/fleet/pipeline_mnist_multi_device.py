@@ -85,10 +85,12 @@ class TestDistMnist2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         with fluid.device_guard("gpu:0"):
-            images = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype=DTYPE
+            images = paddle.static.data(
+                name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
 
             if dist_strategy:
                 data_loader = fluid.io.DataLoader.from_generator(
