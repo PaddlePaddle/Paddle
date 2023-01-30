@@ -1435,9 +1435,10 @@ class TestSundryAPI(unittest.TestCase):
         input_3d = paddle.rand([2, 3, 6])
         out4 = interpolate(
             x=input_3d,
-            scale_factor=scale_2,
-            mode="bilinear",
+            scale_factor=scale_3,
+            mode="LINEAR",
             align_corners=False,
+            data_format="NCW",
         )
 
         self.assertEqual(out3.shape, [2, 3, 12, 12])
