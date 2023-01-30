@@ -679,7 +679,7 @@ bool BuildOpFuncList(const platform::Place& place,
         // multi-stream overlap when the time cost of communication less than
         // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
         // training).
-        op_func_node.scheduling_priority_ = 1;
+        op_func_node.scheduling_priority_ = kCommunicationPriority;
       }
     }
 

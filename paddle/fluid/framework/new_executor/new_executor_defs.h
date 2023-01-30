@@ -31,7 +31,6 @@ namespace paddle {
 namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
-
 using SchedulingPriority = int64_t;
 
 constexpr const char* kCoalesceTensor = "coalesce_tensor";
@@ -42,6 +41,7 @@ constexpr const char* kDefaultStream = "DefaultStream";
 constexpr const char* kD2HStream = "D2HStream";
 constexpr const char* kH2DStream = "H2DStream";
 
+constexpr int kCommunicationPriority = 1;
 constexpr int kEmptyVarIndex = 0;
 
 class InterpretercoreInferShapeContext : public InferShapeContext {

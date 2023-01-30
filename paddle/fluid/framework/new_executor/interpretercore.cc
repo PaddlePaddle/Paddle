@@ -45,6 +45,12 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             true,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_used_for_auto_parallel,
+    false,
+    "Whether use new executor for auto parallel training. Set it to true would "
+    "disable some tricky code that are designed to be compatible with the "
+    "legacy manual paralle training.");
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             true,
                             "Use new executor in control flow op");
@@ -127,6 +133,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 
   execution_config_.used_for_jit = used_for_jit;
   execution_config_.used_for_control_flow_op = used_for_control_flow_op;
+  execution_config_.used_for_auto_parallel =
+      FLAGS_new_executor_used_for_auto_parallel;
   execution_config_.create_local_scope =
       !used_for_jit && FLAGS_new_executor_use_local_scope &&
       !used_for_control_flow_op && !used_for_cinn;
@@ -145,7 +153,19 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     SchedulingPriority rhs_scheduling_priority =
         vec_instruction_[rhs].GetSchedulingPriority();
     if (lhs_scheduling_priority == rhs_scheduling_priority) {
-      return lhs < rhs;
+      if (execution_config_.used_for_auto_parallel) {
+        return lhs > rhs;
+      } else {
+        // NODE(Ruibiao): Temporary code to obtain a better scheduling order
+        // especially for ResNet50-fp16-N4C32 training. This scheduling idea
+        // imitates the legacy FastThreadedSSAGraphExecutor. Changing the
+        // schduling order may affect the degree of communication-computing
+        // overlap for ResNet50-fp16-N4C32 training, thereby reducing
+        // performance. This is not a universal and elegant design, remove it
+        // when we have a better solution.
+        return (lhs_scheduling_priority == kCommunicationPriority ? lhs > rhs
+                                                                  : lhs < rhs);
+      }
     }
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };

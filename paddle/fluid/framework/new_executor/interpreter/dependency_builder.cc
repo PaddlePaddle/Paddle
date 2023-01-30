@@ -17,12 +17,7 @@
 #include <queue>
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
-    add_dependency_for_communication_op,
-    true,
-    "Whether to add dependency for communication Ops. It is just a temporary "
-    "FLAGS especially for auto parallel to avoid the concurrency damage by the "
-    "communication dependency added in standalone executor.");
+DECLARE_bool(new_executor_used_for_auto_parallel);
 
 // The difference between "sequential_run" and "serial_run":
 // "sequential_run" dispatches OPs one by one according to the sequence in the
@@ -70,25 +65,31 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   op_num_ = instructions_->size();
 
   BuildDownstreamMap();
+  VLOG(6) << "Finish BuildDownstreamMap";
+
   BuildOpHappensBefore();
+  VLOG(6) << "Finish BuildOpHappensBefore";
+
   ShrinkDownstreamMap();
+  VLOG(6) << "Finish ShrinkDownstreamMap";
 
-  if (FLAGS_new_executor_sequential_run) {
-    AddDependencyForSequentialRun();
-  }
+  if (!FLAGS_new_executor_used_for_auto_parallel) {
+    AddDependencyForCoalesceTensorOp();
+    VLOG(6) << "Finish AddDependencyForCoalesceTensorOp";
 
-  AddDependencyForCoalesceTensorOp();
-
-  if (FLAGS_add_dependency_for_communication_op) {
     AddDependencyForCommunicationOp();
+    VLOG(6) << "Finish AddDependencyForCommunicationOp";
   }
 
   AddDependencyForRandomOp();
+  VLOG(6) << "Finish AddDependencyForRandomOp";
+
   AddDependencyForReadOp();
+  VLOG(6) << "Finish AddDependencyForReadOp";
 
   is_build_ = true;
 
-  VLOG(8) << "Finish build dependency";
+  VLOG(6) << "Finish build dependency";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
   VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
