@@ -145,6 +145,7 @@ def notsuccessfuc(rootPath):
     ut_map_path = "%s/build/ut_map" % rootPath
     files = os.listdir(ut_map_path)
     count = 0
+
     # ut failed!!
     for ut in files:
         if ut == 'simple_precise_test':
