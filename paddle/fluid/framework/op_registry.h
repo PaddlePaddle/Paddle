@@ -493,7 +493,8 @@ struct StructKernelImpl {
   }
 };
 
-#define PHI_STRUCTURE_KERNEL(...) ::phi::StructKernelImpl<__VA_ARGS__>::Compute
+#define PHI_STRUCTURE_KERNEL(...) \
+  ::paddle::framework::StructKernelImpl<__VA_ARGS__>::Compute
 #define PHI_STRUCTURE_VARIADIC_KERNEL(...) nullptr
 #define STRUCTURE_ARG_PARSE_FUNCTOR(...) nullptr
 
