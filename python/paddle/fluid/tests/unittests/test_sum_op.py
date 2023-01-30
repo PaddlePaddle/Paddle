@@ -23,7 +23,6 @@ from decorator_helper import prog_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.inference as paddle_infer
 from eager_op_test import (
     OpTest,
@@ -615,9 +614,9 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [3, 4, 5], False, dtype)
+        data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [3, 4, 5], False, dtype)
+        data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
@@ -657,9 +656,9 @@ class TestAddNTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [3, 4, 5], False, dtype)
+        data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [3, 4, 5], False, dtype)
+        data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
@@ -699,7 +698,7 @@ class TestSumDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 4], False, dtype)
+        data = paddle.static.data('data', [2, 4], dtype)
         data.persistable = True
         out = paddle.sum(data, axis=1, keepdim=True)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -730,7 +729,7 @@ class TestSumTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 4], False, dtype)
+        data = paddle.static.data('data', [2, 4], dtype)
         data.persistable = True
         out = paddle.sum(data, axis=1, keepdim=True)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)

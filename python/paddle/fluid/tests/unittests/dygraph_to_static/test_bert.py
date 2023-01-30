@@ -236,11 +236,11 @@ class TestBert(unittest.TestCase):
         self.verify_predict()
 
     def test_train_composite(self):
-        core.set_prim_enabled(True)
+        core._set_prim_backward_enabled(True)
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
         )
-        core.set_prim_enabled(False)
+        core._set_prim_backward_enabled(False)
         dygraph_loss, dygraph_ppl = self.train_dygraph(
             self.bert_config, self.data_reader
         )

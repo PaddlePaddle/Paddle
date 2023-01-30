@@ -34,29 +34,10 @@ void ComputeInterceptor::PrepareDeps() {
 
   for (auto up : upstream) {
     in_readys_.emplace(up.first, std::make_pair(up.second, 0));
-    in_stops_.emplace(up.first, false);
   }
   for (auto down : downstream) {
     out_buffs_.emplace(down.first, std::make_pair(down.second, 0));
   }
-
-  // source compute node, should we add a new SourceInterceptor?
-  if (upstream.empty()) {
-    is_source_ = true;
-    PADDLE_ENFORCE_GT(node_->max_run_times(),
-                      0,
-                      platform::errors::InvalidArgument(
-                          "Source ComputeInterceptor must run at least one "
-                          "times, but now max_run_times=%ld",
-                          node_->max_run_times()));
-    in_readys_.emplace(-1,
-                       std::make_pair(std::numeric_limits<int64_t>::max(), 0));
-  }
-
-  // If there is no downstream or every downstream is in different rank,
-  // then this interceptor is the last one for current rank.
-  // This can be get during init, can be cached for later use.
-  is_last_ = downstream.empty();
 }
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id) {
@@ -65,12 +46,6 @@ void ComputeInterceptor::IncreaseReady(int64_t up_id) {
                     in_readys_.end(),
                     platform::errors::NotFound(
                         "Cannot find upstream=%lld in in_readys.", up_id));
-
-  // source node has no upstream, data_is_ready is send by carrier or others
-  if (is_source_ && up_id == -1) {
-    it->second.second += GetTaskNode()->max_run_times();
-    return;
-  }
 
   auto max_ready_size = it->second.first;
   auto ready_size = it->second.second;
@@ -150,9 +125,10 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
 
     InterceptorMessage ready_msg;
     ready_msg.set_message_type(DATA_IS_READY);
+    ready_msg.set_scope_idx(cur_scope_id_);
     VLOG(3) << "ComputeInterceptor " << interceptor_id_
             << " Send data_is_ready msg to " << down_id
-            << " for step: " << step_;
+            << " in scope: " << cur_scope_id_;
     Send(down_id, ready_msg);
   }
 }
@@ -173,26 +149,30 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 
     VLOG(3) << "ComputeInterceptor " << interceptor_id_
             << " Reply data_is_useless msg to " << up_id
-            << " for step: " << step_;
-    if (is_source_ && up_id == -1) return;
+            << " in scope: " << cur_scope_id_;
 
     InterceptorMessage reply_msg;
     reply_msg.set_message_type(DATA_IS_USELESS);
+    reply_msg.set_scope_idx(cur_scope_id_);
     Send(up_id, reply_msg);
   }
 }
 
 void ComputeInterceptor::RunOps() {
-  VLOG(3) << "ComputeInterceptor " << interceptor_id_ << " running ops for the "
-          << step_ + 1 << " time.";
   for (auto op : node_->ops()) {
-    op->Run(*microbatch_scopes_[step_ % node_->max_run_times()], place_);
+    PADDLE_ENFORCE_LT(cur_scope_id_,
+                      microbatch_scopes_.size(),
+                      platform::errors::InvalidArgument(
+                          "Step out of range. There are %ld "
+                          "microbatch_scopes, but recevice scope index %ld",
+                          microbatch_scopes_.size(),
+                          cur_scope_id_));
+    op->Run(*microbatch_scopes_[cur_scope_id_], place_);
     if (gc_) {
-      framework::DeleteUnusedTensors(
-          *microbatch_scopes_[step_ % node_->max_run_times()],
-          op,
-          node_->unused_vars(),
-          gc_.get());
+      framework::DeleteUnusedTensors(*microbatch_scopes_[cur_scope_id_],
+                                     op,
+                                     node_->unused_vars(),
+                                     gc_.get());
     }
   }
 }
@@ -201,77 +181,28 @@ void ComputeInterceptor::Run() {
   while (IsInputReady() && CanWriteOutput()) {
     VLOG(3) << "id=" << GetInterceptorId() << " ComputeInterceptor running";
 
+    // get the ready scope id from queue
+    cur_scope_id_ = ready_queue_.front();
+    ready_queue_.pop();
+
     RunOps();
-    ++step_;
 
     // send to downstream and increase buff used
     SendDataReadyToDownStream();
     // reply to upstream and decrease ready data
     ReplyCompletedToUpStream();
-    // Try to stop Carrier
-    if (is_last_ && (step_ % node_->max_run_times() == 0)) {
-      VLOG(3) << "Interceptor " << GetInterceptorId()
-              << " is stopping carrier.";
-      // FIXME(wangxi): with multi sink interceptor
-      StopCarrier();
-    }
   }
-}
-
-void ComputeInterceptor::ReceivedStop(int64_t up_id) {
-  received_stop_ = true;
-
-  // source node has no upstream, stop is send by carrier or others
-  if (is_source_ && up_id == -1) return;
-
-  auto it = in_stops_.find(up_id);
-  PADDLE_ENFORCE_NE(it,
-                    in_stops_.end(),
-                    platform::errors::NotFound(
-                        "Cannot find upstream=%lld in in_stops.", up_id));
-  PADDLE_ENFORCE_EQ(
-      it->second,
-      false,
-      platform::errors::AlreadyExists("Already received stop from %lld, stop "
-                                      "cannot be send more than once."));
-  it->second = true;
-}
-
-void ComputeInterceptor::TryStop() {
-  if (!received_stop_) return;
-
-  // can stop only when all upstream is stop and
-  // downstream complete
-  for (auto& in_stop : in_stops_) {
-    if (!in_stop.second) return;
-  }
-  for (auto& out_buff : out_buffs_) {
-    auto used_size = out_buff.second.second;
-    if (used_size != 0) return;
-  }
-
-  // send stop to downstream
-  for (auto& out : out_buffs_) {
-    auto down_id = out.first;
-    InterceptorMessage stop;
-    stop.set_message_type(STOP);
-    Send(down_id, stop);
-  }
-  stop_ = true;
 }
 
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
     IncreaseReady(msg.src_id());
+    ready_queue_.push(msg.scope_idx());
     Run();
   } else if (msg.message_type() == DATA_IS_USELESS) {
     DecreaseBuff(msg.src_id());
     Run();
-  } else if (msg.message_type() == STOP) {
-    ReceivedStop(msg.src_id());
   }
-
-  TryStop();
 }
 
 REGISTER_INTERCEPTOR(Compute, ComputeInterceptor);

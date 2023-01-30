@@ -31,7 +31,7 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+            data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
             loss = paddle.mean(hidden)
             test_program = fluid.default_main_program().clone(for_test=True)

@@ -68,8 +68,8 @@ class ElementwiseDivGradOpMaker : public framework::SingleGradOpMaker<T> {
 };
 
 class ElementwiseDivGradCompositeOpMaker
-    : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+    : public prim::GradCompositeOpMakerBase {
+  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
 
  public:
   void Apply() override {
