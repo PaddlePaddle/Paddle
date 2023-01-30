@@ -19,7 +19,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#if CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/impl/matmul_kernel_impl_with_blasLt.h"
+#endif
 
 namespace phi {
 
@@ -482,6 +484,7 @@ void MatMulFunctionImplWithCuBlas(const Context& dev_ctx,
 // Core implement with cublasLt
 // This is almost a copy from MatMulFunctionImplWithCublas
 // compare cublas with cublasLt kernels when Matmul autotune is on
+// and cuda version >= 11.6
 #if CUDA_VERSION >= 11060
 template <typename Context, typename T>
 void MatMulFunctionImplWithCuBlasLt(const Context& dev_ctx,

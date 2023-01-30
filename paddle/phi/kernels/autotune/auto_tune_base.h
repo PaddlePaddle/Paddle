@@ -143,14 +143,12 @@ class AutoTuneBase {
   }
 };
 
-// FIXME: It seems that MakeAutoTuner is used nowhere.
-
-// template <typename T, typename ReturnType, typename... Args>
-// static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
-//     ReturnType (*func)(Args...)) {
-//   auto obj = MakeCallback<T>(func);
-//   return AutoTuneBase<T, decltype(obj)>(obj);
-// }
+template <typename T, typename ReturnType, typename... Args>
+static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
+    ReturnType (*func)(Args...)) {
+  auto obj = MakeCallback<T>(func);
+  return AutoTuneBase<T, decltype(obj)>(obj);
+}
 
 template <typename T, typename ReturnType, typename... Args>
 class TransposeAutoTuner
