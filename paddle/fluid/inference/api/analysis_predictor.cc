@@ -1385,7 +1385,6 @@ template <>
 std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     const AnalysisConfig &config) {
-  VLOG(3) << "create AnalysisPredictor";
   PADDLE_ENFORCE_EQ(
       config.is_valid(),
       true,
@@ -1399,6 +1398,16 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
                  []() { inference::RegisterAllCustomOperator(); });
 
   auto SetGflags = [](const AnalysisConfig &config) {
+    auto SetGflag = [](const char *name, const char *value) {
+      std::string ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+      PADDLE_ENFORCE_EQ(
+          ret.empty(),
+          false,
+          platform::errors::InvalidArgument(
+              "Fail to set gflag: %s, please make sure the gflag exists.",
+              name));
+      VLOG(3) << "set gflag: --" << name << "=" << value;
+    };
     // TODO(NHZlX): Should add the link to the doc of
     // paddle_infer::CreatePredictor<paddle_infer::Config>
     if (config.glog_info_disabled()) {
@@ -1411,7 +1420,6 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       static bool process_level_allocator_enabled;
 
       std::call_once(gflags_initialized, [&]() {
-        std::vector<std::string> gflags;
         PADDLE_ENFORCE_GE(
             config.memory_pool_init_size_mb(),
             0.f,
@@ -1423,7 +1431,6 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
                               "Invalid device id (%d). The device id should be "
                               "greater than 0.",
                               config.gpu_device_id()));
-        // gflags.push_back("dummy");
 
         float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
         if (fraction_of_gpu_memory > 0.95f) {
@@ -1433,20 +1440,15 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
           LOG(ERROR) << "Try to shink the value by setting "
                         "AnalysisConfig::EnableUseGpu(...)";
         }
-
         if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-          std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                             std::to_string(fraction_of_gpu_memory);
-          VLOG(3) << "set flag: " << flag;
-          gflags.push_back(flag);
+          std::string value = std::to_string(fraction_of_gpu_memory);
+          SetGflag("fraction_of_gpu_memory_to_use", value.data());
         }
 
         // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
         // allocator when multi-stream is enabled.
         if (config.thread_local_stream_enabled()) {
-          std::string flag = "--allocator_strategy=thread_local";
-          VLOG(3) << "set flag: " << flag;
-          gflags.push_back(flag);
+          SetGflag("allocator_strategy", "thread_local");
           process_level_allocator_enabled = false;
         } else {
           process_level_allocator_enabled = true;
@@ -1454,22 +1456,17 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 
         // for inference, the following default values are better.
         if (std::getenv("FLAGS_cudnn_exhaustive_search") == nullptr) {
-          std::string flag = "--cudnn_exhaustive_search=1";
-          VLOG(3) << "set flag: " << flag;
-          gflags.push_back(flag);
+          SetGflag("cudnn_exhaustive_search", "true");
         }
         if (std::getenv("FLAGS_conv_workspace_size_limit") == nullptr) {
-          std::string flag = "--conv_workspace_size_limit=32";
-          VLOG(3) << "set flag: " << flag;
-          gflags.push_back(flag);
+          SetGflag("conv_workspace_size_limit", "32");
         }
         if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
-          std::string flag = "--initial_cpu_memory_in_mb=0";
-          VLOG(3) << "set flag: " << flag;
-          gflags.push_back(flag);
+          SetGflag("initial_cpu_memory_in_mb", "0");
         }
 
-        // support set flags from environment.
+        // support set gflags from environment.
+        std::vector<std::string> gflags;
         const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
         std::ostringstream os;
         for (auto &pair : env_map) {
@@ -1481,13 +1478,12 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
           tryfromenv_str = "--tryfromenv=" + tryfromenv_str;
           gflags.push_back(tryfromenv_str);
         }
-
         if (framework::InitGflags(gflags)) {
           VLOG(3)
               << "The following gpu analysis configurations only take effect "
                  "for the first predictor: ";
-          for (const auto &flag : gflags) {
-            VLOG(3) << flag;
+          for (const auto &gflag : gflags) {
+            VLOG(3) << gflag;
           }
         } else {
           LOG(WARNING) << "The one-time configuration of analysis predictor "
@@ -1508,6 +1504,8 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     }
   };
   SetGflags(config);
+
+  VLOG(3) << "create AnalysisPredictor";
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
   // Each config can only be used for one predictor.
