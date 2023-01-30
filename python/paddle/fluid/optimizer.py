@@ -2671,6 +2671,7 @@ class AdamaxOptimizer(Optimizer):
         )
         self.type = "adamax"
         self._multi_precision = multi_precision
+        self._master_weights = {}
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
@@ -2760,6 +2761,7 @@ class AdamaxOptimizer(Optimizer):
                 self._beta1,
                 self._beta2,
                 self._epsilon,
+                find_master,
             )
         else:
             # create the adamax optimize op
@@ -2779,10 +2781,12 @@ class AdamaxOptimizer(Optimizer):
             if find_master:
                 inputs["MasterParam"] = master_weight
                 outputs["MasterParamOut"] = master_weight
+
             attrs = {
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
+                "multi_precision": find_master,
             }
 
             adamax_op = block.append_op(
