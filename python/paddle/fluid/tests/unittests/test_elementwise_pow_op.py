@@ -38,16 +38,10 @@ class TestElementwisePowOp(OpTest):
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_dygraph=False)
-        else:
-            self.check_output(check_dygraph=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
-        else:
-            self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
@@ -206,10 +200,7 @@ class TestElementwisePowOpInt(OpTest):
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_dygraph=False)
-        else:
-            self.check_output(check_dygraph=True)
+        self.check_output()
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
@@ -257,10 +248,7 @@ class TestElementwisePowOpFP16(OpTest):
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_dygraph=False)
-        else:
-            self.check_output(check_dygraph=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -269,7 +257,6 @@ class TestElementwisePowOpFP16(OpTest):
             user_defined_grads=pow_grad(
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
-            check_dygraph=True,
         )
 
 

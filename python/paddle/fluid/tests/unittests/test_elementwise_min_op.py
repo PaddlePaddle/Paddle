@@ -46,16 +46,10 @@ class TestElementwiseOp(OpTest):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_dygraph=False)
-        else:
-            self.check_output(check_dygraph=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
-        else:
-            self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(

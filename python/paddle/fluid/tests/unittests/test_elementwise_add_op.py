@@ -170,25 +170,19 @@ class TestBF16ElementwiseAddOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_dygraph=False)
+        self.check_output_with_place(place)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_dygraph=False
-        )
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False
-        )
+        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False
-        )
+        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(
@@ -642,7 +636,7 @@ class TestComplexElementwiseAddOp(OpTest):
         self.grad_y = self.grad_out
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
