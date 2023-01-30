@@ -18,6 +18,8 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/utils/string/pretty_log.h"
 
@@ -99,7 +101,6 @@ void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
     multi_gru_desc.SetAttr("layers", 1);
     auto multi_gru =
         g->CreateOpNode(&multi_gru_desc);  // OpDesc will be copied.
-
     IR_NODE_LINK_TO(x, multi_gru);
     IR_NODE_LINK_TO(b1, multi_gru);
     IR_NODE_LINK_TO(b2, multi_gru);
@@ -124,3 +125,9 @@ void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(multi_gru_fuse_pass, paddle::framework::ir::MultiGRUFusePass);
+
+REGISTER_PASS_CAPABILITY(multi_gru_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("concat", 0)
+            .LE("fusion_gru", 1));

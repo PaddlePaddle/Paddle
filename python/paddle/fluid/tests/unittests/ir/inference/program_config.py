@@ -449,6 +449,7 @@ def create_quant_model(
         "pad2d",
         "reshape",
         "layer_norm",
+        "fusion_gru",
     ]
     op_real_in_out_name = {
         "conv2d": [["Input", "Filter"], ["Output"]],
@@ -498,6 +499,7 @@ def create_quant_model(
         "pad2d": [["X"], ["Out"]],
         "flatten": [["X"], ["Out"]],
         "flatten2": [["X"], ["Out"]],
+        "fusion_gru": [["X", "WeightX", "WeightH"], ["Hidden", "XX"]],
     }
 
     def _get_op_output_var_names(op):
