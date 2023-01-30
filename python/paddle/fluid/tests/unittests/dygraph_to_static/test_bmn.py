@@ -24,12 +24,11 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator, to_static
+from paddle.jit import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2000
 DATATYPE = 'float32'
-program_translator = ProgramTranslator()
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -662,7 +661,7 @@ class TestTrain(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def train_bmn(self, args, place, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         loss_data = []
 
         with fluid.dygraph.guard(place):
@@ -822,7 +821,7 @@ class TestTrain(unittest.TestCase):
             break
 
     def predict_dygraph(self, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(self.place):
             bmn = BMN(self.args)
             # load dygraph trained parameters

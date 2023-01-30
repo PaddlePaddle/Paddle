@@ -30,8 +30,10 @@ def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
 
     t = paddle.to_tensor(np_x, dtype=dtype)
     t.stop_gradient = False
+    t.retain_grads()
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
+    out.retain_grads()
     out.stop_gradient = False
 
     out.backward()
@@ -142,14 +144,14 @@ def custom_relu_static_inference(func, device, np_data, np_label, path_prefix):
 
 
 def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
-    import paddle.fluid as fluid
 
-    fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
     paddle.set_device(device)
 
     t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
+    t.retain_grads()
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
+    out.retain_grads()
     dx = paddle.grad(
         outputs=out,
         inputs=t,
@@ -164,7 +166,6 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
         grad_outputs=paddle.ones_like(t),
         create_graph=False,
     )
-    fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     assert ddout[0].numpy() is not None
     return dx[0].numpy(), ddout[0].numpy()

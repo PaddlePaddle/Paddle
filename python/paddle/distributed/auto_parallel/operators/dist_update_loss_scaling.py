@@ -159,11 +159,13 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
                 filter_vars.append(varname)
 
         # replicate op in dist program
-        dist_op_desc = main_block.append_op(type='nop').desc
+        dist_op = main_block.append_op(type='nop')
+        dist_op_desc = dist_op.desc
         dist_op_desc.copy_from(backward_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
         dist_op_desc.set_input('X', filter_vars)
         dist_op_desc.set_output('Out', filter_vars)
+        # TODO: should we add a new dist attr for the new op here?
 
 
 register_distributed_operator_impl(

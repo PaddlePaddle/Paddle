@@ -55,8 +55,8 @@ def sep_conv(input, channel, stride, filter, dilation=1, act=None):
 
 def simple_depthwise_net(use_feed):
     assert use_feed
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = paddle.reshape(img, (-1, 1, 28, 28))
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
@@ -119,9 +119,9 @@ class TestMNIST(TestParallelExecutorBase):
         )
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
         for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
 
     def test_simple_depthwise_with_fuse_op(self):
         self._compare(simple_depthwise_net, DeviceType.CUDA)

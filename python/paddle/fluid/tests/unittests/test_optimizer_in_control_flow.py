@@ -264,7 +264,7 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
             def fn_2(opt, avg_loss):
                 opt.minimize(avg_loss)
 
-            x = fluid.layers.data("X", [10], 'float32')
+            x = paddle.static.data("X", [-1, 10], 'float32')
             hidden = paddle.static.nn.fc(x, 5)
             avg_loss = paddle.mean(hidden)
 

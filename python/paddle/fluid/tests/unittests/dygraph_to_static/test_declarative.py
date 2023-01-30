@@ -22,7 +22,6 @@ from test_basic_api_transformation import dyfunc_to_variable
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
@@ -30,8 +29,6 @@ from paddle.jit.dy2static.program_translator import (
 )
 from paddle.nn import Layer
 from paddle.static import InputSpec
-
-program_trans = ProgramTranslator()
 
 
 class SimpleNet(Layer):
@@ -211,7 +208,7 @@ def foo_func(a, b, c=1, d=2):
 
 class TestDifferentInputSpecCacheProgram(unittest.TestCase):
     def setUp(self):
-        program_trans.enable(True)
+        paddle.jit.enable_to_static(True)
 
     def test_with_different_input(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
@@ -358,7 +355,7 @@ class TestDeclarativeAPI(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             func(np.ones(5).astype("int32"))
 
-        program_trans.enable(False)
+        paddle.jit.enable_to_static(False)
         with self.assertRaises(AssertionError):
             # AssertionError: We Only support to_variable in imperative mode,
             #  please use fluid.dygraph.guard() as context to run it in imperative Mode
@@ -368,7 +365,7 @@ class TestDeclarativeAPI(unittest.TestCase):
 class TestDecorateModelDirectly(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        program_trans.enable(True)
+        paddle.jit.enable_to_static(True)
         self.x = to_variable(np.ones([4, 10]).astype('float32'))
 
     def test_fake_input(self):
@@ -397,17 +394,17 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
         paddle.enable_static()
 
         net = SimpleNet()
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             net.forward.concrete_program
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             net.forward.inputs
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             net.forward.outputs

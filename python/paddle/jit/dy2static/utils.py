@@ -1483,3 +1483,41 @@ def create_name_str(name_ids):
 
     names_str = ["'%s'" % (name.replace("'", "\\'")) for name in name_ids]
     return "(%s, )" % ','.join(names_str)
+
+
+def _param_grad_names(program_desc, params):
+    """
+    Parse PARAM@GARD name from original train and infer program.
+    """
+    names = []
+    # NOTE: `names` and `self._params` must be in the same order so that
+    # the param grad name can be set correctly in the run_program.
+    for param in params:
+        candidate = [
+            var.name()
+            for var in program_desc.block(0).all_vars()
+            if var.name().endswith(param.name + '@GRAD')
+        ]
+        if candidate:
+            names.append(max(candidate, key=lambda name: name.count('grad/')))
+        else:
+            names.append(param.name + '@GRAD')
+
+    return names
+
+
+def _out_grad_names(program_desc, fwd_end_op_index, out_size):
+    """
+    Parse Out@GARD name from original train and infer program.
+    """
+    names = []
+    for i in range(
+        fwd_end_op_index + 1,
+        min(fwd_end_op_index + 2 * out_size, program_desc.block(0).op_size()),
+        2,
+    ):
+        op = program_desc.block(0).op(i)
+        if op.type() == 'fill_constant':
+            var_name = op.output('Out')[0]
+            names.append(var_name)
+    return names

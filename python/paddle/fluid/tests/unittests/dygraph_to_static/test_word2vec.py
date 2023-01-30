@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.nn import Embedding
 
@@ -278,8 +277,7 @@ total_steps = len(dataset) * epoch_num // batch_size
 
 
 def train(to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     random.seed(0)
     np.random.seed(0)
