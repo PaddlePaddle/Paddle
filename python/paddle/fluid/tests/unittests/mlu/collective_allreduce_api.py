@@ -44,8 +44,8 @@ class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(
-                name="tindata", shape=[10, 1000], dtype='float32'
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
             paddle.distributed.all_reduce(tindata)
             return [tindata]

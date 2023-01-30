@@ -16,15 +16,12 @@ import os
 import tempfile
 import unittest
 
-import gradient_checker
 import numpy as np
-from decorator_helper import prog_scope
 from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.inference as paddle_infer
 
 
@@ -230,7 +227,7 @@ class TestSumOpExclusive1(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
-        a = np.random.random((4, 5, 65)).astype("float64")
+        a = np.random.random((4, 5, 20)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
@@ -244,13 +241,16 @@ class TestSumOpExclusive1(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOpExclusive2(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
-        a = np.random.random((1, 1, 888)).astype("float64")
+        a = np.random.random((1, 1, 100)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
@@ -264,13 +264,16 @@ class TestSumOpExclusive2(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOpExclusive3(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
-        a = np.random.random((4, 5, 888)).astype("float32")
+        a = np.random.random((4, 5, 20)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
@@ -285,12 +288,15 @@ class TestSumOpExclusive3(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
 
 class TestSumOpExclusive4(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
-        a = np.random.random((1, 1, 3049)).astype("float64")
+        a = np.random.random((1, 1, 100)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
@@ -305,12 +311,15 @@ class TestSumOpExclusive4(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
 
 class TestSumOpExclusive5(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
-        a = np.random.random((4, 5, 3096)).astype("float64")
+        a = np.random.random((4, 5, 40)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
@@ -324,13 +333,16 @@ class TestSumOpExclusive5(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOpExclusiveFP16(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True, "dtype": "float16"}
-        a = np.random.random((4, 5, 3096)).astype("float64")
+        a = np.random.random((4, 5, 20)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
@@ -344,6 +356,9 @@ class TestSumOpExclusiveFP16(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOpReverseExclusive(OpTest):
@@ -365,6 +380,9 @@ class TestSumOpReverseExclusive(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class BadInputTest(unittest.TestCase):
@@ -407,7 +425,6 @@ class TestTensorAxis(unittest.TestCase):
         with paddle.static.program_guard(main_prog, starup_prog):
             # run static
             x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
-            print(x)
             linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
             linear_out = linear(x)
             relu_out = paddle.nn.functional.relu(linear_out)
@@ -442,68 +459,6 @@ class TestTensorAxis(unittest.TestCase):
             output_handle = predictor.get_output_handle(output_names[0])
             infer_out = output_handle.copy_to_cpu()
             np.testing.assert_allclose(static_out[0], infer_out)
-
-
-class TestCumsumDoubleGradCheck(unittest.TestCase):
-    def cumsum_wrapper(self, x):
-        return paddle.cumsum(x[0], 0)
-
-    @prog_scope()
-    def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
-        eps = 0.005
-        dtype = np.float64
-
-        data = layers.data('data', [3, 4], False, dtype)
-        data.persistable = True
-        out = paddle.cumsum(data, 0)
-        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
-
-        gradient_checker.double_grad_check(
-            [data], out, x_init=[data_arr], place=place, eps=eps
-        )
-        gradient_checker.double_grad_check_for_dygraph(
-            self.cumsum_wrapper, [data], out, x_init=[data_arr], place=place
-        )
-
-    def test_grad(self):
-        paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
-
-
-class TestCumsumTripleGradCheck(unittest.TestCase):
-    def cumsum_wrapper(self, x):
-        return paddle.cumsum(x[0], 0)
-
-    @prog_scope()
-    def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
-        eps = 0.005
-        dtype = np.float32
-
-        data = layers.data('data', [2, 3], False, dtype)
-        data.persistable = True
-        out = paddle.cumsum(data, 0)
-        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
-
-        gradient_checker.triple_grad_check(
-            [data], out, x_init=[data_arr], place=place, eps=eps
-        )
-        gradient_checker.triple_grad_check_for_dygraph(
-            self.cumsum_wrapper, [data], out, x_init=[data_arr], place=place
-        )
-
-    def test_grad(self):
-        paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <miopen/miopen.h>
 #endif
+
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -84,7 +85,8 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "adaptive_pool2d_convert_global_pass",           //
+  "trt_support_nhwc_pass",
+      "adaptive_pool2d_convert_global_pass",       //
       "shuffle_channel_detect_pass",               //
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_fill_constant_op_pass",              //
@@ -103,6 +105,8 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_multihead_matmul_fuse_pass_v3",            //
       "multihead_matmul_roformer_fuse_pass",          //
       "constant_folding_pass",                        //
+      "trt_flash_multihead_matmul_fuse_pass",         //
+      "trt_cross_multihead_matmul_fuse_pass",         //
       "vit_attention_fuse_pass",                      //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
@@ -190,8 +194,9 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "fuse_multi_transformer_layer_pass",
     "gpu_cpu_map_matmul_v2_to_mul_pass",
     "gpu_cpu_map_matmul_v2_to_matmul_pass",
+    "gpu_cpu_map_matmul_to_mul_pass",
     "fc_fuse_pass",
-    "fc_elementwise_layernorm_fuse_pass",
+    // "fc_elementwise_layernorm_fuse_pass",
     "embedding_eltwise_layernorm_fuse_pass",
     "inplace_op_var_pass"};
 
