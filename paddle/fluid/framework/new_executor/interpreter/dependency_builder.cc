@@ -73,6 +73,11 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   ShrinkDownstreamMap();
   VLOG(6) << "Finish ShrinkDownstreamMap";
 
+  if (FLAGS_new_executor_sequential_run) {
+    AddDependencyForSequentialRun();
+    VLOG(6) << "Finish AddDependencyForSequentialRun";
+  }
+
   if (!FLAGS_new_executor_used_for_auto_parallel) {
     AddDependencyForCoalesceTensorOp();
     VLOG(6) << "Finish AddDependencyForCoalesceTensorOp";

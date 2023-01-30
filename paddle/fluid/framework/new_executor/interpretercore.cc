@@ -131,13 +131,13 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
-  execution_config_.used_for_jit = used_for_jit;
-  execution_config_.used_for_control_flow_op = used_for_control_flow_op;
-  execution_config_.used_for_auto_parallel =
-      FLAGS_new_executor_used_for_auto_parallel;
   execution_config_.create_local_scope =
       !used_for_jit && FLAGS_new_executor_use_local_scope &&
       !used_for_control_flow_op && !used_for_cinn;
+  execution_config_.used_for_auto_parallel =
+      FLAGS_new_executor_used_for_auto_parallel;
+  execution_config_.used_for_control_flow_op = used_for_control_flow_op;
+  execution_config_.used_for_jit = used_for_jit;
   execution_config_.skip_gc_vars = skip_gc_vars;
   execution_config_.Log(/*log_level=*/8);
 
@@ -157,12 +157,12 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
         return lhs > rhs;
       } else {
         // NODE(Ruibiao): Temporary code to obtain a better scheduling order
-        // especially for ResNet50-fp16-N4C32 training. This scheduling idea
-        // imitates the legacy FastThreadedSSAGraphExecutor. Changing the
-        // schduling order may affect the degree of communication-computing
-        // overlap for ResNet50-fp16-N4C32 training, thereby reducing
-        // performance. This is not a universal and elegant design, remove it
-        // when we have a better solution.
+        // especially for ResNet50-fp16-N4C32 manual paralle training. This
+        // scheduling idea imitates the legacy FastThreadedSSAGraphExecutor.
+        // Changing the schduling order may affect the degree of
+        // communication-computing overlap for ResNet50-fp16-N4C32, thereby
+        // reducing training performance. This is not a generic and elegant
+        // design, remove it when we have a better solution.
         return (lhs_scheduling_priority == kCommunicationPriority ? lhs > rhs
                                                                   : lhs < rhs);
       }
