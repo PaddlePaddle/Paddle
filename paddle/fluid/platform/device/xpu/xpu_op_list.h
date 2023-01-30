@@ -21,8 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using phi::backends::xpu::is_xpu_support_op;
 using phi::backends::xpu::IsInXPUBlackList;
+using phi::backends::xpu::IsXPUSupportOp;
 
 #ifdef PADDLE_WITH_XPU_KP
 bool is_in_xpu_kpwhite_list(const std::string& op_name);

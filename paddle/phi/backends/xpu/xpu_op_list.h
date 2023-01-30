@@ -41,6 +41,8 @@ bool IsInXPUBlackList(const std::string& kernel_name);
 // but Kunlun3 has not yet supported it.
 // At this time, we need to make a selection judgment through the list,
 // which is mainly used in the transition stage.
+bool IsXPUSupportOp(const std::string& fluid_op_name,
+                    phi::DataType kernel_dtype);
 bool IsXPUSupportKernel(const std::string& kernel_name,
                         phi::DataType kernel_dtype);
 

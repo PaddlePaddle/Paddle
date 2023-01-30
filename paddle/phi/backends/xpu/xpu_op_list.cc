@@ -71,18 +71,23 @@ bool IsInXPUBlackList(const std::string& kernel_name) {
   return false;
 }
 
-bool IsXPUSupportKernel(const std::string& kernel_name,
-                        phi::DataType kernel_dtype) {
-  if (IsInXPUBlackList(kernel_name)) return false;
+bool IsXPUSupportOp(const std::string& fluid_op_name,
+                    phi::DataType kernel_dtype) {
+  if (IsInXPUBlackList(fluid_op_name)) return false;
   auto v = GetXPUVersion(0);
   auto& ops =
       (v == phi::backends::xpu::XPUVersion::XPU1) ? GetKL1Ops() : GetKL2Ops();
-  auto& fluid_op_name = TransToFluidOpName(kernel_name);
   if (ops.find(fluid_op_name) != ops.end() &&
       ops[fluid_op_name].find(kernel_dtype) != ops[fluid_op_name].end()) {
     return true;
   }
   return false;
+}
+
+bool IsXPUSupportKernel(const std::string& kernel_name,
+                        phi::DataType kernel_dtype) {
+  auto& fluid_op_name = TransToFluidOpName(kernel_name);
+  return IsXPUSupportOp(fluid_op_name, kernel_dtype);
 }
 
 bool IsXPUFallbackToCPU(const std::string& kernel_name,

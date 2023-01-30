@@ -255,7 +255,7 @@ PreparedOp PrepareImpl(
 #if defined(PADDLE_WITH_XPU)
   bool is_xpu_unsupport =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-      !paddle::platform::is_xpu_support_op(
+      !paddle::platform::IsXPUSupportOp(
           op.Type(),
           framework::TransToPhiDataType(expected_kernel_key.data_type_));
 #endif
@@ -293,7 +293,7 @@ PreparedOp PrepareImpl(
     if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
       bool use_xpu_kp_kernel_rt =
           FLAGS_run_kp_kernel &&
-          paddle::platform::is_xpu_support_op(
+          paddle::platform::IsXPUSupportOp(
               op.Type(),
               framework::TransToPhiDataType(expected_kernel_key.data_type_));
       bool use_xpu_kp_kernel_debug =
@@ -370,7 +370,7 @@ PreparedOp PrepareImpl(
   bool use_xpu_kp_kernel_rt =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_support_op(
+      paddle::platform::IsXPUSupportOp(
           op.Type(),
           framework::TransToPhiDataType(expected_kernel_key.data_type_));
   bool use_xpu_kp_kernel_debug =
