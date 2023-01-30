@@ -66,13 +66,11 @@ using ConvAlgorithmsTypeMap =
     std::unordered_map<int64_t, ConvAlgorithmsCacheMap>;
 
 using MatmulAlgorithmsCacheMap = std::unordered_map<size_t, int64_t>;
-using MatmulAlgorithmsTypeMap =
-    std::unordered_map<int64_t, MatmulAlgorithmsCacheMap>;
-
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 using CudnnV8AlgorithmsTypeMap =
     std::unordered_map<int64_t, CudnnFrontendPlanCache>;
 #endif
+
 class AutoTuneCache {
  public:
   static AutoTuneCache& Instance() {
@@ -84,9 +82,7 @@ class AutoTuneCache {
     return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
-  MatmulAlgorithmsCacheMap& GetMatmul() {
-    return matmul_auto_tune_map_[static_cast<int64_t>(AlgorithmType::kMatmul)];
-  }
+  MatmulAlgorithmsCacheMap& GetMatmul() { return matmul_auto_tune_map_; }
 
   ConvAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
     return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
@@ -171,9 +167,9 @@ class AutoTuneCache {
 
   AlgorithmsTypeMap auto_tune_map_;
   ConvAlgorithmsTypeMap conv_auto_tune_map_;
-  MatmulAlgorithmsTypeMap matmul_auto_tune_map_
+  MatmulAlgorithmsCacheMap matmul_auto_tune_map_;
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-      CudnnV8AlgorithmsTypeMap cudnn_v8_auto_tune_map_;
+  CudnnV8AlgorithmsTypeMap cudnn_v8_auto_tune_map_;
 #endif
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
   int64_t total_cache_hits_{0};

@@ -61,7 +61,7 @@ size_t GetKey(Args&&... args) {
 }
 
 struct MatmulHashValueType {
-  int64_t data[8]
+  int64_t data[8];
 };
 
 struct MatmulCacheKey {
@@ -257,19 +257,24 @@ class MatmulAlgorithmsCache : public AlgorithmsCache<KeyT, AlgorithmT> {
  public:
   MatmulAlgorithmsCache() : AlgorithmsCache<KeyT, AlgorithmT>() {}
 
-  bool SubFind(const KeyT& sub_key) {
+  bool FindSubKey(const KeyT& sub_key) {
     std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
     bool ret = (sub_hash_.find(sub_key) != sub_hash_.end()) ? true : false;
     return ret;
   }
 
-  void SubSet(const KeyT& key, MatmulHashValueType* algo) {
+  void SetSubkey(const KeyT& sub_key, MatmulHashValueType* algo) {
     std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
-    sub_hash_[key] = SubAlgorithmT;
+    sub_hash_[sub_key] = *algo;
   }
 
-  MatmulHashValueType SubGet(const KeyT& key, ) {
+  MatmulHashValueType GetSubKey(const KeyT& sub_key) {
     std::lock_guard<std::mutex> lock(this->cache_mutex_);
+    PADDLE_ENFORCE_NE(
+        sub_hash_.find(sub_key),
+        sub_hash_.end(),
+        phi::errors::PreconditionNotMet("The key does not exist."));
+    return sub_hash_[sub_key];
   }
 
  private:

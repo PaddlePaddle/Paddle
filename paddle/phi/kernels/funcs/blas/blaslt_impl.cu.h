@@ -195,7 +195,7 @@ struct MatmulWithCublasLt {
                   const int64_t stride_x,
                   const int64_t stride_y,
                   const int64_t stride_out,
-                  phi::autotune::MatmulCacheKey* matmul_key) {
+                  phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
     // init data structure
     cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
     cublasLtMatmulDesc_t op_desc = NULL;
@@ -234,26 +234,28 @@ struct MatmulWithCublasLt {
         MatmulDescCreator::GetWorkspace(ctx, workspace_size);
     cublasLtMatmulAlgo_t* best_algo = nullptr;
 
-    auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-    size_t sub_key = matmul_key->GetSubKey(
-        static_cast<int64_t>(phi::MatmulImplType::kImplWithCublasLt));
-    if (cache.SubFind(sub_key)) {
-      best_algo = cache.SubGet(sub_key);
-    } else if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
-      best_algo = SearchBestAlgo(lt_handle,
-                                 op_desc,
-                                 y_desc,
-                                 x_desc,
-                                 out_desc,
-                                 alpha,
-                                 beta,
-                                 y_data,
-                                 x_data,
-                                 out_data,
-                                 ctx.stream(),
-                                 workspace->ptr(),
-                                 workspace_size);
-      cache.SubSet(sub_key, *best_algo);
+    if (matmul_key != nullptr) {
+      auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+      size_t sub_key = matmul_key->GetSubKey(
+          key, static_cast<int64_t>(phi::MatmulImplType::kImplWithCublasLt));
+      if (cache.FindSubKey(sub_key)) {
+        best_algo = cache.SubGetKey(sub_key);
+      } else if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
+        best_algo = SearchBestAlgo(lt_handle,
+                                   op_desc,
+                                   y_desc,
+                                   x_desc,
+                                   out_desc,
+                                   alpha,
+                                   beta,
+                                   y_data,
+                                   x_data,
+                                   out_data,
+                                   ctx.stream(),
+                                   workspace->ptr(),
+                                   workspace_size);
+        cache.SetSubKey(sub_key, *best_algo);
+      }
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt_handle,
                                                        op_desc,

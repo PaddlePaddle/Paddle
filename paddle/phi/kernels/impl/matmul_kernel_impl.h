@@ -889,30 +889,32 @@ void MatmulKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument("The Input(Y) dims size must not be equal 0,"
                                    " but reviced dims size is 0. "));
 
-#if CUDA_VERSION >= 11060
-  auto* tuner = phi::autotune::MakeMatmulTuner<T>(
-      MatMulFunctionImplWithCuBlas<phi::GPUContext, T>);
-  tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
+  // #if CUDA_VERSION >= 11060
+  //   auto* tuner = phi::autotune::MakeMatmulTuner<T>(
+  //       MatMulFunctionImplWithCuBlas<phi::GPUContext, T>);
+  //   tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
 
-  auto matmul_cache = phi::autotune::MatmulCacheKey(
-      x_dims,
-      y_dims,
-      trans_x,
-      trans_y,
-      paddle::experimental::CppTypeToDataType<T>::Type());
-  tuner->Run(dev_ctx,
-             matmul_cache.QueryKey(),
-             x,
-             y,
-             trans_x,
-             trans_y,
-             out,
-             false,
-             &matmul_cache);
-#else
+  //   auto matmul_cache = phi::autotune::MatmulCacheKey(
+  //       x_dims,
+  //       y_dims,
+  //       trans_x,
+  //       trans_y,
+  //       paddle::experimental::CppTypeToDataType<T>::Type());
+  //   tuner->Run(dev_ctx,
+  //              matmul_cache.QueryKey(),
+  //              x,
+  //              y,
+  //              trans_x,
+  //              trans_y,
+  //              out,
+  //              false,
+  //              &matmul_cache);
+  // #else
+  //   MatMulFunctionImplWithCuBlas<Context, T>(
+  //       dev_ctx, x, y, x_dims, y_dims, out, trans_x, trans_y);
+  // #endif
   MatMulFunctionImplWithCuBlas<Context, T>(
       dev_ctx, x, y, x_dims, y_dims, out, trans_x, trans_y);
-#endif
 }
 
 template <typename T, typename Context>
