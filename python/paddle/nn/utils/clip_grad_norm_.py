@@ -21,10 +21,11 @@ def clip_grad_norm_(
     parameters: paddle.Tensor,
     max_norm: float,
     norm_type: float = 2.0,
-    error_if_nonfinite: bool = False):
+    error_if_nonfinite: bool = False,
+):
     r"""Clips gradient norm of the iteratable parameters.
 
-    Norms are calculated together on all gradients, just as they are 
+    Norms are calculated together on all gradients, just as they are
     connected into one vector. The gradient will be modified in place.
 
     This API can only run in dynamic graph mode, not static graph mode.
