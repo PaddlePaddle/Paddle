@@ -1124,6 +1124,16 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
           PyListToTensor(paddle::experimental::DataType::INT64,
                          self->tensor.place(),
                          slice_item));
+    } else if (py::isinstance<py::int_>(slice_item)) {
+      indices_tensor.emplace_back(
+          PyValueToTensor(paddle::experimental::DataType::INT64,
+                          self->tensor.place(),
+                          slice_item));
+    } else if (py::isinstance<py::array>(slice_item)) {
+      indices_tensor.emplace_back(
+          PyArrayToTensor(paddle::experimental::DataType::INT64,
+                          self->tensor.place(),
+                          slice_item));
     } else {
       isAllTensor = false;
       return ToPyObject(isAllTensor);

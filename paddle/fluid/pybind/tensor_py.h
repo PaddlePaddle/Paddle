@@ -370,6 +370,7 @@ void SetTensorFromPyArrayT(
     bool zero_copy) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
+  VLOG(2) << "array.ndim() is " << dims << std::endl;
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int64_t>(array.shape()[i]));
   }

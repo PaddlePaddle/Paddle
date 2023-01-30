@@ -23,6 +23,18 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 
 namespace phi {
+template <typename T>
+__global__ void elementwise_set_cuda_kernel(
+    const int64_t N, T* x, T* y, int64_t* offsets, int64_t isSingleValTensor) {
+  int64_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  int64_t cur_ix = 0;
+
+  if (idx >= N) {
+    return;
+  }
+  *(x + *(offsets + idx)) = *(y + (idx & isSingleValTensor));
+}
+
 template <typename T1, typename T2, size_t Rank>
 __global__ void index_put_cuda_kernel(const int64_t N,
                                       T1* x,
@@ -81,6 +93,7 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto x_dims = x.dims();
+  // 如果是bool索引，这里需要先滤过False，可能需要一个新的kernel
   const int64_t numel = indices_v[0]->numel();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   auto x_stride = phi::stride(x_dims);
@@ -229,6 +242,7 @@ void IndexPutKernel(const Context& dev_ctx,
   bool need_broadcast = false;
   for (int i = 1; i < indices_v.size(); ++i) {
     tmp_dim = indices_v[i]->dims();
+    VLOG(2) << "tmp_dim is " << tmp_dim << std::endl;
     if (pre_dim != tmp_dim) {
       pre_dim = BroadcastTwoDims(pre_dim, tmp_dim, -1);
       need_broadcast = true;
