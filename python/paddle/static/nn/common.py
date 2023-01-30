@@ -2255,6 +2255,8 @@ def deformable_conv(
     if groups is None:
         num_filter_channels = num_channels
     else:
+        if groups == 0:
+            raise ValueError("groups should not be 0.")
         if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels // groups
