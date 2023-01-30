@@ -99,7 +99,7 @@ void FusedAttentionCsrKernel(
     const paddle::optional<DenseTensor>& attn_mask,
     DenseTensor* out,
     SparseCsrTensor* softmax) {
-#if CUDA_VERSION >= 11080
+#if CUDA_VERSION >= 11070
   /* Check Shape */
   auto q_dim = query.dims();
   auto q_rank = q_dim.size();
