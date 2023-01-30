@@ -2255,6 +2255,8 @@ def deformable_conv(
     if groups is None:
         num_filter_channels = num_channels
     else:
+        if groups == 0:
+            raise ValueError("groups should not be 0.")
         if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels // groups
@@ -3427,11 +3429,12 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     # create intput and parameters
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
-    assert dim < len(input_shape), (
-        "The input `dim` should be less than the "
-        "rank of `weight`, but received dim="
-        "{}".format(dim)
-    )
+
+    if dim not in [0, 1]:
+        raise ValueError(
+            f"The input `dim` must be 0 (if weight in fc) or 1 (if weight in conv), but received dim={dim}"
+        )
+
     h = input_shape[dim]
     w = np.prod(input_shape) // h
 
