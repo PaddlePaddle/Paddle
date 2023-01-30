@@ -296,7 +296,7 @@ class NoamDecay(LRScheduler):
         last_epoch=-1,
         verbose=False,
     ):
-        if d_model == 0:
+        if d_model <= 0:
             raise ValueError("d_model should be grater than 0")
 
         self.d_model = d_model
