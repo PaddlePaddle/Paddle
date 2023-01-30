@@ -194,12 +194,6 @@ function(copy_part_of_thrid_party TARGET DST)
     SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
     DSTS ${dst_dir} ${dst_dir}/lib)
 
-  set(dst_dir "${DST}/third_party/install")
-  copy(
-    ${TARGET}
-    SRCS ${PYBIND_INCLUDE_DIR}/pybind11
-    DSTS ${dst_dir})
-
   if(NOT PROTOBUF_FOUND OR WIN32)
     set(dst_dir "${DST}/third_party/install/protobuf")
     copy(
@@ -336,10 +330,6 @@ copy(
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flat_hash_map.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
-copy(
-  inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/pybind.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(
   inference_lib_dist
