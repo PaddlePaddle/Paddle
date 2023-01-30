@@ -49,8 +49,11 @@ class InterpreterEngine : public BaseEngine {
 
   const std::shared_ptr<FunctionInfo> &Info() const;
 
+  std::unique_ptr<BaseEngine> Clone(void *stream = nullptr) override;
+
  private:
   std::shared_ptr<FunctionInfo> info_;
+  VariableMap params_dict_;
   framework::Scope scope_;
   phi::Place place_;
   std::shared_ptr<framework::InterpreterCore> inner_interpreter_;
