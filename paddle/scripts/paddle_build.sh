@@ -2045,7 +2045,6 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
-
     #get disabled tests,not run these disabled ut
     get_quickly_disable_ut||disable_ut_quickly='disable_ut'
 
