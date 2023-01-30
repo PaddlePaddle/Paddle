@@ -29,6 +29,7 @@ WHITE_LIST = {
     'conv2d',
     'matmul',
     'matmul_v2',
+    'max_pool2d_with_index',
     'mul',
     'fake_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_moving_average_abs_max',
@@ -58,6 +59,7 @@ BLACK_LIST = {
     'bicubic_interp_v2',
     'trilinear_interp_v2',
 }
+
 
 AMP_RELATED_FLAGS = [
     'FLAGS_cudnn_exhaustive_search',
@@ -127,7 +129,7 @@ def amp_state():
     return _g_amp_state_
 
 
-# NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
+# NOTE(zhiqiu): similar as paddle.static.amp.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
 def _update_list(
     custom_white_list, custom_black_list, level='O1', dtype='float16'

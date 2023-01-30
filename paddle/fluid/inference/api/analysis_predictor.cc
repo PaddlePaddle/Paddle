@@ -1609,6 +1609,51 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   return output_names;
 }
 
+std::map<std::string, std::vector<int64_t>>
+AnalysisPredictor::GetOutputTensorShape() {
+  std::map<std::string, std::vector<int64_t>> output_shapes;
+  std::vector<std::string> names = GetOutputNames();
+  for (std::string name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            platform::errors::PreconditionNotMet(
+                                "Output %s does not exist.", name));
+    output_shapes[name] = var->GetShape();
+  }
+  return output_shapes;
+}
+
+std::map<std::string, paddle_infer::DataType>
+AnalysisPredictor::GetOutputTypes() {
+  std::map<std::string, paddle_infer::DataType> output_type;
+  std::vector<std::string> names = GetOutputNames();
+  for (const auto &name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet(
+            "Output %s does not exist inference_program_.", name));
+    auto dtype = var->GetDataType();
+    if (dtype == paddle::framework::proto::VarType::FP32) {
+      output_type[name] = paddle_infer::DataType::FLOAT32;
+    } else if (dtype == paddle::framework::proto::VarType::FP16) {
+      output_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::INT64) {
+      output_type[name] = paddle_infer::DataType::INT64;
+    } else if (dtype == paddle::framework::proto::VarType::INT32) {
+      output_type[name] = paddle_infer::DataType::INT32;
+    } else if (dtype == paddle::framework::proto::VarType::UINT8) {
+      output_type[name] = paddle_infer::DataType::UINT8;
+    } else if (dtype == paddle::framework::proto::VarType::INT8) {
+      output_type[name] = paddle_infer::DataType::INT8;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported data type `%s` when get output dtype ", dtype));
+    }
+  }
+  return output_type;
+}
+
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
   framework::Scope *scope;
@@ -1655,7 +1700,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
     res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
@@ -1710,7 +1756,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
     res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
@@ -2427,6 +2474,10 @@ USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
+#if IS_TRT_VERSION_GE(8522)
+USE_TRT_CONVERTER(flash_multihead_matmul)
+USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
@@ -2471,6 +2522,10 @@ std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
 }
 
+std::map<std::string, std::vector<int64_t>> Predictor::GetInputTensorShape() {
+  return predictor_->GetInputTensorShape();
+}
+
 std::map<std::string, DataType> Predictor::GetInputTypes() {
   return predictor_->GetInputTypes();
 }
@@ -2485,6 +2540,14 @@ std::vector<std::string> Predictor::GetOutputNames() {
 
 std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
   return predictor_->GetOutputTensor(name);
+}
+
+std::map<std::string, std::vector<int64_t>> Predictor::GetOutputTensorShape() {
+  return predictor_->GetOutputTensorShape();
+}
+
+std::map<std::string, DataType> Predictor::GetOutputTypes() {
+  return predictor_->GetOutputTypes();
 }
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }

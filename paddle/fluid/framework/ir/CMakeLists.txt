@@ -130,6 +130,8 @@ target_link_libraries(generate_pass pass_desc_proto)
 if(WITH_TENSORRT)
   pass_library(trt_map_matmul_to_mul_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
+  pass_library(trt_flash_multihead_matmul_fuse_pass inference)
+  pass_library(trt_cross_multihead_matmul_fuse_pass inference)
   pass_library(trt_skip_layernorm_fuse_pass inference)
   pass_library(merge_layernorm_fuse_pass inference)
   pass_library(preln_skip_layernorm_fuse_pass inference)
@@ -139,11 +141,9 @@ if(WITH_TENSORRT)
   pass_library(layernorm_shift_partition_fuse_pass inference)
   pass_library(reverse_roll_fuse_pass inference)
   pass_library(preln_layernorm_x_fuse_pass inference)
+  pass_library(trt_support_nhwc_pass inference)
   pass_library(elementwise_groupnorm_act_pass inference)
   pass_library(preln_elementwise_groupnorm_act_pass inference)
-endif()
-
-if(WITH_TENSORRT)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
 endif()
@@ -460,14 +460,6 @@ if(WITH_MKLDNN)
     test_cpu_quantize_squash_pass
     SRCS mkldnn/cpu_quantize_squash_pass_tester.cc
     DEPS cpu_quantize_squash_pass naive_executor)
-  cc_test(
-    test_reshape_transpose_matmul_mkldnn_fuse_pass
-    SRCS mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass_tester.cc
-    DEPS reshape_transpose_matmul_mkldnn_fuse_pass)
-  cc_test(
-    test_matmul_transpose_reshape_fuse_pass
-    SRCS mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass_tester.cc
-    DEPS matmul_transpose_reshape_mkldnn_fuse_pass)
   cc_test(
     test_shuffle_channel_mkldnn_detect_pass
     SRCS mkldnn/shuffle_channel_mkldnn_detect_pass_tester.cc

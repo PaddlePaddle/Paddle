@@ -18,7 +18,7 @@ import textwrap
 import threading
 import weakref
 
-from paddle.fluid import _non_static_mode, framework
+from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
@@ -930,6 +930,13 @@ class ConcreteProgram:
         self.function = function
         self.kwargs = kwargs
 
+    @switch_to_static_graph
+    def _to_prim(self):
+        # TODO(Aurelius84): Fix this cycle import problem
+        from paddle.incubate.autograd.primapi import to_prim
+
+        to_prim(self.main_program.blocks)
+
     @staticmethod
     @switch_to_static_graph
     def from_func_spec(
@@ -1083,6 +1090,12 @@ class ProgramCache:
         self._recent_cache_key = None
 
     def _build_once(self, cache_key):
+        # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
+        enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
+        if enable_prim:
+            # TODO(Jiabin): Change this to True if we need this to be default option
+            core.check_and_set_prim_all_enabled()
+
         concrete_program = ConcreteProgram.from_func_spec(
             func_spec=cache_key.function_spec,
             input_spec=cache_key.input_args_with_spec,
@@ -1090,6 +1103,8 @@ class ProgramCache:
             class_instance=cache_key.class_instance,
             **cache_key.kwargs
         )
+
+        concrete_program._to_prim()
         return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):
