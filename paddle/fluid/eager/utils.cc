@@ -27,10 +27,6 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
-PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor,
-                            false,
-                            "retain grad for all tensor");
-
 namespace egr {
 /**
  * Implementation of Eager Utils.
