@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+from eager_op_test import OpTest
 
 
 def pixel_shuffle_np(x, up_factor, data_format="NCHW"):
@@ -85,10 +85,13 @@ class TestPixelShuffleOp(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+        )
 
 
 class TestChannelLast(TestPixelShuffleOp):
