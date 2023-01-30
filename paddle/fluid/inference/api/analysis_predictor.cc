@@ -1455,9 +1455,6 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         }
 
         // for inference, the following default values are better.
-        if (std::getenv("FLAGS_cudnn_exhaustive_search") == nullptr) {
-          SetGflag("cudnn_exhaustive_search", "true");
-        }
         if (std::getenv("FLAGS_conv_workspace_size_limit") == nullptr) {
           SetGflag("conv_workspace_size_limit", "32");
         }
