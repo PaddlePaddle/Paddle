@@ -273,9 +273,9 @@ class FusedAttentionsPass : public FusePassBase {
   // If true, the function name will have an abbreviation part.
   // If false, the function name won't contain an abbreviation for it.
 
-  ir::Graph* PreMaskDropResPostFwd(Graph* graph) const;
+  ir::Graph* PreMaskDropResFwd(Graph* graph) const;
 
-  ir::Graph* PreMaskDropResPostBwd(Graph* graph) const;
+  ir::Graph* PreMaskDropResBwd(Graph* graph) const;
 };
 
 }  // namespace ir

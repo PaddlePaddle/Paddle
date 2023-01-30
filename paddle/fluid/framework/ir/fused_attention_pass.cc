@@ -767,11 +767,11 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
 void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
-  graph = PreMaskDropResPostFwd(graph);
-  graph = PreMaskDropResPostBwd(graph);
+  graph = PreMaskDropResFwd(graph);
+  graph = PreMaskDropResBwd(graph);
 }
 
-ir::Graph* FusedAttentionsPass::PreMaskDropResPostFwd(Graph* graph) const {
+ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode(patterns::PDNodeName(name_scope_, "x"))
@@ -863,7 +863,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostFwd(Graph* graph) const {
   return graph;
 }
 
-ir::Graph* FusedAttentionsPass::PreMaskDropResPostBwd(Graph* graph) const {
+ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(Graph* graph) const {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode(patterns::PDNodeName(name_scope_, "x"))
