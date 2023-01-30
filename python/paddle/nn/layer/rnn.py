@@ -19,10 +19,9 @@ from functools import partial, reduce
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops, framework
+from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import _non_static_mode as in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 from paddle.fluid.layers import control_flow, sequence_lod, utils
 from paddle.fluid.layers.utils import flatten, map_structure
 from paddle.framework import core
@@ -98,7 +97,7 @@ def rnn(
 
     """
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,
