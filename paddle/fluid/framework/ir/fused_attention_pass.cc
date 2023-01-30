@@ -22,7 +22,6 @@ namespace patterns {
 
 PDNode* FusedAttentionPattern::operator()(PDNode* x,
                                           bool pre_layer_norm,
-                                          bool post_layer_norm,
                                           bool has_attn_mask,
                                           bool do_dropout,
                                           bool add_residual) {
@@ -259,7 +258,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
   out_linear_dropout_node->LinksFrom({out_linear_ele_add_out_node})
       .LinksTo({out_linear_dropout_mask_node, out_linear_dropout_out_node});
 
-  if (!add_residual && !post_layer_norm) {
+  if (!add_residual && pre_layer_norm) {
     return out_linear_dropout_out_node;
   }
 
@@ -276,7 +275,7 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
     residual_ele_add_node->LinksFrom({x, out_linear_dropout_out_node})
         .LinksTo({residual_ele_add_out_node});
 
-    if (!post_layer_norm) {
+    if (pre_layer_norm) {
       return residual_ele_add_out_node;
     }
   }
@@ -323,13 +322,12 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
 
 PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
                                               bool pre_layer_norm,
-                                              bool post_layer_norm,
                                               bool has_attn_mask,
                                               bool do_dropout,
                                               bool add_residual) {
   // post layer norm
   PDNode* post_layer_norm_grad_out_node{nullptr};
-  if (post_layer_norm) {
+  if (!pre_layer_norm) {
     auto* post_layer_norm_grad_node =
         pattern->NewNode(post_layer_norm_grad_op_repr())
             ->assert_is_op("layer_norm_grad");
@@ -375,7 +373,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   PDNode* residual_ele_add_grad_x_grad_node{nullptr};
   if (add_residual) {
     PDNode* ele_add_grad_input = x;
-    if (post_layer_norm) {
+    if (!pre_layer_norm) {
       ele_add_grad_input = post_layer_norm_grad_out_node;
     }
     auto* residual_ele_add_grad_node =
@@ -404,7 +402,7 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
 
   // get the real input x for dropout grad
   PDNode* out_linear_grad_input_node = x;
-  if (post_layer_norm && !add_residual) {
+  if (!pre_layer_norm && !add_residual) {
     out_linear_grad_input_node = post_layer_norm_grad_out_node;
   } else if (add_residual) {
     out_linear_grad_input_node = residual_ele_add_grad_out_node;
@@ -784,7 +782,6 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostFwd(Graph* graph) const {
 
   fused_attention_pattern(x,
                           /* pre_layer_norm */ true,
-                          /* post_layer_norm */ true,
                           /* has_attn_mask */ true,
                           /* do_dropout */ true,
                           /* add_residual */ true);
@@ -835,8 +832,6 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostFwd(Graph* graph) const {
                               fused_attention_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         residual_ele_add_op_node, residual_ele_add_op, fused_attention_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        post_layer_norm_op_node, post_layer_norm_op, fused_attention_pattern);
 
     // TODO(Yuang Liu): finish the handler
 
@@ -858,8 +853,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostFwd(Graph* graph) const {
                           out_linear_matmul_op_node,
                           out_linear_ele_add_op_node,
                           out_linear_dropout_op_node,
-                          residual_ele_add_op_node,
-                          post_layer_norm_op_node});
+                          residual_ele_add_op_node});
     found_fused_attention++;
   };
 
@@ -880,7 +874,6 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostBwd(Graph* graph) const {
 
   fused_attention_grad_pattern(x,
                                /* pre_layer_norm */ true,
-                               /* post_layer_norm */ true,
                                /* has_attn_mask */ true,
                                /* do_dropout */ true,
                                /* add_residual */ true);
@@ -891,9 +884,6 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostBwd(Graph* graph) const {
                      Graph* g) {
     VLOG(3) << "handle FusedMultiHeadAttention backward pass's fusion";
 
-    GET_IR_NODE_FROM_SUBGRAPH(post_layer_norm_grad_op_node,
-                              post_layer_norm_grad_op,
-                              fused_attention_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(residual_ele_add_grad_op_node,
                               residual_ele_add_grad_op,
                               fused_attention_grad_pattern);
@@ -953,17 +943,26 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResPostBwd(Graph* graph) const {
 
     // TODO(Yuang Liu): finish the handler
 
-    GraphSafeRemoveNodes(
-        g, {post_layer_norm_grad_op_node,    residual_ele_add_grad_op_node,
-            out_linear_dropout_grad_op_node, out_linear_ele_add_grad_op_node,
-            out_linear_matmul_grad_op_node,  qkv_reshape_grad_op_node,
-            qkv_transpose_grad_op_node,      qkv_matmul_grad_op_node,
-            attn_dropout_grad_op_node,       qk_softmax_grad_op_node,
-            add_mask_ele_add_grad_op_node,   qk_scale_grad_op_node,
-            qk_matmul_grad_op_node,          fuse_qkv_split_grad_op_node,
-            fuse_qkv_transpose_grad_op_node, fuse_qkv_reshape_grad_op_node,
-            fuse_qkv_ele_add_grad_op_node,   fuse_qkv_matmul_grad_op_node,
-            pre_layer_norm_grad_op_node,     grad_accumulation_sum_op_node});
+    GraphSafeRemoveNodes(g,
+                         {residual_ele_add_grad_op_node,
+                          out_linear_dropout_grad_op_node,
+                          out_linear_ele_add_grad_op_node,
+                          out_linear_matmul_grad_op_node,
+                          qkv_reshape_grad_op_node,
+                          qkv_transpose_grad_op_node,
+                          qkv_matmul_grad_op_node,
+                          attn_dropout_grad_op_node,
+                          qk_softmax_grad_op_node,
+                          add_mask_ele_add_grad_op_node,
+                          qk_scale_grad_op_node,
+                          qk_matmul_grad_op_node,
+                          fuse_qkv_split_grad_op_node,
+                          fuse_qkv_transpose_grad_op_node,
+                          fuse_qkv_reshape_grad_op_node,
+                          fuse_qkv_ele_add_grad_op_node,
+                          fuse_qkv_matmul_grad_op_node,
+                          pre_layer_norm_grad_op_node,
+                          grad_accumulation_sum_op_node});
 
     found_fused_attention++;
   };

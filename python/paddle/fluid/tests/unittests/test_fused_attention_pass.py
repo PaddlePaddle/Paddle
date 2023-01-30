@@ -31,7 +31,6 @@ class MultiHeadAttention(paddle.nn.Layer):
         num_heads,
         add_residual=True,
         pre_ln=True,
-        post_ln=False,
         attn_dropout=True,
     ):
         super(MultiHeadAttention, self).__init__()
@@ -42,7 +41,6 @@ class MultiHeadAttention(paddle.nn.Layer):
 
         self.add_residual = add_residual
         self.pre_ln = pre_ln
-        self.post_ln = post_ln
         self.attn_dropout = attn_dropout
 
         self.head_dim = embed_dim // num_heads
@@ -90,7 +88,7 @@ class MultiHeadAttention(paddle.nn.Layer):
         if self.add_residual:
             out = residual + out
 
-        if self.post_ln:
+        if not self.pre_ln:
             # post layer norm
             out = self.norm2(out)
 
@@ -104,7 +102,6 @@ class TestFusedAttentionPass(unittest.TestCase):
     def setUp(self):
         self.add_residual = True
         self.pre_ln = True
-        self.post_ln = True
         self.attn_dropout = True
         self.add_mask = True
 
@@ -142,7 +139,6 @@ class TestFusedAttentionPass(unittest.TestCase):
                 num_heads,
                 add_residual=self.add_residual,
                 pre_ln=self.pre_ln,
-                post_ln=self.post_ln,
                 attn_dropout=self.attn_dropout,
             )
 
