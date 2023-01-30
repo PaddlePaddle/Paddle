@@ -2324,9 +2324,6 @@ def eig(x, name=None):
             #         (-0.21026087843552282+0j)])
     """
 
-    if x.size == 0:
-        raise ValueError("input size should not be 0")
-
     if in_dygraph_mode():
         return _C_ops.eig(x)
     else:
