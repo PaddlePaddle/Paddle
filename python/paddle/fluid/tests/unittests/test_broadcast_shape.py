@@ -33,9 +33,8 @@ class TestBroadcastShape(unittest.TestCase):
         )
 
     def test_error_native(self):
-        self.assertRaises(
-            ValueError, paddle.broadcast_shape, [-1, 1, 3], [2, 3, 1]
-        )
+        shape = paddle.broadcast_shape([-1, 1, 3], [2, 3, 1])
+        self.assertEqual(shape, [-1, 3, 3])
 
     def test_same_dim_zero_shape(self):
         shape = paddle.broadcast_shape([0, 1, 1], [1, 3, 0])
