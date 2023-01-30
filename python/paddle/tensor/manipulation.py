@@ -543,6 +543,10 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+    if not (-x.ndim <= axis < x.ndim):
+        raise ValueError(
+            '`axis` must be in the range [-{0}, {0})'.format(x.ndim)
+        )
     if in_dygraph_mode():
         if num is None:
             num = x.shape[axis]

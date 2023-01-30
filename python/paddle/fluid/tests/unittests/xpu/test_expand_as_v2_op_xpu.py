@@ -134,7 +134,7 @@ class TestExpandAsV2API(unittest.TestCase):
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
-        x = paddle.static.data(name='x', shape=[-1, 12, 14], dtype="float32")
+        x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
         y = paddle.static.data(
             name='target_tensor',
