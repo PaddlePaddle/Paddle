@@ -234,10 +234,7 @@ class SliceInfo:
         # return tensor_origin
 
         # return _C_ops.index_put(tensor_origin, mask, value)
-        start = time.time()
         _C_ops.index_put(tensor_origin, self.indexes, value)
-        end = time.time()
-        print("index_put cost time is " + str(end - start))
 
 
 def replace_ellipsis(var, item):

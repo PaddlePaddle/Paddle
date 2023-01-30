@@ -816,19 +816,30 @@ def monkey_patch_varbase():
         if framework._in_eager_mode_ and self.__check_index_is_all_tensor__(
             item, value
         ):
-            return _C_ops.index_put(self, list(item), value)
+            # _C_ops.index_put(self, list(item), value)
+            return
 
-        def contain_tensor_or_list(item):
+        def contain_list(item):
             if not isinstance(item, tuple):
                 item = [item]
 
             for slice_item in item:
                 if isinstance(slice_item, list):
                     return True
-                elif isinstance(slice_item, Variable):
-                    return True
 
             return False
+
+        # def contain_tensor_or_list(item):
+        #     if not isinstance(item, tuple):
+        #         item = [item]
+
+        #     for slice_item in item:
+        #         if isinstance(slice_item, list):
+        #             return True
+        #         elif isinstance(slice_item, Variable):
+        #             return True
+
+        #     return False
 
         def is_combine_index(item):
             var_type = None
@@ -851,14 +862,11 @@ def monkey_patch_varbase():
 
             return False
 
-        start = time.time()
-        if contain_tensor_or_list(item) and not is_combine_index(item):
+        if contain_list(item) and not is_combine_index(item):
             # To reuse code with static graph,
             # Call _setitem_impl_ when item contains tensor or list.
             # return _setitem_impl_(self, item, value)
             _setitem_impl_(self, item, value)
-            end = time.time()
-            print("set_item cost time is " + str(end - start))
             return
 
         else:

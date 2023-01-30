@@ -1067,6 +1067,7 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
   EAGER_TRY
   if (PyTuple_GET_SIZE(args) == 0) return nullptr;
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
+  PyObject* value_obj = PyTuple_GET_ITEM(args, 1);
   PyObject* index_ptr =
       !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
   DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
@@ -1076,17 +1077,62 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
     }
   });
 
+  paddle::experimental::Tensor value_tensor;
+  // deal with value type
+  if (py::isinstance<py::array>(value_obj)) {
+    value_tensor =
+        PyArrayToTensor(self->tensor.dtype(), self->tensor.place(), value_obj);
+  } else if (py::isinstance<py::float_>(value_obj) ||
+             py::isinstance<py::int_>(value_obj) ||
+             py::isinstance<py::bool_>(value_obj)) {
+    value_tensor =
+        PyValueToTensor(self->tensor.dtype(), self->tensor.place(), value_obj);
+  } else if (py::isinstance<py::list>(value_obj)) {
+    value_tensor =
+        PyListToTensor(self->tensor.dtype(), self->tensor.place(), value_obj);
+  } else if (PyCheckTensor(value_obj)) {
+    value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "When assign a value to a paddle.Tensor, "
+        "the value must be a paddle tensor, "
+        "ndarray, list or built-in data type, "
+        "please check the type of value."));
+  }
+
+  std::vector<paddle::experimental::Tensor> indices_tensor;
+
   bool isAllTensor = true;
+
+  // 增加Tensor数据类型检查，这样吧，统一cast成int64数据类型的Tensor往下传递，用Tensor.cast方法
   const int size = PyTuple_GET_SIZE(index_ptr);
   for (int dim = 0; dim < size; ++dim) {
     PyObject* slice_item = PyTuple_GetItem(index_ptr, dim);
-    if (!(PyCheckTensor(slice_item))) {
+    if (PyCheckTensor(slice_item)) {
+      auto dtype = reinterpret_cast<TensorObject*>(slice_item)->tensor.dtype();
+      if ((dtype != paddle::experimental::DataType::INT64) &&
+          (dtype != paddle::experimental::DataType::INT32)) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "When assign a value to a paddle.Tensor, "
+            "the dtype of index tensor must be int32 or int64"));
+      }
+      indices_tensor.emplace_back(
+          reinterpret_cast<TensorObject*>(slice_item)
+              ->tensor.cast(paddle::experimental::DataType::INT64));
+    } else if (PyList_Check(slice_item)) {
+      indices_tensor.emplace_back(
+          PyListToTensor(paddle::experimental::DataType::INT64,
+                         self->tensor.place(),
+                         slice_item));
+    } else {
       isAllTensor = false;
-      break;
+      return ToPyObject(isAllTensor);
     }
   }
 
+  index_put_ad_func(self->tensor, indices_tensor, value_tensor);
   return ToPyObject(isAllTensor);
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

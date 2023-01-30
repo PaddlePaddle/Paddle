@@ -20,60 +20,191 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/array.h"
-#include "paddle/phi/kernels/stack_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 
 namespace phi {
-
-template <typename T, size_t Rank>
+template <typename T1, typename T2, size_t Rank>
 __global__ void index_put_cuda_kernel(const int64_t N,
-                                      T* x,
-                                      const int64_t* indices,
-                                      const T* vals,
+                                      T1* x,
+                                      const T1* vals,
+                                      T2** indices,
                                       phi::Array<int64_t, Rank> stride,
-                                      T* out) {
-  int idx = threadIdx.x + blockDim.x * blockIdx.x;
+                                      phi::Array<int64_t, Rank> shape,
+                                      int64_t isSingleValTensor,
+                                      T1* out) {
+  int64_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  int64_t cur_ix = 0;
 
   if (idx >= N) {
     return;
   }
-
-  const int64_t base = idx * Rank;
   int64_t offset = 0;
-
-#pragma unroll
-  for (int j = 0; j < Rank; ++j) {
-    offset += (stride[j] * (*(indices + base + j)));
+  for (int i = 0; i < Rank; ++i) {
+    cur_ix = (int64_t(*(indices[i] + idx)));
+    if (cur_ix < 0) {
+      cur_ix += shape[i];
+    }
+    offset += stride[i] * cur_ix;
   }
-  *(x + offset) = *(vals + idx);
+
+  *(x + offset) = *(vals + (idx & isSingleValTensor));
 }
 
-template <typename T, typename Context, size_t N>
+template <typename T, typename Context>
+T** GetDevicePointerArray(const Context& ctx,
+                          const std::vector<const DenseTensor*>& indices_v) {
+  std::vector<const T*> h_indices_v(indices_v.size());
+  for (int i = 0; i < indices_v.size(); ++i) {
+    h_indices_v[i] = indices_v[i]->data<T>();
+  }
+  auto d_indices_data = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      h_indices_v.size() * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+  paddle::memory::Copy(ctx.GetPlace(),
+                       d_indices_data->ptr(),
+                       phi::CPUPlace(),
+                       reinterpret_cast<void*>(h_indices_v.data()),
+                       h_indices_v.size() * sizeof(T*),
+                       ctx.stream());
+  return reinterpret_cast<T**>(d_indices_data->ptr());
+}
+
+template <typename T, typename Context, size_t Rank>
 void LaunchIndexPutCudaKernel(const Context& dev_ctx,
                               const DenseTensor& x,
-                              const DenseTensor& indices,
+                              const std::vector<const DenseTensor*>& indices_v,
                               const DenseTensor& value,
                               DenseTensor* out) {
   auto* x_data = const_cast<T*>(x.data<T>());
   auto* val_data = value.data<T>();
-  auto* indices_data = indices.data<int64_t>();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto x_dims = x.dims();
-  const int64_t numel = value.numel();
+  const int64_t numel = indices_v[0]->numel();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   auto x_stride = phi::stride(x_dims);
 
-  phi::Array<int64_t, N> stride_a;
+  phi::Array<int64_t, Rank> stride_a;
+  phi::Array<int64_t, Rank> shape_a;
 
-  for (size_t idx = 0; idx < N; ++idx) {
+  for (size_t idx = 0; idx < Rank; ++idx) {
     stride_a[idx] = x_stride[idx];
+    shape_a[idx] = x_dims[idx];
   }
 
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 
-  index_put_cuda_kernel<T, N>
-      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-          numel, x_data, indices_data, val_data, stride_a, out_data);
+  int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
+
+  if (indices_v[0]->dtype() == paddle::experimental::DataType::INT32) {
+    auto pd_indices = GetDevicePointerArray<int, Context>(dev_ctx, indices_v);
+    index_put_cuda_kernel<T, int, Rank><<<config.block_per_grid,
+                                          config.thread_per_block,
+                                          0,
+                                          dev_ctx.stream()>>>(numel,
+                                                              x_data,
+                                                              val_data,
+                                                              pd_indices,
+                                                              stride_a,
+                                                              shape_a,
+                                                              isSingleValTensor,
+                                                              out_data);
+  } else if (indices_v[0]->dtype() == paddle::experimental::DataType::INT64) {
+    auto pd_indices =
+        GetDevicePointerArray<int64_t, Context>(dev_ctx, indices_v);
+    index_put_cuda_kernel<T, int64_t, Rank>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           dev_ctx.stream()>>>(numel,
+                               x_data,
+                               val_data,
+                               pd_indices,
+                               stride_a,
+                               shape_a,
+                               isSingleValTensor,
+                               out_data);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "dtype of index tensor should be int32 or int64"));
+  }
+}
+
+inline void GetBroadcastDimsArrays(const DDim& x_dims,
+                                   const DDim& y_dims,
+                                   int* x_dims_array,
+                                   int* y_dims_array,
+                                   int* out_dims_array,
+                                   const int max_dim,
+                                   const int axis) {
+  PADDLE_ENFORCE_GE(
+      axis,
+      0,
+      phi::errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      phi::errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
+  if (x_dims.size() > y_dims.size()) {
+    std::fill(y_dims_array, y_dims_array + axis, 1);
+    if (axis + y_dims.size() < max_dim) {
+      std::fill(y_dims_array + axis + y_dims.size(), y_dims_array + max_dim, 1);
+    }
+    std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array);
+    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array + axis);
+  } else {
+    std::fill(x_dims_array, x_dims_array + axis, 1);
+    if (axis + x_dims.size() < max_dim) {
+      std::fill(x_dims_array + axis + x_dims.size(), x_dims_array + max_dim, 1);
+    }
+    std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array + axis);
+    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
+  }
+
+  for (int i = 0; i < max_dim; i++) {
+    PADDLE_ENFORCE_EQ(
+        x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
+            y_dims_array[i] <= 1,
+        true,
+        phi::errors::InvalidArgument(
+            "Broadcast dimension mismatch. Operands could "
+            "not be broadcast together with the shape of X = [%s] and "
+            "the shape of Y = [%s]. Received [%d] in X is not equal to "
+            "[%d] in Y at i:%d.",
+            x_dims,
+            y_dims,
+            x_dims_array[i],
+            y_dims_array[i],
+            i));
+    if ((x_dims_array[i] > 1 || y_dims_array[i] > 1) ||
+        (x_dims_array[i] == 1 && y_dims_array[i] == 1)) {
+      out_dims_array[i] = std::max(x_dims_array[i], y_dims_array[i]);
+    } else {
+      out_dims_array[i] = -1;
+    }
+  }
+}
+
+DDim BroadcastTwoDims(const DDim& x_dims, const DDim& y_dims, int axis) {
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  GetBroadcastDimsArrays(x_dims,
+                         y_dims,
+                         x_dims_array.data(),
+                         y_dims_array.data(),
+                         out_dims_array.data(),
+                         max_dim,
+                         axis);
+  return phi::make_ddim(out_dims_array);
 }
 
 template <typename T, typename Context>
@@ -90,29 +221,72 @@ void IndexPutKernel(const Context& dev_ctx,
                         "of the dimension of source tensor x.",
                         indices_v.size(),
                         total_dims));
+  std::vector<const DenseTensor*> indices_v_offset(indices_v.size());
 
-  auto indices = DenseTensor(indices_v[0]->dtype());
-  indices.Resize(phi::make_dim(indices_v[0]->numel(), total_dims));
-  StackKernel<int64_t, Context>(dev_ctx, indices_v, 1, &indices);
+  auto pre_dim = indices_v[0]->dims();
+  auto tmp_dim = phi::make_ddim({0});
+  auto indice_dtype = indices_v[0]->dtype();
+  bool need_broadcast = false;
+  for (int i = 1; i < indices_v.size(); ++i) {
+    tmp_dim = indices_v[i]->dims();
+    if (pre_dim != tmp_dim) {
+      pre_dim = BroadcastTwoDims(pre_dim, tmp_dim, -1);
+      need_broadcast = true;
+    }
+  }
+
+  std::vector<DenseTensor> indices_v_tmp(
+      indices_v.size(), DenseTensor(indice_dtype).Resize(pre_dim));
+
+  if (need_broadcast) {
+    for (int i = 0; i < indices_v.size(); ++i) {
+      if (pre_dim == indices_v[i]->dims()) {
+        indices_v_offset[i] = indices_v[i];
+        continue;
+      }
+      if (indices_v[0]->dtype() == paddle::experimental::DataType::INT32) {
+        ExpandKernel<int, Context>(dev_ctx,
+                                   *indices_v[i],
+                                   IntArray(phi::vectorize<int64_t>(pre_dim)),
+                                   &indices_v_tmp[i]);
+      } else if (indices_v[0]->dtype() ==
+                 paddle::experimental::DataType::INT64) {
+        ExpandKernel<int64_t, Context>(
+            dev_ctx,
+            *indices_v[i],
+            IntArray(phi::vectorize<int64_t>(pre_dim)),
+            &indices_v_tmp[i]);
+      }
+      indices_v_offset[i] = &indices_v_tmp[i];
+    }
+  } else {
+    indices_v_offset = std::move(indices_v);
+  }
 
   switch (total_dims) {
     case 1:
-      LaunchIndexPutCudaKernel<T, Context, 1>(dev_ctx, x, indices, value, out);
+      LaunchIndexPutCudaKernel<T, Context, 1>(
+          dev_ctx, x, indices_v_offset, value, out);
       break;
     case 2:
-      LaunchIndexPutCudaKernel<T, Context, 2>(dev_ctx, x, indices, value, out);
+      LaunchIndexPutCudaKernel<T, Context, 2>(
+          dev_ctx, x, indices_v_offset, value, out);
       break;
     case 3:
-      LaunchIndexPutCudaKernel<T, Context, 3>(dev_ctx, x, indices, value, out);
+      LaunchIndexPutCudaKernel<T, Context, 3>(
+          dev_ctx, x, indices_v_offset, value, out);
       break;
     case 4:
-      LaunchIndexPutCudaKernel<T, Context, 4>(dev_ctx, x, indices, value, out);
+      LaunchIndexPutCudaKernel<T, Context, 4>(
+          dev_ctx, x, indices_v_offset, value, out);
       break;
     case 5:
-      LaunchIndexPutCudaKernel<T, Context, 5>(dev_ctx, x, indices, value, out);
+      LaunchIndexPutCudaKernel<T, Context, 5>(
+          dev_ctx, x, indices_v_offset, value, out);
       break;
     case 6:
-      LaunchIndexPutCudaKernel<T, Context, 6>(dev_ctx, x, indices, value, out);
+      LaunchIndexPutCudaKernel<T, Context, 6>(
+          dev_ctx, x, indices_v_offset, value, out);
       break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
@@ -131,4 +305,5 @@ PD_REGISTER_KERNEL(index_put,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   bool,
+                   phi::dtype::float16) {}

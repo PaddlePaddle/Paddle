@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/pybind/eager.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/unicode.h"
@@ -549,6 +550,69 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
         "float64, int8, int16, int32, int64, uint8 or uint16, "
         "please check your input or input array data type."));
   }
+}
+
+// 处理情况依据是否是indice逻辑不通
+// paddle::experimental::DataType dtype
+static paddle::experimental::Tensor PyArrayToTensor(
+    const paddle::experimental::DataType &dtype,
+    const phi::Place &place,
+    PyObject *value_obj) {
+  paddle::experimental::Tensor rt_tensor(
+      std::make_shared<phi::DenseTensor>(),
+      egr::Controller::Instance().GenerateUniqueName());
+  py::object value_obj_tmp(py::handle(value_obj), true);
+  py::object value = value_obj_tmp;
+  if (dtype == paddle::experimental::DataType::FLOAT32) {
+    if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
+      value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
+    }
+  } else if (dtype == paddle::experimental::DataType::FLOAT64) {
+    if (!py::isinstance<py::array_t<double>>(value_obj_tmp)) {
+      value = pybind11::detail::CastNumpyArray<double>(value_obj_tmp);
+    }
+  } else if (dtype == paddle::experimental::DataType::INT32) {
+    if (!py::isinstance<py::array_t<int32_t>>(value_obj_tmp)) {
+      value = pybind11::detail::CastNumpyArray<int32_t>(value_obj_tmp);
+    }
+  } else if (dtype == paddle::experimental::DataType::INT64) {
+    if (!py::isinstance<py::array_t<int64_t>>(value_obj_tmp)) {
+      value = pybind11::detail::CastNumpyArray<int64_t>(value_obj_tmp);
+    }
+  } else if (dtype == paddle::experimental::DataType::BOOL) {
+    if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
+      value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "When assign a numpy.np value to a paddle.Tensor, "
+        "the data type of the paddle.Tensor must be bool, "
+        "float32, int32 or int64, "
+        "please check the type of tensor."));
+  }
+  SetTensorFromPyArray(static_cast<phi::DenseTensor *>(rt_tensor.impl().get()),
+                       value,
+                       place,
+                       false);
+  return rt_tensor;
+}
+
+static paddle::experimental::Tensor PyListToTensor(
+    const paddle::experimental::DataType &dtype,
+    const phi::Place &place,
+    PyObject *value_obj) {
+  py::object value_obj_tmp((py::handle(value_obj)), true);
+  return PyArrayToTensor(
+      dtype, place, py::array_t<double>(value_obj_tmp).ptr());
+}
+
+static paddle::experimental::Tensor PyValueToTensor(
+    const paddle::experimental::DataType &dtype,
+    const phi::Place &place,
+    PyObject *value_obj) {
+  py::object value_obj_tmp((py::handle(value_obj)), true);
+  return PyArrayToTensor(
+      dtype, place, py::array_t<double>(value_obj_tmp).ptr());
 }
 
 template <typename P>
