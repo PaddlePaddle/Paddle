@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace phi {
 
@@ -98,7 +98,8 @@ void MatMulFunctionImplWithCuBlas(const Context& dev_ctx,
                                   DenseTensor* Out,
                                   bool trans_x,
                                   bool trans_y,
-                                  bool flag = false) {
+                                  bool flag = false,
+                                  phi::autotune::MatmulCacheKey* matmul_key) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
 
@@ -490,7 +491,8 @@ void MatMulFunctionImplWithCublasLt(const Context& dev_ctx,
                                     DenseTensor* Out,
                                     bool trans_x,
                                     bool trans_y,
-                                    bool flag = false) {
+                                    bool flag = false,
+                                    phi::autotune::MatmulCacheKey* matmul_key) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
   const T* x_data = X.data<T>();
@@ -888,13 +890,25 @@ void MatmulKernel(const Context& dev_ctx,
                                    " but reviced dims size is 0. "));
 
 #if CUDA_VERSION >= 11060
-  auto* tuner = phi::autotune::MakeMatmulTuner<T>(MatMulFunctionImplWithCuBlas<phi::GPUContext, T>);
+  auto* tuner = phi::autotune::MakeMatmulTuner<T>(
+      MatMulFunctionImplWithCuBlas<phi::GPUContext, T>);
   tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
-  auto matmul_cache = phi::autotune::MatmulKey(x_dims, y_dims, trans_x, trans_y, 
-                                               paddle::experimental::CppTypeToDataType<T>::Type());
+
+  auto matmul_cache = phi::autotune::MatmulCacheKey(
+      x_dims,
+      y_dims,
+      trans_x,
+      trans_y,
+      paddle::experimental::CppTypeToDataType<T>::Type());
   tuner->Run(dev_ctx,
-             phi::autotune::AlgorithmType::kTranspose, 
-             matmul_cache.key);
+             matmul_cache.QueryKey(),
+             x,
+             y,
+             trans_x,
+             trans_y,
+             out,
+             false,
+             &matmul_cache);
 #else
   MatMulFunctionImplWithCuBlas<Context, T>(
       dev_ctx, x, y, x_dims, y_dims, out, trans_x, trans_y);

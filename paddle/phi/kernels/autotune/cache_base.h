@@ -60,6 +60,10 @@ size_t GetKey(Args&&... args) {
   return seed;
 }
 
+struct MatmulHashValueType {
+  int64_t data[8]
+};
+
 struct MatmulCacheKey {
  public:
   MatmulCacheKey() {}
@@ -67,12 +71,12 @@ struct MatmulCacheKey {
                  const std::vector<int64_t>& y_dims,
                  const bool trans_x,
                  const bool trans_y,
-                 phi::DataType dtype) 
-    : x_dims_(x_dims),
-      y_dims_(y_dims),
-      trans_x_(trans_x),
-      trans_y_(trans_y),
-      dtype_(dtype) {
+                 phi::DataType dtype)
+      : x_dims_(x_dims),
+        y_dims_(y_dims),
+        trans_x_(trans_x),
+        trans_y_(trans_y),
+        dtype_(dtype) {
     key_ = GetKey(x_dims_,
                   y_dims_,
                   static_cast<int64_t>(trans_x_),
@@ -80,9 +84,12 @@ struct MatmulCacheKey {
                   static_cast<int64_t>(dtype_));
   }
 
-  size_t GetKey() const { return key_; }
-  
- private :
+  const size_t QueryKey() const { return key_; }
+  const size_t GetSize() { return x_dims_.size(); }
+  const size_t GetSubKey(int64_t idx) { return GetKey(key_, idx); }
+
+ private:
+  int size_;
   size_t key_;
   std::vector<int64_t> x_dims_;
   std::vector<int64_t> y_dims_;
@@ -91,7 +98,6 @@ struct MatmulCacheKey {
   int best_algo_;
   phi::DataType dtype_;
 }
-
 
 struct ConvCacheKey {
   ConvCacheKey() {}
@@ -244,6 +250,30 @@ class ConvAlgorithmsCache : public AlgorithmsCache<ConvCacheKey,
     }
     AlgorithmsCacheBase::hash_[key] = algo;
   }
+};
+
+template <typename KeyT, typename AlgorithmT>
+class MatmulAlgorithmsCache : public AlgorithmsCache<KeyT, AlgorithmT> {
+ public:
+  MatmulAlgorithmsCache() : AlgorithmsCache<KeyT, AlgorithmT>() {}
+
+  bool SubFind(const KeyT& sub_key) {
+    std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
+    bool ret = (sub_hash_.find(sub_key) != sub_hash_.end()) ? true : false;
+    return ret;
+  }
+
+  void SubSet(const KeyT& key, MatmulHashValueType* algo) {
+    std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
+    sub_hash_[key] = SubAlgorithmT;
+  }
+
+  MatmulHashValueType SubGet(const KeyT& key, ) {
+    std::lock_guard<std::mutex> lock(this->cache_mutex_);
+  }
+
+ private:
+  std::unordered_map<KeyT, MatmulHashValueType> sub_hash_;
 };
 
 }  // namespace autotune
