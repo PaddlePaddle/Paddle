@@ -16,9 +16,9 @@ import copy
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-from eager_op_test import OpTest
 from paddle.framework import core
 
 paddle.enable_static()

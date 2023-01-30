@@ -19,16 +19,16 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.inference as paddle_infer
 from eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.inference as paddle_infer
 from paddle import enable_static
 from paddle.fluid.op import Operator
 

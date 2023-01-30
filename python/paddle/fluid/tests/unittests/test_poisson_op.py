@@ -16,9 +16,9 @@ import math
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-from eager_op_test import OpTest
 
 paddle.enable_static()
 paddle.seed(100)
