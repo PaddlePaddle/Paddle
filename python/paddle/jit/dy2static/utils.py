@@ -1513,7 +1513,7 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
     names = []
     for i in range(
         fwd_end_op_index,
-        min(fwd_end_op_index + 1 * out_size, program_desc.block(0).op_size()),
+        min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
     ):
         op = program_desc.block(0).op(i)
         if op.type() == 'fill_any_like':

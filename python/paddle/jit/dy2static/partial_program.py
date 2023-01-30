@@ -576,9 +576,7 @@ class PartialProgramLayer:
                 core.check_and_set_prim_all_enabled()
             backward.gradients(targets=targets, inputs=[])
 
-        start_idx = len(main_program.block(0).ops) + 1 * len(
-            self._outputs.tolist()
-        )
+        start_idx = len(main_program.block(0).ops) + len(self._outputs.tolist())
 
         self.prepare_gradient_aggregation(start_idx, main_program, program)
 
@@ -753,7 +751,7 @@ class PartialProgramLayer:
     ):
         # NOTE(dev): We apply build_strategy for backward firstly to
         # avoid skipping more gc variables.
-        backward_start_op_index = forward_end_op_index + 1 * len(
+        backward_start_op_index = forward_end_op_index + len(
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()

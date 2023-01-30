@@ -1339,6 +1339,16 @@ def _append_backward_ops_(
 
     if core._is_bwd_prim_enabled():
         composite_block = program.clone().current_block()
+        # Infer shape for operators whose output haven't been created.
+        for op in composite_block.ops:
+            if not all(
+                tuple(
+                    composite_block._find_var_recursive(arg)
+                    for arg in op.output_arg_names
+                )
+            ):
+                infershape_for_composite(composite_block, op.desc)
+
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
         grad_sub_block_list = []
@@ -2366,36 +2376,19 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         target = targets[i]
         grad_name = _append_grad_suffix_(target.name)
         if grad is None:
-            output = block.create_var(
-                name=grad_name,
-                dtype=target.dtype,
-                type=target.type,
-                persistable=target.persistable,
-                stop_gradient=False,
+            op_desc = _create_op_desc_(
+                "fill_any_like",
+                {"X": [target.name]},
+                {"Out": [grad_name]},
+                {
+                    "value": 1.0,
+                    "dtype": target.dtype,
+                },
             )
-            skip_rename_var_list.append(grad_name)
-            op = block.append_op(
-                type="fill_any_like",
-                inputs={'X': [target]},
-                outputs={'Out': [output]},
-                attrs={'value': 1.0, 'dtype': target.dtype},
-            )
-            block._remove_var(grad_name)
-            op_role_attr_name = (
-                core.op_proto_and_checker_maker.kOpRoleAttrName()
-            )
-            op_device_attr_name = (
-                core.op_proto_and_checker_maker.kOpDeviceAttrName()
-            )
-
-            if not op.has_attr(op_role_attr_name):
-                op._set_attr(
-                    op_role_attr_name,
-                    core.op_proto_and_checker_maker.OpRole.Backward,
-                )
-            if not op.has_attr(op_device_attr_name):
-                op._set_attr(op_device_attr_name, "")
+            block.desc.append_op().copy_from(op_desc)
+            block.program._sync_with_cpp()
             input_grad_names_set.add(grad_name)
+            skip_rename_var_list.append(grad_name)
         else:
             if target.block.idx != block_idx or target.block.program != prog:
                 raise ValueError("all targets must be in the same block")
