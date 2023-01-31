@@ -45,12 +45,14 @@ class TestFleetExecutor(unittest.TestCase):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):
-            x = fluid.layers.data(
-                name='x', shape=x_data.shape, dtype=x_data.dtype
+            x = paddle.static.data(
+                name='x', shape=[-1] + list(x_data.shape), dtype=x_data.dtype
             )
-            y = fluid.layers.data(
-                name='y', shape=y_data.shape, dtype=y_data.dtype
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(
+                name='y', shape=[-1] + list(y_data.shape), dtype=y_data.dtype
             )
+            y.desc.set_need_check_feed(False)
             z = x + y
             a = 2 * x + 3 * y
             loss = paddle.mean(a)

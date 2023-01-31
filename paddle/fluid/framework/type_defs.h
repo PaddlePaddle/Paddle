@@ -96,7 +96,7 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     std::unordered_map<std::string, std::string>* /*grad_to_var*/,
     const std::vector<BlockDesc*>& grad_block)>;
 
-using GradCompositeOpMakerFN =
+using CompositeGradOpMakerFN =
     std::function<std::vector<std::unique_ptr<OpDesc>>(
         const OpDesc&,
         const std::unordered_set<std::string>& /*no_grad_set*/,

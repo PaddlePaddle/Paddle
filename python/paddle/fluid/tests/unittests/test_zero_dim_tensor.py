@@ -1388,6 +1388,72 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x1.grad.numpy(), 0.5)
         self.assertEqual(x2.grad.numpy(), 0)
 
+    def test_interpolate(self):
+        from paddle.nn.functional import interpolate
+
+        input_x = paddle.rand([2, 3, 6, 6])
+        input_x.stop_gradient = False
+        origin_result = interpolate(
+            x=input_x, size=[12, 12], mode="bilinear", align_corners=False
+        )
+
+        output_size = [
+            paddle.full([], 12, dtype="int32"),
+            paddle.full([], 12, dtype="int32"),
+        ]
+        out1 = interpolate(
+            x=input_x, size=output_size, mode="bilinear", align_corners=False
+        )
+        out1.backward()
+
+        self.assertEqual(out1.shape, [2, 3, 12, 12])
+        self.assertEqual(input_x.grad.shape, [2, 3, 6, 6])
+
+        scale_1 = [paddle.full([], 2), paddle.full([], 2)]
+        out2 = interpolate(
+            x=input_x,
+            scale_factor=scale_1,
+            mode="bilinear",
+            align_corners=False,
+        )
+        out2.backward()
+
+        self.assertEqual(out2.shape, [2, 3, 12, 12])
+        self.assertEqual(input_x.grad.shape, [2, 3, 6, 6])
+
+        scale_2 = paddle.full([], 2)
+        out3 = interpolate(
+            x=input_x,
+            scale_factor=scale_2,
+            mode="bilinear",
+            align_corners=False,
+        )
+        out3.backward()
+
+        # for coverage
+        scale_3 = paddle.full([1], 2)
+        input_3d = paddle.rand([2, 3, 6])
+        out4 = interpolate(
+            x=input_3d,
+            scale_factor=scale_3,
+            mode="LINEAR",
+            align_corners=False,
+            data_format="NCW",
+        )
+
+        self.assertEqual(out3.shape, [2, 3, 12, 12])
+        self.assertEqual(input_x.grad.shape, [2, 3, 6, 6])
+
+        np.testing.assert_allclose(
+            origin_result.numpy(), out1.numpy(), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            origin_result.numpy(), out2.numpy(), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            origin_result.numpy(), out3.numpy(), rtol=1e-05
+        )
+
     def test_maseked_select(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -2224,6 +2290,41 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
 
     @prog_scope()
+    def test_interpolate(self):
+        from paddle.nn.functional import interpolate
+
+        input_x = paddle.rand([2, 3, 6, 6])
+        input_x.stop_gradient = False
+
+        output_size = [
+            paddle.full([], 12, dtype="int32"),
+            paddle.full([], 12, dtype="int32"),
+        ]
+
+        out1 = interpolate(
+            x=input_x, size=output_size, mode="bilinear", align_corners=False
+        )
+        paddle.static.append_backward(out1.sum())
+        prog = paddle.static.default_main_program()
+        res1 = self.exe.run(prog, feed={}, fetch_list=[out1, input_x.grad_name])
+
+        scale_1 = paddle.full([], 2)
+        out2 = interpolate(
+            x=input_x,
+            scale_factor=scale_1,
+            mode="bilinear",
+            align_corners=False,
+        )
+        paddle.static.append_backward(out2.sum())
+        prog = paddle.static.default_main_program()
+        res2 = self.exe.run(prog, feed={}, fetch_list=[out2, input_x.grad_name])
+
+        self.assertEqual(res1[0].shape, (2, 3, 12, 12))
+        self.assertEqual(res1[1].shape, (2, 3, 6, 6))
+        self.assertEqual(res2[0].shape, (2, 3, 12, 12))
+        self.assertEqual(res2[1].shape, (2, 3, 6, 6))
+
+    @prog_scope()
     def test_maseked_select(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -2445,6 +2546,29 @@ class TestNoBackwardAPI(unittest.TestCase):
         self.assertEqual(one_hot_label.shape, [4])
         self.assertEqual(one_hot_label.numpy()[2], 1)
 
+    def test_unique(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+            x = paddle.rand([])
+            y, index, inverse, counts = paddle.unique(
+                x,
+                return_index=True,
+                return_inverse=True,
+                return_counts=True,
+            )
+
+            self.assertEqual(y, x)
+            self.assertEqual(index, 0)
+            self.assertEqual(inverse, 0)
+            self.assertEqual(counts, 1)
+            self.assertEqual(y.shape, [1])
+            self.assertEqual(index.shape, [1])
+            self.assertEqual(inverse.shape, [1])
+            self.assertEqual(counts.shape, [1])
+
 
 class TestNoBackwardAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -2646,6 +2770,23 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, (4,))
         self.assertEqual(res[0][2], 1)
+
+    def test_unique(self):
+        x = paddle.rand([])
+        y, index, inverse, counts = paddle.unique(
+            x, return_index=True, return_inverse=True, return_counts=True
+        )
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[y, index, inverse, counts])
+        self.assertEqual(y, x)
+        self.assertEqual(index, 0)
+        self.assertEqual(inverse, 0)
+        self.assertEqual(counts, 1)
+        self.assertEqual(res[0].shape, (1,))
+        self.assertEqual(res[1].shape, (1,))
+        self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[3].shape, (1,))
 
 
 unary_apis_with_complex_input = [

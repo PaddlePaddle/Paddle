@@ -33,26 +33,23 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
         """ network definition """
-        dnn_data = fluid.layers.data(
+        dnn_data = paddle.static.data(
             name="dnn_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        lr_data = fluid.layers.data(
+        lr_data = paddle.static.data(
             name="lr_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        label = fluid.layers.data(
+        label = paddle.static.data(
             name="click",
             shape=[-1, 1],
             dtype="int64",
             lod_level=0,
-            append_batch_size=False,
         )
 
         # build dnn model
