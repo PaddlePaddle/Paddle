@@ -18,10 +18,10 @@ __all__ = ['clip_grad_norm_']
 
 
 def clip_grad_norm_(
-    parameters: paddle.Tensor,
-    max_norm: float,
-    norm_type: float = 2.0,
-    error_if_nonfinite: bool = False,
+    parameters,
+    max_norm,
+    norm_type=2.0,
+    error_if_nonfinite=False,
 ):
     r"""Clips gradient norm of the iteratable parameters.
 
@@ -31,17 +31,17 @@ def clip_grad_norm_(
     This API can only run in dynamic graph mode, not static graph mode.
 
     Args:
-        parameters (paddle.Tensor): Tensors or a single Tensor
-            that will have gradients normalized
+        parameters (Iterable[paddle.Tensor] or paddle.Tensor): Tensors or a single Tensor
+            that will be normalized gradients
         max_norm (float or int): max norm of the gradients
-        norm_type (float or int): type of the used p-norm. Can be ``'inf'`` for
+        norm_type (float or int): type of the used p-norm. Can be `inf` for
             infinity norm.
-        error_if_nonfinite (bool): if True, an error is thrown if the total
-            norm of the gradients from :attr:`parameters` is ``nan``,
-            ``inf``, or ``-inf``.
+        error_if_nonfinite (bool): if True, throw an error if the total
+            norm of the gradients from :attr:`parameters` is `nan`,
+            `inf`, or `-inf`.
 
     Returns:
-        Total norm of the parameter gradients (viewed as a single vector).
+        Total norm of the parameter gradients (treated as a single vector).
     Example:
         .. code-block:: python
             import paddle
@@ -90,14 +90,14 @@ def clip_grad_norm_(
         total_norm.isnan(), total_norm.isinf()
     ):
         raise RuntimeError(
-            f'The total norm of order {norm_type} for gradients from '
-            '`parameters` is non-finite, so it cannot be clipped. To disable '
-            'this error and scale the gradients by the non-finite norm anyway, '
+            f'The total norm of {norm_type} order of the gradients from '
+            '`parameters` is non-finite, so it cannot be clipped. In any case, '
+            'disable this error and scale the gradient by non-finite norm, '
             'set `error_if_nonfinite=False`'
         )
     clip_coef = max_norm / (total_norm + 1e-6)
-    # Note: multiplying by the clamped coef is redundant when the coef is clamped to 1, but doing so
-    # avoids a `if clip_coef < 1:` conditional.
+    # Note: when the coef is clamped to 1, it is redundant to multiply the clamped coef, but this
+    # avoids the `if clip_coef < 1:` condition.
     clip_coef_clamped = paddle.clip(clip_coef, max=1.0)
     with paddle.no_grad():
         for _, p in enumerate(parameters):
