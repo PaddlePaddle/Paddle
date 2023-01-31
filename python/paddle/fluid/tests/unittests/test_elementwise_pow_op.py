@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -38,10 +38,16 @@ class TestElementwisePowOp(OpTest):
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output()
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False)
+        else:
+            self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        if hasattr(self, 'attrs'):
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
@@ -200,7 +206,10 @@ class TestElementwisePowOpInt(OpTest):
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output()
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False)
+        else:
+            self.check_output(check_eager=True)
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
@@ -248,7 +257,10 @@ class TestElementwisePowOpFP16(OpTest):
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output()
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False)
+        else:
+            self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -257,6 +269,7 @@ class TestElementwisePowOpFP16(OpTest):
             user_defined_grads=pow_grad(
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
+            check_eager=True,
         )
 
 
