@@ -765,10 +765,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
       // TODO(wangxinxin08): tricky solution because the outputs of batchedNMS
       // plugin are not constient with those of multiclass_nms3
-      if (!desc.HasAttr("nms_eta") || !desc.HasAttr("nms_top_k") ||
-          !desc.HasAttr("keep_top_k"))
-        return false;
-
+      if (desc.HasAttr("nms_eta") == false) return false;
       auto nms_eta = PADDLE_GET_CONST(float, desc.GetAttr("nms_eta"));
       if (nms_eta <= 1.0) return false;
 
@@ -1630,9 +1627,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "pad") {
-      if (!desc.HasAttr("pad_value") || !desc.HasAttr("paddings") ||
-          !desc.HasAttr("keep_top_k"))
-        return false;
+      if (!desc.HasAttr("pad_value") || !desc.HasAttr("paddings")) return false;
       const float pad_value =
           PADDLE_GET_CONST(float, desc.GetAttr("pad_value"));
       if (pad_value != 0.0f) {
