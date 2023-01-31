@@ -18,7 +18,7 @@ endif()
 
 if(NOT CINN_GIT_TAG)
   # Commit upgraded protobuf version in CINN repo
-  set(CINN_GIT_TAG cde2f21964e9ab46dc774d0c176730c61965dc08)
+  set(CINN_GIT_TAG dcaa23c88b7eb74833dab9102f0dc59fd15e1106)
 endif()
 
 message(STATUS "CINN version: " ${CINN_GIT_TAG})
