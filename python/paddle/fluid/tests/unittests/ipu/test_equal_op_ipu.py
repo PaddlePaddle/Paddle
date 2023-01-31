@@ -15,15 +15,13 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -52,13 +50,13 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        y = paddle.static.data(name=self.feed_list[1],
-                               shape=self.feed_shape[1],
-                               dtype='float32')
-        out = paddle.fluid.layers.equal(x, y, **self.attrs)
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
+        out = paddle.equal(x, y)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -73,7 +71,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_data_feed(self):
         x = np.ones([1, 10])
         y = np.ones([1, 10])
@@ -82,7 +79,6 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
-
     def set_data_feed(self):
         x = np.ones([1, 10])
         y = np.arange(0, 10).reshape([1, 10])

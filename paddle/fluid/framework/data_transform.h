@@ -33,14 +33,17 @@ namespace framework {
 class OpKernelType;
 class Variable;
 
-void TransformData(const OpKernelType &expected_kernel_type,
-                   const OpKernelType &kernel_type_for_var,
-                   const Tensor &input_tensor, Tensor *out);
+void TransformData(const phi::KernelKey &expected_kernel_type,
+                   const phi::KernelKey &kernel_type_for_var,
+                   const phi::DenseTensor &input_tensor,
+                   phi::DenseTensor *out,
+                   const phi::Place &place);
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`
  */
-void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
+void SetTensorToVariable(const Variable &in_var,
+                         const phi::DenseTensor &tensor,
                          Variable *out_var);
 }  // namespace framework
 }  // namespace paddle

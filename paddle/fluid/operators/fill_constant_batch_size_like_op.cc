@@ -23,13 +23,13 @@ namespace operators {
 class FillConstantBatchSizeLikeOp : public BatchSizeLikeOp {
  protected:
   using BatchSizeLikeOp::BatchSizeLikeOp;
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kernel_type = framework::OpKernelType(
+    phi::KernelKey kernel_type = phi::KernelKey(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.device_context());
+        ctx.GetPlace());
     if (ctx.Attr<bool>("force_cpu")) {
-      kernel_type.place_ = platform::CPUPlace();
+      kernel_type.set_backend(phi::Backend::CPU);
     }
     return kernel_type;
   }
@@ -68,7 +68,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(fill_constant_batch_size_like,
                             FillConstantBatchSizeLikeInferShapeFunctor,
                             PD_INFER_META(phi::FullBatchSizeLikeInferMeta));
 REGISTER_OPERATOR(
-    fill_constant_batch_size_like, ops::FillConstantBatchSizeLikeOp,
+    fill_constant_batch_size_like,
+    ops::FillConstantBatchSizeLikeOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FillConstantBatchSizeLikeOpMaker,

@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/dropout_kernel.h"
 
-#include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/dropout_impl.cu.h"
 
 namespace phi {
 
@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& seed_tensor,
-                      float p,
+                      const Scalar& p,
                       bool is_test,
                       const std::string& mode,
                       int seed,
@@ -32,26 +32,28 @@ void DropoutRawKernel(const Context& dev_ctx,
                       DenseTensor* out,
                       DenseTensor* mask) {
   bool upscale_in_train = (mode == "upscale_in_train");
-  out->mutable_data<T>(dev_ctx.GetPlace());
-  mask->mutable_data<uint8_t>(dev_ctx.GetPlace());
-  paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
-                                                 is_test,
-                                                 p,
-                                                 upscale_in_train,
-                                                 fix_seed,
-                                                 seed,
-                                                 x,
-                                                 seed_tensor.get_ptr(),
-                                                 mask,
-                                                 out,
-                                                 false);
+  dev_ctx.template Alloc<T>(out);
+  if (mask) {
+    dev_ctx.template Alloc<uint8_t>(mask);
+  }
+  phi::funcs::DropoutFwGPUKernelDriver<T>(dev_ctx,
+                                          is_test,
+                                          p.to<float>(),
+                                          upscale_in_train,
+                                          fix_seed,
+                                          seed,
+                                          x,
+                                          seed_tensor.get_ptr(),
+                                          mask,
+                                          out,
+                                          false);
 }
 
 template <typename T, typename Context>
 void DropoutNdKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& seed_tensor,
-                     float p,
+                     const Scalar& p,
                      bool is_test,
                      const std::string& mode,
                      int seed,
@@ -61,18 +63,20 @@ void DropoutNdKernel(const Context& dev_ctx,
                      DenseTensor* mask) {
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(out);
-  dev_ctx.template Alloc<uint8_t>(mask);
-  paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
-                                                 is_test,
-                                                 p,
-                                                 upscale_in_train,
-                                                 fix_seed,
-                                                 seed,
-                                                 x,
-                                                 seed_tensor.get_ptr(),
-                                                 mask,
-                                                 out,
-                                                 true);
+  if (mask) {
+    dev_ctx.template Alloc<uint8_t>(mask);
+  }
+  phi::funcs::DropoutFwGPUKernelDriver<T>(dev_ctx,
+                                          is_test,
+                                          p.to<float>(),
+                                          upscale_in_train,
+                                          fix_seed,
+                                          seed,
+                                          x,
+                                          seed_tensor.get_ptr(),
+                                          mask,
+                                          out,
+                                          true);
 }
 
 }  // namespace phi
@@ -84,7 +88,9 @@ PD_REGISTER_KERNEL(dropout,
                    float,
                    double,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 PD_REGISTER_KERNEL(dropout_nd,
                    GPU,
@@ -93,4 +99,6 @@ PD_REGISTER_KERNEL(dropout_nd,
                    float,
                    double,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+}

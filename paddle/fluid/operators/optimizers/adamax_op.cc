@@ -20,15 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 class AdamaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
+                          ctx.GetPlace());
   }
 };
 
@@ -92,11 +91,14 @@ division by 0 error.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(adamax, AdamaxInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adamax,
+                            AdamaxInferMetaFunctor,
                             PD_INFER_META(phi::AdamaxInferMeta));
 
 REGISTER_OPERATOR(
-    adamax, ops::AdamaxOp, ops::AdamaxOpMaker,
+    adamax,
+    ops::AdamaxOp,
+    ops::AdamaxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AdamaxInferMetaFunctor);

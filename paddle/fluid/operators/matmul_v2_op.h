@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -40,7 +39,7 @@ namespace operators {
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
-static framework::Tensor FoldInitDims(const framework::Tensor& input) {
+static phi::DenseTensor FoldInitDims(const phi::DenseTensor& input) {
   auto output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
@@ -78,7 +77,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
-    framework::Tensor* x, const phi::funcs::MatDescriptor& descriptor) {
+    phi::DenseTensor* x, const phi::funcs::MatDescriptor& descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -92,9 +91,10 @@ static void ReshapeTensorIntoMatrixSequence(
   }
 }
 
-static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
-                                           framework::Tensor* y,
-                                           framework::Tensor* out, bool trans_x,
+static void ReshapeXYOutIntoMatrixSequence(phi::DenseTensor* x,
+                                           phi::DenseTensor* y,
+                                           phi::DenseTensor* out,
+                                           bool trans_x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
@@ -104,7 +104,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
     out->Resize({(std::max)(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
-                 mat_dim_x.height_, mat_dim_y.width_});
+                 mat_dim_x.height_,
+                 mat_dim_y.width_});
   }
 
   ReshapeTensorIntoMatrixSequence(x, mat_dim_x);

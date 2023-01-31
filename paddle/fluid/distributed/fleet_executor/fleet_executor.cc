@@ -14,6 +14,7 @@
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 
 #include <algorithm>
+#include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -24,14 +25,16 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace distributed {
 
 FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
-  PADDLE_ENFORCE(parse_flag, platform::errors::PreconditionNotMet(
-                                 "Error occurs while parsing string to proto"));
+  PADDLE_ENFORCE(parse_flag,
+                 platform::errors::PreconditionNotMet(
+                     "Error occurs while parsing string to proto"));
   // Message bus will be created and inited only once
   GlobalVal<MessageBus>::Create();
   InitMessageBus();
@@ -51,22 +54,26 @@ FleetExecutor::~FleetExecutor() {
 }
 
 void FleetExecutor::Init(
-    const std::string& carrier_id, const framework::ProgramDesc& program_desc,
-    framework::Scope* scope, const platform::Place& place,
-    int64_t num_micro_batches, const std::vector<TaskNode*>& task_nodes,
+    const std::string& carrier_id,
+    const framework::ProgramDesc& program_desc,
+    framework::Scope* scope,
+    const platform::Place& place,
+    int64_t num_micro_batches,
+    const std::vector<TaskNode*>& task_nodes,
     const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
-    const std::vector<std::string>& inference_root_scope_vars) {
-  PADDLE_ENFORCE_GT(task_nodes.size(), 0,
+    const std::vector<std::string>& inference_root_scope_vars,
+    const std::vector<framework::Scope*>& micro_scope_list) {
+  PADDLE_ENFORCE_GT(task_nodes.size(),
+                    0,
                     platform::errors::InvalidArgument(
                         "Fleet executor is inited with empty task node"));
   // TODO(fleet_exe devs): the unused_vars should be got from run time graph
   std::vector<std::unique_ptr<framework::OperatorBase>> ops;
-  for (auto task_node : task_nodes) {
-    for (auto op : task_node->ops()) {
-      ops.emplace_back(std::unique_ptr<framework::OperatorBase>(op));
-    }
+  for (const auto& desc : program_desc.Block(0).AllOps()) {
+    ops.emplace_back(framework::OpRegistry::CreateOp(*desc));
   }
   auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
+
   // NOTE: For inference, the vars in inference_root_scope_vars
   // shouldn't be deleted during inf, for that they may be the result of the
   // inf. If they are GCed, it will cause error during ZeroCopy the result.
@@ -102,6 +109,25 @@ void FleetExecutor::Init(
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
   for (auto task_node : task_nodes) {
     task_node->SetUnusedVars(unused_vars);
+    if (task_node->type() == "Cond") {
+      std::vector<std::string> while_block_vars;
+      std::vector<std::string> vars_in_parent;
+      std::vector<std::string> vars_in_sub;
+      for (auto& var : program_desc.Block(0).AllVars()) {
+        vars_in_parent.emplace_back(var->Name());
+      }
+      for (auto& var : program_desc.Block(1).AllVars()) {
+        vars_in_sub.emplace_back(var->Name());
+      }
+      std::sort(vars_in_parent.begin(), vars_in_parent.end());
+      std::sort(vars_in_sub.begin(), vars_in_sub.end());
+      std::set_difference(vars_in_sub.begin(),
+                          vars_in_sub.end(),
+                          vars_in_parent.begin(),
+                          vars_in_parent.end(),
+                          std::back_inserter(while_block_vars));
+      task_node->SetWhileBlockVars(while_block_vars);
+    }
     int64_t interceptor_id = task_node->task_id();
     interceptor_id_to_task.emplace(interceptor_id, task_node);
   }
@@ -116,18 +142,33 @@ void FleetExecutor::Init(
   carrier_ids_.insert(carrier_id);
   // Set current running carrier
   GlobalVal<std::string>::Set(new std::string(carrier_id));
-  InitCarrier(carrier, scope, place, num_micro_batches, program_desc,
-              inference_root_scope_vars);
+  InitCarrier(carrier,
+              scope,
+              place,
+              num_micro_batches,
+              program_desc,
+              inference_root_scope_vars,
+              micro_scope_list);
   GlobalVal<MessageBus>::Get()->Barrier();
 }
 
 void FleetExecutor::InitCarrier(
-    Carrier* carrier, framework::Scope* scope, const platform::Place& place,
-    int64_t num_micro_batches, const framework::ProgramDesc& program_desc,
-    const std::vector<std::string>& inference_root_scope_vars) {
-  carrier->Init(exe_desc_.cur_rank(), runtime_graph_->interceptor_id_to_rank(),
-                runtime_graph_->interceptor_id_to_node(), program_desc, scope,
-                num_micro_batches, place, inference_root_scope_vars);
+    Carrier* carrier,
+    framework::Scope* scope,
+    const platform::Place& place,
+    int64_t num_micro_batches,
+    const framework::ProgramDesc& program_desc,
+    const std::vector<std::string>& inference_root_scope_vars,
+    const std::vector<framework::Scope*>& micro_scope_list) {
+  carrier->Init(exe_desc_.cur_rank(),
+                runtime_graph_->interceptor_id_to_rank(),
+                runtime_graph_->interceptor_id_to_node(),
+                program_desc,
+                scope,
+                num_micro_batches,
+                place,
+                inference_root_scope_vars,
+                micro_scope_list);
 }
 
 void FleetExecutor::InitMessageBus() {
@@ -148,11 +189,13 @@ void FleetExecutor::InitMessageBus() {
   }
   if (addr == "") {
     PADDLE_ENFORCE_EQ(
-        rank_to_addr.size(), 1,
+        rank_to_addr.size(),
+        1,
         platform::errors::NotFound("Empty address is not valid for "
                                    "paddle.distributed.launch method."));
     PADDLE_ENFORCE_EQ(
-        cur_rank, 0,
+        cur_rank,
+        0,
         platform::errors::NotFound("Address is empty but cur rank is not 0."));
   }
   VLOG(3) << "Current rank is " << cur_rank << " and the ip_port is "

@@ -14,14 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/softmax_grad_kernel.h"
 
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-
-namespace plt = paddle::platform;
 
 namespace phi {
 namespace sparse {
@@ -62,7 +60,7 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
   T* dx_data = dx_values->data<T>();
 
   // dx = (dout - sum(dout * out)) * out
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       out.non_zero_crows().dtype(), "SoftmaxCsrGradKernel", ([&] {
         const data_t* out_crows_data = out_crows.data<data_t>();
         for (int i = 0; i < batch_size; ++i) {
@@ -72,11 +70,11 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
                                        out_crows_data[crow_idx]);
 
             T sum = 0;
-            phi::funcs::vec_mul_reduce<T, plt::avx>(
+            phi::funcs::vec_mul_reduce<T, backends::cpu::avx>(
                 row_nnz, dout_data, out_data, &sum);
-            phi::funcs::vec_add_bias<T, plt::avx>(
+            phi::funcs::vec_add_bias<T, backends::cpu::avx>(
                 row_nnz, static_cast<T>(-1) * sum, dout_data, dx_data);
-            phi::funcs::vec_mul<T, plt::avx>(
+            phi::funcs::vec_mul<T, backends::cpu::avx>(
                 row_nnz, dx_data, out_data, dx_data);
 
             out_data = out_data + row_nnz;

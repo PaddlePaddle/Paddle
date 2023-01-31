@@ -1,3 +1,4 @@
+add_subdirectory(manual)
 add_subdirectory(utils)
 add_subdirectory(generated)
 

@@ -31,8 +31,10 @@ namespace framework {
 
 class DummyOp : public OperatorBase {
  public:
-  DummyOp(const std::string& type, const VariableNameMap& inputs,
-          const VariableNameMap& outputs, const AttributeMap& attrs)
+  DummyOp(const std::string& type,
+          const VariableNameMap& inputs,
+          const VariableNameMap& outputs,
+          const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:

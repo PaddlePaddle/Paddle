@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import os
 
@@ -20,14 +19,17 @@ import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
 import paddle.distributed as dist
-from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_check, _get_default_nprocs
+from paddle.distributed.spawn import (
+    _get_subprocess_env_list,
+    _options_valid_check,
+    _get_default_nprocs,
+)
 from paddle.fluid import core
 
 
 class LinearNet(nn.Layer):
-
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear1 = nn.Linear(10, 10)
         self._linear2 = nn.Linear(10, 1)
 
@@ -63,7 +65,6 @@ def train(print_result=False):
 
 
 class TestSpawn(unittest.TestCase):
-
     def test_nprocs_greater_than_device_num_error(self):
         with self.assertRaises(RuntimeError):
             _get_subprocess_env_list(nprocs=100, options=dict())
@@ -102,12 +103,13 @@ class TestSpawn(unittest.TestCase):
         self.assertEqual(nprocs, core.get_mlu_device_count())
 
     def test_spawn(self):
-        context = dist.spawn(train, backend='cncl', nprocs=4)
+        num_devs = core.get_mlu_device_count()
+        context = dist.spawn(train, backend='cncl', nprocs=num_devs)
         rank_list = []
-        for i in range(4):
+        for i in range(num_devs):
             rank_list.append(context.return_queues[i].get())
         rank_list.sort()
-        self.assertEqual(rank_list, list(range(4)))
+        self.assertEqual(rank_list, list(range(num_devs)))
 
 
 if __name__ == '__main__':

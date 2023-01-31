@@ -32,31 +32,33 @@ class PsLocalClient : public PSClient {
     return 0;
   }
 
-  virtual ::std::future<int32_t> Shrink(uint32_t table_id,
-                                        const std::string threshold) override;
-  virtual ::std::future<int32_t> Load(const std::string& epoch,
-                                      const std::string& mode) override;
-  virtual ::std::future<int32_t> Load(uint32_t table_id,
-                                      const std::string& epoch,
-                                      const std::string& mode) override;
+  ::std::future<int32_t> Shrink(uint32_t table_id,
+                                const std::string threshold) override;
+  ::std::future<int32_t> Load(const std::string& epoch,
+                              const std::string& mode) override;
+  ::std::future<int32_t> Load(uint32_t table_id,
+                              const std::string& epoch,
+                              const std::string& mode) override;
 
-  virtual ::std::future<int32_t> Save(const std::string& epoch,
-                                      const std::string& mode) override;
-  virtual ::std::future<int32_t> Save(uint32_t table_id,
-                                      const std::string& epoch,
-                                      const std::string& mode) override;
+  ::std::future<int32_t> Save(const std::string& epoch,
+                              const std::string& mode) override;
+  ::std::future<int32_t> Save(uint32_t table_id,
+                              const std::string& epoch,
+                              const std::string& mode) override;
 
-  virtual ::std::future<int32_t> Clear() override;
-  virtual ::std::future<int32_t> Clear(uint32_t table_id) override;
+  ::std::future<int32_t> Clear() override;
+  ::std::future<int32_t> Clear(uint32_t table_id) override;
 
-  virtual ::std::future<int32_t> StopServer() override;
+  ::std::future<int32_t> StopServer() override;
 
-  virtual void FinalizeWorker() override {}
-  virtual ::std::future<int32_t> PullDense(Region* regions, size_t region_num,
+  void FinalizeWorker() override {}
+  virtual ::std::future<int32_t> PullDense(Region* regions,
+                                           size_t region_num,
                                            size_t table_id);
 
   virtual ::std::future<int32_t> PushDense(const Region* regions,
-                                           size_t region_num, size_t table_id);
+                                           size_t region_num,
+                                           size_t table_id);
 
   virtual ::std::future<int32_t> PushDenseParam(const Region* regions,
                                                 size_t region_num,
@@ -64,7 +66,8 @@ class PsLocalClient : public PSClient {
 
   virtual ::std::future<int32_t> PullSparse(float** select_values,
                                             size_t table_id,
-                                            const uint64_t* keys, size_t num,
+                                            const uint64_t* keys,
+                                            size_t num,
                                             bool is_training) {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
@@ -73,18 +76,19 @@ class PsLocalClient : public PSClient {
     return fut;
   }
 
-  virtual ::std::future<int32_t> PullSparsePtr(char** select_values,
+  virtual ::std::future<int32_t> PullSparsePtr(int shard_id,
+                                               char** select_values,
                                                size_t table_id,
                                                const uint64_t* keys,
-                                               size_t num);
+                                               size_t num,
+                                               uint16_t pass_id);
 
-  virtual ::std::future<int32_t> PrintTableStat(uint32_t table_id) {
-    std::promise<int32_t> prom;
-    std::future<int32_t> fut = prom.get_future();
-    prom.set_value(0);
+  virtual ::std::future<int32_t> PrintTableStat(uint32_t table_id);
 
-    return fut;
-  }
+  virtual ::std::future<int32_t> SaveCacheTable(uint32_t table_id,
+                                                uint16_t pass_id,
+                                                size_t threshold);
+
   virtual ::std::future<int32_t> PushSparse(size_t table_id,
                                             const uint64_t* keys,
                                             const float** update_values,
@@ -98,7 +102,7 @@ class PsLocalClient : public PSClient {
     prom.set_value(0);
 
     return fut;
-  };
+  }
 
   virtual std::future<int32_t> StopProfiler() {
     std::promise<int32_t> prom;
@@ -143,8 +147,9 @@ class PsLocalClient : public PSClient {
     return 0;
   }
 
-  virtual ::std::future<int32_t> SendClient2ClientMsg(
-      int msg_type, int to_client_id, const std::string& msg) override {
+  ::std::future<int32_t> SendClient2ClientMsg(int msg_type,
+                                              int to_client_id,
+                                              const std::string& msg) override {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
     prom.set_value(0);
@@ -153,18 +158,23 @@ class PsLocalClient : public PSClient {
   }
   virtual size_t GetServerNums() { return 1; }
 
-  virtual std::future<int32_t> PushDenseRawGradient(int table_id,
-                                                    float* total_send_data,
-                                                    size_t total_send_data_size,
-                                                    void* callback) override;
+  std::future<int32_t> PushDenseRawGradient(int table_id,
+                                            float* total_send_data,
+                                            size_t total_send_data_size,
+                                            void* callback) override;
 
-  virtual std::future<int32_t> PushSparseRawGradient(
-      size_t table_id, const uint64_t* keys, const float** update_values,
-      size_t num, void* callback) override;
+  std::future<int32_t> PushSparseRawGradient(size_t table_id,
+                                             const uint64_t* keys,
+                                             const float** update_values,
+                                             size_t num,
+                                             void* callback) override;
 
-  virtual std::future<int32_t> PushSparseRawGradientPartial(
-      size_t table_id, const uint64_t* keys, const float** update_values,
-      uint32_t num, void* done, int pserver_idx) override {
+  std::future<int32_t> PushSparseRawGradientPartial(size_t table_id,
+                                                    const uint64_t* keys,
+                                                    const float** update_values,
+                                                    uint32_t num,
+                                                    void* done,
+                                                    int pserver_idx) override {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
     prom.set_value(0);
@@ -172,11 +182,11 @@ class PsLocalClient : public PSClient {
     return fut;
   }
 
-  virtual std::future<int32_t> PushSparseParam(size_t table_id,
-                                               const uint64_t* keys,
-                                               const float** update_values,
-                                               size_t num,
-                                               void* done) override {
+  std::future<int32_t> PushSparseParam(size_t table_id,
+                                       const uint64_t* keys,
+                                       const float** update_values,
+                                       size_t num,
+                                       void* done) override {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
     prom.set_value(0);
@@ -185,7 +195,7 @@ class PsLocalClient : public PSClient {
   }
 
  private:
-  virtual int32_t Initialize() override;
+  int32_t Initialize() override;
 
   std::future<int32_t> done() {
     std::shared_ptr<std::promise<int32_t>> prom =

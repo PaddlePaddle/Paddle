@@ -51,7 +51,8 @@ class DeviceCode {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class CUDADeviceCode : public DeviceCode {
  public:
-  explicit CUDADeviceCode(const Place& place, const std::string& name,
+  explicit CUDADeviceCode(const Place& place,
+                          const std::string& name,
                           const std::string& kernel);
   bool Compile(bool include_path = false) override;
   void Launch(const size_t n, std::vector<void*>* args) const override;

@@ -39,12 +39,12 @@ __global__ void CopyMatrixRowsKernel(const T* src,
 }
 
 template <typename T>
-class CopyMatrixRowsFunctor<paddle::platform::CUDADeviceContext, T> {
+class CopyMatrixRowsFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const paddle::platform::CUDADeviceContext& context,
-                  const paddle::framework::Tensor& src,
+  void operator()(const phi::GPUContext& context,
+                  const phi::DenseTensor& src,
                   paddle::framework::Vector<size_t> index_lod,
-                  paddle::framework::Tensor* dst,
+                  phi::DenseTensor* dst,
                   bool is_src_index) {
     auto src_dims = src.dims();
     auto dst_dims = dst->dims();
@@ -90,19 +90,13 @@ class CopyMatrixRowsFunctor<paddle::platform::CUDADeviceContext, T> {
   }
 };
 
-template class CopyMatrixRowsFunctor<paddle::platform::CUDADeviceContext,
-                                     float>;
-template class CopyMatrixRowsFunctor<paddle::platform::CUDADeviceContext,
-                                     double>;
+template class CopyMatrixRowsFunctor<phi::GPUContext, float>;
+template class CopyMatrixRowsFunctor<phi::GPUContext, double>;
 
-template class LoDTensor2BatchFunctor<paddle::platform::CUDADeviceContext,
-                                      float>;
-template class LoDTensor2BatchFunctor<paddle::platform::CUDADeviceContext,
-                                      double>;
-template class Batch2LoDTensorFunctor<paddle::platform::CUDADeviceContext,
-                                      float>;
-template class Batch2LoDTensorFunctor<paddle::platform::CUDADeviceContext,
-                                      double>;
+template class LoDTensor2BatchFunctor<phi::GPUContext, float>;
+template class LoDTensor2BatchFunctor<phi::GPUContext, double>;
+template class Batch2LoDTensorFunctor<phi::GPUContext, float>;
+template class Batch2LoDTensorFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

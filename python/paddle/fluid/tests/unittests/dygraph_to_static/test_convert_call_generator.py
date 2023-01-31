@@ -12,35 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import logging
-import numpy as np
-
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import CONVERSION_OPTIONS
-from test_program_translator import get_source_code
 from paddle.jit import to_static
 
 
 def dyfunc_generator():
     for i in range(100):
-        yield paddle.to_tensor([i] * 10)
+        yield paddle.fluid.dygraph.to_variable([i] * 10)
 
 
 def main_func():
-    """ Error will raise, but we only report a warning not intercept
-     """
+    """Error will raise, but we only report a warning not intercept"""
     for i in dyfunc_generator():
         print(i)
 
 
 class TestConvertGenerator(unittest.TestCase):
-
     def test_raise_error(self):
         with self.assertRaises(Exception):
             to_static(main_func)()

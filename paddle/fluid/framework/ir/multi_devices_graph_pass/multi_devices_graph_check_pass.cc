@@ -23,7 +23,8 @@ class SSAGraghBuilderWithChecker : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
     PADDLE_ENFORCE_EQ(
-        IsValidGraph(graph), true,
+        IsValidGraph(graph),
+        true,
         platform::errors::InvalidArgument(
             "In SSAGraghBuilderWithChecker, invalid Graph input."));
   }

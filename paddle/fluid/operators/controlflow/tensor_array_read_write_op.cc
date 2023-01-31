@@ -39,7 +39,7 @@ class WriteToArrayOp : public ArrayOp {
                const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
-    auto &x_tensor = x->Get<framework::LoDTensor>();
+    auto &x_tensor = x->Get<phi::DenseTensor>();
     size_t offset = GetOffset(scope, place);
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
@@ -67,7 +67,8 @@ class WriteToArrayOp : public ArrayOp {
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
+    AddInput("X",
+             "(phi::DenseTensor) the tensor will be written to tensor array");
     AddInput(
         "I",
         "(Tensor) the subscript index in tensor array. The number of element "
@@ -76,9 +77,9 @@ class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 WriteToArray Operator.
 
-This operator writes a LoDTensor to a LoDTensor array.
+This operator writes a phi::DenseTensor to a phi::DenseTensor array.
 
-Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
+Assume $T$ is phi::DenseTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
 $$A[i] = T$$
@@ -91,7 +92,8 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInput("I"), true,
+        context->HasInput("I"),
+        true,
         platform::errors::NotFound("Input(I) of WriteToArrayOp is not found."));
 
     // TODO(wangchaochaohu) control flow Op do not support runtime infer shape
@@ -101,7 +103,8 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(context->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Out) of WriteToArrayOp is not found."));
     context->SetOutputDim("Out", context->GetInputDim("X"));
@@ -151,11 +154,12 @@ class ReadFromArrayOp : public ArrayOp {
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE_NOT_NULL(
-        out, platform::errors::NotFound(
-                 "Output(Out) of ReadFromArrayOp is not found."));
+        out,
+        platform::errors::NotFound(
+            "Output(Out) of ReadFromArrayOp is not found."));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
-      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      auto *out_tensor = out->GetMutable<phi::DenseTensor>();
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
@@ -166,7 +170,7 @@ class ReadFromArrayOp : public ArrayOp {
       // set grad of the writed tensor to 0 when used as write_to_array_grad
       auto *fw_var = scope.FindVar(Input("X_W"));
       if (fw_var == nullptr) return;
-      auto &fw_var_tensor = fw_var->Get<framework::LoDTensor>();
+      auto &fw_var_tensor = fw_var->Get<phi::DenseTensor>();
 
       framework::AttributeMap attrs;
       attrs["dtype"] = framework::TransToProtoVarType(fw_var_tensor.dtype());
@@ -176,7 +180,7 @@ class ReadFromArrayOp : public ArrayOp {
       auto zero_op = framework::OpRegistry::CreateOp(
           "fill_constant", {}, {{"Out", {Output("Out")}}}, attrs);
       zero_op->Run(scope, place);
-      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      auto *out_tensor = out->GetMutable<phi::DenseTensor>();
       out_tensor->set_lod(fw_var_tensor.lod());
     }
   }
@@ -193,13 +197,13 @@ class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the writed tensor when used as the grad op of "
              "write_to_array. We use this to fill zero gradient.")
         .AsDispensable();
-    AddOutput("Out", "(LoDTensor) the tensor will be read from.");
+    AddOutput("Out", "(phi::DenseTensor) the tensor will be read from.");
     AddComment(R"DOC(
 ReadFromArray Operator.
 
-Read a LoDTensor from a LoDTensor Array.
+Read a phi::DenseTensor from a phi::DenseTensor Array.
 
-Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
+Assume $T$ is phi::DenseTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
 $$T = A[i]$$
@@ -245,12 +249,16 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(write_to_array, ops::WriteToArrayOp,
-                  ops::WriteToArrayInferShape, ops::WriteToArrayOpProtoMaker,
+REGISTER_OPERATOR(write_to_array,
+                  ops::WriteToArrayOp,
+                  ops::WriteToArrayInferShape,
+                  ops::WriteToArrayOpProtoMaker,
                   ops::WriteToArrayGradMaker<paddle::framework::OpDesc>,
                   ops::WriteToArrayGradMaker<paddle::imperative::OpBase>,
                   ops::WriteToArrayInferVarType);
-REGISTER_OPERATOR(read_from_array, ops::ReadFromArrayOp,
-                  ops::ReadFromArrayInferShape, ops::ReadFromArrayProtoMaker,
+REGISTER_OPERATOR(read_from_array,
+                  ops::ReadFromArrayOp,
+                  ops::ReadFromArrayInferShape,
+                  ops::ReadFromArrayProtoMaker,
                   ops::ReadFromArrayGradMaker<paddle::framework::OpDesc>,
                   ops::ReadFromArrayGradMaker<paddle::imperative::OpBase>);

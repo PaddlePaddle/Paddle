@@ -18,9 +18,10 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 // See [ why register transfer_dtype_op alias with cast_op? ] in cast_op.cc
-REGISTER_OP_CUDA_KERNEL(transfer_dtype, ops::CastOpKernel<CUDA, float>,
+REGISTER_OP_CUDA_KERNEL(transfer_dtype,
+                        ops::CastOpKernel<CUDA, float>,
                         ops::CastOpKernel<CUDA, double>,
                         ops::CastOpKernel<CUDA, int>,
                         ops::CastOpKernel<CUDA, int64_t>,

@@ -30,10 +30,12 @@ class RandintOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument("Output(Out) of RandintOp is null."));
     PADDLE_ENFORCE_LT(
-        ctx->Attrs().Get<int>("low"), ctx->Attrs().Get<int>("high"),
+        ctx->Attrs().Get<int>("low"),
+        ctx->Attrs().Get<int>("high"),
         platform::errors::InvalidArgument("randint's low must less then high, "
                                           "but received: low = %d, high = %d.",
                                           ctx->Attrs().Get<int>("low"),
@@ -43,7 +45,8 @@ class RandintOp : public framework::OperatorWithKernel {
       // top prority shape
       auto inputs_name = ctx->Inputs("ShapeTensorList");
       PADDLE_ENFORCE_GT(
-          inputs_name.size(), 0,
+          inputs_name.size(),
+          0,
           platform::errors::InvalidArgument(
               "Input(ShapeTensorList)'size of Op(randint) can't be zero."
               "Please check the Attr(shape)'s size of"
@@ -57,7 +60,8 @@ class RandintOp : public framework::OperatorWithKernel {
     auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     if (ctx->HasInput("ShapeTensor") && shape.empty()) {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
-      PADDLE_ENFORCE_EQ(shape_dims.size(), 1,
+      PADDLE_ENFORCE_EQ(shape_dims.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "ShapeError: Input(ShapeTensor)' dimension size of "
                             "Op(randint) must be 1."
@@ -73,13 +77,6 @@ class RandintOp : public framework::OperatorWithKernel {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(shape.empty(), false,
-                      platform::errors::InvalidArgument(
-                          "if there is no Input(ShapeTensorList) and no "
-                          "Input(ShapeTensor),the "
-                          "attr(shape) information must "
-                          "be set by Attr(shape)."));
-
     std::vector<int64_t> tensor_shape;
     tensor_shape.reserve(shape.size());
     for (auto dim : shape) {
@@ -89,9 +86,9 @@ class RandintOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -142,6 +139,8 @@ uniform distribution. The random result is in set [low, high).
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    randint, ops::RandintOp, ops::RandintOpMaker,
+    randint,
+    ops::RandintOp,
+    ops::RandintOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)

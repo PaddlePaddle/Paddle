@@ -22,15 +22,16 @@ template <typename T>
 class ArgMaxMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto axis = static_cast<int>(ctx.Attr<int64_t>("axis"));
     auto dtype = ctx.Attr<int>("dtype");
     const bool& flatten = ctx.Attr<bool>("flatten");
 
     if (x->numel() == 0) return;
     PADDLE_ENFORCE_EQ(
-        (dtype == 2 || dtype == 3), true,
+        (dtype == 2 || dtype == 3),
+        true,
         platform::errors::InvalidArgument(
             "The attribute of dtype in argmax op must be [%s] or [%s], "
             "but "
@@ -48,7 +49,7 @@ class ArgMaxMLUKernel : public framework::OpKernel<T> {
       axis += x_dims.size();
     }
 
-    framework::Tensor flatten_x(x->type());
+    phi::DenseTensor flatten_x(x->type());
     flatten_x.ShareDataWith(*x);
     if (flatten) {
       flatten_x.Resize(phi::make_ddim({x->numel()}));
@@ -65,38 +66,57 @@ class ArgMaxMLUKernel : public framework::OpKernel<T> {
     }
     size_t indices_size_inbytes = out_count * sizeof(int32_t);
     auto& dev_ctx = ctx.template device_context<MLUDeviceContext>();
-    framework::Tensor value_out =
+    phi::DenseTensor value_out =
         ctx.AllocateTmpTensor<T, MLUDeviceContext>(out->dims(), dev_ctx);
     MLUCnnlTensorDesc value_out_desc(value_out);
-    MLUCnnlTensorDesc input_desc(flatten_x, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(flatten_x.dtype()));
-    MLUCnnlReduceDesc reduction_desc(
-        reduce_dims, CNNL_REDUCE_MAX_LAST_INDEX, ToCnnlDataType<T>(),
-        CNNL_NOT_PROPAGATE_NAN, CNNL_REDUCE_ONLY_INDICES, CNNL_32BIT_INDICES);
+    MLUCnnlTensorDesc input_desc(
+        flatten_x, CNNL_LAYOUT_ARRAY, ToCnnlDataType(flatten_x.dtype()));
+    MLUCnnlReduceDesc reduction_desc(reduce_dims,
+                                     CNNL_REDUCE_MAX,
+                                     ToCnnlDataType<T>(),
+                                     CNNL_NOT_PROPAGATE_NAN,
+                                     CNNL_REDUCE_ONLY_INDICES,
+                                     CNNL_32BIT_INDICES);
 
     if (dtype == 2) {
       out->template mutable_data<int32_t>(ctx.GetPlace());
-      MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduction_desc.get(),
-                      nullptr, input_desc.get(), GetBasePtr(&flatten_x),
-                      indices_size_inbytes /*indices_size*/, GetBasePtr(out),
-                      nullptr, value_out_desc.get(), GetBasePtr(&value_out));
+      MLUCnnl::Reduce(ctx,
+                      true /*need_workspace*/,
+                      reduction_desc.get(),
+                      nullptr,
+                      input_desc.get(),
+                      GetBasePtr(&flatten_x),
+                      indices_size_inbytes /*indices_size*/,
+                      GetBasePtr(out),
+                      nullptr,
+                      value_out_desc.get(),
+                      GetBasePtr(&value_out));
     } else {
       out->template mutable_data<int64_t>(ctx.GetPlace());
-      framework::Tensor out_int32 =
+      phi::DenseTensor out_int32 =
           ctx.AllocateTmpTensor<int32_t, MLUDeviceContext>(out->dims(),
                                                            dev_ctx);
-      MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduction_desc.get(),
-                      nullptr, input_desc.get(), GetBasePtr(&flatten_x),
+      MLUCnnl::Reduce(ctx,
+                      true /*need_workspace*/,
+                      reduction_desc.get(),
+                      nullptr,
+                      input_desc.get(),
+                      GetBasePtr(&flatten_x),
                       indices_size_inbytes /*indices_size*/,
-                      GetBasePtr(&out_int32), nullptr, value_out_desc.get(),
+                      GetBasePtr(&out_int32),
+                      nullptr,
+                      value_out_desc.get(),
                       GetBasePtr(&value_out));
 
       // cast indices type to int64
       MLUCnnlTensorDesc out_int32_desc(out_int32);
       MLUCnnlTensorDesc cast_output_desc(*out);
       cnnlCastDataType_t cast_type = GetCastDataType(VT::INT32, VT::INT64);
-      MLUCnnl::Cast(ctx, cast_type, out_int32_desc.get(),
-                    GetBasePtr(&out_int32), cast_output_desc.get(),
+      MLUCnnl::Cast(ctx,
+                    cast_type,
+                    out_int32_desc.get(),
+                    GetBasePtr(&out_int32),
+                    cast_output_desc.get(),
                     GetBasePtr(out));
     }
   }
@@ -107,6 +127,7 @@ class ArgMaxMLUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_MLU_KERNEL(arg_max, ops::ArgMaxMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(arg_max,
+                       ops::ArgMaxMLUKernel<int>,
                        ops::ArgMaxMLUKernel<float>,
                        ops::ArgMaxMLUKernel<paddle::platform::float16>);

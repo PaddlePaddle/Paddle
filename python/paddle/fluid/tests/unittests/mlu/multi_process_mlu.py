@@ -26,12 +26,18 @@ def train(prefix):
     worker_endpoints = worker_endpoints_env
     trainers_num = len(worker_endpoints.split(','))
 
-    name = "selected_mlus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
-        .format(selected_mlus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
+    name = "selected_mlus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
+        selected_mlus,
+        worker_endpoints,
+        trainers_num,
+        current_endpoint,
+        trainer_id,
+    )
 
     print(name)
-    with open("multi_process_{}.check_{}.log".format(prefix, trainer_id),
-              "w") as f:
+    with open(
+        "multi_process_{}.check_{}.log".format(prefix, trainer_id), "w"
+    ) as f:
         f.write(name)
 
 
@@ -48,23 +54,34 @@ def train_abort(prefix):
             # train abort
             exit(1)
         except SystemExit:
-            name = "abort>>> selected_mlus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
-                .format(selected_mlus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
+            name = "abort>>> selected_mlus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
+                selected_mlus,
+                worker_endpoints,
+                trainers_num,
+                current_endpoint,
+                trainer_id,
+            )
             print(name)
             with open(
-                    "multi_process_{}.check_{}.log".format(prefix, trainer_id),
-                    "w") as f:
+                "multi_process_{}.check_{}.log".format(prefix, trainer_id), "w"
+            ) as f:
                 f.write(name)
             raise
     else:
         # sleep 30s to make sure paddle.distributed.launch will terminate this process
         time.sleep(30)
-        name = "selected_mlus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
-            .format(selected_mlus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
+        name = "selected_mlus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
+            selected_mlus,
+            worker_endpoints,
+            trainers_num,
+            current_endpoint,
+            trainer_id,
+        )
 
         print(name)
-        with open("multi_process_{}.check_{}.log".format(prefix, trainer_id),
-                  "w") as f:
+        with open(
+            "multi_process_{}.check_{}.log".format(prefix, trainer_id), "w"
+        ) as f:
             f.write(name)
 
 

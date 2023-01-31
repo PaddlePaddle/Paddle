@@ -78,7 +78,8 @@ struct PD_INFER_DECL MkldnnQuantizerConfig {
   /// operator.
   /// \param[in] algo the algorithm for computing scale.
   ///
-  void SetScaleAlgo(std::string op_type_name, std::string conn_name,
+  void SetScaleAlgo(std::string op_type_name,
+                    std::string conn_name,
                     ScaleAlgo algo) {
     rules_[op_type_name][conn_name] = algo;
   }

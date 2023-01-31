@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 class ElementwiseSubMLUKernel : public framework::OpKernel<T> {
  public:
@@ -36,11 +34,11 @@ class ElementwiseSubGradMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
 
@@ -51,38 +49,60 @@ class ElementwiseSubGradMLUKernel : public framework::OpKernel<T> {
       if (dx->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec;
         std::vector<int> reduce_axes;
-        GetReduceAxesAndDstDims(axis, dout->dims(), dx->dims(), &reduce_axes,
-                                &dst_dims_vec);
+        GetReduceAxesAndDstDims(
+            axis, dout->dims(), dx->dims(), &reduce_axes, &dst_dims_vec);
 
-        MLUCnnlReduceDesc reduction_desc(
-            reduce_axes, CNNL_REDUCE_ADD, ToCnnlDataType<T>(),
-            CNNL_NOT_PROPAGATE_NAN, CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
-        MLUCnnlTensorDesc dx_desc(dst_dims_vec.size(), dst_dims_vec.data(),
-                                  ToCnnlDataType<T>());
-        MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduction_desc.get(),
-                        nullptr, dout_desc.get(), GetBasePtr(dout), 0, nullptr,
-                        nullptr, dx_desc.get(), GetBasePtr(dx));
+        MLUCnnlReduceDesc reduction_desc(reduce_axes,
+                                         CNNL_REDUCE_ADD,
+                                         ToCnnlDataType<T>(),
+                                         CNNL_NOT_PROPAGATE_NAN,
+                                         CNNL_REDUCE_NO_INDICES,
+                                         CNNL_32BIT_INDICES);
+        MLUCnnlTensorDesc dx_desc(
+            dst_dims_vec.size(), dst_dims_vec.data(), ToCnnlDataType<T>());
+        MLUCnnl::Reduce(ctx,
+                        true /*need_workspace*/,
+                        reduction_desc.get(),
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        0,
+                        nullptr,
+                        nullptr,
+                        dx_desc.get(),
+                        GetBasePtr(dx));
       } else {
         framework::TensorCopy(*dout, ctx.GetPlace(), dev_ctx, dx);
       }
     }
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
-      Tensor* tmp_dout = const_cast<Tensor*>(dout);
+      phi::DenseTensor* tmp_dout = const_cast<phi::DenseTensor*>(dout);
       if (dy->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec;
         std::vector<int> reduce_axes;
-        GetReduceAxesAndDstDims(axis, dout->dims(), dy->dims(), &reduce_axes,
-                                &dst_dims_vec);
+        GetReduceAxesAndDstDims(
+            axis, dout->dims(), dy->dims(), &reduce_axes, &dst_dims_vec);
 
-        MLUCnnlReduceDesc reduction_desc(
-            reduce_axes, CNNL_REDUCE_ADD, ToCnnlDataType<T>(),
-            CNNL_NOT_PROPAGATE_NAN, CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
-        MLUCnnlTensorDesc dy_desc(dst_dims_vec.size(), dst_dims_vec.data(),
-                                  ToCnnlDataType<T>());
-        MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduction_desc.get(),
-                        nullptr, dout_desc.get(), GetBasePtr(dout), 0, nullptr,
-                        nullptr, dy_desc.get(), GetBasePtr(dy));
+        MLUCnnlReduceDesc reduction_desc(reduce_axes,
+                                         CNNL_REDUCE_ADD,
+                                         ToCnnlDataType<T>(),
+                                         CNNL_NOT_PROPAGATE_NAN,
+                                         CNNL_REDUCE_NO_INDICES,
+                                         CNNL_32BIT_INDICES);
+        MLUCnnlTensorDesc dy_desc(
+            dst_dims_vec.size(), dst_dims_vec.data(), ToCnnlDataType<T>());
+        MLUCnnl::Reduce(ctx,
+                        true /*need_workspace*/,
+                        reduction_desc.get(),
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        0,
+                        nullptr,
+                        nullptr,
+                        dy_desc.get(),
+                        GetBasePtr(dy));
         tmp_dout = dy;
       }
 
@@ -90,8 +110,12 @@ class ElementwiseSubGradMLUKernel : public framework::OpKernel<T> {
       MLUCnnlTensorDesc tmp_dout_desc(*tmp_dout);
       MLUCnnlTensorDesc dy_desc(*dy);
 
-      MLUUnary<NEG>(ctx, CNNL_COMPUTATION_HIGH_PRECISION, tmp_dout_desc.get(),
-                    GetBasePtr(tmp_dout), dy_desc.get(), GetBasePtr(dy));
+      MLUUnary<NEG>(ctx,
+                    CNNL_COMPUTATION_HIGH_PRECISION,
+                    tmp_dout_desc.get(),
+                    GetBasePtr(tmp_dout),
+                    dy_desc.get(),
+                    GetBasePtr(dy));
     }
   }
 };
@@ -102,7 +126,8 @@ class ElementwiseSubGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(elementwise_sub, ops::ElementwiseSubMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(elementwise_sub,
+                       ops::ElementwiseSubMLUKernel<int>,
                        ops::ElementwiseSubMLUKernel<float>,
                        ops::ElementwiseSubMLUKernel<plat::float16>);
 

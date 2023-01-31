@@ -11,29 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
 
 paddle.enable_static()
 
 
 class XPUTestReduceAmaxOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'reduce_amin'
 
     class XPUTestReduceAmaxBase(XPUOpTest):
-
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.set_case()
@@ -41,7 +43,7 @@ class XPUTestReduceAmaxOp(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'reduce_amin'
             self.shape = (20, 10)
-            self.attrs = {'use_xpu': True, 'keep_dim': False, 'dim': (1, )}
+            self.attrs = {'use_xpu': True, 'keep_dim': False, 'dim': (1,)}
 
             self.inputs = {
                 'X': np.random.randint(0, 100, self.shape).astype("float32")
@@ -49,10 +51,11 @@ class XPUTestReduceAmaxOp(XPUOpTestWrapper):
 
             expect_intput = self.inputs['X']
             self.outputs = {
-                'Out':
-                np.amin(expect_intput,
-                        axis=self.attrs['dim'],
-                        keepdims=self.attrs['keep_dim'])
+                'Out': np.amin(
+                    expect_intput,
+                    axis=self.attrs['dim'],
+                    keepdims=self.attrs['keep_dim'],
+                )
             }
 
         def test_check_output(self):

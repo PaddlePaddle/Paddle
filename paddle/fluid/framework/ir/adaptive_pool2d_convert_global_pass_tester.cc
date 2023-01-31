@@ -46,12 +46,13 @@ TEST(AdaptivePool2dConvertGlobalPass, basic) {
     if (node->IsOp() && node->Op()->Type() == "pool2d") {
       if (node->Op()->HasAttr("global_pooling")) {
         global_pooling =
-            BOOST_GET_CONST(bool, node->Op()->GetAttr("global_pooling"));
+            PADDLE_GET_CONST(bool, node->Op()->GetAttr("global_pooling"));
       }
     }
   }
   PADDLE_ENFORCE_EQ(
-      global_pooling, true,
+      global_pooling,
+      true,
       platform::errors::PreconditionNotMet(
           "The attribute of pool2d global_pooling should be true after fuse"));
 }

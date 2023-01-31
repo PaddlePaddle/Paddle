@@ -21,7 +21,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
@@ -110,7 +110,7 @@ struct Gather {
 
 template <typename Context,
           template <typename InT, typename OutT>
-          typename CompareFunctor,
+          class CompareFunctor,
           typename T>
 struct GetMask {
   void operator()(const Context& dev_ctx,
@@ -124,7 +124,7 @@ struct GetMask {
 
 template <typename Context,
           template <typename T>
-          typename BinaryFunctor,
+          class BinaryFunctor,
           typename T>
 struct BinaryOperation {
   void operator()(const Context& dev_ctx,

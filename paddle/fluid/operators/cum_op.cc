@@ -24,6 +24,34 @@ namespace operators {
 class CumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  }
+};
+
+class CumGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "cumsum");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "cumsum");
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  }
 };
 
 class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -34,7 +62,8 @@ class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The dimension to accumulate along. -1 means the last "
                  "dimension [default -1].")
-        .SetDefault(-1);
+        .SetDefault(-1)
+        .SupportTensor();
     AddAttr<bool>("flatten",
                   "Whether to compute the cumsum over the flattened array. "
                   "[default false].")
@@ -61,16 +90,13 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("cumsum");
-    grad_op->SetInput("X", this->OutputGrad("Out"));
-    grad_op->SetOutput("Out", this->InputGrad("X"));
-    grad_op->SetAttr("axis", BOOST_GET_CONST(int, this->GetAttr("axis")));
-    grad_op->SetAttr("flatten",
-                     BOOST_GET_CONST(bool, this->GetAttr("flatten")));
+    grad_op->SetType("cumsum_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
     grad_op->SetAttr("reverse",
-                     !BOOST_GET_CONST(bool, this->GetAttr("reverse")));
-    grad_op->SetAttr("exclusive",
-                     BOOST_GET_CONST(bool, this->GetAttr("exclusive")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
   }
 };
 
@@ -83,16 +109,18 @@ class LogcumsumexpOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The dimension to accumulate along. -1 means the last "
                  "dimension [default -1].")
         .SetDefault(-1);
-    AddAttr<bool>("flatten",
-                  "Whether to compute the logcumsumexp over the flattened array. "
-                  "[default false].")
+    AddAttr<bool>(
+        "flatten",
+        "Whether to compute the logcumsumexp over the flattened array. "
+        "[default false].")
         .SetDefault(false);
     AddAttr<bool>("exclusive",
                   "Whether to perform exclusive logcumsumexp. [default false].")
         .SetDefault(false);
-    AddAttr<bool>("reverse",
-                  "If true, the logcumsumexp is performed in the reversed direction. "
-                  "[default false].")
+    AddAttr<bool>(
+        "reverse",
+        "If true, the logcumsumexp is performed in the reversed direction. "
+        "[default false].")
         .SetDefault(false);
     AddComment(R"DOC(
 Returns the logarithm of the cumulative summation of the exponentiation of elements of input along the given axis.
@@ -109,8 +137,10 @@ class LogcumsumexpGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "logcumsumexp");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "logcumsumexp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "logcumsumexp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "logcumsumexp");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -127,13 +157,13 @@ class LogcumsumexpGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput("Out", this->Output("Out"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    grad_op->SetAttr("axis", BOOST_GET_CONST(int, this->GetAttr("axis")));
+    grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
     grad_op->SetAttr("flatten",
-                     BOOST_GET_CONST(bool, this->GetAttr("flatten")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
     grad_op->SetAttr("exclusive",
-                     BOOST_GET_CONST(bool, this->GetAttr("exclusive")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
     grad_op->SetAttr("reverse",
-                     BOOST_GET_CONST(bool, this->GetAttr("reverse")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
   }
 };
 
@@ -141,20 +171,28 @@ class LogcumsumexpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
-DECLARE_INFER_SHAPE_FUNCTOR(cumsum, CumsumInferShapeFunctor,
+using CPU = phi::CPUContext;
+DECLARE_INFER_SHAPE_FUNCTOR(cumsum,
+                            CumsumInferShapeFunctor,
+                            PD_INFER_META(phi::CumScalarAxisInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(logcumsumexp,
+                            LogcumsumexpInferShapeFunctor,
                             PD_INFER_META(phi::CumInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(logcumsumexp, LogcumsumexpInferShapeFunctor,
-                            PD_INFER_META(phi::CumInferMeta));
-REGISTER_OPERATOR(cumsum, ops::CumOp, ops::CumsumOpMaker,
+REGISTER_OPERATOR(cumsum,
+                  ops::CumOp,
+                  ops::CumsumOpMaker,
                   ops::CumsumGradMaker<paddle::framework::OpDesc>,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>,
                   CumsumInferShapeFunctor);
-REGISTER_OPERATOR(logcumsumexp, ops::CumOp, ops::LogcumsumexpOpMaker,
+REGISTER_OPERATOR(logcumsumexp,
+                  ops::CumOp,
+                  ops::LogcumsumexpOpMaker,
                   ops::LogcumsumexpGradMaker<paddle::framework::OpDesc>,
                   ops::LogcumsumexpGradMaker<paddle::imperative::OpBase>,
                   LogcumsumexpInferShapeFunctor);
 REGISTER_OPERATOR(logcumsumexp_grad, ops::LogcumsumexpGradOp);
+REGISTER_OPERATOR(cumsum_grad, ops::CumGradOp);
 
 REGISTER_OP_VERSION(cumsum).AddCheckpoint(
     R"ROC(

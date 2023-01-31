@@ -20,9 +20,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 /* see [Why use single type kernel] */
-REGISTER_OP_CUDA_KERNEL(
-    run_program,
-    ops::RunProgramOpKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    run_program_grad,
-    ops::RunProgramGradOpKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(run_program,
+                        ops::RunProgramOpKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(run_program_grad,
+                        ops::RunProgramGradOpKernel<phi::GPUContext, float>);

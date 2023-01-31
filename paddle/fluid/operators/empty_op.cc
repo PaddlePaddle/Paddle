@@ -53,20 +53,23 @@ class EmptyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& context) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         framework::proto::VarType::Type(context.Attr<int>("dtype")),
         context.GetPlace());
   }
@@ -76,7 +79,7 @@ class EmptyOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* context) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, context->GetAttr("dtype")));
+        PADDLE_GET_CONST(int, context->GetAttr("dtype")));
     context->SetOutputDataType("Out", data_type);
   }
 };
@@ -87,8 +90,11 @@ class EmptyOpVarTypeInference : public framework::VarTypeInference {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-DECLARE_INFER_SHAPE_FUNCTOR(empty, EmptyInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(empty,
+                            EmptyInferShapeFunctor,
                             PD_INFER_META(phi::CreateInferMeta));
-REGISTER_OP_WITHOUT_GRADIENT(empty, ops::EmptyOp, ops::EmptyOpMaker,
+REGISTER_OP_WITHOUT_GRADIENT(empty,
+                             ops::EmptyOp,
+                             ops::EmptyOpMaker,
                              ops::EmptyOpVarTypeInference,
                              EmptyInferShapeFunctor);

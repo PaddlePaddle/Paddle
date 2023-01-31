@@ -24,28 +24,28 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class TileOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -73,7 +73,8 @@ class TileOpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(repeat_times).");
     AddAttr<std::vector<int>>("repeat_times",
                               "The number of repeat times for each dimension.")
-        .SetDefault({});
+        .SetDefault({})
+        .SupportTensor();
     AddComment(R"DOC(
 Tile operator repeats the input by given times number. You should set times
 number for each dimension by providing attribute 'repeat_times'. The rank of X
@@ -107,42 +108,12 @@ class TileGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "TileGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "TileGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "TileGrad");
 
     auto x_dims = ctx->GetInputDim("X");
-
-    std::vector<int> repeat_times =
-        ctx->Attrs().Get<std::vector<int>>("repeat_times");
-    if (repeat_times.size() == 0) {
-      repeat_times = std::vector<int>(x_dims.size(), -1);
-    }
-
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x_dim_vec = phi::vectorize<int>(x_dims);
-    if (x_dim_vec.size() > repeat_times.size()) {
-      auto diff = x_dim_vec.size() - repeat_times.size();
-      repeat_times.insert(repeat_times.begin(), diff, -1);
-    } else {
-      auto diff = repeat_times.size() - x_dim_vec.size();
-      x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
-    }
-
-    for (size_t i = 0; i < repeat_times.size(); ++i) {
-      if (repeat_times[i] == -1 || x_dim_vec[i] == -1) {
-        continue;
-      } else {
-        if (ctx->IsRuntime()) {
-          PADDLE_ENFORCE_EQ(
-              x_dim_vec[i] * repeat_times[i], out_dims[i],
-              platform::errors::InvalidArgument(
-                  "The size (%d) of the dimension %d of Input(Out@GRAD) should "
-                  "be equal to the multiplication of the crroresponding "
-                  "dimension size of Input(X) (%d) and repeat_times (%d).",
-                  out_dims[i], i, x_dim_vec[i], repeat_times[i]));
-        }
-      }
-    }
     auto x_grad_name = framework::GradVarName("X");
 
     if (ctx->HasOutput(x_grad_name)) {
@@ -151,21 +122,24 @@ class TileGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -213,14 +187,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(TileGradNoNeedBufVarsInferer, "X");
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(tile, TileInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(tile,
+                            TileInferMetaFunctor,
                             PD_INFER_META(phi::TileInferMeta));
 
-REGISTER_OPERATOR(tile, ops::TileOp, ops::TileOpMaker,
+REGISTER_OPERATOR(tile,
+                  ops::TileOp,
+                  ops::TileOpMaker,
                   ops::TileGradOpMaker<paddle::framework::OpDesc>,
                   ops::TileGradOpMaker<paddle::imperative::OpBase>,
                   TileInferMetaFunctor);
-REGISTER_OPERATOR(tile_grad, ops::TileGradOp,
+REGISTER_OPERATOR(tile_grad,
+                  ops::TileGradOp,
                   ops::TileDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::TileDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::TileGradNoNeedBufVarsInferer);

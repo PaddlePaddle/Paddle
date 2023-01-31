@@ -26,21 +26,23 @@ class Constant(ConstantInitializer):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
             import paddle.nn as nn
 
             data = paddle.rand([30, 10, 2], dtype='float32')
             linear = nn.Linear(2,
-                               4,
-                               weight_attr=nn.initializer.Constant(value=2.0))
+                                4,
+                                weight_attr=nn.initializer.Constant(value=2.0))
             res = linear(data)
-            print(linear.weight.numpy())
-            #result is [[2. 2. 2. 2.],[2. 2. 2. 2.]]
+            print(linear.weight)
+            # Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[2., 2., 2., 2.],
+            #         [2., 2., 2., 2.]])
 
     """
 
     def __init__(self, value=0.0):
         if value is None:
             raise ValueError("value must not be none.")
-        super(Constant, self).__init__(value=value, force_cpu=False)
+        super().__init__(value=value, force_cpu=False)
