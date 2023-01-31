@@ -32,6 +32,7 @@ from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+from .utils import _out_grad_names, _param_grad_names
 
 __all__ = []
 
@@ -207,10 +208,6 @@ class PartialProgramLayer:
             return core.Scope()
 
     @LazyInitialized
-    def __fake_vars(self):
-        return _create_fake_var()
-
-    @LazyInitialized
     def _double_grads(self):
         return self._get_double_grads(self._origin_main_program)
 
@@ -379,46 +376,15 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _param_grad_names(self):
-        names = []
-        # NOTE: `names` and `self._params` must be in the same order so that
-        # the param grad name can be set correctly in the run_program.
-        for param in self._params:
-            candidate = [
-                var_name
-                for var_name in self._train_program.block(0).vars.keys()
-                if var_name.endswith(param.name + '@GRAD')
-            ]
-            if candidate:
-                names.append(
-                    max(candidate, key=lambda name: name.count('grad/'))
-                )
-            else:
-                names.append(param.name + '@GRAD')
-        return names
+        return _param_grad_names(self._train_program.desc, self._params)
 
     @LazyInitialized
     def _out_grad_names(self):
-        """
-        Parse Out@GARD name from original train and infer program.
-        """
-        names = []
-        origin_infer_program = self._create_program(is_infer_mode=True)
-        origin_train_program = self._train_program
-        fwd_end_op_index = len(origin_infer_program.block(0).ops)
-        for i in range(
-            fwd_end_op_index + 1,
-            min(
-                fwd_end_op_index + 2 * len(self._outputs.var_ids),
-                len(origin_train_program.block(0).ops),
-            ),
-            2,
-        ):
-            op = origin_train_program.block(0).ops[i]
-            if op.type == 'fill_constant':
-                var_name = op.output('Out')[0]
-                names.append(var_name)
-
-        return names
+        return _out_grad_names(
+            self._train_program.desc,
+            self._create_program(is_infer_mode=True).desc.block(0).op_size(),
+            len(self._outputs.var_ids),
+        )
 
     @property
     def program(self):
@@ -604,7 +570,10 @@ class PartialProgramLayer:
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
-        if targets and self._params:
+        if targets:
+            if self._build_strategy.build_cinn_pass:
+                # TODO(Jiabin): Change this to True if we need this to be default option
+                core.check_and_set_prim_all_enabled()
             backward.gradients(targets=targets, inputs=[])
 
         start_idx = len(main_program.block(0).ops) + 2 * len(
@@ -647,7 +616,7 @@ class PartialProgramLayer:
                 if "@GRAD" in name:
                     var_desc = block.vars[name].desc
                     var_base = None
-                    if not framework._in_eager_mode_:
+                    if not framework.global_var._in_eager_mode_:
                         var_base = core.VarBase(
                             var_desc.dtype(),
                             var_desc.shape(),
@@ -902,7 +871,7 @@ class PartialProgramLayer:
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = None
-                if not framework._in_eager_mode_:
+                if not framework.global_var._in_eager_mode_:
                     var = core.VarBase(
                         value=value,
                         name=self._inputs[i].desc.name(),
@@ -946,7 +915,7 @@ class PartialProgramLayer:
             if var_desc.name() in out_varbase_map:
                 return out_varbase_map[var_desc.name()]
 
-            if not framework._in_eager_mode_:
+            if not framework.global_var._in_eager_mode_:
                 var_base = core.VarBase(
                     var_desc.dtype(),
                     var_desc.shape(),
@@ -977,7 +946,7 @@ class PartialProgramLayer:
         inner_scope = self._get_scope(
             program_id=program_id, use_scope_cache=use_scope_cache
         )
-        if not framework._in_eager_mode_:
+        if not framework.global_var._in_eager_mode_:
             tmp_scope_vec = core.VarBase(
                 core.VarDesc.VarType.FP32,
                 [],
@@ -1123,19 +1092,14 @@ class PartialProgramLayer:
                         )
 
     def _valid_vars(self, vars):
-        """
-        Note: run_program_op.InferShape requires `X`/'Out' not be null.
-        But it's common in dy2static, fake varBase is created to handle the
-        problem.
-        """
-        return vars if vars else self.__fake_vars
+        return vars if vars else None
 
 
 def _create_fake_var():
     """
     Create a fake_var (force on CPU) to handle empty input or output
     """
-    if not framework._in_eager_mode_:
+    if not framework.global_var._in_eager_mode_:
         return [
             core.VarBase(
                 core.VarDesc.VarType.FP32,

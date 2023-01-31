@@ -341,10 +341,10 @@ TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
 }
 
 TEST(StaticPrim, TestFlags) {
-  PrimCommonUtils::SetPrimEnabled(true);
-  ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
-  PrimCommonUtils::SetPrimEnabled(false);
-  ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
+  PrimCommonUtils::SetBwdPrimEnabled(true);
+  ASSERT_TRUE(PrimCommonUtils::IsBwdPrimEnabled());
+  PrimCommonUtils::SetBwdPrimEnabled(false);
+  ASSERT_FALSE(PrimCommonUtils::IsBwdPrimEnabled());
 }
 
 }  // namespace prim

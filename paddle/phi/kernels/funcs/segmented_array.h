@@ -14,8 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
-#include "paddle/phi/kernels/funcs/fast_divmod.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
@@ -111,6 +110,7 @@ struct ArraySetterBase {
         ctx.GetPlace(),
         num_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+
     int8_t* restored = reinterpret_cast<int8_t*>(src);
 #ifdef PADDLE_WITH_CUDA
     if (use_cuda_graph) {
@@ -118,12 +118,11 @@ struct ArraySetterBase {
           restored, num_bytes);
     }
 #endif
-    paddle::memory::Copy(ctx.GetPlace(),
-                         allocation->ptr(),
-                         phi::CPUPlace(),
-                         restored,
-                         num_bytes,
-                         ctx.stream());
+    phi::backends::gpu::GpuMemcpyAsync(allocation->ptr(),
+                                       restored,
+                                       num_bytes,
+                                       phi::gpuMemcpyHostToDevice,
+                                       ctx.stream());
     return allocation->ptr();
   }
 
