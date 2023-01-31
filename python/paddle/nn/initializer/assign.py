@@ -24,13 +24,13 @@ __all__ = []
 
 class NumpyArrayInitializer(Initializer):
     """Init an parameter with an numpy array
-    This op initialize the variable by numpy array.
+    This api initialize the tensor by numpy array.
 
     Args:
-        value (numpy): numpy array to initialize the variable
+        value (numpy): numpy array to initialize the tensor
 
     Returns:
-        A Tensor variable initialized by numpy.
+        A Tensor initialized by numpy.
 
     """
 

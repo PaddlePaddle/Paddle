@@ -24,11 +24,11 @@ __all__ = []
 
 
 class Initializer:
-    """Base class for variable initializers
+    """Base class for parameter initializers
 
-    Defines the common interface of variable initializers.
+    Defines the common interface of parameter initializers.
     They add operations to the init program that are used
-    to initialize variables. Users should not use this class
+    to initialize parameter. Users should not use this class
     directly, but need to use one of its implementations.
     """
 
