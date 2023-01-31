@@ -2241,6 +2241,11 @@ def deformable_conv(
         mask, 'mask', (paddle.static.Variable, type(None)), 'deformable_conv'
     )
 
+    if input.ndim != 4:
+        raise ValueError(
+            f'The input should be of [N, C, H, W] format, but received {input.shape}'
+        )
+
     num_channels = input.shape[1]
     assert param_attr is not False, "param_attr should not be False here."
 
