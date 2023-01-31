@@ -39,6 +39,8 @@ from paddle.tensor import log1p  # noqa: F401
 from paddle.tensor import logcumsumexp  # noqa: F401
 from paddle.tensor import logit  # noqa: F401
 from paddle.tensor import logsumexp  # noqa: F401
+from paddle.tensor import max  # noqa: F401
+from paddle.tensor import min  # noqa: F401
 from paddle.tensor import multiply  # noqa: F401
 from paddle.tensor import pow  # noqa: F401
 from paddle.tensor import prod  # noqa: F401
@@ -73,6 +75,8 @@ math_op = [
     'logsumexp',
     'logcumsumexp',
     'logit',
+    'max',
+    'min',
 ]
 
 trigonometric_op = [

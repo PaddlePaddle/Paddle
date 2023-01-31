@@ -660,8 +660,16 @@ PYBIND11_MODULE(libpaddle, m) {
         return oss.str();
       });
 
-  m.def("set_prim_enabled", &paddle::prim::PrimCommonUtils::SetPrimEnabled);
-  m.def("is_prim_enabled", &paddle::prim::PrimCommonUtils::IsPrimEnabled);
+  m.def("__set_bwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetBwdPrimEnabled);
+  m.def("_is_bwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsBwdPrimEnabled);
+  m.def("__set_fwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetFwdPrimEnabled);
+  m.def("_is_fwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
+  m.def("__set_all_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
@@ -970,7 +978,7 @@ All parameter, weight, gradient are variables in Paddle.
              }
            })
       .def("set_string_list",
-           [](Variable &self, Strings str_list) {
+           [](Variable &self, std::vector<std::string> str_list) {
              *self.GetMutable<Strings>() = str_list;
            })
       .def("set_vocab",
@@ -1264,8 +1272,9 @@ All parameter, weight, gradient are variables in Paddle.
           // priority of GradCompOpMaker is less than GradCompMaker for better
           // performance.
           std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
-          if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {
+          if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
             if (grad_comp_op_maker != nullptr) {
+              VLOG(3) << "Runing composite fun for " << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1926,7 +1935,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const Strings &,
+            const std::vector<std::string> &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",

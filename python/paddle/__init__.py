@@ -55,7 +55,7 @@ from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
 
-if fluid.framework._in_eager_mode_:
+if fluid.framework.global_var._in_eager_mode_:
     Tensor = framework.core.eager.Tensor
 else:
     from .framework import VarBase as Tensor  # noqa: F401
