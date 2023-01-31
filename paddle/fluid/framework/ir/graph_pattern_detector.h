@@ -639,25 +639,19 @@ struct FC : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
-// MKL-DNN's FC with bias
-// op: fc
-// named node:
-// fc
-// w, bias, output, residual_data
 struct FCOneDNN : public PatternBase {
   FCOneDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_mkldnn") {}
 
-  PDNode* operator()(const std::string& fc_type, bool with_residual_data);
+  PDNode* operator()(const std::string& fc_type,
+                     bool with_residual_data = false);
 
-  // declare operator node's name
-  PATTERN_DECL_NODE(fc);
-  // declare variable node's name
   PATTERN_DECL_NODE(input);
   PATTERN_DECL_NODE(weights);
   PATTERN_DECL_NODE(bias);
-  PATTERN_DECL_NODE(output);
   PATTERN_DECL_NODE(residual_data);
+  PATTERN_DECL_NODE(fc);
+  PATTERN_DECL_NODE(output);
 };
 
 // Embedding

@@ -19,31 +19,22 @@
 
 namespace paddle {
 namespace framework {
-class OpDesc;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
-namespace framework {
 namespace ir {
-
-class Graph;
 
 void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   Init("fc_mkldnn_pass", graph);
 
   GraphPatternDetector gpd;
   patterns::FCOneDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
-  // searching for fc+residual  doesn't make sense at this stage
-  fc_pattern("fc", false /*with_residual*/);
+  fc_pattern("fc");
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "Handle FC MKL-DNN pass";
+    VLOG(4) << "Handle fc_mkldnn_pass";
     if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
       VLOG(3) << "do not enable FC MKL-DNN because it doesn't have use_mkldnn "
                  "attribute.";
