@@ -1,3 +1,8 @@
+if(WITH_GPU AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 
+        AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
+  return()
+endif()
+
 add_executable(print_phi_kernels print_phi_kernels.cc)
 target_link_libraries(print_phi_kernels phi phi_api_utils)
 if(WIN32)

@@ -39,14 +39,17 @@ cc_test(
   SRCS test.cc
   DEPS jit_kernel_helper)
 if(NOT WIN32)
-  cc_binary(
-    jit_kernel_benchmark
-    SRCS
-    benchmark.cc
-    DEPS
-    jit_kernel_helper
-    device_tracer
-    tensor)
+  if(NOT (WITH_GPU AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 
+      AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0))
+    cc_binary(
+      jit_kernel_benchmark
+      SRCS
+      benchmark.cc
+      DEPS
+      jit_kernel_helper
+      device_tracer
+      tensor)
+  endif()
 endif()
 if(WITH_TESTING AND TEST jit_kernel_test)
   set_tests_properties(jit_kernel_test PROPERTIES TIMEOUT 120)
