@@ -571,13 +571,10 @@ class PartialProgramLayer:
                 targets.append(program.global_block().var(out.name))
 
         if targets:
-            enable_prim = self._build_strategy.build_cinn_pass
-            if enable_prim and core.enable_prim_backward():
-                core.set_prim_enabled(True)
-                backward.gradients(targets=targets, inputs=[])
-                core.set_prim_enabled(False)
-            else:
-                backward.gradients(targets=targets, inputs=[])
+            if self._build_strategy.build_cinn_pass:
+                # TODO(Jiabin): Change this to True if we need this to be default option
+                core.check_and_set_prim_all_enabled()
+            backward.gradients(targets=targets, inputs=[])
 
         start_idx = len(main_program.block(0).ops) + 2 * len(
             self._outputs.tolist()
@@ -619,7 +616,7 @@ class PartialProgramLayer:
                 if "@GRAD" in name:
                     var_desc = block.vars[name].desc
                     var_base = None
-                    if not framework._in_eager_mode_:
+                    if not framework.global_var._in_eager_mode_:
                         var_base = core.VarBase(
                             var_desc.dtype(),
                             var_desc.shape(),
@@ -874,7 +871,7 @@ class PartialProgramLayer:
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = None
-                if not framework._in_eager_mode_:
+                if not framework.global_var._in_eager_mode_:
                     var = core.VarBase(
                         value=value,
                         name=self._inputs[i].desc.name(),
@@ -918,7 +915,7 @@ class PartialProgramLayer:
             if var_desc.name() in out_varbase_map:
                 return out_varbase_map[var_desc.name()]
 
-            if not framework._in_eager_mode_:
+            if not framework.global_var._in_eager_mode_:
                 var_base = core.VarBase(
                     var_desc.dtype(),
                     var_desc.shape(),
@@ -949,7 +946,7 @@ class PartialProgramLayer:
         inner_scope = self._get_scope(
             program_id=program_id, use_scope_cache=use_scope_cache
         )
-        if not framework._in_eager_mode_:
+        if not framework.global_var._in_eager_mode_:
             tmp_scope_vec = core.VarBase(
                 core.VarDesc.VarType.FP32,
                 [],
@@ -1102,7 +1099,7 @@ def _create_fake_var():
     """
     Create a fake_var (force on CPU) to handle empty input or output
     """
-    if not framework._in_eager_mode_:
+    if not framework.global_var._in_eager_mode_:
         return [
             core.VarBase(
                 core.VarDesc.VarType.FP32,

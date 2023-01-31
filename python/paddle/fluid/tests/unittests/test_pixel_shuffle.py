@@ -227,6 +227,13 @@ class TestPixelShuffleError(unittest.TestCase):
 
         self.assertRaises(TypeError, error_upscale_factor)
 
+        def error_0_upscale_factor():
+            with paddle.fluid.dygraph.guard():
+                x = paddle.uniform([1, 1, 1, 1], dtype='float64')
+                pixel_shuffle = F.pixel_shuffle(x, 0)
+
+        self.assertRaises(ValueError, error_0_upscale_factor)
+
         def error_data_format():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")

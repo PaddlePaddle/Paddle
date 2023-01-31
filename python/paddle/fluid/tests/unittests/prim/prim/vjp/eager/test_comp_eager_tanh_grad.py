@@ -20,7 +20,7 @@ import parameterized as param
 import paddle
 from paddle.fluid import core
 
-core.set_prim_enabled(True)
+core._set_prim_backward_enabled(True)
 
 
 @param.parameterized_class(
@@ -74,7 +74,7 @@ class TestTanhGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core.set_prim_enabled(False)
+        core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

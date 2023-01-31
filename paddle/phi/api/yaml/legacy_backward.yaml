@@ -42,7 +42,7 @@
   kernel :
     func : add_grad
   no_need_buffer : x, y
-  composite : add_grad(Tensor x, Tensor y, Tensor out_grad, int axis)
+  composite : add_grad(x, y, out_grad, axis)
   backward : add_double_grad
   inplace : (out_grad -> x_grad)
 
@@ -316,9 +316,14 @@
 
 - backward_op : cumsum_grad
   forward : cumsum(Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
-  args : (Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
+  args : (Tensor x, Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(x_grad)
-  invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : cumsum_grad
+    data_type: x
 
 - backward_op : deformable_conv_grad
   forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
@@ -385,7 +390,7 @@
     param : [x, y]
   kernel :
     func : divide_grad
-  composite : divide_grad(Tensor x, Tensor y, Tensor out, Tensor out_grad, int axis = -1)
+  composite : divide_grad(x, y, out, out_grad, -1)
   backward : divide_double_grad
 
 - backward_op : dropout_grad
@@ -1314,7 +1319,7 @@
   kernel :
     func : subtract_grad
   no_need_buffer : x, y
-  composite : subtract_grad(Tensor x, Tensor y, Tensor out_grad, int axis)
+  composite : subtract_grad(x, y, out_grad, axis)
   backward : subtract_double_grad
   inplace : (out_grad -> x_grad)
 

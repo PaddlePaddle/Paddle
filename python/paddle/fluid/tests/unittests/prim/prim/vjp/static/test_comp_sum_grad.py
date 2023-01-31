@@ -21,7 +21,7 @@ from paddle.fluid import core
 
 
 def actual(primal, cotangent, axis, keep_dim):
-    core.set_prim_enabled(False)
+    core._set_prim_backward_enabled(False)
     mp, sp = paddle.static.Program(), paddle.static.Program()
     with paddle.static.program_guard(mp, sp):
         x = paddle.static.data('primal', primal.shape, primal.dtype)
@@ -40,7 +40,7 @@ def actual(primal, cotangent, axis, keep_dim):
 
 
 def desired(primal, cotangent, axis, keep_dim):
-    core.set_prim_enabled(True)
+    core._set_prim_backward_enabled(True)
     mp, sp = paddle.static.Program(), paddle.static.Program()
     with paddle.static.program_guard(mp, sp):
         x = paddle.static.data('primal', primal.shape, primal.dtype)
